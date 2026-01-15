@@ -24,12 +24,10 @@ fn test_gaussian_convolution_validation() {
     let f_vals = suite.create_f(&case, &input_grid).unwrap();
     let g_vals = suite.create_g(&case, &input_grid).unwrap();
 
-    let dist_f = Distribution::<Plain>::Function(
-      DistributionFunction::from_start_dx_values(grid_min, dx, f_vals).unwrap(),
-    );
-    let dist_g = Distribution::<Plain>::Function(
-      DistributionFunction::from_start_dx_values(grid_min, dx, g_vals).unwrap(),
-    );
+    let dist_f =
+      Distribution::<Plain>::Function(DistributionFunction::from_start_dx_values(grid_min, dx, f_vals).unwrap());
+    let dist_g =
+      Distribution::<Plain>::Function(DistributionFunction::from_start_dx_values(grid_min, dx, g_vals).unwrap());
 
     // Run convolution
     let start = std::time::Instant::now();
@@ -45,7 +43,7 @@ fn test_gaussian_convolution_validation() {
     // Expected result len is (N + N - 1), but let's stick to what the suite usually does for metrics.
     // However, analytical_convolution can evaluate anywhere.
     // Let's use the result's own grid for evaluation to be fair, or resampling?
-    
+
     // In treetime-convolution tests:
     // let (evaluation_grid_min, evaluation_grid_max) = (input_grid_min * 2.0, input_grid_max * 2.0);
     // let evaluation_grid_n_points = 2 * input_grid_n_points - 1;
@@ -61,21 +59,29 @@ fn test_gaussian_convolution_validation() {
     // Compute metrics
     let metrics = ConvolutionMetrics::new(&eval_grid, &actual, &expected, duration).unwrap();
 
-    println!("  R²: {:.8}", metrics.aggregate.domain_agreement.quality_metrics.r_squared);
-    println!("  RMSE: {:.8e}", metrics.aggregate.domain_agreement.quality_metrics.rmse);
+    println!(
+      "  R²: {:.8}",
+      metrics.aggregate.domain_agreement.quality_metrics.r_squared
+    );
+    println!(
+      "  RMSE: {:.8e}",
+      metrics.aggregate.domain_agreement.quality_metrics.rmse
+    );
     println!("  Max Error: {:.8e}", metrics.pointwise.errors.summary.abs_max);
 
     // Assertions
     // We expect very high accuracy for Gaussians
     assert!(
-      metrics.aggregate.domain_agreement.quality_metrics.r_squared > 0.99, 
-      "R² too low for case {}: {}", case.name, metrics.aggregate.domain_agreement.quality_metrics.r_squared
+      metrics.aggregate.domain_agreement.quality_metrics.r_squared > 0.99,
+      "R² too low for case {}: {}",
+      case.name,
+      metrics.aggregate.domain_agreement.quality_metrics.r_squared
     );
-    
+
     // Some cases might be stressful (e.g. truncation), so we can be slightly lenient or check specific cases
     if case.stress_type.contains("truncation") || case.stress_type.contains("underflow") {
-       // Allow lower precision for stress tests
-       assert!(metrics.aggregate.domain_agreement.quality_metrics.r_squared > 0.90);
+      // Allow lower precision for stress tests
+      assert!(metrics.aggregate.domain_agreement.quality_metrics.r_squared > 0.90);
     }
   }
 }

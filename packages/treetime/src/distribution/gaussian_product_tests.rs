@@ -146,28 +146,22 @@ mod tests {
 
   #[test]
   fn test_gaussian_analytical_formula() {
-    struct GaussianParams {
-      mu: f64,
-      sigma: f64,
-    }
-
-    fn gaussian_product_analytical(params: &[GaussianParams]) -> (f64, f64, f64) {
-      let precision_sum: f64 = params.iter().map(|p| 1.0 / p.sigma.powi(2)).sum();
-      let sigma_star = (1.0 / precision_sum).sqrt();
-      let mu_star = sigma_star.powi(2) * params.iter().map(|p| p.mu / p.sigma.powi(2)).sum::<f64>();
-
-      let quadratic_term: f64 = params.iter().map(|p| (p.mu - mu_star).powi(2) / p.sigma.powi(2)).sum();
-      let log_scale = -0.5 * quadratic_term;
-
-      (mu_star, sigma_star, log_scale)
-    }
+    use treetime_analytical::{GaussianParams, gaussian_product_params};
 
     let params = vec![
-      GaussianParams { mu: -1.0, sigma: 1.0 },
-      GaussianParams { mu: 1.0, sigma: 1.0 },
+      GaussianParams {
+        mu: -1.0,
+        sigma: 1.0,
+        amplitude: 1.0,
+      },
+      GaussianParams {
+        mu: 1.0,
+        sigma: 1.0,
+        amplitude: 1.0,
+      },
     ];
 
-    let (mu, sigma, log_scale) = gaussian_product_analytical(&params);
+    let (mu, sigma, log_scale) = gaussian_product_params(&params);
 
     assert_relative_eq!(mu, 0.0, epsilon = 1e-10);
     assert_relative_eq!(sigma, 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);

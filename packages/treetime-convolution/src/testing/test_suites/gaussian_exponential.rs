@@ -4,8 +4,11 @@ use crate::testing::test_suites::test_suites::TestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use statrs::function::erf::erfc;
 use std::f64::consts::PI;
+use treetime_analytical::validation::cases::{
+  GAUSSIAN_EXPONENTIAL_CASES, GaussianExponentialTestCase as AnalyticalCase,
+};
+use treetime_analytical::{exponential_pdf_grid, gaussian_exponential_convolution_grid};
 
 #[derive(Default)]
 pub struct GaussianExponentialTestSuite;
@@ -18,8 +21,7 @@ impl TestSuite for GaussianExponentialTestSuite {
   }
 
   fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    let a_f = test_case.a_f;
-    Ok(grid.mapv(|x| if x >= 0.0 { a_f * (-a_f * x).exp() } else { 0.0 }))
+    Ok(exponential_pdf_grid(test_case.a_f, grid))
   }
 
   fn create_g(&self, _test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
@@ -27,33 +29,14 @@ impl TestSuite for GaussianExponentialTestSuite {
   }
 
   fn analytical_convolution(&self, test_case: &Self::TestCase, eval_grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    let a_f = test_case.a_f;
-    Ok(eval_grid.mapv(|x| 0.5 * a_f * (-x * a_f + 0.5 * a_f.powi(2)).exp() * erfc((a_f - x) / 2_f64.sqrt())))
+    Ok(gaussian_exponential_convolution_grid(test_case.a_f, eval_grid))
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    vec![
-      GaussianExponentialTestCase {
-        name: "python_notebook_case".to_owned(),
-        description: "Parameters from conv_gauss_exp.ipynb: a_f=0.5".to_owned(),
-        stress_type: "reference implementation validation".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        a_f: 0.5,
-        input_grid_domain: (-5.0, 40.0),
-        input_grid_n_points: 101,
-      },
-      GaussianExponentialTestCase {
-        name: "python_notebook_case_fine".to_owned(),
-        description: "Parameters from conv_gauss_exp.ipynb: a_f=0.5".to_owned(),
-        stress_type: "reference implementation validation".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        a_f: 0.5,
-        input_grid_domain: (-5.0, 40.0),
-        input_grid_n_points: 501,
-      },
-    ]
+    GAUSSIAN_EXPONENTIAL_CASES
+      .iter()
+      .map(GaussianExponentialTestCase::from)
+      .collect()
   }
 }
 
@@ -67,6 +50,21 @@ pub struct GaussianExponentialTestCase {
   pub a_f: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
+}
+
+impl From<&AnalyticalCase> for GaussianExponentialTestCase {
+  fn from(case: &AnalyticalCase) -> Self {
+    Self {
+      name: case.name.to_owned(),
+      description: case.description.to_owned(),
+      stress_type: case.stress_type.to_owned(),
+      analytical_caution: case.analytical_caution.to_owned(),
+      slowness: case.slowness,
+      a_f: case.a_f,
+      input_grid_domain: case.input_grid_domain,
+      input_grid_n_points: case.input_grid_n_points,
+    }
+  }
 }
 
 impl TestCase for GaussianExponentialTestCase {

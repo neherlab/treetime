@@ -174,7 +174,13 @@ fn run_all_tests<R: TestRunner>(
     .into_par_iter()
     .filter_map(|(test_case, algorithm, is_selected)| {
       if is_selected {
-        Some(execute_single_test::<R>(suite, test_case, algorithm, &completed, total_tests))
+        Some(execute_single_test::<R>(
+          suite,
+          test_case,
+          algorithm,
+          &completed,
+          total_tests,
+        ))
       } else {
         R::print_skipped_row(test_case, algorithm);
         None
@@ -304,9 +310,7 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
     .collect()
 }
 
-fn assess_overall_performance(
-  algorithm_summaries: &[crate::testing::framework::summary::AlgorithmSummary],
-) -> String {
+fn assess_overall_performance(algorithm_summaries: &[crate::testing::framework::summary::AlgorithmSummary]) -> String {
   if algorithm_summaries.iter().all(|summary| summary.success_rate > 0.9) {
     "Excellent - All algorithms perform well".to_owned()
   } else if algorithm_summaries.iter().any(|summary| summary.success_rate > 0.8) {

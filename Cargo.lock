@@ -3748,6 +3748,7 @@ dependencies = [
  "tikv-jemallocator",
  "time",
  "traversal",
+ "treetime-analytical",
  "treetime-convolution",
  "treetime-io",
  "treetime-utils",
@@ -3766,6 +3767,7 @@ dependencies = [
  "pretty_assertions",
  "rstest",
  "serde",
+ "statrs",
  "treetime-utils",
 ]
 

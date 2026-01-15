@@ -62,7 +62,9 @@ impl<S: MultiplicationTestSuite + Default> TestRunner for MultiplicationRunner<S
   }
 
   fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    println!("\nRunning {test_suite_name} multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n");
+    println!(
+      "\nRunning {test_suite_name} multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n"
+    );
   }
 
   fn print_table_header() {
@@ -168,7 +170,9 @@ impl<S: ChainMultiplicationTestSuite + Default> TestRunner for ChainMultiplicati
   }
 
   fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    println!("\nRunning {test_suite_name} chain multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n");
+    println!(
+      "\nRunning {test_suite_name} chain multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n"
+    );
   }
 
   fn print_table_header() {
@@ -332,8 +336,14 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
 
   let metrics = ConvolutionMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
 
-  let f_values = factors.first().cloned().unwrap_or_else(|| Array1::ones(input_grid.len()));
-  let g_values = factors.get(1).cloned().unwrap_or_else(|| Array1::ones(input_grid.len()));
+  let f_values = factors
+    .first()
+    .cloned()
+    .unwrap_or_else(|| Array1::ones(input_grid.len()));
+  let g_values = factors
+    .get(1)
+    .cloned()
+    .unwrap_or_else(|| Array1::ones(input_grid.len()));
 
   Ok(TestResult {
     algorithm: algo.name().to_owned(),

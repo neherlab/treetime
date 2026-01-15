@@ -2,8 +2,10 @@ pub mod convolution;
 pub mod multiplication;
 pub mod traits;
 
-pub use convolution::{convolve, convolve_fft, convolve_riemann, FftConvolve, NdarrayConvolve, RiemannConvolve};
-pub use multiplication::{multiply_many, multiply_many_lazy_normalize, multiply_many_naive, LogScaleMultiply, PointwiseMultiply};
+pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve, convolve_fft, convolve_riemann};
+pub use multiplication::{
+  LogScaleMultiply, PointwiseMultiply, multiply_many, multiply_many_lazy_normalize, multiply_many_naive,
+};
 pub use traits::{ConvolveAlgo, MultiplyAlgo};
 
 #[cfg(test)]

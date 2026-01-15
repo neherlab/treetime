@@ -1,10 +1,13 @@
 #![allow(clippy::many_single_char_names)]
-use crate::analytical::gaussian::{GaussianParams, gaussian_product};
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use treetime_analytical::validation::cases::{
+  GAUSSIAN_CHAIN_MULTIPLICATION_CASES, GaussianChainMultiplicationTestCase as AnalyticalCase,
+};
+use treetime_analytical::{GaussianParams, gaussian_product};
 
 #[derive(Default)]
 pub struct GaussianChainMultiplicationTestSuite;
@@ -34,223 +37,10 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    vec![
-      GaussianChainTestCase {
-        name: "two_identical".to_owned(),
-        description: "Two identical Gaussians (baseline for chain).".to_owned(),
-        stress_type: "baseline".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        factors: vec![
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-        ],
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "three_shifted".to_owned(),
-        description: "Three Gaussians with shifted means.".to_owned(),
-        stress_type: "translation".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.1,
-        factors: vec![
-          GaussianParams {
-            mu: -1.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 1.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-        ],
-        input_grid_domain: (-6.0, 6.0),
-        input_grid_n_points: 241,
-      },
-      GaussianChainTestCase {
-        name: "five_identical".to_owned(),
-        description: "Five identical Gaussians testing moderate chain.".to_owned(),
-        stress_type: "moderate chain".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.15,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          5,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "ten_identical".to_owned(),
-        description: "Ten identical Gaussians testing underflow resistance.".to_owned(),
-        stress_type: "underflow risk".to_owned(),
-        analytical_caution: "product amplitude decreases rapidly".to_owned(),
-        slowness: 0.25,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          10,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "twenty_identical".to_owned(),
-        description: "Twenty identical Gaussians for severe underflow stress.".to_owned(),
-        stress_type: "severe underflow".to_owned(),
-        analytical_caution: "requires log-scale handling".to_owned(),
-        slowness: 0.4,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          20,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "fifty_identical".to_owned(),
-        description: "Fifty identical Gaussians for extreme underflow stress.".to_owned(),
-        stress_type: "extreme underflow".to_owned(),
-        analytical_caution: "plain multiplication would underflow to zero".to_owned(),
-        slowness: 0.7,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          50,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "five_mixed".to_owned(),
-        description: "Five Gaussians with varied parameters.".to_owned(),
-        stress_type: "varied params".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.2,
-        factors: vec![
-          GaussianParams {
-            mu: -2.0,
-            sigma: 1.5,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: -0.5,
-            sigma: 0.8,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 0.5,
-            sigma: 1.2,
-            amplitude: 1.0,
-          },
-          GaussianParams {
-            mu: 2.0,
-            sigma: 0.9,
-            amplitude: 1.0,
-          },
-        ],
-        input_grid_domain: (-8.0, 8.0),
-        input_grid_n_points: 321,
-      },
-      GaussianChainTestCase {
-        name: "small_amplitudes_chain".to_owned(),
-        description: "Chain of Gaussians with small amplitudes.".to_owned(),
-        stress_type: "amplitude underflow".to_owned(),
-        analytical_caution: "requires log-scale handling".to_owned(),
-        slowness: 0.3,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 0.1,
-          },
-          10,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "hundred_identical".to_owned(),
-        description: "One hundred identical Gaussians for stress testing.".to_owned(),
-        stress_type: "stress test".to_owned(),
-        analytical_caution: "extreme precision requirements".to_owned(),
-        slowness: 0.9,
-        factors: std::iter::repeat_n(
-          GaussianParams {
-            mu: 0.0,
-            sigma: 1.0,
-            amplitude: 1.0,
-          },
-          100,
-        )
-        .collect(),
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "single_factor".to_owned(),
-        description: "Single Gaussian (trivial case, result equals input).".to_owned(),
-        stress_type: "edge case".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        factors: vec![GaussianParams {
-          mu: 0.0,
-          sigma: 1.0,
-          amplitude: 1.0,
-        }],
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianChainTestCase {
-        name: "empty_factors".to_owned(),
-        description: "Empty factors list (edge case, returns identity).".to_owned(),
-        stress_type: "edge case".to_owned(),
-        analytical_caution: "trivial case".to_owned(),
-        slowness: 0.0,
-        factors: vec![],
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-    ]
+    GAUSSIAN_CHAIN_MULTIPLICATION_CASES
+      .iter()
+      .map(GaussianChainTestCase::from)
+      .collect()
   }
 }
 
@@ -264,6 +54,21 @@ pub struct GaussianChainTestCase {
   pub factors: Vec<GaussianParams>,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
+}
+
+impl From<&AnalyticalCase> for GaussianChainTestCase {
+  fn from(case: &AnalyticalCase) -> Self {
+    Self {
+      name: case.name.to_owned(),
+      description: case.description.to_owned(),
+      stress_type: case.stress_type.to_owned(),
+      analytical_caution: case.analytical_caution.to_owned(),
+      slowness: case.slowness,
+      factors: case.factors.to_vec(),
+      input_grid_domain: case.input_grid_domain,
+      input_grid_n_points: case.input_grid_n_points,
+    }
+  }
 }
 
 impl TestCase for GaussianChainTestCase {

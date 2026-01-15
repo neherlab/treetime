@@ -1,10 +1,13 @@
 #![allow(clippy::many_single_char_names)]
-use crate::analytical::gaussian::{GaussianParams, gaussian_product};
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
+use treetime_analytical::validation::cases::{
+  GAUSSIAN_MULTIPLICATION_CASES, GaussianMultiplicationTestCase as AnalyticalCase,
+};
+use treetime_analytical::{GaussianParams, gaussian_product};
 
 #[derive(Default)]
 pub struct GaussianMultiplicationTestSuite;
@@ -52,158 +55,10 @@ impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    vec![
-      GaussianMultiplicationTestCase {
-        name: "identical".to_owned(),
-        description: "Two identical Gaussians at origin with unit amplitude.".to_owned(),
-        stress_type: "baseline".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        mu_f: 0.0,
-        sigma_f: 1.0,
-        amplitude_f: 1.0,
-        mu_g: 0.0,
-        sigma_g: 1.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianMultiplicationTestCase {
-        name: "shifted_equal".to_owned(),
-        description: "Two Gaussians with equal widths but shifted means; product peak at midpoint.".to_owned(),
-        stress_type: "translation".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        mu_f: -1.0,
-        sigma_f: 1.0,
-        amplitude_f: 1.0,
-        mu_g: 1.0,
-        sigma_g: 1.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-6.0, 6.0),
-        input_grid_n_points: 241,
-      },
-      GaussianMultiplicationTestCase {
-        name: "different_widths".to_owned(),
-        description: "Two Gaussians with different widths; narrower Gaussian dominates result.".to_owned(),
-        stress_type: "width mixing".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.0,
-        mu_f: 0.0,
-        sigma_f: 1.0,
-        amplitude_f: 1.0,
-        mu_g: 0.0,
-        sigma_g: 2.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-10.0, 10.0),
-        input_grid_n_points: 401,
-      },
-      GaussianMultiplicationTestCase {
-        name: "narrow_wide".to_owned(),
-        description: "Extreme width ratio with very narrow and very wide Gaussian.".to_owned(),
-        stress_type: "extreme ratio, resolution".to_owned(),
-        analytical_caution: "grid resolution may be insufficient for narrow Gaussian".to_owned(),
-        slowness: 0.3,
-        mu_f: 0.0,
-        sigma_f: 0.1,
-        amplitude_f: 1.0,
-        mu_g: 0.0,
-        sigma_g: 10.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 1001,
-      },
-      GaussianMultiplicationTestCase {
-        name: "shifted_different_widths".to_owned(),
-        description: "Shifted means with different widths; tests combined effects.".to_owned(),
-        stress_type: "combined".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.1,
-        mu_f: -2.0,
-        sigma_f: 1.5,
-        amplitude_f: 1.0,
-        mu_g: 1.0,
-        sigma_g: 0.8,
-        amplitude_g: 1.0,
-        input_grid_domain: (-8.0, 8.0),
-        input_grid_n_points: 321,
-      },
-      GaussianMultiplicationTestCase {
-        name: "small_amplitudes".to_owned(),
-        description: "Small amplitudes testing log-scale handling.".to_owned(),
-        stress_type: "underflow".to_owned(),
-        analytical_caution: "numerical underflow possible with plain multiplication".to_owned(),
-        slowness: 0.1,
-        mu_f: 0.0,
-        sigma_f: 1.0,
-        amplitude_f: 0.001,
-        mu_g: 0.0,
-        sigma_g: 1.0,
-        amplitude_g: 0.001,
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-      GaussianMultiplicationTestCase {
-        name: "large_shift".to_owned(),
-        description: "Large shift between means; product has low amplitude.".to_owned(),
-        stress_type: "near-zero product".to_owned(),
-        analytical_caution: "product may underflow".to_owned(),
-        slowness: 0.2,
-        mu_f: -5.0,
-        sigma_f: 1.0,
-        amplitude_f: 1.0,
-        mu_g: 5.0,
-        sigma_g: 1.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-10.0, 10.0),
-        input_grid_n_points: 401,
-      },
-      GaussianMultiplicationTestCase {
-        name: "asymmetric_shift".to_owned(),
-        description: "Asymmetric shift with different widths.".to_owned(),
-        stress_type: "asymmetry".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.15,
-        mu_f: 0.0,
-        sigma_f: 2.0,
-        amplitude_f: 1.0,
-        mu_g: 3.0,
-        sigma_g: 1.0,
-        amplitude_g: 1.0,
-        input_grid_domain: (-8.0, 12.0),
-        input_grid_n_points: 401,
-      },
-      GaussianMultiplicationTestCase {
-        name: "fine_grid".to_owned(),
-        description: "High-resolution grid for reference accuracy.".to_owned(),
-        stress_type: "performance".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.5,
-        mu_f: 0.0,
-        sigma_f: 1.0,
-        amplitude_f: 1.0,
-        mu_g: 0.5,
-        sigma_g: 1.5,
-        amplitude_g: 1.0,
-        input_grid_domain: (-8.0, 8.0),
-        input_grid_n_points: 3201,
-      },
-      GaussianMultiplicationTestCase {
-        name: "mixed_amplitudes".to_owned(),
-        description: "Different amplitudes testing scale handling.".to_owned(),
-        stress_type: "scale mixing".to_owned(),
-        analytical_caution: "none".to_owned(),
-        slowness: 0.1,
-        mu_f: 0.0,
-        sigma_f: 1.0,
-        amplitude_f: 10.0,
-        mu_g: 0.0,
-        sigma_g: 1.0,
-        amplitude_g: 0.5,
-        input_grid_domain: (-5.0, 5.0),
-        input_grid_n_points: 201,
-      },
-    ]
+    GAUSSIAN_MULTIPLICATION_CASES
+      .iter()
+      .map(GaussianMultiplicationTestCase::from)
+      .collect()
   }
 }
 
@@ -222,6 +77,26 @@ pub struct GaussianMultiplicationTestCase {
   pub amplitude_g: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
+}
+
+impl From<&AnalyticalCase> for GaussianMultiplicationTestCase {
+  fn from(case: &AnalyticalCase) -> Self {
+    Self {
+      name: case.name.to_owned(),
+      description: case.description.to_owned(),
+      stress_type: case.stress_type.to_owned(),
+      analytical_caution: case.analytical_caution.to_owned(),
+      slowness: case.slowness,
+      mu_f: case.mu_f,
+      sigma_f: case.sigma_f,
+      amplitude_f: case.amplitude_f,
+      mu_g: case.mu_g,
+      sigma_g: case.sigma_g,
+      amplitude_g: case.amplitude_g,
+      input_grid_domain: case.input_grid_domain,
+      input_grid_n_points: case.input_grid_n_points,
+    }
+  }
 }
 
 impl TestCase for GaussianMultiplicationTestCase {
@@ -253,4 +128,3 @@ impl TestCase for GaussianMultiplicationTestCase {
     self.input_grid_n_points
   }
 }
-

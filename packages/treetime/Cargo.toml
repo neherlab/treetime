@@ -15,6 +15,7 @@ crate-type = ["lib"]
 
 [dependencies]
 phyloxml = { path = "../phyloxml" }
+treetime-analytical = { path = "../treetime-analytical" }
 treetime-convolution = { path = "../treetime-convolution" }
 treetime-io = { path = "../treetime-io" }
 treetime-utils = { path = "../treetime-utils" }
