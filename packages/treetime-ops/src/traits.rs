@@ -1,3 +1,4 @@
+use crate::ScaledArray;
 use eyre::Report;
 use ndarray::Array1;
 
@@ -19,7 +20,7 @@ pub trait MultiplyAlgo: Send + Sync {
 
   /// Multiply N distributions, returning normalized shape and log-scale.
   ///
-  /// Returns `(normalized_shape, log_scale)` where the full result is
-  /// `normalized_shape * exp(log_scale)`.
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64);
+  /// Returns `ScaledArray { normalized, log_scale }` where the full result is
+  /// `normalized * exp(log_scale)`.
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray;
 }

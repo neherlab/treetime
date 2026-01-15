@@ -8,6 +8,7 @@ use treetime_analytical::validation::cases::gaussian_multiplication::{
   GAUSSIAN_MULTIPLICATION_CASES, GaussianMultiplicationTestCase as AnalyticalCase,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};
+use treetime_ops::ScaledArray;
 
 #[derive(Default)]
 pub struct GaussianMultiplicationTestSuite;
@@ -37,7 +38,7 @@ impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
     &self,
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
-  ) -> Result<(Array1<f64>, f64), Report> {
+  ) -> Result<ScaledArray, Report> {
     let params = [
       GaussianParams {
         mu: test_case.mu_f,

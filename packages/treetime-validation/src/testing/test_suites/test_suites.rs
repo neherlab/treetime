@@ -13,6 +13,8 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
+use treetime_ops::ScaledArray;
+use treetime_utils::make_error;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
 #[serde(rename_all = "kebab-case")]
@@ -57,9 +59,12 @@ impl TestSuiteName {
     matches!(self, Self::GaussianMultiplication | Self::GaussianChainMultiplication)
   }
 
+  /// Run tests for this suite.
+  ///
+  /// Returns error if called on `All` meta-variant (use `expand()` first).
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
-      Self::All => panic!("Cannot run All meta-variant"),
+      Self::All => make_error!("Cannot run All meta-variant; use expand() first"),
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
@@ -98,7 +103,7 @@ pub trait MultiplicationTestSuite: Send + Sync {
     &self,
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
-  ) -> Result<(Array1<f64>, f64), Report>;
+  ) -> Result<ScaledArray, Report>;
 
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }
@@ -114,7 +119,7 @@ pub trait ChainMultiplicationTestSuite: Send + Sync {
     &self,
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
-  ) -> Result<(Array1<f64>, f64), Report>;
+  ) -> Result<ScaledArray, Report>;
 
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }

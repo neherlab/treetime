@@ -1,4 +1,5 @@
 use crate::traits::MultiplyAlgo;
+use crate::ScaledArray;
 use ndarray::Array1;
 
 /// Threshold below which we normalize to prevent underflow.
@@ -9,7 +10,7 @@ fn array_max(arr: &Array1<f64>) -> f64 {
   arr.iter().copied().fold(f64::NEG_INFINITY, f64::max)
 }
 
-fn normalize_and_extract_scale(arr: &Array1<f64>) -> (Array1<f64>, f64) {
+fn normalize_and_extract_scale(arr: &Array1<f64>) -> ScaledArray {
   let max_val = array_max(arr);
   let log_scale = if max_val > 0.0 && max_val.is_finite() {
     max_val.ln()
@@ -21,23 +22,23 @@ fn normalize_and_extract_scale(arr: &Array1<f64>) -> (Array1<f64>, f64) {
   } else {
     arr.clone()
   };
-  (normalized, log_scale)
+  ScaledArray::new(normalized, log_scale)
 }
 
 /// Multiply multiple distributions with lazy normalization.
 ///
-/// Returns (normalized_shape, log_scale) where the full result is:
-/// `normalized_shape * exp(log_scale)`
+/// Returns `ScaledArray { normalized, log_scale }` where the full result is:
+/// `normalized * exp(log_scale)`
 ///
-/// Invariant: max(normalized_shape) = 1.0
+/// Invariant: max(normalized) = 1.0
 ///
 /// Unlike aggressive normalization (which normalizes after every step),
 /// this function only normalizes when the maximum value drops below
 /// `UNDERFLOW_THRESHOLD` to prevent numerical underflow. This reduces
 /// accumulated rounding errors and improves both performance and accuracy.
-pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
-    return (Array1::zeros(0), f64::NEG_INFINITY);
+    return ScaledArray::empty(0);
   }
 
   if distributions.len() == 1 {
@@ -51,7 +52,7 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> (Array1<f
   // Initial check
   let max_val = array_max(&product);
   if max_val <= 0.0 || !max_val.is_finite() {
-    return (Array1::zeros(n), f64::NEG_INFINITY);
+    return ScaledArray::empty(n);
   }
 
   for dist in distributions.iter().skip(1) {
@@ -59,7 +60,7 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> (Array1<f
 
     let max_val = array_max(&product);
     if max_val <= 0.0 || !max_val.is_finite() {
-      return (Array1::zeros(n), f64::NEG_INFINITY);
+      return ScaledArray::empty(n);
     }
 
     // Only normalize if approaching underflow
@@ -72,26 +73,26 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> (Array1<f
   // Final normalization to ensure invariant max = 1.0
   let max_val = array_max(&product);
   if max_val <= 0.0 || !max_val.is_finite() {
-    return (Array1::zeros(n), f64::NEG_INFINITY);
+    return ScaledArray::empty(n);
   }
   accumulated_log_scale += max_val.ln();
   product.mapv_inplace(|v| v / max_val);
 
-  (product, accumulated_log_scale)
+  ScaledArray::new(product, accumulated_log_scale)
 }
 
 /// Multiply multiple distributions with aggressive normalization (legacy behavior).
 ///
-/// Returns (normalized_shape, log_scale) where the full result is:
-/// `normalized_shape * exp(log_scale)`
+/// Returns `ScaledArray { normalized, log_scale }` where the full result is:
+/// `normalized * exp(log_scale)`
 ///
-/// Invariant: max(normalized_shape) = 1.0
+/// Invariant: max(normalized) = 1.0
 ///
 /// This function normalizes after EVERY pairwise multiplication.
 /// Prefer `multiply_many_lazy_normalize` for better accuracy.
-pub fn multiply_many(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
-    return (Array1::zeros(0), f64::NEG_INFINITY);
+    return ScaledArray::empty(0);
   }
 
   if distributions.len() == 1 {
@@ -104,7 +105,7 @@ pub fn multiply_many(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
 
   let max_val = array_max(&normalized_result);
   if max_val <= 0.0 || !max_val.is_finite() {
-    return (Array1::zeros(n), f64::NEG_INFINITY);
+    return ScaledArray::empty(n);
   }
   accumulated_log_scale += max_val.ln();
   normalized_result.mapv_inplace(|v| v / max_val);
@@ -114,23 +115,23 @@ pub fn multiply_many(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
 
     let max_val = array_max(&normalized_result);
     if max_val <= 0.0 || !max_val.is_finite() {
-      return (Array1::zeros(n), f64::NEG_INFINITY);
+      return ScaledArray::empty(n);
     }
 
     accumulated_log_scale += max_val.ln();
     normalized_result.mapv_inplace(|v| v / max_val);
   }
 
-  (normalized_result, accumulated_log_scale)
+  ScaledArray::new(normalized_result, accumulated_log_scale)
 }
 
 /// Naive multiplication without log-scale tracking.
 ///
 /// Warning: Can underflow to zero for many small distributions.
 /// Use `multiply_many_lazy_normalize` for underflow-resistant multiplication.
-pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
   if distributions.is_empty() {
-    return (Array1::zeros(0), f64::NEG_INFINITY);
+    return ScaledArray::empty(0);
   }
 
   let n = distributions[0].len();
@@ -151,7 +152,7 @@ pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> (Array1<f64>, f64)
     result.mapv_inplace(|v| v / max_val);
   }
 
-  (result, log_scale)
+  ScaledArray::new(result, log_scale)
 }
 
 /// Naive point-wise multiplication algorithm.
@@ -166,7 +167,7 @@ impl MultiplyAlgo for PointwiseMultiply {
     f_values * g_values
   }
 
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
     multiply_many_naive(distributions)
   }
 }
@@ -183,8 +184,25 @@ impl MultiplyAlgo for LogScaleMultiply {
     f_values * g_values
   }
 
-  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> (Array1<f64>, f64) {
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
     multiply_many_lazy_normalize(distributions)
+  }
+}
+
+/// Log-scale aware multiplication with aggressive normalization.
+pub struct AggressiveMultiply;
+
+impl MultiplyAlgo for AggressiveMultiply {
+  fn name(&self) -> &'static str {
+    "aggressive-multiplication"
+  }
+
+  fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
+    f_values * g_values
+  }
+
+  fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
+    multiply_many(distributions)
   }
 }
 
@@ -196,31 +214,31 @@ mod tests {
 
   #[test]
   fn test_multiply_many_empty() {
-    let (shape, log_scale) = multiply_many_lazy_normalize(&[]);
-    assert_eq!(shape.len(), 0);
-    assert!(log_scale.is_infinite() && log_scale.is_sign_negative());
+    let result = multiply_many_lazy_normalize(&[]);
+    assert_eq!(result.normalized.len(), 0);
+    assert!(result.log_scale.is_infinite() && result.log_scale.is_sign_negative());
   }
 
   #[test]
   fn test_multiply_many_single() {
     let a = array![1.0, 4.0, 2.0];
-    let (shape, log_scale) = multiply_many_lazy_normalize(&[&a]);
+    let result = multiply_many_lazy_normalize(&[&a]);
 
-    assert_relative_eq!(shape[0], 0.25, epsilon = 1e-10);
-    assert_relative_eq!(shape[1], 1.0, epsilon = 1e-10);
-    assert_relative_eq!(shape[2], 0.5, epsilon = 1e-10);
-    assert_relative_eq!(log_scale, 4.0_f64.ln(), epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[0], 0.25, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[2], 0.5, epsilon = 1e-10);
+    assert_relative_eq!(result.log_scale, 4.0_f64.ln(), epsilon = 1e-10);
   }
 
   #[test]
   fn test_multiply_many_two_identical() {
     let a = array![1.0, 2.0, 1.0];
-    let (shape, log_scale) = multiply_many_lazy_normalize(&[&a, &a]);
+    let result = multiply_many_lazy_normalize(&[&a, &a]);
 
-    assert_relative_eq!(shape[0], 0.25, epsilon = 1e-10);
-    assert_relative_eq!(shape[1], 1.0, epsilon = 1e-10);
-    assert_relative_eq!(shape[2], 0.25, epsilon = 1e-10);
-    assert!(log_scale.is_finite());
+    assert_relative_eq!(result.normalized[0], 0.25, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[2], 0.25, epsilon = 1e-10);
+    assert!(result.log_scale.is_finite());
   }
 
   #[test]
@@ -230,56 +248,49 @@ mod tests {
     let a = array![small_val];
 
     let refs: Vec<&Array1<f64>> = std::iter::repeat_n(&a, n).collect();
-    let (shape, log_scale) = multiply_many_lazy_normalize(&refs);
+    let result = multiply_many_lazy_normalize(&refs);
 
-    assert!(!shape.is_empty());
-    assert!(log_scale.is_finite());
+    assert!(!result.normalized.is_empty());
+    assert!(result.log_scale.is_finite());
 
     let expected_log_scale = (n as f64) * small_val.ln();
-    assert_relative_eq!(log_scale, expected_log_scale, epsilon = 1e-10);
+    assert_relative_eq!(result.log_scale, expected_log_scale, epsilon = 1e-10);
   }
 
   #[test]
   fn test_multiply_many_handles_zero_max() {
     let a = array![0.0, 0.0, 0.0];
-    let (shape, log_scale) = multiply_many_lazy_normalize(&[&a]);
+    let result = multiply_many_lazy_normalize(&[&a]);
 
-    assert!(log_scale.is_infinite() && log_scale.is_sign_negative());
-    assert_eq!(shape, a);
+    assert!(result.log_scale.is_infinite() && result.log_scale.is_sign_negative());
+    assert_eq!(result.normalized, a);
   }
 
   #[test]
   fn test_lazy_vs_aggressive_same_result_for_few_factors() {
-    // For a small number of factors, both should give very similar results
     let a = array![1.0, 2.0, 1.0];
     let b = array![0.5, 1.0, 0.5];
 
-    let (shape_lazy, log_lazy) = multiply_many_lazy_normalize(&[&a, &b]);
-    let (shape_agg, log_agg) = multiply_many(&[&a, &b]);
+    let lazy = multiply_many_lazy_normalize(&[&a, &b]);
+    let agg = multiply_many(&[&a, &b]);
 
-    // Results should be very close
-    for i in 0..shape_lazy.len() {
-      assert_relative_eq!(shape_lazy[i], shape_agg[i], epsilon = 1e-10);
+    for i in 0..lazy.normalized.len() {
+      assert_relative_eq!(lazy.normalized[i], agg.normalized[i], epsilon = 1e-10);
     }
-    assert_relative_eq!(log_lazy, log_agg, epsilon = 1e-10);
+    assert_relative_eq!(lazy.log_scale, agg.log_scale, epsilon = 1e-10);
   }
 
   #[test]
   fn test_lazy_normalize_fewer_operations() {
-    // With large values that don't risk underflow, lazy should not normalize mid-computation
-    // This is hard to test directly, but we can verify correctness
     let a = array![0.5, 1.0, 0.5];
     let b = array![0.5, 1.0, 0.5];
     let c = array![0.5, 1.0, 0.5];
 
-    let (shape, log_scale) = multiply_many_lazy_normalize(&[&a, &b, &c]);
+    let result = multiply_many_lazy_normalize(&[&a, &b, &c]);
 
-    // a * b * c at center = 1.0 * 1.0 * 1.0 = 1.0
-    // a * b * c at edges = 0.5 * 0.5 * 0.5 = 0.125
-    // max = 1.0, so normalized shape[1] = 1.0, shape[0] = shape[2] = 0.125
-    assert_relative_eq!(shape[1], 1.0, epsilon = 1e-10);
-    assert_relative_eq!(shape[0], 0.125, epsilon = 1e-10);
-    assert_relative_eq!(shape[2], 0.125, epsilon = 1e-10);
-    assert_relative_eq!(log_scale, 0.0, epsilon = 1e-10); // max was 1.0
+    assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[0], 0.125, epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[2], 0.125, epsilon = 1e-10);
+    assert_relative_eq!(result.log_scale, 0.0, epsilon = 1e-10);
   }
 }

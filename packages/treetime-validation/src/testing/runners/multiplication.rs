@@ -11,6 +11,7 @@ use eyre::Report;
 use ndarray::Array1;
 use std::fmt::Display;
 use std::time::Instant;
+use treetime_ops::ScaledArray;
 
 pub struct MultiplicationRunner<S: MultiplicationTestSuite>(std::marker::PhantomData<S>);
 
@@ -37,7 +38,7 @@ impl<S: MultiplicationTestSuite + Default> TestRunner for MultiplicationRunner<S
     algorithm: Self::Algorithm,
   ) -> Result<TestResult<Self::TestCase>, Report> {
     let start_time = Instant::now();
-    let algo = algorithm.instantiate();
+    let algo = algorithm.instantiate()?;
     run_multiplication_test(suite, test_case, &*algo, start_time)
   }
 
@@ -145,7 +146,7 @@ impl<S: ChainMultiplicationTestSuite + Default> TestRunner for ChainMultiplicati
     algorithm: Self::Algorithm,
   ) -> Result<TestResult<Self::TestCase>, Report> {
     let start_time = Instant::now();
-    let algo = algorithm.instantiate();
+    let algo = algorithm.instantiate()?;
     run_chain_multiplication_test(suite, test_case, &*algo, start_time)
   }
 
@@ -281,9 +282,9 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
   let g_values = suite.create_g(test_case, &input_grid)?;
 
   let actual_values = algo.multiply(&f_values, &g_values);
-  let (expected_shape, expected_log_scale) = suite.analytical_multiplication(test_case, &input_grid)?;
+  let expected = suite.analytical_multiplication(test_case, &input_grid)?;
 
-  let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
+  let expected_values = expected.normalized.mapv(|v| v * expected.log_scale.exp());
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -320,17 +321,17 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
   let factors = suite.create_factors(test_case, &input_grid)?;
   let factor_refs: Vec<&Array1<f64>> = factors.iter().collect();
 
-  let (actual_shape, actual_log_scale) = if factors.is_empty() {
-    (Array1::ones(input_grid.len()), 0.0)
+  let actual = if factors.is_empty() {
+    ScaledArray::new(Array1::ones(input_grid.len()), 0.0)
   } else {
     algo.multiply_many(&factor_refs)
   };
-  let (expected_shape, expected_log_scale) = suite.analytical_chain_multiplication(test_case, &input_grid)?;
+  let expected = suite.analytical_chain_multiplication(test_case, &input_grid)?;
 
-  let log_scale_error = (actual_log_scale - expected_log_scale).abs();
+  let log_scale_error = (actual.log_scale - expected.log_scale).abs();
 
-  let actual_values = actual_shape.mapv(|v| v * actual_log_scale.exp());
-  let expected_values = expected_shape.mapv(|v| v * expected_log_scale.exp());
+  let actual_values = actual.normalized.mapv(|v| v * actual.log_scale.exp());
+  let expected_values = expected.normalized.mapv(|v| v * expected.log_scale.exp());
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -357,8 +358,8 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
     actual_values,
     expected_values,
     metrics,
-    log_scale_actual: Some(actual_log_scale),
-    log_scale_expected: Some(expected_log_scale),
+    log_scale_actual: Some(actual.log_scale),
+    log_scale_expected: Some(expected.log_scale),
     log_scale_error: Some(log_scale_error),
   })
 }

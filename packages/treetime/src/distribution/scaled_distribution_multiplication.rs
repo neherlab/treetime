@@ -90,15 +90,15 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
 
       if let Some(aligned) = try_extract_aligned_function_arrays(distributions) {
         let array_refs = aligned.arrays.iter().copied().collect_vec();
-        let (normalized_shape, ops_log_scale) = multiply_many_lazy_normalize(&array_refs);
+        let result = multiply_many_lazy_normalize(&array_refs);
 
-        if !ops_log_scale.is_finite() {
+        if !result.log_scale.is_finite() {
           return Ok(ScaledDistribution::default());
         }
 
         let result_func =
-          DistributionFunction::<f64, Plain>::from_start_dx_values(aligned.x_min, aligned.dx, normalized_shape)?;
-        let total_log_scale = total_input_log_scale + ops_log_scale;
+          DistributionFunction::<f64, Plain>::from_start_dx_values(aligned.x_min, aligned.dx, result.normalized)?;
+        let total_log_scale = total_input_log_scale + result.log_scale;
 
         return Ok(ScaledDistribution::from_parts(total_log_scale, Distribution::Function(result_func)));
       }

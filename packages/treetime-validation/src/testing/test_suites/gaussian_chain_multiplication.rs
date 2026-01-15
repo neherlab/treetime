@@ -8,6 +8,7 @@ use treetime_analytical::validation::cases::gaussian_chain_multiplication::{
   get_gaussian_chain_multiplication_cases, GaussianChainMultiplicationTestCase as AnalyticalCase,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};
+use treetime_ops::ScaledArray;
 
 #[derive(Default)]
 pub struct GaussianChainMultiplicationTestSuite;
@@ -32,7 +33,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
     &self,
     test_case: &Self::TestCase,
     grid: &Array1<f64>,
-  ) -> Result<(Array1<f64>, f64), Report> {
+  ) -> Result<ScaledArray, Report> {
     Ok(gaussian_product(&test_case.factors, grid))
   }
 

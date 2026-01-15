@@ -1,8 +1,10 @@
 use clap::ValueEnum;
+use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 use treetime_ops::{FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply, RiemannConvolve};
+use treetime_utils::make_error;
 
 pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
 
@@ -48,13 +50,15 @@ impl ConvolutionAlgorithm {
     }
   }
 
-  /// Instantiate the algorithm implementation
-  pub fn instantiate(&self) -> Box<dyn Algo> {
+  /// Instantiate the algorithm implementation.
+  ///
+  /// Returns error if called on `All` meta-variant (use `expand()` first).
+  pub fn instantiate(&self) -> Result<Box<dyn Algo>, Report> {
     match self {
-      Self::All => panic!("Cannot instantiate All meta-variant"),
-      Self::Riemann => Box::new(RiemannConvolve),
-      Self::NdarrayConv => Box::new(NdarrayConvolve),
-      Self::NdarrayConvFft => Box::new(FftConvolve),
+      Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
+      Self::Riemann => Ok(Box::new(RiemannConvolve)),
+      Self::NdarrayConv => Ok(Box::new(NdarrayConvolve)),
+      Self::NdarrayConvFft => Ok(Box::new(FftConvolve)),
     }
   }
 }
@@ -98,11 +102,14 @@ impl MultiplicationAlgorithm {
     }
   }
 
-  pub fn instantiate(&self) -> Box<dyn MultiplyAlgo> {
+  /// Instantiate the algorithm implementation.
+  ///
+  /// Returns error if called on `All` meta-variant (use `expand()` first).
+  pub fn instantiate(&self) -> Result<Box<dyn MultiplyAlgo>, Report> {
     match self {
-      Self::All => panic!("Cannot instantiate All meta-variant"),
-      Self::NaiveMultiplication => Box::new(PointwiseMultiply),
-      Self::LogScaleMultiplication => Box::new(LogScaleMultiply),
+      Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
+      Self::NaiveMultiplication => Ok(Box::new(PointwiseMultiply)),
+      Self::LogScaleMultiplication => Ok(Box::new(LogScaleMultiply)),
     }
   }
 }

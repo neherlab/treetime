@@ -1,6 +1,7 @@
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
+use treetime_ops::ScaledArray;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GaussianParams {
@@ -39,16 +40,16 @@ pub fn gaussian_product_params(params: &[GaussianParams]) -> (f64, f64, f64) {
 
 /// Evaluate Gaussian product on grid.
 ///
-/// Returns (normalized_shape, log_scale) where the full result is:
-/// `normalized_shape * exp(log_scale)`.
-pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> (Array1<f64>, f64) {
+/// Returns `ScaledArray { normalized, log_scale }` where the full result is:
+/// `normalized * exp(log_scale)`.
+pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> ScaledArray {
   if params.is_empty() {
-    return (Array1::ones(grid.len()), 0.0);
+    return ScaledArray::new(Array1::ones(grid.len()), 0.0);
   }
 
   let (mu_star, sigma_star, log_scale) = gaussian_product_params(params);
-  let values = grid.mapv(|x| (-(0.5 * ((x - mu_star) / sigma_star).powi(2))).exp());
-  (values, log_scale)
+  let normalized = grid.mapv(|x| (-(0.5 * ((x - mu_star) / sigma_star).powi(2))).exp());
+  ScaledArray::new(normalized, log_scale)
 }
 
 /// Evaluate a single Gaussian on grid.
@@ -190,13 +191,13 @@ mod tests {
     ];
     let grid = array![-2.0, -1.0, 0.0, 1.0, 2.0];
 
-    let (shape, _log_scale) = gaussian_product(&params, &grid);
+    let result = gaussian_product(&params, &grid);
 
-    assert_relative_eq!(shape[2], 1.0, epsilon = 1e-10);
-    assert!(shape[0] < shape[2]);
-    assert!(shape[4] < shape[2]);
-    assert_relative_eq!(shape[0], shape[4], epsilon = 1e-10);
-    assert_relative_eq!(shape[1], shape[3], epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[2], 1.0, epsilon = 1e-10);
+    assert!(result.normalized[0] < result.normalized[2]);
+    assert!(result.normalized[4] < result.normalized[2]);
+    assert_relative_eq!(result.normalized[0], result.normalized[4], epsilon = 1e-10);
+    assert_relative_eq!(result.normalized[1], result.normalized[3], epsilon = 1e-10);
   }
 
   #[test]

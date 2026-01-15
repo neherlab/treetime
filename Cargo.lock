@@ -3770,6 +3770,7 @@ dependencies = [
  "rstest",
  "serde",
  "statrs",
+ "treetime-ops",
  "treetime-utils",
 ]
 

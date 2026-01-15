@@ -36,8 +36,7 @@ impl<S: TestSuite + Default> TestRunner for ConvolutionRunner<S> {
     algorithm: Self::Algorithm,
   ) -> Result<TestResult<Self::TestCase>, Report> {
     let start_time = Instant::now();
-
-    let algo = algorithm.instantiate();
+    let algo = algorithm.instantiate()?;
     run_convolution_test(suite, test_case, &*algo, start_time)
   }
 
