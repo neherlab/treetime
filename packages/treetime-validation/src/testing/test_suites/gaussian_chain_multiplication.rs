@@ -5,7 +5,7 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::gaussian_chain_multiplication::{
-  GAUSSIAN_CHAIN_MULTIPLICATION_CASES, GaussianChainMultiplicationTestCase as AnalyticalCase,
+  get_gaussian_chain_multiplication_cases, GaussianChainMultiplicationTestCase as AnalyticalCase,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};
 
@@ -37,8 +37,8 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    GAUSSIAN_CHAIN_MULTIPLICATION_CASES
-      .iter()
+    get_gaussian_chain_multiplication_cases()
+      .into_iter()
       .map(GaussianChainTestCase::from)
       .collect()
   }
@@ -56,15 +56,15 @@ pub struct GaussianChainTestCase {
   pub input_grid_n_points: usize,
 }
 
-impl From<&AnalyticalCase> for GaussianChainTestCase {
-  fn from(case: &AnalyticalCase) -> Self {
+impl From<AnalyticalCase> for GaussianChainTestCase {
+  fn from(case: AnalyticalCase) -> Self {
     Self {
       name: case.name.to_owned(),
       description: case.description.to_owned(),
       stress_type: case.stress_type.to_owned(),
       analytical_caution: case.analytical_caution.to_owned(),
       slowness: case.slowness,
-      factors: case.factors.to_vec(),
+      factors: case.factors,
       input_grid_domain: case.input_grid_domain,
       input_grid_n_points: case.input_grid_n_points,
     }
