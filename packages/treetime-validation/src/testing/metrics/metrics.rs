@@ -18,7 +18,7 @@ use approx::assert_abs_diff_eq;
 /// - Spatial metrics analyze regional patterns and windowed behavior
 /// - Distribution metrics examine statistical properties and histograms
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConvolutionMetrics {
+pub struct ValidationMetrics {
   /// Domain-wide aggregate accuracy and quality metrics
   pub aggregate: AggregateMetrics,
 
@@ -32,7 +32,7 @@ pub struct ConvolutionMetrics {
   pub distribution: DistributionMetrics,
 }
 
-impl ConvolutionMetrics {
+impl ValidationMetrics {
   /// Creates comprehensive metrics from evaluation data
   pub fn new(
     x: &Array1<f64>,
@@ -91,7 +91,7 @@ mod tests {
     let expected = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let actual = &expected + 0.1; // Small systematic error
 
-    let metrics = ConvolutionMetrics::new(&x, &actual, &expected, 100.0).unwrap();
+    let metrics = ValidationMetrics::new(&x, &actual, &expected, 100.0).unwrap();
 
     // Check that all metric types are computed
     assert_eq!(metrics.pointwise.total_points, 5);
@@ -109,7 +109,7 @@ mod tests {
     config.distribution.histogram_bins = 20;
     config.spatial.window_half_width = 2;
 
-    let metrics = ConvolutionMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
+    let metrics = ValidationMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
 
     assert_eq!(metrics.distribution.histograms.abs_error_histogram.bin_counts.len(), 20);
     assert_abs_diff_eq!(metrics.aggregate.execution_time_ms, 50.0, epsilon = 1e-12);

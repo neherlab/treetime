@@ -5,6 +5,4 @@ pub mod metrics;
 pub mod pointwise;
 pub mod spatial;
 
-pub use metrics::ConvolutionMetrics;
-
-pub type AccuracyMetrics = ConvolutionMetrics;
+pub use metrics::ValidationMetrics;

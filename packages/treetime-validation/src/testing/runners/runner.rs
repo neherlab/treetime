@@ -1,4 +1,4 @@
-use crate::testing::console::console::ConvolutionTestConsole;
+use crate::testing::console::console::ValidationConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -102,7 +102,7 @@ where
 
   let summary = generate_summary_generic(test_suite_name, &outcomes, algorithms);
 
-  ConvolutionTestConsole::print_summary(&summary, &outcomes);
+  ValidationConsole::print_summary(&summary, &outcomes);
 
   save_results_json(&output_dir, &outcomes, &summary)?;
 

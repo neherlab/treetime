@@ -1,5 +1,5 @@
-use crate::algos::algos::ConvolutionAlgorithm;
-use crate::algos::algos::MultiplicationAlgorithm;
+use crate::algorithms::ConvolutionAlgorithm;
+use crate::algorithms::MultiplicationAlgorithm;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::runners::ChainMultiplicationRunner;
 use crate::testing::runners::ConvolutionRunner;
@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Parser, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[command(
-  name = "convolution-test",
-  about = "Comprehensive convolution and multiplication accuracy test framework for all function types",
+  name = "validation-test",
+  about = "Validation test framework for convolution and multiplication algorithms",
   version
 )]
 pub struct Args {
@@ -46,7 +46,7 @@ pub struct Args {
   pub list_cases: bool,
 }
 
-pub fn run_convolution_tests() -> Result<(), Report> {
+pub fn run_validation_tests() -> Result<(), Report> {
   let mut args = Args::parse();
   args.test_suites = TestSuiteName::expand(&args.test_suites);
   args.algorithms = ConvolutionAlgorithm::expand(&args.algorithms);

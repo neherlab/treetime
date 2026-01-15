@@ -20,7 +20,7 @@ use treetime::io::dates_csv::read_dates;
 use treetime::io::nwk::nwk_read_file;
 use treetime::o;
 use treetime::representation::graph_ancestral::GraphAncestral;
-use treetime_convolution::grid::Grid;
+use treetime_grid::grid::Grid;
 use treetime_io::json::json_read_file;
 use treetime_utils::clap_styles::styles;
 use treetime_utils::global_init::global_init;

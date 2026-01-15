@@ -5,8 +5,8 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
-use treetime_convolution::grid::Grid;
-use treetime_convolution::{GridFn, InterpElem};
+use treetime_grid::grid::Grid;
+use treetime_grid::{GridFn, InterpElem};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {

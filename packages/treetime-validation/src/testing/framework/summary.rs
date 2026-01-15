@@ -1,4 +1,4 @@
-use crate::algos::algos::ConvolutionAlgorithm;
+use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
 use itertools::Itertools;

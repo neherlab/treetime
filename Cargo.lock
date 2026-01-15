@@ -3749,9 +3749,11 @@ dependencies = [
  "time",
  "traversal",
  "treetime-analytical",
- "treetime-convolution",
+ "treetime-grid",
  "treetime-io",
+ "treetime-ops",
  "treetime-utils",
+ "treetime-validation",
  "usher-mat-utils",
  "xz2",
  "zstd",
@@ -3793,44 +3795,6 @@ dependencies = [
  "serde_json",
  "treetime",
  "treetime-io",
- "treetime-utils",
-]
-
-[[package]]
-name = "treetime-convolution"
-version = "1.0.0"
-dependencies = [
- "approx",
- "clap",
- "criterion",
- "csv",
- "ctor",
- "eyre",
- "image",
- "itertools 0.14.0",
- "ndarray",
- "ndarray-conv",
- "ndarray-stats",
- "num",
- "num-traits",
- "ordered-float",
- "parking_lot",
- "plotters",
- "pretty_assertions",
- "rayon",
- "rstest",
- "rstest_reuse",
- "serde",
- "serde_json",
- "smart-default",
- "statrs",
- "strum 0.27.2",
- "strum_macros 0.27.2",
- "tikv-jemallocator",
- "treetime-analytical",
- "treetime-grid",
- "treetime-io",
- "treetime-ops",
  "treetime-utils",
 ]
 
@@ -4031,6 +3995,43 @@ dependencies = [
  "traversal",
  "xz2",
  "zstd",
+]
+
+[[package]]
+name = "treetime-validation"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "clap",
+ "criterion",
+ "csv",
+ "ctor",
+ "eyre",
+ "image",
+ "itertools 0.14.0",
+ "ndarray",
+ "ndarray-conv",
+ "ndarray-stats",
+ "num",
+ "num-traits",
+ "ordered-float",
+ "parking_lot",
+ "plotters",
+ "pretty_assertions",
+ "rayon",
+ "rstest",
+ "rstest_reuse",
+ "serde",
+ "serde_json",
+ "smart-default",
+ "statrs",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
+ "tikv-jemallocator",
+ "treetime-analytical",
+ "treetime-io",
+ "treetime-ops",
+ "treetime-utils",
 ]
 
 [[package]]

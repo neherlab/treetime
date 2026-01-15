@@ -6,7 +6,7 @@ members = [
   "packages/treetime",
   "packages/treetime-analytical",
   "packages/treetime-cli",
-  "packages/treetime-convolution",
+  "packages/treetime-validation",
   "packages/treetime-grid",
   "packages/treetime-io",
   "packages/treetime-ops",

@@ -250,7 +250,7 @@ impl Distribution<Plain> {
       Self::Function(f) => {
         let y_neglog = f.y().mapv(NegLog::from_plain);
         Distribution::Function(DistributionFunction::from_grid_fn(
-          treetime_convolution::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_neglog)
+          treetime_grid::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_neglog)
             .expect("Grid construction should not fail for valid input"),
         ))
       },
@@ -268,7 +268,7 @@ impl Distribution<NegLog> {
       Self::Function(f) => {
         let y_plain = f.y().mapv(NegLog::to_plain);
         Distribution::Function(DistributionFunction::from_grid_fn(
-          treetime_convolution::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_plain)
+          treetime_grid::GridFn::from_start_dx_values(f.x_min(), f.dx(), y_plain)
             .expect("Grid construction should not fail for valid input"),
         ))
       },

@@ -1,8 +1,8 @@
-use crate::algos::algos::MultiplicationAlgorithm;
-use crate::algos::algos::MultiplyAlgo;
+use crate::algorithms::MultiplicationAlgorithm;
+use crate::algorithms::MultiplyAlgo;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::metrics::metrics::ConvolutionMetrics;
+use crate::testing::metrics::metrics::ValidationMetrics;
 use crate::testing::run::Args;
 use crate::testing::runners::runner::TestRunner;
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
@@ -287,7 +287,7 @@ fn run_multiplication_test<S: MultiplicationTestSuite>(
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
-  let metrics = ConvolutionMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
+  let metrics = ValidationMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
 
   Ok(TestResult {
     algorithm: algo.name().to_owned(),
@@ -334,7 +334,7 @@ fn run_chain_multiplication_test<S: ChainMultiplicationTestSuite>(
 
   let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
-  let metrics = ConvolutionMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
+  let metrics = ValidationMetrics::new(&input_grid, &actual_values, &expected_values, execution_time)?;
 
   let f_values = factors
     .first()

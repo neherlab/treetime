@@ -1,4 +1,4 @@
-use crate::algos::algos::ConvolutionAlgorithm;
+use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -10,9 +10,9 @@ use treetime_utils::float_fmt::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
 
 /// Console display functionality for convolution test framework
-pub struct ConvolutionTestConsole;
+pub struct ValidationConsole;
 
-impl ConvolutionTestConsole {
+impl ValidationConsole {
   /// Print test configuration
   pub fn print_test_configuration(
     test_suite_name: &str,

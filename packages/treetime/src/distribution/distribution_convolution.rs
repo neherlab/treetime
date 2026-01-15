@@ -7,7 +7,7 @@ use crate::make_error;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
-use treetime_convolution::convolve;
+use treetime_ops::convolve;
 use treetime_utils::ndarray::has_uniform_spacing;
 
 pub fn distribution_convolution<Y: SupportsConvolution>(

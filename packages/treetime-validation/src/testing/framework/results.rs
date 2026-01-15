@@ -1,5 +1,5 @@
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::metrics::metrics::ConvolutionMetrics;
+use crate::testing::metrics::metrics::ValidationMetrics;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::serde::{array1_as_vec, array1_from_vec};
@@ -26,7 +26,7 @@ pub struct TestResult<T: TestCase> {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub expected_values: Array1<f64>,
 
-  pub metrics: ConvolutionMetrics,
+  pub metrics: ValidationMetrics,
 
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub log_scale_actual: Option<f64>,

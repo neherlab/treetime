@@ -3,9 +3,9 @@ use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_function::DistributionFunction;
 use crate::distribution::y_axis_policy::Plain;
 use ndarray::Array1;
-use treetime_convolution::testing::metrics::metrics::ConvolutionMetrics;
-use treetime_convolution::testing::test_suites::gaussian::GaussianTestSuite;
-use treetime_convolution::testing::test_suites::test_suites::TestSuite;
+use treetime_validation::testing::metrics::metrics::ValidationMetrics;
+use treetime_validation::testing::test_suites::gaussian::GaussianTestSuite;
+use treetime_validation::testing::test_suites::test_suites::TestSuite;
 
 #[test]
 fn test_gaussian_convolution_validation() {
@@ -57,7 +57,7 @@ fn test_gaussian_convolution_validation() {
     let actual = result.eval_many(&eval_grid).unwrap();
 
     // Compute metrics
-    let metrics = ConvolutionMetrics::new(&eval_grid, &actual, &expected, duration).unwrap();
+    let metrics = ValidationMetrics::new(&eval_grid, &actual, &expected, duration).unwrap();
 
     println!(
       "  R²: {:.8}",

@@ -1,7 +1,7 @@
 use ctor::ctor;
 use eyre::Report;
-use treetime_convolution::testing::run::run_convolution_tests;
 use treetime_utils::global_init::global_init;
+use treetime_validation::testing::run::run_validation_tests;
 
 #[ctor]
 fn init() {
@@ -9,5 +9,5 @@ fn init() {
 }
 
 fn main() -> Result<(), Report> {
-  run_convolution_tests()
+  run_validation_tests()
 }

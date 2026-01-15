@@ -1,12 +1,12 @@
-# treetime-convolution
+# treetime-validation
 
-Numerical convolution algorithms implementations and their testing framework for assessing correctness, accuracy and runtime performance.
+Validation framework for numerical convolution and multiplication algorithms, assessing correctness, accuracy and runtime performance.
 
 ## Main concepts
 
-- **Test Suites**: Define analytical function pairs to convolve (e.g. Gaussian \* Exponential) and their analytical convolution solution (via `TestSuite` trait)
+- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian * Exponential) and their analytical solution (via `TestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
 
-- **Algorithms**: Numerical convolution implementations (riemann, ndarray-conv, ndarray-conv-fft) (via `Algo` trait). Used to convolve function pairs defined in **Test Suites**. Numerical results are then verified against analytical solution using **Metrics**
+- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, naive-multiplication, log-scale-multiplication). Numerical results are verified against analytical solutions using **Metrics**
 
 - **Test Cases**: Individual test scenarios with specific parameters, grid configurations, and stress conditions, to evaluate numeric **Algorithm** performance (via `TestCase` trait)
 
@@ -14,43 +14,36 @@ Numerical convolution algorithms implementations and their testing framework for
 
 - **Runner**: Orchestrates parallel test execution, filtering, progress tracking, result collection, and reporting (console, plots, json)
 
-## Exported Items
-
-For use by other crates:
-
-- `convolve()` - convolution function using ndarray-conv algorithm
-- `GridFn` - function representation on a regular grid with linear interpolation
-
 ## Running Tests
 
 ### Basic usage
 
 ```bash
-cargo run --example convolution_test
+cargo run --example validation_test
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test
+./dev/docker/run ./dev/dev E validation_test
 ```
 
 ### Development mode
 
 ```bash
-cargo run --example convolution_test -- --output-dir=tmp/conv-test
+cargo run --example validation_test -- --output-dir=tmp/validation-test
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --output-dir=tmp/conv-test
+./dev/docker/run ./dev/dev E validation_test -- --output-dir=tmp/validation-test
 ```
 
 ### Production mode
 
 ```bash
-cargo run --release --example convolution_test -- --output-dir=tmp/conv-test
+cargo run --release --example validation_test -- --output-dir=tmp/validation-test
 ```
 
 ```bash
-./dev/docker/run ./dev/dev Er convolution_test -- --output-dir=tmp/conv-test
+./dev/docker/run ./dev/dev Er validation_test -- --output-dir=tmp/validation-test
 ```
 
 ### Restrict algorithms
@@ -58,21 +51,21 @@ cargo run --release --example convolution_test -- --output-dir=tmp/conv-test
 Run all algorithms (default):
 
 ```bash
-cargo run --example convolution_test -- --algorithms=all
+cargo run --example validation_test -- --algorithms=all
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --algorithms=all
+./dev/docker/run ./dev/dev E validation_test -- --algorithms=all
 ```
 
 Run specific algorithms (comma-separated):
 
 ```bash
-cargo run --example convolution_test -- --algorithms=riemann,ndarray-conv
+cargo run --example validation_test -- --algorithms=riemann,ndarray-conv
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --algorithms=riemann,ndarray-conv
+./dev/docker/run ./dev/dev E validation_test -- --algorithms=riemann,ndarray-conv
 ```
 
 ### Restrict test suites
@@ -80,21 +73,21 @@ cargo run --example convolution_test -- --algorithms=riemann,ndarray-conv
 Run all test suites (default):
 
 ```bash
-cargo run --example convolution_test -- --test-suites=all
+cargo run --example validation_test -- --test-suites=all
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --test-suites=all
+./dev/docker/run ./dev/dev E validation_test -- --test-suites=all
 ```
 
 Run specific test suites (comma-separated):
 
 ```bash
-cargo run --example convolution_test -- --test-suites=gaussian,exponential
+cargo run --example validation_test -- --test-suites=gaussian,exponential
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --test-suites=gaussian,exponential
+./dev/docker/run ./dev/dev E validation_test -- --test-suites=gaussian,exponential
 ```
 
 ### Restrict test cases
@@ -102,31 +95,31 @@ cargo run --example convolution_test -- --test-suites=gaussian,exponential
 Run specific test cases (comma-separated):
 
 ```bash
-cargo run --example convolution_test -- --test-cases=python_notebook_case_1,coarse_grid
+cargo run --example validation_test -- --test-cases=python_notebook_case_1,coarse_grid
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --test-cases=python_notebook_case_1,coarse_grid
+./dev/docker/run ./dev/dev E validation_test -- --test-cases=python_notebook_case_1,coarse_grid
 ```
 
 ### List available test cases
 
 ```bash
-cargo run --example convolution_test -- --list-cases
+cargo run --example validation_test -- --list-cases
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --list-cases
+./dev/docker/run ./dev/dev E validation_test -- --list-cases
 ```
 
 ### Filter by slowness
 
 ```bash
-cargo run --example convolution_test -- --slowness=0.3
+cargo run --example validation_test -- --slowness=0.3
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --slowness=0.3
+./dev/docker/run ./dev/dev E validation_test -- --slowness=0.3
 ```
 
 Runs only test cases with slowness in `[0.0, 0.3]`. Higher slowness values indicate longer execution time.
@@ -134,41 +127,33 @@ Runs only test cases with slowness in `[0.0, 0.3]`. Higher slowness values indic
 ### Verbose output
 
 ```bash
-cargo run --example convolution_test -- --verbose
+cargo run --example validation_test -- --verbose
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E convolution_test -- --verbose
+./dev/docker/run ./dev/dev E validation_test -- --verbose
 ```
 
 ## Architecture
 
-### Algorithms (`algos/`)
+### Algorithms (`algorithms.rs`)
 
-Convolution algorithm implementations:
+Algorithm enums for CLI selection:
 
-- `riemann/` - Riemann sum approximation
-- `ndarray_conv/` - Direct convolution using ndarray-conv (default, exported as `convolve()`)
-- `ndarray_conv_fft/` - FFT-based convolution using ndarray-conv
+- `ConvolutionAlgorithm` - Riemann, NdarrayConv, NdarrayConvFft
+- `MultiplicationAlgorithm` - NaiveMultiplication, LogScaleMultiplication
 
-All algorithms implement the `Algo` trait with `convolve()` method.
+Actual implementations live in the `treetime-ops` crate.
 
 ### Testing Framework (`testing/`)
 
-- `test_suites/` - Test suite definitions (`gaussian`, `exponential`) implementing the `TestSuite` trait
+- `test_suites/` - Test suite definitions (`gaussian`, `exponential`, `gaussian_multiplication`, etc.) implementing suite traits
 - `metrics/` - Comprehensive error analysis with aggregate, pointwise, spatial, and distribution metrics
 - `framework/` - Core testing infrastructure with test cases, results, and summaries
 - `plots/` - Plot generation for visual analysis
 - `console/` - Terminal output formatting
+- `runners/` - Test execution for convolution, multiplication, and chain multiplication
 - `run.rs` - Main test execution logic
-
-### Grid Functions (`grid_fn.rs`)
-
-`GridFn` represents a function on a regular grid with:
-
-- Linear interpolation between grid points
-- Construction from arrays or domain specification
-- Serialization support
 
 ## Adding Test Cases
 
@@ -266,65 +251,12 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
 
 ## Adding Algorithms
 
-To add a convolution algorithm (e.g. Simpson's rule):
+Convolution and multiplication algorithms are implemented in the `treetime-ops` crate. To add a new algorithm:
 
-1. Create `src/algos/simpson/` directory:
+1. Implement the algorithm in `treetime-ops`
 
-   - `mod.rs` containing `pub mod simpson;`
+2. Edit `src/algorithms.rs` in this crate:
 
-   - `simpson.rs` containing:
+   - Add variant to `ConvolutionAlgorithm` or `MultiplicationAlgorithm` enum
 
-     - Convolution function implementing Simpson's 1/3 rule for numerical integration:
-
-       ```rust
-       pub fn convolve_simpson(
-         input_grid: &Array1<f64>,
-         f_values: &Array1<f64>,
-         g_values: &Array1<f64>,
-         output_grid: &Array1<f64>,
-       ) -> Result<Array1<f64>, Report> {
-         // Read f and g over input_grid and convolve over output_grid
-       }
-       ```
-
-     - Algorithm struct:
-
-       ```rust
-       pub struct SimpsonAlgo;
-       ```
-
-     - `Algo` trait implementation:
-
-       ```rust
-       impl Algo for SimpsonAlgo {
-         fn name(&self) -> &'static str {
-           "simpson"
-         }
-
-         fn convolve(
-           &self,
-           input_grid: &Array1<f64>,
-           f_values: &Array1<f64>,
-           g_values: &Array1<f64>,
-           output_grid: &Array1<f64>,
-         ) -> Result<Array1<f64>, Report> {
-           convolve_simpson(input_grid, f_values, g_values, output_grid)
-         }
-       }
-       ```
-
-2. Edit `src/algos/mod.rs`:
-
-   - Add `pub mod simpson;`
-
-3. Edit `src/algos/algos.rs`:
-
-   - Add `Simpson` variant to `ConvolutionAlgorithm` enum
-
-   - Add match arm in `ConvolutionAlgorithm::instantiate()`:
-
-     ```rust
-     Self::Simpson => Box::new(SimpsonAlgo)
-     ```
-
-   - Add import: `use crate::algos::simpson::simpson::SimpsonAlgo;`
+   - Add match arm in `instantiate()` method to create the algorithm instance
