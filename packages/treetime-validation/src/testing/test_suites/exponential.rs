@@ -4,7 +4,9 @@ use crate::testing::test_suites::test_suites::TestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::{EXPONENTIAL_CONVOLUTION_CASES, ExponentialConvolutionTestCase};
+use treetime_analytical::validation::cases::exponential_convolution::{
+  EXPONENTIAL_CONVOLUTION_CASES, ExponentialConvolutionTestCase,
+};
 use treetime_analytical::{exponential_convolution_grid, exponential_pdf_grid};
 
 #[derive(Default)]

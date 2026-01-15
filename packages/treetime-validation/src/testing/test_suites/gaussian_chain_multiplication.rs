@@ -4,7 +4,7 @@ use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::{
+use treetime_analytical::validation::cases::gaussian_chain_multiplication::{
   GAUSSIAN_CHAIN_MULTIPLICATION_CASES, GaussianChainMultiplicationTestCase as AnalyticalCase,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};

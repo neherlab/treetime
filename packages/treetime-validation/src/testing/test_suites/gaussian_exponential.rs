@@ -5,7 +5,7 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
-use treetime_analytical::validation::cases::{
+use treetime_analytical::validation::cases::gaussian_exponential::{
   GAUSSIAN_EXPONENTIAL_CASES, GaussianExponentialTestCase as AnalyticalCase,
 };
 use treetime_analytical::{exponential_pdf_grid, gaussian_exponential_convolution_grid};

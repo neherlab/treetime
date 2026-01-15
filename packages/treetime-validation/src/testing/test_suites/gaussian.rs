@@ -4,7 +4,9 @@ use crate::testing::test_suites::test_suites::TestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::{GAUSSIAN_CONVOLUTION_CASES, GaussianConvolutionTestCase};
+use treetime_analytical::validation::cases::gaussian_convolution::{
+  GAUSSIAN_CONVOLUTION_CASES, GaussianConvolutionTestCase,
+};
 use treetime_analytical::{gaussian_convolution_pdf_grid, gaussian_pdf_grid};
 
 #[derive(Default)]

@@ -1,9 +1,9 @@
 use crate::algorithms::ConvolutionAlgorithm;
 use crate::algorithms::MultiplicationAlgorithm;
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::runners::ChainMultiplicationRunner;
-use crate::testing::runners::ConvolutionRunner;
-use crate::testing::runners::MultiplicationRunner;
+use crate::testing::runners::convolution::ConvolutionRunner;
+use crate::testing::runners::multiplication::ChainMultiplicationRunner;
+use crate::testing::runners::multiplication::MultiplicationRunner;
 use crate::testing::runners::runner::run_tests_generic;
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
