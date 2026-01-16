@@ -230,7 +230,7 @@ mod tests {
       assert_relative_eq!(f.y()[0], 0.125, epsilon = 1e-10);
       assert_relative_eq!(f.y()[2], 0.125, epsilon = 1e-10);
     } else {
-      panic!("Expected Function distribution");
+      unreachable!("Expected Function distribution");
     }
   }
 
