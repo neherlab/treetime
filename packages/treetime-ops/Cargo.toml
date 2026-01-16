@@ -17,6 +17,7 @@ crate-type = ["lib"]
 treetime-utils = { path = "../treetime-utils" }
 
 eyre = { workspace = true }
+serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ndarray = { workspace = true }

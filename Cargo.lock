@@ -3912,6 +3912,7 @@ dependencies = [
  "ndarray-conv",
  "pretty_assertions",
  "rstest",
+ "serde",
  "treetime-utils",
 ]
 
