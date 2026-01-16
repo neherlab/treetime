@@ -211,6 +211,7 @@ mod tests {
   use super::*;
   use approx::assert_relative_eq;
   use ndarray::array;
+  use std::iter::repeat_n;
 
   #[test]
   fn test_multiply_many_empty() {
@@ -247,7 +248,7 @@ mod tests {
     let small_val = 0.0001;
     let a = array![small_val];
 
-    let refs: Vec<&Array1<f64>> = std::iter::repeat_n(&a, n).collect();
+    let refs: Vec<&Array1<f64>> = repeat_n(&a, n).collect();
     let result = multiply_many_lazy_normalize(&refs);
 
     assert!(!result.normalized.is_empty());
