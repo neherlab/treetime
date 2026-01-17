@@ -5,6 +5,7 @@ use crate::testing::framework::test_case::TestCase;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use std::collections::BTreeMap;
 use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::float_fmt::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
@@ -185,10 +186,12 @@ impl ValidationConsole {
 
     println!("### Metrics by Algorithm\n");
 
-    let grouped_by_algorithm = successes
+    let grouped_by_algorithm: BTreeMap<_, _> = successes
       .into_iter()
-      .into_group_map_by(|result| result.algorithm.clone());
-    let algorithms: Vec<_> = grouped_by_algorithm.keys().sorted().cloned().collect();
+      .into_group_map_by(|result| result.algorithm.clone())
+      .into_iter()
+      .collect();
+    let algorithms: Vec<_> = grouped_by_algorithm.keys().cloned().collect();
     let all_metrics = Self::compute_all_metrics(summary, &grouped_by_algorithm);
 
     Self::print_metrics_table_headers(&algorithms, &all_metrics);
@@ -198,9 +201,9 @@ impl ValidationConsole {
   /// Compute all metrics for the table
   fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,
-    grouped_by_algorithm: &std::collections::HashMap<String, Vec<&TestResult<T>>>,
-  ) -> std::collections::HashMap<String, std::collections::HashMap<&'static str, String>> {
-    let mut all_metrics = std::collections::HashMap::new();
+    grouped_by_algorithm: &BTreeMap<String, Vec<&TestResult<T>>>,
+  ) -> BTreeMap<String, BTreeMap<&'static str, String>> {
+    let mut all_metrics = BTreeMap::new();
 
     for (algorithm, algorithm_results) in grouped_by_algorithm {
       let algo_summary = summary
@@ -446,7 +449,7 @@ impl ValidationConsole {
 
       all_metrics.insert(
         algorithm.clone(),
-        metrics.into_iter().collect::<std::collections::HashMap<_, _>>(),
+        metrics.into_iter().collect::<BTreeMap<_, _>>(),
       );
     }
 
@@ -456,10 +459,10 @@ impl ValidationConsole {
   /// Print metrics table headers
   fn print_metrics_table_headers(
     algorithms: &[String],
-    all_metrics: &std::collections::HashMap<String, std::collections::HashMap<&'static str, String>>,
+    all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>,
   ) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
-    let mut algo_col_widths = std::collections::HashMap::new();
+    let mut algo_col_widths = BTreeMap::new();
 
     for algo in algorithms {
       let name_w = algo.len();
@@ -483,10 +486,10 @@ impl ValidationConsole {
   /// Print metrics table rows
   fn print_metrics_table_rows(
     algorithms: &[String],
-    all_metrics: &std::collections::HashMap<String, std::collections::HashMap<&'static str, String>>,
+    all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>,
   ) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
-    let mut algo_col_widths = std::collections::HashMap::new();
+    let mut algo_col_widths = BTreeMap::new();
 
     for algo in algorithms {
       let name_w = algo.len();
