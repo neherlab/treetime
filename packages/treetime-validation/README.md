@@ -4,9 +4,9 @@ Validation framework for numerical convolution and multiplication algorithms, as
 
 ## Main concepts
 
-- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian * Exponential) and their analytical solution (via `TestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
+- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `TestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
 
-- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, naive-multiplication, log-scale-multiplication). Numerical results are verified against analytical solutions using **Metrics**
+- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, naive-multiplication, log-scale-multiplication, aggressive-multiplication). Numerical results are verified against analytical solutions using **Metrics**
 
 - **Test Cases**: Individual test scenarios with specific parameters, grid configurations, and stress conditions, to evaluate numeric **Algorithm** performance (via `TestCase` trait)
 
@@ -66,6 +66,18 @@ cargo run --example validation_test -- --algorithms=riemann,ndarray-conv
 
 ```bash
 ./dev/docker/run ./dev/dev E validation_test -- --algorithms=riemann,ndarray-conv
+```
+
+### Restrict multiplication algorithms
+
+Run specific multiplication algorithms (comma-separated):
+
+```bash
+cargo run --example validation_test -- --mult-algorithms=naive-multiplication,log-scale-multiplication
+```
+
+```bash
+./dev/docker/run ./dev/dev E validation_test -- --mult-algorithms=naive-multiplication,log-scale-multiplication
 ```
 
 ### Restrict test suites
@@ -141,7 +153,7 @@ cargo run --example validation_test -- --verbose
 Algorithm enums for CLI selection:
 
 - `ConvolutionAlgorithm` - Riemann, NdarrayConv, NdarrayConvFft
-- `MultiplicationAlgorithm` - NaiveMultiplication, LogScaleMultiplication
+- `MultiplicationAlgorithm` - NaiveMultiplication, LogScaleMultiplication, AggressiveMultiplication
 
 Actual implementations live in the `treetime-ops` crate.
 
@@ -160,7 +172,6 @@ Actual implementations live in the `treetime-ops` crate.
 To add test cases to an existing test suite:
 
 1. Edit the test suite file (e.g. `src/testing/test_suites/gaussian.rs`):
-
    - In `GaussianTestSuite::create_test_cases()`, add new `GaussianTestCase` struct instance to the returned `vec![]`
    - Populate all struct fields.
 
@@ -171,8 +182,7 @@ To add test cases to an existing test suite:
 To add a new test suite (e.g. convolving Laplacian with Gaussian):
 
 1. Create `src/testing/test_suites/laplacian_gaussian.rs`:
-
-   - Define test case struct with all required fields:
+   - Define test case struct with required `TestCase` trait fields plus suite-specific parameters:
      ```rust
      #[derive(Debug, Clone, Serialize, Deserialize)]
      pub struct LaplacianGaussianTestCase {
@@ -181,13 +191,12 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
        pub stress_type: String,
        pub analytical_caution: String,
        pub slowness: f64,
+       pub input_grid_domain: (f64, f64),
+       pub input_grid_n_points: usize,
+       // Suite-specific parameters
        pub lambda: f64,
        pub sigma: f64,
        pub mu: f64,
-       pub input_grid_domain: (f64, f64),
-       pub input_grid_n_points: usize,
-       pub output_grid_domain: (f64, f64),
-       pub output_grid_n_points: usize,
      }
      ```
    - Implement `TestCase` trait for the struct with accessor methods
@@ -234,11 +243,9 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
      ```
 
 2. Edit `src/testing/test_suites/mod.rs`:
-
    - Add `pub mod laplacian_gaussian;`
 
 3. Edit `src/testing/test_suites/test_suites.rs`:
-
    - Add `LaplacianGaussian` variant to `TestSuiteName` enum
 
    - Add match arm in `TestSuiteName::run_tests()`:
@@ -256,7 +263,6 @@ Convolution and multiplication algorithms are implemented in the `treetime-ops` 
 1. Implement the algorithm in `treetime-ops`
 
 2. Edit `src/algorithms.rs` in this crate:
-
    - Add variant to `ConvolutionAlgorithm` or `MultiplicationAlgorithm` enum
 
    - Add match arm in `instantiate()` method to create the algorithm instance
