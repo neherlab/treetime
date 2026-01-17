@@ -61,50 +61,32 @@ pub fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: TestSuite + Default,
 {
-  run_tests_generic::<ConvolutionRunner<S>>(args, S::default(), |suite| list_test_cases(suite))
+  run_tests_generic::<ConvolutionRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+  })
 }
 
 pub fn run_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: MultiplicationTestSuite + Default,
 {
-  run_tests_generic::<MultiplicationRunner<S>>(args, S::default(), list_multiplication_test_cases)
+  run_tests_generic::<MultiplicationRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+  })
 }
 
 pub fn run_chain_multiplication_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
   S: ChainMultiplicationTestSuite + Default,
 {
-  run_tests_generic::<ChainMultiplicationRunner<S>>(args, S::default(), list_chain_multiplication_test_cases)
+  run_tests_generic::<ChainMultiplicationRunner<S>>(args, S::default(), |suite| {
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+  })
 }
 
-fn list_test_cases<S: TestSuite>(suite: &S) {
-  println!("Available {} test cases:", suite.test_suite_name());
-  for case in suite.create_test_cases() {
-    println!(
-      "  - {} (slowness: {}) : {}",
-      case.name(),
-      case.slowness(),
-      case.description()
-    );
-  }
-}
-
-fn list_multiplication_test_cases<S: MultiplicationTestSuite>(suite: &S) {
-  println!("Available {} test cases:", suite.test_suite_name());
-  for case in suite.create_test_cases() {
-    println!(
-      "  - {} (slowness: {}) : {}",
-      case.name(),
-      case.slowness(),
-      case.description()
-    );
-  }
-}
-
-fn list_chain_multiplication_test_cases<S: ChainMultiplicationTestSuite>(suite: &S) {
-  println!("Available {} test cases:", suite.test_suite_name());
-  for case in suite.create_test_cases() {
+fn list_test_cases_generic<T: TestCase>(cases: &[T], suite_name: &str) {
+  println!("Available {suite_name} test cases:");
+  for case in cases {
     println!(
       "  - {} (slowness: {}) : {}",
       case.name(),
