@@ -13,6 +13,7 @@ where
 {
   for outcome in outcomes {
     if let TestRunOutcome::Success(result) = outcome {
+      let result = result.as_ref();
       let algorithm_dir = format!(
         "{}/{}/{}",
         output_dir,

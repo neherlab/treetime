@@ -44,9 +44,8 @@ pub struct TestFailure<T: TestCase> {
   pub execution_time_ms: f64,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TestRunOutcome<T: TestCase> {
-  Success(TestResult<T>),
+  Success(Box<TestResult<T>>),
   Failure(TestFailure<T>),
 }

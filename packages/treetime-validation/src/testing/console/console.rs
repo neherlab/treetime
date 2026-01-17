@@ -175,7 +175,7 @@ impl ValidationConsole {
     let successes: Vec<_> = outcomes
       .iter()
       .filter_map(|outcome| match outcome {
-        TestRunOutcome::Success(result) => Some(result),
+        TestRunOutcome::Success(result) => Some(result.as_ref()),
         TestRunOutcome::Failure(_) => None,
       })
       .collect();

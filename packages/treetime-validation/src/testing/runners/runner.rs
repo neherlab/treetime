@@ -207,7 +207,7 @@ fn execute_single_test<R: TestRunner>(
     Ok(result) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       R::print_success_row(&result, completed_count, total_tests);
-      TestRunOutcome::Success(result)
+      TestRunOutcome::Success(Box::new(result))
     },
     Err(error) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
@@ -237,7 +237,7 @@ fn collect_successes<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -> Vec<&TestRe
   outcomes
     .iter()
     .filter_map(|outcome| match outcome {
-      TestRunOutcome::Success(result) => Some(result),
+      TestRunOutcome::Success(result) => Some(result.as_ref()),
       TestRunOutcome::Failure(_) => None,
     })
     .collect()
@@ -247,7 +247,7 @@ fn calculate_total_execution_time<T: TestCase>(outcomes: &[TestRunOutcome<T>]) -
   outcomes
     .iter()
     .map(|outcome| match outcome {
-      TestRunOutcome::Success(result) => result.execution_time_ms,
+      TestRunOutcome::Success(result) => result.as_ref().execution_time_ms,
       TestRunOutcome::Failure(failure) => failure.execution_time_ms,
     })
     .sum()
