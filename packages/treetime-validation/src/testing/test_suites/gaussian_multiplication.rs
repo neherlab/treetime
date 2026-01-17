@@ -34,11 +34,7 @@ impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
     Ok(grid.mapv(|x| amplitude * (-(0.5 * ((x - mu) / sigma).powi(2))).exp()))
   }
 
-  fn analytical_multiplication(
-    &self,
-    test_case: &Self::TestCase,
-    grid: &Array1<f64>,
-  ) -> Result<ScaledArray, Report> {
+  fn analytical_multiplication(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<ScaledArray, Report> {
     let params = [
       GaussianParams {
         mu: test_case.mu_f,

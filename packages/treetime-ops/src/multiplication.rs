@@ -1,5 +1,5 @@
-use crate::traits::MultiplyAlgo;
 use crate::ScaledArray;
+use crate::traits::MultiplyAlgo;
 use ndarray::Array1;
 
 /// Threshold below which we normalize to prevent underflow.

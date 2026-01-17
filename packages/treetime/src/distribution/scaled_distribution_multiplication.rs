@@ -32,10 +32,7 @@ fn try_extract_aligned_function_arrays<'a>(
   for dist in distributions {
     match dist.inner() {
       Distribution::Function(f) => {
-        if !ulps_eq!(f.x_min(), x_min, max_ulps = 10)
-          || !ulps_eq!(f.dx(), dx, max_ulps = 10)
-          || f.len() != len
-        {
+        if !ulps_eq!(f.x_min(), x_min, max_ulps = 10) || !ulps_eq!(f.dx(), dx, max_ulps = 10) || f.len() != len {
           return None;
         }
         arrays.push(f.y());
@@ -100,7 +97,10 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
           DistributionFunction::<f64, Plain>::from_start_dx_values(aligned.x_min, aligned.dx, result.normalized)?;
         let total_log_scale = total_input_log_scale + result.log_scale;
 
-        return Ok(ScaledDistribution::from_parts(total_log_scale, Distribution::Function(result_func)));
+        return Ok(ScaledDistribution::from_parts(
+          total_log_scale,
+          Distribution::Function(result_func),
+        ));
       }
 
       let mut product = distributions[0].inner().clone();
@@ -238,7 +238,10 @@ mod tests {
   fn test_scaled_distribution_multiply_many_functions_underflow_resistance() {
     let small_peak = 1e-50;
     let dists: Vec<ScaledDistribution> = std::iter::repeat_with(|| {
-      make_function(array![0.0, 1.0, 2.0], array![small_peak * 0.5, small_peak, small_peak * 0.5])
+      make_function(
+        array![0.0, 1.0, 2.0],
+        array![small_peak * 0.5, small_peak, small_peak * 0.5],
+      )
     })
     .take(10)
     .collect();

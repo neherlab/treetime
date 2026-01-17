@@ -5,7 +5,7 @@ use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::gaussian_chain_multiplication::{
-  get_gaussian_chain_multiplication_cases, GaussianChainMultiplicationTestCase as AnalyticalCase,
+  GaussianChainMultiplicationTestCase as AnalyticalCase, get_gaussian_chain_multiplication_cases,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};
 use treetime_ops::ScaledArray;

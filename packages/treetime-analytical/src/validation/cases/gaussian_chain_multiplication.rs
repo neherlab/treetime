@@ -51,17 +51,17 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
       GaussianParams {
         mu: -1.0,
         sigma: 1.0,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: 0.0,
         sigma: 1.0,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: 1.0,
         sigma: 1.0,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
     ],
     input_grid_domain: (-6.0, 6.0),
@@ -127,27 +127,27 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
       GaussianParams {
         mu: -2.0,
         sigma: 1.5,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: -0.5,
         sigma: 0.8,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: 0.0,
         sigma: 1.0,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: 0.5,
         sigma: 1.2,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
       GaussianParams {
         mu: 2.0,
         sigma: 0.9,
-        amplitude: 1.0
+        amplitude: 1.0,
       },
     ],
     input_grid_domain: (-8.0, 8.0),

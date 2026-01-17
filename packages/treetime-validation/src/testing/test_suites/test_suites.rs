@@ -99,11 +99,7 @@ pub trait MultiplicationTestSuite: Send + Sync {
 
   fn create_g(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report>;
 
-  fn analytical_multiplication(
-    &self,
-    test_case: &Self::TestCase,
-    grid: &Array1<f64>,
-  ) -> Result<ScaledArray, Report>;
+  fn analytical_multiplication(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<ScaledArray, Report>;
 
   fn create_test_cases(&self) -> Vec<Self::TestCase>;
 }

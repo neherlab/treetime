@@ -3,7 +3,9 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
-use treetime_ops::{AggressiveMultiply, FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply, RiemannConvolve};
+use treetime_ops::{
+  AggressiveMultiply, FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply, RiemannConvolve,
+};
 use treetime_utils::make_error;
 
 pub use treetime_ops::traits::{ConvolveAlgo as Algo, MultiplyAlgo};
