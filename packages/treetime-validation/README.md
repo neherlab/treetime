@@ -4,7 +4,7 @@ Validation framework for numerical convolution and multiplication algorithms, as
 
 ## Main concepts
 
-- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `TestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
+- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `ConvolutionTestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
 
 - **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, naive-multiplication, log-scale-multiplication, aggressive-multiplication). Numerical results are verified against analytical solutions using **Metrics**
 
@@ -205,10 +205,10 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
      #[derive(Default)]
      pub struct LaplacianGaussianTestSuite;
      ```
-   - Implement `TestSuite` trait:
+   - Implement `ConvolutionTestSuite` trait:
 
      ```rust
-     impl TestSuite for LaplacianGaussianTestSuite {
+     impl ConvolutionTestSuite for LaplacianGaussianTestSuite {
        type TestCase = LaplacianGaussianTestCase;
 
        fn test_suite_name(&self) -> &'static str {

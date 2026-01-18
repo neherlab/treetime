@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names)]
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::test_suites::test_suites::TestSuite;
+use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use treetime_analytical::{exponential_pdf_grid, gaussian_exponential_convolution
 #[derive(Default)]
 pub struct GaussianExponentialTestSuite;
 
-impl TestSuite for GaussianExponentialTestSuite {
+impl ConvolutionTestSuite for GaussianExponentialTestSuite {
   type TestCase = GaussianExponentialTestCase;
 
   fn test_suite_name(&self) -> &'static str {

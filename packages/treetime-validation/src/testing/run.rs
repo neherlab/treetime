@@ -7,7 +7,7 @@ use crate::testing::runners::multiplication::MultiplicationRunner;
 use crate::testing::runners::runner::run_tests_generic;
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
-use crate::testing::test_suites::test_suites::TestSuite;
+use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use crate::testing::test_suites::test_suites::TestSuiteName;
 use clap::Parser;
 use eyre::Report;
@@ -59,10 +59,10 @@ pub fn run_validation_tests() -> Result<(), Report> {
 
 pub fn run_convolution_tests_impl<S>(args: &Args) -> Result<(), Report>
 where
-  S: TestSuite + Default,
+  S: ConvolutionTestSuite + Default,
 {
   run_tests_generic::<ConvolutionRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
   })
 }
 
@@ -71,7 +71,7 @@ where
   S: MultiplicationTestSuite + Default,
 {
   run_tests_generic::<MultiplicationRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
   })
 }
 
@@ -80,7 +80,7 @@ where
   S: ChainMultiplicationTestSuite + Default,
 {
   run_tests_generic::<ChainMultiplicationRunner<S>>(args, S::default(), |suite| {
-    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name())
+    list_test_cases_generic(&suite.create_test_cases(), suite.test_suite_name());
   })
 }
 

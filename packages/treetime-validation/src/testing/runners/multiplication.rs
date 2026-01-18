@@ -1,5 +1,6 @@
 use crate::algorithms::MultiplicationAlgorithm;
 use crate::algorithms::MultiplyAlgo;
+use crate::testing::console::console::ValidationConsole;
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::metrics::metrics::ValidationMetrics;
@@ -9,86 +10,9 @@ use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
-use std::fmt::Display;
 use std::marker::PhantomData;
 use std::time::Instant;
 use treetime_ops::ScaledArray;
-
-macro_rules! impl_multiplication_runner_printing {
-  () => {
-    fn print_test_configuration(
-      test_suite_name: &str,
-      algorithms: &[Self::Algorithm],
-      total_available: usize,
-      selected_count: usize,
-      name_filter_applied: bool,
-      slowness_threshold: f64,
-      output_dir: &str,
-    ) {
-      print_multiplication_config(
-        test_suite_name,
-        algorithms,
-        total_available,
-        selected_count,
-        name_filter_applied,
-        slowness_threshold,
-        output_dir,
-      );
-    }
-
-    fn print_table_header() {
-      println!(
-        "{:<30} {:<25} {:>10} {:>15}",
-        "Test Case", "Algorithm", "Time (ms)", "Status"
-      );
-      println!("{:-<80}", "");
-    }
-
-    fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize) {
-      println!(
-        "{:<30} {:<25} {:>10.2} {:>15} [{}/{}]",
-        result.test_case.name(),
-        result.algorithm,
-        result.execution_time_ms,
-        "OK",
-        completed_count,
-        total_tests
-      );
-    }
-
-    fn print_failure_row(
-      test_case: &Self::TestCase,
-      algorithm: Self::Algorithm,
-      elapsed_ms: f64,
-      completed_count: usize,
-      total_tests: usize,
-    ) {
-      println!(
-        "{:<30} {:<25} {:>10.2} {:>15} [{}/{}]",
-        test_case.name(),
-        algorithm,
-        elapsed_ms,
-        "FAIL",
-        completed_count,
-        total_tests
-      );
-    }
-
-    fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm) {
-      println!(
-        "{:<30} {:<25} {:>10} {:>15}",
-        test_case.name(),
-        algorithm,
-        "-",
-        "SKIPPED"
-      );
-    }
-
-    fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
-      print_multiplication_errors(failures)
-    }
-  };
-}
 
 pub struct MultiplicationRunner<S: MultiplicationTestSuite>(PhantomData<S>);
 
@@ -119,13 +43,55 @@ impl<S: MultiplicationTestSuite + Default> TestRunner for MultiplicationRunner<S
     run_multiplication_test(suite, test_case, &*algo, start_time)
   }
 
-  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    println!(
-      "\nRunning {test_suite_name} multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n"
+  fn print_test_configuration(
+    test_suite_name: &str,
+    algorithms: &[Self::Algorithm],
+    total_available: usize,
+    selected_count: usize,
+    name_filter_applied: bool,
+    slowness_threshold: f64,
+    output_dir: &str,
+  ) {
+    ValidationConsole::print_test_configuration(
+      test_suite_name,
+      algorithms,
+      total_available,
+      selected_count,
+      name_filter_applied,
+      slowness_threshold,
+      output_dir,
     );
   }
 
-  impl_multiplication_runner_printing!();
+  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_suite_name, test_cases_count, algorithms_count);
+  }
+
+  fn print_table_header() {
+    ValidationConsole::print_progress_table_header();
+  }
+
+  fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize) {
+    ValidationConsole::print_success_row(result, completed_count, total_tests);
+  }
+
+  fn print_failure_row(
+    test_case: &Self::TestCase,
+    algorithm: Self::Algorithm,
+    elapsed_ms: f64,
+    completed_count: usize,
+    total_tests: usize,
+  ) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
+  }
+
+  fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm) {
+    ValidationConsole::print_skipped_row(test_case, algorithm);
+  }
+
+  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
+    ValidationConsole::print_error_summary(failures)
+  }
 }
 
 pub struct ChainMultiplicationRunner<S: ChainMultiplicationTestSuite>(PhantomData<S>);
@@ -157,52 +123,55 @@ impl<S: ChainMultiplicationTestSuite + Default> TestRunner for ChainMultiplicati
     run_chain_multiplication_test(suite, test_case, &*algo, start_time)
   }
 
+  fn print_test_configuration(
+    test_suite_name: &str,
+    algorithms: &[Self::Algorithm],
+    total_available: usize,
+    selected_count: usize,
+    name_filter_applied: bool,
+    slowness_threshold: f64,
+    output_dir: &str,
+  ) {
+    ValidationConsole::print_test_configuration(
+      test_suite_name,
+      algorithms,
+      total_available,
+      selected_count,
+      name_filter_applied,
+      slowness_threshold,
+      output_dir,
+    );
+  }
+
   fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    println!(
-      "\nRunning {test_suite_name} chain multiplication tests ({test_cases_count} cases x {algorithms_count} algorithms)...\n"
-    );
+    ValidationConsole::print_header(test_suite_name, test_cases_count, algorithms_count);
   }
 
-  impl_multiplication_runner_printing!();
-}
-
-fn print_multiplication_config<A: Display>(
-  test_suite_name: &str,
-  algorithms: &[A],
-  total_cases: usize,
-  selected_cases: usize,
-  has_filter: bool,
-  slowness: f64,
-  output_dir: &str,
-) {
-  println!("\n=== {test_suite_name} Multiplication Test Configuration ===");
-  println!(
-    "Algorithms: {}",
-    algorithms.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", ")
-  );
-  println!("Test cases: {selected_cases}/{total_cases}");
-  if has_filter {
-    println!("  (filtered by name)");
-  }
-  println!("Slowness threshold: {slowness}");
-  println!("Output directory: {output_dir}\n");
-}
-
-fn print_multiplication_errors<T: TestCase>(failures: &[&TestFailure<T>]) -> Result<(), Report> {
-  if failures.is_empty() {
-    return Ok(());
+  fn print_table_header() {
+    ValidationConsole::print_progress_table_header();
   }
 
-  println!("\n=== Errors ===");
-  for failure in failures {
-    println!(
-      "  {} ({}): {}",
-      failure.test_case.name(),
-      failure.algorithm,
-      failure.error
-    );
+  fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize) {
+    ValidationConsole::print_success_row(result, completed_count, total_tests);
   }
-  Ok(())
+
+  fn print_failure_row(
+    test_case: &Self::TestCase,
+    algorithm: Self::Algorithm,
+    elapsed_ms: f64,
+    completed_count: usize,
+    total_tests: usize,
+  ) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
+  }
+
+  fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm) {
+    ValidationConsole::print_skipped_row(test_case, algorithm);
+  }
+
+  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
+    ValidationConsole::print_error_summary(failures)
+  }
 }
 
 fn run_multiplication_test<S: MultiplicationTestSuite>(

@@ -6,14 +6,14 @@ use crate::testing::framework::test_case::TestCase;
 use crate::testing::metrics::metrics::ValidationMetrics;
 use crate::testing::run::Args;
 use crate::testing::runners::runner::TestRunner;
-use crate::testing::test_suites::test_suites::TestSuite;
+use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use std::time::Instant;
 
-pub struct ConvolutionRunner<S: TestSuite>(std::marker::PhantomData<S>);
+pub struct ConvolutionRunner<S: ConvolutionTestSuite>(std::marker::PhantomData<S>);
 
-impl<S: TestSuite + Default> TestRunner for ConvolutionRunner<S> {
+impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
   type TestCase = S::TestCase;
   type Algorithm = ConvolutionAlgorithm;
   type Suite = S;
@@ -91,7 +91,7 @@ impl<S: TestSuite + Default> TestRunner for ConvolutionRunner<S> {
   }
 }
 
-fn run_convolution_test<S: TestSuite>(
+fn run_convolution_test<S: ConvolutionTestSuite>(
   suite: &S,
   test_case: &S::TestCase,
   algo: &dyn Algo,

@@ -5,7 +5,7 @@ use crate::distribution::y_axis_policy::Plain;
 use ndarray::Array1;
 use treetime_validation::testing::metrics::metrics::ValidationMetrics;
 use treetime_validation::testing::test_suites::gaussian::GaussianTestSuite;
-use treetime_validation::testing::test_suites::test_suites::TestSuite;
+use treetime_validation::testing::test_suites::test_suites::ConvolutionTestSuite;
 
 #[test]
 fn test_gaussian_convolution_validation() {

@@ -1,4 +1,3 @@
-use crate::algorithms::ConvolutionAlgorithm;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -6,6 +5,7 @@ use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::float_fmt::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
@@ -15,16 +15,16 @@ pub struct ValidationConsole;
 
 impl ValidationConsole {
   /// Print test configuration
-  pub fn print_test_configuration(
+  pub fn print_test_configuration<A: Display>(
     test_suite_name: &str,
-    algorithms: &[ConvolutionAlgorithm],
+    algorithms: &[A],
     total_available: usize,
     selected_count: usize,
     name_filter_applied: bool,
     slowness_threshold: f64,
     output_dir: &str,
   ) {
-    println!("# {} Convolution Test\n", test_suite_name.to_uppercase());
+    println!("# {} Test\n", test_suite_name.to_uppercase());
     println!("## Configuration\n");
     println!("- Test suite: {test_suite_name}");
     println!(
@@ -88,9 +88,9 @@ impl ValidationConsole {
   }
 
   /// Print failure row in progress table
-  pub fn print_failure_row<T: TestCase>(
+  pub fn print_failure_row<T: TestCase, A: Display>(
     test_case: &T,
-    algorithm: ConvolutionAlgorithm,
+    algorithm: A,
     elapsed_ms: f64,
     completed_count: usize,
     total_tests: usize,
@@ -110,7 +110,7 @@ impl ValidationConsole {
   }
 
   /// Print skipped test row in progress table
-  pub fn print_skipped_row<T: TestCase>(test_case: &T, algorithm: ConvolutionAlgorithm) {
+  pub fn print_skipped_row<T: TestCase, A: Display>(test_case: &T, algorithm: A) {
     println!(
       "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8} | {:>10} | {:>8} | {:>8} |",
       "skipped",

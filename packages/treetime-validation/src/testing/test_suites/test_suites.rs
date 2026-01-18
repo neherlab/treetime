@@ -76,7 +76,7 @@ impl TestSuiteName {
   }
 }
 
-pub trait TestSuite: Send + Sync {
+pub trait ConvolutionTestSuite: Send + Sync {
   type TestCase: TestCase;
 
   fn test_suite_name(&self) -> &'static str;
