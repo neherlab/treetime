@@ -47,9 +47,9 @@ impl ValidationConsole {
   }
 
   /// Print test framework header
-  pub fn print_header(_test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
+  pub fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
-    println!("## Test Execution\n");
+    println!("## {test_suite_name} Test Execution\n");
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
   }
 
