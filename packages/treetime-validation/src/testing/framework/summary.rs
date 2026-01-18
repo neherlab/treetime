@@ -5,6 +5,8 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
+const R2_PASS_THRESHOLD: f64 = 0.95;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
   pub test_suite_name: String,
@@ -91,7 +93,7 @@ impl AlgorithmSummary {
 
     let metric_failures = successes
       .iter()
-      .filter(|result| result.metrics.aggregate.domain_agreement.quality_metrics.r_squared <= 0.95)
+      .filter(|result| result.metrics.aggregate.domain_agreement.quality_metrics.r_squared <= R2_PASS_THRESHOLD)
       .count();
     let passed_tests = successes.len() - metric_failures;
     let failed_tests = metric_failures + failures.len();
