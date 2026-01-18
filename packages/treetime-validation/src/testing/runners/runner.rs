@@ -17,6 +17,9 @@ use std::time::Instant;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
 
+const EXCELLENT_SUCCESS_RATE_THRESHOLD: f64 = 0.9;
+const GOOD_SUCCESS_RATE_THRESHOLD: f64 = 0.8;
+
 pub trait TestRunner: Send + Sync + Sized {
   type TestCase: TestCase;
   type Algorithm: Copy + Display + Send + Sync;
@@ -311,9 +314,15 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
 }
 
 fn assess_overall_performance(algorithm_summaries: &[crate::testing::framework::summary::AlgorithmSummary]) -> String {
-  if algorithm_summaries.iter().all(|summary| summary.success_rate > 0.9) {
+  if algorithm_summaries
+    .iter()
+    .all(|summary| summary.success_rate > EXCELLENT_SUCCESS_RATE_THRESHOLD)
+  {
     "Excellent - All algorithms perform well".to_owned()
-  } else if algorithm_summaries.iter().any(|summary| summary.success_rate > 0.8) {
+  } else if algorithm_summaries
+    .iter()
+    .any(|summary| summary.success_rate > GOOD_SUCCESS_RATE_THRESHOLD)
+  {
     "Good - Some algorithms perform well".to_owned()
   } else {
     "Poor - Significant issues detected".to_owned()
