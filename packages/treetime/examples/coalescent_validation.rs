@@ -119,10 +119,17 @@ struct SnapshotTbpGrid {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct TestResult {
-  name: String,
+  dataset: String,
+  tc: f64,
   t_grid_tbp: Array1<f64>,
   expected: IndexMap<String, Array1<f64>>,
   actual: IndexMap<String, Array1<f64>>,
+}
+
+impl TestResult {
+  fn display_name(&self) -> String {
+    format!("{} Tc={}", self.dataset, self.tc)
+  }
 }
 
 /// Per-node error statistics comparing expected vs actual contribution values.
@@ -327,7 +334,8 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
     .collect::<Result<IndexMap<String, Array1<f64>>, Report>>()?;
 
   Ok(TestResult {
-    name: format!("{} Tc={tc_value}", snapshot.virus_path),
+    dataset: snapshot.virus_path,
+    tc: tc_value,
     t_grid_tbp,
     expected: snapshot.node_contributions,
     actual: actuals,
@@ -570,7 +578,7 @@ fn compute_pass_status(args: &Args, results: &[TestResult], failed_tests: &mut V
     let passed = stats.worst_max_abs_err < args.pass_threshold;
     if !passed {
       all_passed = false;
-      failed_tests.push(result.name.clone());
+      failed_tests.push(result.display_name());
     }
   }
 
@@ -580,19 +588,19 @@ fn compute_pass_status(args: &Args, results: &[TestResult], failed_tests: &mut V
 fn print_summary_table(args: &Args, results: &[TestResult]) {
   println!("## Summary\n");
   println!(
-    "| {:<2} | {:<10} | {:>6} | {:>12} | {:>12} | {:>12} |",
-    "", "Tc", "Nodes", "Global MAE", "Global RMSE", "Max Err"
+    "| {:<2} | {:<15} | {:>6} | {:>6} | {:>12} | {:>12} | {:>12} |",
+    "", "Dataset", "Tc", "Nodes", "Global MAE", "Global RMSE", "Max Err"
   );
   println!(
-    "| {:-<2} | {:-<10} | {:-<6}:| {:-<12}:| {:-<12}:| {:-<12}:|",
-    "", "", "", "", "", ""
+    "| {:-<2} | {:-<15} | {:-<6}:| {:-<6}:| {:-<12}:| {:-<12}:| {:-<12}:|",
+    "", "", "", "", "", "", ""
   );
 
   for result in results {
     let (stats, _) = match compute_diff_report(result) {
       Ok(v) => v,
       Err(e) => {
-        eprintln!("Warning: Cannot compute stats for {}: {e}", result.name);
+        eprintln!("Warning: Cannot compute stats for {}: {e}", result.display_name());
         continue;
       },
     };
@@ -601,9 +609,10 @@ fn print_summary_table(args: &Args, results: &[TestResult]) {
     let status = if passed { "✅" } else { "❌" };
 
     println!(
-      "| {:^} | {:<10} | {:>6} | {:>12} | {:>12} | {:>12} |",
+      "| {:^} | {:<15} | {:>6} | {:>6} | {:>12} | {:>12} | {:>12} |",
       status,
-      result.name,
+      result.dataset,
+      result.tc,
       stats.n_compared_nodes,
       format_sci(stats.global_mae),
       format_sci(stats.global_rmse),
@@ -616,7 +625,7 @@ fn print_test_details(args: &Args, result: &TestResult, only_failures: bool) {
   let (stats, rows) = match compute_diff_report(result) {
     Ok(v) => v,
     Err(e) => {
-      eprintln!("Error: Cannot compute diff report for {}: {e}", result.name);
+      eprintln!("Error: Cannot compute diff report for {}: {e}", result.display_name());
       return;
     },
   };
@@ -645,15 +654,14 @@ fn print_test_details(args: &Args, result: &TestResult, only_failures: bool) {
     .filter(|r| r.max_abs_err >= args.pass_threshold)
     .count();
 
+  let display_name = result.display_name();
   if failed_count > 0 {
     println!(
-      "### {} ({} node(s) above threshold from --pass-threshold={})\n",
-      result.name,
-      failed_count,
+      "### {display_name} ({failed_count} node(s) above threshold from --pass-threshold={})\n",
       format_sci(args.pass_threshold)
     );
   } else {
-    println!("### {}\n", result.name);
+    println!("### {display_name}\n");
   }
 
   if !only_failures {
@@ -684,7 +692,7 @@ fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Re
     writeln!(
       file,
       "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-      result.name,
+      result.display_name(),
       stats.n_compared_nodes,
       stats.n_expected_nodes,
       stats.n_actual_nodes,
