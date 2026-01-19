@@ -1,6 +1,6 @@
 use crate::testing::console::console::ValidationConsole;
 use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome};
-use crate::testing::framework::summary::TestSummary;
+use crate::testing::framework::summary::{AlgorithmSummary, TestSummary};
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::framework::tsv_output::generate_tsv_outputs;
 use crate::testing::plots::plots::generate_plot_outputs;
@@ -283,9 +283,7 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
   algorithms: &[A],
   successes: &[&TestResult<T>],
   failures: &[&TestFailure<T>],
-) -> Vec<crate::testing::framework::summary::AlgorithmSummary> {
-  use crate::testing::framework::summary::AlgorithmSummary;
-
+) -> Vec<AlgorithmSummary> {
   algorithms
     .iter()
     .filter_map(|algorithm| {
@@ -313,7 +311,7 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
     .collect()
 }
 
-fn assess_overall_performance(algorithm_summaries: &[crate::testing::framework::summary::AlgorithmSummary]) -> String {
+fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> String {
   if algorithm_summaries
     .iter()
     .all(|summary| summary.success_rate > EXCELLENT_SUCCESS_RATE_THRESHOLD)
