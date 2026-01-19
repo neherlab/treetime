@@ -4,20 +4,20 @@ use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use treetime_analytical::validation::cases::gaussian_multiplication::{
-  GAUSSIAN_MULTIPLICATION_CASES, GaussianMultiplicationTestCase as AnalyticalCase,
+use treetime_analytical::validation::cases::gaussian_pairwise_multiplication::{
+  GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES, GaussianPairwiseMultiplicationTestCase as AnalyticalCase,
 };
 use treetime_analytical::{GaussianParams, gaussian_product};
 use treetime_ops::ScaledArray;
 
 #[derive(Default)]
-pub struct GaussianMultiplicationTestSuite;
+pub struct GaussianPairwiseMultiplicationTestSuite;
 
-impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
-  type TestCase = GaussianMultiplicationTestCase;
+impl MultiplicationTestSuite for GaussianPairwiseMultiplicationTestSuite {
+  type TestCase = GaussianPairwiseMultiplicationTestCase;
 
   fn test_suite_name(&self) -> &'static str {
-    "gaussian-multiplication"
+    "gaussian-pairwise-multiplication"
   }
 
   fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
@@ -52,15 +52,15 @@ impl MultiplicationTestSuite for GaussianMultiplicationTestSuite {
   }
 
   fn create_test_cases(&self) -> Vec<Self::TestCase> {
-    GAUSSIAN_MULTIPLICATION_CASES
+    GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES
       .iter()
-      .map(GaussianMultiplicationTestCase::from)
+      .map(GaussianPairwiseMultiplicationTestCase::from)
       .collect()
   }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianMultiplicationTestCase {
+pub struct GaussianPairwiseMultiplicationTestCase {
   pub name: String,
   pub description: String,
   pub stress_type: String,
@@ -76,7 +76,7 @@ pub struct GaussianMultiplicationTestCase {
   pub input_grid_n_points: usize,
 }
 
-impl From<&AnalyticalCase> for GaussianMultiplicationTestCase {
+impl From<&AnalyticalCase> for GaussianPairwiseMultiplicationTestCase {
   fn from(case: &AnalyticalCase) -> Self {
     Self {
       name: case.name.to_owned(),
@@ -96,7 +96,7 @@ impl From<&AnalyticalCase> for GaussianMultiplicationTestCase {
   }
 }
 
-impl TestCase for GaussianMultiplicationTestCase {
+impl TestCase for GaussianPairwiseMultiplicationTestCase {
   fn name(&self) -> &str {
     &self.name
   }

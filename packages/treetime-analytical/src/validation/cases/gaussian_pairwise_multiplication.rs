@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GaussianMultiplicationTestCase {
+pub struct GaussianPairwiseMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,
   pub stress_type: &'static str,
@@ -17,8 +17,8 @@ pub struct GaussianMultiplicationTestCase {
   pub input_grid_n_points: usize,
 }
 
-pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
-  GaussianMultiplicationTestCase {
+pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicationTestCase] = &[
+  GaussianPairwiseMultiplicationTestCase {
     name: "identical",
     description: "Two identical Gaussians at origin with unit amplitude.",
     stress_type: "baseline",
@@ -33,7 +33,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-5.0, 5.0),
     input_grid_n_points: 201,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "shifted_equal",
     description: "Two Gaussians with equal widths but shifted means; product peak at midpoint.",
     stress_type: "translation",
@@ -48,7 +48,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-6.0, 6.0),
     input_grid_n_points: 241,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "different_widths",
     description: "Two Gaussians with different widths; narrower Gaussian dominates result.",
     stress_type: "width mixing",
@@ -63,7 +63,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-10.0, 10.0),
     input_grid_n_points: 401,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "narrow_wide",
     description: "Extreme width ratio with very narrow and very wide Gaussian.",
     stress_type: "extreme ratio, resolution",
@@ -78,7 +78,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-5.0, 5.0),
     input_grid_n_points: 1001,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "shifted_different_widths",
     description: "Shifted means with different widths; tests combined effects.",
     stress_type: "combined",
@@ -93,7 +93,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-8.0, 8.0),
     input_grid_n_points: 321,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "small_amplitudes",
     description: "Small amplitudes testing log-scale handling.",
     stress_type: "underflow",
@@ -108,7 +108,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-5.0, 5.0),
     input_grid_n_points: 201,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "large_shift",
     description: "Large shift between means; product has low amplitude.",
     stress_type: "near-zero product",
@@ -123,7 +123,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-10.0, 10.0),
     input_grid_n_points: 401,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "asymmetric_shift",
     description: "Asymmetric shift with different widths.",
     stress_type: "asymmetry",
@@ -138,7 +138,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-8.0, 12.0),
     input_grid_n_points: 401,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "fine_grid",
     description: "High-resolution grid for reference accuracy.",
     stress_type: "performance",
@@ -153,7 +153,7 @@ pub const GAUSSIAN_MULTIPLICATION_CASES: &[GaussianMultiplicationTestCase] = &[
     input_grid_domain: (-8.0, 8.0),
     input_grid_n_points: 3201,
   },
-  GaussianMultiplicationTestCase {
+  GaussianPairwiseMultiplicationTestCase {
     name: "mixed_amplitudes",
     description: "Different amplitudes testing scale handling.",
     stress_type: "scale mixing",

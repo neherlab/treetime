@@ -6,7 +6,7 @@ use crate::testing::test_suites::exponential::ExponentialTestSuite;
 use crate::testing::test_suites::gaussian::GaussianTestSuite;
 use crate::testing::test_suites::gaussian_chain_multiplication::GaussianChainMultiplicationTestSuite;
 use crate::testing::test_suites::gaussian_exponential::GaussianExponentialTestSuite;
-use crate::testing::test_suites::gaussian_multiplication::GaussianMultiplicationTestSuite;
+use crate::testing::test_suites::gaussian_pairwise_multiplication::GaussianPairwiseMultiplicationTestSuite;
 use clap::ValueEnum;
 use eyre::Report;
 use ndarray::Array1;
@@ -26,7 +26,7 @@ pub enum TestSuiteName {
   Gaussian,
   Exponential,
   GaussianExponential,
-  GaussianMultiplication,
+  GaussianPairwiseMultiplication,
   GaussianChainMultiplication,
 }
 
@@ -40,7 +40,7 @@ impl TestSuiteName {
   }
 
   pub fn multiplication_suites() -> Vec<Self> {
-    vec![Self::GaussianMultiplication, Self::GaussianChainMultiplication]
+    vec![Self::GaussianPairwiseMultiplication, Self::GaussianChainMultiplication]
   }
 
   pub fn expand(suites: &[Self]) -> Vec<Self> {
@@ -56,7 +56,7 @@ impl TestSuiteName {
   }
 
   pub fn is_multiplication(&self) -> bool {
-    matches!(self, Self::GaussianMultiplication | Self::GaussianChainMultiplication)
+    matches!(self, Self::GaussianPairwiseMultiplication | Self::GaussianChainMultiplication)
   }
 
   /// Run tests for this suite.
@@ -68,7 +68,7 @@ impl TestSuiteName {
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
-      Self::GaussianMultiplication => run_multiplication_tests_impl::<GaussianMultiplicationTestSuite>(args),
+      Self::GaussianPairwiseMultiplication => run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args),
       Self::GaussianChainMultiplication => {
         run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args)
       },
