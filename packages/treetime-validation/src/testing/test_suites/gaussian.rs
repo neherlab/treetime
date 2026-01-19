@@ -1,4 +1,3 @@
-#![allow(clippy::many_single_char_names)]
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
