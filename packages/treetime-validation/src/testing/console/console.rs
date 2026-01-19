@@ -56,11 +56,11 @@ impl ValidationConsole {
   /// Print progress table header
   pub fn print_progress_table_header() {
     println!(
-      "| {:^10} | {:^2} | {:^16} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
+      "| {:^16} | {:^2} | {:^16} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
       "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
     );
     println!(
-      "|{:-<12}|{:-^4}|{:-<18}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
+      "|{:-<18}|{:-^4}|{:-<18}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
       "", "", "", "", "", "", "", ""
     );
   }
@@ -73,9 +73,9 @@ impl ValidationConsole {
     let rmse = result.metrics.aggregate.domain_agreement.quality_metrics.rmse;
     let correlation = result.metrics.aggregate.domain_agreement.quality_metrics.correlation;
     let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
-    let progress = format!("[{completed_count}/{total_tests}]");
+    let progress = format!("[done: {completed_count}/{total_tests}]");
     println!(
-      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "✅",
       format!("{}", result.algorithm),
@@ -95,9 +95,9 @@ impl ValidationConsole {
     completed_count: usize,
     total_tests: usize,
   ) {
-    let progress = format!("[{completed_count}/{total_tests}]");
+    let progress = format!("[done: {completed_count}/{total_tests}]");
     println!(
-      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
       progress,
       "❌",
       format!("{algorithm}"),
@@ -112,7 +112,7 @@ impl ValidationConsole {
   /// Print skipped test row in progress table
   pub fn print_skipped_row<T: TestCase, A: Display>(test_case: &T, algorithm: A) {
     println!(
-      "| {:>10} | {:^1} | {:<16} | {:<30} | {:>8} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8} | {:>10} | {:>8} | {:>8} |",
       "skipped",
       "💤",
       format!("{algorithm}"),
