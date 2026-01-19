@@ -163,31 +163,22 @@ fn run_all_tests<R: TestRunner>(
 
   let selected_names: BTreeSet<_> = selected_test_cases.iter().map(|tc| tc.name()).collect();
 
-  let test_combinations: Vec<_> = all_test_cases
+  let (skipped, selected): (Vec<_>, Vec<_>) = all_test_cases
     .iter()
     .flat_map(|test_case| {
       let is_selected = selected_names.contains(test_case.name());
-      algorithms
-        .iter()
-        .map(move |algorithm| (test_case, *algorithm, is_selected))
+      algorithms.iter().map(move |algorithm| (test_case, *algorithm, is_selected))
     })
-    .collect();
+    .partition(|(_, _, is_selected)| !is_selected);
 
-  let outcomes = test_combinations
+  for (test_case, algorithm, _) in &skipped {
+    R::print_skipped_row(test_case, *algorithm);
+  }
+
+  let outcomes = selected
     .into_par_iter()
-    .filter_map(|(test_case, algorithm, is_selected)| {
-      if is_selected {
-        Some(execute_single_test::<R>(
-          suite,
-          test_case,
-          algorithm,
-          &completed,
-          total_tests,
-        ))
-      } else {
-        R::print_skipped_row(test_case, algorithm);
-        None
-      }
+    .map(|(test_case, algorithm, _)| {
+      execute_single_test::<R>(suite, test_case, algorithm, &completed, total_tests)
     })
     .collect::<Vec<_>>();
 
