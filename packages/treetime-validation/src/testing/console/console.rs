@@ -2,13 +2,15 @@ use crate::testing::framework::results::{TestFailure, TestResult, TestRunOutcome
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_utils::float_fmt::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
+
+const VERBOSE_LABEL_WIDTH: usize = 32;
 
 /// Console display functionality for convolution test framework
 pub struct ValidationConsole;
@@ -122,6 +124,159 @@ impl ValidationConsole {
       "-",
       "-"
     );
+  }
+
+  /// Print verbose details for a single test result
+  pub fn print_verbose_details<T: TestCase>(result: &TestResult<T>) {
+    let w = VERBOSE_LABEL_WIDTH;
+    let m = &result.metrics;
+
+    println!();
+    println!("    --- Verbose Details: {} + {} ---", result.test_case.name(), result.algorithm);
+
+    println!("    Test Case Info:");
+    println!("      {:<w$} {}", "Description:", result.test_case.description());
+    println!("      {:<w$} {}", "Stress Type:", result.test_case.stress_type());
+    println!("      {:<w$} {}", "Analytical Caution:", result.test_case.analytical_caution());
+    let (domain_min, domain_max) = result.test_case.input_grid_domain();
+    println!(
+      "      {:<w$} [{}, {}] ({} points)",
+      "Grid Domain:",
+      float_to_significant_digits(domain_min, 4),
+      float_to_significant_digits(domain_max, 4),
+      result.test_case.input_grid_n_points()
+    );
+
+    println!("    Quality Metrics:");
+    let qm = &m.aggregate.domain_agreement.quality_metrics;
+    println!(
+      "      {:<w$} {} (error: {} ppm)",
+      "R-squared:",
+      float_to_significant_digits(qm.r_squared, 6),
+      float_to_significant_digits((1.0 - qm.r_squared) * 1_000_000.0, 3)
+    );
+    println!(
+      "      {:<w$} {} (error: {} ppm)",
+      "Correlation:",
+      float_to_significant_digits(qm.correlation, 6),
+      float_to_significant_digits((1.0 - qm.correlation) * 1_000_000.0, 3)
+    );
+    println!("      {:<w$} {}", "RMSE:", float_to_significant_digits(qm.rmse, 6));
+    println!("      {:<w$} {}", "Mass Error:", float_to_significant_digits(qm.mass_error, 6));
+    println!("      {:<w$} {}", "Relative L2 Error:", float_to_significant_digits(qm.rel_l2_error, 6));
+
+    println!("    Peak Metrics:");
+    let pm = &m.aggregate.domain_agreement.peak_metrics;
+    println!(
+      "      {:<w$} {}",
+      "Location Error:",
+      float_to_significant_digits(pm.location_error, 6)
+    );
+    println!(
+      "      {:<w$} {}",
+      "Value Error:",
+      float_to_significant_digits(pm.value_error, 6)
+    );
+
+    println!("    Error Statistics:");
+    let abs_err = &m.aggregate.domain_agreement.abs_error_stats;
+    let rel_err = &m.aggregate.domain_agreement.rel_error_stats;
+    println!(
+      "      {:<w$} max={}, mean={}, std={}",
+      "Absolute Error:",
+      float_to_significant_digits(abs_err.max, 6),
+      float_to_significant_digits(abs_err.mean, 6),
+      float_to_significant_digits(abs_err.std, 6)
+    );
+    println!(
+      "      {:<w$} max={}, mean={}, mape={}%",
+      "Relative Error:",
+      float_to_significant_digits(rel_err.max, 6),
+      float_to_significant_digits(rel_err.mean, 6),
+      float_to_significant_digits(rel_err.mape, 3)
+    );
+
+    println!("    Pointwise Metrics:");
+    let pw = &m.pointwise;
+    println!("      {:<w$} {} (dx={})", "Total Points:", pw.total_points, float_to_significant_digits(pw.dx, 6));
+    let pws = &pw.errors.summary;
+    println!(
+      "      {:<w$} max={}, mean={}, std={}",
+      "Pointwise Abs Error:",
+      float_to_significant_digits(pws.abs_max, 6),
+      float_to_significant_digits(pws.abs_mean, 6),
+      float_to_significant_digits(pws.abs_std, 6)
+    );
+    println!(
+      "      {:<w$} max={}, mean={}, median={}",
+      "Pointwise Rel Error:",
+      float_to_significant_digits(pws.rel_max, 6),
+      float_to_significant_digits(pws.rel_mean, 6),
+      float_to_significant_digits(pws.rel_median, 6)
+    );
+    println!("      {:<w$} {}", "Signed Bias:", float_to_significant_digits(pws.signed_bias, 6));
+    println!("      {:<w$} {}", "Log Max Error:", float_to_significant_digits(pws.log_max, 6));
+
+    println!("    Structural Metrics:");
+    let st = &pw.structural.summary;
+    println!(
+      "      {:<w$} max={}, mean={}",
+      "1st Derivative Error:",
+      float_to_significant_digits(st.d1_max, 6),
+      float_to_significant_digits(st.d1_mean, 6)
+    );
+    println!(
+      "      {:<w$} max={}, mean={}",
+      "2nd Derivative Error:",
+      float_to_significant_digits(st.d2_max, 6),
+      float_to_significant_digits(st.d2_mean, 6)
+    );
+    println!("      {:<w$} {}", "Symmetry Max:", float_to_significant_digits(st.symmetry_max, 6));
+    println!("      {:<w$} {}", "Monotonicity Violations:", st.monotonicity_violation_count);
+
+    println!("    Tolerance Compliance:");
+    let tol = &pw.tolerance.summary;
+    let tolerance_labels = ["strict", "moderate", "loose"];
+    for (label, fraction) in izip!(tolerance_labels.iter(), tol.pass_fractions.iter()) {
+      println!("      {:<w$} {:.2}%", format!("Pass rate ({label}):"), fraction * 100.0);
+    }
+    println!("      {:<w$} {}", "Support Mismatches:", tol.support_mismatch_count);
+
+    println!("    Spatial Metrics:");
+    let peak_region = &m.spatial.regional.summary.peak_region;
+    let tail_region = &m.spatial.regional.summary.tail_region;
+    println!(
+      "      {:<w$} mean={}, max={}",
+      "Peak Region Error:",
+      float_to_significant_digits(peak_region.mean_error, 6),
+      float_to_significant_digits(peak_region.max_error, 6)
+    );
+    println!(
+      "      {:<w$} mean={}, max={}",
+      "Tail Region Error:",
+      float_to_significant_digits(tail_region.mean_error, 6),
+      float_to_significant_digits(tail_region.max_error, 6)
+    );
+
+    let cum = &m.spatial.cumulative.summary;
+    println!(
+      "      {:<w$} final={}, max_abs={}",
+      "Cumulative Error:",
+      float_to_significant_digits(cum.final_value, 6),
+      float_to_significant_digits(cum.max_abs, 6)
+    );
+
+    let win = &m.spatial.windowed.summary;
+    println!(
+      "      {:<w$} rms_max={}, max_max={}",
+      "Windowed Error:",
+      float_to_significant_digits(win.sliding_rms_max, 6),
+      float_to_significant_digits(win.sliding_max_max, 6)
+    );
+
+    println!("    Performance:");
+    println!("      {:<w$} {}ms", "Execution Time:", float_to_significant_digits(result.execution_time_ms, 4));
+    println!();
   }
 
   /// Print error summary section

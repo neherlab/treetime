@@ -98,7 +98,7 @@ where
     &output_dir,
   );
 
-  let outcomes = run_all_tests::<R>(&suite, &all_test_cases, &selected_test_cases, algorithms)?;
+  let outcomes = run_all_tests::<R>(&suite, &all_test_cases, &selected_test_cases, algorithms, args.verbose)?;
 
   generate_plot_outputs(&output_dir, &outcomes)?;
   generate_tsv_outputs(&output_dir, &outcomes)?;
@@ -154,6 +154,7 @@ fn run_all_tests<R: TestRunner>(
   all_test_cases: &[R::TestCase],
   selected_test_cases: &[R::TestCase],
   algorithms: &[R::Algorithm],
+  verbose: bool,
 ) -> Result<Vec<TestRunOutcome<R::TestCase>>, Report> {
   let total_tests = selected_test_cases.len() * algorithms.len();
   let completed = AtomicUsize::new(0);
@@ -178,7 +179,7 @@ fn run_all_tests<R: TestRunner>(
   let outcomes = selected
     .into_par_iter()
     .map(|(test_case, algorithm, _)| {
-      execute_single_test::<R>(suite, test_case, algorithm, &completed, total_tests)
+      execute_single_test::<R>(suite, test_case, algorithm, &completed, total_tests, verbose)
     })
     .collect::<Vec<_>>();
 
@@ -194,6 +195,7 @@ fn execute_single_test<R: TestRunner>(
   algorithm: R::Algorithm,
   completed: &AtomicUsize,
   total_tests: usize,
+  verbose: bool,
 ) -> TestRunOutcome<R::TestCase> {
   let start_time = Instant::now();
 
@@ -201,6 +203,9 @@ fn execute_single_test<R: TestRunner>(
     Ok(result) => {
       let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       R::print_success_row(&result, completed_count, total_tests);
+      if verbose {
+        ValidationConsole::print_verbose_details(&result);
+      }
       TestRunOutcome::Success(Box::new(result))
     },
     Err(error) => {
