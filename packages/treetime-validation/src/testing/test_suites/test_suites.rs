@@ -56,7 +56,10 @@ impl TestSuiteName {
   }
 
   pub fn is_multiplication(&self) -> bool {
-    matches!(self, Self::GaussianPairwiseMultiplication | Self::GaussianChainMultiplication)
+    matches!(
+      self,
+      Self::GaussianPairwiseMultiplication | Self::GaussianChainMultiplication
+    )
   }
 
   /// Run tests for this suite.
@@ -68,7 +71,9 @@ impl TestSuiteName {
       Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
-      Self::GaussianPairwiseMultiplication => run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args),
+      Self::GaussianPairwiseMultiplication => {
+        run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args)
+      },
       Self::GaussianChainMultiplication => {
         run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args)
       },

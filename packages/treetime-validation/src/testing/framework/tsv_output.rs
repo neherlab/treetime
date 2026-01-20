@@ -165,8 +165,7 @@ where
   writer.write_record(&headers)?;
 
   for (test_case_name, results) in &grouped_by_test_case {
-    let results_by_algo: BTreeMap<&str, &TestResult<T>> =
-      results.iter().map(|r| (r.algorithm.as_str(), *r)).collect();
+    let results_by_algo: BTreeMap<&str, &TestResult<T>> = results.iter().map(|r| (r.algorithm.as_str(), *r)).collect();
 
     let mut row = vec![(*test_case_name).to_owned()];
 

@@ -132,12 +132,20 @@ impl ValidationConsole {
     let m = &result.metrics;
 
     println!();
-    println!("    --- Verbose Details: {} + {} ---", result.test_case.name(), result.algorithm);
+    println!(
+      "    --- Verbose Details: {} + {} ---",
+      result.test_case.name(),
+      result.algorithm
+    );
 
     println!("    Test Case Info:");
     println!("      {:<w$} {}", "Description:", result.test_case.description());
     println!("      {:<w$} {}", "Stress Type:", result.test_case.stress_type());
-    println!("      {:<w$} {}", "Analytical Caution:", result.test_case.analytical_caution());
+    println!(
+      "      {:<w$} {}",
+      "Analytical Caution:",
+      result.test_case.analytical_caution()
+    );
     let (domain_min, domain_max) = result.test_case.input_grid_domain();
     println!(
       "      {:<w$} [{}, {}] ({} points)",
@@ -162,8 +170,16 @@ impl ValidationConsole {
       float_to_significant_digits((1.0 - qm.correlation) * 1_000_000.0, 3)
     );
     println!("      {:<w$} {}", "RMSE:", float_to_significant_digits(qm.rmse, 6));
-    println!("      {:<w$} {}", "Mass Error:", float_to_significant_digits(qm.mass_error, 6));
-    println!("      {:<w$} {}", "Relative L2 Error:", float_to_significant_digits(qm.rel_l2_error, 6));
+    println!(
+      "      {:<w$} {}",
+      "Mass Error:",
+      float_to_significant_digits(qm.mass_error, 6)
+    );
+    println!(
+      "      {:<w$} {}",
+      "Relative L2 Error:",
+      float_to_significant_digits(qm.rel_l2_error, 6)
+    );
 
     println!("    Peak Metrics:");
     let pm = &m.aggregate.domain_agreement.peak_metrics;
@@ -198,7 +214,12 @@ impl ValidationConsole {
 
     println!("    Pointwise Metrics:");
     let pw = &m.pointwise;
-    println!("      {:<w$} {} (dx={})", "Total Points:", pw.total_points, float_to_significant_digits(pw.dx, 6));
+    println!(
+      "      {:<w$} {} (dx={})",
+      "Total Points:",
+      pw.total_points,
+      float_to_significant_digits(pw.dx, 6)
+    );
     let pws = &pw.errors.summary;
     println!(
       "      {:<w$} max={}, mean={}, std={}",
@@ -214,8 +235,16 @@ impl ValidationConsole {
       float_to_significant_digits(pws.rel_mean, 6),
       float_to_significant_digits(pws.rel_median, 6)
     );
-    println!("      {:<w$} {}", "Signed Bias:", float_to_significant_digits(pws.signed_bias, 6));
-    println!("      {:<w$} {}", "Log Max Error:", float_to_significant_digits(pws.log_max, 6));
+    println!(
+      "      {:<w$} {}",
+      "Signed Bias:",
+      float_to_significant_digits(pws.signed_bias, 6)
+    );
+    println!(
+      "      {:<w$} {}",
+      "Log Max Error:",
+      float_to_significant_digits(pws.log_max, 6)
+    );
 
     println!("    Structural Metrics:");
     let st = &pw.structural.summary;
@@ -231,8 +260,15 @@ impl ValidationConsole {
       float_to_significant_digits(st.d2_max, 6),
       float_to_significant_digits(st.d2_mean, 6)
     );
-    println!("      {:<w$} {}", "Symmetry Max:", float_to_significant_digits(st.symmetry_max, 6));
-    println!("      {:<w$} {}", "Monotonicity Violations:", st.monotonicity_violation_count);
+    println!(
+      "      {:<w$} {}",
+      "Symmetry Max:",
+      float_to_significant_digits(st.symmetry_max, 6)
+    );
+    println!(
+      "      {:<w$} {}",
+      "Monotonicity Violations:", st.monotonicity_violation_count
+    );
 
     println!("    Tolerance Compliance:");
     let tol = &pw.tolerance.summary;
@@ -275,7 +311,11 @@ impl ValidationConsole {
     );
 
     println!("    Performance:");
-    println!("      {:<w$} {}ms", "Execution Time:", float_to_significant_digits(result.execution_time_ms, 4));
+    println!(
+      "      {:<w$} {}ms",
+      "Execution Time:",
+      float_to_significant_digits(result.execution_time_ms, 4)
+    );
     println!();
   }
 
@@ -364,11 +404,7 @@ impl ValidationConsole {
       .map(|name| name.len())
       .max()
       .map_or(20, |w| w.max(20));
-    let algo_col_width = algorithms
-      .iter()
-      .map(|a| a.len())
-      .max()
-      .map_or(12, |w| w.max(12));
+    let algo_col_width = algorithms.iter().map(|a| a.len()).max().map_or(12, |w| w.max(12));
 
     print!("| {:^test_case_col_width$} |", "Test Case");
     for algo in &algorithms {
@@ -394,7 +430,11 @@ impl ValidationConsole {
         if let Some(result) = results_by_algo.get(algo) {
           let r2 = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
           let r2_error_ppm = (1.0 - r2) * 1_000_000.0;
-          print!(" {:>width$} |", float_to_significant_digits(r2_error_ppm, 3), width = algo_col_width);
+          print!(
+            " {:>width$} |",
+            float_to_significant_digits(r2_error_ppm, 3),
+            width = algo_col_width
+          );
 
           if r2_error_ppm < best_r2_error {
             best_r2_error = r2_error_ppm;
@@ -688,10 +728,7 @@ impl ValidationConsole {
         ("support_mismatch", format!("{support_mismatch_max}")),
       ];
 
-      all_metrics.insert(
-        algorithm.clone(),
-        metrics.into_iter().collect::<BTreeMap<_, _>>(),
-      );
+      all_metrics.insert(algorithm.clone(), metrics.into_iter().collect::<BTreeMap<_, _>>());
     }
 
     all_metrics
@@ -725,10 +762,7 @@ impl ValidationConsole {
   }
 
   /// Print metrics table rows
-  fn print_metrics_table_rows(
-    algorithms: &[String],
-    all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>,
-  ) {
+  fn print_metrics_table_rows(algorithms: &[String], all_metrics: &BTreeMap<String, BTreeMap<&'static str, String>>) {
     let metric_col_width = "Moderate tolerance pass (min%)".len();
     let mut algo_col_widths = BTreeMap::new();
 

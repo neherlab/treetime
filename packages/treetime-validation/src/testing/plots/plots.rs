@@ -14,12 +14,7 @@ where
   for outcome in outcomes {
     if let TestRunOutcome::Success(result) = outcome {
       let result = result.as_ref();
-      let algorithm_dir = format!(
-        "{}/{}/{}",
-        output_dir,
-        result.test_case.name(),
-        result.algorithm
-      );
+      let algorithm_dir = format!("{}/{}/{}", output_dir, result.test_case.name(), result.algorithm);
       fs::create_dir_all(&algorithm_dir)?;
 
       plot_functions_and_convolution(result, &algorithm_dir)?;

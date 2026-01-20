@@ -168,7 +168,9 @@ fn run_all_tests<R: TestRunner>(
     .iter()
     .flat_map(|test_case| {
       let is_selected = selected_names.contains(test_case.name());
-      algorithms.iter().map(move |algorithm| (test_case, *algorithm, is_selected))
+      algorithms
+        .iter()
+        .map(move |algorithm| (test_case, *algorithm, is_selected))
     })
     .partition(|(_, _, is_selected)| !is_selected);
 
