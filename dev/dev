@@ -24,6 +24,7 @@ declare -A ALIASES=(
   ["Er"]="example-release"
   ["U"]="upgrade-deps"
   ["w"]="why"
+  ["L"]="list"
 )
 
 function main() {
@@ -153,6 +154,22 @@ function main() {
     ;;
   "why")
     nicely cargo -q tree -i -p ${ci_flag} "$@"
+    ;;
+  "list")
+    local filter="${1:-bin,example,test,bench}"
+    cargo metadata --format-version=1 --no-deps 2>/dev/null |
+      python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+kinds = set('${filter}'.split(','))
+targets = []
+for pkg in data['packages']:
+    for t in pkg['targets']:
+        if any(k in kinds for k in t['kind']):
+            targets.append((t['kind'][0], t['name']))
+for kind, name in sorted(targets):
+    print(f'{kind:<8} {name}')
+"
     ;;
   *)
     local commands_list
