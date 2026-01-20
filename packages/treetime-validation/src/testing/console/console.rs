@@ -148,6 +148,7 @@ impl ValidationConsole {
     println!("\n## Summary\n");
 
     Self::print_overall_statistics(summary);
+    Self::print_per_test_case_comparison(outcomes);
     Self::print_unified_metrics_table(summary, outcomes);
   }
 
@@ -168,6 +169,91 @@ impl ValidationConsole {
     println!("- Total algorithms: {total_algorithms}");
     println!("- Total execution time: {execution_time_total_ms:.1}ms");
     println!("- Assessment: {overall_assessment}\n");
+  }
+
+  /// Print per-test-case algorithm comparison table
+  fn print_per_test_case_comparison<T: TestCase>(outcomes: &[TestRunOutcome<T>]) {
+    let successes: Vec<_> = outcomes
+      .iter()
+      .filter_map(|outcome| match outcome {
+        TestRunOutcome::Success(result) => Some(result.as_ref()),
+        TestRunOutcome::Failure(_) => None,
+      })
+      .collect();
+
+    if successes.is_empty() {
+      return;
+    }
+
+    let algorithms: Vec<_> = successes
+      .iter()
+      .map(|r| r.algorithm.clone())
+      .sorted()
+      .dedup()
+      .collect_vec();
+
+    if algorithms.len() < 2 {
+      return;
+    }
+
+    let grouped_by_test_case: BTreeMap<_, Vec<_>> = successes
+      .into_iter()
+      .into_group_map_by(|result| result.test_case.name().to_owned())
+      .into_iter()
+      .collect();
+
+    println!("### Per-Test-Case Algorithm Comparison\n");
+
+    let test_case_col_width = grouped_by_test_case
+      .keys()
+      .map(|name| name.len())
+      .max()
+      .map_or(20, |w| w.max(20));
+    let algo_col_width = algorithms
+      .iter()
+      .map(|a| a.len())
+      .max()
+      .map_or(12, |w| w.max(12));
+
+    print!("| {:^test_case_col_width$} |", "Test Case");
+    for algo in &algorithms {
+      print!(" {algo:^algo_col_width$} |");
+    }
+    println!(" {:^12} |", "Best");
+
+    print!("|{:-^width$}|", "", width = test_case_col_width + 2);
+    for _ in &algorithms {
+      print!("{:-^width$}|", "", width = algo_col_width + 2);
+    }
+    println!("{:-^14}|", "");
+
+    for (test_case_name, results) in &grouped_by_test_case {
+      let results_by_algo: BTreeMap<_, _> = results.iter().map(|r| (r.algorithm.clone(), *r)).collect();
+
+      print!("| {test_case_name:<test_case_col_width$} |");
+
+      let mut best_algo = String::new();
+      let mut best_r2_error = f64::MAX;
+
+      for algo in &algorithms {
+        if let Some(result) = results_by_algo.get(algo) {
+          let r2 = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
+          let r2_error_ppm = (1.0 - r2) * 1_000_000.0;
+          print!(" {:>width$} |", float_to_significant_digits(r2_error_ppm, 3), width = algo_col_width);
+
+          if r2_error_ppm < best_r2_error {
+            best_r2_error = r2_error_ppm;
+            best_algo = algo.clone();
+          }
+        } else {
+          print!(" {:^width$} |", "N/A", width = algo_col_width);
+        }
+      }
+
+      println!(" {best_algo:^12} |");
+    }
+
+    println!("\n(Values shown: R^2 error in ppm - lower is better)\n");
   }
 
   /// Print comprehensive metrics table
