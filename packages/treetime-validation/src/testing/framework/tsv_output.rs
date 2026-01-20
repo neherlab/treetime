@@ -2,6 +2,8 @@ use crate::testing::framework::results::{TestResult, TestRunOutcome};
 use crate::testing::framework::test_case::TestCase;
 use csv::WriterBuilder;
 use eyre::Report;
+use itertools::Itertools;
+use std::collections::BTreeMap;
 use std::fs;
 use treetime_utils::make_error;
 
@@ -24,6 +26,9 @@ where
       write_convolution_results_tsv(result, &algorithm_dir)?;
     }
   }
+
+  write_comparative_summary_tsv(output_dir, outcomes)?;
+
   Ok(())
 }
 
@@ -108,6 +113,81 @@ where
       abs_error.to_string(),
       rel_error.to_string(),
     ])?;
+  }
+
+  writer.flush()?;
+  Ok(())
+}
+
+fn write_comparative_summary_tsv<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
+where
+  T: TestCase,
+{
+  let successes: Vec<_> = outcomes
+    .iter()
+    .filter_map(|outcome| match outcome {
+      TestRunOutcome::Success(result) => Some(result.as_ref()),
+      TestRunOutcome::Failure(_) => None,
+    })
+    .collect();
+
+  if successes.is_empty() {
+    return Ok(());
+  }
+
+  let algorithms: Vec<_> = successes
+    .iter()
+    .map(|r| r.algorithm.as_str())
+    .unique()
+    .sorted()
+    .collect();
+
+  let grouped_by_test_case: BTreeMap<&str, Vec<&TestResult<T>>> = successes
+    .iter()
+    .copied()
+    .into_group_map_by(|r| r.test_case.name())
+    .into_iter()
+    .collect();
+
+  fs::create_dir_all(output_dir)?;
+  let tsv_path = format!("{output_dir}/comparative_summary.tsv");
+
+  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
+
+  let mut headers = vec!["test_case".to_owned()];
+  for algo in &algorithms {
+    headers.push(format!("{algo}_time_ms"));
+    headers.push(format!("{algo}_r2"));
+    headers.push(format!("{algo}_rmse"));
+    headers.push(format!("{algo}_correlation"));
+    headers.push(format!("{algo}_mass_error"));
+  }
+  writer.write_record(&headers)?;
+
+  for (test_case_name, results) in &grouped_by_test_case {
+    let results_by_algo: BTreeMap<&str, &TestResult<T>> =
+      results.iter().map(|r| (r.algorithm.as_str(), *r)).collect();
+
+    let mut row = vec![(*test_case_name).to_owned()];
+
+    for algo in &algorithms {
+      if let Some(result) = results_by_algo.get(algo) {
+        let metrics = &result.metrics.aggregate.domain_agreement.quality_metrics;
+        row.push(result.execution_time_ms.to_string());
+        row.push(metrics.r_squared.to_string());
+        row.push(metrics.rmse.to_string());
+        row.push(metrics.correlation.to_string());
+        row.push(metrics.mass_error.to_string());
+      } else {
+        row.push(String::new());
+        row.push(String::new());
+        row.push(String::new());
+        row.push(String::new());
+        row.push(String::new());
+      }
+    }
+
+    writer.write_record(&row)?;
   }
 
   writer.flush()?;
