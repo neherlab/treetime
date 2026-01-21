@@ -58,12 +58,12 @@ impl ValidationConsole {
   /// Print progress table header
   pub fn print_progress_table_header() {
     println!(
-      "| {:^16} | {:^2} | {:^16} | {:^30} | {:^8} | {:^10} | {:^8} | {:^8} |",
-      "Progress", "S", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
+      "| {:^16} | S  | {:^25} | {:^30} | {:^8} | {:^10} | {:^8} | {:^9} |",
+      "Progress", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
     );
     println!(
-      "|{:-<18}|{:-^4}|{:-<18}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->10}|",
-      "", "", "", "", "", "", "", ""
+      "|{:-<18}|----|{:-<27}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->11}|",
+      "", "", "", "", "", "", ""
     );
   }
 
@@ -77,9 +77,8 @@ impl ValidationConsole {
     let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
     let progress = format!("[done: {completed_count}/{total_tests}]");
     println!(
-      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | ok | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
       progress,
-      "✅",
       format!("{}", result.algorithm),
       result.test_case.name(),
       elapsed_ms,
@@ -99,9 +98,8 @@ impl ValidationConsole {
   ) {
     let progress = format!("[done: {completed_count}/{total_tests}]");
     println!(
-      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | !! | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
       progress,
-      "❌",
       format!("{algorithm}"),
       test_case.name(),
       elapsed_ms,
@@ -114,9 +112,8 @@ impl ValidationConsole {
   /// Print skipped test row in progress table
   pub fn print_skipped_row<T: TestCase, A: Display>(test_case: &T, algorithm: A) {
     println!(
-      "| {:>16} | {:^1} | {:<16} | {:<30} | {:>8} | {:>10} | {:>8} | {:>8} |",
+      "| {:>16} | -- | {:<25} | {:<30} | {:>8} | {:>10} | {:>8} | {:>9} |",
       "skipped",
-      "💤",
       format!("{algorithm}"),
       test_case.name(),
       "-",
