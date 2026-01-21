@@ -160,7 +160,7 @@ pub struct PointwiseMultiply;
 
 impl MultiplyAlgo for PointwiseMultiply {
   fn name(&self) -> &'static str {
-    "naive-multiplication"
+    "pointwise"
   }
 
   fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
@@ -177,7 +177,7 @@ pub struct LogScaleMultiply;
 
 impl MultiplyAlgo for LogScaleMultiply {
   fn name(&self) -> &'static str {
-    "log-scale-multiplication"
+    "log-scale"
   }
 
   fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {
@@ -194,7 +194,7 @@ pub struct AggressiveMultiply;
 
 impl MultiplyAlgo for AggressiveMultiply {
   fn name(&self) -> &'static str {
-    "aggressive-multiplication"
+    "aggressive"
   }
 
   fn multiply(&self, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Array1<f64> {

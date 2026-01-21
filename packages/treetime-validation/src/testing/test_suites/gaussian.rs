@@ -15,7 +15,7 @@ impl ConvolutionTestSuite for GaussianTestSuite {
   type TestCase = GaussianTestCase;
 
   fn test_suite_name(&self) -> &'static str {
-    "gaussian"
+    "conv-gaussian-gaussian"
   }
 
   fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {

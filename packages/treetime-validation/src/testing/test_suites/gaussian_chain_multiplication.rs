@@ -17,7 +17,7 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
   type TestCase = GaussianChainTestCase;
 
   fn test_suite_name(&self) -> &'static str {
-    "gaussian-chain-multiplication"
+    "mult-gaussian-chain"
   }
 
   fn create_factors(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Vec<Array1<f64>>, Report> {

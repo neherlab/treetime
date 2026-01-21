@@ -23,11 +23,11 @@ use treetime_utils::make_error;
 pub enum TestSuiteName {
   All,
   #[default]
-  Gaussian,
-  Exponential,
-  GaussianExponential,
-  GaussianPairwiseMultiplication,
-  GaussianChainMultiplication,
+  ConvGaussianGaussian,
+  ConvExponentialExponential,
+  ConvGaussianExponential,
+  MultGaussianPairwise,
+  MultGaussianChain,
 }
 
 impl TestSuiteName {
@@ -36,11 +36,11 @@ impl TestSuiteName {
   }
 
   pub fn convolution_suites() -> Vec<Self> {
-    vec![Self::Gaussian, Self::Exponential, Self::GaussianExponential]
+    vec![Self::ConvGaussianGaussian, Self::ConvExponentialExponential, Self::ConvGaussianExponential]
   }
 
   pub fn multiplication_suites() -> Vec<Self> {
-    vec![Self::GaussianPairwiseMultiplication, Self::GaussianChainMultiplication]
+    vec![Self::MultGaussianPairwise, Self::MultGaussianChain]
   }
 
   pub fn expand(suites: &[Self]) -> Vec<Self> {
@@ -52,14 +52,11 @@ impl TestSuiteName {
   }
 
   pub fn is_convolution(&self) -> bool {
-    matches!(self, Self::Gaussian | Self::Exponential | Self::GaussianExponential)
+    matches!(self, Self::ConvGaussianGaussian | Self::ConvExponentialExponential | Self::ConvGaussianExponential)
   }
 
   pub fn is_multiplication(&self) -> bool {
-    matches!(
-      self,
-      Self::GaussianPairwiseMultiplication | Self::GaussianChainMultiplication
-    )
+    matches!(self, Self::MultGaussianPairwise | Self::MultGaussianChain)
   }
 
   /// Run tests for this suite.
@@ -68,13 +65,13 @@ impl TestSuiteName {
   pub fn run_tests(&self, args: &Args) -> Result<(), Report> {
     match self {
       Self::All => make_error!("Cannot run All meta-variant; use expand() first"),
-      Self::Gaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
-      Self::Exponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
-      Self::GaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
-      Self::GaussianPairwiseMultiplication => {
+      Self::ConvGaussianGaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
+      Self::ConvExponentialExponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
+      Self::ConvGaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
+      Self::MultGaussianPairwise => {
         run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args)
       },
-      Self::GaussianChainMultiplication => {
+      Self::MultGaussianChain => {
         run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args)
       },
     }

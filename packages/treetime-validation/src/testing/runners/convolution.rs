@@ -27,7 +27,7 @@ impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
   }
 
   fn get_algorithms(args: &Args) -> &[Self::Algorithm] {
-    &args.algorithms
+    &args.conv_algorithms
   }
 
   fn run_single_test(

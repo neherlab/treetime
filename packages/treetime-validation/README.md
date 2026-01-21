@@ -6,7 +6,7 @@ Validation framework for numerical convolution and multiplication algorithms, as
 
 - **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `ConvolutionTestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
 
-- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, naive-multiplication, log-scale-multiplication, aggressive-multiplication). Numerical results are verified against analytical solutions using **Metrics**
+- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, pointwise, log-scale, aggressive). Numerical results are verified against analytical solutions using **Metrics**
 
 - **Test Cases**: Individual test scenarios with specific parameters, grid configurations, and stress conditions, to evaluate numeric **Algorithm** performance (via `TestCase` trait)
 
@@ -46,26 +46,26 @@ cargo run --release --example validation_test -- --output-dir=tmp/validation-tes
 ./dev/docker/run ./dev/dev Er validation_test -- --output-dir=tmp/validation-test
 ```
 
-### Restrict algorithms
+### Restrict convolution algorithms
 
 Run all algorithms (default):
 
 ```bash
-cargo run --example validation_test -- --algorithms=all
+cargo run --example validation_test -- --conv-algorithms=all
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E validation_test -- --algorithms=all
+./dev/docker/run ./dev/dev E validation_test -- --conv-algorithms=all
 ```
 
 Run specific algorithms (comma-separated):
 
 ```bash
-cargo run --example validation_test -- --algorithms=riemann,ndarray-conv
+cargo run --example validation_test -- --conv-algorithms=riemann,ndarray-conv
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E validation_test -- --algorithms=riemann,ndarray-conv
+./dev/docker/run ./dev/dev E validation_test -- --conv-algorithms=riemann,ndarray-conv
 ```
 
 ### Restrict multiplication algorithms
@@ -73,11 +73,11 @@ cargo run --example validation_test -- --algorithms=riemann,ndarray-conv
 Run specific multiplication algorithms (comma-separated):
 
 ```bash
-cargo run --example validation_test -- --mult-algorithms=naive-multiplication,log-scale-multiplication
+cargo run --example validation_test -- --mult-algorithms=pointwise,log-scale
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E validation_test -- --mult-algorithms=naive-multiplication,log-scale-multiplication
+./dev/docker/run ./dev/dev E validation_test -- --mult-algorithms=pointwise,log-scale
 ```
 
 ### Restrict test suites
@@ -95,11 +95,11 @@ cargo run --example validation_test -- --test-suites=all
 Run specific test suites (comma-separated):
 
 ```bash
-cargo run --example validation_test -- --test-suites=gaussian,exponential
+cargo run --example validation_test -- --test-suites=conv-gaussian-gaussian,conv-exponential-exponential
 ```
 
 ```bash
-./dev/docker/run ./dev/dev E validation_test -- --test-suites=gaussian,exponential
+./dev/docker/run ./dev/dev E validation_test -- --test-suites=conv-gaussian-gaussian,conv-exponential-exponential
 ```
 
 ### Restrict test cases
@@ -153,13 +153,13 @@ cargo run --example validation_test -- --verbose
 Algorithm enums for CLI selection:
 
 - `ConvolutionAlgorithm` - Riemann, NdarrayConv, NdarrayConvFft
-- `MultiplicationAlgorithm` - NaiveMultiplication, LogScaleMultiplication, AggressiveMultiplication
+- `MultiplicationAlgorithm` - Pointwise, LogScale, Aggressive
 
 Actual implementations live in the `treetime-ops` crate.
 
 ### Testing Framework (`testing/`)
 
-- `test_suites/` - Test suite definitions (`gaussian`, `exponential`, `gaussian_multiplication`, etc.) implementing suite traits
+- `test_suites/` - Test suite definitions (`conv-gaussian-gaussian`, `conv-exponential-exponential`, `mult-gaussian-pairwise`, etc.) implementing suite traits
 - `metrics/` - Comprehensive error analysis with aggregate, pointwise, spatial, and distribution metrics
 - `framework/` - Core testing infrastructure with test cases, results, and summaries
 - `plots/` - Plot generation for visual analysis
@@ -212,7 +212,7 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
        type TestCase = LaplacianGaussianTestCase;
 
        fn test_suite_name(&self) -> &'static str {
-         "laplacian-gaussian"
+         "conv-laplacian-gaussian"
        }
 
        fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {
@@ -246,12 +246,12 @@ To add a new test suite (e.g. convolving Laplacian with Gaussian):
    - Add `pub mod laplacian_gaussian;`
 
 3. Edit `src/testing/test_suites/test_suites.rs`:
-   - Add `LaplacianGaussian` variant to `TestSuiteName` enum
+   - Add `ConvLaplacianGaussian` variant to `TestSuiteName` enum
 
    - Add match arm in `TestSuiteName::run_tests()`:
 
      ```rust
-     Self::LaplacianGaussian => run_convolution_tests_impl::<LaplacianGaussianTestSuite>(args)
+     Self::ConvLaplacianGaussian => run_convolution_tests_impl::<LaplacianGaussianTestSuite>(args)
      ```
 
    - Add import: `use crate::testing::test_suites::laplacian_gaussian::LaplacianGaussianTestSuite;`

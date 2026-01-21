@@ -16,7 +16,7 @@ impl ConvolutionTestSuite for ExponentialTestSuite {
   type TestCase = ExponentialTestCase;
 
   fn test_suite_name(&self) -> &'static str {
-    "exponential"
+    "conv-exponential-exponential"
   }
 
   fn create_f(&self, test_case: &Self::TestCase, grid: &Array1<f64>) -> Result<Array1<f64>, Report> {

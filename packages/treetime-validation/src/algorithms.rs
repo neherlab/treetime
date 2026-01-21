@@ -87,9 +87,9 @@ impl ConvolutionAlgorithm {
 #[clap(rename_all = "kebab-case")]
 pub enum MultiplicationAlgorithm {
   All,
-  NaiveMultiplication,
-  LogScaleMultiplication,
-  AggressiveMultiplication,
+  Pointwise,
+  LogScale,
+  Aggressive,
 }
 
 impl MultiplicationAlgorithm {
@@ -111,9 +111,9 @@ impl MultiplicationAlgorithm {
   pub fn instantiate(&self) -> Result<Box<dyn MultiplyAlgo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
-      Self::NaiveMultiplication => Ok(Box::new(PointwiseMultiply)),
-      Self::LogScaleMultiplication => Ok(Box::new(LogScaleMultiply)),
-      Self::AggressiveMultiplication => Ok(Box::new(AggressiveMultiply)),
+      Self::Pointwise => Ok(Box::new(PointwiseMultiply)),
+      Self::LogScale => Ok(Box::new(LogScaleMultiply)),
+      Self::Aggressive => Ok(Box::new(AggressiveMultiply)),
     }
   }
 }

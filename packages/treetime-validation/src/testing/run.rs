@@ -21,35 +21,35 @@ use serde::{Deserialize, Serialize};
   version
 )]
 pub struct Args {
-  #[arg(long, value_delimiter = ',', default_values_t = TestSuiteName::all())]
+  #[arg(long, value_delimiter = ',', default_values_t = TestSuiteName::all(), help_heading = "Test Selection")]
   pub test_suites: Vec<TestSuiteName>,
 
-  #[arg(long, default_value = "tmp/testing")]
-  pub output_dir: String,
-
-  #[arg(long, value_delimiter = ',', default_values_t = ConvolutionAlgorithm::all())]
-  pub algorithms: Vec<ConvolutionAlgorithm>,
-
-  #[arg(long, value_delimiter = ',', default_values_t = MultiplicationAlgorithm::all())]
-  pub mult_algorithms: Vec<MultiplicationAlgorithm>,
-
-  #[arg(long, default_value = "all")]
+  #[arg(long, default_value = "all", help_heading = "Test Selection")]
   pub test_cases: String,
 
-  #[arg(long, default_value_t = 0.5)]
+  #[arg(long, default_value_t = 0.5, help_heading = "Test Selection", help = "Run test cases with slowness <= this threshold (0.0-1.0)")]
   pub slowness: f64,
 
-  #[arg(long)]
+  #[arg(long, value_delimiter = ',', default_values_t = ConvolutionAlgorithm::all(), help_heading = "Algorithms")]
+  pub conv_algorithms: Vec<ConvolutionAlgorithm>,
+
+  #[arg(long, value_delimiter = ',', default_values_t = MultiplicationAlgorithm::all(), help_heading = "Algorithms")]
+  pub mult_algorithms: Vec<MultiplicationAlgorithm>,
+
+  #[arg(long, default_value = "tmp/testing", help_heading = "Output")]
+  pub output_dir: String,
+
+  #[arg(long, help_heading = "Output", help = "Show detailed output including per-test metrics")]
   pub verbose: bool,
 
-  #[arg(long)]
+  #[arg(long, help_heading = "Output", help = "List available test cases without running tests")]
   pub list_cases: bool,
 }
 
 pub fn run_validation_tests() -> Result<(), Report> {
   let mut args = Args::parse();
   args.test_suites = TestSuiteName::expand(&args.test_suites);
-  args.algorithms = ConvolutionAlgorithm::expand(&args.algorithms);
+  args.conv_algorithms = ConvolutionAlgorithm::expand(&args.conv_algorithms);
   args.mult_algorithms = MultiplicationAlgorithm::expand(&args.mult_algorithms);
   for suite_name in &args.test_suites {
     suite_name.run_tests(&args)?;
