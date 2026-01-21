@@ -12,13 +12,9 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fs;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
-
-const EXCELLENT_SUCCESS_RATE_THRESHOLD: f64 = 0.9;
-const GOOD_SUCCESS_RATE_THRESHOLD: f64 = 0.8;
 
 pub trait TestRunner: Send + Sync + Sized {
   type TestCase: TestCase;
@@ -51,17 +47,9 @@ pub trait TestRunner: Send + Sync + Sized {
 
   fn print_table_header();
 
-  fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize);
+  fn print_success_row(result: &TestResult<Self::TestCase>);
 
-  fn print_failure_row(
-    test_case: &Self::TestCase,
-    algorithm: Self::Algorithm,
-    elapsed_ms: f64,
-    completed_count: usize,
-    total_tests: usize,
-  );
-
-  fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm);
+  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64);
 
   fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report>;
 }
@@ -109,9 +97,6 @@ where
 
   save_results_json(&output_dir, &outcomes, &summary)?;
 
-  println!("{test_suite_name} test framework completed successfully!");
-  println!("Check {output_dir} for detailed results.\n\n\n");
-
   Ok(())
 }
 
@@ -156,33 +141,17 @@ fn run_all_tests<R: TestRunner>(
   algorithms: &[R::Algorithm],
   verbose: bool,
 ) -> Result<Vec<TestRunOutcome<R::TestCase>>, Report> {
-  let total_tests = selected_test_cases.len() * algorithms.len();
-  let completed = AtomicUsize::new(0);
-
   R::print_header(R::test_suite_name(suite), selected_test_cases.len(), algorithms.len());
   R::print_table_header();
 
-  let selected_names: BTreeSet<_> = selected_test_cases.iter().map(|tc| tc.name()).collect();
-
-  let (skipped, selected): (Vec<_>, Vec<_>) = all_test_cases
+  let selected: Vec<_> = selected_test_cases
     .iter()
-    .flat_map(|test_case| {
-      let is_selected = selected_names.contains(test_case.name());
-      algorithms
-        .iter()
-        .map(move |algorithm| (test_case, *algorithm, is_selected))
-    })
-    .partition(|(_, _, is_selected)| !is_selected);
-
-  for (test_case, algorithm, _) in &skipped {
-    R::print_skipped_row(test_case, *algorithm);
-  }
+    .flat_map(|test_case| algorithms.iter().map(move |algorithm| (test_case, *algorithm)))
+    .collect();
 
   let outcomes = selected
     .into_par_iter()
-    .map(|(test_case, algorithm, _)| {
-      execute_single_test::<R>(suite, test_case, algorithm, &completed, total_tests, verbose)
-    })
+    .map(|(test_case, algorithm)| execute_single_test::<R>(suite, test_case, algorithm, verbose))
     .collect::<Vec<_>>();
 
   let failures = collect_failures(&outcomes);
@@ -195,25 +164,21 @@ fn execute_single_test<R: TestRunner>(
   suite: &R::Suite,
   test_case: &R::TestCase,
   algorithm: R::Algorithm,
-  completed: &AtomicUsize,
-  total_tests: usize,
   verbose: bool,
 ) -> TestRunOutcome<R::TestCase> {
   let start_time = Instant::now();
 
   match R::run_single_test(suite, test_case, algorithm) {
     Ok(result) => {
-      let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
-      R::print_success_row(&result, completed_count, total_tests);
+      R::print_success_row(&result);
       if verbose {
         ValidationConsole::print_verbose_details(&result);
       }
       TestRunOutcome::Success(Box::new(result))
     },
     Err(error) => {
-      let completed_count = completed.fetch_add(1, Ordering::Relaxed) + 1;
       let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
-      R::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
+      R::print_failure_row(test_case, algorithm, elapsed_ms);
       TestRunOutcome::Failure(TestFailure {
         algorithm: algorithm.to_string(),
         test_case: test_case.clone(),
@@ -263,7 +228,6 @@ pub fn generate_summary_generic<T: TestCase, A: Display>(
   let failures = collect_failures(outcomes);
   let total_execution_time = calculate_total_execution_time(outcomes);
   let algorithm_summaries = build_algorithm_summaries_generic(algorithms, &successes, &failures);
-  let overall_assessment = assess_overall_performance(&algorithm_summaries);
 
   TestSummary {
     test_suite_name: test_suite_name.to_owned(),
@@ -273,7 +237,6 @@ pub fn generate_summary_generic<T: TestCase, A: Display>(
     total_algorithms: algorithms.len(),
     execution_time_total_ms: total_execution_time,
     algorithm_summaries,
-    overall_assessment,
   }
 }
 
@@ -309,22 +272,6 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
     .collect()
 }
 
-fn assess_overall_performance(algorithm_summaries: &[AlgorithmSummary]) -> String {
-  if algorithm_summaries
-    .iter()
-    .all(|summary| summary.success_rate > EXCELLENT_SUCCESS_RATE_THRESHOLD)
-  {
-    "Excellent - All algorithms perform well".to_owned()
-  } else if algorithm_summaries
-    .iter()
-    .any(|summary| summary.success_rate > GOOD_SUCCESS_RATE_THRESHOLD)
-  {
-    "Good - Some algorithms perform well".to_owned()
-  } else {
-    "Poor - Significant issues detected".to_owned()
-  }
-}
-
 #[derive(Serialize)]
 struct ResultsJson<'a, T: TestCase> {
   summary: &'a TestSummary,
@@ -336,10 +283,7 @@ where
   T: Serialize + TestCase,
 {
   fs::create_dir_all(output_dir)?;
-
   let results = ResultsJson { summary, outcomes };
   let json_path = format!("{output_dir}/{}_results.json", summary.test_suite_name);
-  json_write_file(&json_path, &results, JsonPretty(true))?;
-  println!("Saved detailed JSON results to: {json_path}");
-  Ok(())
+  json_write_file(&json_path, &results, JsonPretty(true))
 }

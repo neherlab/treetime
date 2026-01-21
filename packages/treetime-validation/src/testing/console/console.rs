@@ -58,28 +58,26 @@ impl ValidationConsole {
   /// Print progress table header
   pub fn print_progress_table_header() {
     println!(
-      "| {:^16} | S  | {:^25} | {:^30} | {:^8} | {:^10} | {:^8} | {:^9} |",
-      "Progress", "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
+      "| S  | {:^25} | {:^30} | {:^8} | {:^10} | {:^8} | {:^9} |",
+      "Algorithm", "Test Case", "Time, ms", "R² err ppm", "RMSE", "Corr err"
     );
     println!(
-      "|{:-<18}|----|{:-<27}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->11}|",
-      "", "", "", "", "", "", ""
+      "|----|{:-<27}|{:-<32}|{:->10}|{:->12}|{:->10}|{:->11}|",
+      "", "", "", "", "", ""
     );
   }
 
   /// Print success row in progress table
-  pub fn print_success_row<T: TestCase>(result: &TestResult<T>, completed_count: usize, total_tests: usize) {
+  pub fn print_success_row<T: TestCase>(result: &TestResult<T>) {
     let elapsed_ms = result.execution_time_ms;
     let r_squared = result.metrics.aggregate.domain_agreement.quality_metrics.r_squared;
     let r2_error_ppm = (1.0 - r_squared) * 1_000_000.0;
     let rmse = result.metrics.aggregate.domain_agreement.quality_metrics.rmse;
     let correlation = result.metrics.aggregate.domain_agreement.quality_metrics.correlation;
     let correlation_error_ppm = (1.0 - correlation) * 1_000_000.0;
-    let progress = format!("[done: {completed_count}/{total_tests}]");
     println!(
-      "| {:>16} | ok | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
-      progress,
-      format!("{}", result.algorithm),
+      "| ok | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
+      result.algorithm,
       result.test_case.name(),
       elapsed_ms,
       float_to_significant_digits(r2_error_ppm, 3),
@@ -89,37 +87,15 @@ impl ValidationConsole {
   }
 
   /// Print failure row in progress table
-  pub fn print_failure_row<T: TestCase, A: Display>(
-    test_case: &T,
-    algorithm: A,
-    elapsed_ms: f64,
-    completed_count: usize,
-    total_tests: usize,
-  ) {
-    let progress = format!("[done: {completed_count}/{total_tests}]");
+  pub fn print_failure_row<T: TestCase, A: Display>(test_case: &T, algorithm: A, elapsed_ms: f64) {
     println!(
-      "| {:>16} | !! | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
-      progress,
+      "| !! | {:<25} | {:<30} | {:>8.1} | {:>10} | {:>8} | {:>9} |",
       format!("{algorithm}"),
       test_case.name(),
       elapsed_ms,
       "FAILED",
       "FAILED",
       "FAILED"
-    );
-  }
-
-  /// Print skipped test row in progress table
-  pub fn print_skipped_row<T: TestCase, A: Display>(test_case: &T, algorithm: A) {
-    println!(
-      "| {:>16} | -- | {:<25} | {:<30} | {:>8} | {:>10} | {:>8} | {:>9} |",
-      "skipped",
-      format!("{algorithm}"),
-      test_case.name(),
-      "-",
-      "-",
-      "-",
-      "-"
     );
   }
 
@@ -351,7 +327,6 @@ impl ValidationConsole {
     let total_failures = summary.total_failures;
     let total_algorithms = summary.total_algorithms;
     let execution_time_total_ms = summary.execution_time_total_ms;
-    let overall_assessment = &summary.overall_assessment;
     let test_suite = &summary.test_suite_name;
 
     println!("- Test suite: {test_suite}");
@@ -359,8 +334,7 @@ impl ValidationConsole {
     println!("- Successful runs: {total_successes}");
     println!("- Failed runs: {total_failures}");
     println!("- Total algorithms: {total_algorithms}");
-    println!("- Total execution time: {execution_time_total_ms:.1}ms");
-    println!("- Assessment: {overall_assessment}\n");
+    println!("- Total execution time: {execution_time_total_ms:.1}ms\n");
   }
 
   /// Print per-test-case algorithm comparison table
@@ -407,21 +381,18 @@ impl ValidationConsole {
     for algo in &algorithms {
       print!(" {algo:^algo_col_width$} |");
     }
-    println!(" {:^12} |", "Best");
+    println!();
 
     print!("|{:-^width$}|", "", width = test_case_col_width + 2);
     for _ in &algorithms {
       print!("{:-^width$}|", "", width = algo_col_width + 2);
     }
-    println!("{:-^14}|", "");
+    println!();
 
     for (test_case_name, results) in &grouped_by_test_case {
       let results_by_algo: BTreeMap<_, _> = results.iter().map(|r| (r.algorithm.clone(), *r)).collect();
 
       print!("| {test_case_name:<test_case_col_width$} |");
-
-      let mut best_algo = String::new();
-      let mut best_r2_error = f64::MAX;
 
       for algo in &algorithms {
         if let Some(result) = results_by_algo.get(algo) {
@@ -432,17 +403,12 @@ impl ValidationConsole {
             float_to_significant_digits(r2_error_ppm, 3),
             width = algo_col_width
           );
-
-          if r2_error_ppm < best_r2_error {
-            best_r2_error = r2_error_ppm;
-            best_algo = algo.clone();
-          }
         } else {
           print!(" {:^width$} |", "N/A", width = algo_col_width);
         }
       }
 
-      println!(" {best_algo:^12} |");
+      println!();
     }
 
     println!("\n(Values shown: R^2 error in ppm - lower is better)\n");

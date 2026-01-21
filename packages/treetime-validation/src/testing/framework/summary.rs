@@ -16,7 +16,6 @@ pub struct TestSummary {
   pub total_algorithms: usize,
   pub execution_time_total_ms: f64,
   pub algorithm_summaries: Vec<AlgorithmSummary>,
-  pub overall_assessment: String,
 }
 
 /// Summary for a specific algorithm across all test cases

@@ -71,22 +71,12 @@ impl<S: MultiplicationTestSuite + Default> TestRunner for MultiplicationRunner<S
     ValidationConsole::print_progress_table_header();
   }
 
-  fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize) {
-    ValidationConsole::print_success_row(result, completed_count, total_tests);
+  fn print_success_row(result: &TestResult<Self::TestCase>) {
+    ValidationConsole::print_success_row(result);
   }
 
-  fn print_failure_row(
-    test_case: &Self::TestCase,
-    algorithm: Self::Algorithm,
-    elapsed_ms: f64,
-    completed_count: usize,
-    total_tests: usize,
-  ) {
-    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
-  }
-
-  fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm) {
-    ValidationConsole::print_skipped_row(test_case, algorithm);
+  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
   }
 
   fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
@@ -151,22 +141,12 @@ impl<S: ChainMultiplicationTestSuite + Default> TestRunner for ChainMultiplicati
     ValidationConsole::print_progress_table_header();
   }
 
-  fn print_success_row(result: &TestResult<Self::TestCase>, completed_count: usize, total_tests: usize) {
-    ValidationConsole::print_success_row(result, completed_count, total_tests);
+  fn print_success_row(result: &TestResult<Self::TestCase>) {
+    ValidationConsole::print_success_row(result);
   }
 
-  fn print_failure_row(
-    test_case: &Self::TestCase,
-    algorithm: Self::Algorithm,
-    elapsed_ms: f64,
-    completed_count: usize,
-    total_tests: usize,
-  ) {
-    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms, completed_count, total_tests);
-  }
-
-  fn print_skipped_row(test_case: &Self::TestCase, algorithm: Self::Algorithm) {
-    ValidationConsole::print_skipped_row(test_case, algorithm);
+  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
   }
 
   fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
