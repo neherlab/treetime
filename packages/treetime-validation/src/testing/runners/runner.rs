@@ -43,7 +43,7 @@ pub trait TestRunner: Send + Sync + Sized {
     output_dir: &str,
   );
 
-  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize);
+  fn print_header(test_cases_count: usize, algorithms_count: usize);
 
   fn print_table_header();
 
@@ -141,7 +141,7 @@ fn run_all_tests<R: TestRunner>(
   algorithms: &[R::Algorithm],
   verbose: bool,
 ) -> Result<Vec<TestRunOutcome<R::TestCase>>, Report> {
-  R::print_header(R::test_suite_name(suite), selected_test_cases.len(), algorithms.len());
+  R::print_header(selected_test_cases.len(), algorithms.len());
   R::print_table_header();
 
   let selected: Vec<_> = selected_test_cases

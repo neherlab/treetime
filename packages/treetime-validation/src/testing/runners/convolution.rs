@@ -60,8 +60,8 @@ impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
     );
   }
 
-  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    ValidationConsole::print_header(test_suite_name, test_cases_count, algorithms_count);
+  fn print_header(test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_cases_count, algorithms_count);
   }
 
   fn print_table_header() {

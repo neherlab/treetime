@@ -63,8 +63,8 @@ impl<S: MultiplicationTestSuite + Default> TestRunner for MultiplicationRunner<S
     );
   }
 
-  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    ValidationConsole::print_header(test_suite_name, test_cases_count, algorithms_count);
+  fn print_header(test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_cases_count, algorithms_count);
   }
 
   fn print_table_header() {
@@ -133,8 +133,8 @@ impl<S: ChainMultiplicationTestSuite + Default> TestRunner for ChainMultiplicati
     );
   }
 
-  fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
-    ValidationConsole::print_header(test_suite_name, test_cases_count, algorithms_count);
+  fn print_header(test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_cases_count, algorithms_count);
   }
 
   fn print_table_header() {

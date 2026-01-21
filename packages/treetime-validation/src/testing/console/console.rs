@@ -26,7 +26,7 @@ impl ValidationConsole {
     slowness_threshold: f64,
     output_dir: &str,
   ) {
-    println!("# {} Test\n", test_suite_name.to_uppercase());
+    println!("# {}\n", test_suite_name.to_uppercase());
     println!("## Configuration\n");
     println!("- Test suite: {test_suite_name}");
     println!(
@@ -49,9 +49,9 @@ impl ValidationConsole {
   }
 
   /// Print test framework header
-  pub fn print_header(test_suite_name: &str, test_cases_count: usize, algorithms_count: usize) {
+  pub fn print_header(test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
-    println!("## {test_suite_name} Test Execution\n");
+    println!("## Execution\n");
     println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
   }
 
@@ -298,7 +298,7 @@ impl ValidationConsole {
       return Ok(());
     }
 
-    println!("\n\n## Errors Encountered\n");
+    println!("\n\n## Errors\n");
     for failure in failures {
       let test_case_json = json_write_str(&failure.test_case, JsonPretty(true))?;
       println!("❌ **ERROR**: {} + {}\n", failure.test_case.name(), failure.algorithm);
@@ -313,7 +313,7 @@ impl ValidationConsole {
 
   /// Print comprehensive summary to console
   pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
-    println!("\n## Summary\n");
+    println!("\n## Results\n");
 
     Self::print_overall_statistics(summary);
     Self::print_per_test_case_comparison(outcomes);
@@ -368,7 +368,7 @@ impl ValidationConsole {
       .into_iter()
       .collect();
 
-    println!("### Per-Test-Case Algorithm Comparison\n");
+    println!("### By Test Case\n");
 
     let test_case_col_width = grouped_by_test_case
       .keys()
@@ -428,7 +428,7 @@ impl ValidationConsole {
       return;
     }
 
-    println!("### Metrics by Algorithm\n");
+    println!("### By Algorithm\n");
 
     let grouped_by_algorithm: BTreeMap<_, _> = successes
       .into_iter()
