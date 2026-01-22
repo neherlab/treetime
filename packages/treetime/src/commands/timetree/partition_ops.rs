@@ -1,7 +1,6 @@
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
 use crate::graph::node::{GraphNode, Named};
-use crate::representation::graph_ancestral::{EdgeAncestral, NodeAncestral};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
 use eyre::Report;
@@ -19,13 +18,18 @@ where
 
 /// Combined trait for partitions that support both marginal and timetree operations
 /// This allows trait objects to be used for both ancestral reconstruction and timetree inference
-pub trait PartitionTimetreeAll:
-  PartitionMarginalOps<NodeAncestral, EdgeAncestral> + PartitionTimetreeOps<NodeAncestral, EdgeAncestral> + HasLogLh
+pub trait PartitionTimetreeAll<N, E>: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
 {
 }
 
 /// Blanket implementation: any type implementing all three traits automatically implements the combined trait
-impl<T> PartitionTimetreeAll for T where
-  T: PartitionMarginalOps<NodeAncestral, EdgeAncestral> + PartitionTimetreeOps<NodeAncestral, EdgeAncestral> + HasLogLh
+impl<T, N, E> PartitionTimetreeAll<N, E> for T
+where
+  T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh,
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
 {
 }

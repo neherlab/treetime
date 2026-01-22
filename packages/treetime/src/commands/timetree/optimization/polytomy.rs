@@ -1,6 +1,7 @@
+use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
-use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
+use crate::representation::partition_timetree::GraphTimetree;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -12,7 +13,7 @@ use std::sync::Arc;
 /// How: Greedy optimization of likelihood gain from inserting internal nodes.
 pub fn resolve_polytomies(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
 ) -> Result<usize, Report> {
   todo!(
     "For each polytomy: test pairwise mergers, choose highest likelihood gain. Returns count of resolved polytomies."

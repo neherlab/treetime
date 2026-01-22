@@ -29,7 +29,7 @@ use treetime::io::dates_csv::{DatesMap, read_dates};
 use treetime::io::fasta::{FastaRecord, read_many_fasta};
 use treetime::io::nwk::nwk_read_str;
 use treetime::o;
-use treetime::representation::graph_ancestral::GraphAncestral;
+use treetime::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use treetime::representation::partition_marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use treetime_io::json::{JsonPretty, json_write_file};
@@ -356,7 +356,7 @@ fn run_marginal_sparse_test(args: &Args) -> Result<TestResult, Report> {
   compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &ALN)?;
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
-  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll>>> = vec![sparse_partition];
+  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>> = vec![sparse_partition];
 
   run_marginal(&graph, &partitions, Some(&ALN))?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
@@ -408,7 +408,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
     edges: btreemap! {},
   }));
 
-  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll>>> = vec![dense_partition];
+  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>> = vec![dense_partition];
 
   run_marginal(&graph, &partitions, Some(&ALN))?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;

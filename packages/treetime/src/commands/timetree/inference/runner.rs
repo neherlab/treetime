@@ -9,7 +9,7 @@ use crate::commands::{
 };
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
@@ -19,7 +19,7 @@ pub const BRANCH_GRID_SIZE: usize = 200;
 
 pub fn run_timetree(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
   clock_model: &ClockModel,
   coalescent_tc: Option<f64>,
 ) -> Result<(), Report> {
@@ -59,7 +59,7 @@ pub fn run_timetree(
 
 fn compute_branch_distributions_marginal_mode(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
   clock_rate: f64,
 ) -> Result<(), Report> {
   // In input branch mode, partitions exist but have no edge data
@@ -107,7 +107,7 @@ fn compute_branch_distributions_marginal_mode(
   Ok(())
 }
 
-fn calculate_one_mutation(partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>]) -> f64 {
+fn calculate_one_mutation(partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>]) -> f64 {
   let total_length: usize = partitions
     .iter()
     .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
@@ -116,7 +116,7 @@ fn calculate_one_mutation(partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>]) 
 }
 
 fn collect_contributions(
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll>>],
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
   edge_key: GraphEdgeKey,
 ) -> Result<Vec<OptimizationContribution>, Report> {
   partitions

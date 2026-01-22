@@ -10,7 +10,7 @@ use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::make_error;
 use crate::make_report;
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -69,7 +69,7 @@ pub fn initialize_partitions(
   graph: &GraphAncestral,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
-) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>, Report> {
+) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>>, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
   let length = if let Some(aln_data) = aln {
     get_common_length(aln_data)?
@@ -93,10 +93,10 @@ pub fn initialize_partitions(
 
     crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
 
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = sparse_partition;
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>> = sparse_partition;
     Ok(vec![partition])
   } else {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll>> = Arc::new(RwLock::new(PartitionMarginalDense {
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>> = Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr: jc69(JC69Params::default())?,
       alphabet,

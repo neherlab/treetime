@@ -1,6 +1,7 @@
+use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
-use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
+use crate::representation::partition_timetree::GraphTimetree;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -31,7 +32,7 @@ pub fn count_sequence_changes(
 /// How: Extract reconstructed sequences from all internal nodes.
 pub fn capture_ancestral_states(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
 ) -> AncestralStateSnapshot {
   // TODO: Extract ancestral sequences from partition node data
   // Map node keys to their current sequence states

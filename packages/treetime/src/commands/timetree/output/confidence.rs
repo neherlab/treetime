@@ -1,7 +1,8 @@
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
-use crate::representation::partition_timetree::{GraphTimetree, PartitionTreetimeMarginalOps};
+use crate::representation::partition_timetree::GraphTimetree;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::path::Path;
@@ -14,7 +15,7 @@ use std::sync::Arc;
 /// How: Re-run timetree with rate ± std_dev, compare resulting node times.
 pub fn calc_rate_susceptibility(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   _clock_model: &ClockModel,
 ) -> Result<(), Report> {
   todo!("Run timetree with rate±σ, store alternative time estimates")
@@ -27,7 +28,7 @@ pub fn calc_rate_susceptibility(
 /// How: Compute HPD (highest posterior density) or quantiles from marginal distributions.
 pub fn extract_confidence_intervals(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
 ) -> Result<(), Report> {
   todo!("For each node: compute 95% HPD interval from marginal_pos_LH distribution")
 }
@@ -39,7 +40,7 @@ pub fn extract_confidence_intervals(
 /// How: TSV file with node_name, lower_bound, median, upper_bound.
 pub fn write_confidence_intervals(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTreetimeMarginalOps<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   _out_base: &Path,
 ) -> Result<(), Report> {
   todo!("Write confidence intervals to TSV file")
