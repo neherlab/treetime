@@ -1,3 +1,4 @@
+use crate::commands::timetree::partition_ops::PartitionTimetreeOps;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
@@ -5,7 +6,6 @@ use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_marginal::PartitionMarginalOps;
-use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -27,16 +27,4 @@ where
   N: GraphNode + Named,
   E: GraphEdge + Weighted,
 {
-}
-
-pub trait PartitionTimetree {}
-
-pub trait PartitionTimetreeOps<N, E>: PartitionTimetree + Send + Sync
-where
-  N: GraphNode + Named,
-  E: GraphEdge + Weighted,
-{
-  fn initialize_nodes(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>;
-
-  fn get_sequence_length(&self) -> Option<usize>;
 }

@@ -1,4 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::optimize::optimize_unified::OptimizationContribution;
+use crate::commands::timetree::partition_ops::PartitionTimetreeOps;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdgeKey;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
@@ -9,7 +11,7 @@ use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::partition_timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeOps};
+use crate::representation::partition_timetree::GraphTimetree;
 use crate::representation::seq::Seq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -39,22 +41,9 @@ pub struct PartitionTimetreeSparse {
   pub edges: BTreeMap<GraphEdgeKey, EdgeTimetreeSparse>,
 }
 
-impl PartitionTimetree for PartitionTimetreeSparse {}
-
 impl PartitionTimetreeOps<NodeTimetree, EdgeTimetree> for PartitionTimetreeSparse {
-  fn initialize_nodes(&mut self, graph: &GraphTimetree) -> Result<(), Report> {
-    for node_ref in graph.get_nodes() {
-      let node_key = node_ref.read_arc().key();
-      self.nodes.entry(node_key).or_insert_with(|| NodeTimetreeSparse {
-        msg_from_parent: None,
-        msg_from_children: None,
-      });
-    }
-    Ok(())
-  }
-
-  fn get_sequence_length(&self) -> Option<usize> {
-    self.sequence_length
+  fn create_edge_contribution(&self, _edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+    todo!("PartitionTimetreeSparse::create_edge_contribution not yet implemented")
   }
 }
 

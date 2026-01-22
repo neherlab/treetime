@@ -40,7 +40,9 @@ impl HasLogLh for PartitionMarginalDense {
 
 impl PartitionMarginal for PartitionMarginalDense {}
 
-impl crate::commands::timetree::partition_ops::PartitionTimetreeOps for PartitionMarginalDense {
+impl crate::commands::timetree::partition_ops::PartitionTimetreeOps<NodeAncestral, EdgeAncestral>
+  for PartitionMarginalDense
+{
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,

@@ -74,7 +74,9 @@ impl HasLogLh for PartitionMarginalSparse {
 
 impl PartitionMarginal for PartitionMarginalSparse {}
 
-impl crate::commands::timetree::partition_ops::PartitionTimetreeOps for PartitionMarginalSparse {
+impl crate::commands::timetree::partition_ops::PartitionTimetreeOps<NodeAncestral, EdgeAncestral>
+  for PartitionMarginalSparse
+{
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,
