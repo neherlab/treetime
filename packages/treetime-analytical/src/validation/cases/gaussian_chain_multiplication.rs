@@ -202,5 +202,77 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
     input_grid_n_points: 201,
   });
 
+  // Tiny Amplitude Chain - at threshold
+  // amplitude=0.01, 50 factors: max ~ 0.01^50 = 1e-100 (at UNDERFLOW_THRESHOLD)
+  cases.push(GaussianChainMultiplicationTestCase {
+    name: "tiny_amplitude_chain",
+    description: "50 Gaussians with amplitude=0.01 pushing max to ~1e-100 threshold.",
+    stress_type: "threshold underflow",
+    analytical_caution: "product reaches UNDERFLOW_THRESHOLD boundary",
+    slowness: 0.6,
+    factors: identical(50, 0.0, 1.0, 0.01),
+    input_grid_domain: (-5.0, 5.0),
+    input_grid_n_points: 201,
+  });
+
+  // Small Amplitude Long Chain - below threshold
+  // amplitude=0.1, 120 factors: max ~ 0.1^120 = 1e-120 (below threshold)
+  cases.push(GaussianChainMultiplicationTestCase {
+    name: "small_amplitude_long_chain",
+    description: "120 Gaussians with amplitude=0.1 pushing max below 1e-100 threshold.",
+    stress_type: "severe underflow",
+    analytical_caution: "product well below UNDERFLOW_THRESHOLD",
+    slowness: 0.85,
+    factors: identical(120, 0.0, 1.0, 0.1),
+    input_grid_domain: (-5.0, 5.0),
+    input_grid_n_points: 201,
+  });
+
+  // Very Small Amplitude Chain - severe stress
+  // amplitude=0.001, 40 factors: max ~ 0.001^40 = 1e-120 (severe underflow)
+  cases.push(GaussianChainMultiplicationTestCase {
+    name: "very_small_amplitude_chain",
+    description: "40 Gaussians with amplitude=0.001 for severe underflow stress.",
+    stress_type: "extreme underflow",
+    analytical_caution: "requires robust log-scale handling",
+    slowness: 0.5,
+    factors: identical(40, 0.0, 1.0, 0.001),
+    input_grid_domain: (-5.0, 5.0),
+    input_grid_n_points: 201,
+  });
+
+  // Mixed Small Amplitudes - non-uniform distribution
+  cases.push(GaussianChainMultiplicationTestCase {
+    name: "mixed_small_amplitudes",
+    description: "Chain with varied small amplitudes testing non-uniform underflow.",
+    stress_type: "mixed underflow",
+    analytical_caution: "non-uniform amplitude distribution",
+    slowness: 0.55,
+    factors: vec![
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.01 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.001 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.01 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.001 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.01 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.001 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.01 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.001 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.01 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.1 },
+      GaussianParams { mu: 0.0, sigma: 1.0, amplitude: 0.001 },
+    ],
+    input_grid_domain: (-5.0, 5.0),
+    input_grid_n_points: 201,
+  });
+
   cases
 }

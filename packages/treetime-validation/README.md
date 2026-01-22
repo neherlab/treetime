@@ -2,17 +2,89 @@
 
 Validation framework for numerical convolution and multiplication algorithms, assessing correctness, accuracy and runtime performance.
 
+## Goals
+
+Validate numerical convolution and multiplication algorithms used in treetime's timetree inference. These operations combine probability distributions during message passing on phylogenetic trees:
+
+- Convolution: Propagates time distributions along branches (child time + branch length)
+- Multiplication: Combines constraints at nodes (intersection of probability beliefs)
+
+The framework measures how closely discrete numerical results match analytical (continuous) ground truth across varied function pairs, grid configurations, and stress conditions.
+
+### What the framework validates
+
+1. Correctness: Numerical algorithms produce mathematically correct results
+2. Accuracy: Discretization error is within acceptable bounds for production use
+3. Performance: Execution time comparison across algorithm variants
+4. Robustness: Behavior under stress conditions (coarse grids, tight truncation, extreme parameters)
+
+### Interpreting results
+
+Convolution: All convolution algorithms (Riemann, NdarrayConv, NdarrayConvFft) compute the same discrete convolution sum. They produce identical accuracy metrics because they implement the same mathematical operation - differences appear only in execution time and floating-point rounding (typically 1e-15 level). Accuracy variation across test cases reflects discretization error (grid resolution, domain coverage), not algorithm quality.
+
+Multiplication: Pairwise multiplication algorithms use identical code paths (simple element-wise product). Differences emerge only in chain multiplication (`multiply_many`) where normalization strategies differ:
+- Pointwise: No intermediate normalization - can underflow to zero
+- LogScale: Normalizes only when max falls below 1e-100
+- Aggressive: Normalizes after every multiplication step
+
+## Challenges
+
+### Multiplication stress conditions
+
+Underflow:
+- Many small probability factors (deep trees, many constraints)
+- Tail regions with values approaching machine epsilon
+- Coalescent contributions with very small survival probabilities
+
+Dynamic range:
+- Peak values ~1.0 alongside tail values ~1e-300
+- Precision loss in small values when operating with large ones
+- Log-scale representation helps but requires conversion overhead
+
+Accumulation:
+- Rounding errors compound over chain length
+- Normalization frequency affects accumulated error
+- Order of operations can affect final precision
+
+### Convolution stress conditions
+
+Discretization:
+- Coarse grids miss fine structure
+- Grid spacing must resolve narrowest distribution
+- Step size affects integral approximation accuracy
+
+Domain truncation:
+- Cutting off distribution tails loses probability mass
+- Tight domains cause boundary artifacts
+- Wide distributions need larger domains
+
+Scale mismatch:
+- Convolving narrow (delta-like) with wide distributions
+- Very different sigma values stress grid requirements
+- Result domain is sum of input domains
+
+Translation:
+- Large shifts test domain coverage
+- Sub-grid shifts affect interpolation accuracy
+- Negative shifts (backward pass) vs positive shifts (forward pass)
+
+Tail precision:
+- Small tail contributions must accumulate correctly
+- Floating-point addition of many tiny values
+- Tail region errors often larger than peak region
+
+Grid alignment:
+- Input grids with different spacing require resampling
+- Resampling introduces interpolation error
+- FFT requires uniform grid spacing
+
 ## Main concepts
 
-- **Test Suites**: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `ConvolutionTestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
-
-- **Algorithms**: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, pointwise, log-scale, aggressive). Numerical results are verified against analytical solutions using **Metrics**
-
-- **Test Cases**: Individual test scenarios with specific parameters, grid configurations, and stress conditions, to evaluate numeric **Algorithm** performance (via `TestCase` trait)
-
-- **Metrics**: aggregate (overall quality), pointwise (per-grid-point), spatial (regional patterns), distribution (statistical properties) measures for comparing numerical and analytical results
-
-- **Runner**: Orchestrates parallel test execution, filtering, progress tracking, result collection, and reporting (console, plots, json)
+- Test Suites: Define analytical function pairs to convolve or multiply (e.g. Gaussian \* Exponential) and their analytical solution (via `ConvolutionTestSuite`, `MultiplicationTestSuite`, `ChainMultiplicationTestSuite` traits)
+- Algorithms: Numerical convolution and multiplication implementations (riemann, ndarray-conv, ndarray-conv-fft, pointwise, log-scale, aggressive). Numerical results are verified against analytical solutions using Metrics
+- Test Cases: Individual test scenarios with specific parameters, grid configurations, and stress conditions, to evaluate numeric Algorithm performance (via `TestCase` trait)
+- Metrics: aggregate (overall quality), pointwise (per-grid-point), spatial (regional patterns), distribution (statistical properties) measures for comparing numerical and analytical results
+- Runner: Orchestrates parallel test execution, filtering, progress tracking, result collection, and reporting (console, plots, json)
 
 ## Running Tests
 

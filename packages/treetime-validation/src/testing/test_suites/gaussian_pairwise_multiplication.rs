@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::gaussian_pairwise_multiplication::{
   GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES, GaussianPairwiseMultiplicationTestCase as AnalyticalCase,
 };
-use treetime_analytical::{GaussianParams, gaussian_product};
+use treetime_analytical::{gaussian_product, GaussianParams};
 use treetime_ops::ScaledArray;
 
 #[derive(Default)]
