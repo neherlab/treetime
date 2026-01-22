@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockEdge;
+use crate::commands::timetree::timetree_traits::TimetreeEdge;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::io::graphviz::EdgeToGraphViz;
@@ -103,6 +104,24 @@ impl EdgeToGraphViz for EdgeTimetree {
 
   fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight()
+  }
+}
+
+impl TimetreeEdge for EdgeTimetree {
+  fn branch_length_distribution(&self) -> &Option<Arc<Distribution>> {
+    &self.branch_length_distribution
+  }
+
+  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+    self.branch_length_distribution = dist;
+  }
+
+  fn msg_to_parent(&self) -> &Option<Arc<Distribution>> {
+    &self.msg_to_parent
+  }
+
+  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>) {
+    self.msg_to_parent = msg;
   }
 }
 

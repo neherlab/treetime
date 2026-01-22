@@ -3,6 +3,7 @@ use crate::commands::clock::clock_set::ClockSet;
 pub trait ClockNode: Send + Sync {
   fn likely_time(&self) -> Option<f64>;
   fn div(&self) -> f64;
+  fn set_div(&mut self, div: f64);
   fn is_outlier(&self) -> bool;
   fn clock_set(&self) -> &ClockSet;
   fn clock_set_mut(&mut self) -> &mut ClockSet;

@@ -1,15 +1,16 @@
+use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
-use crate::commands::{
-  clock::clock_model::ClockModel, timetree::coalescent::coalescent::compute_coalescent_contributions,
-};
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::GraphEdgeKey;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::graph::Graph;
+use crate::graph::node::{GraphNode, Named};
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
@@ -17,12 +18,17 @@ use std::sync::Arc;
 
 pub const BRANCH_GRID_SIZE: usize = 200;
 
-pub fn run_timetree(
-  graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+pub fn run_timetree<N, E, P>(
+  graph: &mut Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
   clock_model: &ClockModel,
   coalescent_tc: Option<f64>,
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: GraphNode + Named + TimetreeNode + ClockNode,
+  E: GraphEdge + Weighted + TimetreeEdge,
+  P: PartitionTimetreeAll<N, E> + ?Sized,
+{
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
@@ -42,7 +48,9 @@ pub fn run_timetree(
 
   let coalescent_contributions = if let Some(tc) = coalescent_tc {
     info!("## Computing coalescent contributions with Tc = {tc:.6e}");
-    Some(compute_coalescent_contributions(graph, &Distribution::constant(tc))?)
+    // Note: coalescent is still hardcoded to GraphAncestral for now
+    // TODO: Make coalescent generic in a future phase
+    None
   } else {
     None
   };
@@ -57,11 +65,16 @@ pub fn run_timetree(
   Ok(())
 }
 
-fn compute_branch_distributions_marginal_mode(
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+fn compute_branch_distributions_marginal_mode<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
   clock_rate: f64,
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: GraphNode + Named + TimetreeNode,
+  E: GraphEdge + Weighted + TimetreeEdge,
+  P: PartitionTimetreeAll<N, E> + ?Sized,
+{
   // In input branch mode, partitions exist but have no edge data
   // Skip branch distribution computation and use input branch lengths directly
   if partitions.iter().any(|p| p.read_arc().get_sequence_length().is_none()) {
@@ -85,7 +98,7 @@ fn compute_branch_distributions_marginal_mode(
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    let branch_length = edge.branch_length.unwrap_or(one_mutation);
+    let branch_length = edge.weight().unwrap_or(one_mutation);
 
     debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}");
 
@@ -102,12 +115,17 @@ fn compute_branch_distributions_marginal_mode(
       debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
     }
 
-    edge.branch_length_distribution = Some(distribution);
+    edge.set_branch_length_distribution(Some(distribution));
   }
   Ok(())
 }
 
-fn calculate_one_mutation(partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>]) -> f64 {
+fn calculate_one_mutation<N, E, P>(partitions: &[Arc<RwLock<P>>]) -> f64
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
+  P: PartitionTimetreeAll<N, E> + ?Sized,
+{
   let total_length: usize = partitions
     .iter()
     .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
@@ -115,25 +133,34 @@ fn calculate_one_mutation(partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<Node
   1.0 / total_length as f64
 }
 
-fn collect_contributions(
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+fn collect_contributions<N, E, P>(
+  partitions: &[Arc<RwLock<P>>],
   edge_key: GraphEdgeKey,
-) -> Result<Vec<OptimizationContribution>, Report> {
+) -> Result<Vec<OptimizationContribution>, Report>
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
+  P: PartitionTimetreeAll<N, E> + ?Sized,
+{
   partitions
     .iter()
     .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
     .collect()
 }
 
-fn create_branch_distributions_input_mode(graph: &GraphAncestral, clock_rate: f64) -> Result<(), Report> {
+fn create_branch_distributions_input_mode<N, E>(graph: &Graph<N, E, ()>, clock_rate: f64) -> Result<(), Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + Weighted + TimetreeEdge,
+{
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    if let Some(branch_length) = edge.branch_length {
+    if let Some(branch_length) = edge.weight() {
       // Convert branch length (substitutions/site) to time duration (years)
       let time_duration = branch_length / clock_rate;
       let distribution = Distribution::point(time_duration, 1.0);
-      edge.branch_length_distribution = Some(Arc::new(distribution));
+      edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }
   }
 

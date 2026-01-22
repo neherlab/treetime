@@ -1,13 +1,18 @@
+use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_division::distribution_division;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::GraphNodeForward;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::graph::graph::{Graph, GraphNodeForward};
 use eyre::Report;
 use std::sync::Arc;
 
-pub fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Report> {
+pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   graph.par_iter_breadth_first_forward(|mut node| {
     propagate_distributions_forward_single_node(&mut node).unwrap();
     GraphTraversalContinuation::Continue
@@ -15,27 +20,40 @@ pub fn propagate_distributions_forward(graph: &GraphAncestral) -> Result<(), Rep
   Ok(())
 }
 
-fn propagate_distributions_forward_single_node(
-  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-) -> Result<(), Report> {
+fn propagate_distributions_forward_single_node<N, E, D>(
+  node: &mut GraphNodeForward<N, E, D>,
+) -> Result<(), Report>
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   refine_distribution_from_parent(node)?;
   set_likely_time(node);
   Ok(())
 }
 
-fn set_likely_time(node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>) {
+fn set_likely_time<N, E, D>(node: &mut GraphNodeForward<N, E, D>)
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   let time = node
     .payload
-    .time_distribution
+    .time_distribution()
     .as_ref()
     .and_then(|time_dist| time_dist.likely_time());
 
-  node.payload.time = time;
+  node.payload.set_time(time);
 }
 
-fn refine_distribution_from_parent(
-  node: &mut GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-) -> Result<(), Report> {
+fn refine_distribution_from_parent<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   if node.is_root {
     return Ok(());
   }
@@ -50,11 +68,11 @@ fn refine_distribution_from_parent(
     let edge = edge.read_arc();
 
     if let (Some(parent_time_dist), Some(branch_dist), Some(subtree_dist)) = (
-      &parent.time_distribution,
-      &edge.branch_length_distribution,
-      &node.payload.time_distribution,
+      parent.time_distribution(),
+      edge.branch_length_distribution(),
+      node.payload.time_distribution(),
     ) {
-      let parent_except_subtree = if let Some(msg_to_parent) = &edge.msg_to_parent {
+      let parent_except_subtree = if let Some(msg_to_parent) = edge.msg_to_parent() {
         distribution_division(parent_time_dist, msg_to_parent)?
       } else {
         parent_time_dist.as_ref().clone()
@@ -62,12 +80,12 @@ fn refine_distribution_from_parent(
 
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?;
       let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?;
-      node.payload.time_distribution = Some(Arc::new(combined));
+      node.payload.set_time_distribution(Some(Arc::new(combined)));
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
-      (&parent.time_distribution, &edge.branch_length_distribution)
+      (parent.time_distribution(), edge.branch_length_distribution())
     {
       let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?;
-      node.payload.time_distribution = Some(Arc::new(dist_from_parent));
+      node.payload.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
   }
 

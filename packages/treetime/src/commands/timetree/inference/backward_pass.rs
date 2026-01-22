@@ -1,10 +1,10 @@
+use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::GraphNodeBackward;
+use crate::graph::graph::{Graph, GraphNodeBackward};
 use crate::graph::node::GraphNodeKey;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;
@@ -13,10 +13,15 @@ use std::sync::Arc;
 ///
 /// If coalescent_contributions is provided, multiplies each node's distribution
 /// with its precalculated coalescent contribution.
-pub fn propagate_distributions_backward(
-  graph: &GraphAncestral,
+pub fn propagate_distributions_backward<N, E, D>(
+  graph: &Graph<N, E, D>,
   coalescent_contributions: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   graph.par_iter_breadth_first_backward(|mut node| {
     propagate_distributions_backward_single_node(&mut node, coalescent_contributions).unwrap();
     GraphTraversalContinuation::Continue
@@ -25,19 +30,24 @@ pub fn propagate_distributions_backward(
 }
 
 /// Computes time distribution for a single internal node from its children.
-fn propagate_distributions_backward_single_node(
-  node: &mut GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+fn propagate_distributions_backward_single_node<N, E, D>(
+  node: &mut GraphNodeBackward<N, E, D>,
   coalescent_contribs: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: TimetreeNode,
+  E: TimetreeEdge,
+  D: Send + Sync,
+{
   if node.is_leaf {
     // Apply precalculated coalescent contribution to leaf
     if let (Some(time_dist), Some(coalescent_contrib)) = (
-      &node.payload.time_distribution,
+      node.payload.time_distribution(),
       coalescent_contribs.and_then(|c| c.get(&node.key)),
     ) {
       let coalescent_contrib_plain = coalescent_contrib.to_plain();
       let combined = distribution_multiplication(time_dist.as_ref(), &coalescent_contrib_plain)?;
-      node.payload.time_distribution = Some(Arc::new(combined));
+      node.payload.set_time_distribution(Some(Arc::new(combined)));
     }
     return Ok(());
   }
@@ -51,14 +61,16 @@ fn propagate_distributions_backward_single_node(
     let child = child.read_arc();
     let mut edge = edge.write_arc();
 
-    if let (Some(branch_dist), Some(child_time_dist)) = (&edge.branch_length_distribution, &child.time_distribution) {
+    if let (Some(branch_dist), Some(child_time_dist)) =
+      (edge.branch_length_distribution(), child.time_distribution())
+    {
       // Compute parent time distribution using regular convolution with negated branch: parent_time = child_time + (-branch_length)
       let negated_branch_dist = branch_dist.negate();
       let parent_message = distribution_convolution(child_time_dist.as_ref(), &negated_branch_dist)?;
       let parent_message_arc = Arc::new(parent_message);
 
       // Store message on edge
-      edge.msg_to_parent = Some(Arc::clone(&parent_message_arc));
+      edge.set_msg_to_parent(Some(Arc::clone(&parent_message_arc)));
 
       // Combine messages from all children using multiplication (intersection of constraints)
       result = Some(if let Some(current) = result {
@@ -71,7 +83,7 @@ fn propagate_distributions_backward_single_node(
 
   // Store final distribution on node
   if let Some(dist) = result {
-    node.payload.time_distribution = Some(Arc::new(dist));
+    node.payload.set_time_distribution(Some(Arc::new(dist)));
   }
 
   Ok(())

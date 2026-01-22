@@ -1,6 +1,7 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::timetree::data::date_constraints::DateConstraintNode;
+use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{GraphNode, Named};
 use crate::io::graphviz::NodeToGraphviz;
@@ -43,6 +44,10 @@ impl ClockNode for NodeTimetree {
 
   fn div(&self) -> f64 {
     self.div
+  }
+
+  fn set_div(&mut self, div: f64) {
+    self.div = div;
   }
 
   fn is_outlier(&self) -> bool {
@@ -98,6 +103,24 @@ impl NodeToNwk for NodeTimetree {
 impl NodeToGraphviz for NodeTimetree {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
+  }
+}
+
+impl TimetreeNode for NodeTimetree {
+  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
+    &self.time_distribution
+  }
+
+  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+    self.time_distribution = dist;
+  }
+
+  fn time(&self) -> Option<f64> {
+    self.time
+  }
+
+  fn set_time(&mut self, time: Option<f64>) {
+    self.time = time;
   }
 }
 

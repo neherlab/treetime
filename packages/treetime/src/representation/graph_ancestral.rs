@@ -1,6 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::commands::timetree::data::date_constraints::DateConstraintNode;
+use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
+use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
@@ -58,7 +61,7 @@ pub struct NodeAncestral {
   pub desc: Option<String>,
   pub time: Option<f64>,
   pub time_before_present: Option<f64>,
-  pub time_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
+  pub time_distribution: Option<Arc<Distribution>>,
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
@@ -97,12 +100,12 @@ impl Named for NodeAncestral {
   }
 }
 
-impl crate::commands::timetree::data::date_constraints::DateConstraintNode for NodeAncestral {
-  fn get_time_distribution(&self) -> &Option<Arc<crate::distribution::distribution::Distribution>> {
+impl DateConstraintNode for NodeAncestral {
+  fn get_time_distribution(&self) -> &Option<Arc<Distribution>> {
     &self.time_distribution
   }
 
-  fn set_time_distribution(&mut self, dist: Option<Arc<crate::distribution::distribution::Distribution>>) {
+  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
     self.time_distribution = dist;
   }
 
@@ -186,8 +189,8 @@ impl PartitionSparse {
 pub struct EdgeAncestral {
   pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
-  pub branch_length_distribution: Option<Arc<crate::distribution::distribution::Distribution>>,
-  pub msg_to_parent: Option<Arc<crate::distribution::distribution::Distribution>>,
+  pub branch_length_distribution: Option<Arc<Distribution>>,
+  pub msg_to_parent: Option<Arc<Distribution>>,
   #[serde(skip)]
   pub clock_to_parent: ClockSet,
   #[serde(skip)]
@@ -320,6 +323,10 @@ impl ClockNode for NodeAncestral {
     self.div
   }
 
+  fn set_div(&mut self, div: f64) {
+    self.div = div;
+  }
+
   fn is_outlier(&self) -> bool {
     self.is_outlier
   }
@@ -364,5 +371,41 @@ impl ClockEdge for EdgeAncestral {
 
   fn from_child_mut(&mut self) -> &mut ClockSet {
     &mut self.clock_from_child
+  }
+}
+
+impl TimetreeNode for NodeAncestral {
+  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
+    &self.time_distribution
+  }
+
+  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+    self.time_distribution = dist;
+  }
+
+  fn time(&self) -> Option<f64> {
+    self.time
+  }
+
+  fn set_time(&mut self, time: Option<f64>) {
+    self.time = time;
+  }
+}
+
+impl TimetreeEdge for EdgeAncestral {
+  fn branch_length_distribution(&self) -> &Option<Arc<Distribution>> {
+    &self.branch_length_distribution
+  }
+
+  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+    self.branch_length_distribution = dist;
+  }
+
+  fn msg_to_parent(&self) -> &Option<Arc<Distribution>> {
+    &self.msg_to_parent
+  }
+
+  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>) {
+    self.msg_to_parent = msg;
   }
 }

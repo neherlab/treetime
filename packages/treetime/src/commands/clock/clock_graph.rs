@@ -116,6 +116,10 @@ impl ClockNode for ClockNodePayload {
     self.div
   }
 
+  fn set_div(&mut self, div: f64) {
+    self.div = div;
+  }
+
   fn is_outlier(&self) -> bool {
     self.is_outlier
   }

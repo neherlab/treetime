@@ -1,26 +1,41 @@
 use crate::commands::clock::clock_set::ClockSet;
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::commands::clock::clock_traits::ClockNode;
+use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::graph::Graph;
+use crate::graph::node::{GraphNode, Named};
 use crate::seq::div::{OnlyLeaves, calculate_divs};
 use eyre::Report;
 
-pub fn initialize_node_divergences(graph: &GraphAncestral) {
+pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>)
+where
+  N: GraphNode + Named + ClockNode,
+  E: GraphEdge + Weighted,
+  D: Send + Sync,
+{
   let divs = calculate_divs(graph, OnlyLeaves(false));
   for node_ref in graph.get_nodes() {
     let mut node = node_ref.write_arc().payload().write_arc();
-    if let Some(name) = &node.name {
-      if let Some(&div) = divs.get(name) {
-        node.div = div;
+    let name = node.name().map(|n| n.as_ref().to_owned());
+    if let Some(name) = name {
+      if let Some(&div) = divs.get(&name) {
+        node.set_div(div);
       }
     }
   }
 }
 
-pub fn initialize_clock_totals_from_time_distributions(graph: &GraphAncestral) -> Result<(), Report> {
+pub fn initialize_clock_totals_from_time_distributions<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+where
+  N: GraphNode + TimetreeNode + ClockNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
   for node_ref in graph.get_nodes() {
     let mut node = node_ref.write_arc().payload().write_arc();
-    if let Some(dist_arc) = &node.time_distribution {
+    if let Some(dist_arc) = node.time_distribution() {
       if let Some(time) = dist_arc.likely_time() {
-        node.clock_set = ClockSet::leaf_contribution(Some(time));
+        *node.clock_set_mut() = ClockSet::leaf_contribution(Some(time));
       }
     }
   }
