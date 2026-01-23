@@ -83,8 +83,13 @@ impl NodeToNwk for NodeAncestral {
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
+    let mut comments = BTreeMap::new();
     let mutations: String = "".to_owned(); // TODO: fill mutations
-    BTreeMap::from([(o!("mutations"), mutations)])
+    comments.insert(o!("mutations"), mutations);
+    if let Some(time) = self.time {
+      comments.insert("date".to_owned(), format!("{time:.2}"));
+    }
+    comments
   }
 }
 
