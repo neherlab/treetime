@@ -3,7 +3,7 @@ use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::timetree::data::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
 use crate::representation::graph_ancestral::NodeAncestral;
@@ -34,6 +34,16 @@ impl Named for NodeTimetree {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl Described for NodeTimetree {
+  fn desc(&self) -> &Option<String> {
+    &self.desc
+  }
+
+  fn set_desc(&mut self, desc: Option<String>) {
+    self.desc = desc;
   }
 }
 

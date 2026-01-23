@@ -6,7 +6,7 @@ use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
@@ -102,6 +102,16 @@ impl Named for NodeAncestral {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl Described for NodeAncestral {
+  fn desc(&self) -> &Option<String> {
+    &self.desc
+  }
+
+  fn set_desc(&mut self, desc: Option<String>) {
+    self.desc = desc;
   }
 }
 

@@ -13,6 +13,12 @@ pub trait Named {
   fn set_name(&mut self, name: Option<impl AsRef<str>>);
 }
 
+/// Defines how to read and write node description
+pub trait Described {
+  fn desc(&self) -> &Option<String>;
+  fn set_desc(&mut self, desc: Option<String>);
+}
+
 pub trait GraphNode: Clone + Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

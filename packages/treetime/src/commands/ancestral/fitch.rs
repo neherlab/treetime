@@ -4,6 +4,9 @@ use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::io::fasta::FastaRecord;
+use crate::graph::edge::GraphEdge;
+use crate::graph::graph::Graph;
+use crate::graph::node::{Described, GraphNode, Named};
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
   Deletion, MarginalSparseSeqDistribution, ParsimonySeqDistribution, SparseEdgePartition, SparseNodePartition,
@@ -29,18 +32,23 @@ use treetime_utils::interval::range_complement::range_complement;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 
-fn attach_seqs_to_graph<P: PartitionCompressed>(
-  graph: &GraphAncestral,
+fn attach_seqs_to_graph<N, E, P>(
+  graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: GraphNode + Named + Described,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   for leaf in graph.get_leaves() {
     let leaf_key = leaf.read_arc().key();
     let mut leaf = leaf.read_arc().payload().write_arc();
 
-    let leaf_name = leaf.name.as_ref().ok_or_else(|| {
+    let leaf_name = leaf.name().ok_or_else(|| {
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-    })?.to_owned();
+    })?.as_ref().to_owned();
 
     let leaf_fasta = aln
       .iter()
@@ -48,7 +56,7 @@ fn attach_seqs_to_graph<P: PartitionCompressed>(
       // TODO: we could optionally emit a warning here and continue with a sequence that is missing
       .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-    leaf.desc = leaf_fasta.desc.clone();
+    leaf.set_desc(leaf_fasta.desc.clone());
 
     partitions.iter().try_for_each(|partition| -> Result<(), Report> {
       let mut partition = partition.write_arc();
@@ -74,17 +82,27 @@ fn attach_seqs_to_graph<P: PartitionCompressed>(
   Ok(())
 }
 
-fn fitch_backward<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   graph.par_iter_breadth_first_backward(|node| {
     run_fitch_backward(partitions, &node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
-fn run_fitch_backward<P: PartitionCompressed>(
+fn run_fitch_backward<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
-) -> Result<(), Report> {
+  node: &GraphNodeBackward<N, E, ()>,
+) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   if node.is_leaf {
     return Ok(());
   }
@@ -255,17 +273,27 @@ fn run_fitch_backward<P: PartitionCompressed>(
   Ok(())
 }
 
-fn fitch_forward<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   graph.par_iter_breadth_first_forward(|node| {
     run_fitch_forward(partitions, &node).unwrap();
     GraphTraversalContinuation::Continue
   });
 }
 
-fn run_fitch_forward<P: PartitionCompressed>(
+fn run_fitch_forward<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-) -> Result<(), Report> {
+  node: &GraphNodeForward<N, E, ()>,
+) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   for partition in partitions {
     let mut partition = partition.write_arc();
     let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
@@ -442,14 +470,24 @@ fn run_fitch_forward<P: PartitionCompressed>(
   Ok(())
 }
 
-fn fitch_cleanup<P: PartitionCompressed>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+fn fitch_cleanup<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   graph.par_iter_breadth_first_forward(|node| run_fitch_forward_cleanup(&node, partitions));
 }
 
-fn run_fitch_forward_cleanup<P: PartitionCompressed>(
-  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+fn run_fitch_forward_cleanup<N, E, P>(
+  node: &GraphNodeForward<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
-) -> GraphTraversalContinuation {
+) -> GraphTraversalContinuation
+where
+  N: GraphNode,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   for partition in partitions {
     let mut partition = partition.write_arc();
     let seq = &mut partition.node_mut(&node.key).seq;
@@ -474,11 +512,16 @@ fn run_fitch_forward_cleanup<P: PartitionCompressed>(
   GraphTraversalContinuation::Continue
 }
 
-pub fn compress_sequences<P: PartitionCompressed>(
-  graph: &GraphAncestral,
+pub fn compress_sequences<N, E, P>(
+  graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
-) -> Result<(), Report> {
+) -> Result<(), Report>
+where
+  N: GraphNode + Named + Described,
+  E: GraphEdge,
+  P: PartitionCompressed,
+{
   attach_seqs_to_graph(graph, partitions, aln)?;
   fitch_backward(graph, partitions);
   fitch_forward(graph, partitions);
