@@ -1,7 +1,7 @@
 use super::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
-use crate::graph::edge::{GraphEdgeKey, Weighted};
-use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::GraphNodeKey;
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::node::{Described, GraphNode, GraphNodeKey, Named};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -17,10 +17,9 @@ use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
 use ndarray_stats::QuantileExt;
+use std::collections::BTreeMap;
 use treetime_utils::container::get_exactly_one;
 use treetime_utils::interval::range_intersection::range_intersection;
-
-use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDense {
@@ -30,6 +29,13 @@ pub struct PartitionMarginalDense {
   pub length: usize,
   pub nodes: BTreeMap<GraphNodeKey, DenseNodePartition>,
   pub edges: BTreeMap<GraphEdgeKey, DenseEdgePartition>,
+}
+
+impl PartitionMarginalDense {
+  #[allow(clippy::same_name_method)]
+  pub fn get_sequence_length(&self) -> Option<usize> {
+    Some(self.length)
+  }
 }
 
 impl HasLogLh for PartitionMarginalDense {
@@ -51,22 +57,29 @@ impl crate::commands::timetree::partition_ops::PartitionTimetreeOps<NodeAncestra
   }
 }
 
-impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDense {
-  fn attach_sequences(&mut self, graph: &GraphAncestral, aln: &[FastaRecord]) -> Result<(), Report> {
+impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalDense
+where
+  N: GraphNode + Named + Described,
+  E: GraphEdge + Weighted,
+{
+  fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report> {
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
       let mut leaf = leaf.read_arc().payload().write_arc();
 
-      let leaf_name = leaf.name.as_ref().ok_or_else(|| {
-        make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-      })?.to_owned();
+      let leaf_name = {
+        let name = leaf.name().ok_or_else(|| {
+          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
+        })?;
+        name.as_ref().to_owned()
+      };
 
       let leaf_fasta = aln
         .iter()
         .find(|fasta| fasta.seq_name == leaf_name)
         .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
-      leaf.desc = leaf_fasta.desc.clone();
+      leaf.set_desc(leaf_fasta.desc.clone());
 
       let alphabet = &self.alphabet.clone(); // TODO: avoid clone
       self
@@ -84,7 +97,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
 
   fn process_node_backward(
     &mut self,
-    node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+    node: &GraphNodeBackward<N, E, ()>,
   ) -> Result<(), Report> {
     let alphabet = &self.alphabet.clone(); // TODO: avoid clone
     let length = self.length;
@@ -166,8 +179,8 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
 
   fn process_node_forward(
     &mut self,
-    graph: &GraphAncestral,
-    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
   ) -> Result<(), Report> {
     if !node.is_root {
       let mut seq_info = self.nodes.remove(&node.key).unwrap();
@@ -176,7 +189,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
       for (_, edge_key) in &node.parent_keys {
         let edge = &self.edges[edge_key];
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
-        let branch_length = edge_payload.branch_length.unwrap_or(0.0);
+        let branch_length = edge_payload.weight().unwrap_or(0.0);
         let exp_qt_matrix = self.gtr.expQt(branch_length);
         let exp_qt = exp_qt_matrix.t();
         msgs_to_combine.push(edge.msg_to_parent.dis.view().to_owned()); // FIXME: avoid copy
@@ -220,7 +233,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalDen
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    node: &GraphNodeForward<N, E, ()>,
     include_leaves: bool,
   ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {

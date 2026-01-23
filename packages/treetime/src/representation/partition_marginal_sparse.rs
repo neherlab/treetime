@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdgeKey, Weighted};
-use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::GraphNodeKey;
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -66,6 +66,13 @@ impl PartitionCompressed for PartitionMarginalSparse {
   }
 }
 
+impl PartitionMarginalSparse {
+  #[allow(clippy::same_name_method)]
+  pub fn get_sequence_length(&self) -> Option<usize> {
+    Some(self.length)
+  }
+}
+
 impl HasLogLh for PartitionMarginalSparse {
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
     self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
@@ -85,15 +92,19 @@ impl crate::commands::timetree::partition_ops::PartitionTimetreeOps<NodeAncestra
   }
 }
 
-impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSparse {
-  fn attach_sequences(&mut self, _graph: &GraphAncestral, _aln: &[FastaRecord]) -> Result<(), Report> {
+impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
+{
+  fn attach_sequences(&mut self, _graph: &Graph<N, E, ()>, _aln: &[FastaRecord]) -> Result<(), Report> {
     // Sparse partitions get sequences attached during compression phase
     Ok(())
   }
 
   fn process_node_backward(
     &mut self,
-    node: &GraphNodeBackward<NodeAncestral, EdgeAncestral, ()>,
+    node: &GraphNodeBackward<N, E, ()>,
   ) -> Result<(), Report> {
     let length = self.length;
     let mut seq_info = self.nodes.remove(&node.key).unwrap();
@@ -192,8 +203,8 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSpa
 
   fn process_node_forward(
     &mut self,
-    graph: &GraphAncestral,
-    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
   ) -> Result<(), Report> {
     if !node.is_root {
       let mut seq_info = self.nodes.remove(&node.key).unwrap();
@@ -224,7 +235,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSpa
         }
 
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
-        let branch_length = edge_payload.branch_length.unwrap_or(0.0);
+        let branch_length = edge_payload.weight().unwrap_or(0.0);
 
         msgs_to_combine.push(propagate_raw(
           &self.gtr.expQt(branch_length),
@@ -334,7 +345,7 @@ impl PartitionMarginalOps<NodeAncestral, EdgeAncestral> for PartitionMarginalSpa
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+    node: &GraphNodeForward<N, E, ()>,
     include_leaves: bool,
   ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
