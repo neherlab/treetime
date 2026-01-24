@@ -1,6 +1,7 @@
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
+use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -48,9 +49,7 @@ where
 
   let coalescent_contributions = if let Some(tc) = coalescent_tc {
     info!("## Computing coalescent contributions with Tc = {tc:.6e}");
-    // Note: coalescent is still hardcoded to GraphAncestral for now
-    // TODO: Make coalescent generic in a future phase
-    None
+    Some(compute_coalescent_contributions(graph, &Distribution::constant(tc))?)
   } else {
     None
   };

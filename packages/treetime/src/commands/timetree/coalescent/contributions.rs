@@ -1,11 +1,12 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
+use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_formula::DistributionFormula;
-use crate::graph::graph::GraphNodeForward;
-use crate::graph::node::GraphNodeKey;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::graph::edge::GraphEdge;
+use crate::graph::graph::Graph;
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;
@@ -22,30 +23,42 @@ use std::sync::Arc;
 /// - For internal nodes with k children: multiplicity · (I(t) - log(λ(t)))
 ///   where λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
 ///   and m = k - 1 is multiplicity.
-pub fn compute_node_contributions(
-  graph: &GraphAncestral,
+pub fn compute_node_contributions<N, E, D>(
+  graph: &Graph<N, E, D>,
   integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
   present_time: f64,
-) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report> {
+) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode + Named,
+  E: GraphEdge,
+  D: Sync + Send,
+{
   let mut contributions = IndexMap::new();
 
   graph.iter_breadth_first_forward(|node| {
     // Skip nodes without time distributions
-    if node.payload.time_distribution.is_none() {
+    if node.payload.time_distribution().is_none() {
       return;
     }
 
     let contrib = if node.is_leaf {
-      compute_leaf_contribution_single(&node, integral_merger_rate)
+      compute_leaf_contribution_single(integral_merger_rate)
     } else {
-      compute_node_contribution_single(&node, integral_merger_rate, tc_dist, lineage_counts, present_time)
+      compute_internal_contribution_single(
+        node.child_edges.len(),
+        integral_merger_rate,
+        tc_dist,
+        lineage_counts,
+        present_time,
+      )
     }
     .wrap_err_with(|| {
+      let name = node.payload.name();
+      let name = name.as_ref().map_or("", |n| n.as_ref());
       format!(
-        "When computing coalescent contributions for node (\"{}\") (#{})",
-        node.payload.name.as_deref().unwrap_or(""),
+        "When computing coalescent contributions for node (\"{name}\") (#{})",
         node.key,
       )
     })
@@ -58,7 +71,6 @@ pub fn compute_node_contributions(
 }
 
 fn compute_leaf_contribution_single(
-  _node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
   integral_merger_rate: &PiecewiseLinearFn,
 ) -> Result<DistributionNegLog, Report> {
   // Leaf nodes represent sampled lineages. The coalescent contribution encodes
@@ -80,8 +92,8 @@ fn compute_leaf_contribution_single(
   Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
 }
 
-fn compute_node_contribution_single(
-  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+fn compute_internal_contribution_single(
+  n_children: usize,
   integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
@@ -107,7 +119,7 @@ fn compute_node_contribution_single(
   // Node contribution is MULTIPLIED with the product of child messages
   // during message passing.
 
-  let n_children = node.child_edges.len() as f64;
+  let n_children = n_children as f64;
   let multiplicity = n_children - 1.0;
 
   let t_min = integral_merger_rate.breakpoints()[0];

@@ -2,9 +2,11 @@ use crate::commands::timetree::coalescent::contributions::compute_node_contribut
 use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
-use crate::graph::node::GraphNodeKey;
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::graph::edge::GraphEdge;
+use crate::graph::graph::Graph;
+use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;
@@ -56,10 +58,15 @@ use std::sync::Arc;
 ///
 /// Map from node keys to distributions representing coalescent prior contributions (NegLog space).
 /// Each distribution should be multiplied with the node's time distribution.
-pub fn compute_coalescent_contributions(
-  graph: &GraphAncestral,
+pub fn compute_coalescent_contributions<N, E, D>(
+  graph: &Graph<N, E, D>,
   tc: &Distribution,
-) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report> {
+) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode + Named,
+  E: GraphEdge,
+  D: Sync + Send,
+{
   let (present_time, events_calendar) = collect_tree_events(graph)?;
   let events_tbp: Vec<_> = events_calendar
     .iter()
