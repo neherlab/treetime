@@ -6,7 +6,9 @@ use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::fasta::FastaRecord;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
+use crate::representation::partition_timetree::GraphTimetree;
 use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
@@ -15,8 +17,8 @@ use std::sync::Arc;
 #[allow(clippy::useless_let_if_seq)]
 pub fn run_refinement_iteration(
   args: &TreetimeTimetreeArgs,
-  graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+  graph: &mut GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   aln: Option<&[FastaRecord]>,
   clock_model: &mut ClockModel,
   clock_options: &ClockOptions,

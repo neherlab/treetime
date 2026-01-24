@@ -6,7 +6,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::io::fasta::FastaRecord;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::seq::Seq;
@@ -46,8 +46,10 @@ impl HasLogLh for PartitionMarginalDense {
 
 impl PartitionMarginal for PartitionMarginalDense {}
 
-impl crate::commands::timetree::partition_ops::PartitionTimetreeOps<NodeAncestral, EdgeAncestral>
-  for PartitionMarginalDense
+impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
 {
   fn create_edge_contribution(
     &self,

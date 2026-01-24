@@ -10,23 +10,25 @@ use crate::io::fasta::{FastaRecord, read_many_fasta};
 use crate::io::nwk::nwk_read_file;
 use crate::make_error;
 use crate::make_report;
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::infer_dense::infer_dense;
+use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition_timetree::{GraphTimetree, PartitionTimetreeAllVec};
 use eyre::{Report, WrapErr};
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub struct InputData {
-  pub graph: GraphAncestral,
+  pub graph: GraphTimetree,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
-  let graph: GraphAncestral = if let Some(tree_path) = &args.tree {
+  let graph: GraphTimetree = if let Some(tree_path) = &args.tree {
     nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?
   } else {
     todo!("Tree inference from alignment not yet implemented")
@@ -66,10 +68,10 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
 pub fn initialize_partitions(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
+  graph: &GraphTimetree,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
-) -> Result<Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>>, Report> {
+) -> Result<PartitionTimetreeAllVec, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
   let length = if let Some(aln_data) = aln {
     get_common_length(aln_data)?
@@ -93,10 +95,10 @@ pub fn initialize_partitions(
 
     crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
 
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>> = sparse_partition;
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     Ok(vec![partition])
   } else {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>> = Arc::new(RwLock::new(PartitionMarginalDense {
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr: jc69(JC69Params::default())?,
       alphabet,

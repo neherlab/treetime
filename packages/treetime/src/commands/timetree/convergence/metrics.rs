@@ -1,6 +1,7 @@
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::io::csv::CsvStructFileWriter;
-use crate::representation::graph_ancestral::{EdgeAncestral, NodeAncestral};
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
 use eyre::Report;
 use log::info;
 use parking_lot::RwLock;
@@ -45,7 +46,7 @@ impl TimetreeOptimizer {
     &mut self,
     n_diff: usize,
     n_resolved: usize,
-    _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+    _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   ) -> Result<(), Report> {
     let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved);
 

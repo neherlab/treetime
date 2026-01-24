@@ -12,7 +12,9 @@ use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
 use crate::io::nwk::{NwkWriteOptions, nwk_write_file};
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::edge_timetree::EdgeTimetree;
+use crate::representation::node_timetree::NodeTimetree;
+use crate::representation::partition_timetree::GraphTimetree;
 use eyre::{Report, WrapErr};
 use log::{debug, info};
 use parking_lot::RwLock;
@@ -131,8 +133,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
 fn write_outputs(
   args: &TreetimeTimetreeArgs,
-  graph: &GraphAncestral,
-  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>],
+  graph: &GraphTimetree,
+  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   clock_model: &ClockModel,
 ) -> Result<(), Report> {
   let out_base = args.outdir.join("timetree");
