@@ -10,9 +10,6 @@ use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
-use crate::representation::edge_timetree::EdgeTimetree;
-use crate::representation::node_timetree::NodeTimetree;
-use crate::representation::partition_timetree::GraphTimetree;
 use crate::representation::seq::Seq;
 use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
@@ -29,31 +26,6 @@ use std::sync::Arc;
 use treetime_utils::interval::range_union::range_union;
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
-
-impl GraphAncestral {
-  pub fn to_graph_timetree(&self) -> Result<GraphTimetree, Report> {
-    // Convert all nodes from NodeAncestral to NodeTimetree
-    let mut graph_timetree = GraphTimetree::new();
-
-    // Convert nodes first (to establish node keys)
-    for node_ref in self.get_nodes() {
-      let node = node_ref.read();
-      let node_timetree = NodeTimetree::from(&*node.payload().read_arc());
-      let new_key = graph_timetree.add_node(node_timetree);
-      assert_eq!(new_key, node.key(), "Node keys must match during conversion");
-    }
-
-    // Then convert edges (requires nodes to exist)
-    for edge_ref in self.get_edges() {
-      let edge = edge_ref.read();
-      let edge_timetree = EdgeTimetree::from(&*edge.payload().read_arc());
-      let new_key = graph_timetree.add_edge(edge.source(), edge.target(), edge_timetree)?;
-      assert_eq!(new_key, edge.key(), "Edge keys must match during conversion");
-    }
-
-    Ok(graph_timetree)
-  }
-}
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeAncestral {
