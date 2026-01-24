@@ -19,4 +19,6 @@ pub trait TimetreeEdge: GraphEdge {
   fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>);
   fn msg_to_parent(&self) -> &Option<Arc<Distribution>>;
   fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>);
+  fn time_length(&self) -> Option<f64>;
+  fn set_time_length(&mut self, length: Option<f64>);
 }

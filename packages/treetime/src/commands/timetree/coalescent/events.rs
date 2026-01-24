@@ -58,12 +58,12 @@ mod tests {
   use crate::commands::timetree::data::date_constraints::load_date_constraints;
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
-  use crate::representation::graph_ancestral::GraphAncestral;
+  use crate::representation::partition_timetree::GraphTimetree;
   use approx::assert_abs_diff_eq;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
 
-  fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphAncestral, Report> {
+  fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphTimetree, Report> {
     let graph = nwk_read_str(tree_nwk)?;
     load_date_constraints(dates, &graph)?;
     Ok(graph)

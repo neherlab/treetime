@@ -14,6 +14,7 @@ use std::sync::Arc;
 pub struct EdgeTimetree {
   pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
+  pub time_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
   pub msg_to_parent: Option<Arc<Distribution>>,
   #[serde(skip)]
@@ -123,6 +124,14 @@ impl TimetreeEdge for EdgeTimetree {
   fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>) {
     self.msg_to_parent = msg;
   }
+
+  fn time_length(&self) -> Option<f64> {
+    self.time_length
+  }
+
+  fn set_time_length(&mut self, length: Option<f64>) {
+    self.time_length = length;
+  }
 }
 
 impl From<&EdgeAncestral> for EdgeTimetree {
@@ -130,6 +139,7 @@ impl From<&EdgeAncestral> for EdgeTimetree {
     Self {
       sparse_partitions: edge.sparse_partitions.clone(),
       branch_length: edge.branch_length,
+      time_length: None,
       branch_length_distribution: edge.branch_length_distribution.clone(),
       msg_to_parent: edge.msg_to_parent.clone(),
       clock_to_parent: edge.clock_to_parent.clone(),

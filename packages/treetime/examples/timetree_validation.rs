@@ -29,7 +29,9 @@ use treetime::io::dates_csv::{DatesMap, read_dates};
 use treetime::io::fasta::{FastaRecord, read_many_fasta};
 use treetime::io::nwk::nwk_read_str;
 use treetime::o;
-use treetime::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use treetime::representation::edge_timetree::EdgeTimetree;
+use treetime::representation::node_timetree::NodeTimetree;
+use treetime::representation::partition_timetree::GraphTimetree;
 use treetime::representation::partition_marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use treetime_io::json::{JsonPretty, json_write_file};
@@ -286,7 +288,7 @@ fn main() -> Result<(), Report> {
   Ok(())
 }
 
-fn dump_graph(graph: &GraphAncestral, output_dir: &str, filename: &str) -> Result<(), Report> {
+fn dump_graph(graph: &GraphTimetree, output_dir: &str, filename: &str) -> Result<(), Report> {
   let output_path = Path::new(output_dir);
   json_write_file(output_path.join(filename), graph, JsonPretty(true))?;
   Ok(())
@@ -300,7 +302,7 @@ fn run_poisson_test(args: &Args) -> Result<TestResult, Report> {
 
   println!("### Test 1: Poisson (branch length input mode)");
 
-  let graph: GraphAncestral = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
+  let graph: GraphTimetree = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
   load_date_constraints(&INPUT_DATES, &graph)?;
 
   create_poisson_branch_distributions(&graph, CLOCK_RATE_MU, SEQUENCE_LENGTH_L, args.branch_grid_size)?;
@@ -341,7 +343,7 @@ fn run_marginal_sparse_test(args: &Args) -> Result<TestResult, Report> {
 
   println!("### Test 2: Marginal Sparse");
 
-  let mut graph: GraphAncestral = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
+  let mut graph: GraphTimetree = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
   load_date_constraints(&INPUT_DATES, &graph)?;
 
   let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
@@ -356,7 +358,7 @@ fn run_marginal_sparse_test(args: &Args) -> Result<TestResult, Report> {
   compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &ALN)?;
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
-  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>> = vec![sparse_partition];
+  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
 
   run_marginal(&graph, &partitions, Some(&ALN))?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
@@ -396,7 +398,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
 
   println!("### Test 3: Marginal Dense");
 
-  let mut graph: GraphAncestral = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
+  let mut graph: GraphTimetree = nwk_read_str(INPUT_REROOTED_TREE_NWK)?;
   load_date_constraints(&INPUT_DATES, &graph)?;
 
   let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
@@ -408,7 +410,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
     edges: btreemap! {},
   }));
 
-  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeAncestral, EdgeAncestral>>>> = vec![dense_partition];
+  let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
 
   run_marginal(&graph, &partitions, Some(&ALN))?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;
@@ -443,7 +445,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
   })
 }
 
-fn extract_node_times(graph: &GraphAncestral) -> BTreeMap<String, f64> {
+fn extract_node_times(graph: &GraphTimetree) -> BTreeMap<String, f64> {
   graph
     .get_nodes()
     .into_iter()
@@ -458,7 +460,7 @@ fn extract_node_times(graph: &GraphAncestral) -> BTreeMap<String, f64> {
 }
 
 fn create_poisson_branch_distributions(
-  graph: &GraphAncestral,
+  graph: &GraphTimetree,
   mu: f64,
   seq_len: usize,
   n_points: usize,

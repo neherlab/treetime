@@ -19,7 +19,7 @@ use treetime::graph::node::{GraphNodeKey, Named};
 use treetime::io::dates_csv::read_dates;
 use treetime::io::nwk::nwk_read_file;
 use treetime::o;
-use treetime::representation::graph_ancestral::GraphAncestral;
+use treetime::representation::partition_timetree::GraphTimetree;
 use treetime_grid::grid::Grid;
 use treetime_io::json::json_read_file;
 use treetime_utils::clap_styles::styles;
@@ -264,7 +264,7 @@ fn main() -> Result<(), Report> {
   Ok(())
 }
 
-fn load_graph(snapshot: &Snapshot) -> Result<GraphAncestral, Report> {
+fn load_graph(snapshot: &Snapshot) -> Result<GraphTimetree, Report> {
   let graph = nwk_read_file(&snapshot.inputs.tree_path)?;
   let dates = read_dates(&snapshot.inputs.metadata_path, &Some(o!("name")), &Some(o!("date")))?;
   load_date_constraints(&dates, &graph)?;
@@ -272,7 +272,7 @@ fn load_graph(snapshot: &Snapshot) -> Result<GraphAncestral, Report> {
 }
 
 fn convert_map_keys_to_names<V>(
-  graph: &GraphAncestral,
+  graph: &GraphTimetree,
   map: &IndexMap<GraphNodeKey, V>,
 ) -> Result<IndexMap<String, V>, Report>
 where
