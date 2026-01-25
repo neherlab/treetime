@@ -68,7 +68,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   if args.clock_filter > 0.0 {
-    // todo!("clock_filter not yet updated for GraphAncestral");
+    // todo!("clock_filter not yet implemented");
   }
 
   if aln.is_some() {
@@ -146,11 +146,11 @@ fn write_outputs(
   write_clock_model(clock_model, &out_base)?;
 
   if args.plot_rtt.is_some() {
-    todo!("plot_root_to_tip not yet updated for GraphAncestral");
+    todo!("plot_root_to_tip not yet implemented");
   }
 
   if args.plot_tree.is_some() {
-    todo!("plot_time_tree not yet updated for GraphAncestral");
+    todo!("plot_time_tree not yet implemented");
   }
 
   Ok(())
