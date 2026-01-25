@@ -2,7 +2,6 @@ use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_sparse;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_marginal::PartitionMarginalOps;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;

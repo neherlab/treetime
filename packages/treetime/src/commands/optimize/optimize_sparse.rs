@@ -23,7 +23,6 @@
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::graph::edge::GraphEdgeKey;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_marginal::PartitionMarginalOps;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};

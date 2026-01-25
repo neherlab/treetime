@@ -24,7 +24,6 @@ use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::gtr::gtr::GTR;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_dense::DenseSeqDis;
-use crate::representation::partition_marginal::PartitionMarginalOps;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array2, Axis};
