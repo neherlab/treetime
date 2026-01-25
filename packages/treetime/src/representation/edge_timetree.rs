@@ -92,7 +92,7 @@ impl EdgeFromNwk for EdgeTimetree {
 
 impl EdgeToNwk for EdgeTimetree {
   fn nwk_weight(&self) -> Option<f64> {
-    self.weight()
+    self.time_length
   }
 }
 
