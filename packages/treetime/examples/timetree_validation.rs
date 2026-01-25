@@ -14,7 +14,7 @@ use treetime::commands::ancestral::fitch::compress_sequences;
 use treetime::commands::ancestral::marginal_unified::run_marginal;
 use treetime::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use treetime::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime::commands::timetree::data::date_constraints::load_date_constraints;
+use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use treetime::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::commands::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};

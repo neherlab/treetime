@@ -55,7 +55,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::timetree::data::date_constraints::load_date_constraints;
+  use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
   use crate::representation::partition_timetree::GraphTimetree;

@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
-use crate::commands::timetree::data::date_constraints::DateConstraintNode;
+use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{Described, GraphNode, Named};

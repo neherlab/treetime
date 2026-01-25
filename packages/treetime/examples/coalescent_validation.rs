@@ -13,7 +13,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::LazyLock;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
-use treetime::commands::timetree::data::date_constraints::load_date_constraints;
+use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::distribution::distribution::Distribution;
 use treetime::graph::node::{GraphNodeKey, Named};
 use treetime::io::dates_csv::read_dates;

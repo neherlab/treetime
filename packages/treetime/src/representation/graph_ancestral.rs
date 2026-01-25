@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::commands::timetree::data::date_constraints::DateConstraintNode;
+use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
 use crate::graph::graph::Graph;
