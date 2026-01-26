@@ -1,11 +1,10 @@
-use crate::commands::ancestral::marginal_unified::run_marginal;
+use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::io::fasta::FastaRecord;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_timetree::GraphTimetree;
@@ -19,7 +18,6 @@ pub fn run_refinement_iteration(
   args: &TreetimeTimetreeArgs,
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
-  aln: Option<&[FastaRecord]>,
   clock_model: &mut ClockModel,
   clock_options: &ClockOptions,
   branch_params: &BranchPointOptimizationParams,
@@ -44,13 +42,13 @@ pub fn run_refinement_iteration(
     info!("Tree structure changed - recomputing timetree then marginal");
     run_timetree(graph, partitions, clock_model, args.coalescent).wrap_err("Timetree inference failed")?;
 
-    if aln.is_some() {
-      run_marginal(graph, partitions, aln)?;
+    if !partitions.is_empty() {
+      update_marginal(graph, partitions)?;
     }
   } else {
-    if aln.is_some() {
+    if !partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
-      run_marginal(graph, partitions, aln)?;
+      update_marginal(graph, partitions)?;
     }
 
     info!("Updating node times via timetree inference");

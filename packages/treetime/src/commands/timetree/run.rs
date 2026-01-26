@@ -1,4 +1,4 @@
-use crate::commands::ancestral::marginal_unified::run_marginal;
+use crate::commands::ancestral::marginal_unified::initialize_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
@@ -71,14 +71,14 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     // todo!("clock_filter not yet implemented");
   }
 
-  if aln.is_some() {
+  if let Some(aln) = aln.as_deref() {
     match args.branch_length_mode {
       BranchLengthMode::Input => {
         info!("Using input branch lengths for timetree inference");
       },
       BranchLengthMode::Marginal => {
         info!("Running initial ancestral reconstruction");
-        run_marginal(&graph, &partitions, aln.as_deref())?;
+        initialize_marginal(&graph, &partitions, aln)?;
       },
     }
   }
@@ -101,7 +101,6 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       args,
       &mut graph,
       &partitions,
-      aln.as_deref(),
       &mut clock_model,
       &clock_options,
       &branch_params,
