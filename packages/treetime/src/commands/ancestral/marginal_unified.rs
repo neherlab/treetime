@@ -12,7 +12,47 @@ use log::debug;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-/// Main entry point for marginal reconstruction
+/// Initialize partitions with sequence data and run marginal reconstruction.
+///
+/// Use this for the first marginal pass when sequences need to be attached.
+/// For subsequent iterations, use `update_marginal` instead.
+pub fn initialize_marginal<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+  aln: &[FastaRecord],
+) -> Result<f64, Report>
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
+  P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
+{
+  for partition in partitions {
+    partition.write_arc().attach_sequences(graph, aln)?;
+  }
+  update_marginal(graph, partitions)
+}
+
+/// Run marginal reconstruction without attaching sequences.
+///
+/// Use this for iterative refinement after sequences have been attached
+/// via `initialize_marginal`.
+pub fn update_marginal<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
+where
+  N: GraphNode + Named,
+  E: GraphEdge + Weighted,
+  P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
+{
+  marginal_backward(graph, partitions)?;
+  let log_lh = graph_log_lh(graph, partitions)?;
+  debug!("Log likelihood: {log_lh}");
+  marginal_forward(graph, partitions)?;
+  Ok(log_lh)
+}
+
+/// Convenience wrapper for marginal reconstruction.
+///
+/// Delegates to `initialize_marginal` when alignment provided, `update_marginal` otherwise.
+/// Preserved for backward compatibility during transition.
 pub fn run_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
@@ -23,18 +63,11 @@ where
   E: GraphEdge + Weighted,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
-  // Initialize with sequence data if provided (needed for dense)
   if let Some(aln) = aln {
-    for partition in partitions {
-      partition.write_arc().attach_sequences(graph, aln)?;
-    }
+    initialize_marginal(graph, partitions, aln)
+  } else {
+    update_marginal(graph, partitions)
   }
-
-  marginal_backward(graph, partitions)?;
-  let log_lh = graph_log_lh(graph, partitions)?;
-  debug!("Log likelihood: {log_lh}");
-  marginal_forward(graph, partitions)?;
-  Ok(log_lh)
 }
 
 /// Ancestral sequence reconstruction
