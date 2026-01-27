@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::commands::ancestral::fitch::get_common_length;
-  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, run_marginal};
+  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, initialize_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
@@ -81,7 +81,7 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    run_marginal(&graph, &partitions_marginal_dense, Some(&aln))?;
+    initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(&graph, false, &partitions_marginal_dense, |node, seq| {

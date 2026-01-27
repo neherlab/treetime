@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, run_marginal};
+  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
@@ -71,7 +71,7 @@ mod tests {
 
     compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
 
-    let log_lh = run_marginal(&graph, &partitions_marginal_sparse, None)?;
+    let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
