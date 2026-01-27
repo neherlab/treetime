@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::commands::ancestral::fitch::compress_sequences;
-use treetime::commands::ancestral::marginal_unified::run_marginal;
+use treetime::commands::ancestral::marginal_unified::initialize_marginal;
 use treetime::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use treetime::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::commands::clock::date_constraints::load_date_constraints;
@@ -360,7 +360,7 @@ fn run_marginal_sparse_test(args: &Args) -> Result<TestResult, Report> {
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
 
-  run_marginal(&graph, &partitions, Some(&ALN))?;
+  initialize_marginal(&graph, &partitions, &ALN)?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
 
   initialize_node_divergences(&graph);
@@ -412,7 +412,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
 
-  run_marginal(&graph, &partitions, Some(&ALN))?;
+  initialize_marginal(&graph, &partitions, &ALN)?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;
 
   initialize_node_divergences(&graph);

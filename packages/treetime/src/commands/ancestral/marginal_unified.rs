@@ -49,27 +49,6 @@ where
   Ok(log_lh)
 }
 
-/// Convenience wrapper for marginal reconstruction.
-///
-/// Delegates to `initialize_marginal` when alignment provided, `update_marginal` otherwise.
-/// Preserved for backward compatibility during transition.
-pub fn run_marginal<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-  aln: Option<&[FastaRecord]>,
-) -> Result<f64, Report>
-where
-  N: GraphNode + Named,
-  E: GraphEdge + Weighted,
-  P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
-{
-  if let Some(aln) = aln {
-    initialize_marginal(graph, partitions, aln)
-  } else {
-    update_marginal(graph, partitions)
-  }
-}
-
 /// Ancestral sequence reconstruction
 pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
