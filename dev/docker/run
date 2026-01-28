@@ -161,6 +161,16 @@ declare -A volumes=(
   ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
 )
 
+declare -A sccache_env=()
+if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
+  volumes["${SCCACHE_DIR:-${cache_dir}/sccache}"]="/home/${USER}/.cache/sccache"
+  sccache_env=(
+    ["RUSTC_WRAPPER"]="sccache"
+    ["SCCACHE_DIR"]="/home/${USER}/.cache/sccache"
+    ["SCCACHE_CACHE_SIZE"]="${SCCACHE_CACHE_SIZE:-5G}"
+  )
+fi
+
 mkdir -p "${!volumes[@]}"
 
 # shellcheck disable=SC2046
@@ -181,6 +191,7 @@ docker run --rm $(tty -s && echo "-it") \
   --env="TERM=xterm-256color" \
   --env="TZ=Etc/UTC" \
   --env="LANG=C.UTF-8" \
+  $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
   --ulimit="core=0" \
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
   bash -c "${*:-bash}"

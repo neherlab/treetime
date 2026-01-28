@@ -61,6 +61,9 @@ RUN /install-protobuf
 COPY --link "dev/docker/files/install-hyperfine" "/"
 RUN /install-hyperfine
 
+COPY --link "dev/docker/files/install-sccache" "/"
+RUN /install-sccache
+
 
 ENV HOST_PREFIX="/usr"
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"

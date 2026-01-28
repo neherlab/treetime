@@ -78,6 +78,9 @@ RUN /install-llvm
 COPY --link "dev/docker/files/install-protobuf" "/"
 RUN /install-protobuf
 
+COPY --link "dev/docker/files/install-sccache" "/"
+RUN /install-sccache
+
 COPY --link "dev/docker/files/install-libbzip2" "/"
 RUN /install-libbzip2 "${HOST_TUPLE}" "${PREFIX_HOST}"
 

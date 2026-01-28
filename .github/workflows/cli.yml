@@ -65,11 +65,12 @@ jobs:
             .cache/docker-${{ matrix.arch }}/cargo/registry/index/
             .cache/docker-${{ matrix.arch }}/cargo/registry/cache/
             .cache/docker-${{ matrix.arch }}/cargo/git/db/
-          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+            .cache/docker-${{ matrix.arch }}/sccache/
+          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-${{ matrix.arch }}-
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
@@ -123,11 +124,12 @@ jobs:
             .cache/docker-native/cargo/registry/index/
             .cache/docker-native/cargo/registry/cache/
             .cache/docker-native/cargo/git/db/
-          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            .cache/docker-native/sccache/
+          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
@@ -175,11 +177,12 @@ jobs:
             .cache/docker-native/cargo/registry/index/
             .cache/docker-native/cargo/registry/cache/
             .cache/docker-native/cargo/git/db/
-          key: neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            .cache/docker-native/sccache/
+          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-native-
-            neherlab-treetime-cli-cache-v1-cargo-${{ runner.os }}-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
