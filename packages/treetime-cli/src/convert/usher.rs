@@ -62,7 +62,10 @@ impl UsherRead<ConverterNode, ConverterEdge, ConverterData> for UsherReader {
       name: node.name.as_ref().map(ToOwned::to_owned),
     };
 
-    let edge = ConverterEdge { weight: None };
+    let edge = ConverterEdge {
+      weight: None,
+      ..Default::default()
+    };
 
     Ok((node, edge))
   }

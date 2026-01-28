@@ -99,6 +99,7 @@ impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader 
       meta: tree.data.meta.clone(),
       root_sequence: tree.data.root_sequence.clone(),
       other: tree.data.other.clone(),
+      ..Default::default()
     })
   }
 
@@ -112,7 +113,10 @@ impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader 
       ConverterNode {
         name: Some(node.name.clone()),
       },
-      ConverterEdge { weight: branch_length },
+      ConverterEdge {
+        weight: branch_length,
+        ..Default::default()
+      },
     ))
   }
 }

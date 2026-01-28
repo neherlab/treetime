@@ -1,8 +1,6 @@
 use crate::convert::convert::{ConverterData, ConverterEdge, ConverterNode};
 use eyre::Report;
-use serde_json::Value;
 use std::collections::BTreeMap;
-use treetime::io::auspice::AuspiceTreeMeta;
 use treetime::io::phyloxml::{
   Phyloxml, PhyloxmlClade, PhyloxmlContext, PhyloxmlDataFromGraphData, PhyloxmlDataToGraphData, PhyloxmlFromGraph,
   PhyloxmlGraphContext, PhyloxmlPhylogeny, PhyloxmlToGraph,
@@ -36,10 +34,7 @@ impl PhyloxmlDataToGraphData for ConverterData {
   fn phyloxml_data_to_graph_data(pxml: &Phyloxml) -> Result<Self, Report> {
     Ok(Self {
       rooted: pxml.phylogeny[0].rooted,
-      version: None,
-      meta: AuspiceTreeMeta::default(),
-      root_sequence: None,
-      other: Value::default(),
+      ..Default::default()
     })
   }
 }
@@ -83,6 +78,7 @@ impl PhyloxmlToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
       },
       ConverterEdge {
         weight: clade.branch_length_attr.or(clade.branch_length_elem),
+        ..Default::default()
       },
     ))
   }

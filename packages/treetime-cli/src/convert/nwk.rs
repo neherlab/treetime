@@ -19,7 +19,10 @@ impl NodeToNwk for ConverterNode {
 
 impl EdgeFromNwk for ConverterEdge {
   fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-    Ok(Self { weight })
+    Ok(Self {
+      weight,
+      ..Default::default()
+    })
   }
 }
 

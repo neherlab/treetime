@@ -1,5 +1,6 @@
 use crate::convert::args::{Args, TreeFormat};
 use crate::convert::auspice::{AuspiceReader, AuspiceWriter};
+use crate::convert::mutation::PartitionedMutations;
 use crate::convert::usher::{UsherReader, UsherWriter};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -27,14 +28,17 @@ pub struct ConverterNode {
   pub name: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ConverterEdge {
   pub weight: Option<f64>,
+  #[serde(default, skip_serializing_if = "PartitionedMutations::is_empty")]
+  pub mutations: PartitionedMutations,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ConverterData {
   pub rooted: bool,
+  pub has_mutations: bool,
   pub version: Option<String>,
   pub meta: AuspiceTreeMeta,
   pub root_sequence: Option<BTreeMap<String, String>>,
