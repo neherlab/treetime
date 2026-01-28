@@ -99,23 +99,8 @@ images=(
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
 )
 
-if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-  parallel -j ${#images[@]} docker pull --quiet ::: "${images[@]}" || true
-fi
-
-if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
-  build_params=()
-
-  # Use custom buildx builder with `docker-container` driver in CI to enable caching.
-  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-    if ! docker buildx inspect "${docker_builder_name}" &>/dev/null; then
-      docker buildx create --name="${docker_builder_name}" --driver="docker-container" --driver-opt="network=host" >/dev/null
-    fi
-    build_params+=("--builder=${docker_builder_name}")
-    build_params+=("--push")
-    build_params+=("--cache-to=type=registry,mode=max,ref=${PROJECT_DOCKER_REPO}:${docker_image_tag}")
-    build_params+=("${images[@]/#/--cache-from=}")
-  fi
+build_image() {
+  local build_params=("$@")
 
   export BUILDKIT_PROGRESS=plain
   export PROGRESS_NO_TRUNC=1
@@ -123,7 +108,6 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     --file="${dockerfile}" \
     "${images[@]/#/--tag=}" \
     --network=host \
-    \
     --build-arg="UID=$(id -u)" \
     --build-arg="GID=$(id -g)" \
     --build-arg="USER=${USER}" \
@@ -142,13 +126,29 @@ if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_ta
     --build-arg="HOST_TUPLE_SAFE=${HOST_TUPLE_SAFE}" \
     --build-arg="HOST_GCC_TRIPLET=${HOST_GCC_TRIPLET}" \
     --load \
-    \
     "${build_params[@]}" \
-    \
     . >/dev/null
+}
 
-  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+  # CI: check registry first, only build if image doesn't exist
+  if [ -z "${DOCKER_FORCE_REBUILD:-}" ] && docker manifest inspect "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null; then
+    docker pull --quiet "${PROJECT_DOCKER_REPO}:${docker_image_tag}"
+  else
+    if ! docker buildx inspect "${docker_builder_name}" &>/dev/null; then
+      docker buildx create --name="${docker_builder_name}" --driver="docker-container" --driver-opt="network=host" >/dev/null
+    fi
+    build_image \
+      "--builder=${docker_builder_name}" \
+      "--push" \
+      "--cache-to=type=registry,mode=max,ref=${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
+      "${images[@]/#/--cache-from=}"
     parallel -j ${#images[@]} docker push --quiet ::: "${images[@]}"
+  fi
+else
+  # Local: check local image, build without push
+  if ! docker inspect --format '{{.Id}}' "${PROJECT_DOCKER_REPO}:${docker_image_tag}" &>/dev/null || [ -n "${DOCKER_FORCE_REBUILD:-}" ]; then
+    build_image
   fi
 fi
 
