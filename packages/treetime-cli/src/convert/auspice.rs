@@ -340,4 +340,109 @@ mod tests {
           }
         }"#
   );
+
+  #[test]
+  fn test_auspice_mutation_roundtrip() -> Result<(), Report> {
+    let input = indoc!(
+      // language=json
+      r#"{
+        "meta": {},
+        "tree": {
+          "name": "root",
+          "node_attrs": {
+            "div": 0.0
+          },
+          "children": [
+            {
+              "name": "A",
+              "branch_attrs": {
+                "mutations": {
+                  "nuc": ["A100T", "C200G"],
+                  "S": ["D614G"]
+                }
+              },
+              "node_attrs": {
+                "div": 2.0
+              }
+            },
+            {
+              "name": "B",
+              "branch_attrs": {
+                "mutations": {
+                  "nuc": ["G300A"]
+                }
+              },
+              "node_attrs": {
+                "div": 1.0
+              }
+            }
+          ]
+        }
+      }"#
+    );
+
+    let graph = auspice_read_str::<AuspiceReader, _, _, _>(input)?;
+
+    assert!(graph.data().read_arc().has_mutations);
+
+    let edges = graph.get_edges();
+    let edge_a = edges.iter().find(|e| {
+      let edge = e.read_arc();
+      let target_node = graph.get_node(edge.target());
+      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+    });
+    let edge_a = edge_a.map(|e| e.read_arc());
+    let edge_a_payload = edge_a.as_ref().map(|e| e.payload().read_arc());
+    let expected = 2;
+    let actual = edge_a_payload.as_ref().and_then(|p| p.mutations.get("nuc")).map_or(0, |v| v.len());
+    assert_eq!(expected, actual);
+    let expected = 1;
+    let actual = edge_a_payload.as_ref().and_then(|p| p.mutations.get("S")).map_or(0, |v| v.len());
+    assert_eq!(expected, actual);
+
+    let output = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
+    let graph2 = auspice_read_str::<AuspiceReader, _, _, _>(&output)?;
+
+    assert!(graph2.data().read_arc().has_mutations);
+    let expected = 3;
+    let actual = graph2.num_nodes();
+    assert_eq!(expected, actual);
+
+    let edges2 = graph2.get_edges();
+    let edge_a2 = edges2.iter().find(|e| {
+      let edge = e.read_arc();
+      let target_node = graph2.get_node(edge.target());
+      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+    });
+    let edge_a2 = edge_a2.map(|e| e.read_arc());
+    let edge_a2_payload = edge_a2.as_ref().map(|e| e.payload().read_arc());
+    let expected = 2;
+    let actual = edge_a2_payload.as_ref().and_then(|p| p.mutations.get("nuc")).map_or(0, |v| v.len());
+    assert_eq!(expected, actual);
+    let expected = 1;
+    let actual = edge_a2_payload.as_ref().and_then(|p| p.mutations.get("S")).map_or(0, |v| v.len());
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_auspice_nwk_topology_preserved() -> Result<(), Report> {
+    let nwk_input = "(A:1,B:2)root;";
+    let graph = nwk_read_str::<ConverterNode, ConverterEdge, ConverterData>(nwk_input)?;
+
+    let edges = graph.get_edges();
+    let edge_a = edges.iter().find(|e| {
+      let edge = e.read_arc();
+      let target_node = graph.get_node(edge.target());
+      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+    });
+    assert!(edge_a.map_or(true, |e| e.read_arc().payload().read_arc().mutations.is_empty()));
+
+    let auspice_str = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
+    let graph2 = auspice_read_str::<AuspiceReader, _, _, _>(&auspice_str)?;
+    let nwk_output = nwk_write_str(&graph2, &NwkWriteOptions::default())?;
+
+    assert_eq!(nwk_input, nwk_output);
+    Ok(())
+  }
 }

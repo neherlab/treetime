@@ -139,3 +139,104 @@ impl UsherRead<ConverterNode, ConverterEdge, ConverterData> for UsherReader {
     Ok((node, edge))
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::convert::auspice::AuspiceReader;
+  use indoc::indoc;
+  use treetime::io::auspice::auspice_read_str;
+  use treetime::io::usher_mat::{usher_mat_json_write_str, UsherMatJsonOptions};
+
+  #[test]
+  fn test_usher_write_mutations() -> Result<(), Report> {
+    let auspice_input = indoc!(
+      // language=json
+      r#"{
+        "meta": {},
+        "tree": {
+          "name": "root",
+          "node_attrs": {
+            "div": 0.0
+          },
+          "children": [
+            {
+              "name": "A",
+              "branch_attrs": {
+                "mutations": {
+                  "nuc": ["A100T", "C200G"]
+                }
+              },
+              "node_attrs": {
+                "div": 2.0
+              }
+            },
+            {
+              "name": "B",
+              "branch_attrs": {
+                "mutations": {
+                  "nuc": ["G300A"]
+                }
+              },
+              "node_attrs": {
+                "div": 1.0
+              }
+            }
+          ]
+        }
+      }"#
+    );
+
+    let graph = auspice_read_str::<AuspiceReader, ConverterNode, ConverterEdge, ConverterData>(auspice_input)?;
+
+    assert!(graph.data().read_arc().has_mutations);
+
+    let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
+
+    assert!(usher_output.contains("\"position\": 100"));
+    assert!(usher_output.contains("\"position\": 200"));
+    assert!(usher_output.contains("\"position\": 300"));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_auspice_usher_auspice_nuc_mutations() -> Result<(), Report> {
+    let auspice_input = indoc!(
+      // language=json
+      r#"{
+        "meta": {},
+        "tree": {
+          "name": "root",
+          "node_attrs": {
+            "div": 0.0
+          },
+          "children": [
+            {
+              "name": "A",
+              "branch_attrs": {
+                "mutations": {
+                  "nuc": ["A100T", "C200G"],
+                  "S": ["D614G"]
+                }
+              },
+              "node_attrs": {
+                "div": 2.0
+              }
+            }
+          ]
+        }
+      }"#
+    );
+
+    let graph = auspice_read_str::<AuspiceReader, ConverterNode, ConverterEdge, ConverterData>(auspice_input)?;
+
+    let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
+
+    assert!(usher_output.contains("\"position\": 100"), "Should contain position 100");
+    assert!(usher_output.contains("\"position\": 200"), "Should contain position 200");
+    assert!(!usher_output.contains("\"position\": 614"), "S partition mutation should not appear in UShER output");
+
+    Ok(())
+  }
+}
