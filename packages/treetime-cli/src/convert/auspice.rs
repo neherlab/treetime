@@ -1,5 +1,7 @@
 use crate::convert::convert::{ConverterData, ConverterEdge, ConverterNode};
+use crate::convert::mutation::{PartitionedMutations, format_mutation_list, parse_mutation_list};
 use eyre::Report;
+use itertools::Itertools;
 use maplit::btreemap;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -10,6 +12,20 @@ use treetime::io::auspice::{
   AuspiceTreeNode, AuspiceTreeNodeAttrs, AuspiceWrite,
 };
 use treetime::make_internal_report;
+
+fn parse_auspice_mutations(auspice_mutations: &BTreeMap<String, Vec<String>>) -> Result<PartitionedMutations, Report> {
+  auspice_mutations
+    .iter()
+    .map(|(partition, muts)| Ok((partition.clone(), parse_mutation_list(muts)?)))
+    .try_collect()
+}
+
+fn format_auspice_mutations(mutations: &PartitionedMutations) -> BTreeMap<String, Vec<String>> {
+  mutations
+    .iter()
+    .map(|(partition, muts)| (partition.clone(), format_mutation_list(muts)))
+    .collect()
+}
 
 pub struct AuspiceWriter {
   pub divs: BTreeMap<GraphNodeKey, f64>,
@@ -68,9 +84,15 @@ impl AuspiceWrite<ConverterNode, ConverterEdge, ConverterData> for AuspiceWriter
       self.divs.insert(node_key, div);
     }
 
+    let mutations = edge.map_or(BTreeMap::new(), |edge| format_auspice_mutations(&edge.mutations));
+
     Ok(AuspiceTreeNode {
       name,
-      branch_attrs: AuspiceTreeBranchAttrs::default(),
+      branch_attrs: AuspiceTreeBranchAttrs {
+        mutations,
+        labels: None,
+        other: Value::default(),
+      },
       node_attrs: AuspiceTreeNodeAttrs {
         div,
         clade_membership: None,
@@ -85,21 +107,26 @@ impl AuspiceWrite<ConverterNode, ConverterEdge, ConverterData> for AuspiceWriter
   }
 }
 
-pub struct AuspiceReader;
+pub struct AuspiceReader {
+  has_mutations: bool,
+}
 
 impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader {
-  fn new(_: &AuspiceTree) -> Result<Self, Report> {
-    Ok(Self {})
+  fn new(tree: &AuspiceTree) -> Result<Self, Report> {
+    let has_mutations = tree
+      .iter_depth_first_preorder()
+      .any(|(_, node)| !node.branch_attrs.mutations.is_empty());
+    Ok(Self { has_mutations })
   }
 
   fn auspice_data_to_graph_data(&mut self, tree: &AuspiceTree) -> Result<ConverterData, Report> {
     Ok(ConverterData {
       rooted: true,
+      has_mutations: self.has_mutations,
       version: tree.data.version.clone(),
       meta: tree.data.meta.clone(),
       root_sequence: tree.data.root_sequence.clone(),
       other: tree.data.other.clone(),
-      ..Default::default()
     })
   }
 
@@ -109,13 +136,14 @@ impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader 
   ) -> Result<(ConverterNode, ConverterEdge), Report> {
     let AuspiceTreeContext { node, .. } = context;
     let branch_length = context.branch_length();
+    let mutations = parse_auspice_mutations(&node.branch_attrs.mutations)?;
     Ok((
       ConverterNode {
         name: Some(node.name.clone()),
       },
       ConverterEdge {
         weight: branch_length,
-        ..Default::default()
+        mutations,
       },
     ))
   }
