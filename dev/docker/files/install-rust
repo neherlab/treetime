@@ -9,6 +9,8 @@ export PATH="${dest}/bin:${PATH:+":${PATH}"}"
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain=none
 
+rustup set profile minimal
+
 if [ ! -f "${dest}/rust-toolchain.toml" ]; then
   echo "$0: file not found: '${dest}/rust-toolchain.toml'" >&2
   exit 1
@@ -17,6 +19,8 @@ fi
 # `rustup show` installs toolchain version specified in `rust-toolchain.toml` in the current directory
 cd "${dest}"
 rustup show
+
+rustup component add clippy rustfmt
 
 if [ -n "${triplet:-}" ]; then
   rustup target add "${triplet}"
