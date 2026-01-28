@@ -73,6 +73,7 @@ pub fn format_mutation_list(mutations: &[Mutation]) -> Vec<String> {
 mod tests {
   use super::*;
   use pretty_assertions::assert_eq;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_mutation_parse_a123t() -> Result<(), Report> {
@@ -116,38 +117,35 @@ mod tests {
 
   #[test]
   fn test_mutation_parse_empty_fails() {
-    let result = Mutation::parse("");
-    assert!(result.is_err());
+    assert_error!(Mutation::parse(""), "Mutation string too short: ''");
   }
 
   #[test]
   fn test_mutation_parse_single_char_fails() {
-    let result = Mutation::parse("A");
-    assert!(result.is_err());
+    assert_error!(Mutation::parse("A"), "Mutation string too short: 'A'");
   }
 
   #[test]
   fn test_mutation_parse_two_chars_fails() {
-    let result = Mutation::parse("AT");
-    assert!(result.is_err());
+    assert_error!(Mutation::parse("AT"), "Mutation string too short: 'AT'");
   }
 
   #[test]
   fn test_mutation_parse_only_digits_fails() {
-    let result = Mutation::parse("123");
-    assert!(result.is_err());
+    assert_error!(Mutation::parse("123"), "Invalid reference character in mutation: '123'");
   }
 
   #[test]
   fn test_mutation_parse_digit_first_fails() {
-    let result = Mutation::parse("1A2");
-    assert!(result.is_err());
+    assert_error!(Mutation::parse("1A2"), "Invalid reference character in mutation: '1A2'");
   }
 
   #[test]
   fn test_mutation_parse_negative_position_fails() {
-    let result = Mutation::parse("A-1T");
-    assert!(result.is_err());
+    assert_error!(
+      Mutation::parse("A-1T"),
+      "Invalid position in mutation 'A-1T': invalid digit found in string"
+    );
   }
 
   #[test]

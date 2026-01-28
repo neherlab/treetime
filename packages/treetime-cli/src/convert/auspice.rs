@@ -389,15 +389,21 @@ mod tests {
     let edge_a = edges.iter().find(|e| {
       let edge = e.read_arc();
       let target_node = graph.get_node(edge.target());
-      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+      target_node.is_some_and(|n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
     });
     let edge_a = edge_a.map(|e| e.read_arc());
     let edge_a_payload = edge_a.as_ref().map(|e| e.payload().read_arc());
     let expected = 2;
-    let actual = edge_a_payload.as_ref().and_then(|p| p.mutations.get("nuc")).map_or(0, |v| v.len());
+    let actual = edge_a_payload
+      .as_ref()
+      .and_then(|p| p.mutations.get("nuc"))
+      .map_or(0, |v| v.len());
     assert_eq!(expected, actual);
     let expected = 1;
-    let actual = edge_a_payload.as_ref().and_then(|p| p.mutations.get("S")).map_or(0, |v| v.len());
+    let actual = edge_a_payload
+      .as_ref()
+      .and_then(|p| p.mutations.get("S"))
+      .map_or(0, |v| v.len());
     assert_eq!(expected, actual);
 
     let output = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
@@ -412,15 +418,21 @@ mod tests {
     let edge_a2 = edges2.iter().find(|e| {
       let edge = e.read_arc();
       let target_node = graph2.get_node(edge.target());
-      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+      target_node.is_some_and(|n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
     });
     let edge_a2 = edge_a2.map(|e| e.read_arc());
     let edge_a2_payload = edge_a2.as_ref().map(|e| e.payload().read_arc());
     let expected = 2;
-    let actual = edge_a2_payload.as_ref().and_then(|p| p.mutations.get("nuc")).map_or(0, |v| v.len());
+    let actual = edge_a2_payload
+      .as_ref()
+      .and_then(|p| p.mutations.get("nuc"))
+      .map_or(0, |v| v.len());
     assert_eq!(expected, actual);
     let expected = 1;
-    let actual = edge_a2_payload.as_ref().and_then(|p| p.mutations.get("S")).map_or(0, |v| v.len());
+    let actual = edge_a2_payload
+      .as_ref()
+      .and_then(|p| p.mutations.get("S"))
+      .map_or(0, |v| v.len());
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -434,9 +446,9 @@ mod tests {
     let edge_a = edges.iter().find(|e| {
       let edge = e.read_arc();
       let target_node = graph.get_node(edge.target());
-      target_node.map_or(false, |n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
+      target_node.is_some_and(|n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
     });
-    assert!(edge_a.map_or(true, |e| e.read_arc().payload().read_arc().mutations.is_empty()));
+    assert!(edge_a.is_none_or(|e| e.read_arc().payload().read_arc().mutations.is_empty()));
 
     let auspice_str = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
     let graph2 = auspice_read_str::<AuspiceReader, _, _, _>(&auspice_str)?;
