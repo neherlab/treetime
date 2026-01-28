@@ -9,4 +9,4 @@ file_hash \
   .dockerignore \
   .gitignore \
   rust-toolchain.toml \
-  $(find dev/docker -type f)
+  $(find dev/docker -type f | sort)
