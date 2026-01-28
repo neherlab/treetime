@@ -97,10 +97,7 @@ where
     Ok(())
   }
 
-  fn process_node_backward(
-    &mut self,
-    node: &GraphNodeBackward<N, E, ()>,
-  ) -> Result<(), Report> {
+  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
     let alphabet = &self.alphabet.clone(); // TODO: avoid clone
     let length = self.length;
 
@@ -179,11 +176,7 @@ where
     Ok(())
   }
 
-  fn process_node_forward(
-    &mut self,
-    graph: &Graph<N, E, ()>,
-    node: &GraphNodeForward<N, E, ()>,
-  ) -> Result<(), Report> {
+  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
     if !node.is_root {
       let mut seq_info = self.nodes.remove(&node.key).unwrap();
       let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
@@ -233,11 +226,7 @@ where
     }
   }
 
-  fn reconstruct_node_sequence(
-    &mut self,
-    node: &GraphNodeForward<N, E, ()>,
-    include_leaves: bool,
-  ) -> Option<Seq> {
+  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
       return None;
     }

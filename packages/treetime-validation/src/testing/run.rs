@@ -27,7 +27,12 @@ pub struct Args {
   #[arg(long, default_value = "all", help_heading = "Test Selection")]
   pub test_cases: String,
 
-  #[arg(long, default_value_t = 0.5, help_heading = "Test Selection", help = "Run test cases with slowness <= this threshold (0.0-1.0)")]
+  #[arg(
+    long,
+    default_value_t = 0.5,
+    help_heading = "Test Selection",
+    help = "Run test cases with slowness <= this threshold (0.0-1.0)"
+  )]
   pub slowness: f64,
 
   #[arg(long, value_delimiter = ',', default_values_t = ConvolutionAlgorithm::all(), help_heading = "Algorithms")]
@@ -39,10 +44,18 @@ pub struct Args {
   #[arg(long, default_value = "tmp/testing", help_heading = "Output")]
   pub output_dir: String,
 
-  #[arg(long, help_heading = "Output", help = "Show detailed output including per-test metrics")]
+  #[arg(
+    long,
+    help_heading = "Output",
+    help = "Show detailed output including per-test metrics"
+  )]
   pub verbose: bool,
 
-  #[arg(long, help_heading = "Output", help = "List available test cases without running tests")]
+  #[arg(
+    long,
+    help_heading = "Output",
+    help = "List available test cases without running tests"
+  )]
   pub list_cases: bool,
 }
 

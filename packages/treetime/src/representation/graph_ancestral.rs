@@ -359,4 +359,3 @@ impl ClockEdge for EdgeAncestral {
     &mut self.clock_from_child
   }
 }
-

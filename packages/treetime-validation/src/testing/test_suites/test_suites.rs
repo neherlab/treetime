@@ -36,7 +36,11 @@ impl TestSuiteName {
   }
 
   pub fn convolution_suites() -> Vec<Self> {
-    vec![Self::ConvGaussianGaussian, Self::ConvExponentialExponential, Self::ConvGaussianExponential]
+    vec![
+      Self::ConvGaussianGaussian,
+      Self::ConvExponentialExponential,
+      Self::ConvGaussianExponential,
+    ]
   }
 
   pub fn multiplication_suites() -> Vec<Self> {
@@ -52,7 +56,10 @@ impl TestSuiteName {
   }
 
   pub fn is_convolution(&self) -> bool {
-    matches!(self, Self::ConvGaussianGaussian | Self::ConvExponentialExponential | Self::ConvGaussianExponential)
+    matches!(
+      self,
+      Self::ConvGaussianGaussian | Self::ConvExponentialExponential | Self::ConvGaussianExponential
+    )
   }
 
   pub fn is_multiplication(&self) -> bool {
@@ -68,12 +75,8 @@ impl TestSuiteName {
       Self::ConvGaussianGaussian => run_convolution_tests_impl::<GaussianTestSuite>(args),
       Self::ConvExponentialExponential => run_convolution_tests_impl::<ExponentialTestSuite>(args),
       Self::ConvGaussianExponential => run_convolution_tests_impl::<GaussianExponentialTestSuite>(args),
-      Self::MultGaussianPairwise => {
-        run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args)
-      },
-      Self::MultGaussianChain => {
-        run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args)
-      },
+      Self::MultGaussianPairwise => run_multiplication_tests_impl::<GaussianPairwiseMultiplicationTestSuite>(args),
+      Self::MultGaussianChain => run_chain_multiplication_tests_impl::<GaussianChainMultiplicationTestSuite>(args),
     }
   }
 }

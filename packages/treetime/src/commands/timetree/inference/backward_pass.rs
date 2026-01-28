@@ -61,9 +61,7 @@ where
     let child = child.read_arc();
     let mut edge = edge.write_arc();
 
-    if let (Some(branch_dist), Some(child_time_dist)) =
-      (edge.branch_length_distribution(), child.time_distribution())
-    {
+    if let (Some(branch_dist), Some(child_time_dist)) = (edge.branch_length_distribution(), child.time_distribution()) {
       // Compute parent time distribution using regular convolution with negated branch: parent_time = child_time + (-branch_length)
       let negated_branch_dist = branch_dist.negate();
       let parent_message = distribution_convolution(child_time_dist.as_ref(), &negated_branch_dist)?;

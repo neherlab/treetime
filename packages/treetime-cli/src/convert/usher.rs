@@ -146,7 +146,7 @@ mod tests {
   use crate::convert::auspice::AuspiceReader;
   use indoc::indoc;
   use treetime::io::auspice::auspice_read_str;
-  use treetime::io::usher_mat::{usher_mat_json_write_str, UsherMatJsonOptions};
+  use treetime::io::usher_mat::{UsherMatJsonOptions, usher_mat_json_write_str};
 
   #[test]
   fn test_usher_write_mutations() -> Result<(), Report> {
@@ -233,9 +233,18 @@ mod tests {
 
     let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
 
-    assert!(usher_output.contains("\"position\": 100"), "Should contain position 100");
-    assert!(usher_output.contains("\"position\": 200"), "Should contain position 200");
-    assert!(!usher_output.contains("\"position\": 614"), "S partition mutation should not appear in UShER output");
+    assert!(
+      usher_output.contains("\"position\": 100"),
+      "Should contain position 100"
+    );
+    assert!(
+      usher_output.contains("\"position\": 200"),
+      "Should contain position 200"
+    );
+    assert!(
+      !usher_output.contains("\"position\": 614"),
+      "S partition mutation should not appear in UShER output"
+    );
 
     Ok(())
   }

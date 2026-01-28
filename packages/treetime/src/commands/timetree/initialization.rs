@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
-use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::clock::date_constraints::load_date_constraints;
+use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -98,14 +98,15 @@ pub fn initialize_partitions(
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     Ok(vec![partition])
   } else {
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
+      Arc::new(RwLock::new(PartitionMarginalDense {
+        index: 0,
+        gtr: jc69(JC69Params::default())?,
+        alphabet,
+        length,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      }));
     Ok(vec![partition])
   }
 }

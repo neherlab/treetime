@@ -2,11 +2,11 @@
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
-use crate::io::fasta::FastaRecord;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
+use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{Described, GraphNode, Named};
+use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
   Deletion, MarginalSparseSeqDistribution, ParsimonySeqDistribution, SparseEdgePartition, SparseNodePartition,
@@ -94,10 +94,7 @@ where
   });
 }
 
-fn run_fitch_backward<N, E, P>(
-  partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeBackward<N, E, ()>,
-) -> Result<(), Report>
+fn run_fitch_backward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -285,10 +282,7 @@ where
   });
 }
 
-fn run_fitch_forward<N, E, P>(
-  partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeForward<N, E, ()>,
-) -> Result<(), Report>
+fn run_fitch_forward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,

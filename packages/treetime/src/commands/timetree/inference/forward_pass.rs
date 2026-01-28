@@ -20,9 +20,7 @@ where
   Ok(())
 }
 
-fn propagate_distributions_forward_single_node<N, E, D>(
-  node: &mut GraphNodeForward<N, E, D>,
-) -> Result<(), Report>
+fn propagate_distributions_forward_single_node<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>
 where
   N: TimetreeNode,
   E: TimetreeEdge,

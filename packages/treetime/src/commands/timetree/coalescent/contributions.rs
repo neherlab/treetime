@@ -70,9 +70,7 @@ where
   Ok(contributions)
 }
 
-fn compute_leaf_contribution_single(
-  integral_merger_rate: &PiecewiseLinearFn,
-) -> Result<DistributionNegLog, Report> {
+fn compute_leaf_contribution_single(integral_merger_rate: &PiecewiseLinearFn) -> Result<DistributionNegLog, Report> {
   // Leaf nodes represent sampled lineages. The coalescent contribution encodes
   // the survival probability P = exp(I(t)).
   //
