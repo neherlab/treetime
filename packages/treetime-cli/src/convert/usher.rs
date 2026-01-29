@@ -248,7 +248,10 @@ mod tests {
 
     let positions = get_all_positions(&usher_tree);
     let expected = BTreeSet::from([100, 200]);
-    assert_eq!(expected, positions, "Only nuc partition mutations should appear in UShER output");
+    assert_eq!(
+      expected, positions,
+      "Only nuc partition mutations should appear in UShER output"
+    );
 
     Ok(())
   }

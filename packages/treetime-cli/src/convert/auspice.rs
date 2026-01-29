@@ -167,11 +167,7 @@ mod tests {
       let target = graph.get_node(edge.target())?;
       let target_payload = target.read_arc().payload().read_arc();
       let name = target_payload.name.as_deref()?;
-      if name == node_name {
-        Some(edge.payload().read_arc().mutations.clone())
-      } else {
-        None
-      }
+(name == node_name).then(|| edge.payload().read_arc().mutations.clone())
     })
   }
 
