@@ -145,8 +145,19 @@ mod tests {
   use super::*;
   use crate::convert::auspice::AuspiceReader;
   use indoc::indoc;
+  use pretty_assertions::assert_eq;
+  use std::collections::BTreeSet;
   use treetime::io::auspice::auspice_read_str;
-  use treetime::io::usher_mat::{UsherMatJsonOptions, usher_mat_json_write_str};
+  use treetime::io::usher_mat::{UsherMatJsonOptions, UsherTree, usher_mat_json_write_str};
+  use treetime_io::json::json_read_str;
+
+  fn get_all_positions(tree: &UsherTree) -> BTreeSet<i32> {
+    tree
+      .node_mutations
+      .iter()
+      .flat_map(|ml| ml.mutation.iter().map(|m| m.position))
+      .collect()
+  }
 
   #[test]
   fn test_usher_write_mutations() -> Result<(), Report> {
@@ -192,10 +203,11 @@ mod tests {
     assert!(graph.data().read_arc().has_mutations);
 
     let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
+    let usher_tree: UsherTree = json_read_str(&usher_output)?;
 
-    assert!(usher_output.contains("\"position\": 100"));
-    assert!(usher_output.contains("\"position\": 200"));
-    assert!(usher_output.contains("\"position\": 300"));
+    let expected = BTreeSet::from([100, 200, 300]);
+    let actual = get_all_positions(&usher_tree);
+    assert_eq!(expected, actual);
 
     Ok(())
   }
@@ -232,19 +244,11 @@ mod tests {
     let graph = auspice_read_str::<AuspiceReader, ConverterNode, ConverterEdge, ConverterData>(auspice_input)?;
 
     let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
+    let usher_tree: UsherTree = json_read_str(&usher_output)?;
 
-    assert!(
-      usher_output.contains("\"position\": 100"),
-      "Should contain position 100"
-    );
-    assert!(
-      usher_output.contains("\"position\": 200"),
-      "Should contain position 200"
-    );
-    assert!(
-      !usher_output.contains("\"position\": 614"),
-      "S partition mutation should not appear in UShER output"
-    );
+    let positions = get_all_positions(&usher_tree);
+    let expected = BTreeSet::from([100, 200]);
+    assert_eq!(expected, positions, "Only nuc partition mutations should appear in UShER output");
 
     Ok(())
   }
