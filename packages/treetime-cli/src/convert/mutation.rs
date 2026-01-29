@@ -73,107 +73,61 @@ pub fn format_mutation_list(mutations: &[Mutation]) -> Vec<String> {
 mod tests {
   use super::*;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_utils::assert_error;
 
-  #[test]
-  fn test_mutation_parse_a123t() -> Result<(), Report> {
-    let result = Mutation::parse("A123T")?;
-    let expected = Mutation::new(b'A', 123, b'T');
+  #[rstest]
+  #[case("A123T", b'A', 123, b'T')]
+  #[case("C1G", b'C', 1, b'G')]
+  #[case("T99999A", b'T', 99999, b'A')]
+  #[case("a1b", b'a', 1, b'b')]
+  #[case(" G42C ", b'G', 42, b'C')]
+  fn test_mutation_parse(
+    #[case] input: &str,
+    #[case] reference: u8,
+    #[case] position: usize,
+    #[case] alternative: u8,
+  ) -> Result<(), Report> {
+    let expected = Mutation::new(reference, position, alternative);
+    let result = Mutation::parse(input)?;
     assert_eq!(expected, result);
     Ok(())
   }
 
-  #[test]
-  fn test_mutation_parse_c1g() -> Result<(), Report> {
-    let result = Mutation::parse("C1G")?;
-    let expected = Mutation::new(b'C', 1, b'G');
-    assert_eq!(expected, result);
-    Ok(())
+  #[rstest]
+  #[case("", "Mutation string too short: ''")]
+  #[case("A", "Mutation string too short: 'A'")]
+  #[case("AT", "Mutation string too short: 'AT'")]
+  #[case("123", "Invalid reference character in mutation: '123'")]
+  #[case("1A2", "Invalid reference character in mutation: '1A2'")]
+  #[case("A-1T", "Invalid position in mutation 'A-1T': invalid digit found in string")]
+  fn test_mutation_parse_error(#[case] input: &str, #[case] expected_error: &str) {
+    assert_error!(Mutation::parse(input), expected_error);
   }
 
-  #[test]
-  fn test_mutation_parse_t99999a() -> Result<(), Report> {
-    let result = Mutation::parse("T99999A")?;
-    let expected = Mutation::new(b'T', 99999, b'A');
-    assert_eq!(expected, result);
-    Ok(())
+  #[rstest]
+  #[case(b'A', 123, b'T', "A123T")]
+  #[case(b'C', 1, b'G', "C1G")]
+  #[case(b'T', 99999, b'A', "T99999A")]
+  fn test_mutation_format(
+    #[case] reference: u8,
+    #[case] position: usize,
+    #[case] alternative: u8,
+    #[case] expected: &str,
+  ) {
+    let mutation = Mutation::new(reference, position, alternative);
+    assert_eq!(expected, mutation.format());
   }
 
-  #[test]
-  fn test_mutation_parse_lowercase() -> Result<(), Report> {
-    let result = Mutation::parse("a1b")?;
-    let expected = Mutation::new(b'a', 1, b'b');
-    assert_eq!(expected, result);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_parse_with_whitespace() -> Result<(), Report> {
-    let result = Mutation::parse(" G42C ")?;
-    let expected = Mutation::new(b'G', 42, b'C');
-    assert_eq!(expected, result);
-    Ok(())
-  }
-
-  #[test]
-  fn test_mutation_parse_empty_fails() {
-    assert_error!(Mutation::parse(""), "Mutation string too short: ''");
-  }
-
-  #[test]
-  fn test_mutation_parse_single_char_fails() {
-    assert_error!(Mutation::parse("A"), "Mutation string too short: 'A'");
-  }
-
-  #[test]
-  fn test_mutation_parse_two_chars_fails() {
-    assert_error!(Mutation::parse("AT"), "Mutation string too short: 'AT'");
-  }
-
-  #[test]
-  fn test_mutation_parse_only_digits_fails() {
-    assert_error!(Mutation::parse("123"), "Invalid reference character in mutation: '123'");
-  }
-
-  #[test]
-  fn test_mutation_parse_digit_first_fails() {
-    assert_error!(Mutation::parse("1A2"), "Invalid reference character in mutation: '1A2'");
-  }
-
-  #[test]
-  fn test_mutation_parse_negative_position_fails() {
-    assert_error!(
-      Mutation::parse("A-1T"),
-      "Invalid position in mutation 'A-1T': invalid digit found in string"
-    );
-  }
-
-  #[test]
-  fn test_mutation_format_a123t() {
-    let mutation = Mutation::new(b'A', 123, b'T');
-    assert_eq!("A123T", mutation.format());
-  }
-
-  #[test]
-  fn test_mutation_format_c1g() {
-    let mutation = Mutation::new(b'C', 1, b'G');
-    assert_eq!("C1G", mutation.format());
-  }
-
-  #[test]
-  fn test_mutation_format_t99999a() {
-    let mutation = Mutation::new(b'T', 99999, b'A');
-    assert_eq!("T99999A", mutation.format());
-  }
-
-  #[test]
-  fn test_mutation_roundtrip() -> Result<(), Report> {
-    let inputs = ["A123T", "C1G", "T99999A", "G42C"];
-    for input in inputs {
-      let mutation = Mutation::parse(input)?;
-      let formatted = mutation.format();
-      assert_eq!(input, formatted);
-    }
+  #[rstest]
+  #[case("A123T")]
+  #[case("C1G")]
+  #[case("T99999A")]
+  #[case("G42C")]
+  fn test_mutation_roundtrip(#[case] input: &str) -> Result<(), Report> {
+    let mutation = Mutation::parse(input)?;
+    let formatted = mutation.format();
+    assert_eq!(input, formatted);
     Ok(())
   }
 
