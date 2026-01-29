@@ -32,5 +32,8 @@ treetime = { path = "../treetime" }
 treetime-io = { path = "../treetime-io" }
 treetime-utils = { path = "../treetime-utils" }
 
+[dev-dependencies]
+rstest = { workspace = true }
+
 [lints]
 workspace = true
