@@ -158,6 +158,23 @@ mod tests {
   use treetime::io::auspice::{auspice_read_str, auspice_write_str};
   use treetime::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
+  fn get_mutations_for_node(
+    graph: &Graph<ConverterNode, ConverterEdge, ConverterData>,
+    node_name: &str,
+  ) -> Option<PartitionedMutations> {
+    graph.get_edges().into_iter().find_map(|e| {
+      let edge = e.read_arc();
+      let target = graph.get_node(edge.target())?;
+      let target_payload = target.read_arc().payload().read_arc();
+      let name = target_payload.name.as_deref()?;
+      if name == node_name {
+        Some(edge.payload().read_arc().mutations.clone())
+      } else {
+        None
+      }
+    })
+  }
+
   #[test]
   fn test_auspice_from_nwk() -> Result<(), Report> {
     let graph = nwk_read_str::<ConverterNode, ConverterEdge, ConverterData>(NWK_TEST_EXAMPLE)?;
@@ -382,58 +399,26 @@ mod tests {
     );
 
     let graph = auspice_read_str::<AuspiceReader, _, _, _>(input)?;
-
     assert!(graph.data().read_arc().has_mutations);
 
-    let edges = graph.get_edges();
-    let edge_a = edges.iter().find(|e| {
-      let edge = e.read_arc();
-      let target_node = graph.get_node(edge.target());
-      target_node.is_some_and(|n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
-    });
-    let edge_a = edge_a.map(|e| e.read_arc());
-    let edge_a_payload = edge_a.as_ref().map(|e| e.payload().read_arc());
-    let expected = 2;
-    let actual = edge_a_payload
-      .as_ref()
-      .and_then(|p| p.mutations.get("nuc"))
-      .map_or(0, |v| v.len());
-    assert_eq!(expected, actual);
-    let expected = 1;
-    let actual = edge_a_payload
-      .as_ref()
-      .and_then(|p| p.mutations.get("S"))
-      .map_or(0, |v| v.len());
-    assert_eq!(expected, actual);
+    let mutations = get_mutations_for_node(&graph, "A");
+    assert!(mutations.is_some(), "Edge to node A must exist");
+    let mutations = mutations.unwrap();
+    assert_eq!(2, mutations["nuc"].len());
+    assert_eq!(1, mutations["S"].len());
 
     let output = auspice_write_str::<AuspiceWriter, _, _, _>(&graph)?;
-    let graph2 = auspice_read_str::<AuspiceReader, _, _, _>(&output)?;
+    let graph = auspice_read_str::<AuspiceReader, _, _, _>(&output)?;
 
-    assert!(graph2.data().read_arc().has_mutations);
-    let expected = 3;
-    let actual = graph2.num_nodes();
-    assert_eq!(expected, actual);
+    assert!(graph.data().read_arc().has_mutations);
+    assert_eq!(3, graph.num_nodes());
 
-    let edges2 = graph2.get_edges();
-    let edge_a2 = edges2.iter().find(|e| {
-      let edge = e.read_arc();
-      let target_node = graph2.get_node(edge.target());
-      target_node.is_some_and(|n| n.read_arc().payload().read_arc().name.as_deref() == Some("A"))
-    });
-    let edge_a2 = edge_a2.map(|e| e.read_arc());
-    let edge_a2_payload = edge_a2.as_ref().map(|e| e.payload().read_arc());
-    let expected = 2;
-    let actual = edge_a2_payload
-      .as_ref()
-      .and_then(|p| p.mutations.get("nuc"))
-      .map_or(0, |v| v.len());
-    assert_eq!(expected, actual);
-    let expected = 1;
-    let actual = edge_a2_payload
-      .as_ref()
-      .and_then(|p| p.mutations.get("S"))
-      .map_or(0, |v| v.len());
-    assert_eq!(expected, actual);
+    let mutations = get_mutations_for_node(&graph, "A");
+    assert!(mutations.is_some(), "Edge to node A must exist after roundtrip");
+    let mutations = mutations.unwrap();
+    assert_eq!(2, mutations["nuc"].len());
+    assert_eq!(1, mutations["S"].len());
+
     Ok(())
   }
 
