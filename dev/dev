@@ -12,6 +12,7 @@ declare -A ALIASES=(
   ["t"]="test-all"
   ["tu"]="test-unit"
   ["ti"]="test-integration"
+  ["tl"]="test-list"
   ["l"]="lint"
   ["lf"]="lint-fix"
   ["lc"]="lint-ci"
@@ -170,6 +171,23 @@ for pkg in data['packages']:
 for kind, name in sorted(targets):
     print(f'{kind:<8} {name}')
 "
+    ;;
+  "test-list")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    local pretty_args=()
+    local cargo_args=()
+    while (( $# > 0 )); do
+      case "${1}" in
+        --summary|--summary=*) pretty_args+=("${1}"); shift ;;
+        --filter=*) pretty_args+=("${1}"); shift ;;
+        --) shift; break ;;
+        -*) cargo_args+=("${1}"); shift ;;
+        *) pretty_args+=("${1}"); shift ;;
+      esac
+    done
+    cargo_args+=("$@")
+    cargo -q nextest list ${ci_flag} --workspace --cargo-quiet --target-dir="${test_target_dir}" "${cargo_args[@]}" |
+      "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
     ;;
   *)
     local commands_list

@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""Post-process cargo nextest list output into hierarchical, human-readable format."""
+
+import math
+import re
+import sys
+from collections import Counter
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+Path = Tuple[str, ...]
+Tree = Dict[str, "Tree"]
+
+# 256-color codes: pink → purple → blue → light blue
+RAINBOW_COLORS = [213, 177, 141, 99, 63, 33, 39, 45]
+
+# 256-color codes for counts: red → orange → yellow → grey → pale grey
+COUNT_COLORS = [196, 202, 208, 214, 223, 229, 250, 252, 254]
+
+
+def color_256(text: str, color_code: int) -> str:
+    """Wrap text in 256-color ANSI escape codes."""
+    return f"\033[38;5;{color_code}m{text}\033[0m"
+
+
+def bold(text: str) -> str:
+    """Wrap text in ANSI bold codes."""
+    return f"\033[1m{text}\033[0m"
+
+
+@dataclass(frozen=True)
+class Args:
+    summary_depth: Optional[int]  # None = tree view, 0 = all levels, N = max N levels
+    filter_pattern: Optional[str]
+
+
+def parse_args() -> Args:
+    """Parse command line arguments."""
+    summary_depth: Optional[int] = None
+    filter_pattern = None
+    for arg in sys.argv[1:]:
+        if arg == "--summary":
+            summary_depth = 0
+        elif arg.startswith("--summary="):
+            summary_depth = int(arg[10:])
+        elif arg.startswith("--filter="):
+            filter_pattern = arg[9:]
+        elif not arg.startswith("-"):
+            filter_pattern = arg
+    return Args(summary_depth=summary_depth, filter_pattern=filter_pattern)
+
+
+def parse_tests(lines: List[str], filter_pattern: Optional[str]) -> List[Path]:
+    """Parse nextest output into list of full test paths."""
+    regex = re.compile(filter_pattern, re.IGNORECASE) if filter_pattern else None
+    paths: List[Path] = []
+    current_crate: Optional[str] = None
+
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        if not line:
+            continue
+        if line.endswith(":"):
+            current_crate = line[:-1]
+            continue
+        if not current_crate:
+            continue
+
+        test_path = line.strip()
+        if regex and not regex.search(test_path):
+            continue
+
+        paths.append((current_crate, *test_path.split("::")))
+
+    return paths
+
+
+def truncate_at_tests(path: Path) -> Path:
+    """Truncate path to exclude 'tests' segment and everything after it."""
+    try:
+        idx = path.index("tests")
+        return path[:idx] if idx > 0 else path[:1]
+    except ValueError:
+        return path[:-1] if len(path) > 1 else path
+
+
+def collapse_numeric_cases(paths: List[Path]) -> List[Path]:
+    """Collapse numeric case_NN suffixes into single representative path."""
+    case_pattern = re.compile(r"^case_\d+$")
+    seen: set[Path] = set()
+    result: List[Path] = []
+
+    for path in paths:
+        if path and case_pattern.match(path[-1]):
+            collapsed = path[:-1] + ("case_{...}",)
+            if collapsed not in seen:
+                seen.add(collapsed)
+                result.append(collapsed)
+        else:
+            if path not in seen:
+                seen.add(path)
+                result.append(path)
+
+    return result
+
+
+def build_tree(paths: List[Path]) -> Tree:
+    """Build nested tree from paths."""
+    tree: Tree = {}
+    for path in paths:
+        node = tree
+        for part in path:
+            if part not in node:
+                node[part] = {}
+            node = node[part]
+    return tree
+
+
+def count_leaves(tree: Tree) -> int:
+    """Count leaf nodes in tree."""
+    if not tree:
+        return 1
+    return sum(count_leaves(subtree) for subtree in tree.values())
+
+
+def format_case_range(paths: List[Path]) -> List[Path]:
+    """Format case_{...} placeholders with actual ranges."""
+    case_pattern = re.compile(r"^case_(\d+)$")
+
+    # Group paths by prefix (excluding case suffix)
+    prefix_cases: Dict[Path, List[str]] = {}
+    non_case_paths: List[Path] = []
+
+    for path in paths:
+        if path and case_pattern.match(path[-1]):
+            prefix = path[:-1]
+            if prefix not in prefix_cases:
+                prefix_cases[prefix] = []
+            prefix_cases[prefix].append(path[-1])
+        else:
+            non_case_paths.append(path)
+
+    result = list(non_case_paths)
+    for prefix, cases in prefix_cases.items():
+        nums = sorted(int(case_pattern.match(c).group(1)) for c in cases)  # type: ignore[union-attr]
+        width = max(len(case_pattern.match(c).group(1)) for c in cases)  # type: ignore[union-attr]
+        first = str(nums[0]).zfill(width)
+        last = str(nums[-1]).zfill(width)
+        result.append(prefix + (f"case_{{{first}..{last}}}",))
+
+    return result
+
+
+def print_tree(tree: Tree, indent: int = 0) -> None:
+    """Print tree with indentation."""
+    prefix = "  " * indent
+    for key, subtree in sorted(tree.items()):
+        if subtree:
+            print(f"{prefix}{key}/")
+            print_tree(subtree, indent + 1)
+        else:
+            print(f"{prefix}{key}")
+
+
+def collect_summary_rows(
+    paths: List[Path], max_depth: int = 0
+) -> List[Tuple[str, int]]:
+    """Collect rows for summary table from truncated paths."""
+    # Count occurrences of each truncated path
+    counts: Counter[Path] = Counter(paths)
+
+    # Build set of all prefixes with their counts
+    prefix_counts: Counter[Path] = Counter()
+    for path, count in counts.items():
+        for i in range(1, len(path) + 1):
+            prefix_counts[path[:i]] += count
+
+    # Collect rows respecting max_depth
+    rows: List[Tuple[str, int]] = []
+    for prefix in sorted(prefix_counts.keys()):
+        depth = len(prefix) - 1
+        if max_depth == 0 or depth < max_depth:
+            indent = "  " * depth
+            rows.append((indent + prefix[-1], prefix_counts[prefix]))
+
+    return rows
+
+
+def get_count_color_log(count: int, min_count: int, max_count: int) -> int:
+    """Map count to color using log scale: red (high) → pale grey (low)."""
+    if max_count == min_count:
+        return COUNT_COLORS[len(COUNT_COLORS) // 2]
+    log_count = math.log1p(count)
+    log_min = math.log1p(min_count)
+    log_max = math.log1p(max_count)
+    ratio = (log_count - log_min) / (log_max - log_min)
+    idx = int((1 - ratio) * (len(COUNT_COLORS) - 1))
+    return COUNT_COLORS[idx]
+
+
+def compute_depth_ranges(
+    rows: List[Tuple[str, int]]
+) -> Dict[int, Tuple[int, int]]:
+    """Compute min/max counts per depth level."""
+    depth_counts: Dict[int, List[int]] = {}
+    for name, count in rows:
+        depth = (len(name) - len(name.lstrip())) // 2
+        depth_counts.setdefault(depth, []).append(count)
+    return {d: (min(c), max(c)) for d, c in depth_counts.items()}
+
+
+def print_summary(paths: List[Path], max_depth: int = 0) -> None:
+    """Print summary with counts at each level as a markdown table."""
+    total = len(paths)
+    rows = collect_summary_rows(paths, max_depth=max_depth)
+
+    if not rows:
+        return
+
+    count_header = "Num tests"
+    name_width = max(len(name) for name, _ in rows)
+    name_width = max(name_width, len("Name"), len("Total"))
+    count_width = max(len(str(count)) for _, count in rows)
+    count_width = max(count_width, len(count_header), len(str(total)))
+
+    depth_ranges = compute_depth_ranges(rows)
+
+    header_sep = f"|:{'-' * name_width}-|-{'-' * count_width}:|"
+    row_sep = f"|{'-' * (name_width + 2)}|{'-' * (count_width + 2)}|"
+
+    print(f"| {'Name':<{name_width}} | {count_header:>{count_width}} |")
+    print(header_sep)
+    for name, count in rows:
+        depth = (len(name) - len(name.lstrip())) // 2
+        name_color = RAINBOW_COLORS[depth % len(RAINBOW_COLORS)]
+        min_c, max_c = depth_ranges[depth]
+        count_color = get_count_color_log(count, min_c, max_c)
+        colored_name = color_256(name, name_color)
+        colored_count = color_256(f"{count:>{count_width}}", count_color)
+        name_padding = " " * (name_width - len(name))
+        print(f"| {colored_name}{name_padding} | {colored_count} |")
+    print(row_sep)
+    total_label = "Total"
+    total_count = f"{total:>{count_width}}"
+    label_padding = " " * (name_width - len(total_label))
+    print(f"| {bold(total_label)}{label_padding} | {bold(total_count)} |")
+
+
+def main() -> None:
+    args = parse_args()
+    lines = sys.stdin.readlines()
+
+    paths = parse_tests(lines, args.filter_pattern)
+
+    if not paths:
+        msg = (
+            f"No tests matching '{args.filter_pattern}'"
+            if args.filter_pattern
+            else "No tests found"
+        )
+        print(msg, file=sys.stderr)
+        sys.exit(1)
+
+    if args.summary_depth is not None:
+        truncated = [truncate_at_tests(p) for p in paths]
+        print_summary(truncated, max_depth=args.summary_depth)
+    else:
+        formatted = format_case_range(paths)
+        tree = build_tree(formatted)
+        print_tree(tree)
+
+
+if __name__ == "__main__":
+    main()
