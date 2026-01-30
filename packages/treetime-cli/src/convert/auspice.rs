@@ -162,13 +162,10 @@ mod tests {
     graph: &Graph<ConverterNode, ConverterEdge, ConverterData>,
     node_name: &str,
   ) -> Option<PartitionedMutations> {
-    graph.get_edges().into_iter().find_map(|e| {
-      let edge = e.read_arc();
-      let target = graph.get_node(edge.target())?;
-      let target_payload = target.read_arc().payload().read_arc();
-      let name = target_payload.name.as_deref()?;
-(name == node_name).then(|| edge.payload().read_arc().mutations.clone())
-    })
+    let node_key = graph.find_node(|n| n.name.as_deref() == Some(node_name))?;
+    let node = graph.get_node(node_key)?;
+    let (_, edge) = graph.parents_of(&node.read_arc()).into_iter().next()?;
+    Some(edge.read_arc().payload().read_arc().mutations.clone())
   }
 
   #[test]
