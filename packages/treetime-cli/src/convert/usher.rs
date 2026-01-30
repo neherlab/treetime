@@ -151,14 +151,6 @@ mod tests {
   use treetime::io::usher_mat::{UsherMatJsonOptions, UsherTree, usher_mat_json_write_str};
   use treetime_io::json::json_read_str;
 
-  fn get_all_positions(tree: &UsherTree) -> BTreeSet<i32> {
-    tree
-      .node_mutations
-      .iter()
-      .flat_map(|ml| ml.mutation.iter().map(|m| m.position))
-      .collect()
-  }
-
   #[test]
   fn test_usher_write_mutations() -> Result<(), Report> {
     let auspice_input = indoc!(
@@ -206,7 +198,7 @@ mod tests {
     let usher_tree: UsherTree = json_read_str(&usher_output)?;
 
     let expected = BTreeSet::from([100, 200, 300]);
-    let actual = get_all_positions(&usher_tree);
+    let actual = usher_tree.get_all_positions();
     assert_eq!(expected, actual);
 
     Ok(())
@@ -246,7 +238,7 @@ mod tests {
     let usher_output = usher_mat_json_write_str::<UsherWriter, _, _, _>(&graph, &UsherMatJsonOptions::default())?;
     let usher_tree: UsherTree = json_read_str(&usher_output)?;
 
-    let positions = get_all_positions(&usher_tree);
+    let positions = usher_tree.get_all_positions();
     let expected = BTreeSet::from([100, 200]);
     assert_eq!(
       expected, positions,

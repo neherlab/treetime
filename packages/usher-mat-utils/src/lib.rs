@@ -3,6 +3,7 @@
 use bytes::{Buf, BufMut};
 use eyre::{Context, Report};
 use prost::Message;
+use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
 mod mutation_detailed {
@@ -26,6 +27,16 @@ pub type UsherTreeNode = parsimony::CondensedNode;
 pub type UsherMutation = parsimony::Mut;
 pub type UsherMutationList = parsimony::MutationList;
 pub type UsherMetadata = parsimony::NodeMetadata;
+
+impl UsherTree {
+  pub fn get_all_positions(&self) -> BTreeSet<i32> {
+    self
+      .node_mutations
+      .iter()
+      .flat_map(|ml| ml.mutation.iter().map(|m| m.position))
+      .collect()
+  }
+}
 
 pub fn usher_mat_pb_read_bytes(buf: impl Buf) -> Result<UsherTree, Report> {
   UsherTree::decode(buf).wrap_err("When decoding Usher MAT protobuf message")
