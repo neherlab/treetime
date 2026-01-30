@@ -52,8 +52,8 @@ jobs:
           submodules: true
           lfs: true
 
-      - name: "Free disk space"
-        uses: ./.github/actions/free-disk-space
+      # - name: "Free disk space"
+      #   uses: ./.github/actions/free-disk-space
 
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
@@ -111,8 +111,8 @@ jobs:
           submodules: true
           lfs: true
 
-      - name: "Free disk space"
-        uses: ./.github/actions/free-disk-space
+      # - name: "Free disk space"
+      #   uses: ./.github/actions/free-disk-space
 
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
@@ -164,8 +164,8 @@ jobs:
           submodules: true
           lfs: true
 
-      - name: "Free disk space"
-        uses: ./.github/actions/free-disk-space
+      # - name: "Free disk space"
+      #   uses: ./.github/actions/free-disk-space
 
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
