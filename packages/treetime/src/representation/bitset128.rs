@@ -662,15 +662,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a + b;
@@ -678,15 +678,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a + &b;
@@ -694,15 +694,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a + b;
@@ -710,15 +710,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a + &b;
@@ -726,15 +726,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -743,15 +743,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
-  #[case(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::disjoint_multi(bitset128!{'a'},            bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q', 'x'})]
+  #[case::identical(bitset128!{'z'},            bitset128!{'z'},            bitset128!{'z'})]
+  #[case::partial_overlap(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::multi_disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e', 'f'},  bitset128!{'a', 'b', 'c', 'd', 'e', 'f'})]
   #[trace]
   fn test_bitset128_add_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -760,10 +760,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
-  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
-  #[case(bitset128!{},               b'a',                        bitset128!{'a'})]
+  #[case::add_new(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case::add_multi(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case::add_existing(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
+  #[case::add_to_empty(bitset128!{},               b'a',                        bitset128!{'a'})]
   #[trace]
   fn test_bitset128_add_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a + b;
@@ -771,10 +771,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
-  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
-  #[case(b'a',                        bitset128!{},               bitset128!{'a'})]
+  #[case::add_new(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::add_multi(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case::add_existing(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case::add_to_empty(b'a',                        bitset128!{},               bitset128!{'a'})]
   #[trace]
   fn test_bitset128_add_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b + a;
@@ -782,15 +782,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a | b;
@@ -798,15 +798,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a | &b;
@@ -814,15 +814,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a | b;
@@ -830,15 +830,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a | &b;
@@ -846,15 +846,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -863,15 +863,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               bitset128!{},               bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
+  #[case::both_empty(bitset128!{},               bitset128!{},               bitset128!{})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'x', 'q'})]
+  #[case::overlap_multi(bitset128!{'m', 'n'},       bitset128!{'a', 'b', 'm'},  bitset128!{'a', 'b', 'm', 'n'})]
+  #[case::disjoint_multi(bitset128!{'x', 'y'},       bitset128!{'z'},            bitset128!{'x', 'y', 'z'})]
   #[trace]
   fn test_bitset128_or_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -880,10 +880,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
-  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
-  #[case(bitset128!{},               b'a',                        bitset128!{'a'})]
+  #[case::add_new(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case::add_multi(bitset128!{'x', 'y'},       b'z',                        bitset128!{'x', 'y', 'z'})]
+  #[case::add_existing(bitset128!{'m', 'n'},       b'm',                        bitset128!{'m', 'n'})]
+  #[case::add_to_empty(bitset128!{},               b'a',                        bitset128!{'a'})]
   #[trace]
   fn test_bitset128_or_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a | b;
@@ -891,10 +891,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
-  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
-  #[case(b'a',                        bitset128!{},               bitset128!{'a'})]
+  #[case::add_new(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::add_multi(b'x',                        bitset128!{'y', 'z'},       bitset128!{'x', 'y', 'z'})]
+  #[case::add_existing(b'm',                        bitset128!{'m', 'n'},       bitset128!{'m', 'n'})]
+  #[case::add_to_empty(b'a',                        bitset128!{},               bitset128!{'a'})]
   #[trace]
   fn test_bitset128_or_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b | a;
@@ -902,13 +902,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a - b;
@@ -916,13 +916,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a - &b;
@@ -930,13 +930,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a - b;
@@ -944,13 +944,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a - &b;
@@ -958,13 +958,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -973,13 +973,13 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::left_empty(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{})]
+  #[case::partial(bitset128!{'a', 'b'},       bitset128!{'b'},            bitset128!{'a'})]
+  #[case::disjoint(bitset128!{'a', 'b', 'c'},  bitset128!{'d', 'e'},       bitset128!{'a', 'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a'})]
+  #[case::overlap_one(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'x'})]
   #[trace]
   fn test_bitset128_sub_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -988,11 +988,11 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{},               b'b',                        bitset128!{})]
-  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       b'y',                        bitset128!{'x'})]
-  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
-  #[case(bitset128!{'a'},            b'a',                        bitset128!{})]
+  #[case::empty_set(bitset128!{},               b'b',                        bitset128!{})]
+  #[case::not_present(bitset128!{'a'},            b'b',                        bitset128!{'a'})]
+  #[case::remove_one(bitset128!{'x', 'y'},       b'y',                        bitset128!{'x'})]
+  #[case::remove_first(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
+  #[case::remove_only(bitset128!{'a'},            b'a',                        bitset128!{})]
   #[trace]
   fn test_bitset128_sub_char_from_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a - b;
@@ -1000,16 +1000,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a & b;
@@ -1017,16 +1017,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a & &b;
@@ -1034,16 +1034,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a & b;
@@ -1051,16 +1051,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a & &b;
@@ -1068,16 +1068,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -1086,16 +1086,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
-  #[case(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
-  #[case(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
-  #[case(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
-  #[case(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
+  #[case::left_empty_right(bitset128!{'a'},            bitset128!{},               bitset128!{})]
+  #[case::right_empty_left(bitset128!{},               bitset128!{'b'},            bitset128!{})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{})]
+  #[case::identical(bitset128!{'a'},            bitset128!{'a'},            bitset128!{'a'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'b', 'c'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'x'})]
+  #[case::partial_match(bitset128!{'a', 'b', 'c'},  bitset128!{'a', 'd', 'e'},  bitset128!{'a'})]
+  #[case::overlap_multi(bitset128!{'m', 'n', 'o'},  bitset128!{'n', 'o', 'p'},  bitset128!{'n', 'o'})]
+  #[case::overlap_single(bitset128!{'x', 'y'},       bitset128!{'y', 'z'},       bitset128!{'y'})]
+  #[case::no_overlap(bitset128!{'g', 'h', 'i'},  bitset128!{'a', 'b', 'c'},  bitset128!{})]
   #[trace]
   fn test_bitset128_and_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -1104,9 +1104,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a', 'b'},       b'a',                        bitset128!{'a'})]
-  #[case(bitset128!{'x', 'y'},       b'z',                        bitset128!{})]
-  #[case(bitset128!{'m', 'n', 'o'},  b'o',                        bitset128!{'o'})]
+  #[case::present(bitset128!{'a', 'b'},       b'a',                        bitset128!{'a'})]
+  #[case::not_present(bitset128!{'x', 'y'},       b'z',                        bitset128!{})]
+  #[case::present_multi(bitset128!{'m', 'n', 'o'},  b'o',                        bitset128!{'o'})]
   #[trace]
   fn test_bitset128_and_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a & b;
@@ -1114,9 +1114,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case(b'a',                        bitset128!{'b', 'a'},       bitset128!{'a'})]
-  #[case(b'z',                        bitset128!{'x', 'y'},       bitset128!{})]
-  #[case(b'o',                        bitset128!{'m', 'n', 'o'},  bitset128!{'o'})]
+  #[case::present(b'a',                        bitset128!{'b', 'a'},       bitset128!{'a'})]
+  #[case::not_present(b'z',                        bitset128!{'x', 'y'},       bitset128!{})]
+  #[case::present_multi(b'o',                        bitset128!{'m', 'n', 'o'},  bitset128!{'o'})]
   #[trace]
   fn test_bitset128_and_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b & a;
@@ -1124,15 +1124,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a ^ b;
@@ -1140,15 +1140,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor_ref_right(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = a ^ &b;
@@ -1156,15 +1156,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor_ref_left(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a ^ b;
@@ -1172,15 +1172,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor_ref_both(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = &a ^ &b;
@@ -1188,15 +1188,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor_assign(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -1205,15 +1205,15 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
-  #[case(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
-  #[case(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
-  #[case(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
-  #[case(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
-  #[case(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
-  #[case(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
-  #[case(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
+  #[case::left_only(bitset128!{'a'},            bitset128!{},               bitset128!{'a'})]
+  #[case::right_only(bitset128!{},               bitset128!{'b'},            bitset128!{'b'})]
+  #[case::disjoint(bitset128!{'a'},            bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::superset(bitset128!{'a', 'b', 'c'},  bitset128!{'b', 'c'},       bitset128!{'a'})]
+  #[case::partial_overlap(bitset128!{'a', 'b', 'x'},  bitset128!{'p', 'x', 'q'},  bitset128!{'a', 'b', 'p', 'q'})]
+  #[case::identical(bitset128!{'a', 'b'},       bitset128!{'a', 'b'},       bitset128!{})]
+  #[case::overlap_single(bitset128!{'m', 'n'},       bitset128!{'n', 'o'},       bitset128!{'m', 'o'})]
+  #[case::overlap_multi(bitset128!{'x', 'y', 'z'},  bitset128!{'y', 'z', 'a'},  bitset128!{'x', 'a'})]
+  #[case::alternating(bitset128!{'a', 'c', 'e'},  bitset128!{'b', 'c', 'd'},  bitset128!{'a', 'b', 'd', 'e'})]
   #[trace]
   fn test_bitset128_xor_assign_ref(#[case] a: BitSet128, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let mut a = a;
@@ -1222,10 +1222,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
-  #[case(bitset128!{'x', 'y'},       b'x',                        bitset128!{'y'})]
-  #[case(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
-  #[case(bitset128!{'c', 'd'},       b'd',                        bitset128!{'c'})]
+  #[case::add_new(bitset128!{'a'},            b'b',                        bitset128!{'a', 'b'})]
+  #[case::toggle_present(bitset128!{'x', 'y'},       b'x',                        bitset128!{'y'})]
+  #[case::toggle_first(bitset128!{'m', 'n'},       b'm',                        bitset128!{'n'})]
+  #[case::toggle_second(bitset128!{'c', 'd'},       b'd',                        bitset128!{'c'})]
   #[trace]
   fn test_bitset128_xor_char_to_set(#[case] a: BitSet128, #[case] b: u8, #[case] expected: BitSet128) {
     let actual = a ^ b;
@@ -1233,10 +1233,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
-  #[case(b'x',                        bitset128!{'x', 'y'},       bitset128!{'y'})]
-  #[case(b'm',                        bitset128!{'m', 'n'},       bitset128!{'n'})]
-  #[case(b'd',                        bitset128!{'c', 'd'},       bitset128!{'c'})]
+  #[case::add_new(b'a',                        bitset128!{'b'},            bitset128!{'a', 'b'})]
+  #[case::toggle_present(b'x',                        bitset128!{'x', 'y'},       bitset128!{'y'})]
+  #[case::toggle_first(b'm',                        bitset128!{'m', 'n'},       bitset128!{'n'})]
+  #[case::toggle_second(b'd',                        bitset128!{'c', 'd'},       bitset128!{'c'})]
   #[trace]
   fn test_bitset128_xor_set_to_char(#[case] a: u8, #[case] b: BitSet128, #[case] expected: BitSet128) {
     let actual = b ^ a;

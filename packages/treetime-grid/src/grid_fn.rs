@@ -520,11 +520,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case((0.0, 1.0), array![0.0, 10.0], 0.0, 0.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 1.0, 10.0)]
-  #[case((0.0, 2.0), array![0.0, 5.0, 10.0], 1.0, 5.0)]
-  #[case((-5.0, 5.0), array![100.0, 200.0], -5.0, 100.0)]
-  #[case((-5.0, 5.0), array![100.0, 200.0], 5.0, 200.0)]
+  #[case::at_x_min((0.0, 1.0), array![0.0, 10.0], 0.0, 0.0)]
+  #[case::at_x_max((0.0, 1.0), array![0.0, 10.0], 1.0, 10.0)]
+  #[case::at_midpoint((0.0, 2.0), array![0.0, 5.0, 10.0], 1.0, 5.0)]
+  #[case::negative_range_at_min((-5.0, 5.0), array![100.0, 200.0], -5.0, 100.0)]
+  #[case::negative_range_at_max((-5.0, 5.0), array![100.0, 200.0], 5.0, 200.0)]
   #[trace]
   fn test_gridfn_interp_exact_grid_points(
     #[case] x_range: (f64, f64),
@@ -540,13 +540,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case((0.0, 1.0), array![0.0, 10.0], 0.5, 5.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 0.3, 3.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 0.7, 7.0)]
-  #[case((0.0, 2.0), array![10.0, 20.0], 1.0, 15.0)]
-  #[case((-1.0, 1.0), array![0.0, 100.0], 0.0, 50.0)]
-  #[case((0.0, 2.0), array![0.0, 10.0, 20.0], 0.5, 5.0)]
-  #[case((0.0, 2.0), array![0.0, 10.0, 20.0], 1.5, 15.0)]
+  #[case::midpoint_linear((0.0, 1.0), array![0.0, 10.0], 0.5, 5.0)]
+  #[case::at_30_percent((0.0, 1.0), array![0.0, 10.0], 0.3, 3.0)]
+  #[case::at_70_percent((0.0, 1.0), array![0.0, 10.0], 0.7, 7.0)]
+  #[case::midpoint_offset((0.0, 2.0), array![10.0, 20.0], 1.0, 15.0)]
+  #[case::negative_to_positive((-1.0, 1.0), array![0.0, 100.0], 0.0, 50.0)]
+  #[case::three_points_first_half((0.0, 2.0), array![0.0, 10.0, 20.0], 0.5, 5.0)]
+  #[case::three_points_second_half((0.0, 2.0), array![0.0, 10.0, 20.0], 1.5, 15.0)]
   #[trace]
   fn test_gridfn_interp_interior_points(
     #[case] x_range: (f64, f64),
@@ -563,11 +563,11 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   // Constant extrapolation: return first y value
-  #[case((0.0, 1.0), array![0.0, 10.0], -1.0, 0.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], -0.5, 0.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], -2.0, 0.0)]
-  #[case((1.0, 2.0), array![5.0, 15.0], 0.0, 5.0)]
-  #[case((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 10.0)]
+  #[case::one_unit_left((0.0, 1.0), array![0.0, 10.0], -1.0, 0.0)]
+  #[case::half_unit_left((0.0, 1.0), array![0.0, 10.0], -0.5, 0.0)]
+  #[case::two_units_left((0.0, 1.0), array![0.0, 10.0], -2.0, 0.0)]
+  #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 0.0, 5.0)]
+  #[case::three_points((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 10.0)]
   #[trace]
   fn test_gridfn_interp_left_extrapolation(
     #[case] x_range: (f64, f64),
@@ -584,11 +584,11 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   // Constant extrapolation: return last y value
-  #[case((0.0, 1.0), array![0.0, 10.0], 2.0, 10.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 1.5, 10.0)]
-  #[case((0.0, 1.0), array![0.0, 10.0], 3.0, 10.0)]
-  #[case((1.0, 2.0), array![5.0, 15.0], 3.0, 15.0)]
-  #[case((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 30.0)]
+  #[case::one_unit_right((0.0, 1.0), array![0.0, 10.0], 2.0, 10.0)]
+  #[case::half_unit_right((0.0, 1.0), array![0.0, 10.0], 1.5, 10.0)]
+  #[case::two_units_right((0.0, 1.0), array![0.0, 10.0], 3.0, 10.0)]
+  #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 3.0, 15.0)]
+  #[case::three_points((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 30.0)]
   #[trace]
   fn test_gridfn_interp_right_extrapolation(
     #[case] x_range: (f64, f64),

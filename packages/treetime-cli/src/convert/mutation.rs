@@ -77,11 +77,11 @@ mod tests {
   use treetime_utils::assert_error;
 
   #[rstest]
-  #[case("A123T", b'A', 123, b'T')]
-  #[case("C1G", b'C', 1, b'G')]
-  #[case("T99999A", b'T', 99999, b'A')]
-  #[case("a1b", b'a', 1, b'b')]
-  #[case(" G42C ", b'G', 42, b'C')]
+  #[case::standard("A123T", b'A', 123, b'T')]
+  #[case::single_digit_pos("C1G", b'C', 1, b'G')]
+  #[case::large_position("T99999A", b'T', 99999, b'A')]
+  #[case::lowercase("a1b", b'a', 1, b'b')]
+  #[case::with_whitespace(" G42C ", b'G', 42, b'C')]
   fn test_mutation_parse(
     #[case] input: &str,
     #[case] reference: u8,
@@ -95,20 +95,20 @@ mod tests {
   }
 
   #[rstest]
-  #[case("", "Mutation string too short: ''")]
-  #[case("A", "Mutation string too short: 'A'")]
-  #[case("AT", "Mutation string too short: 'AT'")]
-  #[case("123", "Invalid reference character in mutation: '123'")]
-  #[case("1A2", "Invalid reference character in mutation: '1A2'")]
-  #[case("A-1T", "Invalid position in mutation 'A-1T': invalid digit found in string")]
+  #[case::empty("", "Mutation string too short: ''")]
+  #[case::single_char("A", "Mutation string too short: 'A'")]
+  #[case::two_chars("AT", "Mutation string too short: 'AT'")]
+  #[case::no_letters("123", "Invalid reference character in mutation: '123'")]
+  #[case::digit_first("1A2", "Invalid reference character in mutation: '1A2'")]
+  #[case::negative_position("A-1T", "Invalid position in mutation 'A-1T': invalid digit found in string")]
   fn test_mutation_parse_error(#[case] input: &str, #[case] expected_error: &str) {
     assert_error!(Mutation::parse(input), expected_error);
   }
 
   #[rstest]
-  #[case(b'A', 123, b'T', "A123T")]
-  #[case(b'C', 1, b'G', "C1G")]
-  #[case(b'T', 99999, b'A', "T99999A")]
+  #[case::standard(b'A', 123, b'T', "A123T")]
+  #[case::single_digit_pos(b'C', 1, b'G', "C1G")]
+  #[case::large_position(b'T', 99999, b'A', "T99999A")]
   fn test_mutation_format(
     #[case] reference: u8,
     #[case] position: usize,
@@ -120,10 +120,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case("A123T")]
-  #[case("C1G")]
-  #[case("T99999A")]
-  #[case("G42C")]
+  #[case::standard("A123T")]
+  #[case::single_digit_pos("C1G")]
+  #[case::large_position("T99999A")]
+  #[case::two_digit_pos("G42C")]
   fn test_mutation_roundtrip(#[case] input: &str) -> Result<(), Report> {
     let mutation = Mutation::parse(input)?;
     let formatted = mutation.format();

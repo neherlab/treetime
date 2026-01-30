@@ -40,13 +40,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case("2024-07-23", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
-  #[case("2024/07/23", "%Y/%m/%d", r"^(?P<year>[\dX]{4})/(?P<month>[\dX]{2})/(?P<day>[\dX]{2})$"  )]
-  #[case("2024.07.23", "%Y.%m.%d", r"^(?P<year>[\dX]{4})\.(?P<month>[\dX]{2})\.(?P<day>[\dX]{2})$")]
-  #[case("23-07-2024", "%d-%m-%Y", r"^(?P<day>[\dX]{2})\-(?P<month>[\dX]{2})\-(?P<year>[\dX]{4})$")]
-  #[case("23/07/2024", "%d/%m/%Y", r"^(?P<day>[\dX]{2})/(?P<month>[\dX]{2})/(?P<year>[\dX]{4})$"  )]
-  #[case("23.07.2024", "%d.%m.%Y", r"^(?P<day>[\dX]{2})\.(?P<month>[\dX]{2})\.(?P<year>[\dX]{4})$")]
-  #[case("20240723"  , "%Y%m%d",   r"^(?P<year>[\dX]{4})(?P<month>[\dX]{2})(?P<day>[\dX]{2})$"    )]
+  #[case::ymd_dash("2024-07-23", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
+  #[case::ymd_slash("2024/07/23", "%Y/%m/%d", r"^(?P<year>[\dX]{4})/(?P<month>[\dX]{2})/(?P<day>[\dX]{2})$"  )]
+  #[case::ymd_dot("2024.07.23", "%Y.%m.%d", r"^(?P<year>[\dX]{4})\.(?P<month>[\dX]{2})\.(?P<day>[\dX]{2})$")]
+  #[case::dmy_dash("23-07-2024", "%d-%m-%Y", r"^(?P<day>[\dX]{2})\-(?P<month>[\dX]{2})\-(?P<year>[\dX]{4})$")]
+  #[case::dmy_slash("23/07/2024", "%d/%m/%Y", r"^(?P<day>[\dX]{2})/(?P<month>[\dX]{2})/(?P<year>[\dX]{4})$"  )]
+  #[case::dmy_dot("23.07.2024", "%d.%m.%Y", r"^(?P<day>[\dX]{2})\.(?P<month>[\dX]{2})\.(?P<year>[\dX]{4})$")]
+  #[case::compact("20240723"  , "%Y%m%d",   r"^(?P<year>[\dX]{4})(?P<month>[\dX]{2})(?P<day>[\dX]{2})$"    )]
   #[trace]
   fn test_date_format_to_regex(#[case] example: &str, #[case] fmt: &str, #[case] expected: &str) {
     let regex = date_format_to_regex(fmt).unwrap();
@@ -64,8 +64,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case("2024-07-XX", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
-  #[case("2024-XX-XX", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
+  #[case::uncertain_day("2024-07-XX", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
+  #[case::uncertain_month_day("2024-XX-XX", "%Y-%m-%d", r"^(?P<year>[\dX]{4})\-(?P<month>[\dX]{2})\-(?P<day>[\dX]{2})$")]
   #[trace]
   fn test_date_format_to_regex_uncertain(#[case] example: &str, #[case] fmt: &str, #[case] expected: &str) {
     let regex = date_format_to_regex(fmt).unwrap();

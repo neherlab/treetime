@@ -52,20 +52,20 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(Distribution::point(1.0, 1.0),           Distribution::point(2.0, 1.0),          (1.0, 2.0)  )]
-  #[case(Distribution::point(2.0, 1.0),           Distribution::point(1.0, 1.0),          (1.0, 2.0)  )]
-  #[case(Distribution::range((1.0, 3.0), 1.0),    Distribution::range((2.0, 4.0), 1.0),   (1.0, 4.0)  )]
-  #[case(Distribution::range((2.0, 4.0), 1.0),    Distribution::range((1.0, 3.0), 1.0),   (1.0, 4.0)  )]
-  #[case(Distribution::range((1.0, 2.0), 1.0),    Distribution::range((3.0, 4.0), 1.0),   (1.0, 4.0)  )]
-  #[case(Distribution::range((1.0, 5.0), 1.0),    Distribution::range((2.0, 3.0), 1.0),   (1.0, 5.0)  )]
-  #[case(Distribution::point(1.0, 1.0),           Distribution::range((2.0, 3.0), 1.0),   (1.0, 3.0)  )]
-  #[case(
+  #[case::two_points_ordered(Distribution::point(1.0, 1.0),           Distribution::point(2.0, 1.0),          (1.0, 2.0)  )]
+  #[case::two_points_reversed(Distribution::point(2.0, 1.0),           Distribution::point(1.0, 1.0),          (1.0, 2.0)  )]
+  #[case::overlapping_ranges(Distribution::range((1.0, 3.0), 1.0),    Distribution::range((2.0, 4.0), 1.0),   (1.0, 4.0)  )]
+  #[case::overlapping_ranges_reversed(Distribution::range((2.0, 4.0), 1.0),    Distribution::range((1.0, 3.0), 1.0),   (1.0, 4.0)  )]
+  #[case::disjoint_ranges(Distribution::range((1.0, 2.0), 1.0),    Distribution::range((3.0, 4.0), 1.0),   (1.0, 4.0)  )]
+  #[case::nested_ranges(Distribution::range((1.0, 5.0), 1.0),    Distribution::range((2.0, 3.0), 1.0),   (1.0, 5.0)  )]
+  #[case::point_and_range(Distribution::point(1.0, 1.0),           Distribution::range((2.0, 3.0), 1.0),   (1.0, 3.0)  )]
+  #[case::two_functions(
     Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
     Distribution::function(array![1.5, 2.5, 3.5], array![1.0, 2.0, 3.0]).unwrap(),
     (0.0, 3.5)
   )]
-  #[case(Distribution::point(5.0, 1.0),           Distribution::point(5.0, 1.0),          (5.0, 5.0)  )]
-  #[case(Distribution::range((-2.0, -1.0), 1.0),  Distribution::range((1.0, 2.0), 1.0),   (-2.0, 2.0) )]
+  #[case::same_point(Distribution::point(5.0, 1.0),           Distribution::point(5.0, 1.0),          (5.0, 5.0)  )]
+  #[case::negative_and_positive(Distribution::range((-2.0, -1.0), 1.0),  Distribution::range((1.0, 2.0), 1.0),   (-2.0, 2.0) )]
   #[trace]
   fn test_distribution_time_bounds_union(
     #[case] dist_a: Distribution,
@@ -78,23 +78,23 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(Distribution::range((1.0, 3.0), 1.0),   Distribution::range((2.0, 4.0), 1.0),   Some((2.0, 3.0)))]
-  #[case(Distribution::range((2.0, 4.0), 1.0),   Distribution::range((1.0, 3.0), 1.0),   Some((2.0, 3.0)))]
-  #[case(Distribution::range((1.0, 2.0), 1.0),   Distribution::range((3.0, 4.0), 1.0),   None            )]
-  #[case(Distribution::range((3.0, 4.0), 1.0),   Distribution::range((1.0, 2.0), 1.0),   None            )]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   Some((2.0, 3.0)))]
-  #[case(Distribution::range((2.0, 3.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   Some((2.0, 3.0)))]
-  #[case(Distribution::point(2.5, 1.0),          Distribution::range((2.0, 3.0), 1.0),   Some((2.5, 2.5)))]
-  #[case(Distribution::range((2.0, 3.0), 1.0),   Distribution::point(2.5, 1.0),          Some((2.5, 2.5)))]
-  #[case(Distribution::point(1.0, 1.0),          Distribution::range((2.0, 3.0), 1.0),   None            )]
-  #[case(
+  #[case::overlapping_ranges(Distribution::range((1.0, 3.0), 1.0),   Distribution::range((2.0, 4.0), 1.0),   Some((2.0, 3.0)))]
+  #[case::overlapping_ranges_reversed(Distribution::range((2.0, 4.0), 1.0),   Distribution::range((1.0, 3.0), 1.0),   Some((2.0, 3.0)))]
+  #[case::disjoint_ranges(Distribution::range((1.0, 2.0), 1.0),   Distribution::range((3.0, 4.0), 1.0),   None            )]
+  #[case::disjoint_ranges_reversed(Distribution::range((3.0, 4.0), 1.0),   Distribution::range((1.0, 2.0), 1.0),   None            )]
+  #[case::nested_outer_first(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   Some((2.0, 3.0)))]
+  #[case::nested_inner_first(Distribution::range((2.0, 3.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   Some((2.0, 3.0)))]
+  #[case::point_inside_range(Distribution::point(2.5, 1.0),          Distribution::range((2.0, 3.0), 1.0),   Some((2.5, 2.5)))]
+  #[case::range_contains_point(Distribution::range((2.0, 3.0), 1.0),   Distribution::point(2.5, 1.0),          Some((2.5, 2.5)))]
+  #[case::point_outside_range(Distribution::point(1.0, 1.0),          Distribution::range((2.0, 3.0), 1.0),   None            )]
+  #[case::two_functions(
     Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap(),
     Distribution::function(array![1.5, 2.5, 3.5], array![1.0, 2.0, 3.0]).unwrap(),
     Some((1.5, 2.0))
   )]
-  #[case(Distribution::range((1.0, 2.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   Some((2.0, 2.0)))]
-  #[case(Distribution::point(5.0, 1.0),          Distribution::point(5.0, 1.0),          Some((5.0, 5.0)))]
-  #[case(Distribution::point(5.0, 1.0),          Distribution::point(6.0, 1.0),          None            )]
+  #[case::adjacent_ranges(Distribution::range((1.0, 2.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   Some((2.0, 2.0)))]
+  #[case::same_point(Distribution::point(5.0, 1.0),          Distribution::point(5.0, 1.0),          Some((5.0, 5.0)))]
+  #[case::different_points(Distribution::point(5.0, 1.0),          Distribution::point(6.0, 1.0),          None            )]
   #[trace]
   fn test_distribution_time_bounds_intersection(
     #[case] dist_a: Distribution,
@@ -107,16 +107,16 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   true )]
-  #[case(Distribution::range((2.0, 3.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   false)]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::point(3.0, 1.0),          true )]
-  #[case(Distribution::point(3.0, 1.0),          Distribution::range((1.0, 5.0), 1.0),   false)]
-  #[case(Distribution::range((1.0, 3.0), 1.0),   Distribution::range((2.0, 4.0), 1.0),   false)]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   true )]
-  #[case(Distribution::point(5.0, 1.0),          Distribution::point(5.0, 1.0),          true )]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((0.5, 3.0), 1.0),   false)]
-  #[case(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((3.0, 5.5), 1.0),   false)]
-  #[case(
+  #[case::outer_contains_inner(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((2.0, 3.0), 1.0),   true )]
+  #[case::inner_not_contains_outer(Distribution::range((2.0, 3.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   false)]
+  #[case::range_contains_point(Distribution::range((1.0, 5.0), 1.0),   Distribution::point(3.0, 1.0),          true )]
+  #[case::point_not_contains_range(Distribution::point(3.0, 1.0),          Distribution::range((1.0, 5.0), 1.0),   false)]
+  #[case::overlapping_not_contained(Distribution::range((1.0, 3.0), 1.0),   Distribution::range((2.0, 4.0), 1.0),   false)]
+  #[case::same_range(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((1.0, 5.0), 1.0),   true )]
+  #[case::same_point(Distribution::point(5.0, 1.0),          Distribution::point(5.0, 1.0),          true )]
+  #[case::inner_extends_left(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((0.5, 3.0), 1.0),   false)]
+  #[case::inner_extends_right(Distribution::range((1.0, 5.0), 1.0),   Distribution::range((3.0, 5.5), 1.0),   false)]
+  #[case::function_contains_function(
     Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0], array![1.0, 2.0, 3.0, 2.0, 1.0, 0.5]).unwrap(),
     Distribution::function(array![1.0, 2.0, 3.0], array![1.0, 2.0, 3.0]).unwrap(),
     true
@@ -133,14 +133,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case(Distribution::range((1.0, 3.0), 1.0), Distribution::range((2.0, 4.0), 1.0), true )]
-  #[case(Distribution::range((1.0, 2.0), 1.0), Distribution::range((3.0, 4.0), 1.0), false)]
-  #[case(Distribution::range((1.0, 2.0), 1.0), Distribution::range((2.0, 3.0), 1.0), true )]
-  #[case(Distribution::range((1.0, 5.0), 1.0), Distribution::range((2.0, 3.0), 1.0), true )]
-  #[case(Distribution::point(2.5, 1.0),        Distribution::range((2.0, 3.0), 1.0), true )]
-  #[case(Distribution::point(1.0, 1.0),        Distribution::range((2.0, 3.0), 1.0), false)]
-  #[case(Distribution::point(5.0, 1.0),        Distribution::point(5.0, 1.0),        true )]
-  #[case(Distribution::point(5.0, 1.0),        Distribution::point(6.0, 1.0),        false)]
+  #[case::overlapping_ranges(Distribution::range((1.0, 3.0), 1.0), Distribution::range((2.0, 4.0), 1.0), true )]
+  #[case::disjoint_ranges(Distribution::range((1.0, 2.0), 1.0), Distribution::range((3.0, 4.0), 1.0), false)]
+  #[case::adjacent_ranges(Distribution::range((1.0, 2.0), 1.0), Distribution::range((2.0, 3.0), 1.0), true )]
+  #[case::nested_ranges(Distribution::range((1.0, 5.0), 1.0), Distribution::range((2.0, 3.0), 1.0), true )]
+  #[case::point_inside_range(Distribution::point(2.5, 1.0),        Distribution::range((2.0, 3.0), 1.0), true )]
+  #[case::point_outside_range(Distribution::point(1.0, 1.0),        Distribution::range((2.0, 3.0), 1.0), false)]
+  #[case::same_point(Distribution::point(5.0, 1.0),        Distribution::point(5.0, 1.0),        true )]
+  #[case::different_points(Distribution::point(5.0, 1.0),        Distribution::point(6.0, 1.0),        false)]
   #[trace]
   fn test_distribution_time_bounds_overlaps(
     #[case] dist_a: Distribution,

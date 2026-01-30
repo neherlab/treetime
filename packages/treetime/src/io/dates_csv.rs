@@ -156,13 +156,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case("")]
-  #[case("   ")]
-  #[case("NaN")]
-  #[case("null")]
-  #[case("XXXX-XX-XX")]
-  #[case("XXXX/XX/XX")]
-  #[case("XXXX.XX.XX")]
+  #[case::empty("")]
+  #[case::whitespace("   ")]
+  #[case::nan("NaN")]
+  #[case::null("null")]
+  #[case::all_x_dash("XXXX-XX-XX")]
+  #[case::all_x_slash("XXXX/XX/XX")]
+  #[case::all_x_dot("XXXX.XX.XX")]
   #[trace]
   fn test_date_read_empty(#[case] input: &str) -> Result<(), Report>  {
     let actual = read_date(input, &DateParserOptions::default())?;
@@ -172,21 +172,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case("2024-07-23",   2024.5587431693)]
-  #[case("2024/07/23",   2024.5587431693)]
-  #[case("2024.07.23",   2024.5587431693)]
+  #[case::iso_dash("2024-07-23",   2024.5587431693)]
+  #[case::iso_slash("2024/07/23",   2024.5587431693)]
+  #[case::iso_dot("2024.07.23",   2024.5587431693)]
   //
-  #[case("2024-07-XX",   2024.5396174863)]
-  #[case("2024/07/XX",   2024.5396174863)]
-  #[case("2024.07.XX",   2024.5396174863)]
+  #[case::uncertain_day_dash("2024-07-XX",   2024.5396174863)]
+  #[case::uncertain_day_slash("2024/07/XX",   2024.5396174863)]
+  #[case::uncertain_day_dot("2024.07.XX",   2024.5396174863)]
   //
-  #[case("2024-XX-XX",   2024.5000000000)]
-  #[case("2024/XX/XX",   2024.5000000000)]
-  #[case("2024.XX.XX",   2024.5000000000)]
+  #[case::uncertain_month_day_dash("2024-XX-XX",   2024.5000000000)]
+  #[case::uncertain_month_day_slash("2024/XX/XX",   2024.5000000000)]
+  #[case::uncertain_month_day_dot("2024.XX.XX",   2024.5000000000)]
   //
-  #[case("2024.558743",  2024.558743)]
-  #[case("2024.5587431693",  2024.5587431693)]
-  #[case("20240723",     2024.5587431693)]
+  #[case::year_fraction_short("2024.558743",  2024.558743)]
+  #[case::year_fraction_long("2024.5587431693",  2024.5587431693)]
+  #[case::compact("20240723",     2024.5587431693)]
   #[trace]
   fn test_date_read_ok(#[case] input: &str, #[case] expected: f64) -> Result<(), Report>  {
     let actual = read_date(input, &DateParserOptions::default())?.unwrap().mean();
