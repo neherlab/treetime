@@ -157,15 +157,20 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime::io::auspice::{auspice_read_str, auspice_write_str};
   use treetime::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime::make_internal_report;
 
   fn get_mutations_for_node(
     graph: &Graph<ConverterNode, ConverterEdge, ConverterData>,
     node_name: &str,
-  ) -> Option<PartitionedMutations> {
-    let node_key = graph.find_node(|n| n.name.as_deref() == Some(node_name))?;
-    let node = graph.get_node(node_key)?;
-    let (_, edge) = graph.parents_of(&node.read_arc()).into_iter().next()?;
-    Some(edge.read_arc().payload().read_arc().mutations.clone())
+  ) -> Result<PartitionedMutations, Report> {
+    let node_key = graph
+      .find_node(|n| n.name.as_deref() == Some(node_name))
+      .ok_or_else(|| make_internal_report!("Node '{node_name}' not found"))?;
+    let node = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node key {node_key} not found"))?;
+    let (_, edge) = graph.exactly_one_parent_of(&node.read_arc())?;
+    Ok(edge.read_arc().payload().read_arc().mutations.clone())
   }
 
   #[test]
@@ -394,9 +399,7 @@ mod tests {
     let graph = auspice_read_str::<AuspiceReader, _, _, _>(input)?;
     assert!(graph.data().read_arc().has_mutations);
 
-    let mutations = get_mutations_for_node(&graph, "A");
-    assert!(mutations.is_some(), "Edge to node A must exist");
-    let mutations = mutations.unwrap();
+    let mutations = get_mutations_for_node(&graph, "A")?;
     assert_eq!(2, mutations["nuc"].len());
     assert_eq!(1, mutations["S"].len());
 
@@ -406,9 +409,7 @@ mod tests {
     assert!(graph.data().read_arc().has_mutations);
     assert_eq!(3, graph.num_nodes());
 
-    let mutations = get_mutations_for_node(&graph, "A");
-    assert!(mutations.is_some(), "Edge to node A must exist after roundtrip");
-    let mutations = mutations.unwrap();
+    let mutations = get_mutations_for_node(&graph, "A")?;
     assert_eq!(2, mutations["nuc"].len());
     assert_eq!(1, mutations["S"].len());
 
