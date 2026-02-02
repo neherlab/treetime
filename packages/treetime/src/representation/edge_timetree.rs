@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::commands::timetree::timetree_traits::TimetreeEdge;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{GraphEdge, NumMuts, Weighted};
+use crate::graph::edge::{GraphEdge, Weighted};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
 use crate::representation::graph_ancestral::{EdgeAncestral, SparseSeqEdge};
@@ -34,16 +34,6 @@ impl Weighted for EdgeTimetree {
 
   fn set_weight(&mut self, weight: Option<f64>) {
     self.branch_length = weight;
-  }
-}
-
-impl NumMuts for EdgeTimetree {
-  fn num_muts(&self) -> Option<usize> {
-    if self.sparse_partitions.is_empty() {
-      None
-    } else {
-      Some(self.sparse_partitions.iter().map(|p| p.subs.len()).sum())
-    }
   }
 }
 

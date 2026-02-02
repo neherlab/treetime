@@ -15,10 +15,6 @@ pub trait Weighted {
   fn set_weight(&mut self, weight: Option<f64>);
 }
 
-pub trait NumMuts {
-  fn num_muts(&self) -> Option<usize>;
-}
-
 pub trait GraphEdge: Clone + Debug + Sync + Send {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
