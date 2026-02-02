@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::date_constraints::DateConstraintNode;
@@ -9,18 +8,10 @@ use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
-use crate::representation::seq::Seq;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
-use crate::seq::composition::Composition;
-use crate::seq::find_char_ranges::find_letter_ranges;
 use eyre::Report;
-use maplit::btreemap;
-use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_utils::interval::range_union::range_union;
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 
@@ -108,67 +99,6 @@ impl NodeToGraphviz for NodeAncestral {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqInfo {
-  pub unknown: Vec<(usize, usize)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub composition: Composition,      // count of all characters in the region that is not `non_char`
-  pub sequence: Seq,
-  pub fitch: ParsimonySeqDis,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PartitionSparse {
-  pub seq: SparseSeqInfo,
-  pub profile: SparseSeqDis,
-}
-
-impl PartitionSparse {
-  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
-    // FIXME: the original code used `alphabet_gapN`:
-    //
-    // alphabet_gapN = ''.join(gtr.alphabet)+'-N'
-    //
-    // def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gapN: str) -> SparseSeqInfo
-
-    let variable = seq
-      .iter()
-      .enumerate()
-      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
-      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
-      .collect();
-
-    let seq_dis = ParsimonySeqDis {
-      variable,
-      variable_indel: btreemap! {},
-      composition: Composition::new(alphabet.chars(), alphabet.gap()),
-    };
-
-    let unknown = find_letter_ranges(seq, alphabet.unknown());
-    let gaps = find_letter_ranges(seq, alphabet.gap());
-    let non_char = range_union(&[unknown.clone(), gaps.clone()]); // TODO(perf): avoid cloning
-
-    Ok(Self {
-      seq: SparseSeqInfo {
-        unknown,
-        gaps,
-        non_char,
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
-        fitch: seq_dis,
-      },
-      profile: SparseSeqDis {
-        variable: btreemap! {},
-        variable_indel: btreemap! {},
-        fixed: btreemap! {},
-        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-        log_lh: 0.0,
-      },
-    })
-  }
-}
-
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct EdgeAncestral {
   pub branch_length: Option<f64>,
@@ -219,62 +149,6 @@ impl EdgeToGraphViz for EdgeAncestral {
   fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight()
   }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct VarPos {
-  pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: AsciiChar,
-}
-
-impl VarPos {
-  pub fn new(dis: Array1<f64>, state: AsciiChar) -> Self {
-    Self { dis, state }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Deletion {
-  pub deleted: usize, // number of times deletion is observed
-  pub present: usize, // or not
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqDis {
-  /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, VarPos>,
-
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
-
-  /// probability vector for the state of fixed positions based on information from children
-  pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
-
-  pub fixed_counts: Composition,
-
-  /// Total log likelihood
-  pub log_lh: f64,
-}
-
-impl Default for SparseSeqDis {
-  fn default() -> Self {
-    Self {
-      variable: btreemap! {},
-      variable_indel: btreemap! {},
-      fixed: btreemap! {},
-      fixed_counts: Composition::new(std::iter::empty::<u8>(), b'-'),
-      log_lh: 0.0,
-    }
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonySeqDis {
-  /// probability vector for each variable position collecting information from children
-  pub variable: BTreeMap<usize, StateSet>,
-
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
-
-  pub composition: Composition,
 }
 
 impl ClockNode for NodeAncestral {

@@ -6,7 +6,6 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
-use crate::representation::graph_ancestral::NodeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -135,21 +134,5 @@ impl TimetreeNode for NodeTimetree {
 
   fn set_time(&mut self, time: Option<f64>) {
     self.time = time;
-  }
-}
-
-impl From<&NodeAncestral> for NodeTimetree {
-  fn from(node: &NodeAncestral) -> Self {
-    Self {
-      name: node.name.clone(),
-      desc: node.desc.clone(),
-      time: node.time,
-      time_before_present: node.time_before_present,
-      time_distribution: node.time_distribution.clone(),
-      bad_branch: node.bad_branch,
-      div: node.div,
-      is_outlier: node.is_outlier,
-      clock_set: node.clock_set.clone(),
-    }
   }
 }

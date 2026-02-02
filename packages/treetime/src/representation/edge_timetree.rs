@@ -5,7 +5,6 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
-use crate::representation::graph_ancestral::EdgeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -120,19 +119,5 @@ impl TimetreeEdge for EdgeTimetree {
 
   fn set_time_length(&mut self, length: Option<f64>) {
     self.time_length = length;
-  }
-}
-
-impl From<&EdgeAncestral> for EdgeTimetree {
-  fn from(edge: &EdgeAncestral) -> Self {
-    Self {
-      branch_length: edge.branch_length,
-      time_length: None,
-      branch_length_distribution: edge.branch_length_distribution.clone(),
-      msg_to_parent: edge.msg_to_parent.clone(),
-      clock_to_parent: edge.clock_to_parent.clone(),
-      clock_to_child: edge.clock_to_child.clone(),
-      clock_from_child: edge.clock_from_child.clone(),
-    }
   }
 }
