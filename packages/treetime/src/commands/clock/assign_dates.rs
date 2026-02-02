@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::clock_graph::GraphClock;
 use crate::graph::node::Named;
 use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
@@ -6,7 +6,7 @@ use eyre::Report;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
-pub fn assign_dates(graph: &ClockGraph, dates: &DatesMap) -> Result<(), Report> {
+pub fn assign_dates(graph: &GraphClock, dates: &DatesMap) -> Result<(), Report> {
   let n_dates = dates.iter().filter(|(_, d)| d.is_some()).count();
   if n_dates == 0 {
     return make_error!("No valid date information found in {dates:#?}");

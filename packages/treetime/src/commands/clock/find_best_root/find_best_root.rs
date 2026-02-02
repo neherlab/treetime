@@ -105,7 +105,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::clock::clock_graph::ClockGraph;
+  use crate::commands::clock::clock_graph::GraphClock;
   use crate::commands::clock::clock_regression::{clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams};
   use crate::graph::node::Named;
@@ -114,7 +114,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use maplit::btreemap;
 
-  fn setup_test_graph() -> Result<(ClockGraph, ClockOptions), Report> {
+  fn setup_test_graph() -> Result<(GraphClock, ClockOptions), Report> {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -122,7 +122,7 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     for n in graph.get_leaves() {
       let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
       n.write_arc().payload().write_arc().date = Some(dates[&name]);

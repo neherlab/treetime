@@ -5,7 +5,7 @@ use crate::cli::rtt_chart::{
 use crate::commands::clock::assign_dates::assign_dates;
 use crate::commands::clock::clock_args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
-use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -19,7 +19,7 @@ use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::console::is_tty;
 
 pub fn get_clock_model(
-  graph: &mut ClockGraph,
+  graph: &mut GraphClock,
   options: &ClockOptions,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
@@ -54,7 +54,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     clock_regression,
   } = clock_args;
 
-  let mut graph: ClockGraph = if let Some(tree) = tree {
+  let mut graph: GraphClock = if let Some(tree) = tree {
     nwk_read_file(tree)
   } else {
     unimplemented!("Tree inference is not implemented")
@@ -111,7 +111,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 }
 
 fn estimate_clock_model_with_prefilter(
-  graph: &mut ClockGraph,
+  graph: &mut GraphClock,
   options: &ClockOptions,
   keep_root: bool,
   branch_split: &BranchSplitArgs,

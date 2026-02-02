@@ -174,7 +174,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::clock::clock_graph::ClockGraph;
+  use crate::commands::clock::clock_graph::GraphClock;
   use crate::graph::node::Named;
   use crate::io::nwk::nwk_read_str;
   use crate::o;
@@ -200,7 +200,7 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let graph: ClockGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let divs = calculate_divs(&graph, OnlyLeaves(true));
     let naive_rate = calculate_naive_rate(&dates, &divs);
 

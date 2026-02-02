@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::io::csv::CsvStructFileWriter;
@@ -24,7 +24,7 @@ pub struct ClockRegressionResult {
 }
 
 /// Get results of the root-to-tip clock inference.
-pub fn gather_clock_regression_results(graph: &ClockGraph, clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
+pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
   let result = ArrayQueue::new(graph.num_nodes());
   let divs = SkipMap::new();
 

@@ -178,7 +178,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::commands::clock::clock_graph::ClockGraph;
+  use crate::commands::clock::clock_graph::GraphClock;
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use pretty_assertions::assert_eq;
 
@@ -190,7 +190,7 @@ mod tests {
     //      mid  B
     //      /
     //     A
-    let mut graph: ClockGraph = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let mut graph: GraphClock = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
 
     let mid_key = graph
       .find_node(|node| node.name.as_deref() == Some("mid"))

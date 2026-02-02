@@ -10,30 +10,30 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub type ClockGraph = Graph<ClockNodePayload, ClockEdgePayload, ()>;
+pub type GraphClock = Graph<NodeClock, EdgeClock, ()>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ClockNodePayload {
+pub struct NodeClock {
   pub name: Option<String>,
   pub date: Option<f64>,
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
-  pub total: ClockSet,
+  pub clock_set: ClockSet,
 }
 
-impl GraphNode for ClockNodePayload {}
+impl GraphNode for NodeClock {}
 
-impl NodeFromNwk for ClockNodePayload {
+impl NodeFromNwk for NodeClock {
   fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
-      ..ClockNodePayload::default()
+      ..NodeClock::default()
     })
   }
 }
 
-impl NodeToNwk for ClockNodePayload {
+impl NodeToNwk for NodeClock {
   fn nwk_name(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
   }
@@ -44,7 +44,7 @@ impl NodeToNwk for ClockNodePayload {
   }
 }
 
-impl Named for ClockNodePayload {
+impl Named for NodeClock {
   fn name(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
   }
@@ -54,23 +54,23 @@ impl Named for ClockNodePayload {
   }
 }
 
-impl NodeToGraphviz for ClockNodePayload {
+impl NodeToGraphviz for NodeClock {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.name.as_deref()
   }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ClockEdgePayload {
+pub struct EdgeClock {
   pub branch_length: Option<f64>,
-  pub to_parent: ClockSet,
-  pub to_child: ClockSet,
-  pub from_child: ClockSet, // this is the propagated 'to_parent' msg. only need to avoid recalculation of propagated message
+  pub clock_to_parent: ClockSet,
+  pub clock_to_child: ClockSet,
+  pub clock_from_child: ClockSet, // this is the propagated 'to_parent' msg. only need to avoid recalculation of propagated message
 }
 
-impl GraphEdge for ClockEdgePayload {}
+impl GraphEdge for EdgeClock {}
 
-impl Weighted for ClockEdgePayload {
+impl Weighted for EdgeClock {
   fn weight(&self) -> Option<f64> {
     self.branch_length
   }
@@ -80,22 +80,22 @@ impl Weighted for ClockEdgePayload {
   }
 }
 
-impl EdgeFromNwk for ClockEdgePayload {
+impl EdgeFromNwk for EdgeClock {
   fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
     Ok(Self {
       branch_length,
-      ..ClockEdgePayload::default()
+      ..EdgeClock::default()
     })
   }
 }
 
-impl EdgeToNwk for ClockEdgePayload {
+impl EdgeToNwk for EdgeClock {
   fn nwk_weight(&self) -> Option<f64> {
     self.weight()
   }
 }
 
-impl EdgeToGraphViz for ClockEdgePayload {
+impl EdgeToGraphViz for EdgeClock {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self
       .weight()
@@ -107,7 +107,7 @@ impl EdgeToGraphViz for ClockEdgePayload {
   }
 }
 
-impl ClockNode for ClockNodePayload {
+impl ClockNode for NodeClock {
   fn likely_time(&self) -> Option<f64> {
     self.date
   }
@@ -125,15 +125,15 @@ impl ClockNode for ClockNodePayload {
   }
 
   fn clock_set(&self) -> &ClockSet {
-    &self.total
+    &self.clock_set
   }
 
   fn clock_set_mut(&mut self) -> &mut ClockSet {
-    &mut self.total
+    &mut self.clock_set
   }
 }
 
-impl ClockEdge for ClockEdgePayload {
+impl ClockEdge for EdgeClock {
   fn branch_length(&self) -> Option<f64> {
     self.branch_length
   }
@@ -143,26 +143,26 @@ impl ClockEdge for ClockEdgePayload {
   }
 
   fn to_parent(&self) -> &ClockSet {
-    &self.to_parent
+    &self.clock_to_parent
   }
 
   fn to_parent_mut(&mut self) -> &mut ClockSet {
-    &mut self.to_parent
+    &mut self.clock_to_parent
   }
 
   fn to_child(&self) -> &ClockSet {
-    &self.to_child
+    &self.clock_to_child
   }
 
   fn to_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.to_child
+    &mut self.clock_to_child
   }
 
   fn from_child(&self) -> &ClockSet {
-    &self.from_child
+    &self.clock_from_child
   }
 
   fn from_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.from_child
+    &mut self.clock_from_child
   }
 }

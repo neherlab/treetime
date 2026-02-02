@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_graph::ClockGraph;
+use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use itertools::Itertools;
@@ -6,7 +6,7 @@ use ordered_float::OrderedFloat;
 
 /// Get results of the root-to-tip clock inference.
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace(graph: &ClockGraph, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
+pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
   log::info!("### Filtering outliers (threshold={clock_filter_threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",
