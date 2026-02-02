@@ -1,4 +1,4 @@
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::EdgeOptimizeOps;
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::fasta::FastaRecord;
@@ -12,7 +12,7 @@ pub trait PartitionMarginal {}
 pub trait PartitionMarginalOps<N, E>: PartitionMarginal + Send + Sync
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
   /// Initialize partition with sequence data (for dense implementations)
   fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report>;

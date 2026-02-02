@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{EdgeOptimizeOps, GraphEdge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use crate::seq::div::{OnlyLeaves, calculate_divs};
@@ -10,7 +10,7 @@ use eyre::Report;
 pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>)
 where
   N: GraphNode + Named + ClockNode,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   D: Send + Sync,
 {
   let divs = calculate_divs(graph, OnlyLeaves(false));

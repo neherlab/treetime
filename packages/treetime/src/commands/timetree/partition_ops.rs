@@ -1,5 +1,5 @@
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::node::{GraphNode, Named};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
@@ -10,7 +10,7 @@ use eyre::Report;
 pub trait PartitionTimetreeOps<N, E>: Send + Sync
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
   /// Create optimization contribution for branch length likelihood computation
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
@@ -21,7 +21,7 @@ where
 pub trait PartitionTimetreeAll<N, E>: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
 }
 
@@ -30,6 +30,6 @@ impl<T, N, E> PartitionTimetreeAll<N, E> for T
 where
   T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh,
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
 }

@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::gtr::GTR;
@@ -83,7 +83,7 @@ impl PartitionMarginal for PartitionMarginalSparse {}
 impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
   fn create_edge_contribution(
     &self,
@@ -96,7 +96,7 @@ where
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
   fn attach_sequences(&mut self, _graph: &Graph<N, E, ()>, _aln: &[FastaRecord]) -> Result<(), Report> {
     // Sparse partitions get sequences attached during compression phase

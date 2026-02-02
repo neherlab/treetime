@@ -5,7 +5,7 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::graph::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{Described, GraphNode, Named};
+use crate::graph::node::{GraphNode, NodeAncestralOps};
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
@@ -38,7 +38,7 @@ fn attach_seqs_to_graph<N, E, P>(
   aln: &[FastaRecord],
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + Described,
+  N: NodeAncestralOps,
   E: GraphEdge,
   P: PartitionCompressed,
 {
@@ -512,7 +512,7 @@ pub fn compress_sequences<N, E, P>(
   aln: &[FastaRecord],
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + Described,
+  N: NodeAncestralOps,
   E: GraphEdge,
   P: PartitionCompressed,
 {

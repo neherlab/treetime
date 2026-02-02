@@ -1,5 +1,5 @@
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::EdgeOptimizeOps;
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, Named};
 use crate::io::fasta::FastaRecord;
@@ -23,7 +23,7 @@ pub fn initialize_marginal<N, E, P>(
 ) -> Result<f64, Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   for partition in partitions {
@@ -39,7 +39,7 @@ where
 pub fn update_marginal<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   marginal_backward(graph, partitions)?;
@@ -58,7 +58,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   graph.iter_depth_first_preorder_forward(|node| {
@@ -85,7 +85,7 @@ where
 fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   graph.par_iter_breadth_first_backward(|node| {
@@ -101,7 +101,7 @@ fn run_marginal_backward<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   for partition in partitions {
@@ -115,7 +115,7 @@ where
 fn marginal_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   graph.par_iter_breadth_first_forward(|node| {
@@ -132,7 +132,7 @@ fn run_marginal_forward<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
   for partition in partitions {

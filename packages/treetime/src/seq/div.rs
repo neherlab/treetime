@@ -1,6 +1,6 @@
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::EdgeOptimizeOps;
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::NodeOptimizeOps;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 
@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 pub struct OnlyLeaves(pub bool);
 
 /// Calculate mapping of node name to node divergence (accumulated by summing branch lengths)
-pub fn calculate_divs<N: GraphNode + Named, E: GraphEdge + Weighted, D: Send + Sync>(
+pub fn calculate_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   only_leaves: OnlyLeaves,
 ) -> BTreeMap<String, f64> {

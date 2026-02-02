@@ -1,7 +1,7 @@
 use super::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{Described, GraphNode, GraphNodeKey, Named};
+use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -49,7 +49,7 @@ impl PartitionMarginal for PartitionMarginalDense {}
 impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: EdgeOptimizeOps,
 {
   fn create_edge_contribution(
     &self,
@@ -61,8 +61,8 @@ where
 
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalDense
 where
-  N: GraphNode + Named + Described,
-  E: GraphEdge + Weighted,
+  N: NodeAncestralOps,
+  E: EdgeOptimizeOps,
 {
   fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report> {
     for leaf in graph.get_leaves() {
