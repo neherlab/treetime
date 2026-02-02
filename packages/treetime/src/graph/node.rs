@@ -19,7 +19,16 @@ pub trait Described {
   fn set_desc(&mut self, desc: Option<String>);
 }
 
-/// Defines how to read and write node divergence (evolutionary distance from root)
+/// Access to node divergence (evolutionary distance from root).
+///
+/// Returns `Some(value)` for types that always store divergence, `None` for types
+/// where divergence is optional or not yet computed.
+///
+/// For types with non-optional storage, `set_div(None)` is a no-op - divergence
+/// cannot be cleared once set.
+///
+/// Distinct from `ClockNode::div()` which returns `f64` directly (no Option wrapper)
+/// and assumes divergence is always present in clock analysis context.
 pub trait Divergence {
   fn div(&self) -> Option<f64>;
   fn set_div(&mut self, div: Option<f64>);
