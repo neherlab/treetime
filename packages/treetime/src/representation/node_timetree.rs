@@ -73,7 +73,7 @@ impl ClockNode for NodeTimetree {
 }
 
 impl DateConstraintNode for NodeTimetree {
-  fn get_time_distribution(&self) -> &Option<Arc<Distribution>> {
+  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
     &self.time_distribution
   }
 
@@ -81,7 +81,7 @@ impl DateConstraintNode for NodeTimetree {
     self.time_distribution = dist;
   }
 
-  fn get_bad_branch(&self) -> bool {
+  fn bad_branch(&self) -> bool {
     self.bad_branch
   }
 

@@ -12,9 +12,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 pub trait DateConstraintNode: GraphNode + Named {
-  fn get_time_distribution(&self) -> &Option<Arc<Distribution>>;
+  fn time_distribution(&self) -> &Option<Arc<Distribution>>;
   fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>);
-  fn get_bad_branch(&self) -> bool;
+  fn bad_branch(&self) -> bool;
   fn set_bad_branch(&mut self, bad: bool);
 }
 
@@ -61,7 +61,7 @@ where
       let all_children_bad = node
         .children
         .iter()
-        .all(|(child_payload, _)| child_payload.read_arc().get_bad_branch());
+        .all(|(child_payload, _)| child_payload.read_arc().bad_branch());
       payload.set_bad_branch(all_children_bad);
     }
   });
@@ -175,13 +175,13 @@ mod tests {
   impl GraphNode for TestNode {}
 
   impl DateConstraintNode for TestNode {
-    fn get_time_distribution(&self) -> &Option<Arc<Distribution>> {
+    fn time_distribution(&self) -> &Option<Arc<Distribution>> {
       &self.time_distribution
     }
     fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
       self.time_distribution = dist;
     }
-    fn get_bad_branch(&self) -> bool {
+    fn bad_branch(&self) -> bool {
       self.bad_branch
     }
     fn set_bad_branch(&mut self, bad: bool) {
