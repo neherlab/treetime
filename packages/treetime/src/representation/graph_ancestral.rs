@@ -14,8 +14,6 @@ use crate::representation::seq_char::AsciiChar;
 use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::indel::InDel;
-use crate::seq::mutation::Sub;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
@@ -173,7 +171,6 @@ impl PartitionSparse {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct EdgeAncestral {
-  pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
   pub msg_to_parent: Option<Arc<Distribution>>,
@@ -222,16 +219,6 @@ impl EdgeToGraphViz for EdgeAncestral {
   fn to_graphviz_weight(&self) -> Option<f64> {
     self.weight()
   }
-}
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseSeqEdge {
-  pub subs: Vec<Sub>,
-  pub indels: Vec<InDel>,
-  pub msg_to_parent: SparseSeqDis,
-  pub msg_to_child: SparseSeqDis,
-  pub msg_from_child: SparseSeqDis,
-  pub transmission: Option<Vec<(usize, usize)>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

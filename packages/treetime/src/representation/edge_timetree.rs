@@ -5,14 +5,13 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
-use crate::representation::graph_ancestral::{EdgeAncestral, SparseSeqEdge};
+use crate::representation::graph_ancestral::EdgeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct EdgeTimetree {
-  pub sparse_partitions: Vec<SparseSeqEdge>,
   pub branch_length: Option<f64>,
   pub time_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
@@ -127,7 +126,6 @@ impl TimetreeEdge for EdgeTimetree {
 impl From<&EdgeAncestral> for EdgeTimetree {
   fn from(edge: &EdgeAncestral) -> Self {
     Self {
-      sparse_partitions: edge.sparse_partitions.clone(),
       branch_length: edge.branch_length,
       time_length: None,
       branch_length_distribution: edge.branch_length_distribution.clone(),
