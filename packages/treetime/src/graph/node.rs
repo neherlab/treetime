@@ -19,7 +19,26 @@ pub trait Described {
   fn set_desc(&mut self, desc: Option<String>);
 }
 
+/// Defines how to read and write node divergence (evolutionary distance from root)
+pub trait Divergence {
+  fn div(&self) -> Option<f64>;
+  fn set_div(&mut self, div: Option<f64>);
+}
+
+/// Defines whether a node is marked as an outlier
+pub trait Outlier {
+  fn is_outlier(&self) -> bool;
+}
+
 pub trait GraphNode: Clone + Debug + Sync + Send {}
+
+/// Composite trait for nodes that support ancestral reconstruction
+pub trait NodeAncestralOps: GraphNode + Named + Described {}
+impl<T: GraphNode + Named + Described> NodeAncestralOps for T {}
+
+/// Composite trait for nodes that support tree optimization
+pub trait NodeOptimizeOps: GraphNode + Named {}
+impl<T: GraphNode + Named> NodeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);

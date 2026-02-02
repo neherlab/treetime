@@ -3,7 +3,7 @@ use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
-use crate::graph::node::{Described, GraphNode, Named};
+use crate::graph::node::{Described, Divergence, GraphNode, Named, Outlier};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
 use eyre::Report;
@@ -43,6 +43,24 @@ impl Described for NodeTimetree {
 
   fn set_desc(&mut self, desc: Option<String>) {
     self.desc = desc;
+  }
+}
+
+impl Divergence for NodeTimetree {
+  fn div(&self) -> Option<f64> {
+    Some(self.div)
+  }
+
+  fn set_div(&mut self, div: Option<f64>) {
+    if let Some(div) = div {
+      self.div = div;
+    }
+  }
+}
+
+impl Outlier for NodeTimetree {
+  fn is_outlier(&self) -> bool {
+    self.is_outlier
   }
 }
 

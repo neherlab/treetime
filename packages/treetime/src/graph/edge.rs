@@ -15,7 +15,40 @@ pub trait Weighted {
   fn set_weight(&mut self, weight: Option<f64>);
 }
 
+/// Defines access to clock message passing fields on edges
+#[allow(clippy::wrong_self_convention)]
+pub trait ClockMessages<T> {
+  fn to_parent(&self) -> &T;
+  fn to_parent_mut(&mut self) -> &mut T;
+  fn to_child(&self) -> &T;
+  fn to_child_mut(&mut self) -> &mut T;
+  fn from_child(&self) -> &T;
+  fn from_child_mut(&mut self) -> &mut T;
+}
+
+/// Defines access to branch length distribution and message to parent
+pub trait BranchDistribution<T> {
+  fn branch_length_distribution(&self) -> &Option<T>;
+  fn set_branch_length_distribution(&mut self, dist: Option<T>);
+  fn msg_to_parent(&self) -> &Option<T>;
+  fn set_msg_to_parent(&mut self, msg: Option<T>);
+}
+
+/// Defines access to time-scaled branch length
+pub trait TimeLength {
+  fn time_length(&self) -> Option<f64>;
+  fn set_time_length(&mut self, length: Option<f64>);
+}
+
 pub trait GraphEdge: Clone + Debug + Sync + Send {}
+
+/// Composite trait for edges that support ancestral reconstruction
+pub trait EdgeAncestralOps: GraphEdge {}
+impl<T: GraphEdge> EdgeAncestralOps for T {}
+
+/// Composite trait for edges that support tree optimization
+pub trait EdgeOptimizeOps: GraphEdge + Weighted {}
+impl<T: GraphEdge + Weighted> EdgeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);
