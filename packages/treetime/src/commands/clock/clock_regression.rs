@@ -1,4 +1,4 @@
-use super::clock_model::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;

@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_traits::ClockNode;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -52,7 +53,7 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
   graph.get_leaves().iter().for_each(|leaf| {
     let div = leaf.read_arc().payload().read().div;
     let date = leaf.read_arc().payload().read().date;
-    let was_outlier = leaf.read_arc().payload().write().is_outlier;
+    let was_outlier = leaf.read_arc().payload().read().is_outlier();
     if let Some(date) = date {
       let clock_deviation = clock_model.clock_deviation(date, div);
       let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
