@@ -114,6 +114,7 @@ where
       debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
     }
 
+    edge.set_time_length(distribution.likely_time());
     edge.set_branch_length_distribution(Some(distribution));
   }
   Ok(())
@@ -159,9 +160,60 @@ where
       // Convert branch length (substitutions/site) to time duration (years)
       let time_duration = branch_length / clock_rate;
       let distribution = Distribution::point(time_duration, 1.0);
+      edge.set_time_length(Some(time_duration));
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }
   }
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use crate::representation::edge_timetree::EdgeTimetree;
+  use crate::representation::node_timetree::NodeTimetree;
+  use approx::assert_abs_diff_eq;
+
+  #[test]
+  fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let clock_rate = 0.001; // 0.001 subs/site/year
+
+    create_branch_distributions_input_mode(&graph, clock_rate)?;
+
+    // Verify each edge has time_length = branch_length / clock_rate
+    for edge_ref in graph.get_edges() {
+      let edge = edge_ref.read_arc().payload().read_arc();
+      let branch_length = edge.weight();
+      let time_length = edge.time_length();
+
+      if let Some(bl) = branch_length {
+        let expected_time = bl / clock_rate;
+        assert_abs_diff_eq!(time_length.unwrap_or(f64::NAN), expected_time, epsilon = 1e-10);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let clock_rate = 0.001;
+
+    create_branch_distributions_input_mode(&graph, clock_rate)?;
+
+    // EdgeTimetree.nwk_weight() returns time_length, so Newick output should show time values
+    let newick_output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+
+    // After conversion: 0.003/0.001=3, 0.006/0.001=6, 0.009/0.001=9, 0.012/0.001=12
+    assert!(newick_output.contains(":3"), "Expected time length 3 in output: {newick_output}");
+    assert!(newick_output.contains(":6"), "Expected time length 6 in output: {newick_output}");
+    assert!(newick_output.contains(":9"), "Expected time length 9 in output: {newick_output}");
+    assert!(newick_output.contains(":12"), "Expected time length 12 in output: {newick_output}");
+
+    Ok(())
+  }
 }
