@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, Named, Outlier};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
@@ -51,6 +51,16 @@ impl Named for NodeClock {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
+  }
+}
+
+impl Outlier for NodeClock {
+  fn is_outlier(&self) -> bool {
+    self.is_outlier
+  }
+
+  fn set_is_outlier(&mut self, is_outlier: bool) {
+    self.is_outlier = is_outlier;
   }
 }
 

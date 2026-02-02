@@ -4,7 +4,7 @@ use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{Described, GraphNode, Named};
+use crate::graph::node::{Described, GraphNode, Named, Outlier};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
@@ -72,6 +72,16 @@ impl Described for NodeAncestral {
 
   fn set_desc(&mut self, desc: Option<String>) {
     self.desc = desc;
+  }
+}
+
+impl Outlier for NodeAncestral {
+  fn is_outlier(&self) -> bool {
+    self.is_outlier
+  }
+
+  fn set_is_outlier(&mut self, is_outlier: bool) {
+    self.is_outlier = is_outlier;
   }
 }
 

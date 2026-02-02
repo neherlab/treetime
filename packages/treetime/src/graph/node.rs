@@ -28,6 +28,7 @@ pub trait Divergence {
 /// Defines whether a node is marked as an outlier
 pub trait Outlier {
   fn is_outlier(&self) -> bool;
+  fn set_is_outlier(&mut self, is_outlier: bool);
 }
 
 pub trait GraphNode: Clone + Debug + Sync + Send {}

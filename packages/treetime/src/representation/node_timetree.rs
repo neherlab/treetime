@@ -62,6 +62,10 @@ impl Outlier for NodeTimetree {
   fn is_outlier(&self) -> bool {
     self.is_outlier
   }
+
+  fn set_is_outlier(&mut self, is_outlier: bool) {
+    self.is_outlier = is_outlier;
+  }
 }
 
 impl ClockNode for NodeTimetree {
