@@ -1,5 +1,6 @@
+use crate::commands::clock::clock_traits::ClockEdge;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::GraphEdge;
+use crate::graph::edge::{BranchDistribution, GraphEdge, TimeLength};
 use crate::graph::node::{GraphNode, TimeConstraint};
 use std::sync::Arc;
 
@@ -11,12 +12,5 @@ pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution>> {
 }
 
 /// Trait for edge types that support timetree inference.
-/// Provides access to branch length distribution and message passing fields.
-pub trait TimetreeEdge: GraphEdge {
-  fn branch_length_distribution(&self) -> &Option<Arc<Distribution>>;
-  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>);
-  fn msg_to_parent(&self) -> &Option<Arc<Distribution>>;
-  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>);
-  fn time_length(&self) -> Option<f64>;
-  fn set_time_length(&mut self, length: Option<f64>);
-}
+/// Combines clock edge capabilities with branch distribution and time length.
+pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution>> + TimeLength {}

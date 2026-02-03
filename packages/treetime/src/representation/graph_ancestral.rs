@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{ClockMessages, GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{Described, GraphNode, Named, Outlier, TimeConstraint};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
@@ -185,15 +185,7 @@ impl ClockNode for NodeAncestral {
   }
 }
 
-impl ClockEdge for EdgeAncestral {
-  fn branch_length(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_branch_length(&mut self, length: Option<f64>) {
-    self.branch_length = length;
-  }
-
+impl ClockMessages<ClockSet> for EdgeAncestral {
   fn to_parent(&self) -> &ClockSet {
     &self.clock_to_parent
   }
@@ -216,5 +208,15 @@ impl ClockEdge for EdgeAncestral {
 
   fn from_child_mut(&mut self) -> &mut ClockSet {
     &mut self.clock_from_child
+  }
+}
+
+impl ClockEdge for EdgeAncestral {
+  fn branch_length(&self) -> Option<f64> {
+    self.branch_length
+  }
+
+  fn set_branch_length(&mut self, length: Option<f64>) {
+    self.branch_length = length;
   }
 }

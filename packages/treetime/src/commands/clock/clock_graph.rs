@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{ClockMessages, GraphEdge, Weighted};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named, Outlier};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
@@ -139,15 +139,7 @@ impl ClockNode for NodeClock {
   }
 }
 
-impl ClockEdge for EdgeClock {
-  fn branch_length(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_branch_length(&mut self, length: Option<f64>) {
-    self.branch_length = length;
-  }
-
+impl ClockMessages<ClockSet> for EdgeClock {
   fn to_parent(&self) -> &ClockSet {
     &self.clock_to_parent
   }
@@ -170,5 +162,15 @@ impl ClockEdge for EdgeClock {
 
   fn from_child_mut(&mut self) -> &mut ClockSet {
     &mut self.clock_from_child
+  }
+}
+
+impl ClockEdge for EdgeClock {
+  fn branch_length(&self) -> Option<f64> {
+    self.branch_length
+  }
+
+  fn set_branch_length(&mut self, length: Option<f64>) {
+    self.branch_length = length;
   }
 }

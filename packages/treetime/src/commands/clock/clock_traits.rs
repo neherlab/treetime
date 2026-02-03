@@ -1,4 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
+use crate::graph::edge::ClockMessages;
 use crate::graph::node::Outlier;
 
 pub trait ClockNode: Outlier + Send + Sync {
@@ -12,14 +13,7 @@ pub trait ClockNode: Outlier + Send + Sync {
   }
 }
 
-#[allow(clippy::wrong_self_convention)]
-pub trait ClockEdge: Send + Sync {
+pub trait ClockEdge: ClockMessages<ClockSet> + Send + Sync {
   fn branch_length(&self) -> Option<f64>;
   fn set_branch_length(&mut self, length: Option<f64>);
-  fn to_parent(&self) -> &ClockSet;
-  fn to_parent_mut(&mut self) -> &mut ClockSet;
-  fn to_child(&self) -> &ClockSet;
-  fn to_child_mut(&mut self) -> &mut ClockSet;
-  fn from_child(&self) -> &ClockSet;
-  fn from_child_mut(&mut self) -> &mut ClockSet;
 }

@@ -43,30 +43,6 @@ impl ClockEdge for EdgeTimetree {
   fn set_branch_length(&mut self, length: Option<f64>) {
     self.branch_length = length;
   }
-
-  fn to_parent(&self) -> &ClockSet {
-    &self.clock_to_parent
-  }
-
-  fn to_parent_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_parent
-  }
-
-  fn to_child(&self) -> &ClockSet {
-    &self.clock_to_child
-  }
-
-  fn to_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_child
-  }
-
-  fn from_child(&self) -> &ClockSet {
-    &self.clock_from_child
-  }
-
-  fn from_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_from_child
-  }
 }
 
 impl ClockMessages<ClockSet> for EdgeTimetree {
@@ -150,28 +126,4 @@ impl EdgeToGraphViz for EdgeTimetree {
   }
 }
 
-impl TimetreeEdge for EdgeTimetree {
-  fn branch_length_distribution(&self) -> &Option<Arc<Distribution>> {
-    &self.branch_length_distribution
-  }
-
-  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>) {
-    self.branch_length_distribution = dist;
-  }
-
-  fn msg_to_parent(&self) -> &Option<Arc<Distribution>> {
-    &self.msg_to_parent
-  }
-
-  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>) {
-    self.msg_to_parent = msg;
-  }
-
-  fn time_length(&self) -> Option<f64> {
-    self.time_length
-  }
-
-  fn set_time_length(&mut self, length: Option<f64>) {
-    self.time_length = length;
-  }
-}
+impl TimetreeEdge for EdgeTimetree {}
