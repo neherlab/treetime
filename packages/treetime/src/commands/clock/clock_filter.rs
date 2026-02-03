@@ -53,7 +53,7 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
   graph.get_leaves().iter().for_each(|leaf| {
     let div = leaf.read_arc().payload().read().div;
     let date = leaf.read_arc().payload().read().date;
-    let was_outlier = Outlier::is_outlier(&*leaf.read_arc().payload().read());
+    let was_outlier = leaf.read_arc().payload().read().is_outlier();
     if let Some(date) = date {
       let clock_deviation = clock_model.clock_deviation(date, div);
       let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;

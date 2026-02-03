@@ -42,7 +42,8 @@ pub trait TimeLength {
 
 pub trait GraphEdge: Clone + Debug + Sync + Send {}
 
-/// Composite trait for edges that support ancestral reconstruction
+/// Composite trait for edges that support ancestral reconstruction.
+/// Currently equivalent to `GraphEdge` for consistency with `NodeAncestralOps`.
 pub trait EdgeAncestralOps: GraphEdge {}
 impl<T: GraphEdge> EdgeAncestralOps for T {}
 

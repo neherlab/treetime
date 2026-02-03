@@ -1,4 +1,4 @@
-use super::clock_model::ClockModel;
+use crate::commands::clock::clock_model::ClockModel;
 use crate::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
