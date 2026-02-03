@@ -1,13 +1,11 @@
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdge;
-use crate::graph::node::GraphNode;
+use crate::graph::node::{GraphNode, TimeConstraint};
 use std::sync::Arc;
 
 /// Trait for node types that support timetree inference.
 /// Provides access to time distribution and estimated time fields.
-pub trait TimetreeNode: GraphNode {
-  fn time_distribution(&self) -> &Option<Arc<Distribution>>;
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>);
+pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution>> {
   fn time(&self) -> Option<f64>;
   fn set_time(&mut self, time: Option<f64>);
 }

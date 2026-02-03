@@ -3,7 +3,7 @@ use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
-use crate::graph::node::{Described, Divergence, GraphNode, Named, Outlier};
+use crate::graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
 use eyre::Report;
@@ -81,10 +81,6 @@ impl ClockNode for NodeTimetree {
     self.div = div;
   }
 
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
-  }
-
   fn clock_set(&self) -> &ClockSet {
     &self.clock_set
   }
@@ -94,7 +90,7 @@ impl ClockNode for NodeTimetree {
   }
 }
 
-impl DateConstraintNode for NodeTimetree {
+impl TimeConstraint<Arc<Distribution>> for NodeTimetree {
   fn time_distribution(&self) -> &Option<Arc<Distribution>> {
     &self.time_distribution
   }
@@ -111,6 +107,8 @@ impl DateConstraintNode for NodeTimetree {
     self.bad_branch = bad;
   }
 }
+
+impl DateConstraintNode for NodeTimetree {}
 
 impl NodeFromNwk for NodeTimetree {
   fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
@@ -142,14 +140,6 @@ impl NodeToGraphviz for NodeTimetree {
 }
 
 impl TimetreeNode for NodeTimetree {
-  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
-    &self.time_distribution
-  }
-
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
-    self.time_distribution = dist;
-  }
-
   fn time(&self) -> Option<f64> {
     self.time
   }

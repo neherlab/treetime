@@ -40,6 +40,14 @@ pub trait Outlier {
   fn set_is_outlier(&mut self, is_outlier: bool);
 }
 
+/// Provides access to time distribution and bad branch flag for date constraints.
+pub trait TimeConstraint<T> {
+  fn time_distribution(&self) -> &Option<T>;
+  fn set_time_distribution(&mut self, dist: Option<T>);
+  fn bad_branch(&self) -> bool;
+  fn set_bad_branch(&mut self, bad: bool);
+}
+
 pub trait GraphNode: Clone + Debug + Sync + Send {}
 
 /// Composite trait for nodes that support ancestral reconstruction

@@ -1,7 +1,7 @@
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use crate::graph::node::{GraphNode, Named, TimeConstraint};
 use crate::io::dates_csv::DatesMap;
 use crate::make_error;
 use crate::o;
@@ -11,12 +11,7 @@ use log::{info, warn};
 use std::collections::HashSet;
 use std::sync::Arc;
 
-pub trait DateConstraintNode: GraphNode + Named {
-  fn time_distribution(&self) -> &Option<Arc<Distribution>>;
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>);
-  fn bad_branch(&self) -> bool;
-  fn set_bad_branch(&mut self, bad: bool);
-}
+pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
 
 pub fn load_date_constraints<N, E, D>(dates: &DatesMap, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
@@ -174,7 +169,7 @@ mod tests {
 
   impl GraphNode for TestNode {}
 
-  impl DateConstraintNode for TestNode {
+  impl TimeConstraint<Arc<Distribution>> for TestNode {
     fn time_distribution(&self) -> &Option<Arc<Distribution>> {
       &self.time_distribution
     }
@@ -188,6 +183,8 @@ mod tests {
       self.bad_branch = bad;
     }
   }
+
+  impl DateConstraintNode for TestNode {}
 
   impl Named for TestNode {
     fn name(&self) -> Option<impl AsRef<str>> {

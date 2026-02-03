@@ -4,7 +4,7 @@ use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{Described, GraphNode, Named, Outlier};
+use crate::graph::node::{Described, GraphNode, Named, Outlier, TimeConstraint};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
@@ -85,7 +85,7 @@ impl Outlier for NodeAncestral {
   }
 }
 
-impl DateConstraintNode for NodeAncestral {
+impl TimeConstraint<Arc<Distribution>> for NodeAncestral {
   fn time_distribution(&self) -> &Option<Arc<Distribution>> {
     &self.time_distribution
   }
@@ -102,6 +102,8 @@ impl DateConstraintNode for NodeAncestral {
     self.bad_branch = bad;
   }
 }
+
+impl DateConstraintNode for NodeAncestral {}
 
 impl NodeToGraphviz for NodeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
@@ -172,10 +174,6 @@ impl ClockNode for NodeAncestral {
 
   fn set_div(&mut self, div: f64) {
     self.div = div;
-  }
-
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
   }
 
   fn clock_set(&self) -> &ClockSet {

@@ -130,10 +130,6 @@ impl ClockNode for NodeClock {
     self.div = div;
   }
 
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
-  }
-
   fn clock_set(&self) -> &ClockSet {
     &self.clock_set
   }
