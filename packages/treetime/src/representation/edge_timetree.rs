@@ -5,13 +5,14 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength, Weighted};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
+use crate::representation::graph_ancestral::EdgeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct EdgeTimetree {
-  pub branch_length: Option<f64>,
+  pub base: EdgeAncestral,
   pub time_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
   pub msg_to_parent: Option<Arc<Distribution>>,
@@ -27,21 +28,21 @@ impl GraphEdge for EdgeTimetree {}
 
 impl Weighted for EdgeTimetree {
   fn weight(&self) -> Option<f64> {
-    self.branch_length
+    self.base.weight()
   }
 
   fn set_weight(&mut self, weight: Option<f64>) {
-    self.branch_length = weight;
+    self.base.set_weight(weight);
   }
 }
 
 impl ClockEdge for EdgeTimetree {
   fn branch_length(&self) -> Option<f64> {
-    self.branch_length
+    self.base.branch_length
   }
 
   fn set_branch_length(&mut self, length: Option<f64>) {
-    self.branch_length = length;
+    self.base.branch_length = length;
   }
 }
 
@@ -102,7 +103,7 @@ impl TimeLength for EdgeTimetree {
 impl EdgeFromNwk for EdgeTimetree {
   fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
     Ok(Self {
-      branch_length,
+      base: EdgeAncestral::from_nwk(branch_length)?,
       ..Self::default()
     })
   }

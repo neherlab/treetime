@@ -23,6 +23,7 @@ use treetime::commands::timetree::utils::{
   initialize_clock_totals_from_time_distributions, initialize_node_divergences,
 };
 use treetime::distribution::distribution::Distribution;
+use treetime::graph::edge::Weighted;
 use treetime::graph::node::Named;
 use treetime::distribution::distribution_function::DistributionFunction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
@@ -471,7 +472,7 @@ fn create_poisson_branch_distributions(
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    if let Some(branch_length) = edge.branch_length {
+    if let Some(branch_length) = edge.weight() {
       let expected_time = branch_length / mu;
       let max_time = 3.0 * expected_time.max(1.0);
       let dx = max_time / (n_points - 1) as f64;
