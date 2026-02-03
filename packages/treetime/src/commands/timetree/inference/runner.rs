@@ -75,10 +75,7 @@ where
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let one_mutation = calculate_one_mutation(partitions);
-  let total_sites: usize = partitions
-    .iter()
-    .map(|p| p.read_arc().get_sequence_length())
-    .sum();
+  let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
   info!(
     "Computing branch distributions from {} partition(s) with {} total sites",
@@ -164,12 +161,12 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use bio::io::newick;
   use crate::graph::edge::TimeLength;
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::node_timetree::NodeTimetree;
   use approx::assert_abs_diff_eq;
+  use bio::io::newick;
   use maplit::btreemap;
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;

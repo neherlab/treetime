@@ -210,7 +210,11 @@ pub fn run_optimize_sparse(
         .unwrap();
       new_branch_length = best_branch_length;
     }
-    edge_ref.read_arc().payload().write_arc().set_branch_length(Some(new_branch_length));
+    edge_ref
+      .read_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(new_branch_length));
 
     Ok(())
   })

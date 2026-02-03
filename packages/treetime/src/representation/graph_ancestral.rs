@@ -97,7 +97,8 @@ impl EdgeToNwk for EdgeAncestral {
 
 impl EdgeToGraphViz for EdgeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.branch_length()
+    self
+      .branch_length()
       .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 

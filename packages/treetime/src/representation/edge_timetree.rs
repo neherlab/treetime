@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::commands::timetree::timetree_traits::TimetreeEdge;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength, HasBranchLength};
+use crate::graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
 use crate::representation::graph_ancestral::EdgeAncestral;
@@ -109,7 +109,8 @@ impl EdgeToNwk for EdgeTimetree {
 
 impl EdgeToGraphViz for EdgeTimetree {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.branch_length()
+    self
+      .branch_length()
       .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 
