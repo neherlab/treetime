@@ -23,6 +23,7 @@ use treetime::commands::timetree::utils::{
   initialize_clock_totals_from_time_distributions, initialize_node_divergences,
 };
 use treetime::distribution::distribution::Distribution;
+use treetime::graph::node::Named;
 use treetime::distribution::distribution_function::DistributionFunction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::io::dates_csv::{DatesMap, read_dates};
@@ -452,7 +453,7 @@ fn extract_node_times(graph: &GraphTimetree) -> BTreeMap<String, f64> {
     .filter_map(|node_ref| {
       let node = node_ref.read_arc();
       let payload = node.payload().read_arc();
-      let name = payload.name.as_ref()?.clone();
+      let name = payload.name()?.as_ref().to_owned();
       let time = payload.time?;
       Some((name, time))
     })

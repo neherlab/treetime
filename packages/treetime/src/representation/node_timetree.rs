@@ -6,6 +6,7 @@ use crate::distribution::distribution::Distribution;
 use crate::graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
+use crate::representation::graph_ancestral::NodeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -13,8 +14,7 @@ use std::sync::Arc;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeTimetree {
-  pub name: Option<String>,
-  pub desc: Option<String>,
+  pub base: NodeAncestral,
   pub time: Option<f64>,
   pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<Distribution>>,
@@ -28,21 +28,21 @@ impl GraphNode for NodeTimetree {}
 
 impl Named for NodeTimetree {
   fn name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
+    self.base.name()
   }
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.name = name.map(|n| n.as_ref().to_owned());
+    self.base.set_name(name);
   }
 }
 
 impl Described for NodeTimetree {
   fn desc(&self) -> &Option<String> {
-    &self.desc
+    self.base.desc()
   }
 
   fn set_desc(&mut self, desc: Option<String>) {
-    self.desc = desc;
+    self.base.set_desc(desc);
   }
 }
 
@@ -111,9 +111,9 @@ impl TimeConstraint<Arc<Distribution>> for NodeTimetree {
 impl DateConstraintNode for NodeTimetree {}
 
 impl NodeFromNwk for NodeTimetree {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(name: Option<impl AsRef<str>>, comments: &BTreeMap<String, String>) -> Result<Self, Report> {
     Ok(Self {
-      name: name.map(|s| s.as_ref().to_owned()),
+      base: NodeAncestral::from_nwk(name, comments)?,
       ..NodeTimetree::default()
     })
   }
@@ -121,7 +121,7 @@ impl NodeFromNwk for NodeTimetree {
 
 impl NodeToNwk for NodeTimetree {
   fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
+    self.base.nwk_name()
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
@@ -135,7 +135,7 @@ impl NodeToNwk for NodeTimetree {
 
 impl NodeToGraphviz for NodeTimetree {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
+    self.base.name()
   }
 }
 
