@@ -982,7 +982,7 @@ pub mod tests {
 
   use pretty_assertions::assert_eq;
 
-  use crate::graph::edge::Weighted;
+  use crate::graph::edge::HasBranchLength;
   use crate::graph::node::Named;
   use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
   use crate::io::nwk::{
@@ -1030,11 +1030,11 @@ pub mod tests {
 
   impl GraphEdge for TestEdge {}
 
-  impl Weighted for TestEdge {
-    fn weight(&self) -> Option<f64> {
+  impl HasBranchLength for TestEdge {
+    fn branch_length(&self) -> Option<f64> {
       self.0
     }
-    fn set_weight(&mut self, weight: Option<f64>) {
+    fn set_branch_length(&mut self, weight: Option<f64>) {
       self.0 = weight;
     }
   }

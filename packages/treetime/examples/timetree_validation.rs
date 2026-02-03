@@ -24,7 +24,7 @@ use treetime::commands::timetree::utils::{
 };
 use treetime::distribution::distribution::Distribution;
 use treetime::distribution::distribution_function::DistributionFunction;
-use treetime::graph::edge::Weighted;
+use treetime::graph::edge::HasBranchLength;
 use treetime::graph::node::Named;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::io::dates_csv::{DatesMap, read_dates};
@@ -472,7 +472,7 @@ fn create_poisson_branch_distributions(
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    if let Some(branch_length) = edge.weight() {
+    if let Some(branch_length) = edge.branch_length() {
       let expected_time = branch_length / mu;
       let max_time = 3.0 * expected_time.max(1.0);
       let dx = max_time / (n_points - 1) as f64;

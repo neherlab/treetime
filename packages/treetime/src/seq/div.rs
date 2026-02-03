@@ -27,7 +27,7 @@ pub fn calculate_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
         let parent_name = parent.read_arc().name().unwrap().as_ref().to_owned();
         divs.get(&parent_name).copied().unwrap_or_default()
       };
-      let branch_length = edge.read_arc().weight().unwrap_or_default();
+      let branch_length = edge.read_arc().branch_length().unwrap_or_default();
       let div = parent_div + branch_length;
       divs.insert(name.clone(), div);
       if node.is_leaf || !only_leaves.0 {

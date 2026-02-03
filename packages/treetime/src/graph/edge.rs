@@ -9,10 +9,10 @@ use std::hash::Hash;
 use std::mem::swap;
 use std::sync::Arc;
 
-/// Defines how to read and write edge weight
-pub trait Weighted {
-  fn weight(&self) -> Option<f64>;
-  fn set_weight(&mut self, weight: Option<f64>);
+/// Defines how to read and write branch length
+pub trait HasBranchLength {
+  fn branch_length(&self) -> Option<f64>;
+  fn set_branch_length(&mut self, branch_length: Option<f64>);
 }
 
 /// Defines access to clock message passing fields on edges
@@ -48,8 +48,8 @@ pub trait EdgeAncestralOps: GraphEdge {}
 impl<T: GraphEdge> EdgeAncestralOps for T {}
 
 /// Composite trait for edges that support tree optimization
-pub trait EdgeOptimizeOps: GraphEdge + Weighted {}
-impl<T: GraphEdge + Weighted> EdgeOptimizeOps for T {}
+pub trait EdgeOptimizeOps: GraphEdge + HasBranchLength {}
+impl<T: GraphEdge + HasBranchLength> EdgeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);

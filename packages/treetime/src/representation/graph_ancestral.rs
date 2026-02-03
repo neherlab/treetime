@@ -1,4 +1,4 @@
-use crate::graph::edge::{GraphEdge, Weighted};
+use crate::graph::edge::{GraphEdge, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
@@ -73,12 +73,12 @@ pub struct EdgeAncestral {
 
 impl GraphEdge for EdgeAncestral {}
 
-impl Weighted for EdgeAncestral {
-  fn weight(&self) -> Option<f64> {
+impl HasBranchLength for EdgeAncestral {
+  fn branch_length(&self) -> Option<f64> {
     self.branch_length
   }
 
-  fn set_weight(&mut self, weight: Option<f64>) {
+  fn set_branch_length(&mut self, weight: Option<f64>) {
     self.branch_length = weight;
   }
 }
@@ -91,18 +91,17 @@ impl EdgeFromNwk for EdgeAncestral {
 
 impl EdgeToNwk for EdgeAncestral {
   fn nwk_weight(&self) -> Option<f64> {
-    self.weight()
+    self.branch_length()
   }
 }
 
 impl EdgeToGraphViz for EdgeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .weight()
+    self.branch_length()
       .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 
   fn to_graphviz_weight(&self) -> Option<f64> {
-    self.weight()
+    self.branch_length()
   }
 }

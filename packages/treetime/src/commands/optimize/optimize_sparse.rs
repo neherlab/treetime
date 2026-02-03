@@ -21,7 +21,7 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-use crate::graph::edge::{GraphEdgeKey, Weighted};
+use crate::graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
@@ -153,7 +153,7 @@ pub fn run_optimize_sparse(
     let coefficients = (0..n_partitions)
       .map(|pi| get_coefficients(edge_key, &partitions[pi].read_arc()))
       .collect::<Result<Vec<_>, Report>>()?;
-    let mut branch_length = edge_ref.read_arc().payload().read_arc().weight().unwrap_or(0.0);
+    let mut branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
     let mut new_branch_length;
 
     let zero_branch_length_lh: f64 = coefficients
@@ -169,7 +169,7 @@ pub fn run_optimize_sparse(
 
     if zero_branch_length_lh > 0.0001 {
       // TODO: could check that derivative is negative
-      edge_ref.read_arc().payload().write_arc().set_weight(Some(0.0));
+      edge_ref.read_arc().payload().write_arc().set_branch_length(Some(0.0));
       return Ok(());
     }
 
@@ -210,7 +210,7 @@ pub fn run_optimize_sparse(
         .unwrap();
       new_branch_length = best_branch_length;
     }
-    edge_ref.read_arc().payload().write_arc().set_weight(Some(new_branch_length));
+    edge_ref.read_arc().payload().write_arc().set_branch_length(Some(new_branch_length));
 
     Ok(())
   })

@@ -6,7 +6,7 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use treetime::graph::edge::{GraphEdge, Weighted};
+use treetime::graph::edge::{GraphEdge, HasBranchLength};
 use treetime::graph::graph::Graph;
 use treetime::graph::node::{GraphNode, Named};
 use treetime::io::auspice::{AuspiceTreeMeta, auspice_read_file, auspice_write_file};
@@ -58,11 +58,11 @@ impl Named for ConverterNode {
 
 impl GraphEdge for ConverterEdge {}
 
-impl Weighted for ConverterEdge {
-  fn weight(&self) -> Option<f64> {
+impl HasBranchLength for ConverterEdge {
+  fn branch_length(&self) -> Option<f64> {
     self.weight
   }
-  fn set_weight(&mut self, weight: Option<f64>) {
+  fn set_branch_length(&mut self, weight: Option<f64>) {
     self.weight = weight;
   }
 }

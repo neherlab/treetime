@@ -160,7 +160,7 @@ where
       seq_info.profile.log_lh = msg_to_parent.log_lh + delta_ll;
     } else {
       let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
-      let branch_length = node.parent_edges[0].weight().unwrap_or(0.0);
+      let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
       let branch_length = fix_branch_length(length, branch_length);
       let mut edge_data = DenseEdgePartition::default();
 
@@ -184,7 +184,7 @@ where
       for (_, edge_key) in &node.parent_keys {
         let edge = &self.edges[edge_key];
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
-        let branch_length = edge_payload.weight().unwrap_or(0.0);
+        let branch_length = edge_payload.branch_length().unwrap_or(0.0);
         let exp_qt_matrix = self.gtr.expQt(branch_length);
         let exp_qt = exp_qt_matrix.t();
         msgs_to_combine.push(edge.msg_to_parent.dis.view().to_owned()); // FIXME: avoid copy

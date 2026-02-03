@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr, jc69};
@@ -167,7 +167,7 @@ fn prune_internal_nodes(
         return None;
       }
 
-      let weight = edge.payload().read_arc().weight();
+      let weight = edge.payload().read_arc().branch_length();
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
       let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key()) == Some(0);
@@ -262,8 +262,8 @@ fn collapse_sparse_edge(
     let mut new_edge = new_edge.write_arc().payload().write_arc();
 
     // Sum branch lengths
-    if let (Some(bl1), Some(bl2)) = (removed_edge.weight(), new_edge.weight()) {
-      new_edge.set_weight(Some(bl1 + bl2));
+    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length(), new_edge.branch_length()) {
+      new_edge.set_branch_length(Some(bl1 + bl2));
     }
 
     // Union of substitutions per partition

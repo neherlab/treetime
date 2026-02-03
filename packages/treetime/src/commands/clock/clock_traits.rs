@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
-use crate::graph::edge::ClockMessages;
+use crate::graph::edge::{ClockMessages, HasBranchLength};
 use crate::graph::node::Outlier;
 
 pub trait ClockNode: Outlier + Send + Sync {
@@ -13,7 +13,4 @@ pub trait ClockNode: Outlier + Send + Sync {
   }
 }
 
-pub trait ClockEdge: ClockMessages<ClockSet> + Send + Sync {
-  fn branch_length(&self) -> Option<f64>;
-  fn set_branch_length(&mut self, length: Option<f64>);
-}
+pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + Send + Sync {}

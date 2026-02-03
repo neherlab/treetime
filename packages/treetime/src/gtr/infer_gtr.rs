@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdgeKey, Weighted};
+use crate::graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::graph::node::GraphNodeKey;
 use crate::gtr::gtr::{GTR, GTRParams, avg_transition};
 use crate::representation::graph_ancestral::GraphAncestral;
@@ -173,7 +173,7 @@ fn get_mutation_counts<P: PartitionWithGtrInference>(
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = edge_arc.payload().read_arc().weight().unwrap_or(0.0);
+    let branch_length = edge_arc.payload().read_arc().branch_length().unwrap_or(0.0);
     let target_key = edge_arc.target();
     let edge_key = edge_arc.key();
 

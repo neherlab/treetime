@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::commands::timetree::timetree_traits::TimetreeEdge;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength, Weighted};
+use crate::graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength, HasBranchLength};
 use crate::io::graphviz::EdgeToGraphViz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
 use crate::representation::graph_ancestral::EdgeAncestral;
@@ -26,25 +26,17 @@ pub struct EdgeTimetree {
 
 impl GraphEdge for EdgeTimetree {}
 
-impl Weighted for EdgeTimetree {
-  fn weight(&self) -> Option<f64> {
-    self.base.weight()
-  }
-
-  fn set_weight(&mut self, weight: Option<f64>) {
-    self.base.set_weight(weight);
-  }
-}
-
-impl ClockEdge for EdgeTimetree {
+impl HasBranchLength for EdgeTimetree {
   fn branch_length(&self) -> Option<f64> {
-    self.base.branch_length
+    self.base.branch_length()
   }
 
-  fn set_branch_length(&mut self, length: Option<f64>) {
-    self.base.branch_length = length;
+  fn set_branch_length(&mut self, weight: Option<f64>) {
+    self.base.set_branch_length(weight);
   }
 }
+
+impl ClockEdge for EdgeTimetree {}
 
 impl ClockMessages<ClockSet> for EdgeTimetree {
   fn to_parent(&self) -> &ClockSet {
@@ -117,13 +109,12 @@ impl EdgeToNwk for EdgeTimetree {
 
 impl EdgeToGraphViz for EdgeTimetree {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .weight()
+    self.branch_length()
       .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }
 
   fn to_graphviz_weight(&self) -> Option<f64> {
-    self.weight()
+    self.branch_length()
   }
 }
 

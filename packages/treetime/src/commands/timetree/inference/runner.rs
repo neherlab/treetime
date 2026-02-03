@@ -9,7 +9,7 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, Weighted};
+use crate::graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
 use eyre::Report;
@@ -27,7 +27,7 @@ pub fn run_timetree<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode,
-  E: GraphEdge + Weighted + TimetreeEdge,
+  E: GraphEdge + HasBranchLength + TimetreeEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   info!("# Running timetree inference");
@@ -71,7 +71,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
-  E: GraphEdge + Weighted + TimetreeEdge,
+  E: GraphEdge + HasBranchLength + TimetreeEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let one_mutation = calculate_one_mutation(partitions);
@@ -90,7 +90,7 @@ where
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    let branch_length = edge.weight().unwrap_or(one_mutation);
+    let branch_length = edge.branch_length().unwrap_or(one_mutation);
 
     debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}");
 
@@ -116,7 +116,7 @@ where
 fn calculate_one_mutation<N, E, P>(partitions: &[Arc<RwLock<P>>]) -> f64
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: GraphEdge + HasBranchLength,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let total_length: usize = partitions
@@ -132,7 +132,7 @@ fn collect_contributions<N, E, P>(
 ) -> Result<Vec<OptimizationContribution>, Report>
 where
   N: GraphNode + Named,
-  E: GraphEdge + Weighted,
+  E: GraphEdge + HasBranchLength,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   partitions
@@ -144,12 +144,12 @@ where
 fn create_branch_distributions_input_mode<N, E>(graph: &Graph<N, E, ()>, clock_rate: f64) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + Weighted + TimetreeEdge,
+  E: GraphEdge + HasBranchLength + TimetreeEdge,
 {
   for edge_ref in graph.get_edges() {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    if let Some(branch_length) = edge.weight() {
+    if let Some(branch_length) = edge.branch_length() {
       // Convert branch length (substitutions/site) to time duration (years)
       let time_duration = branch_length / clock_rate;
       let distribution = Distribution::point(time_duration, 1.0);
@@ -185,7 +185,7 @@ mod tests {
     // Verify each edge has time_length = branch_length / clock_rate
     for edge_ref in graph.get_edges() {
       let edge = edge_ref.read_arc().payload().read_arc();
-      let branch_length = edge.weight();
+      let branch_length = edge.branch_length();
       let time_length = edge.time_length();
 
       if let Some(bl) = branch_length {

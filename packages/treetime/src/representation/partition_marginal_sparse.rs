@@ -184,7 +184,7 @@ where
     } else {
       // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
       let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
-      let branch_length = node.parent_edges[0].weight().unwrap_or(0.0);
+      let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
       let branch_length = fix_branch_length(length, branch_length);
       let mut edge_data = self.edges.remove(edge_key).unwrap();
       edge_data.msg_from_child = propagate_raw(
@@ -229,7 +229,7 @@ where
         }
 
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
-        let branch_length = edge_payload.weight().unwrap_or(0.0);
+        let branch_length = edge_payload.branch_length().unwrap_or(0.0);
 
         msgs_to_combine.push(propagate_raw(
           &self.gtr.expQt(branch_length),
