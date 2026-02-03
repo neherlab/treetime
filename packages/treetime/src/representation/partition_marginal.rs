@@ -29,6 +29,6 @@ where
   /// Reconstruct ancestral sequences for a specific node during tree traversal
   fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq>;
 
-  /// Get sequence length (None when no alignment provided)
-  fn get_sequence_length(&self) -> Option<usize>;
+  /// Get sequence length
+  fn get_sequence_length(&self) -> usize;
 }

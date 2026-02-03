@@ -273,11 +273,11 @@ pub fn run_optimize_mixed(
 ) -> Result<(), Report> {
   let total_length: usize = dense_partitions
     .iter()
-    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .map(|part| part.read_arc().get_sequence_length())
     .chain(
       sparse_partitions
         .iter()
-        .map(|part| part.read_arc().get_sequence_length().unwrap_or(0)),
+        .map(|part| part.read_arc().get_sequence_length()),
     )
     .sum();
 
@@ -399,11 +399,11 @@ pub fn initial_guess_mixed(
 
     let total_length: usize = dense_partitions
       .iter()
-      .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+      .map(|part| part.read_arc().get_sequence_length())
       .chain(
         sparse_partitions
           .iter()
-          .map(|part| part.read_arc().get_sequence_length().unwrap_or(0)),
+          .map(|part| part.read_arc().get_sequence_length()),
       )
       .sum();
 

@@ -144,7 +144,7 @@ pub fn run_optimize_sparse(
 ) -> Result<(), Report> {
   let total_length: usize = partitions
     .iter()
-    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .map(|part| part.read_arc().get_sequence_length())
     .sum();
   let one_mutation = 1.0 / total_length as f64;
   let n_partitions = partitions.len();

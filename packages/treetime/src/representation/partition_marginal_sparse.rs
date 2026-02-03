@@ -67,8 +67,8 @@ impl PartitionCompressed for PartitionMarginalSparse {
 
 impl PartitionMarginalSparse {
   #[allow(clippy::same_name_method)]
-  pub fn get_sequence_length(&self) -> Option<usize> {
-    Some(self.length)
+  pub fn get_sequence_length(&self) -> usize {
+    self.length
   }
 }
 
@@ -388,8 +388,8 @@ where
     Some(seq)
   }
 
-  fn get_sequence_length(&self) -> Option<usize> {
-    Some(self.length)
+  fn get_sequence_length(&self) -> usize {
+    self.length
   }
 }
 

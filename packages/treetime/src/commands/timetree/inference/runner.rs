@@ -74,17 +74,10 @@ where
   E: GraphEdge + Weighted + TimetreeEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
-  // In input branch mode, partitions exist but have no edge data
-  // Skip branch distribution computation and use input branch lengths directly
-  if partitions.iter().any(|p| p.read_arc().get_sequence_length().is_none()) {
-    debug!("Skipping branch distribution computation: partitions not initialized");
-    return Ok(());
-  }
-
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions
     .iter()
-    .map(|p| p.read_arc().get_sequence_length().unwrap_or(0))
+    .map(|p| p.read_arc().get_sequence_length())
     .sum();
 
   info!(
@@ -128,7 +121,7 @@ where
 {
   let total_length: usize = partitions
     .iter()
-    .map(|part| part.read_arc().get_sequence_length().unwrap_or(0))
+    .map(|part| part.read_arc().get_sequence_length())
     .sum();
   1.0 / total_length as f64
 }
