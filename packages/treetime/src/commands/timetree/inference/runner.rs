@@ -211,10 +211,22 @@ mod tests {
 
     // After conversion: 0.003/0.001=3, 0.006/0.001=6, 0.009/0.001=9, 0.012/0.001=12
     // Use patterns with terminators (comma or close paren) to avoid false matches like :3 matching :30
-    assert!(newick_output.contains(":3,"), "Expected time length 3 in output: {newick_output}");
-    assert!(newick_output.contains(":6)"), "Expected time length 6 in output: {newick_output}");
-    assert!(newick_output.contains(":9,"), "Expected time length 9 in output: {newick_output}");
-    assert!(newick_output.contains(":12)"), "Expected time length 12 in output: {newick_output}");
+    assert!(
+      newick_output.contains(":3,"),
+      "Expected time length 3 in output: {newick_output}"
+    );
+    assert!(
+      newick_output.contains(":6)"),
+      "Expected time length 6 in output: {newick_output}"
+    );
+    assert!(
+      newick_output.contains(":9,"),
+      "Expected time length 9 in output: {newick_output}"
+    );
+    assert!(
+      newick_output.contains(":12)"),
+      "Expected time length 12 in output: {newick_output}"
+    );
 
     Ok(())
   }

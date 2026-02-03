@@ -335,7 +335,7 @@ mod tests {
               edge_key,
               SparseEdgePartition {
                 subs: (0..*num_muts).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-                ..Default::default()
+                ..SparseEdgePartition::default()
               },
             );
           }
@@ -423,15 +423,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Edge with no mutations to leaf A (should be preserved)
@@ -440,7 +440,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     // Edge with mutations to leaf B
@@ -449,7 +448,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -474,7 +472,7 @@ mod tests {
       root_b_edge_key,
       SparseEdgePartition {
         subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
 
@@ -495,19 +493,19 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Internal edge with no mutations
@@ -516,7 +514,6 @@ mod tests {
       internal,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     // Leaf edges with mutations
@@ -525,7 +522,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -533,7 +529,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -561,14 +556,14 @@ mod tests {
       internal_a_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
     partition.edges.insert(
       internal_b_edge_key,
       SparseEdgePartition {
         subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
 
@@ -589,15 +584,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Edge with None mutations (unknown number of mutations - should not be pruned)
@@ -606,7 +601,6 @@ mod tests {
       internal,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -614,7 +608,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -636,7 +629,7 @@ mod tests {
       internal_a_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
 
@@ -657,11 +650,11 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Single leaf edge with no mutations should be preserved
@@ -670,7 +663,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -705,23 +697,23 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal1 = graph.add_node(NodeAncestral {
       name: Some("internal1".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal2 = graph.add_node(NodeAncestral {
       name: Some("internal2".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Short edge (should be pruned by threshold)
@@ -730,7 +722,6 @@ mod tests {
       internal1,
       EdgeAncestral {
         branch_length: Some(0.001),
-        ..Default::default()
       },
     )?;
     // Empty edge (should be pruned by empty check)
@@ -739,7 +730,6 @@ mod tests {
       internal2,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     // Leaf edges (should be preserved)
@@ -748,7 +738,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -756,7 +745,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -781,7 +769,7 @@ mod tests {
       root_internal1_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
     // Empty edge (no mutations)
@@ -793,14 +781,14 @@ mod tests {
       internal1_a_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
     partition.edges.insert(
       internal2_b_edge_key,
       SparseEdgePartition {
         subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
 
@@ -840,35 +828,35 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal1 = graph.add_node(NodeAncestral {
       name: Some("internal1".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal2 = graph.add_node(NodeAncestral {
       name: Some("internal2".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal3 = graph.add_node(NodeAncestral {
       name: Some("internal3".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let c = graph.add_node(NodeAncestral {
       name: Some("C".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let d = graph.add_node(NodeAncestral {
       name: Some("D".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Complex tree structure: root -> internal1 (with muts) -> A (leaf)
@@ -879,7 +867,6 @@ mod tests {
       internal1,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // has muts
     graph.add_edge(
@@ -887,7 +874,6 @@ mod tests {
       internal2,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // no muts, to internal
     graph.add_edge(
@@ -895,7 +881,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // leaf, has muts
     graph.add_edge(
@@ -903,7 +888,6 @@ mod tests {
       internal3,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // no muts, to internal
     graph.add_edge(
@@ -911,7 +895,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // leaf, no muts (preserved)
     graph.add_edge(
@@ -919,7 +902,6 @@ mod tests {
       c,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // leaf, has muts
     graph.add_edge(
@@ -927,7 +909,6 @@ mod tests {
       d,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?; // leaf, has muts
 
@@ -955,7 +936,7 @@ mod tests {
       root_internal1_edge_key,
       SparseEdgePartition {
         subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     ); // has muts
     partition
@@ -965,7 +946,7 @@ mod tests {
       internal1_a_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     ); // leaf, has muts
     partition
@@ -978,14 +959,14 @@ mod tests {
       internal3_c_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     ); // leaf, has muts
     partition.edges.insert(
       internal3_d_edge_key,
       SparseEdgePartition {
         subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     ); // leaf, has muts
 
@@ -1007,15 +988,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Very short edge with no mutations - should be preserved when both pruning options disabled
@@ -1024,7 +1005,6 @@ mod tests {
       internal,
       EdgeAncestral {
         branch_length: Some(0.0001),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1032,7 +1012,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -1057,7 +1036,7 @@ mod tests {
       internal_a_edge_key,
       SparseEdgePartition {
         subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..Default::default()
+        ..SparseEdgePartition::default()
       },
     );
 
@@ -1078,27 +1057,27 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal1 = graph.add_node(NodeAncestral {
       name: Some("internal1".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal2 = graph.add_node(NodeAncestral {
       name: Some("internal2".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let c = graph.add_node(NodeAncestral {
       name: Some("C".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Tree structure: root -> internal1 -> internal2 -> A (the path to prune)
@@ -1109,7 +1088,6 @@ mod tests {
       internal1,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1117,7 +1095,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.2),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1125,7 +1102,6 @@ mod tests {
       c,
       EdgeAncestral {
         branch_length: Some(0.3),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1133,7 +1109,6 @@ mod tests {
       internal2,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1141,7 +1116,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -1181,19 +1155,19 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let internal1 = graph.add_node(NodeAncestral {
       name: Some("internal1".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Tree structure: root -> internal1 -> A (to prune)
@@ -1203,7 +1177,6 @@ mod tests {
       internal1,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1211,7 +1184,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.add_edge(
@@ -1219,7 +1191,6 @@ mod tests {
       b,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
 
@@ -1257,11 +1228,11 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     // Tree: root -> A (only child)
@@ -1270,7 +1241,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.build()?;
@@ -1299,11 +1269,11 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..Default::default()
+      desc: None,
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..Default::default()
+      desc: None,
     });
 
     graph.add_edge(
@@ -1311,7 +1281,6 @@ mod tests {
       a,
       EdgeAncestral {
         branch_length: Some(0.1),
-        ..Default::default()
       },
     )?;
     graph.build()?;
