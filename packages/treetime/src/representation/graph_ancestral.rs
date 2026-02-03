@@ -1,10 +1,9 @@
 use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::commands::clock::date_constraints::DateConstraintNode;
+use crate::commands::clock::clock_traits::ClockEdge;
 use crate::distribution::distribution::Distribution;
 use crate::graph::edge::{ClockMessages, GraphEdge, Weighted};
 use crate::graph::graph::Graph;
-use crate::graph::node::{Described, GraphNode, Named, Outlier, TimeConstraint};
+use crate::graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
@@ -19,13 +18,6 @@ pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 pub struct NodeAncestral {
   pub name: Option<String>,
   pub desc: Option<String>,
-  pub time: Option<f64>,
-  pub time_before_present: Option<f64>,
-  pub time_distribution: Option<Arc<Distribution>>,
-  pub bad_branch: bool,
-  pub div: f64,
-  pub is_outlier: bool,
-  pub clock_set: ClockSet,
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -46,9 +38,6 @@ impl NodeToNwk for NodeAncestral {
     let mut comments = BTreeMap::new();
     let mutations: String = "".to_owned(); // TODO: fill mutations
     comments.insert(o!("mutations"), mutations);
-    if let Some(time) = self.time {
-      comments.insert("date".to_owned(), format!("{time:.2}"));
-    }
     comments
   }
 }
@@ -74,36 +63,6 @@ impl Described for NodeAncestral {
     self.desc = desc;
   }
 }
-
-impl Outlier for NodeAncestral {
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
-  }
-
-  fn set_is_outlier(&mut self, is_outlier: bool) {
-    self.is_outlier = is_outlier;
-  }
-}
-
-impl TimeConstraint<Arc<Distribution>> for NodeAncestral {
-  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
-    &self.time_distribution
-  }
-
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
-    self.time_distribution = dist;
-  }
-
-  fn bad_branch(&self) -> bool {
-    self.bad_branch
-  }
-
-  fn set_bad_branch(&mut self, bad: bool) {
-    self.bad_branch = bad;
-  }
-}
-
-impl DateConstraintNode for NodeAncestral {}
 
 impl NodeToGraphviz for NodeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
@@ -163,27 +122,6 @@ impl EdgeToGraphViz for EdgeAncestral {
   }
 }
 
-impl ClockNode for NodeAncestral {
-  fn likely_time(&self) -> Option<f64> {
-    self.time_distribution.as_ref().and_then(|dist| dist.likely_time())
-  }
-
-  fn div(&self) -> f64 {
-    self.div
-  }
-
-  fn set_div(&mut self, div: f64) {
-    self.div = div;
-  }
-
-  fn clock_set(&self) -> &ClockSet {
-    &self.clock_set
-  }
-
-  fn clock_set_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_set
-  }
-}
 
 impl ClockMessages<ClockSet> for EdgeAncestral {
   fn to_parent(&self) -> &ClockSet {
