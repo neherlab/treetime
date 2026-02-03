@@ -991,7 +991,7 @@ pub mod tests {
 
   use super::*;
 
-  pub type TestGraph = Graph<TestEdge, TestNode, ()>;
+  pub type TestGraph = Graph<TestNode, TestEdge, ()>;
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);
