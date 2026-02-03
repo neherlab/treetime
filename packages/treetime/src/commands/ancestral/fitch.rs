@@ -622,6 +622,9 @@ pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
 
 #[cfg(test)]
 mod tests {
+  // TODO: sparse partition tests were removed (test_fitch_internals, test_fitch_complex_gaps,
+  // test_fitch_deletions, test_fitch_insertions). Consider reimplementing these scenarios
+  // if sparse mode coverage is insufficient.
   use super::*;
   use crate::alphabet::alphabet::Alphabet;
   use crate::io::fasta::read_many_fasta_str;
