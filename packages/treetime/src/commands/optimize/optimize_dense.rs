@@ -21,6 +21,7 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
+use crate::graph::edge::Weighted;
 use crate::gtr::gtr::GTR;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_dense::DenseSeqDis;
@@ -85,7 +86,7 @@ pub fn run_optimize_dense(
   graph.get_edges().iter().for_each(|edge_ref| {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    let mut branch_length = edge.branch_length.unwrap_or(0.0);
+    let mut branch_length = edge.weight().unwrap_or(0.0);
     let mut new_branch_length;
     let contributions = (0..n_partitions)
       .map(|pi| {
@@ -115,7 +116,7 @@ pub fn run_optimize_dense(
         })
         .sum();
       if zero_branch_length_derivative < 0.0 {
-        edge.branch_length = Some(0.0);
+        edge.set_weight(Some(0.0));
         return;
       }
     }
@@ -156,7 +157,7 @@ pub fn run_optimize_dense(
         .unwrap();
       new_branch_length = best_branch_length;
     }
-    edge.branch_length = Some(new_branch_length);
+    edge.set_weight(Some(new_branch_length));
   });
   Ok(())
 }

@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_traits::ClockEdge;
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::node::Outlier;
 use itertools::Itertools;
@@ -20,7 +21,7 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
     node.payload.div = node
       .get_exactly_one_parent()
       .map(|(parent, edge)| {
-        let branch_length = edge.read_arc().branch_length.unwrap_or_default();
+        let branch_length = edge.read_arc().branch_length().unwrap_or_default();
         let parent_div = parent.read_arc().div;
         parent_div + branch_length
       })

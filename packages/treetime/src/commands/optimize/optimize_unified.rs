@@ -1,6 +1,6 @@
 use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_sparse;
-use crate::graph::edge::GraphEdgeKey;
+use crate::graph::edge::{GraphEdgeKey, Weighted};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -286,7 +286,7 @@ pub fn run_optimize_mixed(
   graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    let mut branch_length = edge.branch_length.unwrap_or(0.0);
+    let mut branch_length = edge.weight().unwrap_or(0.0);
 
     // Collect contributions from all partitions
     let contributions = {
@@ -309,7 +309,7 @@ pub fn run_optimize_mixed(
 
     // Check if zero branch length is optimal
     if is_zero_branch_optimal(&contributions) {
-      edge.branch_length = Some(0.0);
+      edge.set_weight(Some(0.0));
       return Ok(());
     }
 
@@ -353,7 +353,7 @@ pub fn run_optimize_mixed(
       new_branch_length = best_branch_length;
     }
 
-    edge.branch_length = Some(new_branch_length);
+    edge.set_weight(Some(new_branch_length));
     Ok(())
   })
 }
@@ -409,6 +409,6 @@ pub fn initial_guess_mixed(
 
     let branch_length = (differences as f64) / (total_length as f64);
 
-    edge.branch_length = Some(branch_length);
+    edge.set_weight(Some(branch_length));
   }
 }

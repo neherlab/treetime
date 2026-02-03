@@ -262,8 +262,8 @@ fn collapse_sparse_edge(
     let mut new_edge = new_edge.write_arc().payload().write_arc();
 
     // Sum branch lengths
-    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length, new_edge.branch_length) {
-      new_edge.branch_length = Some(bl1 + bl2);
+    if let (Some(bl1), Some(bl2)) = (removed_edge.weight(), new_edge.weight()) {
+      new_edge.set_weight(Some(bl1 + bl2));
     }
 
     // Union of substitutions per partition
