@@ -45,10 +45,10 @@ pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockMo
     node.div = div;
 
     let name = node.name.clone();
-    let date = node.time;
+    let time = node.time;
     let is_outlier = node.is_outlier;
     let predicted_date = clock_model.date(div);
-    let clock_deviation = node.time.map(|date| clock_model.clock_deviation(date, div));
+    let clock_deviation = node.time.map(|time| clock_model.clock_deviation(time, div));
 
     divs.insert(name.clone(), div);
 
@@ -56,7 +56,7 @@ pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockMo
       .push(ClockRegressionResult {
         name,
         div,
-        date,
+        date: time,
         predicted_date,
         clock_deviation,
         is_outlier,

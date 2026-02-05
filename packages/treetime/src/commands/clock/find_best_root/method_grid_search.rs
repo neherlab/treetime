@@ -27,8 +27,8 @@ pub fn optimize_grid_search(
   let grid_points = Array1::linspace(0.0, 1.0, params.n_points);
 
   for (point_count, x) in grid_points.into_iter().enumerate() {
-    let clock_total = cost_fn.evaluate_clock_set(x).expect("Failed to evaluate clock set");
-    let chisq = clock_total.chisq();
+    let clock_set = cost_fn.evaluate_clock_set(x).expect("Failed to evaluate clock set");
+    let chisq = clock_set.chisq();
 
     if chisq < best_chisq {
       debug!(
@@ -39,7 +39,7 @@ pub fn optimize_grid_search(
         chisq
       );
       best_split = x;
-      best_clock_set = clock_total;
+      best_clock_set = clock_set;
       best_chisq = chisq;
     }
   }
