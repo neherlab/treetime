@@ -67,12 +67,12 @@ pub fn optimize_brent(
   );
 
   // Evaluate the cost function one more time to get the ClockSet data
-  let best_total = cost_fn.evaluate_clock_set(best_split)?;
+  let best_clock_set = cost_fn.evaluate_clock_set(best_split)?;
 
   Ok(FindRootResult {
     edge: Some(edge),
     split: best_split,
-    total: best_total,
+    clock_set: best_clock_set,
     chisq: best_chisq,
   })
 }

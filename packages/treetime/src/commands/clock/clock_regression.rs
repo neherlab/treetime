@@ -206,7 +206,7 @@ mod tests {
 
     for n in graph.get_leaves() {
       let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-      n.write_arc().payload().write_arc().date = Some(dates[&name]);
+      n.write_arc().payload().write_arc().time = Some(dates[&name]);
     }
 
     clock_regression_backward(&graph, &ClockOptions::default());

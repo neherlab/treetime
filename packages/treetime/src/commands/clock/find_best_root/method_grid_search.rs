@@ -20,7 +20,7 @@ pub fn optimize_grid_search(
   // Grid search - interrogate different positions along the branch
   let mut best_chisq = f64::INFINITY;
   let mut best_split = f64::NAN;
-  let mut best_total = cost_fn
+  let mut best_clock_set = cost_fn
     .evaluate_clock_set(0.0)
     .expect("Failed to evaluate initial position");
 
@@ -39,7 +39,7 @@ pub fn optimize_grid_search(
         chisq
       );
       best_split = x;
-      best_total = clock_total;
+      best_clock_set = clock_total;
       best_chisq = chisq;
     }
   }
@@ -52,7 +52,7 @@ pub fn optimize_grid_search(
   Ok(FindRootResult {
     edge: Some(edge),
     split: best_split,
-    total: best_total,
+    clock_set: best_clock_set,
     chisq: best_chisq,
   })
 }

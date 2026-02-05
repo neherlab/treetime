@@ -20,7 +20,7 @@ pub fn assign_dates(graph: &GraphClock, dates: &DatesMap) -> Result<(), Report> 
       .and_then(|d| d.as_ref().map(DateOrRange::mean))
       .filter(|&d| d.is_finite());
 
-    node.payload.date = date;
+    node.payload.time = date;
 
     node.payload.bad_branch =
       date.is_none() && (node.is_leaf || node.children.iter().all(|(child, edge)| child.read_arc().bad_branch));

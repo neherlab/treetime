@@ -19,7 +19,7 @@ pub struct FindRootResult {
   /// the child (target) of the edge. If this is 0 < x < 1, we put a new node at that point, and reroot on that new node.
   pub split: f64,
 
-  pub total: ClockSet,
+  pub clock_set: ClockSet,
 
   pub chisq: f64,
 }

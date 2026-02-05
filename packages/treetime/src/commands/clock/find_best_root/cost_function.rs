@@ -14,7 +14,7 @@ pub struct BranchPointCostFunction<'a> {
   pub branch_length: f64,
   pub branch_variance: f64,
   pub is_leaf: bool,
-  pub node_date: Option<f64>,
+  pub node_time: Option<f64>,
   pub options: &'a ClockOptions,
 }
 
@@ -38,7 +38,7 @@ impl<'a> BranchPointCostFunction<'a> {
       .ok_or_else(|| eyre::eyre!("Target node not found for edge: {}", edge))?;
     let target_node_payload = target_node.read_arc().payload().read_arc();
     let is_leaf = target_node.read_arc().is_leaf();
-    let node_date = target_node_payload.likely_time();
+    let node_time = target_node_payload.likely_time();
     let branch_length = edge_payload
       .branch_length()
       .ok_or_else(|| eyre::eyre!("Edge {} has no weight", edge))?;
@@ -50,7 +50,7 @@ impl<'a> BranchPointCostFunction<'a> {
       branch_length,
       branch_variance,
       is_leaf,
-      node_date,
+      node_time,
       options,
     })
   }
@@ -60,7 +60,7 @@ impl<'a> BranchPointCostFunction<'a> {
     // determine contribution of child/target first -- terminal nodes need special handling
     let child_contribution = if self.is_leaf {
       ClockSet::leaf_contribution_to_parent(
-        self.node_date,
+        self.node_time,
         self.branch_length * (1.0 - x),
         self.branch_variance * (1.0 - x) + self.options.variance_offset_leaf,
       )

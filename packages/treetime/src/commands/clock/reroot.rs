@@ -20,7 +20,7 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  let FindRootResult { edge, split, total, .. } = find_best_root(graph, options, params)?;
+  let FindRootResult { edge, split, clock_set, .. } = find_best_root(graph, options, params)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -42,7 +42,7 @@ where
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     source_key
   } else {
-    create_new_root_node(graph, edge_key, split, total)?
+    create_new_root_node(graph, edge_key, split, clock_set)?
   };
 
   if new_root_key != old_root_key {
@@ -61,7 +61,7 @@ fn create_new_root_node<N, E, D>(
   graph: &mut Graph<N, E, D>,
   edge_key: GraphEdgeKey,
   split: f64,
-  total: ClockSet,
+  clock_set: ClockSet,
 ) -> Result<GraphNodeKey, Report>
 where
   N: GraphNode + ClockNode + Default,
@@ -69,7 +69,7 @@ where
   D: Send + Sync,
 {
   let mut new_node = N::default();
-  new_node.set_clock_set(total);
+  new_node.set_clock_set(clock_set);
   let new_root_key = graph.add_node(new_node);
 
   // Extract edge data before removing the edge to avoid Arc reference issues
