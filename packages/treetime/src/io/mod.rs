@@ -10,3 +10,10 @@ pub mod nwk;
 pub mod parse_delimited;
 pub mod phyloxml;
 pub mod usher_mat;
+
+#[cfg(test)]
+mod concat_tests;
+#[cfg(test)]
+mod dates_csv_tests;
+#[cfg(test)]
+mod fasta_tests;
