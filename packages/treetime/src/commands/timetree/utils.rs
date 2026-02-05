@@ -4,7 +4,7 @@ use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdge};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
-use crate::seq::div::{OnlyLeaves, calculate_divs};
+use crate::seq::div::{OnlyLeaves, compute_divs};
 use eyre::Report;
 
 pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>)
@@ -13,7 +13,7 @@ where
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
-  let divs = calculate_divs(graph, OnlyLeaves(false));
+  let divs = compute_divs(graph, OnlyLeaves(false));
   for node_ref in graph.get_nodes() {
     let mut node = node_ref.write_arc().payload().write_arc();
     let name = node.name().map(|n| n.as_ref().to_owned());

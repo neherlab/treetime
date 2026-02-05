@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// Optional: Quantifies robustness of time estimates.
 /// Why: Clock rate has confidence intervals; propagating uncertainty improves reliability.
 /// How: Re-run timetree with rate ± std_dev, compare resulting node times.
-pub fn calc_rate_susceptibility(
+pub fn compute_rate_susceptibility(
   _graph: &GraphTimetree,
   _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   _clock_model: &ClockModel,

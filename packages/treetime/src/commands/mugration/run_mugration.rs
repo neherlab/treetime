@@ -62,7 +62,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
       );
     }
 
-    let alphabet = calculate_alphabet(&unique_values, missing_data)?;
+    let alphabet = compute_alphabet(&unique_values, missing_data)?;
 
     let mean_weight = weights.values().mean();
 
@@ -81,7 +81,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
 
     (Some(weights), alphabet)
   } else {
-    let alphabet = calculate_alphabet(&unique_values, missing_data)?;
+    let alphabet = compute_alphabet(&unique_values, missing_data)?;
     (None, alphabet)
   };
 
@@ -120,7 +120,7 @@ pub struct DiscreteAttrAlphabet {
   pub letters: Vec<char>,
 }
 
-pub fn calculate_alphabet(
+pub fn compute_alphabet(
   unique_values: &IndexSet<String>,
   missing_data: &str,
 ) -> Result<DiscreteAttrAlphabet, Report> {

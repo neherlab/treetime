@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 pub struct OnlyLeaves(pub bool);
 
 /// Calculate mapping of node name to node divergence (accumulated by summing branch lengths)
-pub fn calculate_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
+pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   only_leaves: OnlyLeaves,
 ) -> BTreeMap<String, f64> {
@@ -53,7 +53,7 @@ mod tests {
   fn test_calculate_divs() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let actual = calculate_divs(&graph, OnlyLeaves(false));
+    let actual = compute_divs(&graph, OnlyLeaves(false));
     let expected = btreemap! {
       o!("A") => 0.20000000298023224,
       o!("AB") => 0.10000000149011612,
@@ -70,7 +70,7 @@ mod tests {
   #[test]
   fn test_calculate_divs_only_leaves() -> Result<(), Report> {
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let actual = calculate_divs(&graph, OnlyLeaves(true));
+    let actual = compute_divs(&graph, OnlyLeaves(true));
     let expected = btreemap! {
       o!("A") => 0.20000000298023224,
       o!("B") => 0.30000000447034836,
