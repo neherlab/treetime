@@ -6,7 +6,7 @@ use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
 pub use phyloxml::{
-  PhyloXmlId, Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
+  PhyloxmlId, Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
   PhyloxmlBranchColor, PhyloxmlClade, PhyloxmlCladeRelation, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlDistribution,
   PhyloxmlDomainArchitecture, PhyloxmlEvents, PhyloxmlMolSeq, PhyloxmlPhylogeny, PhyloxmlPoint, PhyloxmlProperty,
   PhyloxmlProteinDomain, PhyloxmlReference, PhyloxmlSequence, PhyloxmlSequenceRelation, PhyloxmlTaxonomy, PhyloxmlUri,

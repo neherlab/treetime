@@ -12,7 +12,7 @@ use std::sync::{Arc, LazyLock};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::commands::ancestral::fitch::compress_sequences;
 use treetime::commands::ancestral::marginal_unified::initialize_marginal;
-use treetime::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use treetime::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::commands::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -370,7 +370,7 @@ fn run_marginal_sparse_test(args: &Args) -> Result<TestResult, Report> {
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,
-    &ClockOptions::default(),
+    &ClockParams::default(),
     Some(CLOCK_RATE),
     true,
     &BranchPointOptimizationParams::default(),
@@ -422,7 +422,7 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,
-    &ClockOptions::default(),
+    &ClockParams::default(),
     Some(CLOCK_RATE),
     true,
     &BranchPointOptimizationParams::default(),

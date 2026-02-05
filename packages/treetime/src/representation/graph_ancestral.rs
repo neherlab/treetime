@@ -1,7 +1,7 @@
 use crate::graph::edge::{GraphEdge, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{Described, GraphNode, Named};
-use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use eyre::Report;
@@ -95,7 +95,7 @@ impl EdgeToNwk for EdgeAncestral {
   }
 }
 
-impl EdgeToGraphViz for EdgeAncestral {
+impl EdgeToGraphviz for EdgeAncestral {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self
       .branch_length()

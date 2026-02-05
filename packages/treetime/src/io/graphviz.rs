@@ -13,7 +13,7 @@ use treetime_utils::file::create_file_or_stdout;
 pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphViz,
+  E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -25,7 +25,7 @@ where
 pub fn graphviz_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphViz,
+  E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
   let mut buf = Vec::new();
@@ -37,7 +37,7 @@ pub fn graphviz_write<W, N, E, D>(mut writer: W, graph: &Graph<N, E, D>) -> Resu
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphViz,
+  E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
   write!(
@@ -77,7 +77,7 @@ fn print_nodes<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphViz,
+  E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
   writeln!(writer, "\n  subgraph roots {{").unwrap();
@@ -107,7 +107,7 @@ fn print_edges<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphViz,
+  E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
   graph.get_nodes().iter().for_each(&mut |node: &Arc<RwLock<Node<N>>>| {
@@ -176,7 +176,7 @@ pub trait NodeToGraphviz {
 }
 
 /// Defines how to display edge information when writing to GraphViz (.dot) file
-pub trait EdgeToGraphViz {
+pub trait EdgeToGraphviz {
   // Defines how to display label (name) of the edge in GraphViz (.dot) file
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>>;
 

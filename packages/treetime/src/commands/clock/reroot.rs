@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_root::find_best_root;
@@ -12,7 +12,7 @@ use eyre::Report;
 
 pub fn reroot_in_place<N, E, D>(
   graph: &mut Graph<N, E, D>,
-  options: &ClockOptions,
+  options: &ClockParams,
   params: &BranchPointOptimizationParams,
 ) -> Result<GraphNodeKey, Report>
 where
@@ -101,7 +101,7 @@ fn apply_reroot<N, E, D>(
   graph: &mut Graph<N, E, D>,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
-  options: &ClockOptions,
+  options: &ClockParams,
 ) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,

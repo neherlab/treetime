@@ -10,7 +10,7 @@ use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named};
-use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{
   EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
 };
@@ -75,7 +75,7 @@ impl EdgeToNwk for TestEdge {
   }
 }
 
-impl EdgeToGraphViz for TestEdge {
+impl EdgeToGraphviz for TestEdge {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.0.map(|weight| format_weight(weight, &NwkWriteOptions::default()))
   }

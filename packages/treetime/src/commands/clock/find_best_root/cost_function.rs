@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::graph::edge::{GraphEdge, GraphEdgeKey};
@@ -15,14 +15,14 @@ pub struct BranchPointCostFunction<'a> {
   pub branch_variance: f64,
   pub is_leaf: bool,
   pub node_time: Option<f64>,
-  pub options: &'a ClockOptions,
+  pub options: &'a ClockParams,
 }
 
 impl<'a> BranchPointCostFunction<'a> {
   pub fn new<N, E, D>(
     graph: &Graph<N, E, D>,
     edge: GraphEdgeKey,
-    options: &'a ClockOptions,
+    options: &'a ClockParams,
   ) -> Result<BranchPointCostFunction<'a>, Report>
   where
     N: GraphNode + ClockNode,

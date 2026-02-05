@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -15,7 +15,7 @@ use treetime_utils::container::get_exactly_one;
 // Loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding branches.
 pub fn find_best_root<N, E, D>(
   graph: &Graph<N, E, D>,
-  options: &ClockOptions,
+  options: &ClockParams,
   params: &BranchPointOptimizationParams,
 ) -> Result<FindRootResult, Report>
 where

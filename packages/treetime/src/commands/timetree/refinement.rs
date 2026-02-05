@@ -1,6 +1,6 @@
 use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
@@ -19,7 +19,7 @@ pub fn run_refinement_iteration(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   clock_model: &mut ClockModel,
-  clock_options: &ClockOptions,
+  clock_params: &ClockParams,
   branch_params: &BranchPointOptimizationParams,
 ) -> Result<(usize, usize), Report> {
   let mut is_tree_dirty = false;
@@ -57,7 +57,7 @@ pub fn run_refinement_iteration(
 
   let n_diff = 0;
 
-  *clock_model = estimate_clock_model_with_reroot(graph, clock_options, args.clock_rate, args.keep_root, branch_params)
+  *clock_model = estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, args.keep_root, branch_params)
     .wrap_err("Failed to update clock model")?;
 
   Ok((n_diff, n_resolved))

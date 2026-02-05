@@ -1,7 +1,7 @@
 use crate::commands::ancestral::marginal_unified::initialize_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
-use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
@@ -39,12 +39,12 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     graph.get_edges().len()
   );
 
-  let clock_options = ClockOptions::default();
+  let clock_params = ClockParams::default();
   let branch_params = BranchPointOptimizationParams::default();
 
   let mut clock_model = estimate_clock_model_with_reroot(
     &mut graph,
-    &clock_options,
+    &clock_params,
     args.clock_rate,
     args.keep_root,
     &branch_params,
@@ -102,7 +102,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       &mut graph,
       &partitions,
       &mut clock_model,
-      &clock_options,
+      &clock_params,
       &branch_params,
     )
     .wrap_err_with(|| format!("When running round {i}"))?;

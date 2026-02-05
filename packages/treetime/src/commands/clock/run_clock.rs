@@ -7,7 +7,7 @@ use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
-use crate::commands::clock::clock_regression::{ClockOptions, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::io::dates_csv::read_dates;
@@ -20,7 +20,7 @@ use treetime_utils::console::is_tty;
 
 pub fn get_clock_model(
   graph: &mut GraphClock,
-  options: &ClockOptions,
+  options: &ClockParams,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
 ) -> Result<ClockModel, Report> {
@@ -70,7 +70,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
     let tip_slack = tip_slack.unwrap_or(3.0);
     let overdispersion = 2.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
-    let options = ClockOptions {
+    let options = ClockParams {
       variance_factor: overdispersion / seq_len,
       variance_offset: 0.0,
       variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
@@ -80,7 +80,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   } else {
     estimate_clock_model_with_prefilter(
       &mut graph,
-      &clock_regression.clock_options,
+      &clock_regression.clock_params,
       *keep_root,
       branch_split,
       *clock_filter,
@@ -112,7 +112,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
 fn estimate_clock_model_with_prefilter(
   graph: &mut GraphClock,
-  options: &ClockOptions,
+  options: &ClockParams,
   keep_root: bool,
   branch_split: &BranchSplitArgs,
   clock_filter_threshold: f64,
@@ -120,7 +120,7 @@ fn estimate_clock_model_with_prefilter(
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
       let params = BranchPointOptimizationParams::from(branch_split);
-      let pre_clock_model = get_clock_model(graph, &ClockOptions::default(), keep_root, &params)?;
+      let pre_clock_model = get_clock_model(graph, &ClockParams::default(), keep_root, &params)?;
       Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold))
     })
     .transpose()?;

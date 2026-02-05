@@ -15,24 +15,24 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
-pub struct ClockOptions {
+pub struct ClockParams {
   /// Variance scaling factor proportional to branch length
-  #[clap(long, default_value_t = ClockOptions::default().variance_factor)]
+  #[clap(long, default_value_t = ClockParams::default().variance_factor)]
   #[default = 0.0]
   pub variance_factor: f64,
 
   /// Constant variance offset for all branches
-  #[clap(long, default_value_t = ClockOptions::default().variance_offset)]
+  #[clap(long, default_value_t = ClockParams::default().variance_offset)]
   #[default = 0.0]
   pub variance_offset: f64,
 
   /// Additional variance offset for leaf (terminal) nodes
-  #[clap(long, default_value_t = ClockOptions::default().variance_offset_leaf)]
+  #[clap(long, default_value_t = ClockParams::default().variance_offset_leaf)]
   #[default = 1.0]
   pub variance_offset_leaf: f64,
 }
 
-pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockOptions)
+pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams)
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -78,7 +78,7 @@ where
   });
 }
 
-pub fn clock_regression_forward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockOptions)
+pub fn clock_regression_forward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams)
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -108,7 +108,7 @@ where
 /// Estimates clock model with optional rerooting
 pub fn estimate_clock_model_with_reroot<N, E, D>(
   graph: &mut Graph<N, E, D>,
-  options: &ClockOptions,
+  options: &ClockParams,
   clock_rate: Option<f64>,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,

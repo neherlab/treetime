@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::clock::clock_regression::{ClockOptions, clock_regression_backward};
+use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward};
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::graph::node::Named;
 use crate::io::nwk::nwk_read_str;
@@ -37,7 +37,7 @@ fn test_clock_naive_rate() -> Result<(), Report> {
     n.write_arc().payload().write_arc().time = Some(dates[&name]);
   }
 
-  clock_regression_backward(&graph, &ClockOptions::default());
+  clock_regression_backward(&graph, &ClockParams::default());
   let clock = {
     let root = graph.get_exactly_one_root()?;
     let root = root.read_arc().payload().read_arc();
@@ -45,7 +45,7 @@ fn test_clock_naive_rate() -> Result<(), Report> {
   }?;
   assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
 
-  let options = &ClockOptions {
+  let options = &ClockParams {
     variance_factor: 1.0,
     variance_offset: 0.0,
     variance_offset_leaf: 1.0,

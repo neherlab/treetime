@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_graph::GraphClock;
-use crate::commands::clock::clock_regression::{ClockOptions, clock_regression_backward, clock_regression_forward};
+use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
 use crate::commands::clock::find_best_root::find_best_root::find_best_root;
 use crate::commands::clock::find_best_root::params::{
   BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
@@ -11,7 +11,7 @@ use approx::assert_ulps_eq;
 use eyre::Report;
 use maplit::btreemap;
 
-fn setup_test_graph() -> Result<(GraphClock, ClockOptions), Report> {
+fn setup_test_graph() -> Result<(GraphClock, ClockParams), Report> {
   let dates = btreemap! {
     o!("A") => 2013.0,
     o!("B") => 2022.0,
@@ -25,7 +25,7 @@ fn setup_test_graph() -> Result<(GraphClock, ClockOptions), Report> {
     n.write_arc().payload().write_arc().time = Some(dates[&name]);
   }
 
-  let options = ClockOptions::default();
+  let options = ClockParams::default();
 
   clock_regression_backward(&graph, &options);
   clock_regression_forward(&graph, &options);

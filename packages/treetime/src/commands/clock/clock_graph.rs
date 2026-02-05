@@ -3,7 +3,7 @@ use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::graph::edge::{ClockMessages, GraphEdge, HasBranchLength};
 use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, Named, Outlier};
-use crate::io::graphviz::{EdgeToGraphViz, NodeToGraphviz};
+use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use eyre::Report;
@@ -105,7 +105,7 @@ impl EdgeToNwk for EdgeClock {
   }
 }
 
-impl EdgeToGraphViz for EdgeClock {
+impl EdgeToGraphviz for EdgeClock {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self
       .branch_length()

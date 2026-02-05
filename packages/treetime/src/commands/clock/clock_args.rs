@@ -1,5 +1,5 @@
 use crate::commands::ancestral::anc_args::MethodAncestral;
-use crate::commands::clock::clock_regression::ClockOptions;
+use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::find_best_root::params::{
   BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,
 };
@@ -161,5 +161,5 @@ pub struct BranchSplitArgs {
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[clap(flatten)]
-  pub clock_options: ClockOptions,
+  pub clock_params: ClockParams,
 }

@@ -23,7 +23,7 @@ pub struct PhyloxmlPhylogeny {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub id: Option<PhyloXmlId>,
+  pub id: Option<PhyloxmlId>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,7 +59,7 @@ pub struct PhyloxmlClade {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub color: Option<PhyloxmlBranchColor>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub node_id: Option<PhyloXmlId>,
+  pub node_id: Option<PhyloxmlId>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub taxonomy: Vec<PhyloxmlTaxonomy>,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -85,7 +85,7 @@ pub struct PhyloxmlClade {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhyloxmlTaxonomy {
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub id: Option<PhyloXmlId>,
+  pub id: Option<PhyloxmlId>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub code: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -190,7 +190,7 @@ pub struct PhyloxmlConfidence {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PhyloXmlId {
+pub struct PhyloxmlId {
   #[serde(rename = "$value")]
   pub identifier: String,
   #[serde(skip_serializing_if = "Option::is_none")]
