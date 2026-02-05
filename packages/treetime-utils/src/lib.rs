@@ -31,6 +31,11 @@ pub mod vec;
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[cfg(test)]
+mod ndarray_tests;
+#[cfg(test)]
+mod string_tests;
+
+#[cfg(test)]
 mod tests {
   use crate::global_init::global_init;
   use ctor::ctor;

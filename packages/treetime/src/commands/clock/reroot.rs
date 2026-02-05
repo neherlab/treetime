@@ -20,7 +20,9 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  let FindRootResult { edge, split, clock_set, .. } = find_best_root(graph, options, params)?;
+  let FindRootResult {
+    edge, split, clock_set, ..
+  } = find_best_root(graph, options, params)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -132,7 +134,7 @@ where
 /// Remove a node if it is trivial (i.e. has exactly one parent and one child), merging the edges
 /// lengths.
 /// Nb: when applied this function removes properties of the removed node and its connecting edges.
-fn remove_node_if_trivial<N, E, D>(graph: &mut Graph<N, E, D>, node_key: GraphNodeKey) -> Result<(), Report>
+pub(super) fn remove_node_if_trivial<N, E, D>(graph: &mut Graph<N, E, D>, node_key: GraphNodeKey) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge + Default,
@@ -174,4 +176,3 @@ where
 
   Ok(())
 }
-

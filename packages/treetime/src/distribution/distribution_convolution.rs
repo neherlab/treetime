@@ -191,4 +191,3 @@ fn convolution_function_function<Y: SupportsConvolution>(
   )?;
   Ok(Distribution::Function(final_distr))
 }
-

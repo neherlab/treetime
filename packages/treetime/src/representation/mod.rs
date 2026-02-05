@@ -1,4 +1,6 @@
 pub mod bitset128;
+#[cfg(test)]
+mod bitset128_tests;
 pub mod edge_timetree;
 pub mod graph_ancestral;
 pub mod graph_dense;
@@ -10,6 +12,8 @@ pub mod partition_compressed;
 pub mod partition_marginal;
 pub mod partition_marginal_dense;
 pub mod partition_marginal_sparse;
+pub(crate) mod partition_marginal_sparse_helpers;
+mod partition_marginal_sparse_passes;
 pub mod partition_parsimony;
 pub mod partition_timetree;
 pub mod partitions_likelihood;

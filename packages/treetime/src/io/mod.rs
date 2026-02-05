@@ -1,4 +1,5 @@
 pub mod auspice;
+pub mod auspice_types;
 pub mod concat;
 pub mod csv;
 pub mod dates_csv;

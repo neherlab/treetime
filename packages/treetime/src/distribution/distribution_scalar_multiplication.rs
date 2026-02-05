@@ -31,4 +31,3 @@ pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
     },
   }
 }
-

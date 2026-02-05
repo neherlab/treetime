@@ -120,4 +120,3 @@ pub fn scaled_distribution_multiply_many(distributions: &[&ScaledDistribution]) 
     },
   }
 }
-

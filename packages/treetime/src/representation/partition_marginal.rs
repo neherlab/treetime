@@ -1,5 +1,6 @@
 use crate::graph::edge::EdgeOptimizeOps;
-use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::graph::Graph;
+use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::fasta::FastaRecord;
 use crate::representation::seq::Seq;

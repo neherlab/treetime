@@ -1,41 +1,41 @@
-  #![allow(clippy::excessive_precision)]
+#![allow(clippy::excessive_precision)]
 
-  use super::*;
-  use crate::alphabet::alphabet::AlphabetName;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::pretty_assert_ulps_eq;
-  use approx::{assert_abs_diff_eq, assert_ulps_eq};
-  use eyre::Report;
-  use lazy_static::lazy_static;
-  use ndarray::{Array1, Array2, array};
-  use rstest::rstest;
+use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::gtr::{GTR, GTRParams, avg_transition, eig_single_site};
+use crate::pretty_assert_ulps_eq;
+use approx::{assert_abs_diff_eq, assert_ulps_eq};
+use eyre::Report;
+use lazy_static::lazy_static;
+use ndarray::{Array1, Array2, array, s};
+use rstest::rstest;
 
-  lazy_static! {
-    static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-  }
+lazy_static! {
+  static ref ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+}
 
-  #[rstest]
-  fn computes_eig_single_site() -> Result<(), Report> {
-    let W: Array2<f64> = array![
-      [0.000, 0.445, 0.640, 0.531, 0.425],
-      [0.445, 0.000, 0.492, 0.571, 0.567],
-      [0.640, 0.492, 0.000, 0.550, 0.459],
-      [0.531, 0.571, 0.550, 0.000, 0.435],
-      [0.425, 0.567, 0.459, 0.435, 0.000],
-    ];
+#[rstest]
+fn computes_eig_single_site() -> Result<(), Report> {
+  let W: Array2<f64> = array![
+    [0.000, 0.445, 0.640, 0.531, 0.425],
+    [0.445, 0.000, 0.492, 0.571, 0.567],
+    [0.640, 0.492, 0.000, 0.550, 0.459],
+    [0.531, 0.571, 0.550, 0.000, 0.435],
+    [0.425, 0.567, 0.459, 0.435, 0.000],
+  ];
 
-    let pi: Array1<f64> = array![0.2, 0.2, 0.2, 0.2, 0.2];
+  let pi: Array1<f64> = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
-    let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
+  let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       eigvals,
       array![-0.54897944125116571179034963279264, -0.53814016627092564615253422743990, -0.50166508082992933292842963055591, -0.45721531164797907242913765912817, -0.00000000000000013583064089189833],
       epsilon = 1e-12,
     );
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       v,
       array![
@@ -48,7 +48,7 @@
       epsilon = 1e-12,
     );
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       v_inv,
       array![
@@ -61,82 +61,82 @@
       epsilon = 1e-12,
     );
 
-    // Dot product is identity
-    pretty_assert_ulps_eq!(v.dot(&v_inv), Array2::<f64>::eye(v.shape()[0]), epsilon = 1e-12);
+  // Dot product is identity
+  pretty_assert_ulps_eq!(v.dot(&v_inv), Array2::<f64>::eye(v.shape()[0]), epsilon = 1e-12);
 
-    // Last column is `pi`
-    pretty_assert_ulps_eq!(v.slice(s![.., -1]), pi, epsilon = 1e-12);
+  // Last column is `pi`
+  pretty_assert_ulps_eq!(v.slice(s![.., -1]), pi, epsilon = 1e-12);
 
-    // Last row is 1
-    pretty_assert_ulps_eq!(
-      v_inv.slice(s![-1, ..]),
-      Array1::<f64>::ones(v.shape()[0]),
-      epsilon = 1e-12
-    );
+  // Last row is 1
+  pretty_assert_ulps_eq!(
+    v_inv.slice(s![-1, ..]),
+    Array1::<f64>::ones(v.shape()[0]),
+    epsilon = 1e-12
+  );
 
-    Ok(())
-  }
+  Ok(())
+}
 
-  #[rstest]
-  fn avg_transition_test() -> Result<(), Report> {
-    let pi = array![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
+#[rstest]
+fn avg_transition_test() -> Result<(), Report> {
+  let pi = array![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
 
-    let Wi: Array2<f64> = array![
-      [0.0, 4.0 / 3.0, 4.0 / 3.0],
-      [4.0 / 3.0, 0.0, 4.0 / 3.0],
-      [4.0 / 3.0, 4.0 / 3.0, 0.0],
-    ];
+  let Wi: Array2<f64> = array![
+    [0.0, 4.0 / 3.0, 4.0 / 3.0],
+    [4.0 / 3.0, 0.0, 4.0 / 3.0],
+    [4.0 / 3.0, 4.0 / 3.0, 0.0],
+  ];
 
-    assert_ulps_eq!(avg_transition(&Wi, &pi)?, 8.0 / 9.0);
+  assert_ulps_eq!(avg_transition(&Wi, &pi)?, 8.0 / 9.0);
 
-    Ok(())
-  }
+  Ok(())
+}
 
-  #[rstest]
-  fn avg_transition_from_alphabet() -> Result<(), Report> {
-    let num_chars = ALPHABET.n_canonical();
+#[rstest]
+fn avg_transition_from_alphabet() -> Result<(), Report> {
+  let num_chars = ALPHABET.n_canonical();
 
-    let W = array![
-      [0., 1., 1., 1., 1.],
-      [1., 0., 1., 1., 1.],
-      [1., 1., 0., 1., 1.],
-      [1., 1., 1., 0., 1.],
-      [1., 1., 1., 1., 0.]
-    ];
+  let W = array![
+    [0., 1., 1., 1., 1.],
+    [1., 0., 1., 1., 1.],
+    [1., 1., 0., 1., 1.],
+    [1., 1., 1., 0., 1.],
+    [1., 1., 1., 1., 0.]
+  ];
 
-    let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
+  let pi = array![0.2, 0.2, 0.2, 0.2, 0.2];
 
-    assert_ulps_eq!(avg_transition(&W, &pi)?, 0.8000000000000005);
+  assert_ulps_eq!(avg_transition(&W, &pi)?, 0.8000000000000005);
 
-    Ok(())
-  }
+  Ok(())
+}
 
-  #[rstest]
-  fn creates_gtr_general() {
-    // equilibrium distribution
-    let pi = array![0.1, 0.15, 0.35, 0.4];
+#[rstest]
+fn creates_gtr_general() {
+  // equilibrium distribution
+  let pi = array![0.1, 0.15, 0.35, 0.4];
 
-    // symmetric rate matrix
-    let W = array![
-      [0.0, 0.2, 0.5, 0.2],
-      [0.0, 0.0, 0.3, 0.5],
-      [0.0, 0.0, 0.0, 0.1],
-      [0.0, 0.0, 0.0, 0.0],
-    ];
+  // symmetric rate matrix
+  let W = array![
+    [0.0, 0.2, 0.5, 0.2],
+    [0.0, 0.0, 0.3, 0.5],
+    [0.0, 0.0, 0.0, 0.1],
+    [0.0, 0.0, 0.0, 0.0],
+  ];
 
-    let W = &W + &W.t();
+  let W = &W + &W.t();
 
-    let mu = 1.0;
+  let mu = 1.0;
 
-    let gtr = GTR::new(GTRParams {
-      alphabet: ALPHABET.clone(),
-      W: Some(W),
-      pi: pi.clone(),
-      mu,
-    })
-    .unwrap();
+  let gtr = GTR::new(GTRParams {
+    alphabet: ALPHABET.clone(),
+    W: Some(W),
+    pi: pi.clone(),
+    mu,
+  })
+  .unwrap();
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.Q(),
       array![
@@ -147,19 +147,19 @@
       epsilon = 1e-12
     );
 
-    pretty_assert_ulps_eq!(
-      gtr.eigvals,
-      array![
-        -2.233008645590864,
-        -1.855684299231632,
-        -0.8688141373304785,
-        6.071532165918825e-17
-      ],
-      epsilon = 1e-12
-    );
+  pretty_assert_ulps_eq!(
+    gtr.eigvals,
+    array![
+      -2.233008645590864,
+      -1.855684299231632,
+      -0.8688141373304785,
+      6.071532165918825e-17
+    ],
+    epsilon = 1e-12
+  );
 
-    // NOTE: If this is failing, then note that it is allowed that columns can have numbers with different signs, depending on conventions of the underlying linear algebra package.
-    #[rustfmt::skip]
+  // NOTE: If this is failing, then note that it is allowed that columns can have numbers with different signs, depending on conventions of the underlying linear algebra package.
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.v,
       array![
@@ -170,8 +170,8 @@
       epsilon = 1e-12
     );
 
-    // NOTE: If this is failing, then similarly to the above, certain differences are tolerable, depending on the underlying math implementation used
-    #[rustfmt::skip]
+  // NOTE: If this is failing, then similarly to the above, certain differences are tolerable, depending on the underlying math implementation used
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.v_inv,
       array![
@@ -182,13 +182,13 @@
       epsilon = 1e-12
     );
 
-    // Orthogonality of Eigenvectors
-    pretty_assert_ulps_eq!(gtr.v_inv.dot(&gtr.v), Array2::<f64>::eye(4), epsilon = 1e-14);
+  // Orthogonality of Eigenvectors
+  pretty_assert_ulps_eq!(gtr.v_inv.dot(&gtr.v), Array2::<f64>::eye(4), epsilon = 1e-14);
 
-    // Equilibrium distribution
-    pretty_assert_ulps_eq!(gtr.v.slice(s![.., -1]), pi, epsilon = 1e-14);
+  // Equilibrium distribution
+  pretty_assert_ulps_eq!(gtr.v.slice(s![.., -1]), pi, epsilon = 1e-14);
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.expQt(0.1),
       array![
@@ -199,19 +199,19 @@
       epsilon = 1e-12
     );
 
-    // Propagation backwards in time
-    let profile = array![
-      [1.0, 0.0, 0.0, 0.0],
-      [0.0, 1.0, 0.0, 0.0],
-      [0.0, 0.0, 1.0, 0.0],
-      [0.0, 0.0, 0.0, 1.0],
-      [0.0, 1.0, 0.0, 1.0],
-      [0.0, 1.0, 1.0, 0.0],
-      [1.0, 1.0, 1.0, 1.0],
-    ];
+  // Propagation backwards in time
+  let profile = array![
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+    [0.0, 1.0, 0.0, 1.0],
+    [0.0, 1.0, 1.0, 0.0],
+    [1.0, 1.0, 1.0, 1.0],
+  ];
 
-    // Propagate for short time
-    #[rustfmt::skip]
+  // Propagate for short time
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.propagate_profile(&profile, 0.1, false),
       array![
@@ -225,8 +225,8 @@
       epsilon = 1e-8
     );
 
-    // Propagate for long time
-    #[rustfmt::skip]
+  // Propagate for long time
+  #[rustfmt::skip]
     assert_ulps_eq!(
       gtr.propagate_profile(&profile, 1000.0, false),
       array![
@@ -240,19 +240,19 @@
       epsilon = 1e-12
     );
 
-    // Propagation forward in time
-    let profile = array![
-      [1.00, 0.00, 0.00, 0.00],
-      [0.00, 1.00, 0.00, 0.00],
-      [0.00, 0.00, 1.00, 0.00],
-      [0.00, 0.00, 0.00, 1.00],
-      [0.00, 0.30, 0.20, 0.50],
-      [0.00, 0.80, 0.20, 0.00],
-      [0.10, 0.15, 0.35, 0.40], // pi
-    ];
+  // Propagation forward in time
+  let profile = array![
+    [1.00, 0.00, 0.00, 0.00],
+    [0.00, 1.00, 0.00, 0.00],
+    [0.00, 0.00, 1.00, 0.00],
+    [0.00, 0.00, 0.00, 1.00],
+    [0.00, 0.30, 0.20, 0.50],
+    [0.00, 0.80, 0.20, 0.00],
+    [0.10, 0.15, 0.35, 0.40], // pi
+  ];
 
-    // Evolve for short time
-    #[rustfmt::skip]
+  // Evolve for short time
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.evolve(&profile, 0.1, false),
       array![
@@ -266,8 +266,8 @@
       epsilon = 1e-8
     );
 
-    // Evolve for long time
-    #[rustfmt::skip]
+  // Evolve for long time
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.evolve(&profile, 1000.0, false),
       array![
@@ -281,30 +281,30 @@
       ],
       epsilon = 1e-12
     );
-  }
+}
 
-  #[rstest]
-  fn jc69_creates() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
+#[rstest]
+fn jc69_creates() -> Result<(), Report> {
+  let gtr = jc69(JC69Params::default())?;
 
-    assert_eq!(gtr.pi, array![0.25, 0.25, 0.25, 0.25]);
+  assert_eq!(gtr.pi, array![0.25, 0.25, 0.25, 0.25]);
 
-    pretty_assert_ulps_eq!(gtr.mu, 0.75);
+  pretty_assert_ulps_eq!(gtr.mu, 0.75);
 
-    let diag = Array2::from_diag(&gtr.eigvals);
-    let od: f64 = 1.0 / 3.0;
-    pretty_assert_ulps_eq!(
-      gtr.v.dot(&diag).dot(&gtr.v_inv),
-      array![
-        [-1.00, od, od, od],
-        [od, -1.00, od, od],
-        [od, od, -1.00, od],
-        [od, od, od, -1.00],
-      ],
-      epsilon = 1e-14
-    );
+  let diag = Array2::from_diag(&gtr.eigvals);
+  let od: f64 = 1.0 / 3.0;
+  pretty_assert_ulps_eq!(
+    gtr.v.dot(&diag).dot(&gtr.v_inv),
+    array![
+      [-1.00, od, od, od],
+      [od, -1.00, od, od],
+      [od, od, -1.00, od],
+      [od, od, od, -1.00],
+    ],
+    epsilon = 1e-14
+  );
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.W,
       array![
@@ -316,129 +316,129 @@
       epsilon = 1e-12
     );
 
-    #[rustfmt::skip]
+  #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       gtr.eigvals,
       array![-1.0 - od, -1.0 - od, -1.0 - od, 0.0],
       epsilon = 1e-12
     );
 
-    // NOTE: These are failing likely due to the different conventions in linear algebra packages used in Python version
-    // (the source of expected test values) and in Rust version. And these differences are hard to test. But this
-    // also tests internals of the model implementation, which is a kind of antipattern. The most important thing is
-    // to ensure that the model usage produces correct results. While the differences in the internals might be
-    // tolerable.
+  // NOTE: These are failing likely due to the different conventions in linear algebra packages used in Python version
+  // (the source of expected test values) and in Rust version. And these differences are hard to test. But this
+  // also tests internals of the model implementation, which is a kind of antipattern. The most important thing is
+  // to ensure that the model usage produces correct results. While the differences in the internals might be
+  // tolerable.
 
-    // #[rustfmt::skip]
-    // pretty_assert_ulps_eq!(
-    //   gtr.v,
-    //
-    //   // Rust result
-    //   // [
-    //   //   [0.38888888888888884,   0.0,                    -0.25000000000000006,  0.0,                0.2],
-    //   //   [0.11111111111111116,   1.1518476660775412e-16,  0.4999999999999998,   0.0,                0.2],
-    //   //   [-0.16666666666666663, -0.5000000000000001,     -0.08333333333333331, -0.1744576301870094, 0.19999999999999998],
-    //   //   [-0.16666666666666669,  0.09150635094610969,    -0.08333333333333341,  0.5,                0.2],
-    //   //   [-0.16666666666666669,  0.40849364905389013,    -0.08333333333333341, -0.3255423698129907, 0.2]
-    //   // ]
-    //
-    //   // Python result (openblas backend)
-    //   array![
-    //     [-0.046874760469663719,  0.500000000000000111, -0.001426887227439782,  0.007485879491300664, -0.199999999999999956],
-    //     [-0.453125239530336232, -0.172109713611864223,  0.022158582410371695, -0.004910409593215660, -0.200000000000000094],
-    //     [ 0.176921578205358310, -0.102772856485764411,  0.229538218058494475, -0.495089590406784297, -0.200000000000000011],
-    //     [ 0.174649639361912162, -0.112629155793391236,  0.248303199531133917,  0.481091398682775395, -0.199999999999999983],
-    //     [ 0.148428782432729611, -0.112488274108980033, -0.498573112772560278,  0.011422721825924000, -0.199999999999999983],
-    //   ]
-    // );
+  // #[rustfmt::skip]
+  // pretty_assert_ulps_eq!(
+  //   gtr.v,
+  //
+  //   // Rust result
+  //   // [
+  //   //   [0.38888888888888884,   0.0,                    -0.25000000000000006,  0.0,                0.2],
+  //   //   [0.11111111111111116,   1.1518476660775412e-16,  0.4999999999999998,   0.0,                0.2],
+  //   //   [-0.16666666666666663, -0.5000000000000001,     -0.08333333333333331, -0.1744576301870094, 0.19999999999999998],
+  //   //   [-0.16666666666666669,  0.09150635094610969,    -0.08333333333333341,  0.5,                0.2],
+  //   //   [-0.16666666666666669,  0.40849364905389013,    -0.08333333333333341, -0.3255423698129907, 0.2]
+  //   // ]
+  //
+  //   // Python result (openblas backend)
+  //   array![
+  //     [-0.046874760469663719,  0.500000000000000111, -0.001426887227439782,  0.007485879491300664, -0.199999999999999956],
+  //     [-0.453125239530336232, -0.172109713611864223,  0.022158582410371695, -0.004910409593215660, -0.200000000000000094],
+  //     [ 0.176921578205358310, -0.102772856485764411,  0.229538218058494475, -0.495089590406784297, -0.200000000000000011],
+  //     [ 0.174649639361912162, -0.112629155793391236,  0.248303199531133917,  0.481091398682775395, -0.199999999999999983],
+  //     [ 0.148428782432729611, -0.112488274108980033, -0.498573112772560278,  0.011422721825924000, -0.199999999999999983],
+  //   ]
+  // );
 
-    // #[rustfmt::skip]
-    // pretty_assert_ulps_eq!(
-    //   gtr.v_inv,
-    //
-    //   // Rust result
-    //   // [
-    //   //   [1.5750000000000002,  0.45000000000000023,   -0.6749999999999999,  -0.6750000000000002,  -0.6750000000000002],
-    //   //   [0.0,                 2.708697166989168e-16, -1.1758052938602825,   0.21518730372854528,  0.9606179901317368],
-    //   //   [-0.7500000000000001, 1.4999999999999996,    -0.25,                -0.2500000000000002,  -0.2500000000000002],
-    //   //   [0.0,                 0.0,                   -0.4514793629381211,   1.2939513234650695,  -0.8424719605269488],
-    //   //   [0.9999999999999997,  0.9999999999999997,     0.9999999999999993,   0.9999999999999997,   0.9999999999999997],
-    //   // ]
-    //
-    //   // Python result (openblas backend)
-    //   array![
-    //    [-0.160885619055681939, -1.555236420221760563,  0.607238039163926158,  0.599440190521669192,  0.509443809591847541],
-    //    [ 1.584670771738339923, -0.545474465385955010, -0.325722283602099816, -0.356960262462701905, -0.356513760287582582],
-    //    [-0.003926379079478472,  0.060973980798110977,  0.631622485641511799,  0.683258262642032932, -1.371928350002177277],
-    //    [ 0.015701130983909538, -0.010299255324283767, -1.038417265036203574,  1.009056995203920337,  0.023958394172657615],
-    //    [-0.999999999999999556, -1.000000000000000222, -0.999999999999999889, -0.999999999999999778, -0.999999999999999778],
-    // ]);
+  // #[rustfmt::skip]
+  // pretty_assert_ulps_eq!(
+  //   gtr.v_inv,
+  //
+  //   // Rust result
+  //   // [
+  //   //   [1.5750000000000002,  0.45000000000000023,   -0.6749999999999999,  -0.6750000000000002,  -0.6750000000000002],
+  //   //   [0.0,                 2.708697166989168e-16, -1.1758052938602825,   0.21518730372854528,  0.9606179901317368],
+  //   //   [-0.7500000000000001, 1.4999999999999996,    -0.25,                -0.2500000000000002,  -0.2500000000000002],
+  //   //   [0.0,                 0.0,                   -0.4514793629381211,   1.2939513234650695,  -0.8424719605269488],
+  //   //   [0.9999999999999997,  0.9999999999999997,     0.9999999999999993,   0.9999999999999997,   0.9999999999999997],
+  //   // ]
+  //
+  //   // Python result (openblas backend)
+  //   array![
+  //    [-0.160885619055681939, -1.555236420221760563,  0.607238039163926158,  0.599440190521669192,  0.509443809591847541],
+  //    [ 1.584670771738339923, -0.545474465385955010, -0.325722283602099816, -0.356960262462701905, -0.356513760287582582],
+  //    [-0.003926379079478472,  0.060973980798110977,  0.631622485641511799,  0.683258262642032932, -1.371928350002177277],
+  //    [ 0.015701130983909538, -0.010299255324283767, -1.038417265036203574,  1.009056995203920337,  0.023958394172657615],
+  //    [-0.999999999999999556, -1.000000000000000222, -0.999999999999999889, -0.999999999999999778, -0.999999999999999778],
+  // ]);
 
-    Ok(())
+  Ok(())
+}
+
+#[rstest]
+fn jc69_calculates_exp_qt() -> Result<(), Report> {
+  let gtr = jc69(JC69Params::default())?;
+
+  let t = 0.2 / gtr.mu;
+  let Qs = gtr.expQt(t);
+
+  assert_abs_diff_eq!(
+    Qs,
+    array![
+      [0.82444625, 0.05851792, 0.05851792, 0.05851792],
+      [0.05851792, 0.82444625, 0.05851792, 0.05851792],
+      [0.05851792, 0.05851792, 0.82444625, 0.05851792],
+      [0.05851792, 0.05851792, 0.05851792, 0.82444625]
+    ],
+    epsilon = 1e-8
+  );
+
+  Ok(())
+}
+
+#[rstest]
+fn gtr_test_theoretical_limits() -> Result<(), Report> {
+  // symmetric rate matrix with some variation in entries (test doesn't depend on precise values)
+  let W: Array2<f64> = array![
+    [0.00, 1.25, 2.25, 1.25],
+    [1.25, 0.00, 1.25, 3.25],
+    [2.25, 1.25, 0.00, 1.25],
+    [1.25, 3.25, 1.25, 0.00],
+  ];
+
+  // pi vector of equilibrium probability, some variation to be general, doesn't depend on details
+  let pi: Array1<f64> = array![0.18, 0.35, 0.25, 0.22];
+  let mu = 1.0;
+
+  // initial profile to be back_propagated or evolved
+  let profile: Array2<f64> = array![[0.00, 0.8, 0.0, 0.2],];
+
+  let params = GTRParams {
+    alphabet: ALPHABET.clone(),
+    mu,
+    W: Some(W),
+    pi: pi.clone(),
+  };
+
+  let gtr = GTR::new(params)?;
+
+  // propagate forward and backward in time by a large amount (as long as exp(-mu*large_t) is tiny, value of large_t doesn't matter)
+  let large_t = 100.0;
+  let distant_past = gtr.propagate_profile(&profile, large_t, false);
+  let distant_future = gtr.evolve(&profile, large_t, false);
+
+  // the "distant past profile" is the product of a vector [1,1,1,1,1] times the dot product of pi and initial profile
+  let mut weight = 0.0;
+  for i in 0..4 {
+    weight += pi[i] * profile[[0, i]];
   }
+  let distant_past_expected = array![[1.0, 1.0, 1.0, 1.0]] * weight;
+  assert_ulps_eq!(distant_past, distant_past_expected, epsilon = 1e-10);
 
-  #[rstest]
-  fn jc69_calculates_exp_qt() -> Result<(), Report> {
-    let gtr = jc69(JC69Params::default())?;
+  // propagating the profile far into the future gives the equilibrium probabilities pi
+  assert_ulps_eq!(distant_future.slice(s![0, ..]), pi, epsilon = 1e-10);
 
-    let t = 0.2 / gtr.mu;
-    let Qs = gtr.expQt(t);
-
-    assert_abs_diff_eq!(
-      Qs,
-      array![
-        [0.82444625, 0.05851792, 0.05851792, 0.05851792],
-        [0.05851792, 0.82444625, 0.05851792, 0.05851792],
-        [0.05851792, 0.05851792, 0.82444625, 0.05851792],
-        [0.05851792, 0.05851792, 0.05851792, 0.82444625]
-      ],
-      epsilon = 1e-8
-    );
-
-    Ok(())
-  }
-
-  #[rstest]
-  fn gtr_test_theoretical_limits() -> Result<(), Report> {
-    // symmetric rate matrix with some variation in entries (test doesn't depend on precise values)
-    let W: Array2<f64> = array![
-      [0.00, 1.25, 2.25, 1.25],
-      [1.25, 0.00, 1.25, 3.25],
-      [2.25, 1.25, 0.00, 1.25],
-      [1.25, 3.25, 1.25, 0.00],
-    ];
-
-    // pi vector of equilibrium probability, some variation to be general, doesn't depend on details
-    let pi: Array1<f64> = array![0.18, 0.35, 0.25, 0.22];
-    let mu = 1.0;
-
-    // initial profile to be back_propagated or evolved
-    let profile: Array2<f64> = array![[0.00, 0.8, 0.0, 0.2],];
-
-    let params = GTRParams {
-      alphabet: ALPHABET.clone(),
-      mu,
-      W: Some(W),
-      pi: pi.clone(),
-    };
-
-    let gtr = GTR::new(params)?;
-
-    // propagate forward and backward in time by a large amount (as long as exp(-mu*large_t) is tiny, value of large_t doesn't matter)
-    let large_t = 100.0;
-    let distant_past = gtr.propagate_profile(&profile, large_t, false);
-    let distant_future = gtr.evolve(&profile, large_t, false);
-
-    // the "distant past profile" is the product of a vector [1,1,1,1,1] times the dot product of pi and initial profile
-    let mut weight = 0.0;
-    for i in 0..4 {
-      weight += pi[i] * profile[[0, i]];
-    }
-    let distant_past_expected = array![[1.0, 1.0, 1.0, 1.0]] * weight;
-    assert_ulps_eq!(distant_past, distant_past_expected, epsilon = 1e-10);
-
-    // propagating the profile far into the future gives the equilibrium probabilities pi
-    assert_ulps_eq!(distant_future.slice(s![0, ..]), pi, epsilon = 1e-10);
-
-    Ok(())
-  }
+  Ok(())
+}

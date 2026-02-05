@@ -42,4 +42,3 @@ pub fn distribution_time_bounds_contains<Y: YAxisPolicy>(outer: &Distribution<Y>
 pub fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(dist_a: &Distribution<Y>, dist_b: &Distribution<Y>) -> bool {
   distribution_time_bounds_intersection(dist_a, dist_b).is_some()
 }
-

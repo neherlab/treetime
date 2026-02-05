@@ -138,7 +138,10 @@ where
     .collect()
 }
 
-fn create_branch_distributions_input_mode<N, E>(graph: &Graph<N, E, ()>, clock_rate: f64) -> Result<(), Report>
+pub(super) fn create_branch_distributions_input_mode<N, E>(
+  graph: &Graph<N, E, ()>,
+  clock_rate: f64,
+) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + HasBranchLength + TimetreeEdge,
@@ -157,4 +160,3 @@ where
 
   Ok(())
 }
-

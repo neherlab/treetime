@@ -135,7 +135,7 @@ pub fn invert_edge<N: GraphNode, E: GraphEdge, D: Send + Sync>(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::graph::tests::{TestEdge, TestNode};
+  use crate::graph::graph_tests::{TestEdge, TestNode};
   use crate::io::nwk::nwk_read_str;
   use eyre::Report;
   use pretty_assertions::assert_eq;

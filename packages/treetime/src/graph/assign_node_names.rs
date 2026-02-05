@@ -1,5 +1,6 @@
 use crate::graph::edge::GraphEdge;
-use crate::graph::graph::{Graph, GraphNodeForward};
+use crate::graph::graph::Graph;
+use crate::graph::graph_traverse::GraphNodeForward;
 use crate::graph::node::{GraphNode, Named};
 use crate::o;
 use std::collections::HashSet;

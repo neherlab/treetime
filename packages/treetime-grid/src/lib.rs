@@ -15,6 +15,9 @@ pub use grid_fn::GridFn;
 pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
+mod grid_fn_tests;
+
+#[cfg(test)]
 mod tests {
   use ctor::ctor;
   use treetime_utils::global_init::global_init;

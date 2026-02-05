@@ -130,4 +130,3 @@ fn divide_function_by_function<Y: YAxisPolicy>(
 
   DistributionFunction::from_range_values((div_min, div_max), result_y).map(Distribution::Function)
 }
-

@@ -5,6 +5,9 @@ pub mod convolution;
 pub mod multiplication;
 pub mod traits;
 
+#[cfg(test)]
+mod multiplication_tests;
+
 pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve, convolve_fft, convolve_riemann};
 pub use multiplication::{
   AggressiveMultiply, LogScaleMultiply, PointwiseMultiply, multiply_many, multiply_many_lazy_normalize,

@@ -31,7 +31,7 @@ pub fn infer_gtr<P: PartitionWithGtrInference>(
 }
 
 #[derive(Clone, Debug)]
-struct MutationCounts {
+pub(super) struct MutationCounts {
   /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
   pub nij: Array2<f64>,
 
@@ -43,7 +43,7 @@ struct MutationCounts {
 }
 
 #[derive(Clone, Debug, SmartDefault)]
-struct InferGtrOptions {
+pub(super) struct InferGtrOptions {
   /// Optional fixed equilibrium state frequencies. If `None`, then frequencies are estimated.
   pub fixed_pi: Option<Array1<f64>>,
 
@@ -61,7 +61,7 @@ struct InferGtrOptions {
 }
 
 #[derive(Clone, Debug)]
-struct InferGtrResult {
+pub(super) struct InferGtrResult {
   /// Substitution attempt matrix calculated during the GTR inference.
   pub W: Array2<f64>,
   /// Estimated equilibrium state frequencies.
@@ -86,7 +86,7 @@ struct InferGtrResult {
 /// in a particular state. the modified equation is
 ///
 /// $$ n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state) $$
-fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
+pub(super) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
     fixed_pi,
@@ -145,7 +145,7 @@ fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<
   Ok(InferGtrResult { W, pi, mu })
 }
 
-fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
+pub(super) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
@@ -196,4 +196,3 @@ fn get_mutation_counts<P: PartitionWithGtrInference>(
 
   Ok(MutationCounts { nij, Ti, root_state })
 }
-

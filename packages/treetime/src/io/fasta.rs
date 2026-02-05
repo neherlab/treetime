@@ -268,4 +268,3 @@ pub fn write_one_fasta(
   let mut writer = FastaWriter::from_path(&filepath)?;
   writer.write(seq_name, desc, seq)
 }
-

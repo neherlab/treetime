@@ -148,4 +148,3 @@ fn log_date_constraint_summary(
     warn!("More than half of leaves lack date constraints. This may affect inference quality.");
   }
 }
-
