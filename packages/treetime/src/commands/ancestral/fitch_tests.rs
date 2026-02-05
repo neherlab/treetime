@@ -6,7 +6,7 @@ use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress
 use crate::io::fasta::read_many_fasta_str;
 use crate::io::nwk::nwk_read_str;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::partition_parsimony::PartitionParsimonyNew;
+use crate::representation::partition_fitch::PartitionFitch;
 use eyre::Report;
 use indoc::indoc;
 use lazy_static::lazy_static;
@@ -57,7 +57,7 @@ fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
 
   let alphabet = Alphabet::default();
 
-  let partitions_parsimony = [Arc::new(RwLock::new(PartitionParsimonyNew {
+  let partitions_parsimony = [Arc::new(RwLock::new(PartitionFitch {
     index: 0,
     alphabet,
     length: get_common_length(&aln)?,
@@ -125,7 +125,7 @@ fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
 
   let alphabet = Alphabet::default();
 
-  let partitions_parsimony = [Arc::new(RwLock::new(PartitionParsimonyNew {
+  let partitions_parsimony = [Arc::new(RwLock::new(PartitionFitch {
     index: 0,
     alphabet,
     length: get_common_length(&aln)?,

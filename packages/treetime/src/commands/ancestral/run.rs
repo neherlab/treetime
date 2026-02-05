@@ -15,7 +15,7 @@ use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
-use crate::representation::partition_parsimony::PartitionParsimonyNew;
+use crate::representation::partition_fitch::PartitionFitch;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
@@ -87,7 +87,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     // Again, we can deal with this later, but the entrypoint is not always going to be a fasta file.
     MethodAncestral::Parsimony => {
       #[allow(clippy::iter_on_single_items)]
-      let partitions_parsimony = [PartitionParsimonyNew {
+      let partitions_parsimony = [PartitionFitch {
         index: 0,
         alphabet,
         length: get_common_length(&aln)?,

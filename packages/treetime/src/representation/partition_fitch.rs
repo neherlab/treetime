@@ -6,7 +6,7 @@ use crate::representation::partition_compressed::PartitionCompressed;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
-pub struct PartitionParsimonyNew {
+pub struct PartitionFitch {
   pub index: usize,
   pub alphabet: Alphabet,
   pub length: usize,
@@ -14,7 +14,7 @@ pub struct PartitionParsimonyNew {
   pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
 }
 
-impl PartitionCompressed for PartitionParsimonyNew {
+impl PartitionCompressed for PartitionFitch {
   fn index(&self) -> usize {
     self.index
   }

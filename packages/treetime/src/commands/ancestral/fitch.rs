@@ -13,7 +13,7 @@ use crate::representation::graph_sparse::{
   SparseSeqInfo,
 };
 use crate::representation::partition_compressed::PartitionCompressed;
-use crate::representation::partition_parsimony::PartitionParsimonyNew;
+use crate::representation::partition_fitch::PartitionFitch;
 use crate::representation::seq::Seq;
 use crate::representation::state_set::BitSet128;
 use crate::representation::state_set::{StateSet, StateSetStatus};
@@ -530,7 +530,7 @@ where
 pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+  partitions: &[Arc<RwLock<PartitionFitch>>],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq),
 ) -> Result<(), Report> {
   graph.iter_depth_first_preorder_forward(|node| {
@@ -541,7 +541,7 @@ pub fn ancestral_reconstruction_fitch(
 
 fn run_fitch_reconstruction(
   include_leaves: bool,
-  partitions: &[Arc<RwLock<PartitionParsimonyNew>>],
+  partitions: &[Arc<RwLock<PartitionFitch>>],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq),
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
 ) -> bool {
