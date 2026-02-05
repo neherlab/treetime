@@ -1,10 +1,10 @@
 use ctor::ctor;
 use eyre::Report;
 use log::info;
-use treetime::commands::ancestral::run_ancestral::run_ancestral_reconstruction;
-use treetime::commands::clock::run_clock::run_clock;
-use treetime::commands::homoplasy::run_homoplasy::run_homoplasy;
-use treetime::commands::mugration::run_mugration::run_mugration;
+use treetime::commands::ancestral::run::run_ancestral_reconstruction;
+use treetime::commands::clock::run::run_clock;
+use treetime::commands::homoplasy::run::run_homoplasy;
+use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;

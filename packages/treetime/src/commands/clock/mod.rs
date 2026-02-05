@@ -1,5 +1,5 @@
 pub mod assign_dates;
-pub mod clock_args;
+pub mod args;
 pub mod clock_filter;
 pub mod clock_graph;
 pub mod clock_model;
@@ -11,7 +11,7 @@ pub mod date_constraints;
 pub mod find_best_root;
 pub mod reroot;
 pub mod rtt;
-pub mod run_clock;
+pub mod run;
 
 #[cfg(test)]
 mod clock_regression_tests;

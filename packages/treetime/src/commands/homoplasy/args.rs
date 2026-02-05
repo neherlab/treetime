@@ -1,4 +1,4 @@
-use crate::commands::ancestral::anc_args::TreetimeAncestralArgs;
+use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use clap::{Parser, ValueHint};
 use serde::Serialize;
 use std::fmt::Debug;

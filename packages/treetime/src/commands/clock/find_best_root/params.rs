@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_args::BranchSplitArgs;
+use crate::commands::clock::args::BranchSplitArgs;
 use clap::{Args, ValueEnum};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;

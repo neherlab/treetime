@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::AlphabetName;
-use crate::commands::ancestral::anc_args::MethodAncestral;
+use crate::commands::ancestral::args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};

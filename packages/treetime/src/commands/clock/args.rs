@@ -1,4 +1,4 @@
-use crate::commands::ancestral::anc_args::MethodAncestral;
+use crate::commands::ancestral::args::MethodAncestral;
 use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::find_best_root::params::{
   BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,

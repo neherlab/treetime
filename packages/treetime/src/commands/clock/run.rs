@@ -2,7 +2,7 @@ use crate::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
 use crate::commands::clock::assign_dates::assign_dates;
-use crate::commands::clock::clock_args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
