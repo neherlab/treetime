@@ -15,7 +15,7 @@ pub type GraphClock = Graph<NodeClock, EdgeClock, ()>;
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NodeClock {
   pub name: Option<String>,
-  pub date: Option<f64>,
+  pub time: Option<f64>,
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
@@ -119,7 +119,7 @@ impl EdgeToGraphViz for EdgeClock {
 
 impl ClockNode for NodeClock {
   fn likely_time(&self) -> Option<f64> {
-    self.date
+    self.time
   }
 
   fn div(&self) -> f64 {
