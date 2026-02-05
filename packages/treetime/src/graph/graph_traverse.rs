@@ -9,7 +9,7 @@ use crate::graph::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::RwLock;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use traversal::{Bft, DftPre};
 use treetime_utils::container::{get_exactly_one, get_exactly_one_mut};
@@ -281,7 +281,7 @@ where
   pub fn iter_depth_first_postorder_forward(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E, D>)) {
     let root = self.get_exactly_one_root().unwrap();
     let mut stack = Vec::new();
-    let mut visited = HashSet::new();
+    let mut visited = BTreeSet::new();
     stack.push((Arc::clone(&root), None));
     while let Some((current_node, _)) = stack.pop() {
       let node_key = current_node.read_arc().key();

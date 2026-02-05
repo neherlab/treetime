@@ -3,7 +3,7 @@ use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::GraphNodeForward;
 use crate::graph::node::{GraphNode, Named};
 use crate::o;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(graph: &Graph<N, E, D>) {
   let mut names = graph
@@ -14,7 +14,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(gra
         .name()
         .map_or_else(|| o!("Unknown"), |name| name.as_ref().to_owned())
     })
-    .collect::<HashSet<String>>();
+    .collect::<BTreeSet<String>>();
 
   let mut internal_node_counter = 0;
 

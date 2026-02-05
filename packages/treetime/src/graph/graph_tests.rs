@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use eyre::Report;
@@ -317,7 +317,7 @@ fn test_collapse_edge_no_duplicate_edges() -> Result<(), Report> {
 
   // Verify no duplicate edges in adjacency lists
   let outbound_edges = source_node_after.outbound();
-  let unique_outbound: HashSet<_> = outbound_edges.iter().collect();
+  let unique_outbound: BTreeSet<_> = outbound_edges.iter().collect();
   assert_eq!(
     outbound_edges.len(),
     unique_outbound.len(),
@@ -325,7 +325,7 @@ fn test_collapse_edge_no_duplicate_edges() -> Result<(), Report> {
   );
 
   let inbound_edges = source_node_after.inbound();
-  let unique_inbound: HashSet<_> = inbound_edges.iter().collect();
+  let unique_inbound: BTreeSet<_> = inbound_edges.iter().collect();
   assert_eq!(
     inbound_edges.len(),
     unique_inbound.len(),

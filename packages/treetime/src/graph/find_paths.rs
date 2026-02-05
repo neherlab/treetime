@@ -8,7 +8,7 @@ use crate::graph::node::{GraphNode, Node};
 use crate::make_internal_report;
 use eyre::Report;
 use parking_lot::RwLock;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -24,7 +24,7 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
-  let mut edge_keys = HashSet::<GraphEdgeKey>::new();
+  let mut edge_keys = BTreeSet::<GraphEdgeKey>::new();
 
   for edge in graph.get_edges() {
     // An edge (connecting nodes `source` and `target`) is on a path between nodes `start` and `end` iff:

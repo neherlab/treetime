@@ -8,7 +8,7 @@ use crate::o;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
@@ -22,7 +22,7 @@ where
   let mut good_leaf_count = 0;
   let mut bad_leaf_count = 0;
   let mut internal_constraint_count = 0;
-  let mut used_names = HashSet::new();
+  let mut used_names = BTreeSet::new();
 
   graph.iter_depth_first_postorder_forward(|node| {
     let mut payload = node.payload;
@@ -83,7 +83,7 @@ where
   Ok(())
 }
 
-fn warn_unused_date_constraints(dates: &DatesMap, used_names: &HashSet<String>) {
+fn warn_unused_date_constraints(dates: &DatesMap, used_names: &BTreeSet<String>) {
   let unused_names: Vec<_> = dates
     .keys()
     .filter(|name| !used_names.contains(name.as_str()))

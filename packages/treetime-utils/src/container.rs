@@ -5,12 +5,12 @@ use std::collections::BTreeMap;
 use std::hash::Hash;
 
 /// Count occurrences (multiplicities) of unique values in an iterator
-pub fn count_occurences<T: Copy + Hash + Eq + Ord>(it: impl Iterator<Item = T>) -> Vec<(T, usize)> {
-  let mut occurences: BTreeMap<T, usize> = BTreeMap::new();
+pub fn count_occurrences<T: Copy + Hash + Eq + Ord>(it: impl Iterator<Item = T>) -> Vec<(T, usize)> {
+  let mut occurrences: BTreeMap<T, usize> = BTreeMap::new();
   for x in it {
-    *occurences.entry(x).or_default() += 1;
+    *occurrences.entry(x).or_default() += 1;
   }
-  occurences.into_iter().sorted_by_key(|(key, _)| *key).collect_vec()
+  occurrences.into_iter().sorted_by_key(|(key, _)| *key).collect_vec()
 }
 
 pub fn get_one<T>(x: &[T]) -> Option<&T> {
