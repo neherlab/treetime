@@ -1,7 +1,6 @@
 pub mod args;
 pub mod coalescent;
 pub mod convergence;
-pub mod data;
 pub mod inference;
 pub mod initialization;
 pub mod optimization;
