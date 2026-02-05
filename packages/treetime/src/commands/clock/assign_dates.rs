@@ -15,15 +15,15 @@ pub fn assign_dates(graph: &GraphClock, dates: &DatesMap) -> Result<(), Report> 
   let mut n_bad_leaves = 0;
   graph.iter_depth_first_postorder_forward(|mut node| {
     let name = node.payload.name().map(|s| s.as_ref().to_owned());
-    let date: Option<f64> = name
+    let time: Option<f64> = name
       .and_then(|name| dates.get(&name))
       .and_then(|d| d.as_ref().map(DateOrRange::mean))
       .filter(|&d| d.is_finite());
 
-    node.payload.time = date;
+    node.payload.time = time;
 
     node.payload.bad_branch =
-      date.is_none() && (node.is_leaf || node.children.iter().all(|(child, edge)| child.read_arc().bad_branch));
+      time.is_none() && (node.is_leaf || node.children.iter().all(|(child, edge)| child.read_arc().bad_branch));
 
     if node.is_leaf && node.payload.bad_branch {
       n_bad_leaves += 1;

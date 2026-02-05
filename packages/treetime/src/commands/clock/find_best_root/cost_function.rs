@@ -70,12 +70,12 @@ impl<'a> BranchPointCostFunction<'a> {
         .propagate_averages(self.branch_length * (1.0 - x), self.branch_variance * (1.0 - x))
     };
 
-    let clock_total = self
+    let clock_set = self
       .to_child
       .propagate_averages(self.branch_length * x, self.branch_variance * x)
       + child_contribution;
 
-    Ok(clock_total)
+    Ok(clock_set)
   }
 }
 
@@ -92,7 +92,7 @@ impl CostFunction for &BranchPointCostFunction<'_> {
     // Evaluate the clock set and return chi-squared
     let result = self
       .evaluate_clock_set(*x)
-      .map_or(f64::INFINITY, |clock_total| clock_total.chisq());
+      .map_or(f64::INFINITY, |clock_set| clock_set.chisq());
 
     Ok(result)
   }
