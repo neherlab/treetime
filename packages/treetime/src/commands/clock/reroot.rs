@@ -9,11 +9,28 @@ use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey};
 use approx::ulps_eq;
 use eyre::Report;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
+
+/// Controls reroot behavior for graph topology changes.
+#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
+pub struct RerootPolicy {
+  /// Allow creating a new node by splitting an edge during reroot.
+  /// When false, reroot will snap to the nearest existing node endpoint.
+  #[default = true]
+  pub allow_edge_split: bool,
+
+  /// Remove the old root node if it becomes trivial (one parent, one child) after reroot.
+  /// When false, the old root is preserved even if trivial.
+  #[default = true]
+  pub remove_old_root_if_trivial: bool,
+}
 
 pub fn reroot_in_place<N, E, D>(
   graph: &mut Graph<N, E, D>,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
+  policy: &RerootPolicy,
 ) -> Result<GraphNodeKey, Report>
 where
   N: GraphNode + ClockNode + Default,
@@ -43,16 +60,21 @@ where
     target_key
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     source_key
-  } else {
+  } else if policy.allow_edge_split {
     create_new_root_node(graph, edge_key, split, clock_set)?
+  } else {
+    // Edge split disallowed: snap to nearest endpoint
+    if split < 0.5 { target_key } else { source_key }
   };
 
   if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
 
-    // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
-    // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
-    remove_node_if_trivial(graph, old_root_key)?;
+    if policy.remove_old_root_if_trivial {
+      // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
+      // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
+      remove_node_if_trivial(graph, old_root_key)?;
+    }
   }
 
   Ok(new_root_key)
