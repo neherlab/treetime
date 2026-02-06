@@ -5,3 +5,6 @@ mod integration;
 mod lineage_dynamics;
 mod piecewise_constant_fn;
 mod piecewise_linear_fn;
+
+#[cfg(test)]
+mod integration_tests;

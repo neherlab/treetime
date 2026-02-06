@@ -12,3 +12,10 @@ pub mod find_best_root;
 pub mod reroot;
 pub mod rtt;
 pub mod run_clock;
+
+#[cfg(test)]
+mod clock_regression_tests;
+#[cfg(test)]
+mod date_constraints_tests;
+#[cfg(test)]
+mod reroot_tests;
