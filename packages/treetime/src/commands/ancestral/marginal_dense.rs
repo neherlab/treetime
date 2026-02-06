@@ -193,13 +193,13 @@ mod tests {
     let partition = partitions[0].read_arc();
     let epsilon = 1e-10;
 
-    for (_node_key, node_data) in &partition.nodes {
+    for node_data in partition.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         assert_dense_rows_normalized(&node_data.profile.dis, epsilon);
       }
     }
 
-    for (_edge_key, edge_data) in &partition.edges {
+    for edge_data in partition.edges.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, epsilon);
       }
