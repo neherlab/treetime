@@ -4,7 +4,7 @@ use ctor::ctor;
 use eyre::Report;
 use treetime::make_report;
 use treetime_cli::convert::args::{Args, guess_tree_format_from_filename};
-use treetime_cli::convert::convert::{ConverterGraph, converter_read_file, converter_write_file};
+use treetime_cli::convert::convert::{ConverterGraph, convert_read_file, convert_write_file};
 use treetime_utils::compression::remove_compression_ext;
 use treetime_utils::global_init::{global_init, setup_logger};
 
@@ -35,9 +35,9 @@ fn main() -> Result<(), Report> {
     })
     .with_section(|| format!("'{}'", &args.input.display()).header("Output file:"))?;
 
-  let graph: ConverterGraph = converter_read_file(&args, input_format)?;
+  let graph: ConverterGraph = convert_read_file(&args, input_format)?;
 
-  converter_write_file(&args, output_format, &graph)?;
+  convert_write_file(&args, output_format, &graph)?;
 
   Ok(())
 }

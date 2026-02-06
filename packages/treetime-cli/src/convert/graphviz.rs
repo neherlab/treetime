@@ -11,11 +11,11 @@ impl NodeToGraphviz for ConverterNode {
 impl EdgeToGraphviz for ConverterEdge {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self
-      .weight
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+      .branch_length
+      .map(|branch_length| format_weight(branch_length, &NwkWriteOptions::default()))
   }
 
   fn to_graphviz_weight(&self) -> Option<f64> {
-    self.weight
+    self.branch_length
   }
 }

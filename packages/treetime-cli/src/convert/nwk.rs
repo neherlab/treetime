@@ -18,9 +18,9 @@ impl NodeToNwk for ConverterNode {
 }
 
 impl EdgeFromNwk for ConverterEdge {
-  fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
+  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
     Ok(Self {
-      weight,
+      branch_length,
       ..Default::default()
     })
   }
@@ -28,6 +28,6 @@ impl EdgeFromNwk for ConverterEdge {
 
 impl EdgeToNwk for ConverterEdge {
   fn nwk_weight(&self) -> Option<f64> {
-    self.weight
+    self.branch_length
   }
 }

@@ -45,8 +45,8 @@ impl PhyloxmlFromGraph<ConverterNode, ConverterEdge, ConverterData> for () {
   ) -> Result<PhyloxmlClade, Report> {
     Ok(PhyloxmlClade {
       name: None,
-      branch_length_elem: edge.and_then(|edge| edge.weight),
-      branch_length_attr: edge.and_then(|edge| edge.weight),
+      branch_length_elem: edge.and_then(|edge| edge.branch_length),
+      branch_length_attr: edge.and_then(|edge| edge.branch_length),
       confidence: vec![],
       width: None,
       color: None,
@@ -77,7 +77,7 @@ impl PhyloxmlToGraph<ConverterNode, ConverterEdge, ConverterData> for () {
           .or_else(|| clade.taxonomy.first().as_ref().and_then(|t| t.scientific_name.clone())),
       },
       ConverterEdge {
-        weight: clade.branch_length_attr.or(clade.branch_length_elem),
+        branch_length: clade.branch_length_attr.or(clade.branch_length_elem),
         ..Default::default()
       },
     ))

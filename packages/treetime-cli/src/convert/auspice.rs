@@ -72,7 +72,7 @@ impl AuspiceWrite<ConverterNode, ConverterEdge, ConverterData> for AuspiceWriter
       .and_then(|parent_key| self.divs.get(&parent_key).copied())
       .or(Some(0.0)); // FIXME: we probably should not assume 0 if parent div is missing or if it's a root node
 
-    let branch_length = edge.and_then(|edge| edge.weight);
+    let branch_length = edge.and_then(|edge| edge.branch_length);
 
     let div = if let (Some(parent_div), Some(branch_length)) = (parent_div, branch_length) {
       Some(parent_div + branch_length)
@@ -142,7 +142,7 @@ impl AuspiceRead<ConverterNode, ConverterEdge, ConverterData> for AuspiceReader 
         name: Some(node.name.clone()),
       },
       ConverterEdge {
-        weight: branch_length,
+        branch_length,
         mutations,
       },
     ))

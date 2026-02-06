@@ -132,7 +132,7 @@ impl UsherRead<ConverterNode, ConverterEdge, ConverterData> for UsherReader {
     };
 
     let edge = ConverterEdge {
-      weight: None,
+      branch_length: None,
       mutations,
     };
 
