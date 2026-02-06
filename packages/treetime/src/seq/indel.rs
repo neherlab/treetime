@@ -24,6 +24,11 @@ impl InDel {
     assert_eq!(seq.len(), range.1 - range.0);
     Self { range, seq, deletion }
   }
+
+  /// Invert the indel direction by toggling deletion flag
+  pub fn invert(&mut self) {
+    self.deletion = !self.deletion;
+  }
 }
 
 impl fmt::Display for InDel {

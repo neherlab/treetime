@@ -58,6 +58,24 @@ where
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
+
+  fn supports_reroot_edge_split(&self) -> bool {
+    true
+  }
+
+  fn supports_old_root_removal(&self) -> bool {
+    true
+  }
+
+  fn reroot_partition_node_only(
+    &mut self,
+    _graph: &Graph<N, E, ()>,
+    _old_root_key: GraphNodeKey,
+    _new_root_key: GraphNodeKey,
+    _path_from_new_to_old: &[(GraphNodeKey, Option<GraphEdgeKey>)],
+  ) -> Result<(), Report> {
+    Ok(())
+  }
 }
 
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalDense

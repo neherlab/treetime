@@ -6,8 +6,9 @@ use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::io::fasta::FastaRecord;
+use crate::make_internal_report;
 use crate::representation::graph_ancestral::GraphAncestral;
-use crate::representation::graph_sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_compressed::PartitionCompressed;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
@@ -16,8 +17,10 @@ use crate::representation::seq::Seq;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::Itertools;
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
+use std::mem;
 use treetime_utils::container::get_exactly_one;
 
 #[derive(Clone, Debug)]
@@ -85,6 +88,93 @@ where
     edge_key: GraphEdgeKey,
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
+  }
+
+  fn supports_reroot_edge_split(&self) -> bool {
+    false
+  }
+
+  fn supports_old_root_removal(&self) -> bool {
+    false
+  }
+
+  fn reroot_partition_node_only(
+    &mut self,
+    _graph: &Graph<N, E, ()>,
+    old_root_key: GraphNodeKey,
+    new_root_key: GraphNodeKey,
+    path_from_new_to_old: &[(GraphNodeKey, Option<GraphEdgeKey>)],
+  ) -> Result<(), Report> {
+    // Build ordered list of edge keys on the reroot path (new root -> old root direction)
+    let reroot_edge_keys = path_from_new_to_old
+      .iter()
+      .filter_map(|(_, edge_key)| *edge_key)
+      .collect_vec();
+
+    // Compute new root sequence by applying edge mutations from old root toward new root
+    // We need to reverse the path to go from old root to new root
+    let mut new_root_seq = self.nodes[&old_root_key].seq.sequence.clone();
+    for edge_key in reroot_edge_keys.iter().rev() {
+      let edge_data = &self.edges[edge_key];
+      // Apply substitutions
+      for sub in &edge_data.subs {
+        // Original direction: parent->child means reff->qry
+        // We're going child->parent, so we apply reff (the parent state)
+        new_root_seq[sub.pos()] = sub.reff();
+      }
+      // Apply indels (reverse direction)
+      for indel in &edge_data.indels {
+        if indel.deletion {
+          // Original: deletion means child has gap. Reverse: child has sequence
+          new_root_seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+        } else {
+          // Original: insertion means child has sequence. Reverse: child has gap
+          new_root_seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+        }
+      }
+    }
+
+    // Invert edge data for each edge on the reroot path
+    for edge_key in &reroot_edge_keys {
+      let edge_data = self
+        .edges
+        .get_mut(edge_key)
+        .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
+
+      // Invert all substitutions
+      for sub in &mut edge_data.subs {
+        sub.invert();
+      }
+
+      // Invert all indels
+      for indel in &mut edge_data.indels {
+        indel.invert();
+      }
+
+      // Swap directional messages
+      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
+
+      // Reset msg_from_child (stale propagated message cache)
+      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
+    }
+
+    // Set new root sequence
+    self
+      .nodes
+      .get_mut(&new_root_key)
+      .ok_or_else(|| make_internal_report!("New root node {new_root_key:?} must exist"))?
+      .seq
+      .sequence = new_root_seq;
+
+    // Clear old root sequence
+    self
+      .nodes
+      .get_mut(&old_root_key)
+      .ok_or_else(|| make_internal_report!("Old root node {old_root_key:?} must exist"))?
+      .seq
+      .sequence = crate::seq![];
+
+    Ok(())
   }
 }
 

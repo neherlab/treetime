@@ -51,6 +51,11 @@ impl Sub {
       Ok(())
     }
   }
+
+  /// Invert the substitution direction by swapping ref and query
+  pub fn invert(&mut self) {
+    std::mem::swap(&mut self.reff, &mut self.qry);
+  }
 }
 
 impl FromStr for Sub {
