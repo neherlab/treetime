@@ -6,7 +6,7 @@ pub mod options;
 pub mod parse_date;
 pub mod parse_datetime;
 pub mod parse_uncertain_date;
-pub mod year_frac;
+pub mod year_fraction;
 
 #[cfg(test)]
 mod parse_uncertain_date_tests;

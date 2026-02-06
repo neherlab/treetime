@@ -10,7 +10,7 @@ use std::path::Path;
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
-use treetime_utils::datetime::year_frac::{date_range_to_year_fraction_range, date_to_year_fraction};
+use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range, date_to_year_fraction};
 use treetime_utils::file::open_file_or_stdin;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

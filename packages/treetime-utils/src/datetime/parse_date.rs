@@ -1,6 +1,6 @@
 use crate::datetime::date_range::DateRange;
 use crate::datetime::options::{DateParserOptions, TimeOfDay};
-use crate::datetime::year_frac::year_fraction_to_date;
+use crate::datetime::year_fraction::year_fraction_to_date;
 use crate::make_error;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
