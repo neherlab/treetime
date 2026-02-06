@@ -113,10 +113,7 @@ mod tests {
     let (log_lh_sparse, _) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
     let epsilon = 1e-6;
-    assert_ulps_eq!(
-      log_lh_dense, log_lh_sparse,
-      epsilon = epsilon,
-    );
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = epsilon,);
 
     Ok(())
   }
@@ -142,10 +139,8 @@ mod tests {
 
     let epsilon = 1e-6;
 
-    let root_key = find_node_key_by_name(&graph, "root")
-      .ok_or_else(|| eyre::eyre!("Root node not found"))?;
-    let ab_key = find_node_key_by_name(&graph, "AB")
-      .ok_or_else(|| eyre::eyre!("AB node not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre::eyre!("Root node not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre::eyre!("AB node not found"))?;
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
@@ -165,10 +160,7 @@ mod tests {
         );
 
         for (idx, (&dense_val, &sparse_val)) in dense_row.iter().zip(sparse_dis.iter()).enumerate() {
-          assert_ulps_eq!(
-            dense_val, sparse_val,
-            epsilon = epsilon,
-          );
+          assert_ulps_eq!(dense_val, sparse_val, epsilon = epsilon,);
         }
       }
     }
@@ -209,10 +201,7 @@ mod tests {
     let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
     let epsilon = 1e-6;
-    assert_ulps_eq!(
-      log_lh_dense, log_lh_sparse,
-      epsilon = epsilon,
-    );
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = epsilon,);
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
@@ -221,10 +210,7 @@ mod tests {
       if !node_data.profile.dis.is_empty() {
         for row in node_data.profile.dis.rows() {
           let sum: f64 = row.sum();
-          assert!(
-            sum.is_finite(),
-            "Dense node profile row sum is not finite: {sum}"
-          );
+          assert!(sum.is_finite(), "Dense node profile row sum is not finite: {sum}");
           assert!(
             (sum - 1.0).abs() < epsilon,
             "Dense node profile row not normalized: sum={sum}"

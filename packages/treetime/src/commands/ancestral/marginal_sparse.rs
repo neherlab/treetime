@@ -4,8 +4,8 @@ mod tests {
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTRParams, GTR};
-  use crate::io::fasta::{read_many_fasta_str, FastaRecord};
+  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
