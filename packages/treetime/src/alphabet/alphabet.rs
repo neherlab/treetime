@@ -102,14 +102,14 @@ impl Alphabet {
   }
 
   /// Create custom alphabet from a given config
-  pub fn with_config(cfg: &AlphabetConfig) -> Result<Self, Report> {
+  pub fn with_config(config: &AlphabetConfig) -> Result<Self, Report> {
     let AlphabetConfig {
       canonical,
       ambiguous,
       unknown,
       gap,
       treat_gap_as_unknown,
-    } = cfg;
+    } = config;
 
     let gap = AsciiChar::from(*gap);
     let unknown = AsciiChar::from(*unknown);
@@ -129,7 +129,7 @@ impl Alphabet {
     let determined = StateSet::from_union([canonical, ambiguous_keys]);
     let all = StateSet::from_union([canonical, ambiguous_keys, undetermined]);
 
-    let profile_map = cfg.create_profile_map()?;
+    let profile_map = config.create_profile_map()?;
 
     let mut char_to_index = vec![None; 128];
     let mut index_to_char = Vec::with_capacity(canonical.len());
