@@ -7,6 +7,7 @@ use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, Treeti
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
+use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
@@ -63,8 +64,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   };
 
   if !args.keep_root {
-    info!("First reroot");
-    todo!("reroot");
+    info!("First reroot (pre-ancestral)");
+    clock_model = reroot_tree(&mut graph, &partitions, &clock_params, args.clock_rate, &branch_params)
+      .wrap_err("Failed to reroot tree (pre-ancestral)")?;
   }
 
   if args.clock_filter > 0.0 {
@@ -90,8 +92,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   run_timetree(&mut graph, &partitions, &clock_model, None)?;
 
   if !args.keep_root {
-    info!("First reroot");
-    todo!("reroot");
+    info!("First reroot (post-ancestral)");
+    clock_model = reroot_tree(&mut graph, &partitions, &clock_params, args.clock_rate, &branch_params)
+      .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
   info!("### TreeTime: Optimisation rounds");

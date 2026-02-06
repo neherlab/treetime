@@ -4,6 +4,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
+use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
@@ -57,8 +58,13 @@ pub fn run_refinement_iteration(
 
   let n_diff = 0;
 
-  *clock_model = estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, args.keep_root, branch_params)
-    .wrap_err("Failed to update clock model")?;
+  *clock_model = if args.keep_root {
+    estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, true, branch_params)
+      .wrap_err("Failed to update clock model")?
+  } else {
+    reroot_tree(graph, partitions, clock_params, args.clock_rate, branch_params)
+      .wrap_err("Failed to update clock model with reroot")?
+  };
 
   Ok((n_diff, n_resolved))
 }
