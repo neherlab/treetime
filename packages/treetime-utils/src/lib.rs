@@ -10,7 +10,6 @@ pub mod float_fmt;
 pub mod fs;
 pub mod global_init;
 pub mod interval;
-pub mod iter;
 pub mod iterator;
 pub mod manyzip;
 pub mod mutex;

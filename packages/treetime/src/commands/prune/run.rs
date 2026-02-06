@@ -21,7 +21,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use treetime_utils::iter::iter_union;
+use treetime_utils::iterator::union::iterator_union;
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   if args.prune_empty && args.input_fastas.is_empty() {
@@ -274,7 +274,7 @@ fn collapse_sparse_edge(
       let mut partition = partition.write_arc();
       let removed_edge_subs = partition.edges[&edge_key].subs.clone(); // FIXME: avoid clone
       let new_edge = partition.edges.entry(new_edge_key).or_default();
-      new_edge.subs = iter_union(&removed_edge_subs, &new_edge.subs).cloned().collect_vec();
+      new_edge.subs = iterator_union(&removed_edge_subs, &new_edge.subs).cloned().collect_vec();
     }
   }
 
