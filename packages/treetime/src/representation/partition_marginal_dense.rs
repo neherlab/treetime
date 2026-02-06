@@ -1,4 +1,3 @@
-use crate::representation::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -8,6 +7,7 @@ use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::seq::Seq;

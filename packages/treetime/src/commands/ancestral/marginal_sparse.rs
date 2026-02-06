@@ -125,7 +125,7 @@ mod tests {
   //
   //     let partitions = partitions
   //       .into_iter()
-  //       .map(|p| PartitionLikelihood::from_parsimony(gtr.clone(), p))
+  //       .map(|p| PartitionLikelihood::from_fitch(gtr.clone(), p))
   //       .collect_vec();
   //
   //     let log_lh = run_marginal_sparse(&graph, &partitions)?;

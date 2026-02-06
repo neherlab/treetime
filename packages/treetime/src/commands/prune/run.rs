@@ -274,7 +274,9 @@ fn collapse_sparse_edge(
       let mut partition = partition.write_arc();
       let removed_edge_subs = partition.edges[&edge_key].subs.clone(); // FIXME: avoid clone
       let new_edge = partition.edges.entry(new_edge_key).or_default();
-      new_edge.subs = iterator_union(&removed_edge_subs, &new_edge.subs).cloned().collect_vec();
+      new_edge.subs = iterator_union(&removed_edge_subs, &new_edge.subs)
+        .cloned()
+        .collect_vec();
     }
   }
 

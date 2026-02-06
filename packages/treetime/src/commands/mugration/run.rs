@@ -120,10 +120,7 @@ pub struct DiscreteAttrAlphabet {
   pub letters: Vec<char>,
 }
 
-pub fn compute_alphabet(
-  unique_values: &IndexSet<String>,
-  missing_data: &str,
-) -> Result<DiscreteAttrAlphabet, Report> {
+pub fn compute_alphabet(unique_values: &IndexSet<String>, missing_data: &str) -> Result<DiscreteAttrAlphabet, Report> {
   let attr_to_letter: IndexMap<String, char> = unique_values
     .iter()
     .filter(|&value| value != missing_data)
