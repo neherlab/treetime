@@ -170,4 +170,3 @@ where
 
   Ok(clock_model)
 }
-

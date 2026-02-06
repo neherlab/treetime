@@ -11,6 +11,9 @@ pub use gaussian::{
 pub use gaussian_exponential::{gaussian_exponential_convolution, gaussian_exponential_convolution_grid};
 
 #[cfg(test)]
+mod gaussian_tests;
+
+#[cfg(test)]
 mod tests {
   use ctor::ctor;
   use treetime_utils::global_init::global_init;

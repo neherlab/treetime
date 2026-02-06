@@ -92,4 +92,3 @@ pub fn compute_integral_merger_rate(
     Array1::from(integral_values),
   ))
 }
-

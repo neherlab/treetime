@@ -143,4 +143,3 @@ pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<D
   // Unable to parse
   Ok(None)
 }
-

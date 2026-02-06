@@ -1,6 +1,7 @@
 use super::graph_dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use crate::graph::graph::{Graph, GraphNodeBackward, GraphNodeForward};
+use crate::graph::graph::Graph;
+use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;

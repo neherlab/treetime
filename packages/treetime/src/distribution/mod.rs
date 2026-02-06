@@ -22,6 +22,8 @@ mod distribution_convolution_tests;
 #[cfg(test)]
 mod distribution_division_tests;
 #[cfg(test)]
+mod distribution_function_tests;
+#[cfg(test)]
 mod distribution_scalar_multiplication_tests;
 #[cfg(test)]
 mod distribution_tests;

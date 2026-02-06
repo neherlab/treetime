@@ -3,7 +3,8 @@ use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_division::distribution_division;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
 use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::graph::{Graph, GraphNodeForward};
+use crate::graph::graph::Graph;
+use crate::graph::graph_traverse::GraphNodeForward;
 use eyre::Report;
 use std::sync::Arc;
 

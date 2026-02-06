@@ -253,7 +253,7 @@ pub trait EdgeToNwk {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::graph::graph::tests::{TestEdge, TestNode};
+  use crate::graph::graph_tests::{TestEdge, TestNode};
   use eyre::Report;
   use pretty_assertions::assert_eq;
 

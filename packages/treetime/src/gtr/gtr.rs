@@ -15,7 +15,10 @@ pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> 
 /// and hence to speed up the computations.
 /// NOTE: this assumes the diagonal of W is all zeros
 #[allow(clippy::type_complexity)]
-fn eig_single_site(W: &Array2<f64>, pi: &Array1<f64>) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
+pub(super) fn eig_single_site(
+  W: &Array2<f64>,
+  pi: &Array1<f64>,
+) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
   assert!(abs(W.diag().sum()) < 1e-10);
 
   let sqrt_pi: Array1<f64> = pi.mapv(f64::sqrt);
@@ -272,4 +275,3 @@ impl GTR {
 //     write!(f, "{}", String::from_utf8(buf).unwrap())
 //   }
 // }
-

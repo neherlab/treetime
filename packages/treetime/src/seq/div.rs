@@ -42,7 +42,7 @@ pub fn calculate_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
 mod tests {
   use super::*;
   use crate::commands::clock::clock_graph::GraphClock;
-  use crate::graph::graph::tests::{TestEdge, TestNode};
+  use crate::graph::graph_tests::{TestEdge, TestNode};
   use crate::io::nwk::nwk_read_str;
   use crate::o;
   use eyre::Report;

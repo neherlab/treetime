@@ -1,5 +1,9 @@
 use crate::commands::optimize::optimize_dense;
+use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::commands::optimize::optimize_sparse;
+use crate::commands::optimize::optimize_sparse_eval::{
+  evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
+};
 use crate::graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -116,99 +120,6 @@ impl OptimizationContribution {
         .sum(),
     }
   }
-}
-
-/// Evaluate dense contribution for a given branch length
-fn evaluate_dense_contribution(
-  contribution: &optimize_dense::PartitionContribution,
-  branch_length: f64,
-) -> OptimizationMetrics {
-  evaluate_dense_contribution_impl(contribution, branch_length, true)
-}
-
-/// Evaluate dense contribution for a given branch length (implementation with optional derivatives)
-fn evaluate_dense_contribution_impl(
-  contribution: &optimize_dense::PartitionContribution,
-  branch_length: f64,
-  compute_derivatives: bool,
-) -> OptimizationMetrics {
-  let mut log_lh = 0.0;
-  let mut derivative = 0.0;
-  let mut second_derivative = 0.0;
-
-  let gtr = &contribution.gtr;
-  let coefficients = &contribution.coefficients;
-
-  let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
-
-  if compute_derivatives {
-    let ev_exp_ev = &gtr.eigvals * &exp_ev;
-    let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
-
-    for coefficients in coefficients.outer_iter() {
-      let site_lh = (&coefficients * &exp_ev).sum();
-      log_lh += site_lh.ln();
-      derivative += (&coefficients * &ev_exp_ev).sum() / site_lh;
-      second_derivative +=
-        (&coefficients * &ev2_exp_ev).sum() / site_lh - ((&coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
-    }
-  } else {
-    for coefficients in coefficients.outer_iter() {
-      let site_lh = (&coefficients * &exp_ev).sum();
-      log_lh += site_lh.ln();
-    }
-  }
-
-  OptimizationMetrics::new(log_lh, derivative, second_derivative)
-}
-
-/// Evaluate sparse contribution for a given branch length
-fn evaluate_sparse_contribution(
-  contribution: &optimize_sparse::PartitionContribution,
-  branch_length: f64,
-) -> OptimizationMetrics {
-  evaluate_sparse_contribution_impl(contribution, branch_length, true)
-}
-
-/// Evaluate sparse contribution for a given branch length (implementation with optional derivatives)
-fn evaluate_sparse_contribution_impl(
-  contribution: &optimize_sparse::PartitionContribution,
-  branch_length: f64,
-  compute_derivatives: bool,
-) -> OptimizationMetrics {
-  let mut log_lh = 0.0;
-  let mut derivative = 0.0;
-  let mut second_derivative = 0.0;
-
-  let exp_ev = contribution.eigenvalues.mapv(|ev| (ev * branch_length).exp());
-
-  if compute_derivatives {
-    let ev_exp_ev = &contribution.eigenvalues * &exp_ev;
-    let ev2_exp_ev = &contribution.eigenvalues * &ev_exp_ev;
-
-    for optimize_sparse::SiteContribution {
-      multiplicity,
-      coefficients,
-    } in &contribution.site_contributions
-    {
-      let site_lh = (coefficients * &exp_ev).sum();
-      log_lh += multiplicity * site_lh.ln();
-      derivative += multiplicity * (coefficients * &ev_exp_ev).sum() / site_lh;
-      second_derivative += multiplicity * (coefficients * &ev2_exp_ev).sum() / site_lh
-        - (multiplicity * (coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
-    }
-  } else {
-    for optimize_sparse::SiteContribution {
-      multiplicity,
-      coefficients,
-    } in &contribution.site_contributions
-    {
-      let site_lh = (coefficients * &exp_ev).sum();
-      log_lh += multiplicity * site_lh.ln();
-    }
-  }
-
-  OptimizationMetrics::new(log_lh, derivative, second_derivative)
 }
 
 pub fn evaluate_mixed(contributions: &[OptimizationContribution], branch_length: f64) -> OptimizationMetrics {
