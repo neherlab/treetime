@@ -9,7 +9,7 @@ use crate::graph::node::{GraphNode, NodeAncestralOps};
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
-  Deletion, MarginalSparseSeqDistribution, ParsimonySeqDistribution, SparseEdgePartition, SparseNodePartition,
+  Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   SparseSeqInfo,
 };
 use crate::representation::partition_compressed::PartitionCompressed;
@@ -138,7 +138,7 @@ where
       .collect_vec();
 
     // Initialization of target data structure (could be done later)
-    let mut seq_dis = ParsimonySeqDistribution {
+    let mut seq_dis = FitchSeqDistribution {
       variable: btreemap! {},
       variable_indel: btreemap! {},
       composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
@@ -298,7 +298,7 @@ where
       let SparseSeqInfo {
         gaps,
         sequence,
-        fitch: ParsimonySeqDistribution {
+        fitch: FitchSeqDistribution {
           variable,
           variable_indel,
           ..
@@ -322,7 +322,7 @@ where
         sequence,
         composition,
         non_char,
-        fitch: ParsimonySeqDistribution {
+        fitch: FitchSeqDistribution {
           variable,
           variable_indel,
           ..

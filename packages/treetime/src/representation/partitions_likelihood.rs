@@ -37,7 +37,7 @@ impl PartitionLikelihood {
     Self { gtr, alphabet, length }
   }
 
-  pub fn from_parsimony(gtr: GTR, partition: PartitionParsimony) -> Self {
+  pub fn from_fitch(gtr: GTR, partition: PartitionParsimony) -> Self {
     Self::new(gtr, partition.alphabet, partition.length)
   }
 }

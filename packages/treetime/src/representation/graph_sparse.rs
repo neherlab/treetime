@@ -34,7 +34,7 @@ impl SparseNodePartition {
       .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
       .collect();
 
-    let seq_dis = ParsimonySeqDistribution {
+    let seq_dis = FitchSeqDistribution {
       variable,
       variable_indel: btreemap! {},
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
@@ -71,7 +71,7 @@ pub struct SparseSeqInfo {
   pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
   pub composition: Composition,      // count of all characters in the region that is not `non_char`
   pub sequence: Seq,
-  pub fitch: ParsimonySeqDistribution,
+  pub fitch: FitchSeqDistribution,
 }
 
 ///////////////////////////////////
@@ -115,7 +115,7 @@ impl Default for MarginalSparseSeqDistribution {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ParsimonySeqDistribution {
+pub struct FitchSeqDistribution {
   /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, StateSet>,
 
