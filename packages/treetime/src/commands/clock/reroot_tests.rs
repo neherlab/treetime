@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::{RerootPolicy, remove_node_if_trivial, reroot_in_place};
+use crate::commands::clock::reroot::{RerootParams, remove_node_if_trivial, reroot_in_place};
 use crate::graph::node::Named;
 use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 use crate::o;
@@ -69,12 +69,12 @@ fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report
 
   // Both flags false: don't split edges AND don't remove old root
   // This guarantees no new nodes created and no nodes removed
-  let policy = RerootPolicy {
-    allow_edge_split: false,
-    remove_old_root_if_trivial: false,
+  let reroot_params = RerootParams {
+    split_edge: false,
+    remove_trivial_root: false,
   };
 
-  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &policy)?;
+  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
 
   let node_count_after = graph.get_nodes().len();
   assert_eq!(
@@ -90,12 +90,12 @@ fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> R
   let (mut graph, options) = setup_reroot_test_graph()?;
   let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
-  let policy = RerootPolicy {
-    allow_edge_split: true,
-    remove_old_root_if_trivial: false,
+  let reroot_params = RerootParams {
+    split_edge: true,
+    remove_trivial_root: false,
   };
 
-  let new_root_key = reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &policy)?;
+  let new_root_key = reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
 
   if new_root_key != old_root_key {
     assert!(
@@ -112,9 +112,9 @@ fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
   let (mut graph, options) = setup_reroot_test_graph()?;
   let node_count_before = graph.get_nodes().len();
 
-  let policy = RerootPolicy::default();
+  let reroot_params = RerootParams::default();
 
-  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &policy)?;
+  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
 
   let node_count_after = graph.get_nodes().len();
   // With default policy, a new node may be created by edge split (count increases)

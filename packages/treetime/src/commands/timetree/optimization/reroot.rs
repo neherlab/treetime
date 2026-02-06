@@ -2,7 +2,7 @@ use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::RerootPolicy;
+use crate::commands::clock::reroot::RerootParams;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
@@ -26,26 +26,25 @@ pub fn reroot_tree(
 ) -> Result<ClockModel, Report> {
   let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
-  // Build reroot policy from partition capabilities
-  let policy = RerootPolicy {
-    allow_edge_split: partitions.iter().all(|p| p.read_arc().supports_reroot_edge_split()),
-    remove_old_root_if_trivial: partitions.iter().all(|p| p.read_arc().supports_old_root_removal()),
-  };
+  // Use default reroot params - always allow edge split and trivial root removal
+  let reroot_params = RerootParams::default();
 
   info!(
-    "Reroot policy: allow_edge_split={}, remove_old_root_if_trivial={}",
-    policy.allow_edge_split, policy.remove_old_root_if_trivial
+    "Reroot params: split_edge={}, remove_trivial_root={}",
+    reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 
   // Perform clock-based rerooting
   let clock_model =
-    estimate_clock_model_with_reroot_policy(graph, clock_params, clock_rate, false, branch_params, &policy)
+    estimate_clock_model_with_reroot_policy(graph, clock_params, clock_rate, false, branch_params, &reroot_params)
       .wrap_err("Failed to estimate clock model with reroot")?;
 
   let new_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
   // If root changed and we have partitions, update partition state
-  if new_root_key != old_root_key && !partitions.is_empty() {
+  // Note: old_root may have been removed if it became trivial after reroot
+  let old_root_exists = graph.get_node(old_root_key).is_some();
+  if new_root_key != old_root_key && !partitions.is_empty() && old_root_exists {
     info!(
       "Root changed from {} to {} - updating partitions",
       old_root_key.0, new_root_key.0

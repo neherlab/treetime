@@ -14,23 +14,62 @@ use smart_default::SmartDefault;
 
 /// Controls reroot behavior for graph topology changes.
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
-pub struct RerootPolicy {
+pub struct RerootParams {
   /// Allow creating a new node by splitting an edge during reroot.
   /// When false, reroot will snap to the nearest existing node endpoint.
   #[default = true]
-  pub allow_edge_split: bool,
+  pub split_edge: bool,
 
   /// Remove the old root node if it becomes trivial (one parent, one child) after reroot.
   /// When false, the old root is preserved even if trivial.
   #[default = true]
-  pub remove_old_root_if_trivial: bool,
+  pub remove_trivial_root: bool,
+}
+
+/// Information about an edge split during reroot.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EdgeSplitInfo {
+  /// The original edge that was split.
+  pub old_edge_key: GraphEdgeKey,
+  /// The new node created at the split point.
+  pub new_node_key: GraphNodeKey,
+  /// The edge from the original source to the new node.
+  pub parent_side_edge_key: GraphEdgeKey,
+  /// The edge from the new node to the original target.
+  pub child_side_edge_key: GraphEdgeKey,
+  /// Position along the edge where the split occurred (0.0 = target, 1.0 = source).
+  pub split_position: f64,
+}
+
+/// Information about an edge merge when removing a trivial node.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EdgeMergeInfo {
+  /// The node that was removed.
+  pub removed_node_key: GraphNodeKey,
+  /// The edge from parent to the removed node.
+  pub parent_edge_key: GraphEdgeKey,
+  /// The edge from the removed node to its child.
+  pub child_edge_key: GraphEdgeKey,
+  /// The new merged edge from parent to child.
+  pub merged_edge_key: GraphEdgeKey,
+}
+
+/// Result of a reroot operation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RerootResult {
+  /// The key of the new root node.
+  pub new_root_key: GraphNodeKey,
+  /// Information about edge split, if one occurred.
+  pub edge_split: Option<EdgeSplitInfo>,
+  /// Information about edge merge, if a trivial node was removed.
+  pub edge_merge: Option<EdgeMergeInfo>,
 }
 
 pub fn reroot_in_place<N, E, D>(
   graph: &mut Graph<N, E, D>,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
-  policy: &RerootPolicy,
+  reroot_params: &RerootParams,
 ) -> Result<GraphNodeKey, Report>
 where
   N: GraphNode + ClockNode + Default,
@@ -60,7 +99,7 @@ where
     target_key
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     source_key
-  } else if policy.allow_edge_split {
+  } else if reroot_params.split_edge {
     create_new_root_node(graph, edge_key, split, clock_set)?
   } else {
     // Edge split disallowed: snap to nearest endpoint
@@ -70,7 +109,7 @@ where
   if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
 
-    if policy.remove_old_root_if_trivial {
+    if reroot_params.remove_trivial_root {
       // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
       // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
       remove_node_if_trivial(graph, old_root_key)?;

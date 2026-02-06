@@ -2,7 +2,7 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::{RerootPolicy, reroot_in_place};
+use crate::commands::clock::reroot::{RerootParams, reroot_in_place};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
@@ -118,8 +118,8 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  let policy = RerootPolicy::default();
-  estimate_clock_model_with_reroot_policy(graph, options, clock_rate, keep_root, optimization_params, &policy)
+  let reroot_params = RerootParams::default();
+  estimate_clock_model_with_reroot_policy(graph, options, clock_rate, keep_root, optimization_params, &reroot_params)
 }
 
 /// Estimates clock model with optional rerooting using explicit policy.
@@ -129,7 +129,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   clock_rate: Option<f64>,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
-  policy: &RerootPolicy,
+  reroot_params: &RerootParams,
 ) -> Result<ClockModel, Report>
 where
   N: GraphNode + ClockNode + Default,
@@ -152,7 +152,7 @@ where
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");
-    let new_root_key = reroot_in_place(graph, options, optimization_params, policy)?;
+    let new_root_key = reroot_in_place(graph, options, optimization_params, reroot_params)?;
     info!("Rerooted to node {}", new_root_key.0);
     debug!("Rerooting completed");
   } else {

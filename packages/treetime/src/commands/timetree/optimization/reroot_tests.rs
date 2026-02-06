@@ -75,7 +75,8 @@ fn find_node_key_by_name(graph: &GraphTimetree, name: &str) -> Option<GraphNodeK
 }
 
 #[test]
-fn test_reroot_tree_sparse_disables_edge_split() -> Result<(), Report> {
+fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
+  // Test that reroot works correctly with sparse partitions when edge split is enabled
   let aln = gap_free_alignment()?;
   let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
   setup_dates(&graph);
@@ -103,11 +104,10 @@ fn test_reroot_tree_sparse_disables_edge_split() -> Result<(), Report> {
   clock_regression_backward(&graph, &clock_params);
   clock_regression_forward(&graph, &clock_params);
 
-  let node_count_before = graph.get_nodes().len();
-
   let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
   let partitions = vec![partition];
 
+  // Should complete without error - edge split and trivial root removal are now always enabled
   let _clock_model = reroot_tree(
     &mut graph,
     &partitions,
@@ -116,12 +116,8 @@ fn test_reroot_tree_sparse_disables_edge_split() -> Result<(), Report> {
     &BranchPointOptimizationParams::default(),
   )?;
 
-  let node_count_after = graph.get_nodes().len();
-
-  assert_eq!(
-    node_count_before, node_count_after,
-    "Node count should be unchanged when sparse partition disables edge split"
-  );
+  // Verify we still have a valid tree with exactly one root
+  let _root = graph.get_exactly_one_root()?;
 
   Ok(())
 }
