@@ -52,10 +52,11 @@ pub fn reroot_tree(
   if new_root_key != old_root_key && !partitions.is_empty() {
     info!("Root changed from {} to {} - updating partitions", old_root_key.0, new_root_key.0);
 
-    // Compute path from new root to old root (post-reroot graph)
+    // Compute path from old root to new root (post-reroot graph)
+    // After reroot, new_root is at the top, so we walk FROM old_root TO new_root (upward)
     let path = graph
-      .path_from_node_to_node(new_root_key, old_root_key)
-      .wrap_err("Failed to compute path from new root to old root")?;
+      .path_from_node_to_node(old_root_key, new_root_key)
+      .wrap_err("Failed to compute path from old root to new root")?;
 
     // Convert to key-based representation for partition reroot
     let path_keys = path

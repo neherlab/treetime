@@ -24,8 +24,8 @@ where
 
   /// Update partition state after a node-only reroot (no edge splitting)
   ///
-  /// `path_from_new_to_old` is the path from new root to old root, matching
-  /// the format returned by `Graph::path_from_node_to_node(new_root, old_root)`.
+  /// `path_from_old_to_new` is the path from old root to new root (upward in post-reroot tree),
+  /// matching the format returned by `Graph::path_from_node_to_node(old_root, new_root)`.
   /// Each element is `(node_key, Option<edge_key>)` where the edge connects
   /// to the next node in the path.
   fn reroot_partition_node_only(
@@ -33,7 +33,7 @@ where
     graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,
     new_root_key: GraphNodeKey,
-    path_from_new_to_old: &[(GraphNodeKey, Option<GraphEdgeKey>)],
+    path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
   ) -> Result<(), Report>;
 }
 

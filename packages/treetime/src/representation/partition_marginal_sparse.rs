@@ -103,18 +103,18 @@ where
     _graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,
     new_root_key: GraphNodeKey,
-    path_from_new_to_old: &[(GraphNodeKey, Option<GraphEdgeKey>)],
+    path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
   ) -> Result<(), Report> {
-    // Build ordered list of edge keys on the reroot path (new root -> old root direction)
-    let reroot_edge_keys = path_from_new_to_old
+    // Build ordered list of edge keys on the reroot path (old root -> new root direction)
+    let reroot_edge_keys = path_from_old_to_new
       .iter()
       .filter_map(|(_, edge_key)| *edge_key)
       .collect_vec();
 
     // Compute new root sequence by applying edge mutations from old root toward new root
-    // We need to reverse the path to go from old root to new root
+    // Path is already in old->new direction, so iterate forward
     let mut new_root_seq = self.nodes[&old_root_key].seq.sequence.clone();
-    for edge_key in reroot_edge_keys.iter().rev() {
+    for edge_key in &reroot_edge_keys {
       let edge_data = &self.edges[edge_key];
       // Apply substitutions
       for sub in &edge_data.subs {

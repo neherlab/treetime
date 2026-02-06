@@ -72,7 +72,7 @@ where
     _graph: &Graph<N, E, ()>,
     _old_root_key: GraphNodeKey,
     _new_root_key: GraphNodeKey,
-    _path_from_new_to_old: &[(GraphNodeKey, Option<GraphEdgeKey>)],
+    _path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
   ) -> Result<(), Report> {
     Ok(())
   }
