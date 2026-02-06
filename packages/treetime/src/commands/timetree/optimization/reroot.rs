@@ -28,12 +28,8 @@ pub fn reroot_tree(
 
   // Build reroot policy from partition capabilities
   let policy = RerootPolicy {
-    allow_edge_split: partitions
-      .iter()
-      .all(|p| p.read_arc().supports_reroot_edge_split()),
-    remove_old_root_if_trivial: partitions
-      .iter()
-      .all(|p| p.read_arc().supports_old_root_removal()),
+    allow_edge_split: partitions.iter().all(|p| p.read_arc().supports_reroot_edge_split()),
+    remove_old_root_if_trivial: partitions.iter().all(|p| p.read_arc().supports_old_root_removal()),
   };
 
   info!(
@@ -50,7 +46,10 @@ pub fn reroot_tree(
 
   // If root changed and we have partitions, update partition state
   if new_root_key != old_root_key && !partitions.is_empty() {
-    info!("Root changed from {} to {} - updating partitions", old_root_key.0, new_root_key.0);
+    info!(
+      "Root changed from {} to {} - updating partitions",
+      old_root_key.0, new_root_key.0
+    );
 
     // Compute path from old root to new root (post-reroot graph)
     // After reroot, new_root is at the top, so we walk FROM old_root TO new_root (upward)

@@ -44,7 +44,14 @@ fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams), Report> {
 
   let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
   for n in graph.get_leaves() {
-    let name = n.read_arc().payload().read_arc().name().expect("Leaf has name").as_ref().to_owned();
+    let name = n
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name()
+      .expect("Leaf has name")
+      .as_ref()
+      .to_owned();
     n.write_arc().payload().write_arc().time = Some(dates[&name]);
   }
 
@@ -70,7 +77,10 @@ fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report
   reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &policy)?;
 
   let node_count_after = graph.get_nodes().len();
-  assert_eq!(node_count_before, node_count_after, "Node count should be unchanged when edge split is disabled and old root is preserved");
+  assert_eq!(
+    node_count_before, node_count_after,
+    "Node count should be unchanged when edge split is disabled and old root is preserved"
+  );
 
   Ok(())
 }
@@ -110,7 +120,10 @@ fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
   // With default policy, a new node may be created by edge split (count increases)
   // or old trivial root may be removed (count stays same or decreases by 1 if split created one)
   // The key is it should not crash and should complete successfully
-  assert!(node_count_after >= node_count_before - 1, "Node count should be reasonable after reroot with default policy");
+  assert!(
+    node_count_after >= node_count_before - 1,
+    "Node count should be reasonable after reroot with default policy"
+  );
 
   Ok(())
 }

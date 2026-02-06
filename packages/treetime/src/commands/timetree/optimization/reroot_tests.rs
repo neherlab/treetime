@@ -67,7 +67,7 @@ fn find_node_key_by_name(graph: &GraphTimetree, name: &str) -> Option<GraphNodeK
   for node in graph.get_nodes() {
     let node = node.read_arc();
     let payload = node.payload().read_arc();
-    if payload.name().map_or(false, |n| n.as_ref() == name) {
+    if payload.name().is_some_and(|n| n.as_ref() == name) {
       return Some(node.key());
     }
   }
@@ -176,8 +176,8 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     },
     edges: btreemap! {
       edge_to_a_key => SparseEdgePartition {
-        subs: vec![sub_original.clone()],
-        indels: vec![indel_original.clone()],
+        subs: vec![sub_original],
+        indels: vec![indel_original],
         msg_to_parent: MarginalSparseSeqDistribution::default(),
         msg_to_child: MarginalSparseSeqDistribution::default(),
         msg_from_child: MarginalSparseSeqDistribution {
@@ -212,8 +212,8 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
   assert_eq!(indel_after.deletion, false, "Indel deletion flag should be toggled");
 
   // Verify msg_from_child is cleared
-  assert_eq!(
-    edge_data.msg_from_child.log_lh, 0.0,
+  assert!(
+    edge_data.msg_from_child.log_lh.abs() < f64::EPSILON,
     "msg_from_child should be reset to default"
   );
 
@@ -283,7 +283,7 @@ fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
 
   // Set root sequence explicitly
   if let Some(n) = sparse_partition.nodes.get_mut(&root_key) {
-    n.seq.sequence = root_seq.clone();
+    n.seq.sequence = root_seq;
   }
 
   // Build path from root (old root) to A (new root)
