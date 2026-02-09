@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
+use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges};
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
@@ -80,7 +80,84 @@ impl HasLogLh for PartitionMarginalSparse {
 
 impl PartitionMarginal for PartitionMarginalSparse {}
 
-impl PartitionRerootOps for PartitionMarginalSparse {}
+impl PartitionRerootOps for PartitionMarginalSparse {
+  fn apply_reroot(&mut self, changes: &RerootChanges) -> Result<(), Report> {
+    // Handle edge split: create new node entry, move mutations to child-side edge
+    if let Some(info) = &changes.edge_split {
+      self
+        .nodes
+        .insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
+
+      let old_edge_data = self
+        .edges
+        .remove(&info.old_edge_key)
+        .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
+
+      // Child-side edge gets all mutations (they describe parent->child relationship)
+      self.edges.insert(info.child_side_edge_key, old_edge_data);
+
+      // Parent-side edge is empty (no mutations between parent and new split node)
+      self
+        .edges
+        .insert(info.parent_side_edge_key, SparseEdgePartition::default());
+    }
+
+    // Handle edge merge: compose mutations from two edges
+    if let Some(info) = &changes.edge_merge {
+      self.nodes.remove(&info.removed_node_key);
+
+      let parent_edge = self
+        .edges
+        .remove(&info.parent_edge_key)
+        .ok_or_else(|| make_internal_report!("Parent edge {:?} must exist for merge", info.parent_edge_key))?;
+      let child_edge = self
+        .edges
+        .remove(&info.child_edge_key)
+        .ok_or_else(|| make_internal_report!("Child edge {:?} must exist for merge", info.child_edge_key))?;
+
+      // Compose substitutions: parent then child
+      let merged_subs = compose_substitutions(&parent_edge.subs, &child_edge.subs)?;
+
+      // Compose indels: concatenate (parent indels first, then child indels)
+      let mut merged_indels = parent_edge.indels;
+      merged_indels.extend(child_edge.indels);
+
+      let merged_edge = SparseEdgePartition {
+        subs: merged_subs,
+        indels: merged_indels,
+        ..SparseEdgePartition::default()
+      };
+
+      self.edges.insert(info.merged_edge_key, merged_edge);
+    }
+
+    // Invert edge data for each edge on the reroot path
+    for edge_key in &changes.inverted_edge_keys {
+      let edge_data = self
+        .edges
+        .get_mut(edge_key)
+        .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
+
+      // Invert all substitutions
+      for sub in &mut edge_data.subs {
+        sub.invert();
+      }
+
+      // Invert all indels
+      for indel in &mut edge_data.indels {
+        indel.invert();
+      }
+
+      // Swap directional messages
+      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
+
+      // Reset msg_from_child (stale propagated message cache)
+      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
+    }
+
+    Ok(())
+  }
+}
 
 impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
