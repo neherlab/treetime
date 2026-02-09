@@ -282,6 +282,54 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_total_likelihood_marginal_sparse_all_triplets() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let alphabet = Alphabet::default();
+    let mut total_lh = 0.0;
+
+    // Use asymmetric GTR model with non-uniform stationary distribution
+    let mu = 1.0;
+    let pi = array![0.9, 0.06, 0.02, 0.02];
+    let gtr = GTR::new(GTRParams {
+      alphabet: alphabet.clone(),
+      W: None,
+      pi,
+      mu,
+    })?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    // Generate all possible triplets (4^3 = 64 combinations)
+    let states = ['A', 'C', 'G', 'T'];
+    for &state_a in &states {
+      for &state_b in &states {
+        for &state_c in &states {
+          // Create alignment with single position containing this triplet
+          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &NUC_ALPHABET)?;
+
+          let partitions_marginal_sparse = [Arc::new(RwLock::new(PartitionMarginalSparse {
+            index: 0,
+            gtr: gtr.clone(),
+            alphabet: alphabet.clone(),
+            length: get_common_length(&aln)?,
+            nodes: btreemap! {},
+            edges: btreemap! {},
+          }))];
+
+          compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+
+          let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
+          total_lh += log_lh.exp();
+        }
+      }
+    }
+
+    // since we test all possible triplets, the total likelihood should be 1
+    pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
+    Ok(())
+  }
+
   //   #[test]
   //   fn test_root_state() -> Result<(), Report> {
   //     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;

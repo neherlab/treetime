@@ -10,6 +10,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use approx::assert_ulps_eq;
@@ -280,6 +281,54 @@ mod tests {
     assert_ulps_eq!(log_lh1, log_lh3, epsilon = epsilon);
     assert_ulps_eq!(log_lh2, log_lh3, epsilon = epsilon);
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_total_likelihood_marginal_dense_all_triplets() -> Result<(), Report> {
+    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
+
+    let alphabet = Alphabet::default();
+    let mut total_lh = 0.0;
+
+    // Use asymmetric GTR model with non-uniform stationary distribution
+    let mu = 1.0;
+    let pi = array![0.9, 0.06, 0.02, 0.02];
+    let gtr = GTR::new(GTRParams {
+      alphabet: alphabet.clone(),
+      W: None,
+      pi,
+      mu,
+    })?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    // Generate all possible triplets (4^3 = 64 combinations)
+    let states = ['A', 'C', 'G', 'T'];
+    for &state_a in &states {
+      for &state_b in &states {
+        for &state_c in &states {
+          // Create alignment with single position containing this triplet
+          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &NUC_ALPHABET)?;
+
+          let partitions_marginal_dense = [Arc::new(RwLock::new(PartitionMarginalDense {
+            index: 0,
+            gtr: gtr.clone(),
+            alphabet: alphabet.clone(),
+            length: get_common_length(&aln)?,
+            nodes: btreemap! {},
+            edges: btreemap! {},
+          }))];
+
+          initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
+
+          let log_lh = update_marginal(&graph, &partitions_marginal_dense)?;
+          total_lh += log_lh.exp();
+        }
+      }
+    }
+
+    // since we test all possible triplets, the total likelihood should be 1
+    pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
     Ok(())
   }
 
