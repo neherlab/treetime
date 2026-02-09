@@ -1,10 +1,26 @@
-use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
+use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges};
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
 use eyre::Report;
+
+/// Trait for partition updates during reroot operations.
+///
+/// Default implementation is a no-op, suitable for dense partitions that don't track mutations.
+/// Sparse partitions override to update mutation assignments when edges are split, merged, or inverted.
+pub trait PartitionRerootOps: Send + Sync {
+  /// Apply all partition updates for a reroot operation.
+  ///
+  /// Called after graph topology changes are complete. The `changes` struct bundles:
+  /// - Edge split info (if a new node was created)
+  /// - Edge merge info (if the old root was removed)
+  /// - Inverted edge keys (path from old to new root)
+  fn apply_reroot(&mut self, _changes: &RerootChanges) -> Result<(), Report> {
+    Ok(())
+  }
+}
 
 /// Trait for timetree-specific partition operations
 /// Separate from PartitionMarginalOps to avoid polluting the ancestral command
@@ -40,19 +56,21 @@ where
   ) -> Result<(), Report>;
 }
 
-/// Combined trait for partitions that support both marginal and timetree operations
-/// This allows trait objects to be used for both ancestral reconstruction and timetree inference
-pub trait PartitionTimetreeAll<N, E>: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh
+/// Combined trait for partitions that support both marginal and timetree operations.
+/// This allows trait objects to be used for both ancestral reconstruction and timetree inference.
+/// Includes `PartitionRerootOps` for reroot support with default no-op.
+pub trait PartitionTimetreeAll<N, E>:
+  PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
 }
 
-/// Blanket implementation: any type implementing all three traits automatically implements the combined trait
+/// Blanket implementation: any type implementing all required traits automatically implements the combined trait
 impl<T, N, E> PartitionTimetreeAll<N, E> for T
 where
-  T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + HasLogLh,
+  T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {

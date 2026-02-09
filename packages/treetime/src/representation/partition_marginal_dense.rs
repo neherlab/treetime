@@ -1,4 +1,5 @@
 use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
+use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -47,6 +48,8 @@ impl HasLogLh for PartitionMarginalDense {
 }
 
 impl PartitionMarginal for PartitionMarginalDense {}
+
+impl PartitionRerootOps for PartitionMarginalDense {}
 
 impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
 where

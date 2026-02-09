@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
+use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -78,6 +79,8 @@ impl HasLogLh for PartitionMarginalSparse {
 }
 
 impl PartitionMarginal for PartitionMarginalSparse {}
+
+impl PartitionRerootOps for PartitionMarginalSparse {}
 
 impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
