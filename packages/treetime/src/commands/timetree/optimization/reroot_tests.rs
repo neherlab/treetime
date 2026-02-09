@@ -194,8 +194,8 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
   // Path format: [(node_key, edge_to_next), ...] where first node is old_root
   let path_from_old_to_new = vec![(root_key, Some(edge_to_a_key)), (a_key, None)];
 
-  // Call reroot_partition_node_only directly
-  sparse_partition.reroot_partition_node_only(&graph, root_key, a_key, &path_from_old_to_new)?;
+  // Call update_partition_after_reroot directly
+  sparse_partition.update_partition_after_reroot(&graph, root_key, a_key, &path_from_old_to_new)?;
 
   // Verify substitution is inverted
   let edge_data = &sparse_partition.edges[&edge_to_a_key];
@@ -285,8 +285,8 @@ fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
   // Build path from root (old root) to A (new root)
   let path_from_old_to_new = vec![(root_key, Some(edge_to_a_key)), (a_key, None)];
 
-  // Call reroot_partition_node_only
-  sparse_partition.reroot_partition_node_only(&graph, root_key, a_key, &path_from_old_to_new)?;
+  // Call update_partition_after_reroot
+  sparse_partition.update_partition_after_reroot(&graph, root_key, a_key, &path_from_old_to_new)?;
 
   // Verify old root sequence is cleared
   let old_root_seq = &sparse_partition.nodes[&root_key].seq.sequence;

@@ -1,3 +1,4 @@
+use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
@@ -16,19 +17,19 @@ where
   /// Create optimization contribution for branch length likelihood computation
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
 
-  /// Whether this partition supports edge splitting during reroot
-  fn supports_reroot_edge_split(&self) -> bool;
+  /// Handle edge split during reroot: create new node entry, move mutations to child-side edge
+  fn handle_edge_split(&mut self, info: &EdgeSplitInfo) -> Result<(), Report>;
 
-  /// Whether this partition supports old root removal during reroot
-  fn supports_old_root_removal(&self) -> bool;
+  /// Handle edge merge when removing trivial node: compose mutations from two edges
+  fn handle_edge_merge(&mut self, info: &EdgeMergeInfo) -> Result<(), Report>;
 
-  /// Update partition state after a node-only reroot (no edge splitting)
+  /// Update partition state after reroot path inversion
   ///
   /// `path_from_old_to_new` is the path from old root to new root (upward in post-reroot tree),
   /// matching the format returned by `Graph::path_from_node_to_node(old_root, new_root)`.
   /// Each element is `(node_key, Option<edge_key>)` where the edge connects
   /// to the next node in the path.
-  fn reroot_partition_node_only(
+  fn update_partition_after_reroot(
     &mut self,
     graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,

@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -90,15 +91,59 @@ where
     crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
   }
 
-  fn supports_reroot_edge_split(&self) -> bool {
-    false
+  fn handle_edge_split(&mut self, info: &EdgeSplitInfo) -> Result<(), Report> {
+    // Create new node entry with empty placeholder (sequence computed during marginal update)
+    self.nodes.insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
+
+    // Move mutations from old edge to child-side edge, parent-side edge is empty
+    let old_edge_data = self
+      .edges
+      .remove(&info.old_edge_key)
+      .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
+
+    // Child-side edge gets all mutations (they describe parent->child relationship)
+    self.edges.insert(info.child_side_edge_key, old_edge_data);
+
+    // Parent-side edge is empty (no mutations between parent and new split node)
+    self.edges.insert(info.parent_side_edge_key, SparseEdgePartition::default());
+
+    Ok(())
   }
 
-  fn supports_old_root_removal(&self) -> bool {
-    false
+  fn handle_edge_merge(&mut self, info: &EdgeMergeInfo) -> Result<(), Report> {
+    // Remove the trivial node
+    self.nodes.remove(&info.removed_node_key);
+
+    // Get mutations from both edges
+    let parent_edge = self
+      .edges
+      .remove(&info.parent_edge_key)
+      .ok_or_else(|| make_internal_report!("Parent edge {:?} must exist for merge", info.parent_edge_key))?;
+    let child_edge = self
+      .edges
+      .remove(&info.child_edge_key)
+      .ok_or_else(|| make_internal_report!("Child edge {:?} must exist for merge", info.child_edge_key))?;
+
+    // Compose substitutions: parent then child
+    let merged_subs = compose_substitutions(&parent_edge.subs, &child_edge.subs)?;
+
+    // Compose indels: concatenate (parent indels first, then child indels)
+    let mut merged_indels = parent_edge.indels;
+    merged_indels.extend(child_edge.indels);
+
+    // Create merged edge with composed mutations
+    let merged_edge = SparseEdgePartition {
+      subs: merged_subs,
+      indels: merged_indels,
+      ..SparseEdgePartition::default()
+    };
+
+    self.edges.insert(info.merged_edge_key, merged_edge);
+
+    Ok(())
   }
 
-  fn reroot_partition_node_only(
+  fn update_partition_after_reroot(
     &mut self,
     _graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,
@@ -111,26 +156,46 @@ where
       .filter_map(|(_, edge_key)| *edge_key)
       .collect_vec();
 
+    // If old root was removed by edge merge, there's no path to traverse.
+    // The new root already has its sequence set by handle_edge_split.
+    // Just need to handle edge inversions if any edges exist on the path.
+    let old_root_exists = self.nodes.contains_key(&old_root_key);
+
     // Compute new root sequence by applying edge mutations from old root toward new root
-    // Path is already in old->new direction, so iterate forward
-    let mut new_root_seq = self.nodes[&old_root_key].seq.sequence.clone();
-    for edge_key in &reroot_edge_keys {
-      let edge_data = &self.edges[edge_key];
-      // Apply substitutions
-      for sub in &edge_data.subs {
-        // Original direction: parent->child means reff->qry
-        // We're going child->parent, so we apply reff (the parent state)
-        new_root_seq[sub.pos()] = sub.reff();
-      }
-      // Apply indels (reverse direction)
-      for indel in &edge_data.indels {
-        if indel.deletion {
-          // Original: deletion means child has gap. Reverse: child has sequence
-          new_root_seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-        } else {
-          // Original: insertion means child has sequence. Reverse: child has gap
-          new_root_seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+    // (only if old root still exists and has a sequence to start from)
+    if old_root_exists && !reroot_edge_keys.is_empty() {
+      let mut new_root_seq = self.nodes[&old_root_key].seq.sequence.clone();
+      for edge_key in &reroot_edge_keys {
+        let edge_data = &self.edges[edge_key];
+        // Apply substitutions
+        for sub in &edge_data.subs {
+          // Original direction: parent->child means reff->qry
+          // We're going child->parent, so we apply reff (the parent state)
+          new_root_seq[sub.pos()] = sub.reff();
         }
+        // Apply indels (reverse direction)
+        for indel in &edge_data.indels {
+          if indel.deletion {
+            // Original: deletion means child has gap. Reverse: child has sequence
+            new_root_seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+          } else {
+            // Original: insertion means child has sequence. Reverse: child has gap
+            new_root_seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+          }
+        }
+      }
+
+      // Set new root sequence
+      self
+        .nodes
+        .get_mut(&new_root_key)
+        .ok_or_else(|| make_internal_report!("New root node {new_root_key:?} must exist"))?
+        .seq
+        .sequence = new_root_seq;
+
+      // Clear old root sequence
+      if let Some(old_root_node) = self.nodes.get_mut(&old_root_key) {
+        old_root_node.seq.sequence = crate::seq![];
       }
     }
 
@@ -157,22 +222,6 @@ where
       // Reset msg_from_child (stale propagated message cache)
       edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
     }
-
-    // Set new root sequence
-    self
-      .nodes
-      .get_mut(&new_root_key)
-      .ok_or_else(|| make_internal_report!("New root node {new_root_key:?} must exist"))?
-      .seq
-      .sequence = new_root_seq;
-
-    // Clear old root sequence
-    self
-      .nodes
-      .get_mut(&old_root_key)
-      .ok_or_else(|| make_internal_report!("Old root node {old_root_key:?} must exist"))?
-      .seq
-      .sequence = crate::seq![];
 
     Ok(())
   }
@@ -277,4 +326,40 @@ impl PartitionWithGtrInference for PartitionMarginalSparse {
   fn get_edge_substitutions(&self, edge_key: GraphEdgeKey, _graph: &GraphAncestral) -> Vec<Sub> {
     self.edges[&edge_key].subs.clone()
   }
+}
+
+/// Compose substitutions from two edges: parent edge then child edge.
+/// Applies cancellation rules: A5G + G5T = A5T, A5G + G5A = (no mutation).
+fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
+  // Index child subs by position for efficient lookup
+  let child_by_pos: BTreeMap<usize, &Sub> = child_subs.iter().map(|s| (s.pos(), s)).collect();
+
+  let mut result = Vec::with_capacity(parent_subs.len() + child_subs.len());
+
+  // Process parent subs - compose with child if position overlaps
+  for parent_sub in parent_subs {
+    let pos = parent_sub.pos();
+    if let Some(child_sub) = child_by_pos.get(&pos) {
+      // Composition: parent reff -> parent qry -> child qry
+      // Net effect: parent reff -> child qry
+      if parent_sub.reff() != child_sub.qry() {
+        // Non-cancelling: A5G + G5T = A5T
+        result.push(Sub::new(parent_sub.reff(), pos, child_sub.qry())?);
+      }
+      // else: Cancelling mutation A5G + G5A = no net change
+    } else {
+      // No child mutation at this position - keep parent mutation
+      result.push(parent_sub.clone());
+    }
+  }
+
+  // Add child subs at positions not covered by parent
+  let parent_by_pos: BTreeMap<usize, &Sub> = parent_subs.iter().map(|s| (s.pos(), s)).collect();
+  for child_sub in child_subs {
+    if !parent_by_pos.contains_key(&child_sub.pos()) {
+      result.push(child_sub.clone());
+    }
+  }
+
+  Ok(result)
 }

@@ -2,7 +2,7 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::{RerootParams, reroot_in_place};
+use crate::commands::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
 use crate::graph::breadth_first::GraphTraversalContinuation;
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
@@ -30,6 +30,13 @@ pub struct ClockParams {
   #[clap(long, default_value_t = ClockParams::default().variance_offset_leaf)]
   #[default = 1.0]
   pub variance_offset_leaf: f64,
+}
+
+/// Result of clock model estimation with optional rerooting.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClockRerootResult {
+  pub clock_model: ClockModel,
+  pub reroot_result: Option<RerootResult>,
 }
 
 pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams)
@@ -119,7 +126,9 @@ where
   D: Send + Sync,
 {
   let reroot_params = RerootParams::default();
-  estimate_clock_model_with_reroot_policy(graph, options, clock_rate, keep_root, optimization_params, &reroot_params)
+  let result =
+    estimate_clock_model_with_reroot_policy(graph, options, clock_rate, keep_root, optimization_params, &reroot_params)?;
+  Ok(result.clock_model)
 }
 
 /// Estimates clock model with optional rerooting using explicit policy.
@@ -130,7 +139,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
-) -> Result<ClockModel, Report>
+) -> Result<ClockRerootResult, Report>
 where
   N: GraphNode + ClockNode + Default,
   E: GraphEdge + ClockEdge + Default,
@@ -146,7 +155,7 @@ where
   clock_regression_backward(graph, options);
   debug!("Backward regression completed");
 
-  if !keep_root {
+  let reroot_result = if !keep_root {
     info!("### Running forward regression to find optimal root");
     clock_regression_forward(graph, options);
     debug!("Forward regression completed");
@@ -155,9 +164,11 @@ where
     let reroot_result = reroot_in_place(graph, options, optimization_params, reroot_params)?;
     info!("Rerooted to node {}", reroot_result.new_root_key.0);
     debug!("Rerooting completed");
+    Some(reroot_result)
   } else {
     info!("### Keeping original root (--keep-root enabled)");
-  }
+    None
+  };
 
   info!("### Extracting clock model from root");
   let root = graph.get_exactly_one_root()?;
@@ -186,5 +197,8 @@ where
     serde_json::to_string_pretty(&clock_model).unwrap_or_else(|_| "<serialization failed>".to_owned())
   );
 
-  Ok(clock_model)
+  Ok(ClockRerootResult {
+    clock_model,
+    reroot_result,
+  })
 }

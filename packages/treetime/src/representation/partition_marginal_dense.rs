@@ -1,3 +1,4 @@
+use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
 use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -59,21 +60,24 @@ where
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
-  fn supports_reroot_edge_split(&self) -> bool {
-    true
+  fn handle_edge_split(&mut self, _info: &EdgeSplitInfo) -> Result<(), Report> {
+    // Dense partition stores full probability vectors - no mutation tracking needed
+    Ok(())
   }
 
-  fn supports_old_root_removal(&self) -> bool {
-    true
+  fn handle_edge_merge(&mut self, _info: &EdgeMergeInfo) -> Result<(), Report> {
+    // Dense partition stores full probability vectors - no mutation tracking needed
+    Ok(())
   }
 
-  fn reroot_partition_node_only(
+  fn update_partition_after_reroot(
     &mut self,
     _graph: &Graph<N, E, ()>,
     _old_root_key: GraphNodeKey,
     _new_root_key: GraphNodeKey,
     _path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
   ) -> Result<(), Report> {
+    // Dense partition will be fully recomputed via marginal update
     Ok(())
   }
 }

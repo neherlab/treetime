@@ -20,6 +20,26 @@ pub struct SparseNodePartition {
 }
 
 impl SparseNodePartition {
+  /// Create an empty placeholder node partition for edge split operations.
+  /// The sequence and profile will be computed during the marginal update pass.
+  pub fn empty(alphabet: &Alphabet) -> Self {
+    Self {
+      seq: SparseSeqInfo {
+        unknown: vec![],
+        gaps: vec![],
+        non_char: vec![],
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
+        sequence: crate::seq![],
+        fitch: FitchSeqDistribution {
+          variable: btreemap! {},
+          variable_indel: btreemap! {},
+          composition: Composition::new(alphabet.chars(), alphabet.gap()),
+        },
+      },
+      profile: MarginalSparseSeqDistribution::default(),
+    }
+  }
+
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     // FIXME: the original code used `alphabet_gapN`:
     //
