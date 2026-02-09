@@ -22,12 +22,16 @@ where
   /// Handle edge merge when removing trivial node: compose mutations from two edges
   fn handle_edge_merge(&mut self, info: &EdgeMergeInfo) -> Result<(), Report>;
 
-  /// Update partition state after reroot path inversion
+  /// Update partition state after reroot path inversion.
+  ///
+  /// Called only when the old root still exists after rerooting. When the old root is removed
+  /// (degree-2 node contracted via edge merge), `handle_edge_merge` handles the partition update
+  /// and this method is not called.
   ///
   /// `path_from_old_to_new` is the path from old root to new root (upward in post-reroot tree),
   /// matching the format returned by `Graph::path_from_node_to_node(old_root, new_root)`.
-  /// Each element is `(node_key, Option<edge_key>)` where the edge connects
-  /// to the next node in the path.
+  /// Each element is `(node_key, Option<edge_key>)` where the edge connects to the next node
+  /// in the path. The path always contains at least one edge.
   fn update_partition_after_reroot(
     &mut self,
     old_root_key: GraphNodeKey,

@@ -4,8 +4,6 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::graph::edge::GraphEdgeKey;
-use crate::graph::node::GraphNodeKey;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_timetree::GraphTimetree;
@@ -70,15 +68,14 @@ pub fn reroot_tree(
         }
       }
 
-      // Update partition state along reroot path if root changed and old root still exists
-      let old_root_exists = graph.get_node(old_root_key).is_some();
-      if new_root_key != old_root_key && old_root_exists {
+      // Update partition state along reroot path if root changed and old root still exists.
+      // When old root was removed (edge merge), handle_edge_merge already updated partition state.
+      if new_root_key != old_root_key && graph.get_node(old_root_key).is_some() {
         info!(
           "Root changed from {} to {} - updating partitions",
           old_root_key.0, new_root_key.0
         );
 
-        // Compute path from old root to new root (post-reroot graph)
         let path = graph
           .path_from_node_to_node(old_root_key, new_root_key)
           .wrap_err("Failed to compute path from old root to new root")?;
@@ -91,22 +88,6 @@ pub fn reroot_tree(
             (node_key, edge_key)
           })
           .collect_vec();
-
-        for partition in partitions {
-          partition
-            .write_arc()
-            .update_partition_after_reroot(old_root_key, new_root_key, &path_keys)
-            .wrap_err("Failed to update partition after reroot")?;
-        }
-      } else if new_root_key != old_root_key {
-        // Old root was removed - use new root as reference point
-        info!(
-          "Root changed from {} (removed) to {} - updating partitions with new root only",
-          old_root_key.0, new_root_key.0
-        );
-
-        // Path is just the new root node with no edges
-        let path_keys: Vec<(GraphNodeKey, Option<GraphEdgeKey>)> = vec![(new_root_key, None)];
 
         for partition in partitions {
           partition
