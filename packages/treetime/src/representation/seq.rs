@@ -423,7 +423,7 @@ macro_rules! seq {
   );
   ($($char:expr),* $(,)?) => {
     {
-      $crate::representation::seq::Seq::from_iter([$($char),*].map(|c| c as u8).into_iter())
+      $crate::representation::seq::Seq::from_iter([$($char),*].into_iter())
     }
   };
 }
