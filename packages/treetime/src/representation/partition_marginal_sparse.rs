@@ -93,7 +93,9 @@ where
 
   fn handle_edge_split(&mut self, info: &EdgeSplitInfo) -> Result<(), Report> {
     // Create new node entry with empty placeholder (sequence computed during marginal update)
-    self.nodes.insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
+    self
+      .nodes
+      .insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
 
     // Move mutations from old edge to child-side edge, parent-side edge is empty
     let old_edge_data = self
@@ -105,7 +107,9 @@ where
     self.edges.insert(info.child_side_edge_key, old_edge_data);
 
     // Parent-side edge is empty (no mutations between parent and new split node)
-    self.edges.insert(info.parent_side_edge_key, SparseEdgePartition::default());
+    self
+      .edges
+      .insert(info.parent_side_edge_key, SparseEdgePartition::default());
 
     Ok(())
   }
@@ -443,9 +447,9 @@ mod tests {
 
   #[rstest]
   #[case('A', 'G', 'T', Some(('A', 'T')))] // chain: A->G->T = A->T
-  #[case('A', 'G', 'A', None)]             // cancel: A->G->A = none
+  #[case('A', 'G', 'A', None)] // cancel: A->G->A = none
   #[case('C', 'T', 'G', Some(('C', 'G')))] // chain: C->T->G = C->G
-  #[case('G', 'A', 'G', None)]             // cancel: G->A->G = none
+  #[case('G', 'A', 'G', None)] // cancel: G->A->G = none
   fn test_compose_substitutions_single_position(
     #[case] parent_reff: char,
     #[case] intermediate: char,

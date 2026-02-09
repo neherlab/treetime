@@ -126,8 +126,14 @@ where
   D: Send + Sync,
 {
   let reroot_params = RerootParams::default();
-  let result =
-    estimate_clock_model_with_reroot_policy(graph, options, clock_rate, keep_root, optimization_params, &reroot_params)?;
+  let result = estimate_clock_model_with_reroot_policy(
+    graph,
+    options,
+    clock_rate,
+    keep_root,
+    optimization_params,
+    &reroot_params,
+  )?;
   Ok(result.clock_model)
 }
 

@@ -74,7 +74,12 @@ fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report
     remove_trivial_root: false,
   };
 
-  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
+  reroot_in_place(
+    &mut graph,
+    &options,
+    &BranchPointOptimizationParams::default(),
+    &reroot_params,
+  )?;
 
   let node_count_after = graph.get_nodes().len();
   assert_eq!(
@@ -95,7 +100,12 @@ fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> R
     remove_trivial_root: false,
   };
 
-  let reroot_result = reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
+  let reroot_result = reroot_in_place(
+    &mut graph,
+    &options,
+    &BranchPointOptimizationParams::default(),
+    &reroot_params,
+  )?;
 
   if reroot_result.new_root_key != old_root_key {
     assert!(
@@ -114,7 +124,12 @@ fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
 
   let reroot_params = RerootParams::default();
 
-  reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
+  reroot_in_place(
+    &mut graph,
+    &options,
+    &BranchPointOptimizationParams::default(),
+    &reroot_params,
+  )?;
 
   let node_count_after = graph.get_nodes().len();
   // With default policy, a new node may be created by edge split (count increases)
