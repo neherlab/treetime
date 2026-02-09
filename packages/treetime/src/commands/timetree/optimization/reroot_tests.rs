@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::representation::seq_char::AsciiChar;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
@@ -18,6 +17,7 @@ use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseE
 use crate::representation::node_timetree::NodeTimetree;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition_timetree::GraphTimetree;
+use crate::representation::seq_char::AsciiChar;
 use crate::seq;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -298,8 +298,16 @@ fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
   let edge_data = &sparse_partition.edges[&edge_to_a_key];
   assert_eq!(edge_data.subs.len(), 1);
   let inverted_sub = &edge_data.subs[0];
-  assert_eq!(inverted_sub.reff(), AsciiChar(b'T'), "After inversion, reff should be T (was qry)");
-  assert_eq!(inverted_sub.qry(), AsciiChar(b'G'), "After inversion, qry should be G (was reff)");
+  assert_eq!(
+    inverted_sub.reff(),
+    AsciiChar(b'T'),
+    "After inversion, reff should be T (was qry)"
+  );
+  assert_eq!(
+    inverted_sub.qry(),
+    AsciiChar(b'G'),
+    "After inversion, qry should be G (was reff)"
+  );
   assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");
 
   Ok(())
