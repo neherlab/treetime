@@ -149,8 +149,8 @@ where
 
   fn update_partition_after_reroot(
     &mut self,
-    old_root_key: GraphNodeKey,
-    new_root_key: GraphNodeKey,
+    _old_root_key: GraphNodeKey,
+    _new_root_key: GraphNodeKey,
     path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
   ) -> Result<(), Report> {
     // Build ordered list of edge keys on the reroot path (old root -> new root direction)
@@ -159,48 +159,12 @@ where
       .filter_map(|(_, edge_key)| *edge_key)
       .collect_vec();
 
-    // If old root was removed by edge merge, there's no path to traverse.
-    // The new root already has its sequence set by handle_edge_split.
-    // Just need to handle edge inversions if any edges exist on the path.
-    let old_root_exists = self.nodes.contains_key(&old_root_key);
-
-    // Compute new root sequence by applying edge mutations from old root toward new root
-    // (only if old root still exists and has a sequence to start from)
-    if old_root_exists && !reroot_edge_keys.is_empty() {
-      let mut new_root_seq = self.nodes[&old_root_key].seq.sequence.clone();
-      for edge_key in &reroot_edge_keys {
-        let edge_data = &self.edges[edge_key];
-        // Apply substitutions
-        for sub in &edge_data.subs {
-          // Original direction: parent->child means reff->qry
-          // We're going child->parent, so we apply reff (the parent state)
-          new_root_seq[sub.pos()] = sub.reff();
-        }
-        // Apply indels (reverse direction)
-        for indel in &edge_data.indels {
-          if indel.deletion {
-            // Original: deletion means child has gap. Reverse: child has sequence
-            new_root_seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-          } else {
-            // Original: insertion means child has sequence. Reverse: child has gap
-            new_root_seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
-          }
-        }
-      }
-
-      // Set new root sequence
-      self
-        .nodes
-        .get_mut(&new_root_key)
-        .ok_or_else(|| make_internal_report!("New root node {new_root_key:?} must exist"))?
-        .seq
-        .sequence = new_root_seq;
-
-      // Clear old root sequence
-      if let Some(old_root_node) = self.nodes.get_mut(&old_root_key) {
-        old_root_node.seq.sequence = crate::seq![];
-      }
-    }
+    // Node sequences are not computed here. The new root node was created by handle_edge_split
+    // with an empty placeholder. Sequences are recomputed by the subsequent marginal update pass
+    // (process_node_backward + process_node_forward), which overwrites any sequence data.
+    //
+    // This method only needs to invert edge mutations so they reflect the new parent->child
+    // direction after reroot.
 
     // Invert edge data for each edge on the reroot path
     for edge_key in &reroot_edge_keys {

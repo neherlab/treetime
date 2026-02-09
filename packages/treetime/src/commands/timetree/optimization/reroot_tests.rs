@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::representation::seq_char::AsciiChar;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
@@ -222,7 +223,11 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
 }
 
 #[test]
-fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
+fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
+  // Test that update_partition_after_reroot inverts edge mutations on the reroot path.
+  // Note: This method does NOT compute node sequences - that's done by the subsequent
+  // marginal update pass (process_node_backward + process_node_forward).
+  //
   // Tree: (A:0.1,B:0.2)root;
   let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?;
 
@@ -258,7 +263,7 @@ fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
   // Create root sequence with specific characters
   let root_seq = seq![b'A', b'C', b'G', b'T', b'A', b'C', b'G', b'T'];
 
-  // Edge has substitution at position 2: root has G, child has T
+  // Edge has substitution at position 2: root has G, child has T (G->T in parent->child direction)
   let sub = Sub::new(b'G', 2_usize, b'T')?;
 
   let mut sparse_partition = PartitionMarginalSparse {
@@ -282,11 +287,6 @@ fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
     },
   };
 
-  // Set root sequence explicitly
-  if let Some(n) = sparse_partition.nodes.get_mut(&root_key) {
-    n.seq.sequence = root_seq;
-  }
-
   // Build path from root (old root) to A (new root)
   let path_from_old_to_new = vec![(root_key, Some(edge_to_a_key)), (a_key, None)];
 
@@ -298,22 +298,13 @@ fn test_sparse_reroot_moves_root_sequence() -> Result<(), Report> {
     &path_from_old_to_new,
   )?;
 
-  // Verify old root sequence is cleared
-  let old_root_seq = &sparse_partition.nodes[&root_key].seq.sequence;
-  assert!(old_root_seq.is_empty(), "Old root sequence should be cleared");
-
-  // Verify new root has the expected sequence
-  // New root sequence should be computed by traversing from old root to new root
-  // Path: root -> A, edge has sub G2T (in original direction)
-  // Going reverse (A <- root), we apply the ref (G) at position 2
-  // So new root seq = ACGTACGT with position 2 = G (which is already G in original)
-  // Actually, the algorithm applies reff when going from old root toward new root
-  let new_root_seq = &sparse_partition.nodes[&a_key].seq.sequence;
-  let expected_new_root_seq = seq![b'A', b'C', b'G', b'T', b'A', b'C', b'G', b'T'];
-  assert_eq!(
-    *new_root_seq, expected_new_root_seq,
-    "New root sequence should be computed from old root by applying reverse edge mutations"
-  );
+  // Verify edge mutation is inverted: was G->T, now should be T->G
+  let edge_data = &sparse_partition.edges[&edge_to_a_key];
+  assert_eq!(edge_data.subs.len(), 1);
+  let inverted_sub = &edge_data.subs[0];
+  assert_eq!(inverted_sub.reff(), AsciiChar(b'T'), "After inversion, reff should be T (was qry)");
+  assert_eq!(inverted_sub.qry(), AsciiChar(b'G'), "After inversion, qry should be G (was reff)");
+  assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");
 
   Ok(())
 }
