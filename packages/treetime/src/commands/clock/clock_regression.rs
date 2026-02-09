@@ -152,8 +152,8 @@ where
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");
-    let new_root_key = reroot_in_place(graph, options, optimization_params, reroot_params)?;
-    info!("Rerooted to node {}", new_root_key.0);
+    let reroot_result = reroot_in_place(graph, options, optimization_params, reroot_params)?;
+    info!("Rerooted to node {}", reroot_result.new_root_key.0);
     debug!("Rerooting completed");
   } else {
     info!("### Keeping original root (--keep-root enabled)");

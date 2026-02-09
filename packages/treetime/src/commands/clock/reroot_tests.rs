@@ -95,9 +95,9 @@ fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> R
     remove_trivial_root: false,
   };
 
-  let new_root_key = reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
+  let reroot_result = reroot_in_place(&mut graph, &options, &BranchPointOptimizationParams::default(), &reroot_params)?;
 
-  if new_root_key != old_root_key {
+  if reroot_result.new_root_key != old_root_key {
     assert!(
       graph.get_node(old_root_key).is_some(),
       "Old root should still exist when remove_old_root_if_trivial is false"

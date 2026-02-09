@@ -70,7 +70,7 @@ pub fn reroot_in_place<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
-) -> Result<GraphNodeKey, Report>
+) -> Result<RerootResult, Report>
 where
   N: GraphNode + ClockNode + Default,
   E: GraphEdge + ClockEdge + Default,
@@ -82,7 +82,12 @@ where
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
-    return Ok(old_root_key); // Already at the best root
+    // Already at the best root
+    return Ok(RerootResult {
+      new_root_key: old_root_key,
+      edge_split: None,
+      edge_merge: None,
+    });
   };
 
   // Extract edge endpoints before potentially removing the edge
@@ -95,37 +100,47 @@ where
   // - split = 0.0 means root at target
   // - split = 1.0 means root at source
   // - 0.0 < split < 1.0 means somewhere in the middle - i.e. create a new node
-  let new_root_key = if ulps_eq!(split, 0.0, max_ulps = 5) {
-    target_key
+  let (new_root_key, edge_split) = if ulps_eq!(split, 0.0, max_ulps = 5) {
+    (target_key, None)
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
-    source_key
+    (source_key, None)
   } else if reroot_params.split_edge {
-    create_new_root_node(graph, edge_key, split, clock_set)?
+    let split_info = create_new_root_node(graph, edge_key, split, clock_set)?;
+    (split_info.new_node_key, Some(split_info))
   } else {
     // Edge split disallowed: snap to nearest endpoint
-    if split < 0.5 { target_key } else { source_key }
+    (if split < 0.5 { target_key } else { source_key }, None)
   };
 
-  if new_root_key != old_root_key {
+  let edge_merge = if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
 
     if reroot_params.remove_trivial_root {
       // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
       // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
-      remove_node_if_trivial(graph, old_root_key)?;
+      remove_node_if_trivial(graph, old_root_key)?
+    } else {
+      None
     }
-  }
+  } else {
+    None
+  };
 
-  Ok(new_root_key)
+  Ok(RerootResult {
+    new_root_key,
+    edge_split,
+    edge_merge,
+  })
 }
 
-/// Create new root node by splitting the edge into two
+/// Create new root node by splitting the edge into two.
+/// Returns the split info containing the new node and edge keys.
 fn create_new_root_node<N, E, D>(
   graph: &mut Graph<N, E, D>,
   edge_key: GraphEdgeKey,
   split: f64,
   clock_set: ClockSet,
-) -> Result<GraphNodeKey, Report>
+) -> Result<EdgeSplitInfo, Report>
 where
   N: GraphNode + ClockNode + Default,
   E: GraphEdge + ClockEdge + Default,
@@ -133,7 +148,7 @@ where
 {
   let mut new_node = N::default();
   new_node.set_clock_set(clock_set);
-  let new_root_key = graph.add_node(new_node);
+  let new_node_key = graph.add_node(new_node);
 
   // Extract edge data before removing the edge to avoid Arc reference issues
   let (source_key, target_key, branch_length) = {
@@ -144,17 +159,23 @@ where
     (source_key, target_key, branch_length)
   };
 
-  let mut edge1 = E::default();
-  edge1.set_branch_length(Some(split * branch_length));
-  graph.add_edge(source_key, new_root_key, edge1)?;
+  let mut parent_edge = E::default();
+  parent_edge.set_branch_length(Some(split * branch_length));
+  let parent_side_edge_key = graph.add_edge(source_key, new_node_key, parent_edge)?;
 
-  let mut edge2 = E::default();
-  edge2.set_branch_length(Some((1.0 - split) * branch_length));
-  graph.add_edge(new_root_key, target_key, edge2)?;
+  let mut child_edge = E::default();
+  child_edge.set_branch_length(Some((1.0 - split) * branch_length));
+  let child_side_edge_key = graph.add_edge(new_node_key, target_key, child_edge)?;
 
   graph.remove_edge(edge_key)?;
 
-  Ok(new_root_key)
+  Ok(EdgeSplitInfo {
+    old_edge_key: edge_key,
+    new_node_key,
+    parent_side_edge_key,
+    child_side_edge_key,
+    split_position: split,
+  })
 }
 
 /// Modify graph topology to make the newly identified root the actual root.
@@ -192,10 +213,13 @@ where
   Ok(())
 }
 
-/// Remove a node if it is trivial (i.e. has exactly one parent and one child), merging the edges
-/// lengths.
+/// Remove a node if it is trivial (i.e. has exactly one parent and one child), merging the edges.
+/// Returns `Some(EdgeMergeInfo)` if the node was removed, `None` if the node was not trivial.
 /// Nb: when applied this function removes properties of the removed node and its connecting edges.
-pub(super) fn remove_node_if_trivial<N, E, D>(graph: &mut Graph<N, E, D>, node_key: GraphNodeKey) -> Result<(), Report>
+pub(super) fn remove_node_if_trivial<N, E, D>(
+  graph: &mut Graph<N, E, D>,
+  node_key: GraphNodeKey,
+) -> Result<Option<EdgeMergeInfo>, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge + Default,
@@ -205,7 +229,7 @@ where
     let node = graph.get_node(node_key).expect("Node not found");
     let node = node.read_arc();
     if node.inbound().len() != 1 || node.outbound().len() != 1 {
-      return Ok(());
+      return Ok(None);
     }
     (node.inbound()[0], node.outbound()[0])
   };
@@ -231,9 +255,14 @@ where
 
   let mut merged_payload = E::default();
   merged_payload.set_branch_length(merged_branch_length);
-  graph.add_edge(parent_key, child_key, merged_payload)?;
+  let merged_edge_key = graph.add_edge(parent_key, child_key, merged_payload)?;
 
   graph.build()?;
 
-  Ok(())
+  Ok(Some(EdgeMergeInfo {
+    removed_node_key: node_key,
+    parent_edge_key,
+    child_edge_key,
+    merged_edge_key,
+  }))
 }
