@@ -95,7 +95,7 @@ pub fn reroot_tree(
         for partition in partitions {
           partition
             .write_arc()
-            .update_partition_after_reroot(graph, old_root_key, new_root_key, &path_keys)
+            .update_partition_after_reroot(old_root_key, new_root_key, &path_keys)
             .wrap_err("Failed to update partition after reroot")?;
         }
       } else if new_root_key != old_root_key {
@@ -111,7 +111,7 @@ pub fn reroot_tree(
         for partition in partitions {
           partition
             .write_arc()
-            .update_partition_after_reroot(graph, old_root_key, new_root_key, &path_keys)
+            .update_partition_after_reroot(old_root_key, new_root_key, &path_keys)
             .wrap_err("Failed to update partition after reroot")?;
         }
       }

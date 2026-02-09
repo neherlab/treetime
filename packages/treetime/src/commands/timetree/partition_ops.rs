@@ -1,7 +1,6 @@
 use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo};
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use crate::graph::graph::Graph;
 use crate::graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
@@ -31,7 +30,6 @@ where
   /// to the next node in the path.
   fn update_partition_after_reroot(
     &mut self,
-    graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,
     new_root_key: GraphNodeKey,
     path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],

@@ -149,7 +149,6 @@ where
 
   fn update_partition_after_reroot(
     &mut self,
-    _graph: &Graph<N, E, ()>,
     old_root_key: GraphNodeKey,
     new_root_key: GraphNodeKey,
     path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
