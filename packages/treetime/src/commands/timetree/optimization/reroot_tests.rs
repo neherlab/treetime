@@ -3,8 +3,8 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::clock::reroot::RerootChanges;
+use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{GraphNodeKey, Named, TimeConstraint};
@@ -21,6 +21,7 @@ use crate::representation::seq_char::AsciiChar;
 use crate::seq;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use approx::assert_ulps_eq;
 use eyre::Report;
 use indoc::indoc;
 use maplit::btreemap;
@@ -212,10 +213,7 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
   assert_eq!(indel_after.deletion, false, "Indel deletion flag should be toggled");
 
   // Verify msg_from_child is cleared
-  assert!(
-    edge_data.msg_from_child.log_lh.abs() < f64::EPSILON,
-    "msg_from_child should be reset to default"
-  );
+  assert_ulps_eq!(edge_data.msg_from_child.log_lh, 0.0, max_ulps = 5);
 
   Ok(())
 }
