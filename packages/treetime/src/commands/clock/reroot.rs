@@ -65,6 +65,20 @@ pub struct RerootResult {
   pub edge_merge: Option<EdgeMergeInfo>,
 }
 
+/// Bundles all topology changes from a reroot operation for partition updates.
+///
+/// Passed to `PartitionRerootOps::apply_reroot` to update partition state in a single call.
+#[derive(Clone, Debug, Default)]
+pub struct RerootChanges {
+  /// Edge split info if a new node was created at the reroot point.
+  pub edge_split: Option<EdgeSplitInfo>,
+  /// Edge merge info if the old root was removed as a trivial node.
+  pub edge_merge: Option<EdgeMergeInfo>,
+  /// Keys of edges on the path from old root to new root (post-inversion direction).
+  /// Empty if root did not change or old root was removed.
+  pub inverted_edge_keys: Vec<GraphEdgeKey>,
+}
+
 pub fn reroot_in_place<N, E, D>(
   graph: &mut Graph<N, E, D>,
   options: &ClockParams,
