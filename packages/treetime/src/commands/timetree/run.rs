@@ -92,7 +92,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   run_timetree(&mut graph, &partitions, &clock_model, None)?;
 
   if !args.keep_root {
-    info!("First reroot (post-ancestral)");
+    info!("Reroot (post-ancestral)");
     clock_model = reroot_tree(&mut graph, &partitions, &clock_params, args.clock_rate, &branch_params)
       .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
