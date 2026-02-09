@@ -5,7 +5,8 @@ use crate::commands::ancestral::marginal_unified::update_marginal;
 use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
-use crate::commands::timetree::partition_ops::{PartitionTimetreeAll, PartitionTimetreeOps};
+use crate::commands::clock::reroot::RerootChanges;
+use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
 use crate::distribution::distribution::Distribution;
 use crate::graph::node::{GraphNodeKey, Named, TimeConstraint};
 use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -191,17 +192,14 @@ fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     n.seq.sequence = seq![b'A'; 16];
   }
 
-  // Build path from root (old root) to A (new root)
-  // Path format: [(node_key, edge_to_next), ...] where first node is old_root
-  let path_from_old_to_new = vec![(root_key, Some(edge_to_a_key)), (a_key, None)];
+  // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
+  let changes = RerootChanges {
+    inverted_edge_keys: vec![edge_to_a_key],
+    ..RerootChanges::default()
+  };
 
-  // Call update_partition_after_reroot directly
-  PartitionTimetreeOps::<NodeTimetree, EdgeTimetree>::update_partition_after_reroot(
-    &mut sparse_partition,
-    root_key,
-    a_key,
-    &path_from_old_to_new,
-  )?;
+  // Call apply_reroot directly
+  sparse_partition.apply_reroot(&changes)?;
 
   // Verify substitution is inverted
   let edge_data = &sparse_partition.edges[&edge_to_a_key];
@@ -287,16 +285,14 @@ fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
     },
   };
 
-  // Build path from root (old root) to A (new root)
-  let path_from_old_to_new = vec![(root_key, Some(edge_to_a_key)), (a_key, None)];
+  // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
+  let changes = RerootChanges {
+    inverted_edge_keys: vec![edge_to_a_key],
+    ..RerootChanges::default()
+  };
 
-  // Call update_partition_after_reroot
-  PartitionTimetreeOps::<NodeTimetree, EdgeTimetree>::update_partition_after_reroot(
-    &mut sparse_partition,
-    root_key,
-    a_key,
-    &path_from_old_to_new,
-  )?;
+  // Call apply_reroot
+  sparse_partition.apply_reroot(&changes)?;
 
   // Verify edge mutation is inverted: was G->T, now should be T->G
   let edge_data = &sparse_partition.edges[&edge_to_a_key];

@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::clock::reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges};
+use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use crate::graph::graph::Graph;
@@ -19,7 +19,6 @@ use crate::representation::seq::Seq;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::Itertools;
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::mem;
@@ -169,108 +168,6 @@ where
     edge_key: GraphEdgeKey,
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
-  }
-
-  fn handle_edge_split(&mut self, info: &EdgeSplitInfo) -> Result<(), Report> {
-    // Create new node entry with empty placeholder (sequence computed during marginal update)
-    self
-      .nodes
-      .insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
-
-    // Move mutations from old edge to child-side edge, parent-side edge is empty
-    let old_edge_data = self
-      .edges
-      .remove(&info.old_edge_key)
-      .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
-
-    // Child-side edge gets all mutations (they describe parent->child relationship)
-    self.edges.insert(info.child_side_edge_key, old_edge_data);
-
-    // Parent-side edge is empty (no mutations between parent and new split node)
-    self
-      .edges
-      .insert(info.parent_side_edge_key, SparseEdgePartition::default());
-
-    Ok(())
-  }
-
-  fn handle_edge_merge(&mut self, info: &EdgeMergeInfo) -> Result<(), Report> {
-    // Remove the trivial node
-    self.nodes.remove(&info.removed_node_key);
-
-    // Get mutations from both edges
-    let parent_edge = self
-      .edges
-      .remove(&info.parent_edge_key)
-      .ok_or_else(|| make_internal_report!("Parent edge {:?} must exist for merge", info.parent_edge_key))?;
-    let child_edge = self
-      .edges
-      .remove(&info.child_edge_key)
-      .ok_or_else(|| make_internal_report!("Child edge {:?} must exist for merge", info.child_edge_key))?;
-
-    // Compose substitutions: parent then child
-    let merged_subs = compose_substitutions(&parent_edge.subs, &child_edge.subs)?;
-
-    // Compose indels: concatenate (parent indels first, then child indels)
-    let mut merged_indels = parent_edge.indels;
-    merged_indels.extend(child_edge.indels);
-
-    // Create merged edge with composed mutations
-    let merged_edge = SparseEdgePartition {
-      subs: merged_subs,
-      indels: merged_indels,
-      ..SparseEdgePartition::default()
-    };
-
-    self.edges.insert(info.merged_edge_key, merged_edge);
-
-    Ok(())
-  }
-
-  fn update_partition_after_reroot(
-    &mut self,
-    _old_root_key: GraphNodeKey,
-    _new_root_key: GraphNodeKey,
-    path_from_old_to_new: &[(GraphNodeKey, Option<GraphEdgeKey>)],
-  ) -> Result<(), Report> {
-    // Build ordered list of edge keys on the reroot path (old root -> new root direction)
-    let reroot_edge_keys = path_from_old_to_new
-      .iter()
-      .filter_map(|(_, edge_key)| *edge_key)
-      .collect_vec();
-
-    // Node sequences are not computed here. The new root node was created by handle_edge_split
-    // with an empty placeholder. Sequences are recomputed by the subsequent marginal update pass
-    // (process_node_backward + process_node_forward), which overwrites any sequence data.
-    //
-    // This method only needs to invert edge mutations so they reflect the new parent->child
-    // direction after reroot.
-
-    // Invert edge data for each edge on the reroot path
-    for edge_key in &reroot_edge_keys {
-      let edge_data = self
-        .edges
-        .get_mut(edge_key)
-        .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
-
-      // Invert all substitutions
-      for sub in &mut edge_data.subs {
-        sub.invert();
-      }
-
-      // Invert all indels
-      for indel in &mut edge_data.indels {
-        indel.invert();
-      }
-
-      // Swap directional messages
-      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
-
-      // Reset msg_from_child (stale propagated message cache)
-      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
-    }
-
-    Ok(())
   }
 }
 
