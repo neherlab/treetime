@@ -32,7 +32,7 @@ use treetime_utils::interval::range_complement::range_complement;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 
-fn attach_seqs_to_graph<N, E, P>(
+pub(crate) fn attach_seqs_to_graph<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
@@ -82,7 +82,7 @@ where
   Ok(())
 }
 
-fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+pub(crate) fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
 where
   N: GraphNode,
   E: GraphEdge,
@@ -270,7 +270,7 @@ where
   Ok(())
 }
 
-fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+pub(crate) fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
 where
   N: GraphNode,
   E: GraphEdge,
