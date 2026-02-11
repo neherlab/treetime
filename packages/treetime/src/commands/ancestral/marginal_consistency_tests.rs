@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal_unified::{initialize_marginal, update_marginal};
   use crate::graph::node::GraphNodeKey;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;
   use crate::representation::graph_ancestral::GraphAncestral;
@@ -16,6 +16,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use maplit::btreemap;
+  use ndarray::array;
   use parking_lot::RwLock;
   use std::sync::Arc;
 
@@ -247,6 +248,84 @@ mod tests {
         assert!(
           (sum - 1.0).abs() < epsilon,
           "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}"
+        );
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Port of test_ancestral likelihood normalization from Python v0.
+  /// See packages/legacy/treetime/test/test_treetime.py:137-155
+  ///
+  /// Tests that marginal likelihoods sum to 1.0 on a tiny tree with highly skewed GTR.
+  /// Python setup:
+  /// - Tree: ((A:0.601,B:0.301):0.1,C:0.2):0.001
+  /// - Alignment: 64bp sequences
+  /// - GTR: pi=[0.9, 0.06, 0.02, 0.02], W=ones(4,4)
+  #[test]
+  fn test_marginal_likelihoods_sum_to_one_skewed_gtr() -> Result<(), Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+
+    // Highly skewed equilibrium frequencies from Python test
+    let pi = array![0.9, 0.06, 0.02, 0.02];
+
+    // W = ones(4,4) with zero diagonal (symmetric rate matrix)
+    let W = array![
+      [0.0, 1.0, 1.0, 1.0],
+      [1.0, 0.0, 1.0, 1.0],
+      [1.0, 1.0, 0.0, 1.0],
+      [1.0, 1.0, 1.0, 0.0],
+    ];
+
+    let gtr = GTR::new(GTRParams {
+      alphabet: alphabet.clone(),
+      mu: 1.0,
+      W: Some(W),
+      pi,
+    })?;
+
+    // Tree from Python: ((A:0.60100000009,B:0.3010000009):0.1,C:0.2):0.001
+    let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
+    let graph: GraphAncestral = nwk_read_str(tree_newick)?;
+
+    // Alignment from Python test (64bp each)
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        AAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT
+        >B
+        AAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT
+        >C
+        ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+      "#},
+      &alphabet,
+    )?;
+
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+    let partitions = [Arc::clone(&partition)];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    // Verify all marginal profile rows sum to 1.0
+    let epsilon = 1e-6;
+    let partition = partition.read_arc();
+    for (node_key, node_data) in &partition.nodes {
+      if node_data.profile.dis.is_empty() {
+        continue;
+      }
+      for (pos, row) in node_data.profile.dis.rows().into_iter().enumerate() {
+        let sum: f64 = row.sum();
+        assert!(
+          (sum - 1.0).abs() < epsilon,
+          "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0"
         );
       }
     }
