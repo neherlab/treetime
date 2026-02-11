@@ -149,7 +149,7 @@ pub(super) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-fn get_mutation_counts<P: PartitionWithGtrInference>(
+pub(super) fn get_mutation_counts<P: PartitionWithGtrInference>(
   graph: &GraphAncestral,
   partition: &Arc<RwLock<P>>,
 ) -> Result<MutationCounts, Report> {

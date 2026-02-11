@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::graph::node::GraphNodeKey;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
@@ -22,6 +23,17 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_io::json::{JsonPretty, json_write_str};
+
+  fn find_node_key_by_name(graph: &GraphAncestral, name: &str) -> Option<GraphNodeKey> {
+    for node in graph.get_nodes() {
+      let node = node.read_arc();
+      let payload = node.payload().read_arc();
+      if payload.name.as_deref() == Some(name) {
+        return Some(node.key());
+      }
+    }
+    None
+  }
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -278,6 +290,57 @@ mod tests {
     assert_ulps_eq!(log_lh1, log_lh2, epsilon = epsilon);
     assert_ulps_eq!(log_lh1, log_lh3, epsilon = epsilon);
     assert_ulps_eq!(log_lh2, log_lh3, epsilon = epsilon);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_root_state() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+    "#},
+      &NUC_ALPHABET,
+    )?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let gtr = make_nonuniform_gtr()?;
+
+    let (log_lh, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
+
+    // note that this LH is slightly different from dense or python treetime due to
+    // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
+    pretty_assert_ulps_eq!(-56.946298878390444, log_lh, epsilon = 1e-6);
+
+    let partition = partitions[0].read_arc();
+
+    // test variable position distribution at the root (pos 0)
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_profile = &partition.nodes[&root_key].profile;
+    let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
+    pretty_assert_ulps_eq!(&root_profile.variable[&0].dis, &pos_zero_root, epsilon = 1e-6);
+
+    // test variable position distribution at internal node AB (pos 0)
+    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node should exist");
+    let ab_profile = &partition.nodes[&ab_key].profile;
+    let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
+    pretty_assert_ulps_eq!(&ab_profile.variable[&0].dis, &pos_zero_ab, epsilon = 1e-6);
+
+    // test variable position distribution at internal node AB (pos 3)
+    let dis_ab_pos3 = array![
+      0.0013914677323952813,
+      0.002087201598592933,
+      0.042827146239885545,
+      0.9536941844291262
+    ];
+    pretty_assert_ulps_eq!(&ab_profile.variable[&3].dis, &dis_ab_pos3, epsilon = 1e-6);
 
     Ok(())
   }
