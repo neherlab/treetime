@@ -49,7 +49,7 @@ fn gtr_fixture_frequencies_sum_to_one() {
 ///
 /// Note: Rust v1 has no file-loading API for GTR. This test constructs from embedded fixture
 /// values (equivalent to Python's file-loaded model) and validates all the same properties.
-/// GTR normalizes frequencies internally, so we validate the normalization rather than exact values.
+/// GTR normalizes frequencies internally, so expected values use the normalized 4-state subset.
 #[rstest]
 fn gtr_fixture_model_properties() -> Result<(), Report> {
   // Use 4-state subset of fixture (Rust n_canonical() excludes gap)
@@ -62,6 +62,15 @@ fn gtr_fixture_model_properties() -> Result<(), Report> {
     W: Some(W),
     pi,
   })?;
+
+  // Expected normalized 4-state frequencies from fixture (gap removed)
+  let expected_pi = array![
+    0.31188768811231188,
+    0.19159680840319160,
+    0.23583476416523583,
+    0.26068073931926067,
+  ];
+  assert_ulps_eq!(gtr.pi, expected_pi, epsilon = 1e-12);
 
   // Frequencies sum to 1.0 (Python: assert (gtr.Pi.sum() - 1.0)**2 < 1e-14)
   assert_ulps_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-14);
