@@ -13,9 +13,4 @@ pub mod reroot;
 pub mod rtt;
 pub mod run;
 
-#[cfg(test)]
-mod clock_regression_tests;
-#[cfg(test)]
-mod date_constraints_tests;
-#[cfg(test)]
-mod reroot_tests;
+mod __tests__;

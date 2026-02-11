@@ -17,19 +17,4 @@ pub mod scaled_distribution_division;
 pub mod scaled_distribution_multiplication;
 pub mod y_axis_policy;
 
-#[cfg(test)]
-mod distribution_convolution_tests;
-#[cfg(test)]
-mod distribution_division_tests;
-#[cfg(test)]
-mod distribution_function_tests;
-#[cfg(test)]
-mod distribution_scalar_multiplication_tests;
-#[cfg(test)]
-mod distribution_tests;
-#[cfg(test)]
-mod distribution_time_bounds_tests;
-#[cfg(test)]
-mod gaussian_product_tests;
-#[cfg(test)]
-mod scaled_distribution_multiplication_tests;
+mod __tests__;

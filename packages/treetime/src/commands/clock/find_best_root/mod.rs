@@ -6,5 +6,4 @@ pub mod method_golden_section;
 pub mod method_grid_search;
 pub mod params;
 
-#[cfg(test)]
-mod find_best_root_tests;
+mod __tests__;

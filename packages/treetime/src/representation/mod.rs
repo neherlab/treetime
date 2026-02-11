@@ -1,6 +1,5 @@
+mod __tests__;
 pub mod bitset128;
-#[cfg(test)]
-mod bitset128_tests;
 pub mod edge_timetree;
 pub mod graph_ancestral;
 pub mod graph_dense;
