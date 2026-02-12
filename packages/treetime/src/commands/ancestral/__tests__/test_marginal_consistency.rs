@@ -228,7 +228,10 @@ mod tests {
           "Sparse variable position {pos} sum is not finite: {sum}"
         );
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(sum.is_finite(), "Sparse variable position {pos} not normalized: sum={sum}");
+        assert!(
+          sum.is_finite(),
+          "Sparse variable position {pos} not normalized: sum={sum}"
+        );
       }
 
       for (char_key, fixed_dis) in &node_data.profile.fixed {
@@ -238,7 +241,10 @@ mod tests {
           "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}"
         );
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(sum.is_finite(), "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}");
+        assert!(
+          sum.is_finite(),
+          "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}"
+        );
       }
     }
 
@@ -313,7 +319,10 @@ mod tests {
       for (pos, row) in node_data.profile.dis.rows().into_iter().enumerate() {
         let sum: f64 = row.sum();
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(sum.is_finite(), "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0");
+        assert!(
+          sum.is_finite(),
+          "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0"
+        );
       }
     }
 
