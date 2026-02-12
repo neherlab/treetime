@@ -5,7 +5,7 @@ mod tests {
   use crate::distribution::scaled_distribution_division::scaled_distribution_division;
   use crate::distribution::scaled_distribution_multiplication::scaled_distribution_multiplication;
   use crate::distribution::y_axis_policy::Plain;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
 
   fn make_point(t: f64, amplitude: f64) -> ScaledDistribution {
@@ -44,7 +44,7 @@ mod tests {
 
     assert!(!result.is_empty());
     assert!(result.log_scale().is_finite());
-    assert_relative_eq!(result.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
   }
 
   #[test]
@@ -55,7 +55,7 @@ mod tests {
     let product = scaled_distribution_multiplication(&a, &b).unwrap();
     let recovered = scaled_distribution_division(&product, &b).unwrap();
 
-    assert_relative_eq!(recovered.log_scale(), a.log_scale(), epsilon = 1e-10);
+    assert_ulps_eq!(recovered.log_scale(), a.log_scale(), max_ulps = 4);
   }
 
   #[test]
@@ -65,6 +65,6 @@ mod tests {
 
     let result = scaled_distribution_division(&dividend, &divisor).unwrap();
 
-    assert_relative_eq!(result.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
   }
 }

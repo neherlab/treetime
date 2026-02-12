@@ -2,7 +2,7 @@
 mod tests {
   use crate::distribution::distribution::DistributionPlain as Distribution;
   use crate::distribution::distribution_convolution::distribution_convolution;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use eyre::Report;
 
   #[test]
@@ -15,7 +15,7 @@ mod tests {
     let result: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
 
     if let Some(parent_time) = result.likely_time() {
-      assert_abs_diff_eq!(parent_time, 2010.5, epsilon = 1e-10);
+      assert_ulps_eq!(parent_time, 2010.5, max_ulps = 4);
       assert!(parent_time < 2013.0, "Parent should be older than child");
     } else {
       panic!("Expected valid parent time");
@@ -38,7 +38,7 @@ mod tests {
     let parent_dist: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
 
     if let Some(actual_parent_time) = parent_dist.likely_time() {
-      assert_abs_diff_eq!(actual_parent_time, expected_parent_time, epsilon = 1e-10);
+      assert_ulps_eq!(actual_parent_time, expected_parent_time, max_ulps = 4);
       assert!(actual_parent_time < child_time, "Parent must be older than child");
     } else {
       panic!("Expected valid parent time");

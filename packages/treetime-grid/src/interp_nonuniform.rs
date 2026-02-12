@@ -82,7 +82,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -92,7 +92,7 @@ mod tests {
     let x_query = array![1.0, 2.0, 4.0, 7.0];
 
     let result = interp_nonuniform(&x, &y, x_query.len(), |i| x_query[i])?;
-    assert_abs_diff_eq!(result, y, epsilon = 1e-10);
+    assert_ulps_eq!(result, y, max_ulps = 4);
     Ok(())
   }
 
@@ -104,7 +104,7 @@ mod tests {
 
     let result = interp_nonuniform(&x, &y, x_query.len(), |i| x_query[i])?;
     let expected = array![1.0, 4.0];
-    assert_abs_diff_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
     Ok(())
   }
 
@@ -116,7 +116,7 @@ mod tests {
 
     let result = interp_nonuniform(&x, &y, x_query.len(), |i| x_query[i])?;
     let expected = array![0.0];
-    assert_abs_diff_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
     Ok(())
   }
 
@@ -128,7 +128,7 @@ mod tests {
 
     let result = interp_nonuniform(&x, &y, x_query.len(), |i| x_query[i])?;
     let expected = array![8.0];
-    assert_abs_diff_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
     Ok(())
   }
 
@@ -140,7 +140,7 @@ mod tests {
 
     let result = interp_nonuniform(&x, &y, x_query.len(), |i| x_query[i])?;
     let expected = array![5.0, 15.0, 25.0, 35.0];
-    assert_abs_diff_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
     Ok(())
   }
 }

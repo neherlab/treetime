@@ -21,7 +21,7 @@ pub fn gaussian_exponential_convolution_grid(a: f64, grid: &Array1<f64>) -> Arra
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -30,7 +30,7 @@ mod tests {
     let x = 1.0;
     let result = gaussian_exponential_convolution(a, x);
     let expected = 0.5 * a * (-x * a + 0.5 * a.powi(2)).exp() * erfc((a - x) / 2_f64.sqrt());
-    assert_relative_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]

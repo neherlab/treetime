@@ -8,7 +8,7 @@ mod tests {
     scaled_distribution_multiplication, scaled_distribution_multiply_many,
   };
   use crate::distribution::y_axis_policy::Plain;
-  use approx::assert_relative_eq;
+  use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use ndarray::Array1;
 
@@ -46,7 +46,7 @@ mod tests {
 
     if let Distribution::Function(f) = recovered {
       for i in 0..5 {
-        assert_relative_eq!(f.y()[i], y[i], epsilon = 1e-10);
+        assert_ulps_eq!(f.y()[i], y[i], max_ulps = 4);
       }
     } else {
       panic!("Expected Function variant");
@@ -61,7 +61,7 @@ mod tests {
     let product = scaled_distribution_multiplication(&p1, &p2)?;
 
     assert!(!product.is_empty());
-    assert_relative_eq!(product.peak_value(), 12.0, epsilon = 1e-10);
+    assert_ulps_eq!(product.peak_value(), 12.0, max_ulps = 4);
     Ok(())
   }
 
@@ -92,7 +92,7 @@ mod tests {
 
     assert!(!product.is_empty());
     assert!(product.log_scale().is_finite());
-    assert_relative_eq!(product.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(product.inner().max_value(), 1.0, max_ulps = 4);
     Ok(())
   }
 
@@ -163,9 +163,9 @@ mod tests {
 
     let (mu, sigma, log_scale) = gaussian_product_params(&params);
 
-    assert_relative_eq!(mu, 0.0, epsilon = 1e-10);
-    assert_relative_eq!(sigma, 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);
-    assert_relative_eq!(log_scale, -1.0, epsilon = 1e-10);
+    assert_ulps_eq!(mu, 0.0, max_ulps = 4);
+    assert_ulps_eq!(sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    assert_ulps_eq!(log_scale, -1.0, max_ulps = 4);
   }
 
   #[test]
@@ -206,7 +206,7 @@ mod tests {
     let product = scaled_distribution_multiplication(&g1, &g2)?;
 
     assert!(!product.is_empty());
-    assert_relative_eq!(product.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(product.inner().max_value(), 1.0, max_ulps = 4);
     Ok(())
   }
 }

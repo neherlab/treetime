@@ -34,7 +34,7 @@ pub fn exponential_convolution_grid(a: f64, b: f64, grid: &Array1<f64>) -> Array
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -42,20 +42,20 @@ mod tests {
     let rate = 2.0;
     let result = exponential_pdf(rate, 1.0);
     let expected = 2.0 * (-2.0_f64).exp();
-    assert_relative_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_pdf_negative() {
     let result = exponential_pdf(1.0, -1.0);
-    assert_relative_eq!(result, 0.0, epsilon = 1e-10);
+    assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_pdf_zero() {
     let rate = 2.0;
     let result = exponential_pdf(rate, 0.0);
-    assert_relative_eq!(result, rate, epsilon = 1e-10);
+    assert_ulps_eq!(result, rate, max_ulps = 4);
   }
 
   #[test]
@@ -65,7 +65,7 @@ mod tests {
     let x = 1.0;
     let result = exponential_convolution(a, b, x);
     let expected = (a * b) / (a - b) * (1.0 - (-(a - b) * x).exp()) * (-b * x).exp();
-    assert_relative_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
@@ -75,19 +75,19 @@ mod tests {
     let x = 2.0;
     let result = exponential_convolution(a, b, x);
     let expected = a * b * x * (-a * x).exp();
-    assert_relative_eq!(result, expected, epsilon = 1e-10);
+    assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_negative_x() {
     let result = exponential_convolution(1.0, 2.0, -1.0);
-    assert_relative_eq!(result, 0.0, epsilon = 1e-10);
+    assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_at_zero() {
     let result = exponential_convolution(1.0, 2.0, 0.0);
-    assert_relative_eq!(result, 0.0, epsilon = 1e-10);
+    assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -96,10 +96,10 @@ mod tests {
     let rate = 1.0;
     let result = exponential_pdf_grid(rate, &grid);
 
-    assert_relative_eq!(result[0], 0.0, epsilon = 1e-10);
-    assert_relative_eq!(result[1], 1.0, epsilon = 1e-10);
-    assert_relative_eq!(result[2], (-1.0_f64).exp(), epsilon = 1e-10);
-    assert_relative_eq!(result[3], (-2.0_f64).exp(), epsilon = 1e-10);
+    assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
+    assert_ulps_eq!(result[1], 1.0, max_ulps = 4);
+    assert_ulps_eq!(result[2], (-1.0_f64).exp(), max_ulps = 4);
+    assert_ulps_eq!(result[3], (-2.0_f64).exp(), max_ulps = 4);
   }
 
   #[test]
@@ -107,8 +107,8 @@ mod tests {
     let grid = array![-1.0, 0.0, 1.0];
     let result = exponential_convolution_grid(1.0, 2.0, &grid);
 
-    assert_relative_eq!(result[0], 0.0, epsilon = 1e-10);
-    assert_relative_eq!(result[1], 0.0, epsilon = 1e-10);
+    assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
+    assert_ulps_eq!(result[1], 0.0, max_ulps = 4);
     assert!(result[2] > 0.0);
   }
 }

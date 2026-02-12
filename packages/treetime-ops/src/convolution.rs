@@ -78,7 +78,7 @@ impl ConvolveAlgo for FftConvolve {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -88,8 +88,8 @@ mod tests {
     let f = array![1.0, 2.0, 3.0, 2.0, 1.0];
     let result = convolve_riemann(dx, &delta, &f).unwrap();
     assert_eq!(result.len(), 9);
-    assert_relative_eq!(result[2], f[0], epsilon = 1e-10);
-    assert_relative_eq!(result[4], f[2], epsilon = 1e-10);
+    assert_ulps_eq!(result[2], f[0], max_ulps = 4);
+    assert_ulps_eq!(result[4], f[2], max_ulps = 4);
   }
 
   #[test]
@@ -100,7 +100,7 @@ mod tests {
     let result1 = convolve(dx, &f, &g).unwrap();
     let result2 = convolve(dx, &g, &f).unwrap();
     for i in 0..result1.len() {
-      assert_relative_eq!(result1[i], result2[i], epsilon = 1e-10);
+      assert_ulps_eq!(result1[i], result2[i], max_ulps = 4);
     }
   }
 
@@ -112,7 +112,7 @@ mod tests {
     let result_direct = convolve(dx, &f, &g).unwrap();
     let result_fft = convolve_fft(dx, &f, &g).unwrap();
     for i in 0..result_direct.len() {
-      assert_relative_eq!(result_direct[i], result_fft[i], epsilon = 1e-10);
+      assert_ulps_eq!(result_direct[i], result_fft[i], max_ulps = 100);
     }
   }
 }

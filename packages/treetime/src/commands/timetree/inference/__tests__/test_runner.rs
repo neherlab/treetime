@@ -5,7 +5,7 @@ mod tests {
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::node_timetree::NodeTimetree;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use bio::io::newick;
   use eyre::Report;
   use maplit::btreemap;
@@ -28,7 +28,7 @@ mod tests {
 
       if let Some(bl) = branch_length {
         let expected_time = bl / clock_rate;
-        assert_abs_diff_eq!(time_length.unwrap_or(f64::NAN), expected_time, epsilon = 1e-10);
+        assert_ulps_eq!(time_length.unwrap_or(f64::NAN), expected_time, max_ulps = 4);
       }
     }
 
@@ -71,7 +71,7 @@ mod tests {
       let actual_length = branch_lengths
         .get(name)
         .unwrap_or_else(|| panic!("Node '{name}' not found in parsed tree"));
-      assert_abs_diff_eq!(*actual_length, expected_length, epsilon = 1e-6);
+      assert_ulps_eq!(*actual_length, expected_length, max_ulps = 4);
     }
 
     Ok(())

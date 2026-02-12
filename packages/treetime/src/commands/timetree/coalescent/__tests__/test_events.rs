@@ -5,7 +5,7 @@ mod tests {
   use crate::io::dates_csv::{DateOrRange, DatesMap};
   use crate::io::nwk::nwk_read_str;
   use crate::representation::partition_timetree::GraphTimetree;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -29,7 +29,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_abs_diff_eq!(present_time, 2015.0, epsilon = 1e-10);
+    assert_ulps_eq!(present_time, 2015.0, max_ulps = 4);
     assert_eq!(events, vec![(2000.0, -2), (2005.0, 1), (2010.0, 1), (2015.0, 1)]);
 
     Ok(())
@@ -49,7 +49,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_abs_diff_eq!(present_time, 2012.0, epsilon = 1e-10);
+    assert_ulps_eq!(present_time, 2012.0, max_ulps = 4);
     assert_eq!(
       events,
       vec![(2000.0, -1), (2005.0, -1), (2010.0, 1), (2010.0, 1), (2012.0, 1)]
@@ -92,7 +92,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_abs_diff_eq!(present_time, 2010.0, epsilon = 1e-10);
+    assert_ulps_eq!(present_time, 2010.0, max_ulps = 4);
     assert_eq!(events, vec![(2000.0, -2), (2010.0, 1), (2010.0, 1), (2010.0, 1)]);
 
     Ok(())

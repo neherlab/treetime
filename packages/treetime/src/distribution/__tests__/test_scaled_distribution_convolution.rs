@@ -4,7 +4,7 @@ mod tests {
   use crate::distribution::scaled_distribution::ScaledDistribution;
   use crate::distribution::scaled_distribution_convolution::scaled_distribution_convolution;
   use crate::distribution::y_axis_policy::Plain;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
 
   fn make_point(t: f64, amplitude: f64) -> ScaledDistribution {
@@ -23,7 +23,7 @@ mod tests {
     let b = make_point(5.0, 4.0);
     let result = scaled_distribution_convolution(&a, &b).unwrap();
 
-    assert_relative_eq!(result.peak_value(), 12.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.peak_value(), 12.0, max_ulps = 4);
   }
 
   #[test]
@@ -50,7 +50,7 @@ mod tests {
     let b = make_function(array![0.0, 1.0, 2.0], array![5.0, 20.0, 5.0]);
     let result = scaled_distribution_convolution(&a, &b).unwrap();
 
-    assert_relative_eq!(result.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
   }
 
   #[test]
@@ -61,6 +61,6 @@ mod tests {
     let result_ab = scaled_distribution_convolution(&a, &b).unwrap();
     let result_ba = scaled_distribution_convolution(&b, &a).unwrap();
 
-    assert_relative_eq!(result_ab.log_scale(), result_ba.log_scale(), epsilon = 1e-10);
+    assert_ulps_eq!(result_ab.log_scale(), result_ba.log_scale(), max_ulps = 4);
   }
 }

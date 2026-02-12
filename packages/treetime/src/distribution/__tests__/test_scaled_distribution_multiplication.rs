@@ -6,7 +6,7 @@ mod tests {
     scaled_distribution_multiplication, scaled_distribution_multiply_many,
   };
   use crate::distribution::y_axis_policy::Plain;
-  use approx::assert_relative_eq;
+  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
 
   fn make_point(t: f64, amplitude: f64) -> ScaledDistribution {
@@ -25,7 +25,7 @@ mod tests {
     let b = make_point(2.0, 4.0);
     let result = scaled_distribution_multiplication(&a, &b).unwrap();
 
-    assert_relative_eq!(result.peak_value(), 12.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.peak_value(), 12.0, max_ulps = 4);
   }
 
   #[test]
@@ -58,7 +58,7 @@ mod tests {
     assert!(result.log_scale().is_finite());
 
     let expected_log_scale = 100.0 * 0.0001_f64.ln();
-    assert_relative_eq!(result.log_scale(), expected_log_scale, epsilon = 1e-10);
+    assert_ulps_eq!(result.log_scale(), expected_log_scale, max_ulps = 16);
   }
 
   #[test]
@@ -76,7 +76,7 @@ mod tests {
 
     let result = scaled_distribution_multiplication(&a, &b).unwrap();
 
-    assert_relative_eq!(result.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
   }
 
   #[test]
@@ -90,7 +90,7 @@ mod tests {
     let a = make_point(1.0, 5.0);
     let result = scaled_distribution_multiply_many(&[&a]).unwrap();
 
-    assert_relative_eq!(result.log_scale(), a.log_scale(), epsilon = 1e-10);
+    assert_ulps_eq!(result.log_scale(), a.log_scale(), max_ulps = 4);
   }
 
   #[test]
@@ -103,12 +103,12 @@ mod tests {
 
     assert!(!result.is_empty());
     assert!(result.log_scale().is_finite());
-    assert_relative_eq!(result.inner().max_value(), 1.0, epsilon = 1e-10);
+    assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
 
     if let Distribution::Function(f) = result.inner() {
-      assert_relative_eq!(f.y()[1], 1.0, epsilon = 1e-10);
-      assert_relative_eq!(f.y()[0], 0.125, epsilon = 1e-10);
-      assert_relative_eq!(f.y()[2], 0.125, epsilon = 1e-10);
+      assert_ulps_eq!(f.y()[1], 1.0, max_ulps = 4);
+      assert_ulps_eq!(f.y()[0], 0.125, max_ulps = 4);
+      assert_ulps_eq!(f.y()[2], 0.125, max_ulps = 4);
     } else {
       unreachable!("Expected Function distribution");
     }
@@ -133,7 +133,7 @@ mod tests {
     assert!(result.log_scale().is_finite());
 
     let expected_log_scale = 10.0 * small_peak.ln();
-    assert_relative_eq!(result.log_scale(), expected_log_scale, epsilon = 1e-10);
+    assert_ulps_eq!(result.log_scale(), expected_log_scale, max_ulps = 4);
   }
 
   #[test]
