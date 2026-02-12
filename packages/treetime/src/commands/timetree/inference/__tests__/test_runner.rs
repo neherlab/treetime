@@ -28,7 +28,8 @@ mod tests {
 
       if let Some(bl) = branch_length {
         let expected_time = bl / clock_rate;
-        assert_ulps_eq!(time_length.unwrap_or(f64::NAN), expected_time, max_ulps = 4);
+        let actual_time = time_length.expect("time_length should be set when branch_length exists");
+        assert_ulps_eq!(actual_time, expected_time, max_ulps = 4);
       }
     }
 
