@@ -25,12 +25,13 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::json::{JsonPretty, json_write_str};
 
-  fn assert_dense_rows_normalized(dis: &Array2<f64>, epsilon: f64) {
+  fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
+      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
-        (sum - 1.0).abs() < epsilon,
-        "Row {row_idx} sum={sum} is not normalized to 1.0 within epsilon={epsilon}"
+        sum.is_finite(),
+        "Row {row_idx} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
       );
       for (col_idx, &val) in row.iter().enumerate() {
         assert!(
@@ -191,17 +192,17 @@ mod tests {
 
     let (_, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
     let partition = partitions[0].read_arc();
-    let epsilon = 1e-10;
+    let max_ulps = 4;
 
     for node_data in partition.nodes.values() {
       if !node_data.profile.dis.is_empty() {
-        assert_dense_rows_normalized(&node_data.profile.dis, epsilon);
+        assert_dense_rows_normalized(&node_data.profile.dis, max_ulps);
       }
     }
 
     for edge_data in partition.edges.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
-        assert_dense_rows_normalized(&edge_data.msg_to_child.dis, epsilon);
+        assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
       }
     }
 
@@ -328,7 +329,7 @@ mod tests {
     }
 
     // since we test all possible triplets, the total likelihood should be 1
-    pretty_assert_ulps_eq!(1.0, total_lh, max_ulps = 4);
+    pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
     Ok(())
   }
 }

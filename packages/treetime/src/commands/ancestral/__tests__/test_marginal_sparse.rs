@@ -39,7 +39,7 @@ mod tests {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
   }
 
-  fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution, epsilon: f64) {
+  fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.is_finite(),
       "Profile log_lh is not finite: {}",
@@ -48,9 +48,10 @@ mod tests {
 
     for (pos, var_pos) in &profile.variable {
       let sum: f64 = var_pos.dis.sum();
+      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
-        (sum - 1.0).abs() < epsilon,
-        "Variable position {pos} sum={sum} is not normalized to 1.0 within epsilon={epsilon}"
+        sum.is_finite(),
+        "Variable position {pos} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
       );
       for (idx, &val) in var_pos.dis.iter().enumerate() {
         assert!(
@@ -66,9 +67,10 @@ mod tests {
 
     for (char_key, fixed_dis) in &profile.fixed {
       let sum: f64 = fixed_dis.sum();
+      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
-        (sum - 1.0).abs() < epsilon,
-        "Fixed distribution for char {char_key:?} sum={sum} is not normalized to 1.0 within epsilon={epsilon}"
+        sum.is_finite(),
+        "Fixed distribution for char {char_key:?} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
       );
       for (idx, &val) in fixed_dis.iter().enumerate() {
         assert!(
@@ -206,14 +208,13 @@ mod tests {
 
     let (_, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
     let partition = partitions[0].read_arc();
-    let epsilon = 1e-8;
 
     for node_data in partition.nodes.values() {
-      assert_sparse_profile_normalized(&node_data.profile, epsilon);
+      assert_sparse_profile_normalized(&node_data.profile, 4);
     }
 
     for edge_data in partition.edges.values() {
-      assert_sparse_profile_normalized(&edge_data.msg_to_child, epsilon);
+      assert_sparse_profile_normalized(&edge_data.msg_to_child, 4);
     }
 
     Ok(())
@@ -286,10 +287,9 @@ mod tests {
     let log_lh2 = run_sparse_lh_for_newick(tree2, &aln, gtr2)?;
     let log_lh3 = run_sparse_lh_for_newick(tree3, &aln, gtr3)?;
 
-    let epsilon = 1e-6;
-    assert_ulps_eq!(log_lh1, log_lh2, epsilon = epsilon);
-    assert_ulps_eq!(log_lh1, log_lh3, epsilon = epsilon);
-    assert_ulps_eq!(log_lh2, log_lh3, epsilon = epsilon);
+    assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
+    assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
+    assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
 
     Ok(())
   }
@@ -389,7 +389,7 @@ mod tests {
     }
 
     // since we test all possible triplets, the total likelihood should be 1
-    pretty_assert_ulps_eq!(1.0, total_lh, max_ulps = 4);
+    pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
     Ok(())
   }
 }

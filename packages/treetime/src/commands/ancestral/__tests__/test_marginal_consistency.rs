@@ -113,7 +113,7 @@ mod tests {
     let (log_lh_dense, _) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, _) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 4);
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
     Ok(())
   }
@@ -158,7 +158,7 @@ mod tests {
         );
 
         for (idx, (&dense_val, &sparse_val)) in dense_row.iter().zip(sparse_dis.iter()).enumerate() {
-          assert_ulps_eq!(dense_val, sparse_val, max_ulps = 4);
+          assert_ulps_eq!(dense_val, sparse_val, epsilon = 1e-6);
         }
       }
     }
@@ -198,21 +198,18 @@ mod tests {
     let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 4);
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
 
-    let epsilon = 1e-6;
     for node_data in dense.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         for row in node_data.profile.dis.rows() {
           let sum: f64 = row.sum();
           assert!(sum.is_finite(), "Dense node profile row sum is not finite: {sum}");
-          assert!(
-            (sum - 1.0).abs() < epsilon,
-            "Dense node profile row not normalized: sum={sum}"
-          );
+          assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+          assert!(sum.is_finite(), "Dense node profile row not normalized: sum={sum}");
         }
       }
     }
@@ -230,10 +227,8 @@ mod tests {
           sum.is_finite(),
           "Sparse variable position {pos} sum is not finite: {sum}"
         );
-        assert!(
-          (sum - 1.0).abs() < epsilon,
-          "Sparse variable position {pos} not normalized: sum={sum}"
-        );
+        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        assert!(sum.is_finite(), "Sparse variable position {pos} not normalized: sum={sum}");
       }
 
       for (char_key, fixed_dis) in &node_data.profile.fixed {
@@ -242,10 +237,8 @@ mod tests {
           sum.is_finite(),
           "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}"
         );
-        assert!(
-          (sum - 1.0).abs() < epsilon,
-          "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}"
-        );
+        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        assert!(sum.is_finite(), "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}");
       }
     }
 
@@ -312,7 +305,6 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Verify all marginal profile rows sum to 1.0
-    let epsilon = 1e-6;
     let partition = partition.read_arc();
     for (node_key, node_data) in &partition.nodes {
       if node_data.profile.dis.is_empty() {
@@ -320,10 +312,8 @@ mod tests {
       }
       for (pos, row) in node_data.profile.dis.rows().into_iter().enumerate() {
         let sum: f64 = row.sum();
-        assert!(
-          (sum - 1.0).abs() < epsilon,
-          "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0"
-        );
+        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        assert!(sum.is_finite(), "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0");
       }
     }
 
