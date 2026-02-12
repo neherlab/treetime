@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::o;
-  use treetime_utils::vec_of_owned;
   use crate::commands::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
     get_common_length,
   };
   use crate::io::fasta::read_many_fasta_str;
   use crate::io::nwk::nwk_read_str;
+  use crate::o;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_fitch::PartitionFitch;
   use eyre::Report;
@@ -20,6 +19,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_utils::vec_of_owned;
 
   fn get_node_name(graph: &GraphAncestral, key: crate::graph::node::GraphNodeKey) -> String {
     let node = graph.get_node(key).expect("node exists");
@@ -32,10 +32,7 @@ mod tests {
       .expect("node has name")
   }
 
-  fn collect_edge_subs(
-    graph: &GraphAncestral,
-    partition: &PartitionFitch,
-  ) -> BTreeMap<String, Vec<String>> {
+  fn collect_edge_subs(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
       .iter()
@@ -78,11 +75,7 @@ mod tests {
       .collect()
   }
 
-  fn get_node_variable_positions_by_name(
-    graph: &GraphAncestral,
-    partition: &PartitionFitch,
-    name: &str,
-  ) -> Vec<usize> {
+  fn get_node_variable_positions_by_name(graph: &GraphAncestral, partition: &PartitionFitch, name: &str) -> Vec<usize> {
     for node in graph.get_nodes() {
       let node = node.read_arc();
       let node_name = node.payload().read_arc().name.clone();
@@ -105,10 +98,7 @@ mod tests {
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
-  fn collect_edge_indels(
-    graph: &GraphAncestral,
-    partition: &PartitionFitch,
-  ) -> BTreeMap<String, Vec<String>> {
+  fn collect_edge_indels(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
       .iter()
@@ -342,8 +332,7 @@ mod tests {
       &NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
 
@@ -412,8 +401,7 @@ mod tests {
     )?;
 
     // CDE is a polytomy with 3 children: C, D, E
-    let graph: GraphAncestral =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
 

@@ -134,7 +134,11 @@ mod tests {
       epsilon = 1e-7
     );
 
-    pretty_assert_ulps_eq!(array![0.14878846, 0.24051536, 0.31239203, 0.29830414], &actual.pi, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(
+      array![0.14878846, 0.24051536, 0.31239203, 0.29830414],
+      &actual.pi,
+      epsilon = 1e-7
+    );
     pretty_assert_ulps_eq!(0.9471364432348814, actual.mu, epsilon = 1e-7);
 
     Ok(())
