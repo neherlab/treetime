@@ -20,7 +20,7 @@ mod tests {
       .parent()
       .and_then(|p| p.parent())
       .map(PathBuf::from)
-      .unwrap_or_default()
+      .expect("project has workspace root")
   }
 
   /// Parity test: root sequence from marginal reconstruction matches Python v0.
