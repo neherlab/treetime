@@ -16,8 +16,6 @@ pub mod tests {
     EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
   };
 
-  pub type TestGraph = Graph<TestNode, TestEdge, ()>;
-
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);
 

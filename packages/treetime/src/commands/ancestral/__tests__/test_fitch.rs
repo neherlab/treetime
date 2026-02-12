@@ -261,7 +261,7 @@ mod tests {
 
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global().ok();
+    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -322,7 +322,7 @@ mod tests {
 
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global().ok();
+    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     // Test cases: a) deletions overlap, b) root has a deletion, c) inserted sequence is variable
     // In DE, position 3 is inserted, but it varies in D and E
@@ -392,7 +392,7 @@ mod tests {
 
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global().ok();
+    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     // Test polytomy (node with more than 2 children)
     let aln = read_many_fasta_str(
@@ -460,7 +460,7 @@ mod tests {
 
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global().ok();
+    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     let aln = read_many_fasta_str(
       indoc! {r#"

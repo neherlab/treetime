@@ -100,8 +100,8 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    compress_sequences(&graph, &[partition.clone()], &aln)?;
-    update_marginal(&graph, &[partition.clone()])?;
+    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+    update_marginal(&graph, std::slice::from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts(&graph, &partition)?;
     let counts_expected = MutationCounts {
