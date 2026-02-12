@@ -389,7 +389,7 @@ mod tests {
     }
 
     // since we test all possible triplets, the total likelihood should be 1
-    pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(1.0, total_lh, max_ulps = 4);
     Ok(())
   }
 }

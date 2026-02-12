@@ -113,8 +113,7 @@ mod tests {
     let (log_lh_dense, _) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, _) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    let epsilon = 1e-6;
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = epsilon,);
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 4);
 
     Ok(())
   }
@@ -138,8 +137,6 @@ mod tests {
     let (_, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (_, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    let epsilon = 1e-6;
-
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre::eyre!("Root node not found"))?;
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre::eyre!("AB node not found"))?;
 
@@ -161,7 +158,7 @@ mod tests {
         );
 
         for (idx, (&dense_val, &sparse_val)) in dense_row.iter().zip(sparse_dis.iter()).enumerate() {
-          assert_ulps_eq!(dense_val, sparse_val, epsilon = epsilon,);
+          assert_ulps_eq!(dense_val, sparse_val, max_ulps = 4);
         }
       }
     }
@@ -201,12 +198,12 @@ mod tests {
     let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    let epsilon = 1e-6;
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = epsilon,);
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 4);
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
 
+    let epsilon = 1e-6;
     for node_data in dense.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         for row in node_data.profile.dis.rows() {
