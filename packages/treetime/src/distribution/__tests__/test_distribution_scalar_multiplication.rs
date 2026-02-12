@@ -2,7 +2,7 @@
 mod tests {
   use crate::distribution::distribution::DistributionPlain as Distribution;
   use crate::distribution::distribution_scalar_multiplication::distribution_scalar_multiplication;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -15,7 +15,7 @@ mod tests {
 
     if let Distribution::Function(f) = result {
       assert_eq!(f.t(), &t);
-      assert_abs_diff_eq!(f.y(), &(y * 2.5), epsilon = 1e-10);
+      assert_ulps_eq!(f.y(), &(y * 2.5), max_ulps = 4);
     } else {
       panic!("Expected Function distribution");
     }
@@ -31,7 +31,7 @@ mod tests {
 
     if let Distribution::Function(f) = result {
       assert_eq!(f.t(), &t);
-      assert_abs_diff_eq!(f.y(), &array![0.0, 0.0, 0.0], epsilon = 1e-10);
+      assert_ulps_eq!(f.y(), &array![0.0, 0.0, 0.0], max_ulps = 4);
     } else {
       panic!("Expected Function distribution");
     }
@@ -47,7 +47,7 @@ mod tests {
 
     if let Distribution::Function(f) = result {
       assert_eq!(f.t(), &t);
-      assert_abs_diff_eq!(f.y(), &(y * -1.5), epsilon = 1e-10);
+      assert_ulps_eq!(f.y(), &(y * -1.5), max_ulps = 4);
     } else {
       panic!("Expected Function distribution");
     }
@@ -60,8 +60,8 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, 2.0).unwrap();
 
     if let Distribution::Point(p) = result {
-      assert_abs_diff_eq!(p.t(), 5.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(p.amplitude(), 6.0, epsilon = 1e-10);
+      assert_ulps_eq!(p.t(), 5.0, max_ulps = 4);
+      assert_ulps_eq!(p.amplitude(), 6.0, max_ulps = 4);
     } else {
       panic!("Expected Point distribution");
     }
@@ -74,8 +74,8 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, 0.0).unwrap();
 
     if let Distribution::Point(p) = result {
-      assert_abs_diff_eq!(p.t(), 5.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(p.amplitude(), 0.0, epsilon = 1e-10);
+      assert_ulps_eq!(p.t(), 5.0, max_ulps = 4);
+      assert_ulps_eq!(p.amplitude(), 0.0, max_ulps = 4);
     } else {
       panic!("Expected Point distribution");
     }
@@ -88,8 +88,8 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, -2.0).unwrap();
 
     if let Distribution::Point(p) = result {
-      assert_abs_diff_eq!(p.t(), 5.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(p.amplitude(), -6.0, epsilon = 1e-10);
+      assert_ulps_eq!(p.t(), 5.0, max_ulps = 4);
+      assert_ulps_eq!(p.amplitude(), -6.0, max_ulps = 4);
     } else {
       panic!("Expected Point distribution");
     }
@@ -102,9 +102,9 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, 1.5).unwrap();
 
     if let Distribution::Range(r) = result {
-      assert_abs_diff_eq!(r.start(), 1.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.end(), 3.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.amplitude(), 3.0, epsilon = 1e-10);
+      assert_ulps_eq!(r.start(), 1.0, max_ulps = 4);
+      assert_ulps_eq!(r.end(), 3.0, max_ulps = 4);
+      assert_ulps_eq!(r.amplitude(), 3.0, max_ulps = 4);
     } else {
       panic!("Expected Range distribution");
     }
@@ -117,9 +117,9 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, 0.0).unwrap();
 
     if let Distribution::Range(r) = result {
-      assert_abs_diff_eq!(r.start(), 1.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.end(), 3.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.amplitude(), 0.0, epsilon = 1e-10);
+      assert_ulps_eq!(r.start(), 1.0, max_ulps = 4);
+      assert_ulps_eq!(r.end(), 3.0, max_ulps = 4);
+      assert_ulps_eq!(r.amplitude(), 0.0, max_ulps = 4);
     } else {
       panic!("Expected Range distribution");
     }
@@ -132,9 +132,9 @@ mod tests {
     let result = distribution_scalar_multiplication(&dist, -0.5).unwrap();
 
     if let Distribution::Range(r) = result {
-      assert_abs_diff_eq!(r.start(), 1.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.end(), 3.0, epsilon = 1e-10);
-      assert_abs_diff_eq!(r.amplitude(), -1.0, epsilon = 1e-10);
+      assert_ulps_eq!(r.start(), 1.0, max_ulps = 4);
+      assert_ulps_eq!(r.end(), 3.0, max_ulps = 4);
+      assert_ulps_eq!(r.amplitude(), -1.0, max_ulps = 4);
     } else {
       panic!("Expected Range distribution");
     }
@@ -159,7 +159,7 @@ mod tests {
 
     if let Distribution::Function(f) = result {
       assert_eq!(f.t(), &t);
-      assert_abs_diff_eq!(f.y(), &array![1.0, 2.0, 3.0], epsilon = 1e-10);
+      assert_ulps_eq!(f.y(), &array![1.0, 2.0, 3.0], max_ulps = 4);
     } else {
       panic!("Expected Function distribution");
     }
