@@ -138,6 +138,7 @@ def make_additional_commands(exe, data_dir, out_dir):
     ("help: clock",                f"""{exe} clock --help"""                    ),
     ("help: optimize",             f"""{exe} optimize --help"""                 ),
     ("help: prune",                f"""{exe} prune --help"""                    ),
+    ("help: timetree",             f"""{exe} timetree --help"""                 ),
   ]
   # fmt: on @formatter:on
 
