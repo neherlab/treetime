@@ -45,7 +45,7 @@ mod tests {
       let root = root.read_arc().payload().read_arc();
       ClockModel::new(root.clock_set())
     }?;
-    assert_ulps_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-9);
+    assert_ulps_eq!(naive_rate, clock.clock_rate(), max_ulps = 4);
 
     let options = &ClockParams {
       variance_factor: 1.0,
@@ -59,7 +59,7 @@ mod tests {
       let root = root.read_arc().payload().read_arc();
       ClockModel::new(root.clock_set())
     }?;
-    assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), epsilon = 1e-9);
+    assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), max_ulps = 4);
 
     Ok(())
   }

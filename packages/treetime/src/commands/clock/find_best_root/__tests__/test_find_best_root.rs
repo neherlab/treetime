@@ -40,7 +40,7 @@ mod tests {
     let (graph, options) = setup_test_graph()?;
 
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid())?;
-    assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, epsilon = 1e-9);
+    assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
 
     Ok(())
   }
@@ -55,7 +55,7 @@ mod tests {
       &BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),
     )?;
 
-    assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, epsilon = 1e-12);
+    assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, max_ulps = 4);
 
     Ok(())
   }
@@ -65,7 +65,7 @@ mod tests {
     let (graph, options) = setup_test_graph()?;
 
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent())?;
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, epsilon = 1e-12);
+    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     Ok(())
   }
@@ -83,7 +83,7 @@ mod tests {
       }),
     )?;
 
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, epsilon = 1e-16);
+    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     Ok(())
   }
@@ -93,7 +93,7 @@ mod tests {
     let (graph, options) = setup_test_graph()?;
 
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section())?;
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, epsilon = 1e-12);
+    assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
 
     Ok(())
   }
@@ -111,7 +111,7 @@ mod tests {
       }),
     )?;
 
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, epsilon = 1e-16);
+    assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, max_ulps = 4);
 
     Ok(())
   }
