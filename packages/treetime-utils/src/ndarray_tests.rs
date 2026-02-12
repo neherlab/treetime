@@ -104,8 +104,8 @@ fn test_outer_product_case_1() {
   ];
   let result_outer_pi_ti = outer(&pi, &ti).unwrap();
   let result_outer_ti_pi = outer(&ti, &pi).unwrap();
-  pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, epsilon = 1e-6);
-  pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, epsilon = 1e-6);
+  pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, max_ulps = 4);
+  pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, max_ulps = 4);
 }
 
 #[test]
@@ -126,8 +126,8 @@ fn test_outer_product_case_2() {
   ];
   let result_outer_pi_ti = outer(&pi, &ti).unwrap();
   let result_outer_ti_pi = outer(&ti, &pi).unwrap();
-  pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, epsilon = 1e-6);
-  pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, epsilon = 1e-6);
+  pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, max_ulps = 4);
+  pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, max_ulps = 4);
 }
 
 #[rstest]
@@ -204,7 +204,7 @@ fn test_product_axis_empty_array1() {
   let input: Array1<f64> = array![];
   let expected: Array0<f64> = arr0(1.0);
   let result = product_axis(&input, Axis(0));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn test_product_axis_empty_array2_axis0() {
   let input: Array2<f64> = array![[]];
   let expected: Array1<f64> = array![];
   let result = product_axis(&input, Axis(0));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn test_product_axis_empty_array2_axis1() {
   let input: Array2<f64> = array![[]];
   let expected: Array1<f64> = array![1.0];
   let result = product_axis(&input, Axis(1));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn test_product_axis_empty_axis_0_prod_axis_0() {
   let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
   let expected: Array1<f64> = array![2.0, 3.0, 4.0];
   let result = product_axis(&input, Axis(0));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -236,7 +236,7 @@ fn test_product_axis_empty_axis_0_prod_axis_1() {
   let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
   let expected: Array1<f64> = array![24.0];
   let result = product_axis(&input, Axis(1));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn test_product_axis_empty_axis_1_prod_axis_0() {
   let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
   let expected: Array1<f64> = array![24.0];
   let result = product_axis(&input, Axis(0));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -252,7 +252,7 @@ fn test_product_axis_empty_axis_1_prod_axis_1() {
   let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
   let expected: Array1<f64> = array![2.0, 3.0, 4.0];
   let result = product_axis(&input, Axis(1));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn test_product_axis_general_case_axis_0() {
   let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
   let expected = array![15.0, 48.0];
   let result = product_axis(&input, Axis(0));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }
 
 #[test]
@@ -268,5 +268,5 @@ fn test_product_axis_general_case_axis_1() {
   let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
   let expected = array![2.0, 12.0, 30.0];
   let result = product_axis(&input, Axis(1));
-  pretty_assert_ulps_eq!(result, expected, epsilon = 1e-8);
+  pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
 }

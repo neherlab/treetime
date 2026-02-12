@@ -1,5 +1,5 @@
 use super::*;
-use approx::assert_relative_eq;
+use approx::assert_ulps_eq;
 use ndarray::array;
 use std::iter::repeat_n;
 
@@ -15,10 +15,10 @@ fn test_multiply_many_single() {
   let a = array![1.0, 4.0, 2.0];
   let result = multiply_many_lazy_normalize(&[&a]);
 
-  assert_relative_eq!(result.normalized[0], 0.25, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[2], 0.5, epsilon = 1e-10);
-  assert_relative_eq!(result.log_scale, 4.0_f64.ln(), epsilon = 1e-10);
+  assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[2], 0.5, max_ulps = 4);
+  assert_ulps_eq!(result.log_scale, 4.0_f64.ln(), max_ulps = 4);
 }
 
 #[test]
@@ -26,9 +26,9 @@ fn test_multiply_many_two_identical() {
   let a = array![1.0, 2.0, 1.0];
   let result = multiply_many_lazy_normalize(&[&a, &a]);
 
-  assert_relative_eq!(result.normalized[0], 0.25, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[2], 0.25, epsilon = 1e-10);
+  assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[2], 0.25, max_ulps = 4);
   assert!(result.log_scale.is_finite());
 }
 
@@ -45,7 +45,7 @@ fn test_multiply_many_underflow_resistance() {
   assert!(result.log_scale.is_finite());
 
   let expected_log_scale = (n as f64) * small_val.ln();
-  assert_relative_eq!(result.log_scale, expected_log_scale, epsilon = 1e-10);
+  assert_ulps_eq!(result.log_scale, expected_log_scale, max_ulps = 4);
 }
 
 #[test]
@@ -66,9 +66,9 @@ fn test_lazy_vs_aggressive_same_result_for_few_factors() {
   let agg = multiply_many(&[&a, &b]);
 
   for i in 0..lazy.normalized.len() {
-    assert_relative_eq!(lazy.normalized[i], agg.normalized[i], epsilon = 1e-10);
+    assert_ulps_eq!(lazy.normalized[i], agg.normalized[i], max_ulps = 4);
   }
-  assert_relative_eq!(lazy.log_scale, agg.log_scale, epsilon = 1e-10);
+  assert_ulps_eq!(lazy.log_scale, agg.log_scale, max_ulps = 4);
 }
 
 #[test]
@@ -79,8 +79,8 @@ fn test_lazy_normalize_fewer_operations() {
 
   let result = multiply_many_lazy_normalize(&[&a, &b, &c]);
 
-  assert_relative_eq!(result.normalized[1], 1.0, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[0], 0.125, epsilon = 1e-10);
-  assert_relative_eq!(result.normalized[2], 0.125, epsilon = 1e-10);
-  assert_relative_eq!(result.log_scale, 0.0, epsilon = 1e-10);
+  assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[0], 0.125, max_ulps = 4);
+  assert_ulps_eq!(result.normalized[2], 0.125, max_ulps = 4);
+  assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
 }

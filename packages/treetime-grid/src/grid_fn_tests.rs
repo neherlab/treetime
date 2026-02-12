@@ -1,5 +1,5 @@
 use super::*;
-use approx::{assert_abs_diff_eq, assert_ulps_eq};
+use approx::assert_ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use pretty_assertions::assert_eq;
@@ -21,7 +21,7 @@ use rstest::rstest;
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, epsilon = 1e-14);
+    assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -43,7 +43,7 @@ use rstest::rstest;
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, epsilon = 1e-14);
+    assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -64,7 +64,7 @@ use rstest::rstest;
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, epsilon = 1e-14);
+    assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -85,7 +85,7 @@ use rstest::rstest;
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, epsilon = 1e-14);
+    assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -103,11 +103,11 @@ fn test_gridfn_interp_many() -> Result<(), Report> {
 fn test_gridfn_from_grid() -> Result<(), Report> {
   let grid_fn = GridFn::from_grid((0.0, 1.0), 0.25, |x| x * x)?;
   assert_eq!(grid_fn.x().len(), 5);
-  assert_ulps_eq!(grid_fn.x()[0], 0.0, epsilon = 1e-14);
-  assert_ulps_eq!(grid_fn.x()[4], 1.0, epsilon = 1e-14);
-  assert_ulps_eq!(grid_fn.y()[0], 0.0, epsilon = 1e-14);
-  assert_ulps_eq!(grid_fn.y()[2], 0.25, epsilon = 1e-14);
-  assert_ulps_eq!(grid_fn.y()[4], 1.0, epsilon = 1e-14);
+  assert_ulps_eq!(grid_fn.x()[0], 0.0, max_ulps = 4);
+  assert_ulps_eq!(grid_fn.x()[4], 1.0, max_ulps = 4);
+  assert_ulps_eq!(grid_fn.y()[0], 0.0, max_ulps = 4);
+  assert_ulps_eq!(grid_fn.y()[2], 0.25, max_ulps = 4);
+  assert_ulps_eq!(grid_fn.y()[4], 1.0, max_ulps = 4);
   Ok(())
 }
 
@@ -150,6 +150,6 @@ fn test_gridfn_resample_to_grid_finer() -> Result<(), Report> {
   assert_ulps_eq!(resampled.x_max(), 2.0);
   assert_ulps_eq!(resampled.dx(), 0.5);
   assert_eq!(resampled.n_points(), 5);
-  assert_abs_diff_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], epsilon = 1e-10);
+  assert_ulps_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], max_ulps = 4);
   Ok(())
 }
