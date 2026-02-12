@@ -76,7 +76,7 @@ fn compute_grid_spacing(x: &Array1<f64>) -> eyre::Result<f64> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -86,9 +86,9 @@ mod tests {
     let result = PointwiseMetrics::new(&x, &y, &y).unwrap();
 
     assert_eq!(result.total_points, 5);
-    assert_abs_diff_eq!(result.errors.summary.abs_max, 0.0, epsilon = 1e-12);
-    assert_abs_diff_eq!(result.errors.summary.rel_max, 0.0, epsilon = 1e-12);
-    assert_abs_diff_eq!(result.errors.summary.signed_bias, 0.0, epsilon = 1e-12);
+    assert_ulps_eq!(result.errors.summary.abs_max, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.errors.summary.rel_max, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.errors.summary.signed_bias, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -99,9 +99,9 @@ mod tests {
     let result = PointwiseMetrics::new(&x, &actual, &expected).unwrap();
 
     for i in 0..5 {
-      assert_abs_diff_eq!(result.errors.absolute[i], 0.5, epsilon = 1e-12);
-      assert_abs_diff_eq!(result.errors.signed[i], 0.5, epsilon = 1e-12);
+      assert_ulps_eq!(result.errors.absolute[i], 0.5, max_ulps = 4);
+      assert_ulps_eq!(result.errors.signed[i], 0.5, max_ulps = 4);
     }
-    assert_abs_diff_eq!(result.errors.summary.signed_bias, 0.5, epsilon = 1e-12);
+    assert_ulps_eq!(result.errors.summary.signed_bias, 0.5, max_ulps = 4);
   }
 }

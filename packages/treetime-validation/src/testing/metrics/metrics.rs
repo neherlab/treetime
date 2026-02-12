@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
 #[cfg(test)]
-use approx::assert_abs_diff_eq;
+use approx::assert_ulps_eq;
 
 /// Comprehensive convolution algorithm metrics
 ///
@@ -112,6 +112,6 @@ mod tests {
     let metrics = ValidationMetrics::new_with_config(&x, &y, &y, 50.0, &config).unwrap();
 
     assert_eq!(metrics.distribution.histograms.abs_error_histogram.bin_counts.len(), 20);
-    assert_abs_diff_eq!(metrics.aggregate.execution_time_ms, 50.0, epsilon = 1e-12);
+    assert_ulps_eq!(metrics.aggregate.execution_time_ms, 50.0, max_ulps = 4);
   }
 }

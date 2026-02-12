@@ -122,7 +122,7 @@ fn compute_kurtosis(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -130,8 +130,8 @@ mod tests {
     let errors = array![1.0, 2.0, 3.0, 4.0, 5.0];
     let stats = compute_error_statistics(&errors).unwrap();
 
-    assert_abs_diff_eq!(stats.mean, 3.0, epsilon = 1e-12);
-    assert_abs_diff_eq!(stats.median, 3.0, epsilon = 1e-12);
+    assert_ulps_eq!(stats.mean, 3.0, max_ulps = 4);
+    assert_ulps_eq!(stats.median, 3.0, max_ulps = 4);
     assert!(stats.std > 0.0);
   }
 }
