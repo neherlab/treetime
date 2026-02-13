@@ -3,7 +3,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
-  use crate::graph::edge::{GraphEdgeKey, invert_edge};
+  use treetime_graph::edge::{GraphEdgeKey, invert_edge};
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
   use crate::io::nwk::nwk_read_str;
 

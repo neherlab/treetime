@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::graph::edge::{GraphEdgeKey, HasBranchLength};
-use crate::graph::node::GraphNodeKey;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::node::GraphNodeKey;
 use crate::gtr::gtr::{GTR, GTRParams, avg_transition};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::seq::composition::Composition;

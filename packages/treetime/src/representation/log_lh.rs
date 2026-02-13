@@ -1,6 +1,6 @@
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;

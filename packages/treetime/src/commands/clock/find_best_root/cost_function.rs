@@ -1,9 +1,9 @@
 use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::graph::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 

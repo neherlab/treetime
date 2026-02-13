@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::HasBranchLength;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::HasBranchLength;
 use crate::io::csv::CsvStructFileWriter;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;

@@ -1,6 +1,6 @@
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, nwk_read_str, nwk_write_str};
 use crate::make_error;
 use bytes::Buf;

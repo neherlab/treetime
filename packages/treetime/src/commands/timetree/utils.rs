@@ -1,9 +1,9 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::graph::edge::{EdgeOptimizeOps, GraphEdge};
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
 use crate::seq::div::{OnlyLeaves, compute_divs};
 use eyre::Report;
 

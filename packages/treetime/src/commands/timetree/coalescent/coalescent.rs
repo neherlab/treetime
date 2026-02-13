@@ -4,9 +4,9 @@ use crate::commands::timetree::coalescent::integration::compute_integral_merger_
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;

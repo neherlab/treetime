@@ -1,8 +1,8 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::graph::edge::{ClockMessages, GraphEdge, HasBranchLength};
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named, Outlier};
+use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named, Outlier};
 use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;

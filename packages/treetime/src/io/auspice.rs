@@ -1,6 +1,6 @@
-use crate::graph::edge::{Edge, GraphEdge};
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, GraphNodeKey, Node};
+use treetime_graph::edge::{Edge, GraphEdge};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::io::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};

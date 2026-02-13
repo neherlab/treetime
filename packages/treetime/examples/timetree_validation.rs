@@ -24,8 +24,8 @@ use treetime::commands::timetree::utils::{
 };
 use treetime::distribution::distribution::Distribution;
 use treetime::distribution::distribution_function::DistributionFunction;
-use treetime::graph::edge::HasBranchLength;
-use treetime::graph::node::Named;
+use treetime_graph::edge::HasBranchLength;
+use treetime_graph::node::Named;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::io::dates_csv::{DatesMap, read_dates};
 use treetime::io::fasta::{FastaRecord, read_many_fasta};

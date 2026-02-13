@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::clock::reroot::{RerootParams, remove_node_if_trivial, reroot_in_place};
-  use crate::graph::node::Named;
+  use treetime_graph::node::Named;
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::o;
   use eyre::Report;

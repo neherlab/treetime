@@ -1,5 +1,5 @@
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::graph::graph::Graph;
+use treetime_graph::graph::Graph;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use parking_lot::RwLock;

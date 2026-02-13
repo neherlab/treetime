@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
-  use crate::graph::graph::Graph;
+  use treetime_graph::graph::Graph;
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
   use crate::io::nwk::nwk_read_str;
   use crate::o;

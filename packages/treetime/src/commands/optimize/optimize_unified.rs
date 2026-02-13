@@ -4,7 +4,7 @@ use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
-use crate::graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;

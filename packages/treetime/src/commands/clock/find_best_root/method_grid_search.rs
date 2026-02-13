@@ -1,7 +1,7 @@
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
 use crate::commands::clock::find_best_root::params::GridSearchParams;
-use crate::graph::edge::GraphEdgeKey;
+use treetime_graph::edge::GraphEdgeKey;
 use eyre::Report;
 use log::{debug, info};
 use ndarray::Array1;

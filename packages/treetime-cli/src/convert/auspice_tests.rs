@@ -4,7 +4,7 @@ use crate::convert::mutation::PartitionedMutations;
 use eyre::Report;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use treetime::graph::graph::Graph;
+use treetime_graph::graph::Graph;
 use treetime::io::auspice::{auspice_read_str, auspice_write_str};
 use treetime::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 use treetime::make_internal_report;

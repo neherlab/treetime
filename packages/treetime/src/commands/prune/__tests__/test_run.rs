@@ -2,8 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::prune::run::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
-  use crate::graph::edge::GraphEdgeKey;
-  use crate::graph::graph::Graph;
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};

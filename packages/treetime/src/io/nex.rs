@@ -1,6 +1,6 @@
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
 use eyre::Report;
 use itertools::Itertools;

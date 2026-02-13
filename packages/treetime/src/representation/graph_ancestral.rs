@@ -1,6 +1,6 @@
-use crate::graph::edge::{GraphEdge, HasBranchLength};
-use crate::graph::graph::Graph;
-use crate::graph::node::{Described, GraphNode, Named};
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;

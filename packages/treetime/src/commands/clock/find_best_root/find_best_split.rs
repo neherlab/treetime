@@ -4,9 +4,9 @@ use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
-use crate::graph::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 
