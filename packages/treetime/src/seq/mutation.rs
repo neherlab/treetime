@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::seq_char::AsciiChar;
+use treetime_primitives::AsciiChar;
 use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;

@@ -1,7 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use treetime::representation::seq::Seq;
-use treetime::representation::seq_char::AsciiChar;
+use treetime_primitives::{AsciiChar, Seq};
 use treetime::seq::find_char_ranges::find_letter_ranges_by;
 
 const SEQ: &str = "\

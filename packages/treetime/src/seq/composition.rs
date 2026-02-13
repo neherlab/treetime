@@ -1,4 +1,4 @@
-use crate::representation::seq_char::AsciiChar;
+use treetime_primitives::AsciiChar;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use itertools::Itertools;

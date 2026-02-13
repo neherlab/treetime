@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::seq::Seq;
+use treetime_primitives::Seq;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use eyre::Report;

@@ -15,7 +15,7 @@ use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_compressed::PartitionCompressed;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::partition_marginal_sparse_passes;
-use crate::representation::seq::Seq;
+use treetime_primitives::{seq, Seq};
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -195,10 +195,10 @@ where
         node_data.seq.sequence.clone()
       } else {
         // Return empty seq to be filled later by the reconstruction algorithm
-        crate::seq![]
+        seq![]
       }
     } else {
-      crate::seq![]
+      seq![]
     }
   }
 

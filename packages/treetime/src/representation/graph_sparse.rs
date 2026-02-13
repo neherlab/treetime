@@ -1,7 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::seq::Seq;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
+use treetime_primitives::{seq, AsciiChar, Seq, StateSet};
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
@@ -29,7 +27,7 @@ impl SparseNodePartition {
         gaps: vec![],
         non_char: vec![],
         composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        sequence: crate::seq![],
+        sequence: seq![],
         fitch: FitchSeqDistribution {
           variable: btreemap! {},
           variable_indel: btreemap! {},

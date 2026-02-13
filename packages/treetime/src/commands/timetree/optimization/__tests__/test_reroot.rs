@@ -19,8 +19,7 @@ mod tests {
   use crate::representation::node_timetree::NodeTimetree;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition_timetree::GraphTimetree;
-  use crate::representation::seq_char::AsciiChar;
-  use crate::seq;
+  use treetime_primitives::{seq, AsciiChar};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use approx::assert_ulps_eq;

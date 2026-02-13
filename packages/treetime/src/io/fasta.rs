@@ -1,8 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::io::concat::Concat;
 use crate::make_error;
-use crate::representation::seq::Seq;
-use crate::representation::seq_char::AsciiChar;
+use treetime_primitives::{AsciiChar, Seq};
 use eyre::{Context, Report};
 use itertools::Itertools;
 use log::warn;

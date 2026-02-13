@@ -3,7 +3,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::io::fasta::FastaRecord;
-use crate::representation::seq::Seq;
+use treetime_primitives::Seq;
 use eyre::Report;
 
 pub trait PartitionMarginal {}

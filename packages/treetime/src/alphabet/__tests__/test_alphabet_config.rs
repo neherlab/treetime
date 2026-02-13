@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
-  use crate::representation::seq_char::AsciiChar;
+  use treetime_primitives::AsciiChar;
   use crate::vec_u8;
   use approx::assert_ulps_eq;
   use indexmap::indexmap;

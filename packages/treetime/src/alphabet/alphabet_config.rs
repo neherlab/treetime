@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
+use treetime_primitives::{AsciiChar, StateSet};
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
 use indexmap::IndexMap;

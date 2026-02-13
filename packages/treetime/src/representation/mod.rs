@@ -1,5 +1,4 @@
 mod __tests__;
-pub mod bitset128;
 pub mod edge_timetree;
 pub mod graph_ancestral;
 pub mod graph_dense;
@@ -17,6 +16,3 @@ mod partition_marginal_sparse_passes;
 pub mod partition_timetree;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
-pub mod seq;
-pub mod seq_char;
-pub mod state_set;

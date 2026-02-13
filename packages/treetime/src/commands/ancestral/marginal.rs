@@ -7,7 +7,7 @@ use crate::io::fasta::FastaRecord;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
-use crate::representation::seq::Seq;
+use treetime_primitives::{seq, Seq};
 use eyre::Report;
 use log::debug;
 use parking_lot::RwLock;
@@ -71,9 +71,9 @@ where
       let mut partition = partitions[0].write_arc();
       partition
         .reconstruct_node_sequence(&node, include_leaves)
-        .unwrap_or_else(|| crate::seq![])
+        .unwrap_or_else(|| seq![])
     } else {
-      crate::seq![]
+      seq![]
     };
 
     visitor(&node.payload, &seq);

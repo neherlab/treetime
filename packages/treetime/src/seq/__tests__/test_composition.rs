@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::representation::seq::Seq;
+  use treetime_primitives::Seq;
   use crate::seq::composition::Composition;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;

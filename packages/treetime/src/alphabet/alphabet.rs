@@ -1,8 +1,6 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
-use crate::representation::bitset128::BitSet128;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
-use crate::{make_error, stateset, vec_u8};
+use treetime_primitives::{stateset, AsciiChar, BitSet128, StateSet};
+use crate::{make_error, vec_u8};
 use clap::ValueEnum;
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};

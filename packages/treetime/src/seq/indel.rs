@@ -1,4 +1,4 @@
-use crate::representation::seq::Seq;
+use treetime_primitives::Seq;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

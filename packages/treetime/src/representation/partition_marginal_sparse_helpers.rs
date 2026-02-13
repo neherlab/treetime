@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
+use treetime_primitives::AsciiChar;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
@@ -14,8 +15,8 @@ pub const EPS: f64 = 1e-4;
 pub fn combine_messages(
   composition: &Composition,
   messages: &[MarginalSparseSeqDistribution],
-  variable_pos: &BTreeMap<usize, crate::representation::seq_char::AsciiChar>,
-  reference_states: &[BTreeMap<usize, crate::representation::seq_char::AsciiChar>],
+  variable_pos: &BTreeMap<usize, AsciiChar>,
+  reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<MarginalSparseSeqDistribution, Report> {
