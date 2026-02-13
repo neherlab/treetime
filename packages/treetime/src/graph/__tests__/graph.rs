@@ -16,6 +16,8 @@ pub mod tests {
     EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
   };
 
+  use crate::test_utils::find_edge_key;
+
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);
 
@@ -180,18 +182,10 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_simple_chain() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
-    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
-
-    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
-    let _internal_to_leaf_edge = graph.add_edge(internal_node, leaf_node, TestEdge(Some(0.2)))?;
-
-    graph.build()?;
-
-    graph.collapse_edge(root_to_internal_edge)?;
+    let root_to_internal = find_edge_key(&graph, "root", "internal").unwrap();
+    graph.collapse_edge(root_to_internal)?;
 
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(A:0.2)root;");
