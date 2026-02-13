@@ -9,6 +9,7 @@ mod tests {
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::graph_sparse::MarginalSparseSeqDistribution;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+  use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
@@ -19,21 +20,9 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
-
-  fn find_node_key_by_name(graph: &GraphAncestral, name: &str) -> Option<GraphNodeKey> {
-    for node in graph.get_nodes() {
-      let node = node.read_arc();
-      let payload = node.payload().read_arc();
-      if payload.name.as_deref() == Some(name) {
-        return Some(node.key());
-      }
-    }
-    None
-  }
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

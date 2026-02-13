@@ -10,6 +10,7 @@ mod tests {
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
+  use crate::test_utils::find_node_key_by_name;
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition};
   use crate::representation::node_timetree::NodeTimetree;
@@ -25,7 +26,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
+  use treetime_graph::node::{Named, TimeConstraint};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, seq};
@@ -65,17 +66,6 @@ mod tests {
       "#},
       &alphabet,
     )
-  }
-
-  fn find_node_key_by_name(graph: &GraphTimetree, name: &str) -> Option<GraphNodeKey> {
-    for node in graph.get_nodes() {
-      let node = node.read_arc();
-      let payload = node.payload().read_arc();
-      if payload.name().is_some_and(|n| n.as_ref() == name) {
-        return Some(node.key());
-      }
-    }
-    None
   }
 
   #[test]
