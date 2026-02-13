@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 pub mod args;
 pub mod optimize_dense;
 mod optimize_dense_eval;
