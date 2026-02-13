@@ -11,7 +11,7 @@ pub use gaussian::{
 pub use gaussian_exponential::{gaussian_exponential_convolution, gaussian_exponential_convolution_grid};
 
 #[cfg(test)]
-mod gaussian_tests;
+mod __tests__;
 
 #[cfg(test)]
 mod tests {
