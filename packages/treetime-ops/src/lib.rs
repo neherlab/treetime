@@ -6,7 +6,7 @@ pub mod multiplication;
 pub mod traits;
 
 #[cfg(test)]
-mod multiplication_tests;
+mod __tests__;
 
 pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve, convolve_fft, convolve_riemann};
 pub use multiplication::{

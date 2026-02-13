@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 use approx::assert_ulps_eq;
 use ndarray::array;
 use std::iter::repeat_n;
