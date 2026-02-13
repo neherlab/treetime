@@ -1,5 +1,5 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::y_axis_policy::Plain;
+use crate::Distribution;
+use crate::y_axis_policy::Plain;
 use serde::{Deserialize, Serialize};
 
 /// Threshold for detecting drift from normalized state (max=1.0).

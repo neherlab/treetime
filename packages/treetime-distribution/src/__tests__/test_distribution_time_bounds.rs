@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_time_bounds::{
+  use crate::DistributionPlain as Distribution;
+  use crate::distribution_time_bounds::{
     distribution_time_bounds_contains, distribution_time_bounds_intersection, distribution_time_bounds_overlaps,
     distribution_time_bounds_union,
   };

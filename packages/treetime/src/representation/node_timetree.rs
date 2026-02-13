@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
 use crate::representation::graph_ancestral::NodeAncestral;

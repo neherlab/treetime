@@ -1,8 +1,8 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_function::DistributionFunction;
-use crate::distribution::distribution_point::DistributionPoint;
-use crate::distribution::distribution_range::DistributionRange;
-use crate::distribution::y_axis_policy::YAxisPolicy;
+use crate::Distribution;
+use crate::distribution_function::DistributionFunction;
+use crate::distribution_point::DistributionPoint;
+use crate::distribution_range::DistributionRange;
+use crate::y_axis_policy::YAxisPolicy;
 use eyre::Report;
 
 /// Negate a distribution by reflecting it across the time axis: f(x) -> f(-x).

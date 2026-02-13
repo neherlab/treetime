@@ -16,6 +16,7 @@ crate-type = ["lib"]
 [dependencies]
 phyloxml = { path = "../phyloxml" }
 treetime-analytical = { path = "../treetime-analytical" }
+treetime-distribution = { path = "../treetime-distribution" }
 treetime-graph = { workspace = true }
 treetime-grid = { path = "../treetime-grid" }
 treetime-primitives = { workspace = true }

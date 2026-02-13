@@ -1,4 +1,4 @@
-use crate::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

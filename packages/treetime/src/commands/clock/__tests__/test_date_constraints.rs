@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::clock::date_constraints::{DateConstraintNode, load_date_constraints};
-  use crate::distribution::distribution::Distribution;
+  use treetime_distribution::Distribution;
   use crate::io::dates_csv::DatesMap;
   use crate::io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
   use crate::o;

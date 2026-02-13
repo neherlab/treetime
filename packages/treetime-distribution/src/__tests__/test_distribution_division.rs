@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_division::distribution_division;
+  use crate::DistributionPlain as Distribution;
+  use crate::distribution_division::distribution_division;
   use ndarray::array;
   use treetime_utils::assert_error;
 

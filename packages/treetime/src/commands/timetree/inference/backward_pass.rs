@@ -1,7 +1,7 @@
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
-use crate::distribution::distribution::{Distribution, DistributionNegLog};
-use crate::distribution::distribution_convolution::distribution_convolution;
-use crate::distribution::distribution_multiplication::distribution_multiplication;
+use treetime_distribution::{Distribution, DistributionNegLog};
+use treetime_distribution::distribution_convolution;
+use treetime_distribution::distribution_multiplication;
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;

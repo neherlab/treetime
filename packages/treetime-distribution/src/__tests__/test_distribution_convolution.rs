@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_convolution::distribution_convolution;
+  use crate::DistributionPlain as Distribution;
+  use crate::distribution_convolution::distribution_convolution;
   use ndarray::array;
   use pretty_assertions::assert_eq;
 

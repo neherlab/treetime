@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution_function::DistributionFunction;
-  use crate::distribution::y_axis_policy::Plain;
-  use crate::pretty_assert_ulps_eq;
+  use crate::distribution_function::DistributionFunction;
+  use crate::y_axis_policy::Plain;
+  use treetime_utils::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
 

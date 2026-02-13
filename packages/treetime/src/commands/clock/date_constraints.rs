@@ -1,4 +1,4 @@
-use crate::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use crate::o;

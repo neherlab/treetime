@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::Distribution;
-  use crate::distribution::y_axis_policy::Plain;
+  use crate::Distribution;
+  use crate::y_axis_policy::Plain;
   use approx::assert_relative_eq;
   use ndarray::array;
 

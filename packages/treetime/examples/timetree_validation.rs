@@ -22,8 +22,8 @@ use treetime::commands::timetree::partition_ops::PartitionTimetreeAll;
 use treetime::commands::timetree::utils::{
   initialize_clock_totals_from_time_distributions, initialize_node_divergences,
 };
-use treetime::distribution::distribution::Distribution;
-use treetime::distribution::distribution_function::DistributionFunction;
+use treetime_distribution::Distribution;
+use treetime_distribution::DistributionFunction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::io::dates_csv::{DatesMap, read_dates};
 use treetime::io::fasta::{FastaRecord, read_many_fasta};

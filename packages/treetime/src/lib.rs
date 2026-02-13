@@ -2,7 +2,6 @@ pub mod alphabet;
 pub mod cli;
 pub mod commands;
 pub mod constants;
-pub mod distribution;
 pub mod graph;
 pub mod gtr;
 pub mod hacks;

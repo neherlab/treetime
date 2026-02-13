@@ -1,4 +1,4 @@
-use crate::distribution::y_axis_policy::{Plain, PolicyMarker, YAxisPolicy};
+use crate::y_axis_policy::{Plain, PolicyMarker, YAxisPolicy};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 

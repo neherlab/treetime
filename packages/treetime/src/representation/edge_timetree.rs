@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::commands::timetree::timetree_traits::TimetreeEdge;
-use crate::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use crate::io::graphviz::EdgeToGraphviz;
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NwkWriteOptions, format_weight};
 use crate::representation::graph_ancestral::EdgeAncestral;

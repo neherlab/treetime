@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_convolution::distribution_convolution;
+  use treetime_distribution::DistributionPlain as Distribution;
+  use treetime_distribution::distribution_convolution;
   use approx::assert_ulps_eq;
   use eyre::Report;
 

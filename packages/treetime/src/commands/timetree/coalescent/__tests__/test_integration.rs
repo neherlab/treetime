@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
   use crate::commands::timetree::coalescent::integration::compute_merger_rates;
   use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-  use crate::distribution::distribution::Distribution;
+  use treetime_distribution::Distribution;
   use eyre::Report;
   use ndarray::Array1;
   use ndarray::array;

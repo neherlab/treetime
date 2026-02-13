@@ -1,4 +1,4 @@
-use crate::distribution::y_axis_policy::{Plain, PolicyMarker, YAxisPolicy};
+use crate::y_axis_policy::{Plain, PolicyMarker, YAxisPolicy};
 use eyre::Result;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
