@@ -15,7 +15,7 @@ pub use grid_fn::GridFn;
 pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
-mod grid_fn_tests;
+mod __tests__;
 
 #[cfg(test)]
 mod tests {
