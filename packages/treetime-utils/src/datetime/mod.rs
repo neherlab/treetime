@@ -9,4 +9,4 @@ pub mod parse_uncertain_date;
 pub mod year_fraction;
 
 #[cfg(test)]
-mod parse_uncertain_date_tests;
+mod __tests__;
