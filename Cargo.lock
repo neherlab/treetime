@@ -3801,6 +3801,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-graph"
+version = "1.0.0"
+dependencies = [
+ "derive_more",
+ "eyre",
+ "getset",
+ "itertools 0.14.0",
+ "parking_lot",
+ "pretty_assertions",
+ "rayon",
+ "rstest",
+ "rstest_reuse",
+ "serde",
+ "traversal",
+ "treetime-utils",
+]
+
+[[package]]
 name = "treetime-grid"
 version = "1.0.0"
 dependencies = [
