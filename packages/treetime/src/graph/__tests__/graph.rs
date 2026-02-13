@@ -240,18 +240,10 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_leaf_edge() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("(A:0.1,B:0.2)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
-    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
-
-    let root_to_a_edge = graph.add_edge(root_node, a_node, TestEdge(Some(0.1)))?;
-    let _root_to_b_edge = graph.add_edge(root_node, b_node, TestEdge(Some(0.2)))?;
-
-    graph.build()?;
-
-    graph.collapse_edge(root_to_a_edge)?;
+    let root_to_a = find_edge_key(&graph, "root", "A").unwrap();
+    graph.collapse_edge(root_to_a)?;
 
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(B:0.2)root;");
