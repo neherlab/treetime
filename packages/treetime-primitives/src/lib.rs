@@ -1,1 +1,3 @@
-// Placeholder - source files will be added in next phase
+mod seq_char;
+
+pub use seq_char::AsciiChar;
