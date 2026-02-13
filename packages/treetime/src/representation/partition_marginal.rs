@@ -1,4 +1,4 @@
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use eyre::Report;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;

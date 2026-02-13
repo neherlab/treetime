@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::io::dates_csv::*;
+  use treetime_io::dates_csv::*;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;

@@ -6,14 +6,14 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use treetime::io::auspice::{auspice_read_file, auspice_write_file};
-use treetime::io::auspice_types::AuspiceTreeMeta;
-use treetime::io::nex::{NexWriteOptions, nex_write_file};
-use treetime::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
-use treetime::io::phyloxml::{
+use treetime_io::auspice::{auspice_read_file, auspice_write_file};
+use treetime_io::auspice_types::AuspiceTreeMeta;
+use treetime_io::nex::{NexWriteOptions, nex_write_file};
+use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_io::phyloxml::{
   PhyloxmlJsonOptions, phyloxml_json_read_file, phyloxml_json_write_file, phyloxml_read_file, phyloxml_write_file,
 };
-use treetime::io::usher_mat::{
+use treetime_io::usher_mat::{
   UsherMatJsonOptions, usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file,
   usher_mat_pb_write_file,
 };

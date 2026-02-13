@@ -5,8 +5,8 @@ use eyre::Report;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeSet;
-use treetime::io::auspice::auspice_read_str;
-use treetime::io::usher_mat::{UsherMatJsonOptions, UsherTree, usher_mat_json_write_str};
+use treetime_io::auspice::auspice_read_str;
+use treetime_io::usher_mat::{UsherMatJsonOptions, UsherTree, usher_mat_json_write_str};
 use treetime_io::json::json_read_str;
 
 #[test]

@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::clock::find_best_root::params::{
     BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
   };
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use approx::assert_ulps_eq;
   use eyre::Report;

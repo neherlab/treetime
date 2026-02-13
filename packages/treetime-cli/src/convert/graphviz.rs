@@ -1,6 +1,6 @@
 use crate::convert::convert::{ConverterEdge, ConverterNode};
-use treetime::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use treetime::io::nwk::{NwkWriteOptions, format_weight};
+use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
+use treetime_io::nwk::{NwkWriteOptions, format_weight};
 
 impl NodeToGraphviz for ConverterNode {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {

@@ -1,5 +1,5 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
-use crate::io::discrete_states_csv::read_discrete_attrs;
+use treetime_io::discrete_states_csv::read_discrete_attrs;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use indexmap::{IndexMap, IndexSet};

@@ -3,7 +3,7 @@ use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use crate::make_internal_report;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};

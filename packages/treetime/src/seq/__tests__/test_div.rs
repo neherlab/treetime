@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use eyre::Report;

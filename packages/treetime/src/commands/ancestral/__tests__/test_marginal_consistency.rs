@@ -5,8 +5,8 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::io::fasta::{FastaRecord, read_many_fasta_str};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::nwk::nwk_read_str;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -38,7 +38,7 @@ mod tests {
       >D
       ACGTACGTACGTACGC
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )
   }
 
@@ -179,7 +179,7 @@ mod tests {
       >D
       ACGTACGTACGTACGC
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use eyre::Report;
   use pretty_assertions::assert_eq;
 

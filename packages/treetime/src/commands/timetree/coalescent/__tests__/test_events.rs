@@ -2,8 +2,8 @@
 mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::events::collect_tree_events;
-  use crate::io::dates_csv::{DateOrRange, DatesMap};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::dates_csv::{DateOrRange, DatesMap};
+  use treetime_io::nwk::nwk_read_str;
   use crate::representation::partition_timetree::GraphTimetree;
   use approx::assert_ulps_eq;
   use eyre::Report;

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use eyre::Report;
 
 #[derive(Clone, Debug)]

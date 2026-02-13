@@ -4,7 +4,7 @@ mod tests {
   use pretty_assertions::assert_eq;
 
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read_str;
   use treetime_graph::edge::{GraphEdgeKey, invert_edge};
 
   #[test]

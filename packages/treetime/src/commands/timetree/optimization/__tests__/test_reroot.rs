@@ -10,8 +10,8 @@ mod tests {
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use treetime_distribution::Distribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::io::fasta::{FastaRecord, read_many_fasta_str};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition};

@@ -4,9 +4,9 @@ use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal}
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::gtr::get_gtr::{JC69Params, jc69};
-use crate::io::fasta::read_many_fasta;
-use crate::io::nex::{NexWriteOptions, nex_write_file};
-use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_io::fasta::read_many_fasta;
+use treetime_io::nex::{NexWriteOptions, nex_write_file};
+use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;

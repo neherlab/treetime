@@ -7,8 +7,8 @@ pub mod tests {
   use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
 
-  use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-  use crate::io::nwk::{
+  use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
+  use treetime_io::nwk::{
     EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
   };
   use treetime_graph::breadth_first::GraphTraversalContinuation;

@@ -5,8 +5,8 @@ mod tests {
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
     get_common_length,
   };
-  use crate::io::fasta::read_many_fasta_str;
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_fitch::PartitionFitch;
@@ -136,7 +136,7 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = read_many_fasta_str(
@@ -148,7 +148,7 @@ mod tests {
         >CD
         CCGGCCATGTATTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
@@ -196,7 +196,7 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = read_many_fasta_str(
@@ -216,7 +216,7 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
@@ -264,7 +264,7 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
@@ -329,7 +329,7 @@ mod tests {
         >E
         TGCCG
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
@@ -397,7 +397,7 @@ mod tests {
         >E
         TGCCG
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     // CDE is a polytomy with 3 children: C, D, E
@@ -461,7 +461,7 @@ mod tests {
         >D
         TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;

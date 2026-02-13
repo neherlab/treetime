@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_graph::GraphClock;
-use crate::io::dates_csv::{DateOrRange, DatesMap};
+use treetime_io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use eyre::Report;
 use treetime_graph::node::Named;

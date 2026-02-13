@@ -5,8 +5,8 @@ use itertools::Itertools;
 use maplit::btreemap;
 use serde_json::Value;
 use std::collections::BTreeMap;
-use treetime::io::auspice::{AuspiceGraphContext, AuspiceRead, AuspiceTreeContext, AuspiceWrite};
-use treetime::io::auspice_types::{
+use treetime_io::auspice::{AuspiceGraphContext, AuspiceRead, AuspiceTreeContext, AuspiceWrite};
+use treetime_io::auspice_types::{
   AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeData, AuspiceTreeNode, AuspiceTreeNodeAttrs,
 };
 use treetime::make_internal_report;

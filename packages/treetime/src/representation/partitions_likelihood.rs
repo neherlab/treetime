@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::gtr::gtr::GTR;
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use crate::representation::partitions_parsimony::PartitionParsimony;
 use eyre::Report;
 

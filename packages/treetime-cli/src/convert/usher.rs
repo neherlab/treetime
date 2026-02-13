@@ -3,7 +3,7 @@ use crate::convert::mutation::{Mutation, MutationList, PartitionedMutations};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use treetime::io::usher_mat::{
+use treetime_io::usher_mat::{
   UsherGraphContext, UsherMetadata, UsherMutation, UsherMutationList, UsherRead, UsherTree, UsherTreeContext,
   UsherTreeNode, UsherWrite,
 };

@@ -6,8 +6,8 @@ mod tests {
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::io::fasta::{FastaRecord, read_many_fasta_str};
-  use crate::io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -107,7 +107,7 @@ mod tests {
       >D
       TCGGCCGTGTRTTG--
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = read_many_fasta_str(
@@ -119,7 +119,7 @@ mod tests {
       >CD
       TCGGCGGTGTATTG--
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
@@ -178,7 +178,7 @@ mod tests {
       >D
       TCGGCCGTGTRTTG--
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
@@ -226,7 +226,7 @@ mod tests {
       >D
       TCGGCCGTGTRTTG--
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
@@ -259,7 +259,7 @@ mod tests {
       >D
       ACGTACGTACGTACGC
     "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let treat_gap_as_unknown = true;
@@ -307,7 +307,7 @@ mod tests {
       for &state_b in &states {
         for &state_c in &states {
           // Create alignment with single position containing this triplet
-          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &NUC_ALPHABET)?;
+          let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
           let partitions_marginal_dense = [Arc::new(RwLock::new(PartitionMarginalDense {
             index: 0,

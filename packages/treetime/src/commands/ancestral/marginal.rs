@@ -1,4 +1,4 @@
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal::PartitionMarginalOps;

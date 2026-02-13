@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::io::fasta::*;
+  use treetime_io::fasta::*;
   use crate::o;
   use eyre::Report;
   use indoc::indoc;
@@ -19,7 +19,7 @@ mod tests {
   fn test_fasta_reader_fail_on_non_fasta() {
     let data =
         b"This is not a valid FASTA string.\nIt is not empty, and not entirely whitespace\nbut does not contain 'greater than' character.\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
     let mut record = FastaRecord::new();
     assert_eq!(
       reader.read(&mut record).unwrap_err().to_string(),
@@ -30,7 +30,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_fail_on_unknown_char() {
     let data = b">seq%1\nACGT%ACGT\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
     let mut record = FastaRecord::new();
     let actual = report_to_string(&reader.read(&mut record).unwrap_err());
     let expected = r#"When processing sequence #1: ">seq%1": FASTA input is incorrect: character "%" is not in the alphabet. Expected characters: '-', 'A', 'B', 'C', 'D', 'G', 'H', 'K', 'M', 'N', 'R', 'S', 'T', 'V', 'W', 'Y'"#;
@@ -40,7 +40,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_empty() {
     let data = b"";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -51,7 +51,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_whitespace_only() {
     let data = b"\n \n \n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -62,7 +62,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record() {
     let data = b">seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -75,7 +75,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_with_leading_newline() {
     let data = b"\n>seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -88,7 +88,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_with_multiple_leading_newlines() {
     let data = b"\n\n\n>seq1\nATCG\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -101,7 +101,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_single_record_without_trailing_newline() {
     let data = b">seq1\nATCG";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -114,7 +114,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_multiple_records() {
     let data = b">seq1\nATCG\n>seq2\nGCTA\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record1 = FastaRecord::new();
     reader.read(&mut record1).unwrap();
@@ -134,7 +134,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_empty_lines_between_records() {
     let data = b"\n>seq1\n\nATCG\n\n\n>seq2\nGCTA\n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record1 = FastaRecord::new();
     reader.read(&mut record1).unwrap();
@@ -154,7 +154,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_read_with_trailing_newline() {
     let data = b">seq1\nATCG\n\n";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -167,7 +167,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_1() {
     let data = b"\n\n>a\nACGCTCGATC\n\n>b\nCCGCGC";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -198,7 +198,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_2() {
     let data = b">a\nACGCTCGATC\n>b\nCCGCGC\n>c";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -241,7 +241,7 @@ mod tests {
   #[test]
   fn test_fasta_reader_example_3() {
     let data = b">a\nACGCTCGATC\n>b\n>c\nCCGCGC";
-    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &NUC_ALPHABET);
+    let mut reader = FastaReader::new(Box::new(Cursor::new(data)), &*NUC_ALPHABET);
 
     let mut record = FastaRecord::new();
     reader.read(&mut record).unwrap();
@@ -292,7 +292,7 @@ mod tests {
 
 
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = vec![
@@ -334,7 +334,7 @@ mod tests {
           >MisindentedVirus|D-skew
           TCGGCCGTGTRTTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = vec![
@@ -402,7 +402,7 @@ mod tests {
         >Pathway/042|Doodlease
         MXQ-*XTQWBQR
       "#},
-      &AA_ALPHABET,
+      &*AA_ALPHABET,
     )?;
 
     let expected = vec![
@@ -461,7 +461,7 @@ mod tests {
         ATGTATTG
          ATTG--
       "#},
-      &NUC_ALPHABET,
+      &*NUC_ALPHABET,
     )?;
 
     let expected = vec![

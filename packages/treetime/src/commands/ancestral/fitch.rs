@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::io::fasta::FastaRecord;
+use treetime_io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
   Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,

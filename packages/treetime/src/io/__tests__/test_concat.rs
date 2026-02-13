@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::iter_on_single_items, clippy::redundant_type_annotations)]
 mod tests {
-  use crate::io::concat::*;
+  use treetime_io::concat::*;
   use rstest::rstest;
   use std::io::Read;
 

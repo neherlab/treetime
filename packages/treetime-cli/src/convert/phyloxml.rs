@@ -1,7 +1,7 @@
 use crate::convert::convert::{ConverterData, ConverterEdge, ConverterNode};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime::io::phyloxml::{
+use treetime_io::phyloxml::{
   Phyloxml, PhyloxmlClade, PhyloxmlContext, PhyloxmlDataFromGraphData, PhyloxmlDataToGraphData, PhyloxmlFromGraph,
   PhyloxmlGraphContext, PhyloxmlPhylogeny, PhyloxmlToGraph,
 };

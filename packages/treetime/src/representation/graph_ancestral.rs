@@ -1,5 +1,5 @@
-use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
+use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
