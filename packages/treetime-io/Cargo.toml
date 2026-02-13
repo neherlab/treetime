@@ -14,7 +14,11 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
+phyloxml = { path = "../phyloxml" }
+treetime-graph = { workspace = true }
+treetime-primitives = { workspace = true }
 treetime-utils = { path = "../treetime-utils" }
+usher-mat-utils = { path = "../usher-mat-utils" }
 approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
