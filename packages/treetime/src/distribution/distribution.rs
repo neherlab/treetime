@@ -4,7 +4,6 @@ use crate::distribution::distribution_point::DistributionPoint;
 use crate::distribution::distribution_range::DistributionRange;
 use crate::distribution::y_axis_policy::{NegLog, Plain, YAxisPolicy};
 use crate::distribution::{distribution_function::DistributionFunction, distribution_negation::distribution_negation};
-use crate::io::dates_csv::DateOrRange;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::Array1;
@@ -189,17 +188,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 }
 
 impl Distribution<Plain> {
-  pub fn from_date_or_range(date_or_range: &DateOrRange) -> Self {
-    match date_or_range {
-      DateOrRange::YearFraction(t) => {
-        Self::point(*t, 1.0) //
-      },
-      DateOrRange::YearFractionRange((start, end)) => {
-        Self::range((*start, *end), 1.0) //
-      },
-    }
-  }
-
   /// Returns the maximum value of the distribution.
   /// - Empty: returns 0.0
   /// - Point: returns amplitude

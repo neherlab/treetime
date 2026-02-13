@@ -1,5 +1,5 @@
 use crate::distribution::distribution::Distribution;
-use crate::io::dates_csv::DatesMap;
+use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use crate::o;
 use eyre::Report;
@@ -12,6 +12,13 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named, TimeConstraint};
 
 pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
+
+pub fn date_or_range_to_distribution(date_or_range: &DateOrRange) -> Distribution {
+  match date_or_range {
+    DateOrRange::YearFraction(t) => Distribution::point(*t, 1.0),
+    DateOrRange::YearFractionRange((start, end)) => Distribution::range((*start, *end), 1.0),
+  }
+}
 
 pub fn load_date_constraints<N, E, D>(dates: &DatesMap, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
@@ -38,7 +45,7 @@ where
       let name = name.unwrap();
       let date_or_range = dates[name.as_str()].as_ref().unwrap();
 
-      let dist = Arc::new(Distribution::from_date_or_range(date_or_range));
+      let dist = Arc::new(date_or_range_to_distribution(date_or_range));
 
       payload.set_time_distribution(Some(dist));
       payload.set_bad_branch(false);
