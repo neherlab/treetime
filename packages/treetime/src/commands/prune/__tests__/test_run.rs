@@ -318,63 +318,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_both_disabled() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal = graph.add_node(NodeAncestral {
-      name: Some("internal".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-
-    // Very short edge with no mutations - should be preserved when both pruning options disabled
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: Some(0.0001),
-      },
+    // Very short edge (root->internal) with no mutations - should be preserved when both pruning options disabled
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
+      "((A:0.1)internal:0.0001)root;",
+      &[("root", "internal", Some(0)), ("internal", "A", Some(1))],
     )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
-    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
-
-    partition
-      .edges
-      .insert(root_internal_edge_key, SparseEdgePartition::default());
-    partition.edges.insert(
-      internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    );
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
 
     prune_nodes(&mut graph, &partitions, None, false, &btreeset! {})?;
 
