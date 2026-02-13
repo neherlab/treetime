@@ -1,4 +1,4 @@
-use crate::make_error;
+use treetime_utils::make_error;
 use bio::io::newick;
 use eyre::{Report, WrapErr, eyre};
 use indexmap::IndexMap;

@@ -1,5 +1,5 @@
-use crate::io::csv::{get_col_name, guess_csv_delimiter};
-use crate::{make_internal_report, vec_of_owned};
+use crate::csv::{get_col_name, guess_csv_delimiter};
+use treetime_utils::{make_internal_report, vec_of_owned};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr, eyre};
 use itertools::Itertools;

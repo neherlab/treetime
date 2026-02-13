@@ -3916,6 +3916,7 @@ dependencies = [
  "ordered-float",
  "parking_lot",
  "petgraph",
+ "phyloxml",
  "plotters",
  "pretty_assertions",
  "pretty_dtoa",
@@ -3940,7 +3941,10 @@ dependencies = [
  "tikv-jemallocator",
  "time",
  "traversal",
+ "treetime-graph",
+ "treetime-primitives",
  "treetime-utils",
+ "usher-mat-utils",
  "xz2",
  "zstd",
 ]
