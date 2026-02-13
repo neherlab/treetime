@@ -1,0 +1,16 @@
+[package]
+name = "treetime-primitives"
+description.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+[dependencies]
+auto_ops = { workspace = true }
+itertools = { workspace = true }
+serde = { workspace = true }
+
+[lints]
+workspace = true
