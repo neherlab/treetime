@@ -6,8 +6,8 @@ use ndarray::Array1;
 use num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
-use treetime_utils::make_error;
 use treetime_utils::array::ndarray::has_uniform_spacing;
+use treetime_utils::make_error;
 
 /// Uniform grid parameters and indexing operations
 ///

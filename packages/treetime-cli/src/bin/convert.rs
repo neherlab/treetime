@@ -5,8 +5,8 @@ use eyre::Report;
 use treetime::make_report;
 use treetime_cli::convert::args::{Args, guess_tree_format_from_filename};
 use treetime_cli::convert::convert::{ConverterGraph, convert_read_file, convert_write_file};
-use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::init::global::{global_init, setup_logger};
+use treetime_utils::io::compression::remove_compression_ext;
 
 #[ctor]
 fn init() {

@@ -1,8 +1,8 @@
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
-use treetime_distribution::Distribution;
 use eyre::Report;
 use ndarray::Array1;
+use treetime_distribution::Distribution;
 use treetime_utils::make_error;
 
 /// Computes branch merger rate κ(t) and total merger rate λ(t).

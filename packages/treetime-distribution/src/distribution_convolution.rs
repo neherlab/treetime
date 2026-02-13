@@ -3,12 +3,12 @@ use crate::distribution_function::DistributionFunction;
 use crate::distribution_point::DistributionPoint;
 use crate::distribution_range::DistributionRange;
 use crate::y_axis_policy::{Plain, SupportsConvolution};
-use treetime_utils::make_error;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use treetime_ops::convolve;
 use treetime_utils::array::ndarray::has_uniform_spacing;
+use treetime_utils::make_error;
 
 pub fn distribution_convolution<Y: SupportsConvolution>(
   a: &Distribution<Y>,

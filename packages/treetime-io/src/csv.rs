@@ -1,4 +1,3 @@
-use treetime_utils::make_error;
 use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
 use eyre::{Report, eyre};
 use serde::{Deserialize, Serialize};
@@ -7,6 +6,7 @@ use std::path::{Path, PathBuf};
 use treetime_utils::error::to_eyre_error;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::fs::{extension, read_file_to_string};
+use treetime_utils::make_error;
 
 /// Writes CSV. Each row is a serde-annotated struct.
 pub struct CsvStructWriter<W: Write + Send> {

@@ -183,7 +183,10 @@ pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A)
   Ok(record)
 }
 
-pub fn read_many_fasta<P: AsRef<Path>, A: AlphabetLike>(filepaths: &[P], alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
+pub fn read_many_fasta<P: AsRef<Path>, A: AlphabetLike>(
+  filepaths: &[P],
+  alphabet: &A,
+) -> Result<Vec<FastaRecord>, Report> {
   let mut reader = FastaReader::from_paths(filepaths, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 
@@ -206,7 +209,10 @@ pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: 
   Ok(record)
 }
 
-pub fn read_many_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
+pub fn read_many_fasta_str<A: AlphabetLike>(
+  contents: impl AsRef<str>,
+  alphabet: &A,
+) -> Result<Vec<FastaRecord>, Report> {
   let mut reader = FastaReader::from_str(&contents, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 

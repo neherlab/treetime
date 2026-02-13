@@ -3,8 +3,8 @@ use crate::distribution_function::DistributionFunction;
 use crate::distribution_point::DistributionPoint;
 use crate::distribution_range::DistributionRange;
 use crate::y_axis_policy::YAxisPolicy;
-use treetime_utils::make_error;
 use eyre::Report;
+use treetime_utils::make_error;
 
 pub fn distribution_division<Y: YAxisPolicy>(
   dividend: &Distribution<Y>,

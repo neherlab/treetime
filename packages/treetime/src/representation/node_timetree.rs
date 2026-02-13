@@ -2,15 +2,15 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use treetime_distribution::Distribution;
-use treetime_io::graphviz::NodeToGraphviz;
-use treetime_io::nwk::{NodeFromNwk, NodeToNwk};
 use crate::representation::graph_ancestral::NodeAncestral;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
+use treetime_io::graphviz::NodeToGraphviz;
+use treetime_io::nwk::{NodeFromNwk, NodeToNwk};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeTimetree {

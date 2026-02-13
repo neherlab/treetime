@@ -1,19 +1,19 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::clock::date_constraints::{DateConstraintNode, load_date_constraints};
-  use treetime_distribution::Distribution;
-  use treetime_io::dates_csv::DatesMap;
-  use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
   use crate::o;
   use eyre::Report;
   use itertools::Itertools;
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdge;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, Named, TimeConstraint};
+  use treetime_io::dates_csv::DatesMap;
   use treetime_io::json::json_read_str;
+  use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
 
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
   struct TestNode {
