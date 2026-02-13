@@ -224,11 +224,6 @@ impl Alphabet {
     self.char_to_set[&c.into()]
   }
 
-  /// All existing characters (including 'unknown' and 'gap')
-  pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {
-    self.all.iter()
-  }
-
   /// Get u8 by index (indexed in the same order as given by `.chars()`)
   pub fn char(&self, index: usize) -> AsciiChar {
     self.index_to_char[index]
@@ -237,11 +232,6 @@ impl Alphabet {
   /// Get index of a character (indexed in the same order as given by `.chars()`)
   pub fn index(&self, c: impl Into<usize>) -> usize {
     self.char_to_index[c.into()].unwrap()
-  }
-
-  /// Check if character is in alphabet (including 'unknown' and 'gap')
-  pub fn contains(&self, c: AsciiChar) -> bool {
-    self.all.contains(c)
   }
 
   pub fn n_chars(&self) -> usize {
@@ -324,11 +314,13 @@ impl Alphabet {
 }
 
 impl AlphabetLike for Alphabet {
+  /// Check if character is in alphabet (including 'unknown' and 'gap')
   fn contains(&self, c: AsciiChar) -> bool {
-    self.contains(c)
+    self.all.contains(c)
   }
 
+  /// All existing characters (including 'unknown' and 'gap')
   fn chars(&self) -> impl Iterator<Item = AsciiChar> {
-    self.chars()
+    self.all.iter()
   }
 }

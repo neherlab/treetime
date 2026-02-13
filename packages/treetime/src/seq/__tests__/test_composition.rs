@@ -8,7 +8,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::str::FromStr;
-  use treetime_primitives::Seq;
+  use treetime_primitives::{AlphabetLike, Seq};
 
   #[test]
   fn test_composition_empty() {
