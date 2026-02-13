@@ -584,49 +584,12 @@ mod tests {
   #[test]
   fn test_collapse_edge_mutation_union_non_overlapping() -> Result<(), Report> {
     // When collapsing an edge by name, mutations from both edges should be merged
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal = graph.add_node(NodeAncestral {
-      name: Some("internal".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
     // Tree: root -> internal (with muts at pos 0,1) -> A (with muts at pos 2,3), B
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
 
-    graph.build()?;
+    let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
+    let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
+    let internal_b_edge_key = find_edge_key(&graph, "internal", "B").unwrap();
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -636,10 +599,6 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-
-    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
-    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
-    let internal_b_edge_key = graph.get_edges()[2].read_arc().key();
 
     // Root -> internal has mutations at positions 0, 1
     partition.edges.insert(
