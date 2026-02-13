@@ -10,6 +10,7 @@ pub mod io;
 pub mod representation;
 pub mod seq;
 
+pub use treetime_graph;
 pub use treetime_utils::{
   make_error, make_internal_error, make_internal_report, make_report, o, pretty_assert_abs_diff_eq,
   pretty_assert_ulps_eq, vec_of_owned, vec_u8,
