@@ -355,19 +355,9 @@ pub mod tests {
   fn test_collapse_edge_adjacency_consistency() -> Result<(), Report> {
     // Test that after edge collapse, all edge references in adjacency lists
     // correspond to actual edges that exist and point correctly
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((leaf1:0.2,leaf2:0.3)internal:0.1)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
-    let leaf1_node = graph.add_node(TestNode(Some("leaf1".to_owned())));
-    let leaf2_node = graph.add_node(TestNode(Some("leaf2".to_owned())));
-
-    let root_to_internal = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
-    let _internal_to_leaf1 = graph.add_edge(internal_node, leaf1_node, TestEdge(Some(0.2)))?;
-    let _internal_to_leaf2 = graph.add_edge(internal_node, leaf2_node, TestEdge(Some(0.3)))?;
-
-    graph.build()?;
-
+    let root_to_internal = find_edge_key(&graph, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
 
     // Verify consistency: every edge key in node adjacency lists corresponds to a real edge
