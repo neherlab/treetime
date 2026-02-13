@@ -3,9 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::commands::ancestral::fitch::get_common_length;
-  use crate::commands::ancestral::marginal_unified::{
-    ancestral_reconstruction_marginal, initialize_marginal, update_marginal,
-  };
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};

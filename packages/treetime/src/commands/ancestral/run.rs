@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
-use crate::commands::ancestral::marginal_unified::{
-  ancestral_reconstruction_marginal, initialize_marginal, update_marginal,
-};
+use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::graph::edge::GraphEdge;
 use crate::graph::graph::Graph;
 use crate::graph::node::GraphNode;

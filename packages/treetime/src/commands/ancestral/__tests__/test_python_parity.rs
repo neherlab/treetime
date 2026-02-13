@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::get_common_length;
-  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, initialize_marginal};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::read_many_fasta;
   use crate::io::nwk::nwk_read_file;

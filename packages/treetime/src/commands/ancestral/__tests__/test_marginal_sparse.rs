@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal_unified::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
   use crate::graph::node::GraphNodeKey;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};

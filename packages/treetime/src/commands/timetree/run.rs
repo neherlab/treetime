@@ -1,4 +1,4 @@
-use crate::commands::ancestral::marginal_unified::initialize_marginal;
+use crate::commands::ancestral::marginal::initialize_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
