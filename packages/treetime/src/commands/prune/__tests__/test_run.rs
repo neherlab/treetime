@@ -216,60 +216,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_none_mutations() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal = graph.add_node(NodeAncestral {
-      name: Some("internal".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-
-    // Edge with None mutations (unknown number of mutations - should not be pruned)
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
-
     // Only add edge data for internal->A edge, leaving root->internal edge unknown (None mutations)
-    partition.edges.insert(
-      internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    );
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
+      "((A:0.1)internal:0.1)root;",
+      &[("internal", "A", Some(1))], // root->internal has no entry (unknown mutations)
+    )?;
 
     prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
 
