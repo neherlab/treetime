@@ -8,7 +8,7 @@ mod tests {
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
-  use approx::assert_ulps_eq;
+  use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
@@ -899,48 +899,8 @@ mod tests {
   #[test]
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
     // When both edges have branch lengths, they should be summed
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal = graph.add_node(NodeAncestral {
-      name: Some("internal".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: Some(0.3),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.2),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
+    // Tree: root -> internal:0.3 -> A:0.2, B:0.1
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
 
     let partitions = vec![];
 
@@ -963,9 +923,11 @@ mod tests {
       let branch_length = edge.payload().read_arc().branch_length;
 
       if target_name.as_deref() == Some("A") {
-        assert_ulps_eq!(branch_length.unwrap(), 0.5, max_ulps = 4);
+        // 0.3 + 0.2 = 0.5
+        assert_relative_eq!(branch_length.unwrap(), 0.5, epsilon = 1e-6);
       } else if target_name.as_deref() == Some("B") {
-        assert_ulps_eq!(branch_length.unwrap(), 0.4, max_ulps = 4);
+        // 0.3 + 0.1 = 0.4
+        assert_relative_eq!(branch_length.unwrap(), 0.4, epsilon = 1e-6);
       }
     }
 
