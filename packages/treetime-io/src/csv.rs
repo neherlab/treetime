@@ -1,4 +1,4 @@
-use crate::make_error;
+use treetime_utils::make_error;
 use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
 use eyre::{Report, eyre};
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
+use crate::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;

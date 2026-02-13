@@ -1,16 +1,15 @@
-use crate::alphabet::alphabet::Alphabet;
-use crate::io::concat::Concat;
-use crate::make_error;
+use crate::concat::Concat;
 use eyre::{Context, Report};
 use itertools::Itertools;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::{AlphabetLike, AsciiChar, Seq};
+use treetime_utils::fmt::string::quote_single;
 use treetime_utils::io::compression::Decompressor;
 use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
-use treetime_utils::fmt::string::quote_single;
+use treetime_utils::make_error;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -45,17 +44,17 @@ impl FastaRecord {
   }
 }
 
-pub struct FastaReader<'a, 'b> {
+pub struct FastaReader<'a, 'b, A: AlphabetLike> {
   reader: Box<dyn BufRead + 'a>,
-  alphabet: &'b Alphabet,
+  alphabet: &'b A,
   line: String,
   n_lines: usize,
   n_chars: usize,
   index: usize,
 }
 
-impl<'a, 'b> FastaReader<'a, 'b> {
-  pub fn new(reader: Box<dyn BufRead + 'a>, alphabet: &'b Alphabet) -> Self {
+impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
+  pub fn new(reader: Box<dyn BufRead + 'a>, alphabet: &'b A) -> Self {
     Self {
       reader,
       alphabet,
@@ -66,7 +65,7 @@ impl<'a, 'b> FastaReader<'a, 'b> {
     }
   }
 
-  pub fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b Alphabet) -> Result<Self, Report> {
+  pub fn from_str(contents: &'a impl AsRef<str>, alphabet: &'b A) -> Result<Self, Report> {
     let reader = contents.as_ref().as_bytes();
     Ok(Self::new(Box::new(reader), alphabet))
   }
@@ -74,19 +73,19 @@ impl<'a, 'b> FastaReader<'a, 'b> {
   pub fn from_str_and_path(
     contents: &'static str,
     filepath: impl AsRef<Path>,
-    alphabet: &'b Alphabet,
+    alphabet: &'b A,
   ) -> Result<Self, Report> {
     let decompressor = Decompressor::from_str_and_path(contents, filepath)?;
     let reader = BufReader::new(decompressor);
     Ok(Self::new(Box::new(reader), alphabet))
   }
 
-  pub fn from_path(filepath: impl AsRef<Path>, alphabet: &'b Alphabet) -> Result<Self, Report> {
+  pub fn from_path(filepath: impl AsRef<Path>, alphabet: &'b A) -> Result<Self, Report> {
     Self::from_paths(&[filepath], alphabet)
   }
 
   /// Reads multiple files sequentially given a set of paths
-  pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b Alphabet) -> Result<Self, Report> {
+  pub fn from_paths<P: AsRef<Path>>(filepaths: &[P], alphabet: &'b A) -> Result<Self, Report> {
     let readers: Vec<Box<dyn BufRead + 'a>> = filepaths
       .iter()
       .map(|filepath| -> Result<Box<dyn BufRead + 'a>, Report> { open_file_or_stdin(&Some(filepath)) })
@@ -176,7 +175,7 @@ impl<'a, 'b> FastaReader<'a, 'b> {
   }
 }
 
-pub fn read_one_fasta(filepath: impl AsRef<Path>, alphabet: &Alphabet) -> Result<FastaRecord, Report> {
+pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A) -> Result<FastaRecord, Report> {
   let filepath = filepath.as_ref();
   let mut reader = FastaReader::from_path(filepath, alphabet)?;
   let mut record = FastaRecord::default();
@@ -184,7 +183,7 @@ pub fn read_one_fasta(filepath: impl AsRef<Path>, alphabet: &Alphabet) -> Result
   Ok(record)
 }
 
-pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P], alphabet: &Alphabet) -> Result<Vec<FastaRecord>, Report> {
+pub fn read_many_fasta<P: AsRef<Path>, A: AlphabetLike>(filepaths: &[P], alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
   let mut reader = FastaReader::from_paths(filepaths, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 
@@ -200,14 +199,14 @@ pub fn read_many_fasta<P: AsRef<Path>>(filepaths: &[P], alphabet: &Alphabet) -> 
   Ok(fasta_records)
 }
 
-pub fn read_one_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Result<FastaRecord, Report> {
+pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<FastaRecord, Report> {
   let mut reader = FastaReader::from_str(&contents, alphabet)?;
   let mut record = FastaRecord::default();
   reader.read(&mut record)?;
   Ok(record)
 }
 
-pub fn read_many_fasta_str(contents: impl AsRef<str>, alphabet: &Alphabet) -> Result<Vec<FastaRecord>, Report> {
+pub fn read_many_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
   let mut reader = FastaReader::from_str(&contents, alphabet)?;
   let mut fasta_records = Vec::<FastaRecord>::new();
 
