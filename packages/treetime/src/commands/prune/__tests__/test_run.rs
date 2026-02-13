@@ -248,106 +248,17 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_combined_prune_short_and_empty() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal1 = graph.add_node(NodeAncestral {
-      name: Some("internal1".to_owned()),
-      desc: None,
-    });
-    let internal2 = graph.add_node(NodeAncestral {
-      name: Some("internal2".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
-    // Short edge (should be pruned by threshold)
-    graph.add_edge(
-      root,
-      internal1,
-      EdgeAncestral {
-        branch_length: Some(0.001),
-      },
+    // Tree: root -> internal1 (short edge 0.001, has muts) -> A (leaf)
+    //            -> internal2 (normal edge 0.1, no muts)   -> B (leaf)
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
+      "((A:0.1)internal1:0.001,(B:0.1)internal2:0.1)root;",
+      &[
+        ("root", "internal1", Some(1)), // short edge with mutations
+        ("root", "internal2", None),    // empty edge (no mutations)
+        ("internal1", "A", Some(1)),    // leaf with mutations
+        ("internal2", "B", Some(2)),    // leaf with mutations
+      ],
     )?;
-    // Empty edge (should be pruned by empty check)
-    graph.add_edge(
-      root,
-      internal2,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    // Leaf edges (should be preserved)
-    graph.add_edge(
-      internal1,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal2,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let root_internal1_edge_key = graph.get_edges()[0].read_arc().key();
-    let root_internal2_edge_key = graph.get_edges()[1].read_arc().key();
-    let internal1_a_edge_key = graph.get_edges()[2].read_arc().key();
-    let internal2_b_edge_key = graph.get_edges()[3].read_arc().key();
-
-    // Short edge with mutations
-    partition.edges.insert(
-      root_internal1_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    );
-    // Empty edge (no mutations)
-    partition
-      .edges
-      .insert(root_internal2_edge_key, SparseEdgePartition::default());
-    // Leaf edges
-    partition.edges.insert(
-      internal1_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      internal2_b_edge_key,
-      SparseEdgePartition {
-        subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..SparseEdgePartition::default()
-      },
-    );
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
 
     prune_nodes(&mut graph, &partitions, Some(0.01), true, &btreeset! {})?;
 
