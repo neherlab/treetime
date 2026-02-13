@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal_unified::update_marginal;
+  use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::clock::reroot::RerootChanges;

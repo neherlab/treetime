@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal_unified::update_marginal;
+  use crate::commands::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::avg_transition;
   use crate::gtr::infer_gtr::{InferGtrOptions, MutationCounts, distance, get_mutation_counts, infer_gtr_impl};

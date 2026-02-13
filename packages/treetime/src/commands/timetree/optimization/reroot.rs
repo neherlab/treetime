@@ -1,4 +1,4 @@
-use crate::commands::ancestral::marginal_unified::update_marginal;
+use crate::commands::ancestral::marginal::update_marginal;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;

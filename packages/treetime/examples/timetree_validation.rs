@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::commands::ancestral::fitch::compress_sequences;
-use treetime::commands::ancestral::marginal_unified::initialize_marginal;
+use treetime::commands::ancestral::marginal::initialize_marginal;
 use treetime::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::clock::find_best_root::params::BranchPointOptimizationParams;
