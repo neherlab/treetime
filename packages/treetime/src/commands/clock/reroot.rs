@@ -4,13 +4,13 @@ use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_root::find_best_root;
 use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, invert_edge};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
 use approx::ulps_eq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, invert_edge};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 
 /// Controls reroot behavior for graph topology changes.
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]

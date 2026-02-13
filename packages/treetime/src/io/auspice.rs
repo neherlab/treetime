@@ -1,6 +1,3 @@
-use treetime_graph::edge::{Edge, GraphEdge};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use crate::io::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -10,6 +7,9 @@ use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use treetime_graph::edge::{Edge, GraphEdge};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use treetime_io::json::{JsonPretty, json_read, json_write};
 use treetime_utils::file::create_file_or_stdout;
 use treetime_utils::file::open_file_or_stdin;

@@ -3,7 +3,6 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
-  use treetime_graph::node::GraphNodeKey;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
@@ -22,6 +21,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::json::{JsonPretty, json_write_str};
 
   fn find_node_key_by_name(graph: &GraphAncestral, name: &str) -> Option<GraphNodeKey> {

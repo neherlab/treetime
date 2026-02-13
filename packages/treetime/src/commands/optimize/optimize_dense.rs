@@ -21,7 +21,6 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-use treetime_graph::edge::HasBranchLength;
 use crate::gtr::gtr::GTR;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_dense::DenseSeqDis;
@@ -31,6 +30,7 @@ use ndarray::{Array2, Axis};
 use num::clamp;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::edge::HasBranchLength;
 
 pub struct PartitionContribution {
   pub coefficients: Array2<f64>,

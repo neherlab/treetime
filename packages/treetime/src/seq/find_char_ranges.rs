@@ -1,5 +1,4 @@
-use crate::representation::seq::Seq;
-use crate::representation::seq_char::AsciiChar;
+use treetime_primitives::{AsciiChar, Seq};
 
 // Finds contiguous ranges (segments) in the sequence, such that for every character inside every range,
 // the predicate function returns true and every range contains only the same letter.

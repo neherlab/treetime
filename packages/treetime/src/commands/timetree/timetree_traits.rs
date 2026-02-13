@@ -1,8 +1,8 @@
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::distribution::distribution::Distribution;
+use std::sync::Arc;
 use treetime_graph::edge::{BranchDistribution, GraphEdge, TimeLength};
 use treetime_graph::node::{GraphNode, TimeConstraint};
-use std::sync::Arc;
 
 /// Trait for node types that support timetree inference.
 /// Provides access to time distribution and estimated time fields.

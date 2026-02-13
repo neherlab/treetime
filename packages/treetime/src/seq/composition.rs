@@ -1,9 +1,9 @@
-use crate::representation::seq_char::AsciiChar;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_primitives::AsciiChar;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Composition {

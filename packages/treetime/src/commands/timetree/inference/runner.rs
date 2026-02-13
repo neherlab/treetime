@@ -9,13 +9,13 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::distribution::distribution::Distribution;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
 
 pub const BRANCH_GRID_SIZE: usize = 200;
 

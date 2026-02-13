@@ -1,6 +1,6 @@
-mod bitset128;
-mod seq;
-mod seq_char;
+pub mod bitset128;
+pub mod seq;
+pub mod seq_char;
 
 pub use bitset128::{BitSet128, Bitset128Status};
 pub use seq::Seq;

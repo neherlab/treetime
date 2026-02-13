@@ -4,7 +4,6 @@ use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -14,6 +13,7 @@ use ndarray_stats::QuantileExt;
 use num::clamp;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 
 /// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]

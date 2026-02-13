@@ -1,11 +1,11 @@
 use crate::distribution::distribution::Distribution;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum BranchDistributionContext {

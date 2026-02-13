@@ -3,16 +3,16 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
-use treetime_graph::breadth_first::GraphTraversalContinuation;
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use clap::Args;
 use eyre::Report;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct ClockParams {

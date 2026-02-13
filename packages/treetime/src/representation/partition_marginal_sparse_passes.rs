@@ -1,7 +1,3 @@
-use treetime_graph::edge::EdgeOptimizeOps;
-use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use treetime_graph::node::{GraphNode, Named};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -9,6 +5,11 @@ use crate::representation::partition_marginal_sparse_helpers::{combine_messages,
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, Named};
+use treetime_primitives::AsciiChar;
 use treetime_utils::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 
@@ -127,12 +128,12 @@ where
   if !node.is_root {
     let mut seq_info = partition.nodes.remove(&node.key).unwrap();
     let mut variable_pos = btreemap! {};
-    let mut ref_states: Vec<BTreeMap<usize, crate::representation::seq_char::AsciiChar>> = vec![];
+    let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
     let mut msgs_to_combine: Vec<MarginalSparseSeqDistribution> = vec![];
     let mut removed_edges = vec![];
     for (_, edge_key) in &node.parent_keys {
-      let mut parent_state: BTreeMap<usize, crate::representation::seq_char::AsciiChar> = btreemap! {};
-      let mut child_state: BTreeMap<usize, crate::representation::seq_char::AsciiChar> = btreemap! {};
+      let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
+      let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
       let edge_data = partition.edges.remove(edge_key).unwrap();
       removed_edges.push((*edge_key, edge_data.clone()));
 
@@ -195,8 +196,8 @@ where
     };
 
     let child_dis = child_edge_data.msg_from_child.clone();
-    let mut parent_states: BTreeMap<usize, crate::representation::seq_char::AsciiChar> = btreemap! {};
-    let mut child_states: BTreeMap<usize, crate::representation::seq_char::AsciiChar> = btreemap! {};
+    let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+    let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
     for (pos, p) in &seq_info.profile.variable {
       child_states.insert(*pos, p.state);
       parent_states.insert(*pos, p.state);

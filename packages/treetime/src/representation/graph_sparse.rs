@@ -1,7 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::seq::Seq;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
@@ -11,6 +8,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -29,7 +27,7 @@ impl SparseNodePartition {
         gaps: vec![],
         non_char: vec![],
         composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        sequence: crate::seq![],
+        sequence: seq![],
         fitch: FitchSeqDistribution {
           variable: btreemap! {},
           variable_indel: btreemap! {},

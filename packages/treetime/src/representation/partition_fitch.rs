@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::GraphNodeKey;
 use crate::representation::graph_sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::representation::partition_compressed::PartitionCompressed;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 
 #[derive(Clone, Debug)]
 pub struct PartitionFitch {

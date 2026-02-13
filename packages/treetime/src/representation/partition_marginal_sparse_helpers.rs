@@ -7,6 +7,7 @@ use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::iter::zip;
+use treetime_primitives::AsciiChar;
 use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;
@@ -14,8 +15,8 @@ pub const EPS: f64 = 1e-4;
 pub fn combine_messages(
   composition: &Composition,
   messages: &[MarginalSparseSeqDistribution],
-  variable_pos: &BTreeMap<usize, crate::representation::seq_char::AsciiChar>,
-  reference_states: &[BTreeMap<usize, crate::representation::seq_char::AsciiChar>],
+  variable_pos: &BTreeMap<usize, AsciiChar>,
+  reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<MarginalSparseSeqDistribution, Report> {

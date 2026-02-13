@@ -1,7 +1,5 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
-use treetime_graph::edge::HasBranchLength;
 use crate::io::csv::CsvStructFileWriter;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
@@ -9,6 +7,8 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::HasBranchLength;
 use treetime_utils::serde::skip_serializing_if_false;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

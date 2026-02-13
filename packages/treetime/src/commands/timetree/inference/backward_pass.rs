@@ -2,13 +2,13 @@ use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
+use eyre::Report;
+use indexmap::IndexMap;
+use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeBackward;
 use treetime_graph::node::GraphNodeKey;
-use eyre::Report;
-use indexmap::IndexMap;
-use std::sync::Arc;
 
 /// Propagates time distributions backward from leaves to root.
 ///

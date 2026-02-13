@@ -1,8 +1,5 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
-use crate::representation::bitset128::BitSet128;
-use crate::representation::seq_char::AsciiChar;
-use crate::representation::state_set::StateSet;
-use crate::{make_error, stateset, vec_u8};
+use crate::{make_error, vec_u8};
 use clap::ValueEnum;
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
@@ -13,6 +10,7 @@ use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
 use strum_macros::Display;
+use treetime_primitives::{AsciiChar, BitSet128, StateSet, stateset};
 
 pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');

@@ -2,9 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
 use crate::io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use crate::io::nex::{NexWriteOptions, nex_write_file};
@@ -22,6 +19,9 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use treetime_utils::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]

@@ -2,11 +2,11 @@ use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::distribution::distribution_convolution::distribution_convolution;
 use crate::distribution::distribution_division::distribution_division;
 use crate::distribution::distribution_multiplication::distribution_multiplication;
+use eyre::Report;
+use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use eyre::Report;
-use std::sync::Arc;
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where

@@ -1,10 +1,10 @@
+use crate::io::fasta::FastaRecord;
+use eyre::Report;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use crate::io::fasta::FastaRecord;
-use crate::representation::seq::Seq;
-use eyre::Report;
+use treetime_primitives::Seq;
 
 pub trait PartitionMarginal {}
 

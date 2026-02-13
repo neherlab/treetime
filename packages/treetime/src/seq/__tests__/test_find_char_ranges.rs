@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::representation::seq_char::AsciiChar;
   use crate::seq::find_char_ranges::{find_letter_ranges, find_letter_ranges_by};
   use rstest::rstest;
+  use treetime_primitives::AsciiChar;
 
   #[rstest]
   #[case::empty_seq("",                 b'X', vec![])]

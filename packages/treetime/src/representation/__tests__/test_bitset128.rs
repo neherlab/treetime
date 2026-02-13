@@ -2,12 +2,10 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::bitset128;
-  use crate::representation::bitset128::*;
-  use crate::representation::seq_char::AsciiChar;
   use pretty_assertions::{assert_eq, assert_ne};
   use rstest::rstest;
   use std::hash::{DefaultHasher, Hash, Hasher};
+  use treetime_primitives::{AsciiChar, BitSet128, Bitset128Status, bitset128};
 
   #[test]
   fn test_bitset128_new() {

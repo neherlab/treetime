@@ -1,10 +1,10 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
+use itertools::Itertools;
+use ordered_float::OrderedFloat;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::HasBranchLength;
 use treetime_graph::node::Outlier;
-use itertools::Itertools;
-use ordered_float::OrderedFloat;
 
 /// Get results of the root-to-tip clock inference.
 #[allow(clippy::integer_division_remainder_used)]

@@ -1,11 +1,11 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::seq::div::{OnlyLeaves, compute_divs};
+use eyre::Report;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use crate::seq::div::{OnlyLeaves, compute_divs};
-use eyre::Report;
 
 pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>)
 where

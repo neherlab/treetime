@@ -1,7 +1,6 @@
 use crate::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph_traverse::GraphNodeSafe;
 use crate::node::{GraphNode, GraphNodeKey, Node};
-use treetime_utils::{make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::Itertools;
 use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
@@ -9,6 +8,7 @@ use parking_lot::{RawRwLock, RwLock};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;
+use treetime_utils::{make_internal_error, make_internal_report};
 
 pub type SafeNode<N> = Arc<RwLock<Node<N>>>;
 pub type SafeNodeRef<N> = ArcRwLockReadGuard<RawRwLock, Node<N>>;

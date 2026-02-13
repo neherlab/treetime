@@ -1,7 +1,4 @@
 use crate::distribution::distribution::Distribution;
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named, TimeConstraint};
 use crate::io::dates_csv::DatesMap;
 use crate::make_error;
 use crate::o;
@@ -10,6 +7,9 @@ use itertools::Itertools;
 use log::{info, warn};
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named, TimeConstraint};
 
 pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
 

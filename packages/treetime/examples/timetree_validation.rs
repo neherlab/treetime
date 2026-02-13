@@ -24,8 +24,6 @@ use treetime::commands::timetree::utils::{
 };
 use treetime::distribution::distribution::Distribution;
 use treetime::distribution::distribution_function::DistributionFunction;
-use treetime_graph::edge::HasBranchLength;
-use treetime_graph::node::Named;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::io::dates_csv::{DatesMap, read_dates};
 use treetime::io::fasta::{FastaRecord, read_many_fasta};
@@ -36,6 +34,8 @@ use treetime::representation::node_timetree::NodeTimetree;
 use treetime::representation::partition_marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use treetime::representation::partition_timetree::GraphTimetree;
+use treetime_graph::edge::HasBranchLength;
+use treetime_graph::node::Named;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_utils::global_init::global_init;
 use treetime_utils::string::truncate_right_with_ellipsis;

@@ -1,11 +1,11 @@
 use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use argmin::core::{CostFunction, Error};
+use eyre::Report;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use argmin::core::{CostFunction, Error};
-use eyre::Report;
 
 /// Cost function for branch point optimization using various optimization methods
 pub struct BranchPointCostFunction<'a> {

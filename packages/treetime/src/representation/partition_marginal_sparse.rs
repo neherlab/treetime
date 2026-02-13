@@ -1,10 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::io::fasta::FastaRecord;
@@ -15,13 +11,17 @@ use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_compressed::PartitionCompressed;
 use crate::representation::partition_marginal::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::partition_marginal_sparse_passes;
-use crate::representation::seq::Seq;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::mem;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_primitives::{Seq, seq};
 use treetime_utils::container::get_exactly_one;
 
 #[derive(Clone, Debug)]
@@ -195,10 +195,10 @@ where
         node_data.seq.sequence.clone()
       } else {
         // Return empty seq to be filled later by the reconstruction algorithm
-        crate::seq![]
+        seq![]
       }
     } else {
-      crate::seq![]
+      seq![]
     }
   }
 

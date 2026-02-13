@@ -1,12 +1,12 @@
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use crate::io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;
 use std::io::Write;
 use std::path::Path;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use treetime_utils::file::create_file_or_stdout;
 
 #[derive(Clone, SmartDefault)]

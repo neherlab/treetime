@@ -1,8 +1,8 @@
 use crate::commands::clock::clock_graph::GraphClock;
-use treetime_graph::node::Named;
 use crate::io::dates_csv::{DateOrRange, DatesMap};
 use crate::make_error;
 use eyre::Report;
+use treetime_graph::node::Named;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
