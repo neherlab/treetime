@@ -6,12 +6,12 @@ mod tests {
   use crate::commands::clock::find_best_root::params::{
     BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
   };
-  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use treetime_graph::node::Named;
+  use treetime_io::nwk::nwk_read_str;
 
   fn setup_test_graph() -> Result<(GraphClock, ClockParams), Report> {
     let dates = btreemap! {

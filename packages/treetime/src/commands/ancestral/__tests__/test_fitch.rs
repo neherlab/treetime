@@ -5,8 +5,6 @@ mod tests {
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
     get_common_length,
   };
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
   use crate::o;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_fitch::PartitionFitch;
@@ -18,7 +16,9 @@ mod tests {
   use parking_lot::RwLock;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_io::nwk::nwk_read_str;
   use treetime_utils::vec_of_owned;
 
   fn get_node_name(graph: &GraphAncestral, key: treetime_graph::node::GraphNodeKey) -> String {

@@ -3,7 +3,6 @@ use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
-use treetime_io::fasta::FastaRecord;
 use crate::make_internal_report;
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
@@ -21,6 +20,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 

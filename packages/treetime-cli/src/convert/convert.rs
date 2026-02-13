@@ -6,8 +6,12 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
 use treetime_io::auspice::{auspice_read_file, auspice_write_file};
 use treetime_io::auspice_types::AuspiceTreeMeta;
+use treetime_io::json::{JsonPretty, json_read_file, json_write_file};
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_io::phyloxml::{
@@ -17,10 +21,6 @@ use treetime_io::usher_mat::{
   UsherMatJsonOptions, usher_mat_json_read_file, usher_mat_json_write_file, usher_mat_pb_read_file,
   usher_mat_pb_write_file,
 };
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
-use treetime_io::json::{JsonPretty, json_read_file, json_write_file};
 
 pub type ConverterGraph = Graph<ConverterNode, ConverterEdge, ConverterData>;
 

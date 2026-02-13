@@ -5,9 +5,6 @@ use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::gtr::get_gtr::{JC69Params, jc69};
-use treetime_io::dates_csv::read_dates;
-use treetime_io::fasta::{FastaRecord, read_many_fasta};
-use treetime_io::nwk::nwk_read_file;
 use crate::make_error;
 use crate::make_report;
 use crate::representation::edge_timetree::EdgeTimetree;
@@ -20,6 +17,9 @@ use eyre::{Report, WrapErr};
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_io::dates_csv::read_dates;
+use treetime_io::fasta::{FastaRecord, read_many_fasta};
+use treetime_io::nwk::nwk_read_file;
 
 pub struct InputData {
   pub graph: GraphTimetree,

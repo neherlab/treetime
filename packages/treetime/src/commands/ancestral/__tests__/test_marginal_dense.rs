@@ -6,8 +6,6 @@ mod tests {
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
@@ -21,7 +19,9 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_io::nwk::nwk_read_str;
 
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {

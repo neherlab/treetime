@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use treetime_io::fasta::*;
   use crate::o;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
+  use treetime_io::fasta::*;
   use treetime_utils::error::report_to_string;
 
   lazy_static! {

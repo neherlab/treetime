@@ -1,5 +1,4 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
-use treetime_io::discrete_states_csv::read_discrete_attrs;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use indexmap::{IndexMap, IndexSet};
@@ -9,6 +8,7 @@ use ndarray::Array1;
 use num_traits::ToPrimitive;
 use statrs::statistics::Statistics;
 use std::fmt::Display;
+use treetime_io::discrete_states_csv::read_discrete_attrs;
 
 pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
   let TreetimeMugrationArgs {

@@ -6,8 +6,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::avg_transition;
   use crate::gtr::infer_gtr::{InferGtrOptions, MutationCounts, distance, get_mutation_counts, infer_gtr_impl};
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -18,6 +16,8 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use std::sync::Arc;
+  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_read_str;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

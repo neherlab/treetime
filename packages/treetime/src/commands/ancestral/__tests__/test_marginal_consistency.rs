@@ -5,8 +5,6 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
   use crate::representation::graph_ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
@@ -19,6 +17,8 @@ mod tests {
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::nwk::nwk_read_str;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

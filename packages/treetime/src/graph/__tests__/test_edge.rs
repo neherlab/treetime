@@ -4,8 +4,8 @@ mod tests {
   use pretty_assertions::assert_eq;
 
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use treetime_io::nwk::nwk_read_str;
   use treetime_graph::edge::{GraphEdgeKey, invert_edge};
+  use treetime_io::nwk::nwk_read_str;
 
   #[test]
   fn edge_inverts() -> Result<(), Report> {

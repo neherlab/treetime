@@ -4,10 +4,10 @@ use crate::convert::mutation::PartitionedMutations;
 use eyre::Report;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use treetime_io::auspice::{auspice_read_str, auspice_write_str};
-use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 use treetime::make_internal_report;
 use treetime_graph::graph::Graph;
+use treetime_io::auspice::{auspice_read_str, auspice_write_str};
+use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
 fn get_mutations_for_node(
   graph: &Graph<ConverterNode, ConverterEdge, ConverterData>,

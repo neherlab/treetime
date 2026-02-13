@@ -1,5 +1,4 @@
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use treetime_io::csv::CsvStructFileWriter;
 use crate::representation::edge_timetree::EdgeTimetree;
 use crate::representation::node_timetree::NodeTimetree;
 use eyre::Report;
@@ -8,6 +7,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use treetime_io::csv::CsvStructFileWriter;
 
 pub struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,

@@ -5,13 +5,13 @@ use itertools::Itertools;
 use maplit::btreemap;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use treetime::make_internal_report;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice::{AuspiceGraphContext, AuspiceRead, AuspiceTreeContext, AuspiceWrite};
 use treetime_io::auspice_types::{
   AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeData, AuspiceTreeNode, AuspiceTreeNodeAttrs,
 };
-use treetime::make_internal_report;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
 
 fn parse_auspice_mutations(auspice_mutations: &BTreeMap<String, Vec<String>>) -> Result<PartitionedMutations, Report> {
   auspice_mutations

@@ -2,13 +2,13 @@
 mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::events::collect_tree_events;
-  use treetime_io::dates_csv::{DateOrRange, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
   use crate::representation::partition_timetree::GraphTimetree;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_io::dates_csv::{DateOrRange, DatesMap};
+  use treetime_io::nwk::nwk_read_str;
 
   fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphTimetree, Report> {
     let graph = nwk_read_str(tree_nwk)?;
