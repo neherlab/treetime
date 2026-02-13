@@ -398,40 +398,18 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-
     // Tree: root -> A (only child)
-    graph.add_edge(
-      root,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.build()?;
-
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
     let partitions = vec![];
 
     // Collapse the path starting at leaf A; should stop at root
-    let a_inbound_edge = {
-      let a_node = graph.get_node(a).unwrap();
-      a_node.read_arc().inbound()[0]
-    };
+    let a_inbound_edge = find_edge_key(&graph, "root", "A").unwrap();
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
 
     // Only root should remain
     assert_eq!(graph.get_nodes().len(), 1);
-    assert!(graph.get_node(root).is_some());
-    assert!(graph.get_node(a).is_none());
+    assert!(find_node_key_by_name(&graph, "root").is_some());
+    assert!(find_node_key_by_name(&graph, "A").is_none());
     assert_eq!(graph.get_edges().len(), 0);
 
     Ok(())
