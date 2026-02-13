@@ -13,6 +13,16 @@ pub trait AlphabetLike {
   fn chars(&self) -> impl Iterator<Item = AsciiChar>;
 }
 
+impl<A: AlphabetLike> AlphabetLike for &A {
+  fn contains(&self, c: AsciiChar) -> bool {
+    (*self).contains(c)
+  }
+
+  fn chars(&self) -> impl Iterator<Item = AsciiChar> {
+    (*self).chars()
+  }
+}
+
 pub type StateSet = BitSet128;
 pub type StateSetStatus = Bitset128Status;
 

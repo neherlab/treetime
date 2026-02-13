@@ -2,8 +2,8 @@
 mod tests {
   use crate::commands::clock::date_constraints::{DateConstraintNode, load_date_constraints};
   use treetime_distribution::Distribution;
-  use crate::io::dates_csv::DatesMap;
-  use crate::io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
+  use treetime_io::dates_csv::DatesMap;
+  use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
   use crate::o;
   use eyre::Report;
   use itertools::Itertools;

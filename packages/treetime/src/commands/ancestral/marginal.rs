@@ -1,4 +1,3 @@
-use crate::io::fasta::FastaRecord;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::log_lh::graph_log_lh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
@@ -11,6 +10,7 @@ use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
+use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 
 /// Initialize partitions with sequence data and run marginal reconstruction.

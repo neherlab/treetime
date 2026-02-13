@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_nwk_roundtrip() -> Result<(), Report> {

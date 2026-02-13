@@ -1,7 +1,7 @@
 use crate::convert::convert::{ConverterEdge, ConverterNode};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 impl NodeFromNwk for ConverterNode {
   fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {

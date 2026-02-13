@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
   Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
@@ -23,6 +22,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
+use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{BitSet128, Seq, StateSet, StateSetStatus, seq, stateset};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;

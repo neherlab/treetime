@@ -4,7 +4,6 @@ mod tests {
   use crate::commands::clock::clock_model::ClockModel;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::commands::clock::clock_traits::ClockNode;
-  use crate::io::nwk::nwk_read_str;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use approx::assert_ulps_eq;
@@ -12,6 +11,7 @@ mod tests {
   use maplit::btreemap;
   use std::collections::BTreeMap;
   use treetime_graph::node::Named;
+  use treetime_io::nwk::nwk_read_str;
 
   pub fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();

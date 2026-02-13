@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
-use crate::io::fasta::FastaRecord;
 use eyre::Report;
+use treetime_io::fasta::FastaRecord;
 
 #[derive(Clone, Debug)]
 pub struct PartitionParsimonyWithAln {

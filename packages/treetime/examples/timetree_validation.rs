@@ -25,9 +25,9 @@ use treetime::commands::timetree::utils::{
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::io::dates_csv::{DatesMap, read_dates};
-use treetime::io::fasta::{FastaRecord, read_many_fasta};
-use treetime::io::nwk::nwk_read_str;
+use treetime_io::dates_csv::{DatesMap, read_dates};
+use treetime_io::fasta::{FastaRecord, read_many_fasta};
+use treetime_io::nwk::nwk_read_str;
 use treetime::o;
 use treetime::representation::edge_timetree::EdgeTimetree;
 use treetime::representation::node_timetree::NodeTimetree;

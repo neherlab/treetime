@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::io::csv::CsvStructFileWriter;
+use treetime_io::csv::CsvStructFileWriter;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
 use eyre::Report;

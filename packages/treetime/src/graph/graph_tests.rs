@@ -7,14 +7,14 @@ pub mod tests {
   use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
 
-  use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-  use crate::io::nwk::{
-    EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
-  };
   use treetime_graph::breadth_first::GraphTraversalContinuation;
   use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, Named};
+  use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
+  use treetime_io::nwk::{
+    EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
+  };
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);

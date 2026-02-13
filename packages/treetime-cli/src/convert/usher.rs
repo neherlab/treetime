@@ -3,12 +3,12 @@ use crate::convert::mutation::{Mutation, MutationList, PartitionedMutations};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use treetime::io::usher_mat::{
+use treetime::make_internal_report;
+use treetime_graph::graph::Graph;
+use treetime_io::usher_mat::{
   UsherGraphContext, UsherMetadata, UsherMutation, UsherMutationList, UsherRead, UsherTree, UsherTreeContext,
   UsherTreeNode, UsherWrite,
 };
-use treetime::make_internal_report;
-use treetime_graph::graph::Graph;
 
 const NUC_PARTITION: &str = "nuc";
 const NUC_CHARS: [u8; 4] = [b'A', b'C', b'G', b'T'];

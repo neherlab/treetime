@@ -2,13 +2,13 @@
 mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
-  use crate::io::nwk::nwk_read_str;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
+  use treetime_io::nwk::nwk_read_str;
 
   #[test]
   fn test_calculate_divs() -> Result<(), Report> {

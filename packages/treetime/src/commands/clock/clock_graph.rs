@@ -1,7 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
@@ -9,6 +7,8 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named, Outlier};
+use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 
 pub type GraphClock = Graph<NodeClock, EdgeClock, ()>;
 
