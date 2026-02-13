@@ -18,6 +18,7 @@ phyloxml = { path = "../phyloxml" }
 treetime-analytical = { path = "../treetime-analytical" }
 treetime-graph = { workspace = true }
 treetime-grid = { path = "../treetime-grid" }
+treetime-primitives = { workspace = true }
 treetime-ops = { path = "../treetime-ops" }
 treetime-validation = { path = "../treetime-validation" }
 treetime-io = { path = "../treetime-io" }

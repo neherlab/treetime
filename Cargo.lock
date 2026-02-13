@@ -3753,6 +3753,7 @@ dependencies = [
  "treetime-grid",
  "treetime-io",
  "treetime-ops",
+ "treetime-primitives",
  "treetime-utils",
  "treetime-validation",
  "usher-mat-utils",
