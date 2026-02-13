@@ -9,6 +9,9 @@ pub mod io;
 pub mod representation;
 pub mod seq;
 
+#[cfg(test)]
+pub mod test_utils;
+
 pub use treetime_graph;
 pub use treetime_io;
 pub use treetime_primitives;
