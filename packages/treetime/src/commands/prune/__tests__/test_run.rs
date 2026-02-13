@@ -290,153 +290,21 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_complex_tree() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal1 = graph.add_node(NodeAncestral {
-      name: Some("internal1".to_owned()),
-      desc: None,
-    });
-    let internal2 = graph.add_node(NodeAncestral {
-      name: Some("internal2".to_owned()),
-      desc: None,
-    });
-    let internal3 = graph.add_node(NodeAncestral {
-      name: Some("internal3".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-    let c = graph.add_node(NodeAncestral {
-      name: Some("C".to_owned()),
-      desc: None,
-    });
-    let d = graph.add_node(NodeAncestral {
-      name: Some("D".to_owned()),
-      desc: None,
-    });
-
     // Complex tree structure: root -> internal1 (with muts) -> A (leaf)
     //                              -> internal1 -> internal3 (no muts) -> C,D (leaves)
     //                         root -> internal2 (no muts) -> B (leaf)
-    graph.add_edge(
-      root,
-      internal1,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // has muts
-    graph.add_edge(
-      root,
-      internal2,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // no muts, to internal
-    graph.add_edge(
-      internal1,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // leaf, has muts
-    graph.add_edge(
-      internal1,
-      internal3,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // no muts, to internal
-    graph.add_edge(
-      internal2,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // leaf, no muts (preserved)
-    graph.add_edge(
-      internal3,
-      c,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // leaf, has muts
-    graph.add_edge(
-      internal3,
-      d,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?; // leaf, has muts
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let root_internal1_edge_key = graph.get_edges()[0].read_arc().key();
-    let root_internal2_edge_key = graph.get_edges()[1].read_arc().key();
-    let internal1_a_edge_key = graph.get_edges()[2].read_arc().key();
-    let internal1_internal3_edge_key = graph.get_edges()[3].read_arc().key();
-    let internal2_b_edge_key = graph.get_edges()[4].read_arc().key();
-    let internal3_c_edge_key = graph.get_edges()[5].read_arc().key();
-    let internal3_d_edge_key = graph.get_edges()[6].read_arc().key();
-
-    // Set up mutations for each edge
-    partition.edges.insert(
-      root_internal1_edge_key,
-      SparseEdgePartition {
-        subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..SparseEdgePartition::default()
-      },
-    ); // has muts
-    partition
-      .edges
-      .insert(root_internal2_edge_key, SparseEdgePartition::default()); // no muts, to internal
-    partition.edges.insert(
-      internal1_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    ); // leaf, has muts
-    partition
-      .edges
-      .insert(internal1_internal3_edge_key, SparseEdgePartition::default()); // no muts, to internal
-    partition
-      .edges
-      .insert(internal2_b_edge_key, SparseEdgePartition::default()); // leaf, no muts (preserved)
-    partition.edges.insert(
-      internal3_c_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T').unwrap()],
-        ..SparseEdgePartition::default()
-      },
-    ); // leaf, has muts
-    partition.edges.insert(
-      internal3_d_edge_key,
-      SparseEdgePartition {
-        subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..SparseEdgePartition::default()
-      },
-    ); // leaf, has muts
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
+      "(((C:0.1,D:0.1)internal3:0.1,A:0.1)internal1:0.1,(B:0.1)internal2:0.1)root;",
+      &[
+        ("root", "internal1", Some(2)),      // has muts
+        ("root", "internal2", Some(0)),      // no muts, to internal
+        ("internal1", "A", Some(1)),         // leaf, has muts
+        ("internal1", "internal3", Some(0)), // no muts, to internal
+        ("internal2", "B", Some(0)),         // leaf, no muts (preserved)
+        ("internal3", "C", Some(1)),         // leaf, has muts
+        ("internal3", "D", Some(2)),         // leaf, has muts
+      ],
+    )?;
 
     prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
 
