@@ -17,7 +17,7 @@ use textplots::{Chart, ColorPlot, Shape};
 #[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
 #[cfg(feature = "png")]
-use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn write_clock_regression_chart_svg(
   results: &[ClockRegressionResult],

@@ -1,7 +1,7 @@
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use treetime_utils::serde::{array1_as_vec, array1_from_vec};
+use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 fn serialize_array_of_array1<S>(arrays: &[Array1<f64>; 3], serializer: S) -> Result<S::Ok, S::Error>
 where

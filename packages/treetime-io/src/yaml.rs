@@ -2,7 +2,7 @@ use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
-use treetime_utils::file::{create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 
 pub fn yaml_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: &Option<P>) -> Result<T, Report> {
   yaml_read(open_file_or_stdin(filepath)?)

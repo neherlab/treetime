@@ -4,7 +4,7 @@ use crate::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_utils::mutex::unwrap_arc_rwlock;
+use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 use treetime_utils::{make_error, make_internal_report};
 
 impl<N, E, D> Graph<N, E, D>

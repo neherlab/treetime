@@ -11,8 +11,8 @@ use treetime_graph::node::{GraphNode, Named};
 use treetime_io::json::{
   JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
-use treetime_utils::file::create_file_or_stdout;
-use treetime_utils::file::open_file_or_stdin;
+use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::open_file_or_stdin;
 
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 

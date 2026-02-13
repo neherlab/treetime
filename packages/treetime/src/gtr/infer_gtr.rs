@@ -11,7 +11,7 @@ use smart_default::SmartDefault;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::ndarray::outer;
+use treetime_utils::array::ndarray::outer;
 
 pub trait PartitionWithGtrInference {
   fn alphabet(&self) -> &Alphabet;

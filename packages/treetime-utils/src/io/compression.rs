@@ -1,5 +1,5 @@
 use crate::error::report_to_string;
-use crate::fs::extension;
+use crate::io::fs::extension;
 use color_eyre::{Help, SectionExt};
 use eyre::{Report, WrapErr};
 use flate2::Compression as GzCompressionLevel;

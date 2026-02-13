@@ -8,7 +8,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_utils::container::get_exactly_one;
+use treetime_utils::collections::container::get_exactly_one;
 
 /// Find the best new root node
 ///

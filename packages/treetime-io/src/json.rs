@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Deserializer, de::Read};
 use std::io::{Cursor, Write};
 use std::path::Path;
-use treetime_utils::file::{create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 
 pub fn json_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: P) -> Result<T, Report> {
   let filepath = filepath.as_ref();

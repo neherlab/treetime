@@ -1,4 +1,4 @@
-use crate::string::*;
+use crate::fmt::string::*;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 

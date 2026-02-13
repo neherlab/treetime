@@ -3,7 +3,7 @@ use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
-use treetime_utils::float_fmt::float_to_significant_digits;
+use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
 
 use crate::testing::console::console::ValidationConsole;

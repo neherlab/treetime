@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::iter::once;
 use treetime_io::json::{JsonPretty, json_write_str};
 use treetime_primitives::{AsciiChar, StateSet};
-use treetime_utils::string::quote;
+use treetime_utils::fmt::string::quote;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {

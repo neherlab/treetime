@@ -22,7 +22,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_utils::file::{create_file_or_stdout, open_stdin};
+use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeAncestralParams {

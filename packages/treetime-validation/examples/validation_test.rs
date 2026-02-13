@@ -1,6 +1,6 @@
 use ctor::ctor;
 use eyre::Report;
-use treetime_utils::global_init::global_init;
+use treetime_utils::init::global::global_init;
 use treetime_validation::testing::run::run_validation_tests;
 
 #[ctor]

@@ -2,7 +2,7 @@ use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_utils::serde::{array1_as_vec, array1_from_vec};
+use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuralErrors {

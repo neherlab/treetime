@@ -1,5 +1,5 @@
-use crate::compression::{Compressor, Decompressor};
-use crate::fs::ensure_dir;
+use crate::io::compression::{Compressor, Decompressor};
+use crate::io::fs::ensure_dir;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;

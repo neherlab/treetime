@@ -10,7 +10,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_primitives::AsciiChar;
-use treetime_utils::container::get_exactly_one;
+use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 
 pub fn process_node_backward<N, E>(

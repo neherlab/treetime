@@ -22,10 +22,10 @@ use treetime::representation::partition_timetree::GraphTimetree;
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_grid::grid::Grid;
 use treetime_io::json::json_read_file;
-use treetime_utils::clap_styles::styles;
-use treetime_utils::global_init::global_init;
-use treetime_utils::serde::{array1_from_vec, indexmap_array1_from_map};
-use treetime_utils::string::truncate_right_with_ellipsis;
+use treetime_utils::init::clap_styles::styles;
+use treetime_utils::init::global::global_init;
+use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
+use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[ctor]
 fn init() {

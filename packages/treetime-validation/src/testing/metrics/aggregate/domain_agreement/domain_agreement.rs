@@ -15,7 +15,7 @@ use itertools::Itertools;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use treetime_utils::float_fmt::float_to_digits;
+use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
 /// Comprehensive domain-wide agreement metrics between actual and expected solutions

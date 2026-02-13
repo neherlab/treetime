@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use treetime_utils::error::to_eyre_error;
-use treetime_utils::file::create_file_or_stdout;
-use treetime_utils::fs::{extension, read_file_to_string};
+use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::fs::{extension, read_file_to_string};
 
 /// Writes CSV. Each row is a serde-annotated struct.
 pub struct CsvStructWriter<W: Write + Send> {

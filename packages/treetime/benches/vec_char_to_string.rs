@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use treetime_utils::random::{get_random_number_generator, random_sequence};
+use treetime_utils::sync::random::{get_random_number_generator, random_sequence};
 
 fn vec_to_string_collect(v: Vec<char>) -> String {
   v.into_iter().collect()

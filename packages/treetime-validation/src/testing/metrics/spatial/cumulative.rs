@@ -1,7 +1,7 @@
 use ndarray::{Array1, Axis};
 use serde::{Deserialize, Serialize};
-use treetime_utils::ndarray::cumsum_axis;
-use treetime_utils::serde::{array1_as_vec, array1_from_vec};
+use treetime_utils::array::ndarray::cumsum_axis;
+use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CumulativeMetrics {
