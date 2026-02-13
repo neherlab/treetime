@@ -1,8 +1,8 @@
-use crate::graph::assign_node_names::assign_node_names;
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::{Graph, SafeEdge, SafeNode};
-use crate::graph::node::GraphNodeKey;
-use crate::graph::node::{GraphNode, Named};
+use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node::{GraphNode, Named};
 use crate::make_error;
 use bio::io::newick;
 use eyre::{Report, WrapErr, eyre};

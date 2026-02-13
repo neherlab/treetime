@@ -1,8 +1,8 @@
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::HasBranchLength;
-use crate::graph::node::Outlier;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::HasBranchLength;
+use treetime_graph::node::Outlier;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 

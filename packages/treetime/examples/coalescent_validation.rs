@@ -15,7 +15,7 @@ use std::sync::LazyLock;
 use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::distribution::distribution::Distribution;
-use treetime::graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime::io::dates_csv::read_dates;
 use treetime::io::nwk::nwk_read_file;
 use treetime::o;

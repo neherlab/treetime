@@ -1,6 +1,6 @@
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::{Graph, SafeNode};
-use crate::graph::node::{GraphNode, Node};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::{Graph, SafeNode};
+use treetime_graph::node::{GraphNode, Node};
 use eyre::Report;
 use itertools::{Itertools, iproduct};
 use parking_lot::RwLock;

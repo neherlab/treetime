@@ -21,7 +21,7 @@ mod tests {
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
-  fn get_node_name(graph: &GraphAncestral, key: crate::graph::node::GraphNodeKey) -> String {
+  fn get_node_name(graph: &GraphAncestral, key: treetime_graph::node::GraphNodeKey) -> String {
     let node = graph.get_node(key).expect("node exists");
     node
       .read_arc()

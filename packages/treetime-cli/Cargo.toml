@@ -29,6 +29,7 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 treetime = { path = "../treetime" }
+treetime-graph = { workspace = true }
 treetime-io = { path = "../treetime-io" }
 treetime-utils = { path = "../treetime-utils" }
 

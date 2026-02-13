@@ -1,7 +1,7 @@
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use eyre::Report;
 use ordered_float::OrderedFloat;
 use treetime_utils::make_error;

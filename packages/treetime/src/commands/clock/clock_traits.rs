@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_set::ClockSet;
-use crate::graph::edge::{ClockMessages, HasBranchLength};
-use crate::graph::node::Outlier;
+use treetime_graph::edge::{ClockMessages, HasBranchLength};
+use treetime_graph::node::Outlier;
 
 pub trait ClockNode: Outlier + Send + Sync {
   fn likely_time(&self) -> Option<f64>;

@@ -3749,6 +3749,7 @@ dependencies = [
  "time",
  "traversal",
  "treetime-analytical",
+ "treetime-graph",
  "treetime-grid",
  "treetime-io",
  "treetime-ops",
@@ -3796,6 +3797,7 @@ dependencies = [
  "serde",
  "serde_json",
  "treetime",
+ "treetime-graph",
  "treetime-io",
  "treetime-utils",
 ]

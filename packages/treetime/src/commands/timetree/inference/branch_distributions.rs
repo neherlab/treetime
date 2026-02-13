@@ -1,7 +1,7 @@
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::graph::Graph;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

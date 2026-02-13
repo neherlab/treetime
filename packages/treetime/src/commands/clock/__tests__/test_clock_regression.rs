@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::clock::clock_model::ClockModel;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::commands::clock::clock_traits::ClockNode;
-  use crate::graph::node::Named;
+  use treetime_graph::node::Named;
   use crate::io::nwk::nwk_read_str;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};

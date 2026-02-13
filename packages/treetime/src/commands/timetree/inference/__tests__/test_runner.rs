@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::inference::runner::create_branch_distributions_input_mode;
-  use crate::graph::edge::{HasBranchLength, TimeLength};
+  use treetime_graph::edge::{HasBranchLength, TimeLength};
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::node_timetree::NodeTimetree;

@@ -9,7 +9,7 @@ mod tests {
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::distribution::distribution::Distribution;
-  use crate::graph::node::{GraphNodeKey, Named, TimeConstraint};
+  use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;

@@ -3,8 +3,8 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
-use crate::graph::edge::GraphEdge;
-use crate::graph::node::GraphNode;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::node::GraphNode;
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
@@ -137,7 +137,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &crate::graph::graph::Graph<N, E, D>) -> Result<(), Report>
+fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &treetime_graph::graph::Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk + Serialize,
   E: GraphEdge + EdgeToNwk + Serialize,

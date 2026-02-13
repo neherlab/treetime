@@ -3,7 +3,7 @@ use crate::commands::clock::clock_traits::ClockNode;
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::Distribution;
-use crate::graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
+use treetime_graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
 use crate::io::graphviz::NodeToGraphviz;
 use crate::io::nwk::{NodeFromNwk, NodeToNwk};
 use crate::representation::graph_ancestral::NodeAncestral;

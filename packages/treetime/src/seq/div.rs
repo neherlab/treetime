@@ -1,6 +1,6 @@
-use crate::graph::edge::EdgeOptimizeOps;
-use crate::graph::graph::Graph;
-use crate::graph::node::NodeOptimizeOps;
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::NodeOptimizeOps;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 

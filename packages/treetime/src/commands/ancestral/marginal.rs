@@ -1,8 +1,8 @@
-use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::EdgeOptimizeOps;
-use crate::graph::graph::Graph;
-use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, Named};
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, Named};
 use crate::io::fasta::FastaRecord;
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::log_lh::graph_log_lh;

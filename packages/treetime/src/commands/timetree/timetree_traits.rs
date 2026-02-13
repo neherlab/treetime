@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_traits::ClockEdge;
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::{BranchDistribution, GraphEdge, TimeLength};
-use crate::graph::node::{GraphNode, TimeConstraint};
+use treetime_graph::edge::{BranchDistribution, GraphEdge, TimeLength};
+use treetime_graph::node::{GraphNode, TimeConstraint};
 use std::sync::Arc;
 
 /// Trait for node types that support timetree inference.

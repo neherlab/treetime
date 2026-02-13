@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::graph::breadth_first::GraphTraversalContinuation;
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, NodeAncestralOps};
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{

@@ -1,7 +1,7 @@
-use crate::graph::edge::EdgeOptimizeOps;
-use crate::graph::graph::Graph;
-use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, Named};
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, Named};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;

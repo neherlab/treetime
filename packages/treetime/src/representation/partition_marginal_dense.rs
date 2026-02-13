@@ -1,8 +1,8 @@
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
-use crate::graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use crate::graph::graph::Graph;
-use crate::graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use crate::graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;

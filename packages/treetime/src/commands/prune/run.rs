@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};

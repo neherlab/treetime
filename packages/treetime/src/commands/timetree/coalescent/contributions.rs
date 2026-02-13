@@ -4,9 +4,9 @@ use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearF
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::distribution::distribution::{Distribution, DistributionNegLog};
 use crate::distribution::distribution_formula::DistributionFormula;
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;

@@ -1,7 +1,7 @@
 use crate::distribution::distribution::Distribution;
-use crate::graph::edge::GraphEdge;
-use crate::graph::graph::Graph;
-use crate::graph::node::{GraphNode, Named, TimeConstraint};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named, TimeConstraint};
 use crate::io::dates_csv::DatesMap;
 use crate::make_error;
 use crate::o;

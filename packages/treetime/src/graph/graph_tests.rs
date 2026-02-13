@@ -7,10 +7,10 @@ pub mod tests {
   use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
 
-  use crate::graph::breadth_first::GraphTraversalContinuation;
-  use crate::graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
-  use crate::graph::graph::Graph;
-  use crate::graph::node::{GraphNode, Named};
+  use treetime_graph::breadth_first::GraphTraversalContinuation;
+  use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::{GraphNode, Named};
   use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
   use crate::io::nwk::{
     EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
@@ -464,7 +464,7 @@ pub mod tests {
     graph.collapse_edge(root_to_internal)?;
 
     // Verify consistency: every edge key in node adjacency lists corresponds to a real edge
-    for node in graph.nodes.iter().flatten() {
+    for node in graph.get_nodes() {
       let node_ref = node.read_arc();
 
       // Check outbound edges
