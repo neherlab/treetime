@@ -1,4 +1,4 @@
 pub mod ndarray;
 #[cfg(test)]
-mod ndarray_tests;
+mod __tests__;
 pub mod serde;
