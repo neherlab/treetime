@@ -16,7 +16,7 @@ pub mod tests {
     EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight, nwk_read_str, nwk_write_str,
   };
 
-  use crate::test_utils::find_edge_key;
+  use crate::test_utils::{find_edge_key, find_node_key_by_name};
 
   #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
   pub struct TestNode(pub Option<String>);
@@ -253,30 +253,18 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_no_duplicate_edges() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let internal_node = graph.add_node(TestNode(Some("internal".to_owned())));
-    let leaf_node = graph.add_node(TestNode(Some("A".to_owned())));
+    let root_to_internal = find_edge_key(&graph, "root", "internal").unwrap();
+    graph.collapse_edge(root_to_internal)?;
 
-    // Create a scenario where source already has some connections that could duplicate
-    let root_to_internal_edge = graph.add_edge(root_node, internal_node, TestEdge(Some(0.1)))?;
-    let _internal_to_leaf_edge = graph.add_edge(internal_node, leaf_node, TestEdge(Some(0.2)))?;
-
-    graph.build()?;
-
-    // Before collapse: root -> internal -> leaf
-    let source_node_before = graph.get_node(root_node).unwrap();
-    let _initial_outbound_count = source_node_before.read_arc().outbound().len();
-
-    graph.collapse_edge(root_to_internal_edge)?;
-
-    // After collapse: root -> leaf (internal node removed)
-    let source_node_after = graph.get_node(root_node).unwrap();
-    let source_node_after = source_node_after.read_arc();
+    // After collapse: root -> A (internal node removed)
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_node = graph.get_node(root_key).unwrap();
+    let root_node = root_node.read_arc();
 
     // Verify no duplicate edges in adjacency lists
-    let outbound_edges = source_node_after.outbound();
+    let outbound_edges = root_node.outbound();
     let unique_outbound: BTreeSet<_> = outbound_edges.iter().collect();
     assert_eq!(
       outbound_edges.len(),
@@ -284,7 +272,7 @@ pub mod tests {
       "Duplicate outbound edges detected"
     );
 
-    let inbound_edges = source_node_after.inbound();
+    let inbound_edges = root_node.inbound();
     let unique_inbound: BTreeSet<_> = inbound_edges.iter().collect();
     assert_eq!(
       inbound_edges.len(),
