@@ -8,7 +8,6 @@ mod tests {
   use crate::commands::clock::reroot::RerootChanges;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
-  use treetime_distribution::Distribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::representation::edge_timetree::EdgeTimetree;
@@ -25,6 +24,7 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
+  use treetime_distribution::Distribution;
   use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;

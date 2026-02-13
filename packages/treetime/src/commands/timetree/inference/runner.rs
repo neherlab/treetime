@@ -8,11 +8,11 @@ use crate::commands::timetree::inference::forward_pass::propagate_distributions_
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
-use treetime_distribution::Distribution;
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};

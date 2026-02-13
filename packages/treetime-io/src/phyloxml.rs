@@ -1,4 +1,4 @@
-use treetime_utils::make_internal_error;
+use crate::json::{JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
@@ -17,11 +17,9 @@ use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use crate::json::{
-  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
-};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::make_internal_error;
 
 pub fn phyloxml_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

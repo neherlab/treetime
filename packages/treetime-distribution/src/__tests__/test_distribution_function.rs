@@ -2,9 +2,9 @@
 mod tests {
   use crate::distribution_function::DistributionFunction;
   use crate::y_axis_policy::Plain;
-  use treetime_utils::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   type DistFn = DistributionFunction<f64, Plain>;
 

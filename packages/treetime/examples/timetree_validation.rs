@@ -22,23 +22,23 @@ use treetime::commands::timetree::partition_ops::PartitionTimetreeAll;
 use treetime::commands::timetree::utils::{
   initialize_clock_totals_from_time_distributions, initialize_node_divergences,
 };
-use treetime_distribution::Distribution;
-use treetime_distribution::DistributionFunction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime_io::dates_csv::{DatesMap, read_dates};
-use treetime_io::fasta::{FastaRecord, read_many_fasta};
-use treetime_io::nwk::nwk_read_str;
 use treetime::o;
 use treetime::representation::edge_timetree::EdgeTimetree;
 use treetime::representation::node_timetree::NodeTimetree;
 use treetime::representation::partition_marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use treetime::representation::partition_timetree::GraphTimetree;
+use treetime_distribution::Distribution;
+use treetime_distribution::DistributionFunction;
 use treetime_graph::edge::HasBranchLength;
 use treetime_graph::node::Named;
+use treetime_io::dates_csv::{DatesMap, read_dates};
+use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::json::{JsonPretty, json_write_file};
-use treetime_utils::init::global::global_init;
+use treetime_io::nwk::nwk_read_str;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
+use treetime_utils::init::global::global_init;
 
 #[ctor]
 fn init() {

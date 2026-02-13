@@ -10,12 +10,12 @@ use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
-use treetime_io::dates_csv::read_dates;
-use treetime_io::graphviz::graphviz_write_file;
-use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use eyre::{Report, WrapErr};
 use log::info;
+use treetime_io::dates_csv::read_dates;
+use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_utils::io::console::is_tty;
 
 pub fn get_clock_model(

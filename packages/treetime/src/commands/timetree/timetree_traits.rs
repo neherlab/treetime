@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_traits::ClockEdge;
-use treetime_distribution::Distribution;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_graph::edge::{BranchDistribution, GraphEdge, TimeLength};
 use treetime_graph::node::{GraphNode, TimeConstraint};
 

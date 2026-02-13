@@ -10,9 +10,9 @@ use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
-use treetime_utils::make_error;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
+use treetime_utils::make_error;
 
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///

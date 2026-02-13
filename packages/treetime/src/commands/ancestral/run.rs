@@ -3,9 +3,6 @@ use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
-use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use treetime_io::nex::{NexWriteOptions, nex_write_file};
-use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition_fitch::PartitionFitch;
@@ -22,6 +19,9 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
+use treetime_io::nex::{NexWriteOptions, nex_write_file};
+use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]

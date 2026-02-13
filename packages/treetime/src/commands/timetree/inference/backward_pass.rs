@@ -1,10 +1,10 @@
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
-use treetime_distribution::{Distribution, DistributionNegLog};
-use treetime_distribution::distribution_convolution;
-use treetime_distribution::distribution_multiplication;
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;
+use treetime_distribution::distribution_convolution;
+use treetime_distribution::distribution_multiplication;
+use treetime_distribution::{Distribution, DistributionNegLog};
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeBackward;

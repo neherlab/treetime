@@ -8,6 +8,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 

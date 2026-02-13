@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use treetime_distribution::DistributionPlain as Distribution;
-  use treetime_distribution::distribution_convolution;
   use approx::assert_ulps_eq;
   use eyre::Report;
+  use treetime_distribution::DistributionPlain as Distribution;
+  use treetime_distribution::distribution_convolution;
 
   #[test]
   fn test_inverse_convolution_integration() -> Result<(), Report> {

@@ -9,7 +9,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_primitives::AsciiChar;
+  use treetime_primitives::{AlphabetLike, AsciiChar};
 
   #[test]
   fn test_alphabet_default() {

@@ -1,4 +1,5 @@
 use crate::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
+use crate::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
@@ -10,7 +11,6 @@ use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
-use crate::json::{JsonPretty, json_read, json_write};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
 
