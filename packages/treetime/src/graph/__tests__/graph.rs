@@ -208,26 +208,11 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_complex_tree() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph =
+      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let left_internal = graph.add_node(TestNode(Some("left".to_owned())));
-    let right_internal = graph.add_node(TestNode(Some("right".to_owned())));
-    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
-    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
-    let c_node = graph.add_node(TestNode(Some("C".to_owned())));
-    let d_node = graph.add_node(TestNode(Some("D".to_owned())));
-
-    let root_to_left_edge = graph.add_edge(root_node, left_internal, TestEdge(Some(0.1)))?;
-    let _root_to_right_edge = graph.add_edge(root_node, right_internal, TestEdge(Some(0.2)))?;
-    let _left_to_a_edge = graph.add_edge(left_internal, a_node, TestEdge(Some(0.3)))?;
-    let _left_to_b_edge = graph.add_edge(left_internal, b_node, TestEdge(Some(0.4)))?;
-    let _right_to_c_edge = graph.add_edge(right_internal, c_node, TestEdge(Some(0.5)))?;
-    let _right_to_d_edge = graph.add_edge(right_internal, d_node, TestEdge(Some(0.6)))?;
-
-    graph.build()?;
-
-    graph.collapse_edge(root_to_left_edge)?;
+    let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
+    graph.collapse_edge(root_to_left)?;
 
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "((C:0.5,D:0.6)right:0.2,A:0.3,B:0.4)root;");
