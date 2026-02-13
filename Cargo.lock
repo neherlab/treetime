@@ -3938,6 +3938,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-primitives"
+version = "1.0.0"
+dependencies = [
+ "auto_ops",
+ "itertools 0.14.0",
+ "serde",
+]
+
+[[package]]
 name = "treetime-utils"
 version = "1.0.0"
 dependencies = [
