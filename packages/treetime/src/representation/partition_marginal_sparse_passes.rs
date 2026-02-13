@@ -1,15 +1,15 @@
-use treetime_graph::edge::EdgeOptimizeOps;
-use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use treetime_graph::node::{GraphNode, Named};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition_marginal_sparse_helpers::{combine_messages, propagate_raw};
 use eyre::Report;
-use treetime_primitives::AsciiChar;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, Named};
+use treetime_primitives::AsciiChar;
 use treetime_utils::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 

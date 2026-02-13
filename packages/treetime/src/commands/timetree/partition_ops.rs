@@ -1,10 +1,10 @@
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use treetime_graph::node::{GraphNode, Named};
 use crate::representation::log_lh::HasLogLh;
 use crate::representation::partition_marginal::PartitionMarginalOps;
 use eyre::Report;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::node::{GraphNode, Named};
 
 /// Trait for partition updates during reroot operations.
 ///

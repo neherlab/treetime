@@ -2,10 +2,10 @@
 
 #[cfg(test)]
 mod tests {
-  use treetime_primitives::{bitset128, AsciiChar, BitSet128, Bitset128Status};
   use pretty_assertions::{assert_eq, assert_ne};
   use rstest::rstest;
   use std::hash::{DefaultHasher, Hash, Hasher};
+  use treetime_primitives::{AsciiChar, BitSet128, Bitset128Status, bitset128};
 
   #[test]
   fn test_bitset128_new() {

@@ -1,13 +1,13 @@
 use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
 use crate::distribution::distribution::Distribution;
 use crate::distribution::distribution_function::DistributionFunction;
-use treetime_graph::edge::GraphEdgeKey;
 use crate::representation::partition_marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
 
 pub fn collect_edge_contributions(
   edge_key: GraphEdgeKey,

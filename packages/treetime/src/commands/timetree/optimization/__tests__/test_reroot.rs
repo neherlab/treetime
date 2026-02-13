@@ -9,7 +9,6 @@ mod tests {
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::distribution::distribution::Distribution;
-  use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;
@@ -19,7 +18,6 @@ mod tests {
   use crate::representation::node_timetree::NodeTimetree;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition_timetree::GraphTimetree;
-  use treetime_primitives::{seq, AsciiChar};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use approx::assert_ulps_eq;
@@ -29,6 +27,8 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
+  use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
+  use treetime_primitives::{AsciiChar, seq};
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

@@ -1,10 +1,10 @@
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
 use crate::commands::clock::find_best_root::params::GridSearchParams;
-use treetime_graph::edge::GraphEdgeKey;
 use eyre::Report;
 use log::{debug, info};
 use ndarray::Array1;
+use treetime_graph::edge::GraphEdgeKey;
 
 /// Grid search optimization for finding the best split point along an edge
 pub fn optimize_grid_search(

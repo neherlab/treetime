@@ -3,7 +3,6 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use treetime_graph::node::GraphNodeKey;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
@@ -19,6 +18,7 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use std::sync::Arc;
+  use treetime_graph::node::GraphNodeKey;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();

@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::GraphNodeKey;
 use crate::representation::graph_sparse::{SparseEdgePartition, SparseNodePartition};
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 
 pub trait PartitionCompressed: Sync + Send {
   fn index(&self) -> usize;

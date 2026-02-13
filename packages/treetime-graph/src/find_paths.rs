@@ -5,13 +5,13 @@ use crate::breadth_first::{
 use crate::edge::{Edge, GraphEdge, GraphEdgeKey};
 use crate::graph::Graph;
 use crate::node::{GraphNode, Node};
-use treetime_utils::make_internal_report;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use treetime_utils::make_internal_report;
 
 /// Finds edges on all paths between two nodes
 pub fn find_paths<N, E, D>(

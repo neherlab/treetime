@@ -1,13 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::io::concat::Concat;
 use crate::make_error;
-use treetime_primitives::{AsciiChar, Seq};
 use eyre::{Context, Report};
 use itertools::Itertools;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::compression::Decompressor;
 use treetime_utils::file::{create_file_or_stdout, open_file_or_stdin};
 use treetime_utils::string::quote_single;

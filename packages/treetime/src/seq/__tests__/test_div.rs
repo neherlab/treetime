@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
-  use treetime_graph::graph::Graph;
   use crate::graph::graph_tests::tests::{TestEdge, TestNode};
   use crate::io::nwk::nwk_read_str;
   use crate::o;
@@ -9,6 +8,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
 
   #[test]
   fn test_calculate_divs() -> Result<(), Report> {

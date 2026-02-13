@@ -3,8 +3,6 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::node::GraphNode;
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::io::fasta::read_many_fasta;
 use crate::io::nex::{NexWriteOptions, nex_write_file};
@@ -21,6 +19,8 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::node::GraphNode;
 use treetime_utils::float_fmt::float_to_significant_digits;
 
 #[derive(Clone, Debug, Default)]

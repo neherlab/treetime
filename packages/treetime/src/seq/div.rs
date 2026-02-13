@@ -1,8 +1,8 @@
+use maplit::btreemap;
+use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::NodeOptimizeOps;
-use maplit::btreemap;
-use std::collections::BTreeMap;
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct OnlyLeaves(pub bool);

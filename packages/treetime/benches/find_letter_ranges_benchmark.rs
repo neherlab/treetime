@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use treetime_primitives::{AsciiChar, Seq};
 use treetime::seq::find_char_ranges::find_letter_ranges_by;
+use treetime_primitives::{AsciiChar, Seq};
 
 const SEQ: &str = "\
   TATCATTATTGGTGGAGCTAAACTTAAAGCCTTGAATTTAGGTGAAACATTTGTCACGCA\

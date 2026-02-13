@@ -1,6 +1,6 @@
-use treetime_primitives::Seq;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use treetime_primitives::Seq;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {

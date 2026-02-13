@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_primitives::Seq;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use treetime_primitives::Seq;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {

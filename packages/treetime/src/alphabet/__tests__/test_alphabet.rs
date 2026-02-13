@@ -2,7 +2,6 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
-  use treetime_primitives::AsciiChar;
   use crate::vec_u8;
   use approx::assert_ulps_eq;
   use indexmap::indexmap;
@@ -10,6 +9,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_primitives::AsciiChar;
 
   #[test]
   fn test_alphabet_default() {

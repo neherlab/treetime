@@ -2,9 +2,6 @@
 mod tests {
   use crate::commands::clock::date_constraints::{DateConstraintNode, load_date_constraints};
   use crate::distribution::distribution::Distribution;
-  use treetime_graph::edge::GraphEdge;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::{GraphNode, Named, TimeConstraint};
   use crate::io::dates_csv::DatesMap;
   use crate::io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
   use crate::o;
@@ -13,6 +10,9 @@ mod tests {
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_graph::edge::GraphEdge;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::{GraphNode, Named, TimeConstraint};
   use treetime_io::json::json_read_str;
 
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]

@@ -21,7 +21,6 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
@@ -31,6 +30,7 @@ use num::clamp;
 use parking_lot::RwLock;
 use std::iter::zip;
 use std::sync::Arc;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 
 pub struct SiteContribution {
   pub multiplicity: f64,

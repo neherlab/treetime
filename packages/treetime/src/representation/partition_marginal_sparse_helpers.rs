@@ -2,12 +2,12 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
-use treetime_primitives::AsciiChar;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::iter::zip;
+use treetime_primitives::AsciiChar;
 use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;

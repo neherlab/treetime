@@ -1,12 +1,12 @@
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{Described, GraphNode, Named};
 use crate::io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use crate::io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
 use crate::o;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{Described, GraphNode, Named};
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 

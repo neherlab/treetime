@@ -1,11 +1,6 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use treetime_graph::breadth_first::GraphTraversalContinuation;
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use crate::io::fasta::FastaRecord;
 use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::graph_sparse::{
@@ -14,7 +9,6 @@ use crate::representation::graph_sparse::{
 };
 use crate::representation::partition_compressed::PartitionCompressed;
 use crate::representation::partition_fitch::PartitionFitch;
-use treetime_primitives::{seq, stateset, BitSet128, Seq, StateSet, StateSetStatus};
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -24,6 +18,12 @@ use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, NodeAncestralOps};
+use treetime_primitives::{BitSet128, Seq, StateSet, StateSetStatus, seq, stateset};
 use treetime_utils::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_complement::range_complement;

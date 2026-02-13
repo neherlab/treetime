@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
-use treetime_primitives::{AsciiChar, StateSet};
 use color_eyre::{Section, SectionExt};
 use eyre::{Report, WrapErr};
 use indexmap::IndexMap;
@@ -9,6 +8,7 @@ use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::iter::once;
 use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_primitives::{AsciiChar, StateSet};
 use treetime_utils::string::quote;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

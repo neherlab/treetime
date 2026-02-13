@@ -1,9 +1,9 @@
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 
 pub trait HasLogLh {
   /// Get the log likelihood contribution for a given node

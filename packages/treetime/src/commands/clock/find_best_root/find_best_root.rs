@@ -2,12 +2,12 @@ use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use eyre::Report;
 use log::{debug, info};
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use treetime_utils::container::get_exactly_one;
 
 /// Find the best new root node

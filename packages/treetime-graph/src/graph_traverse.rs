@@ -2,9 +2,7 @@ use crate::breadth_first::{
   GraphTraversalContinuation, directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
 };
 use crate::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::{
-  Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNode, SafeNodePayloadRefMut,
-};
+use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNode, SafeNodePayloadRefMut};
 use crate::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;

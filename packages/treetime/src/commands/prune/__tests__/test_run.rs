@@ -2,8 +2,6 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::prune::run::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -16,6 +14,8 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
 
   fn create_test_graph_with_partitions(
     nwk: &str,

@@ -1,13 +1,13 @@
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::find_best_split::FindRootResult;
 use crate::commands::clock::find_best_root::params::GoldenSectionParams;
-use treetime_graph::edge::GraphEdgeKey;
 use crate::make_report;
 use argmin::core::observers::{Observe, ObserverMode};
 use argmin::core::{Executor, State};
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 use eyre::Report;
 use log::{debug, info};
+use treetime_graph::edge::GraphEdgeKey;
 
 /// Observer for tracking Golden Section optimization progress
 struct GoldenSectionObserver;

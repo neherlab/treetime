@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use treetime_primitives::Seq;
   use crate::seq::composition::Composition;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
@@ -9,6 +8,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::str::FromStr;
+  use treetime_primitives::Seq;
 
   #[test]
   fn test_composition_empty() {

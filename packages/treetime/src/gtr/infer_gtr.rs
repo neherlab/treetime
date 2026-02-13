@@ -1,6 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-use treetime_graph::node::GraphNodeKey;
 use crate::gtr::gtr::{GTR, GTRParams, avg_transition};
 use crate::representation::graph_ancestral::GraphAncestral;
 use crate::seq::composition::Composition;
@@ -11,6 +9,8 @@ use ndarray::{Array1, Array2, Axis};
 use parking_lot::RwLock;
 use smart_default::SmartDefault;
 use std::sync::Arc;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::ndarray::outer;
 
 pub trait PartitionWithGtrInference {

@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::inference::runner::create_branch_distributions_input_mode;
-  use treetime_graph::edge::{HasBranchLength, TimeLength};
   use crate::io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::node_timetree::NodeTimetree;
@@ -12,6 +11,7 @@ mod tests {
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;
   use std::io::Cursor;
+  use treetime_graph::edge::{HasBranchLength, TimeLength};
 
   #[test]
   fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {

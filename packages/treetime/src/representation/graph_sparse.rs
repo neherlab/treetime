@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_primitives::{seq, AsciiChar, Seq, StateSet};
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
@@ -9,6 +8,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

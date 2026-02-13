@@ -1,17 +1,17 @@
+use crate::io::fasta::FastaRecord;
+use crate::representation::log_lh::HasLogLh;
+use crate::representation::log_lh::graph_log_lh;
+use crate::representation::partition_marginal::PartitionMarginalOps;
+use eyre::Report;
+use log::debug;
+use parking_lot::RwLock;
+use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
-use crate::io::fasta::FastaRecord;
-use crate::representation::log_lh::HasLogLh;
-use crate::representation::log_lh::graph_log_lh;
-use crate::representation::partition_marginal::PartitionMarginalOps;
-use treetime_primitives::{seq, Seq};
-use eyre::Report;
-use log::debug;
-use parking_lot::RwLock;
-use std::sync::Arc;
+use treetime_primitives::{Seq, seq};
 
 /// Initialize partitions with sequence data and run marginal reconstruction.
 ///
