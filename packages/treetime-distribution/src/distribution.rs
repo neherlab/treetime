@@ -1,9 +1,9 @@
-use crate::distribution::distribution_formula::DistributionFormula;
-use crate::distribution::distribution_negation::distribution_negation_inplace;
-use crate::distribution::distribution_point::DistributionPoint;
-use crate::distribution::distribution_range::DistributionRange;
-use crate::distribution::y_axis_policy::{NegLog, Plain, YAxisPolicy};
-use crate::distribution::{distribution_function::DistributionFunction, distribution_negation::distribution_negation};
+use crate::distribution_formula::DistributionFormula;
+use crate::distribution_negation::distribution_negation_inplace;
+use crate::distribution_point::DistributionPoint;
+use crate::distribution_range::DistributionRange;
+use crate::y_axis_policy::{NegLog, Plain, YAxisPolicy};
+use crate::{distribution_function::DistributionFunction, distribution_negation::distribution_negation};
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::Array1;

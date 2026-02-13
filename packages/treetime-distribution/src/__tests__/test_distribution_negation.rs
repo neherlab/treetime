@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_negation::{distribution_negation, distribution_negation_inplace};
+  use crate::DistributionPlain as Distribution;
+  use crate::distribution_negation::{distribution_negation, distribution_negation_inplace};
   use ndarray::array;
 
   #[test]

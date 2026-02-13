@@ -1,5 +1,5 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::y_axis_policy::YAxisPolicy;
+use crate::Distribution;
+use crate::y_axis_policy::YAxisPolicy;
 
 /// Compute union of time bounds from two distributions.
 ///

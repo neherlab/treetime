@@ -14,7 +14,7 @@ use std::path::Path;
 use std::sync::LazyLock;
 use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
-use treetime::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use treetime::io::dates_csv::read_dates;
 use treetime::io::nwk::nwk_read_file;
 use treetime::o;

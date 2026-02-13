@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::Distribution;
-  use crate::distribution::scaled_distribution::ScaledDistribution;
-  use crate::distribution::scaled_distribution_division::scaled_distribution_division;
-  use crate::distribution::scaled_distribution_multiplication::scaled_distribution_multiplication;
-  use crate::distribution::y_axis_policy::Plain;
+  use crate::Distribution;
+  use crate::scaled_distribution::ScaledDistribution;
+  use crate::scaled_distribution_division::scaled_distribution_division;
+  use crate::scaled_distribution_multiplication::scaled_distribution_multiplication;
+  use crate::y_axis_policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
 

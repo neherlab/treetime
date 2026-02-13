@@ -8,7 +8,7 @@ use crate::commands::timetree::inference::forward_pass::propagate_distributions_
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
-use crate::distribution::distribution::Distribution;
+use treetime_distribution::Distribution;
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;

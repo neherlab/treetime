@@ -8,7 +8,7 @@ mod tests {
   use crate::commands::clock::reroot::RerootChanges;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
-  use crate::distribution::distribution::Distribution;
+  use treetime_distribution::Distribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::io::fasta::{FastaRecord, read_many_fasta_str};
   use crate::io::nwk::nwk_read_str;

@@ -1,8 +1,8 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_function::DistributionFunction;
-use crate::distribution::distribution_multiplication::distribution_multiplication;
-use crate::distribution::scaled_distribution::ScaledDistribution;
-use crate::distribution::y_axis_policy::Plain;
+use crate::Distribution;
+use crate::distribution_function::DistributionFunction;
+use crate::distribution_multiplication::distribution_multiplication;
+use crate::scaled_distribution::ScaledDistribution;
+use crate::y_axis_policy::Plain;
 use approx::ulps_eq;
 use eyre::Report;
 use itertools::Itertools;

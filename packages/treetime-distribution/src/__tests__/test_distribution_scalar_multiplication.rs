@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::distribution::distribution::DistributionPlain as Distribution;
-  use crate::distribution::distribution_scalar_multiplication::distribution_scalar_multiplication;
+  use crate::DistributionPlain as Distribution;
+  use crate::distribution_scalar_multiplication::distribution_scalar_multiplication;
   use approx::assert_ulps_eq;
   use ndarray::array;
 

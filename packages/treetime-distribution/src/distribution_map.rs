@@ -1,5 +1,5 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::y_axis_policy::YAxisPolicy;
+use crate::Distribution;
+use crate::y_axis_policy::YAxisPolicy;
 use eyre::Report;
 
 pub fn distribution_map<Y: YAxisPolicy, F>(dist: &Distribution<Y>, f: F) -> Result<Distribution<Y>, Report>

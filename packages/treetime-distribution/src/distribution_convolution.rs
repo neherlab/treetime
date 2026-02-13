@@ -1,9 +1,9 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::distribution_function::DistributionFunction;
-use crate::distribution::distribution_point::DistributionPoint;
-use crate::distribution::distribution_range::DistributionRange;
-use crate::distribution::y_axis_policy::{Plain, SupportsConvolution};
-use crate::make_error;
+use crate::Distribution;
+use crate::distribution_function::DistributionFunction;
+use crate::distribution_point::DistributionPoint;
+use crate::distribution_range::DistributionRange;
+use crate::y_axis_policy::{Plain, SupportsConvolution};
+use treetime_utils::make_error;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};

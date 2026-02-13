@@ -3,7 +3,7 @@ use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::distribution::distribution::{Distribution, DistributionNegLog};
+use treetime_distribution::{Distribution, DistributionNegLog};
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;

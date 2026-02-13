@@ -1,5 +1,5 @@
-use crate::distribution::distribution::Distribution;
-use crate::distribution::y_axis_policy::SupportsSubtraction;
+use crate::Distribution;
+use crate::y_axis_policy::SupportsSubtraction;
 use eyre::Report;
 use treetime_utils::make_error;
 

@@ -21,6 +21,7 @@ treetime-utils = { path = "../treetime-utils" }
 approx = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
+itertools = { workspace = true }
 num = { workspace = true }
 serde = { workspace = true }
 
@@ -32,6 +33,7 @@ ndarray-stats = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+treetime-analytical = { path = "../treetime-analytical" }
 
 [lints]
 workspace = true
