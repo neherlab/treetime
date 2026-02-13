@@ -1,0 +1,33 @@
+[package]
+name = "treetime-graph"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+derive_more = { workspace = true }
+eyre = { workspace = true }
+getset = { workspace = true }
+itertools = { workspace = true }
+parking_lot = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+traversal = { workspace = true }
+treetime-utils = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+rstest_reuse = { workspace = true }
+
+[lints]
+workspace = true

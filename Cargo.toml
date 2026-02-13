@@ -6,6 +6,7 @@ members = [
   "packages/treetime",
   "packages/treetime-analytical",
   "packages/treetime-cli",
+  "packages/treetime-graph",
   "packages/treetime-validation",
   "packages/treetime-grid",
   "packages/treetime-io",
@@ -132,6 +133,8 @@ tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 
+treetime-graph = { path = "packages/treetime-graph" }
+treetime-utils = { path = "packages/treetime-utils" }
 
 [workspace.lints.rust]
 # Lint groups
