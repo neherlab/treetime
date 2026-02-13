@@ -368,58 +368,15 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal1 = graph.add_node(NodeAncestral {
-      name: Some("internal1".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
     // Tree structure: root -> internal1 -> A (to prune)
     //                               -> B (to keep)
-    graph.add_edge(
-      root,
-      internal1,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal1,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal1,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
 
-    graph.build()?;
-
-    let partitions = vec![];
+    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
 
     // Find the edge leading to leaf A
-    let a_inbound_edge = {
-      let a_node = graph.get_node(a).unwrap();
-      a_node.read_arc().inbound()[0]
-    };
+    let a_inbound_edge =
+      find_edge_key(&graph, "internal1", "A").ok_or_else(|| eyre::eyre!("Edge internal1->A not found"))?;
 
     // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
@@ -428,13 +385,13 @@ mod tests {
     assert_eq!(graph.get_nodes().len(), 2); // root, B
     assert_eq!(graph.get_edges().len(), 1); // root->B
 
-    // Verify the remaining nodes
-    assert!(graph.get_node(root).is_some());
-    assert!(graph.get_node(b).is_some());
+    // Verify the remaining nodes by name
+    assert!(find_node_key_by_name(&graph, "root").is_some());
+    assert!(find_node_key_by_name(&graph, "B").is_some());
 
-    // Verify removed node
-    assert!(graph.get_node(a).is_none());
-    assert!(graph.get_node(internal1).is_none());
+    // Verify removed nodes
+    assert!(find_node_key_by_name(&graph, "A").is_none());
+    assert!(find_node_key_by_name(&graph, "internal1").is_none());
 
     Ok(())
   }
