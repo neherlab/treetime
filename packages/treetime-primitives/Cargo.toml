@@ -1,11 +1,14 @@
 [package]
 name = "treetime-primitives"
+authors.workspace = true
 description.workspace = true
-version.workspace = true
+documentation.workspace = true
 edition.workspace = true
+homepage.workspace = true
 license.workspace = true
 publish.workspace = true
-authors.workspace = true
+repository.workspace = true
+version.workspace = true
 
 [dependencies]
 auto_ops = { workspace = true }
