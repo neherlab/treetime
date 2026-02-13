@@ -3804,6 +3804,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-distribution"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "ctor",
+ "eyre",
+ "getset",
+ "ndarray",
+ "ndarray-stats",
+ "num",
+ "pretty_assertions",
+ "rstest",
+ "serde",
+ "treetime-grid",
+ "treetime-ops",
+ "treetime-utils",
+]
+
+[[package]]
 name = "treetime-graph"
 version = "1.0.0"
 dependencies = [

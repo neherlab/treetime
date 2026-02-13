@@ -6,6 +6,7 @@ members = [
   "packages/treetime",
   "packages/treetime-analytical",
   "packages/treetime-cli",
+  "packages/treetime-distribution",
   "packages/treetime-graph",
   "packages/treetime-primitives",
   "packages/treetime-validation",
@@ -134,6 +135,7 @@ tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 
+treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-utils = { path = "packages/treetime-utils" }
