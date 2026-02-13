@@ -7,7 +7,7 @@ mod tests {
   use crate::representation::graph_sparse::SparseEdgePartition;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::find_edge_key;
+  use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use itertools::Itertools;
@@ -335,81 +335,16 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal1 = graph.add_node(NodeAncestral {
-      name: Some("internal1".to_owned()),
-      desc: None,
-    });
-    let internal2 = graph.add_node(NodeAncestral {
-      name: Some("internal2".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-    let c = graph.add_node(NodeAncestral {
-      name: Some("C".to_owned()),
-      desc: None,
-    });
-
     // Tree structure: root -> internal1 -> internal2 -> A (the path to prune)
-    //                     -> B (to keep)
-    //                     -> C (to keep)
-    graph.add_edge(
-      root,
-      internal1,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      root,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.2),
-      },
-    )?;
-    graph.add_edge(
-      root,
-      c,
-      EdgeAncestral {
-        branch_length: Some(0.3),
-      },
-    )?;
-    graph.add_edge(
-      internal1,
-      internal2,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-    graph.add_edge(
-      internal2,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
+    //                      -> B (to keep)
+    //                      -> C (to keep)
+    let mut graph: GraphAncestral = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
 
-    graph.build()?;
-
-    let partitions = vec![];
+    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
 
     // Find the edge leading to leaf A
-    let a_inbound_edge = {
-      let a_node = graph.get_node(a).unwrap();
-      a_node.read_arc().inbound()[0]
-    };
+    let a_inbound_edge =
+      find_edge_key(&graph, "internal2", "A").ok_or_else(|| eyre::eyre!("Edge internal2->A not found"))?;
 
     // Recursively prune leaf A and its childless ancestors
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
@@ -418,15 +353,15 @@ mod tests {
     assert_eq!(graph.get_nodes().len(), 3); // root, B, C
     assert_eq!(graph.get_edges().len(), 2); // root->B, root->C
 
-    // Verify the remaining nodes
-    assert!(graph.get_node(root).is_some());
-    assert!(graph.get_node(b).is_some());
-    assert!(graph.get_node(c).is_some());
+    // Verify the remaining nodes by name
+    assert!(find_node_key_by_name(&graph, "root").is_some());
+    assert!(find_node_key_by_name(&graph, "B").is_some());
+    assert!(find_node_key_by_name(&graph, "C").is_some());
 
     // Verify removed nodes
-    assert!(graph.get_node(a).is_none());
-    assert!(graph.get_node(internal1).is_none());
-    assert!(graph.get_node(internal2).is_none());
+    assert!(find_node_key_by_name(&graph, "A").is_none());
+    assert!(find_node_key_by_name(&graph, "internal1").is_none());
+    assert!(find_node_key_by_name(&graph, "internal2").is_none());
 
     Ok(())
   }
