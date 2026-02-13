@@ -937,49 +937,8 @@ mod tests {
   #[test]
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
     // Verify precision is preserved when summing small branch lengths
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let internal = graph.add_node(NodeAncestral {
-      name: Some("internal".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
-    // Very small branch lengths
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: Some(1e-10),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: Some(2e-10),
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      b,
-      EdgeAncestral {
-        branch_length: Some(3e-10),
-      },
-    )?;
-
-    graph.build()?;
+    // Tree: ((A:2e-10,B:3e-10)internal:1e-10)root;
+    let mut graph: GraphAncestral = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
 
     let partitions = vec![];
 
