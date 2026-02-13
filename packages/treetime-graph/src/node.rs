@@ -1,0 +1,215 @@
+use crate::edge::GraphEdgeKey;
+use derive_more::Display;
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Defines how to read and write node name
+pub trait Named {
+  fn name(&self) -> Option<impl AsRef<str>>;
+  fn set_name(&mut self, name: Option<impl AsRef<str>>);
+}
+
+/// Defines how to read and write node description
+pub trait Described {
+  fn desc(&self) -> &Option<String>;
+  fn set_desc(&mut self, desc: Option<String>);
+}
+
+/// Access to node divergence (evolutionary distance from root).
+///
+/// Returns `Some(value)` for types that always store divergence, `None` for types
+/// where divergence is optional or not yet computed.
+///
+/// For types with non-optional storage, `set_div(None)` is a no-op - divergence
+/// cannot be cleared once set.
+///
+/// Distinct from `ClockNode::div()` which returns `f64` directly (no Option wrapper)
+/// and assumes divergence is always present in clock analysis context.
+pub trait Divergence {
+  fn div(&self) -> Option<f64>;
+  fn set_div(&mut self, div: Option<f64>);
+}
+
+/// Defines whether a node is marked as an outlier
+pub trait Outlier {
+  fn is_outlier(&self) -> bool;
+  fn set_is_outlier(&mut self, is_outlier: bool);
+}
+
+/// Provides access to time distribution and bad branch flag for date constraints.
+pub trait TimeConstraint<T> {
+  fn time_distribution(&self) -> &Option<T>;
+  fn set_time_distribution(&mut self, dist: Option<T>);
+  fn bad_branch(&self) -> bool;
+  fn set_bad_branch(&mut self, bad: bool);
+}
+
+pub trait GraphNode: Clone + Debug + Sync + Send {}
+
+/// Composite trait for nodes that support ancestral reconstruction
+pub trait NodeAncestralOps: GraphNode + Named + Described {}
+impl<T: GraphNode + Named + Described> NodeAncestralOps for T {}
+
+/// Composite trait for nodes that support tree optimization
+pub trait NodeOptimizeOps: GraphNode + Named {}
+impl<T: GraphNode + Named> NodeOptimizeOps for T {}
+
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct GraphNodeKey(pub usize);
+
+impl GraphNodeKey {
+  #[inline]
+  pub const fn as_usize(self) -> usize {
+    self.0
+  }
+}
+
+/// Internal representation of a node in a graph
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Node<N: GraphNode> {
+  key: GraphNodeKey,
+  data: Arc<RwLock<N>>,
+  outbound_edges: Vec<GraphEdgeKey>,
+  inbound_edges: Vec<GraphEdgeKey>,
+  is_visited: AtomicBool,
+}
+
+impl<N> PartialEq<Self> for Node<N>
+where
+  N: GraphNode,
+{
+  fn eq(&self, other: &Self) -> bool {
+    self.key == other.key
+  }
+}
+
+impl<N> Node<N>
+where
+  N: GraphNode,
+{
+  /// Create a new node.
+  #[inline]
+  pub fn new(key: GraphNodeKey, data: N) -> Node<N> {
+    Self {
+      key,
+      data: Arc::new(RwLock::new(data)),
+      outbound_edges: Vec::new(),
+      inbound_edges: Vec::new(),
+      is_visited: AtomicBool::new(false),
+    }
+  }
+
+  #[inline]
+  pub fn payload(&self) -> Arc<RwLock<N>> {
+    Arc::clone(&self.data)
+  }
+
+  /// Get node key.
+  #[inline]
+  pub const fn key(&self) -> GraphNodeKey {
+    self.key
+  }
+
+  /// Get node out-degree i.e. number of outbound edges.
+  #[inline]
+  pub fn degree_out(&self) -> usize {
+    self.outbound().len()
+  }
+
+  /// Get node in-degree i.e. number of inbound edges.
+  #[inline]
+  pub fn degree_in(&self) -> usize {
+    self.inbound().len()
+  }
+
+  /// Check if node is a leaf node, i.e. has no outbound edges.
+  #[inline]
+  pub fn is_leaf(&self) -> bool {
+    self.outbound().is_empty()
+  }
+
+  /// Check if node is a root node, i.e. has no inbound edges.
+  #[inline]
+  pub fn is_root(&self) -> bool {
+    self.inbound().is_empty()
+  }
+
+  /// Check if node is an internal node, i.e. has both inbound and outbound edges.
+  #[inline]
+  pub fn is_internal(&self) -> bool {
+    !self.is_leaf() && !self.is_root()
+  }
+
+  #[inline]
+  pub fn has_parents(&self) -> bool {
+    self.degree_in() > 0
+  }
+
+  #[inline]
+  pub fn has_one_parent(&self) -> bool {
+    self.degree_in() == 1
+  }
+
+  #[inline]
+  pub fn has_at_most_one_parent(&self) -> bool {
+    self.degree_in() <= 1
+  }
+
+  #[inline]
+  pub fn has_children(&self) -> bool {
+    self.degree_out() > 0
+  }
+
+  #[inline]
+  pub fn has_one_child(&self) -> bool {
+    self.degree_out() == 1
+  }
+
+  #[inline]
+  pub fn has_at_most_one_child(&self) -> bool {
+    self.degree_out() <= 1
+  }
+
+  /// Get read access to outbound edges of the node.
+  #[inline]
+  pub fn outbound(&self) -> &[GraphEdgeKey] {
+    self.outbound_edges.as_slice()
+  }
+
+  /// Get read and write access to the outbound edges of the node. Will block other threads.
+  #[inline]
+  pub fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+    &mut self.outbound_edges
+  }
+
+  /// Get read access to inbound edges of the node.
+  #[inline]
+  pub fn inbound(&self) -> &[GraphEdgeKey] {
+    self.inbound_edges.as_slice()
+  }
+
+  /// Get read and write access to the outbound edges of the node. Will block other threads.
+  #[inline]
+  pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
+    &mut self.inbound_edges
+  }
+
+  #[inline]
+  pub fn is_visited(&self) -> bool {
+    self.is_visited.load(Ordering::Relaxed)
+  }
+
+  #[inline]
+  pub fn mark_as_visited(&self) {
+    self.is_visited.store(true, Ordering::Relaxed);
+  }
+
+  #[inline]
+  pub fn mark_as_not_visited(&self) {
+    self.is_visited.store(false, Ordering::Relaxed);
+  }
+}
