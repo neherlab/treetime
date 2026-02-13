@@ -288,56 +288,14 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_adjacency_lists_maintained() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let mut graph =
+      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
 
-    let root_node = graph.add_node(TestNode(Some("root".to_owned())));
-    let left_internal = graph.add_node(TestNode(Some("left".to_owned())));
-    let right_internal = graph.add_node(TestNode(Some("right".to_owned())));
-    let a_node = graph.add_node(TestNode(Some("A".to_owned())));
-    let b_node = graph.add_node(TestNode(Some("B".to_owned())));
+    let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
+    graph.collapse_edge(root_to_left)?;
 
-    let root_to_left_edge = graph.add_edge(root_node, left_internal, TestEdge(Some(0.1)))?;
-    let _root_to_right_edge = graph.add_edge(root_node, right_internal, TestEdge(Some(0.2)))?;
-    let _left_to_a_edge = graph.add_edge(left_internal, a_node, TestEdge(Some(0.3)))?;
-    let _left_to_b_edge = graph.add_edge(left_internal, b_node, TestEdge(Some(0.4)))?;
-
-    graph.build()?;
-
-    // Collapse root -> left_internal edge
-    graph.collapse_edge(root_to_left_edge)?;
-
-    // Verify root node's adjacency lists are correct
-    let root_node_ref = graph.get_node(root_node).unwrap();
-    let root_node_ref = root_node_ref.read_arc();
-
-    // Root should have outbound edges to: right_internal, A, B
-    assert_eq!(root_node_ref.outbound().len(), 3);
-
-    // Verify all outbound edges from root point to correct targets
-    let mut target_nodes = Vec::new();
-    for &edge_key in root_node_ref.outbound() {
-      if let Some(edge) = graph.get_edge(edge_key) {
-        let target_key = edge.read_arc().target();
-        if let Some(target_node) = graph.get_node(target_key) {
-          if let Some(name) = target_node.read_arc().payload().read_arc().name() {
-            target_nodes.push(name.as_ref().to_owned());
-          }
-        }
-      }
-    }
-    target_nodes.sort();
-    assert_eq!(target_nodes, vec!["A", "B", "right"]);
-
-    // Verify leaf nodes have correct inbound edges
-    let a_node_ref = graph.get_node(a_node).unwrap();
-    let a_node_binding = a_node_ref.read_arc();
-    let a_inbound = a_node_binding.inbound();
-    assert_eq!(a_inbound.len(), 1);
-
-    // Verify the edge from root to A has correct source
-    if let Some(edge) = graph.get_edge(a_inbound[0]) {
-      assert_eq!(edge.read_arc().source(), root_node);
-    }
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(right:0.2,A:0.3,B:0.4)root;");
 
     Ok(())
   }
