@@ -7,6 +7,7 @@ mod tests {
   use crate::representation::graph_sparse::SparseEdgePartition;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
+  use approx::assert_ulps_eq;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
@@ -1134,6 +1135,857 @@ mod tests {
       .filter_map(|n| n.read_arc().payload().read_arc().name.clone())
       .collect();
     assert_eq!(leaf_names, btreeset! { "B".to_owned(), "C".to_owned(), "D".to_owned() });
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_mutation_union_non_overlapping() -> Result<(), Report> {
+    // When collapsing an edge by name, mutations from both edges should be merged
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    // Tree: root -> internal (with muts at pos 0,1) -> A (with muts at pos 2,3), B
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+
+    graph.build()?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
+    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
+    let internal_b_edge_key = graph.get_edges()[2].read_arc().key();
+
+    // Root -> internal has mutations at positions 0, 1
+    partition.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('A', 0_usize, 'T')?, Sub::new('A', 1_usize, 'C')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    // Internal -> A has mutations at positions 2, 3
+    partition.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('G', 2_usize, 'T')?, Sub::new('C', 3_usize, 'A')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    // Internal -> B has no mutations
+    partition
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let partitions = vec![Arc::new(RwLock::new(partition))];
+
+    // Collapse internal node by name
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    // After collapse: root -> A should have all 4 mutations, root -> B should have 2 mutations
+    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().len(), 2);
+
+    // Find new edge keys after collapse
+    let partition = partitions[0].read_arc();
+    let mut a_muts_count = 0;
+    let mut b_muts_count = 0;
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      let target_key = edge.read_arc().target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+
+      if let Some(edge_partition) = partition.edges.get(&edge_key) {
+        if target_name.as_deref() == Some("A") {
+          a_muts_count = edge_partition.subs.len();
+        } else if target_name.as_deref() == Some("B") {
+          b_muts_count = edge_partition.subs.len();
+        }
+      }
+    }
+
+    assert_eq!(a_muts_count, 4); // 2 from root->internal + 2 from internal->A
+    assert_eq!(b_muts_count, 2); // 2 from root->internal + 0 from internal->B
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_mutation_union_overlapping_same_mutation() -> Result<(), Report> {
+    // When both edges have identical mutations, they should be deduplicated
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+
+    graph.build()?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
+    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
+    let internal_b_edge_key = graph.get_edges()[2].read_arc().key();
+
+    // Both edges have the same mutation A0T
+    let same_mutation = Sub::new('A', 0_usize, 'T')?;
+    partition.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        subs: vec![same_mutation.clone()],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        subs: vec![same_mutation],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let partitions = vec![Arc::new(RwLock::new(partition))];
+
+    // Collapse internal node by name
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    // After collapse: deduplicated mutation count should be 1
+    let partition = partitions[0].read_arc();
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      let target_key = edge.read_arc().target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+
+      if target_name.as_deref() == Some("A") {
+        let edge_partition = &partition.edges[&edge_key];
+        // Same mutation deduplicated
+        assert_eq!(edge_partition.subs.len(), 1);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_mutation_union_different_mutations_same_position() -> Result<(), Report> {
+    // Different mutations at the same position should both be kept (they are different Subs)
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+
+    graph.build()?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
+    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
+    let internal_b_edge_key = graph.get_edges()[2].read_arc().key();
+
+    // Different mutations at position 0: A0T vs A0C
+    partition.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('A', 0_usize, 'T')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('A', 0_usize, 'C')?], // Different qry
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let partitions = vec![Arc::new(RwLock::new(partition))];
+
+    // Collapse internal node by name
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    // After collapse: both mutations kept (different qry)
+    let partition = partitions[0].read_arc();
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      let target_key = edge.read_arc().target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+
+      if target_name.as_deref() == Some("A") {
+        let edge_partition = &partition.edges[&edge_key];
+        // Two different mutations at same position
+        assert_eq!(edge_partition.subs.len(), 2);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_mutation_union_multiple_partitions() -> Result<(), Report> {
+    // Mutations should be merged independently per partition
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+
+    graph.build()?;
+
+    let root_internal_edge_key = graph.get_edges()[0].read_arc().key();
+    let internal_a_edge_key = graph.get_edges()[1].read_arc().key();
+    let internal_b_edge_key = graph.get_edges()[2].read_arc().key();
+
+    // Create two partitions with different mutations
+    let mut partition1 = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+    partition1.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('A', 0_usize, 'T')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition1.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('G', 1_usize, 'C')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition1
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let mut partition2 = PartitionMarginalSparse {
+      index: 1,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+    partition2.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('C', 10_usize, 'A')?, Sub::new('T', 11_usize, 'G')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition2.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new('A', 12_usize, 'T')?],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition2
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let partitions = vec![
+      Arc::new(RwLock::new(partition1)),
+      Arc::new(RwLock::new(partition2)),
+    ];
+
+    // Collapse internal node by name
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    // Check partition 1: edge to A should have 2 mutations
+    let p1 = partitions[0].read_arc();
+    let p2 = partitions[1].read_arc();
+
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      let target_key = edge.read_arc().target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+
+      if target_name.as_deref() == Some("A") {
+        assert_eq!(p1.edges[&edge_key].subs.len(), 2); // 1 + 1
+        assert_eq!(p2.edges[&edge_key].subs.len(), 3); // 2 + 1
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
+    // When both edges have branch lengths, they should be summed
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.3),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.2),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.1),
+      },
+    )?;
+
+    graph.build()?;
+
+    let partitions = vec![];
+
+    // Mark internal node for pruning by name
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    // After collapse: root -> A should have 0.3 + 0.2 = 0.5
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target_key = edge.target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+      let branch_length = edge.payload().read_arc().branch_length;
+
+      if target_name.as_deref() == Some("A") {
+        assert_ulps_eq!(branch_length.unwrap(), 0.5, max_ulps = 4);
+      } else if target_name.as_deref() == Some("B") {
+        assert_ulps_eq!(branch_length.unwrap(), 0.4, max_ulps = 4);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
+    // Verify precision is preserved when summing small branch lengths
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    // Very small branch lengths
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(1e-10),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(2e-10),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(3e-10),
+      },
+    )?;
+
+    graph.build()?;
+
+    let partitions = vec![];
+
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target_key = edge.target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+      let branch_length = edge.payload().read_arc().branch_length;
+
+      if target_name.as_deref() == Some("A") {
+        // 1e-10 + 2e-10 = 3e-10
+        assert_ulps_eq!(branch_length.unwrap(), 3e-10, max_ulps = 4);
+      } else if target_name.as_deref() == Some("B") {
+        // 1e-10 + 3e-10 = 4e-10
+        assert_ulps_eq!(branch_length.unwrap(), 4e-10, max_ulps = 4);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
+    // When removed edge has Some and new edge has None, result should stay None
+    // (based on collapse_sparse_edge logic: only sums when both are Some)
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    // Root -> internal has branch length, internal -> A has None
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: Some(0.5),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: None,
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.2),
+      },
+    )?;
+
+    graph.build()?;
+
+    let partitions = vec![];
+
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target_key = edge.target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+      let branch_length = edge.payload().read_arc().branch_length;
+
+      if target_name.as_deref() == Some("A") {
+        // One was None, so result stays None (no sum performed)
+        assert!(branch_length.is_none());
+      } else if target_name.as_deref() == Some("B") {
+        // Both Some: 0.5 + 0.2 = 0.7
+        assert_ulps_eq!(branch_length.unwrap(), 0.7, max_ulps = 4);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
+    // When removed edge has None and new edge has Some, result should stay as-is (Some)
+    // because condition requires both Some
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    // Root -> internal has None, internal -> A has Some
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: None,
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: Some(0.3),
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: Some(0.2),
+      },
+    )?;
+
+    graph.build()?;
+
+    let partitions = vec![];
+
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target_key = edge.target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+      let branch_length = edge.payload().read_arc().branch_length;
+
+      if target_name.as_deref() == Some("A") {
+        // Removed edge had None, so no sum - original Some(0.3) preserved
+        assert_ulps_eq!(branch_length.unwrap(), 0.3, max_ulps = 4);
+      } else if target_name.as_deref() == Some("B") {
+        // Removed edge had None, so no sum - original Some(0.2) preserved
+        assert_ulps_eq!(branch_length.unwrap(), 0.2, max_ulps = 4);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_branch_length_both_none() -> Result<(), Report> {
+    // When both edges have None, result should stay None
+    let mut graph = GraphAncestral::new();
+
+    let root = graph.add_node(NodeAncestral {
+      name: Some("root".to_owned()),
+      desc: None,
+    });
+    let internal = graph.add_node(NodeAncestral {
+      name: Some("internal".to_owned()),
+      desc: None,
+    });
+    let a = graph.add_node(NodeAncestral {
+      name: Some("A".to_owned()),
+      desc: None,
+    });
+    let b = graph.add_node(NodeAncestral {
+      name: Some("B".to_owned()),
+      desc: None,
+    });
+
+    graph.add_edge(
+      root,
+      internal,
+      EdgeAncestral {
+        branch_length: None,
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      a,
+      EdgeAncestral {
+        branch_length: None,
+      },
+    )?;
+    graph.add_edge(
+      internal,
+      b,
+      EdgeAncestral {
+        branch_length: None,
+      },
+    )?;
+
+    graph.build()?;
+
+    let partitions = vec![];
+
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length;
+      // Both None -> stays None
+      assert!(branch_length.is_none());
+    }
 
     Ok(())
   }
