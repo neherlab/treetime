@@ -26,7 +26,7 @@ Core library for phylogenetic analysis via ancestral sequence reconstruction and
   - `timetree` - Full timetree inference pipeline
 - `constants` - Global constants
 - `distribution` - Probability distributions and operations (convolution, multiplication, scaling)
-- `graph` - Phylogenetic graph structure with nodes and edges
+- `graph` - Graph tests (implementation in `treetime-graph`)
 - `gtr` - GTR substitution model implementation and inference
 - `io` - File format parsers and writers:
   - FASTA, Newick, NEXUS, PhyloXML
@@ -36,12 +36,15 @@ Core library for phylogenetic analysis via ancestral sequence reconstruction and
   - Parsimony and marginal likelihood partitions
   - Dense and sparse sequence storage
   - Timetree node/edge data
+  - Primitives (`Seq`, `AsciiChar`, `BitSet128`, `StateSet`) in `treetime-primitives`
 - `seq` - Sequence utilities (mutations, indels, composition)
 
 ## Dependencies
 
 This crate integrates with workspace crates:
 
+- `treetime-primitives` - Primitive types (`Seq`, `AsciiChar`, `BitSet128`, `StateSet`)
+- `treetime-graph` - Generic graph structure (nodes, edges, traversal)
 - `treetime-ops` - Numerical convolution and multiplication algorithms
 - `treetime-grid` - Grid utilities for discretized distributions
 - `treetime-analytical` - Analytical distribution formulas
