@@ -7,6 +7,7 @@ mod tests {
   use crate::representation::graph_sparse::SparseEdgePartition;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::find_edge_key;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use itertools::Itertools;
@@ -48,6 +49,51 @@ mod tests {
                 ..SparseEdgePartition::default()
               },
             );
+          }
+        }
+      }
+
+      vec![Arc::new(RwLock::new(partition))]
+    };
+
+    Ok((graph, partitions))
+  }
+
+  /// Create test graph with edge mutations specified by node names.
+  /// edge_mutations: (source_name, target_name, num_mutations) - None means default (no mutations entry)
+  fn create_test_graph_with_named_edge_mutations(
+    nwk: &str,
+    edge_mutations: &[(&str, &str, Option<usize>)],
+  ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalSparse>>>), Report> {
+    let graph: GraphAncestral = nwk_read_str(nwk)?;
+
+    let partitions = if edge_mutations.is_empty() {
+      vec![]
+    } else {
+      let mut partition = PartitionMarginalSparse {
+        index: 0,
+        gtr: jc69(JC69Params::default())?,
+        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+        length: 100,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      };
+
+      for (source_name, target_name, num_muts) in edge_mutations {
+        if let Some(edge_key) = find_edge_key(&graph, source_name, target_name) {
+          match num_muts {
+            Some(n) => {
+              partition.edges.insert(
+                edge_key,
+                SparseEdgePartition {
+                  subs: (0..*n).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
+                  ..SparseEdgePartition::default()
+                },
+              );
+            }
+            None => {
+              partition.edges.insert(edge_key, SparseEdgePartition::default());
+            }
           }
         }
       }
@@ -129,64 +175,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_preserves_leaves() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-    let b = graph.add_node(NodeAncestral {
-      name: Some("B".to_owned()),
-      desc: None,
-    });
-
-    // Edge with no mutations to leaf A (should be preserved)
-    graph.add_edge(
-      root,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
+    // Edge to A has no mutations, edge to B has 2 mutations
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
+      "(A:0.1,B:0.1)root;",
+      &[("root", "A", None), ("root", "B", Some(2))],
     )?;
-    // Edge with mutations to leaf B
-    graph.add_edge(
-      root,
-      b,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let root_a_edge_key = graph.get_edges()[0].read_arc().key();
-    let root_b_edge_key = graph.get_edges()[1].read_arc().key();
-
-    // Edge to A has no mutations
-    partition.edges.insert(root_a_edge_key, SparseEdgePartition::default());
-    // Edge to B has 2 mutations
-    partition.edges.insert(
-      root_b_edge_key,
-      SparseEdgePartition {
-        subs: (0_usize..2).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
-        ..SparseEdgePartition::default()
-      },
-    );
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
 
     prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
 
