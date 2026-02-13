@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use traversal::{Bft, DftPre};
-use treetime_utils::container::{get_exactly_one, get_exactly_one_mut};
+use treetime_utils::collections::container::{get_exactly_one, get_exactly_one_mut};
 
 /// Represents graph node during forward traversal
 #[must_use]

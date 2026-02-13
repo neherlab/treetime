@@ -16,7 +16,7 @@ use crate::io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use eyre::{Report, WrapErr};
 use log::info;
 use treetime_io::json::{JsonPretty, json_write_file};
-use treetime_utils::console::is_tty;
+use treetime_utils::io::console::is_tty;
 
 pub fn get_clock_model(
   graph: &mut GraphClock,

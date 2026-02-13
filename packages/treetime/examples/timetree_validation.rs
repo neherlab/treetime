@@ -37,8 +37,8 @@ use treetime::representation::partition_timetree::GraphTimetree;
 use treetime_graph::edge::HasBranchLength;
 use treetime_graph::node::Named;
 use treetime_io::json::{JsonPretty, json_write_file};
-use treetime_utils::global_init::global_init;
-use treetime_utils::string::truncate_right_with_ellipsis;
+use treetime_utils::init::global::global_init;
+use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[ctor]
 fn init() {

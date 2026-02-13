@@ -4,7 +4,7 @@ use eyre::Report;
 use plotters::coord::Shift;
 use plotters::coord::types::RangedCoordf32;
 use plotters::prelude::*;
-use treetime_utils::float_fmt::float_to_significant_digits;
+use treetime_utils::fmt::float::float_to_significant_digits;
 
 use crate::cli::rtt_chart::{PointsResult, gather_points};
 

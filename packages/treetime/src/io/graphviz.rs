@@ -8,7 +8,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::{Graph, SafeNode};
 use treetime_graph::node::{GraphNode, Node};
-use treetime_utils::file::create_file_or_stdout;
+use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where

@@ -1,24 +1,14 @@
-pub mod assert;
-pub mod clap_styles;
-pub mod compression;
-pub mod console;
-pub mod container;
+pub mod array;
+pub mod collections;
 pub mod datetime;
 pub mod error;
-pub mod file;
-pub mod float_fmt;
-pub mod fs;
-pub mod global_init;
+pub mod fmt;
+pub mod init;
 pub mod interval;
+pub mod io;
 pub mod iterator;
-pub mod manyzip;
-pub mod mutex;
-pub mod ndarray;
-pub mod openblas;
-pub mod random;
-pub mod serde;
-pub mod string;
-pub mod vec;
+pub mod sync;
+pub mod testing;
 
 #[cfg(any(
   all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
@@ -30,13 +20,8 @@ pub mod vec;
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[cfg(test)]
-mod ndarray_tests;
-#[cfg(test)]
-mod string_tests;
-
-#[cfg(test)]
 mod tests {
-  use crate::global_init::global_init;
+  use crate::init::global::global_init;
   use ctor::ctor;
 
   #[ctor]

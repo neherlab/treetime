@@ -11,8 +11,8 @@ use treetime_graph::edge::{Edge, GraphEdge};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use treetime_io::json::{JsonPretty, json_read, json_write};
-use treetime_utils::file::create_file_or_stdout;
-use treetime_utils::file::open_file_or_stdin;
+use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::open_file_or_stdin;
 
 pub fn auspice_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::HasBranchLength;
-use treetime_utils::serde::skip_serializing_if_false;
+use treetime_utils::array::serde::skip_serializing_if_false;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ClockRegressionResult {

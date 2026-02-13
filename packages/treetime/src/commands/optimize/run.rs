@@ -21,7 +21,7 @@ use std::path::Path;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::node::GraphNode;
-use treetime_utils::float_fmt::float_to_significant_digits;
+use treetime_utils::fmt::float::float_to_significant_digits;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {

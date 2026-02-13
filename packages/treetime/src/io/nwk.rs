@@ -17,9 +17,9 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_utils::file::create_file_or_stdout;
-use treetime_utils::file::open_file_or_stdin;
-use treetime_utils::float_fmt::float_to_digits;
+use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::fmt::float::float_to_digits;
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

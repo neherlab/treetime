@@ -1,6 +1,6 @@
 #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 
-use crate::ndarray::*;
+use crate::array::ndarray::*;
 use crate::pretty_assert_ulps_eq;
 use ::ndarray::{Array0, Array1, Array2, Axis, arr0, array};
 use eyre::Report;

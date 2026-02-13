@@ -22,7 +22,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_primitives::{Seq, seq};
-use treetime_utils::container::get_exactly_one;
+use treetime_utils::collections::container::get_exactly_one;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalSparse {

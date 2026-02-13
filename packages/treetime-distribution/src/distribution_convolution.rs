@@ -8,7 +8,7 @@ use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array};
 use treetime_ops::convolve;
-use treetime_utils::ndarray::has_uniform_spacing;
+use treetime_utils::array::ndarray::has_uniform_spacing;
 
 pub fn distribution_convolution<Y: SupportsConvolution>(
   a: &Distribution<Y>,

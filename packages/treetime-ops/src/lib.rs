@@ -37,7 +37,7 @@ impl ScaledArray {
 #[cfg(test)]
 mod tests {
   use ctor::ctor;
-  use treetime_utils::global_init::global_init;
+  use treetime_utils::init::global::global_init;
 
   #[ctor]
   fn init() {
