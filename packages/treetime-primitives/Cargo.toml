@@ -10,6 +10,9 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+[lib]
+crate-type = ["lib"]
+
 [dependencies]
 auto_ops = { workspace = true }
 itertools = { workspace = true }
