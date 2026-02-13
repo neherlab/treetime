@@ -12,6 +12,7 @@ mod tests {
   use maplit::{btreemap, btreeset};
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -1014,6 +1015,125 @@ mod tests {
 
     assert_eq!(get_edge_num_muts(&partitions, edge_unknown_key), None);
     assert_eq!(get_edge_num_muts(&partitions2, edge_zero_key), Some(0));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_single_named_leaf() -> Result<(), Report> {
+    let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
+    prune_nodes(&mut graph, &partitions, None, false, &btreeset! { "B".to_owned() })?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.1,C:0.3)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_multiple_named_leaves() -> Result<(), Report> {
+    let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3,D:0.4)root;", &[])?;
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "A".to_owned(), "C".to_owned() },
+    )?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(B:0.2,D:0.4)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_nonexistent_name_is_noop() -> Result<(), Report> {
+    let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "nonexistent".to_owned() },
+    )?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_named_internal_node() -> Result<(), Report> {
+    let (mut graph, partitions) =
+      create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    // Internal node collapsed, its children moved to root
+    assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_mixed_internal_and_leaf_names() -> Result<(), Report> {
+    let (mut graph, partitions) =
+      create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4,D:0.5)root;", &[])?;
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned(), "D".to_owned() },
+    )?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    // Internal collapsed, D removed
+    assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_empty_names_set_is_noop() -> Result<(), Report> {
+    let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
+    prune_nodes(&mut graph, &partitions, None, false, &btreeset! {})?;
+    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(output_nwk, "(A:0.1,B:0.2,C:0.3)root;");
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_all_leaves_preserves_root() -> Result<(), Report> {
+    let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "A".to_owned(), "B".to_owned() },
+    )?;
+    // Root should remain
+    assert_eq!(graph.get_nodes().len(), 1);
+    Ok(())
+  }
+
+  #[test]
+  fn test_prune_nodes_deep_nested_leaf_removal() -> Result<(), Report> {
+    let (mut graph, partitions) =
+      create_test_graph_with_partitions("(((A:0.1,B:0.2)i1:0.3,C:0.4)i2:0.5,D:0.6)root;", &[])?;
+    prune_nodes(&mut graph, &partitions, None, false, &btreeset! { "A".to_owned() })?;
+
+    // A removed, i1 becomes unary and collapses
+    // Verify structure: root has 2 children (i2, D), i2 has 2 children (B, C)
+    assert_eq!(graph.get_nodes().len(), 5); // root, i2, B, C, D
+
+    // Verify the leaf names are preserved
+    let leaf_names: BTreeSet<_> = graph
+      .get_nodes()
+      .iter()
+      .filter(|n| graph.is_leaf(n.read_arc().key()))
+      .filter_map(|n| n.read_arc().payload().read_arc().name.clone())
+      .collect();
+    assert_eq!(leaf_names, btreeset! { "B".to_owned(), "C".to_owned(), "D".to_owned() });
 
     Ok(())
   }
