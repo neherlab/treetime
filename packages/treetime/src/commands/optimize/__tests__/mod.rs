@@ -1,6 +1,7 @@
 mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;
 mod test_convergence;
+mod test_dense_sparse_equivalence;
 mod test_grid_search;
 mod test_is_zero_branch_optimal;
 mod test_newton_convergence;
