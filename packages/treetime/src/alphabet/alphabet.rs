@@ -10,7 +10,7 @@ use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
 use strum_macros::Display;
-use treetime_primitives::{AsciiChar, BitSet128, StateSet, stateset};
+use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, StateSet, stateset};
 
 pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
@@ -320,5 +320,15 @@ impl Alphabet {
   /// Check if character is a gap
   pub fn is_gap(&self, c: impl Into<AsciiChar>) -> bool {
     c.into() == self.gap()
+  }
+}
+
+impl AlphabetLike for Alphabet {
+  fn contains(&self, c: AsciiChar) -> bool {
+    self.contains(c)
+  }
+
+  fn chars(&self) -> impl Iterator<Item = AsciiChar> {
+    self.chars()
   }
 }
