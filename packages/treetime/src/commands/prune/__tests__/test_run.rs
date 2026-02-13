@@ -233,41 +233,9 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_empty_simple_leaf_case() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
-
-    let root = graph.add_node(NodeAncestral {
-      name: Some("root".to_owned()),
-      desc: None,
-    });
-    let a = graph.add_node(NodeAncestral {
-      name: Some("A".to_owned()),
-      desc: None,
-    });
-
     // Single leaf edge with no mutations should be preserved
-    graph.add_edge(
-      root,
-      a,
-      EdgeAncestral {
-        branch_length: Some(0.1),
-      },
-    )?;
-
-    graph.build()?;
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    let root_a_edge_key = graph.get_edges()[0].read_arc().key();
-    partition.edges.insert(root_a_edge_key, SparseEdgePartition::default());
-
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let (mut graph, partitions) =
+      create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
 
     prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
 
