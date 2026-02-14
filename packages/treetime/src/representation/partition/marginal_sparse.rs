@@ -9,7 +9,7 @@ use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, Spar
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::partition_marginal_sparse_passes;
+use crate::representation::partition::marginal_passes;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -182,11 +182,11 @@ where
   }
 
   fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
-    partition_marginal_sparse_passes::process_node_backward(self, node)
+    marginal_passes::process_node_backward(self, node)
   }
 
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
-    partition_marginal_sparse_passes::process_node_forward(self, graph, node)
+    marginal_passes::process_node_forward(self, graph, node)
   }
 
   fn extract_ancestral_sequence(&mut self, node_key: GraphNodeKey) -> Seq {
