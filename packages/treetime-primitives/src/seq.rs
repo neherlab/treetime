@@ -24,8 +24,15 @@ impl Seq {
     }
   }
 
+  /// Create a sequence from an ASCII string.
+  ///
+  /// # Panics
+  ///
+  /// Panics if `s` contains non-ASCII characters. This validation is required
+  /// because [`as_str`](Self::as_str) uses `from_utf8_unchecked` which requires
+  /// all bytes to be valid ASCII (a subset of UTF-8).
   pub fn from_str(s: &str) -> Self {
-    debug_assert!(s.is_ascii());
+    assert!(s.is_ascii(), "Seq::from_str: input contains non-ASCII characters");
     Self {
       data: s.as_bytes().iter().copied().map(AsciiChar::from).collect(),
     }
@@ -112,7 +119,13 @@ impl Seq {
     self.data.extend(other.drain(..).map(AsciiChar::from));
   }
 
+  /// Append an ASCII string to this sequence.
+  ///
+  /// # Panics
+  ///
+  /// Panics if `s` contains non-ASCII characters.
   pub fn push_str(&mut self, s: &str) {
+    assert!(s.is_ascii(), "Seq::push_str: input contains non-ASCII characters");
     self.data.extend(s.as_bytes().iter().copied().map(AsciiChar::from));
   }
 
@@ -398,6 +411,9 @@ impl<'de> serde::Deserialize<'de> for Seq {
     D: serde::Deserializer<'de>,
   {
     let s = String::deserialize(deserializer)?;
+    if !s.is_ascii() {
+      return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
+    }
     Ok(Seq::from_str(&s))
   }
 }
