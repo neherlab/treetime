@@ -2,14 +2,14 @@ use crate::breadth_first::{
   GraphTraversalContinuation, directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
 };
 use crate::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNode, SafeNodePayloadRefMut};
+use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNodePayloadRefMut};
 use crate::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::RwLock;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
-use traversal::{Bft, DftPre};
+use traversal::Bft;
 use treetime_utils::collections::container::{get_exactly_one, get_exactly_one_mut};
 
 /// Represents graph node during forward traversal
@@ -263,13 +263,6 @@ where
         stack.push((child, Some(edge)));
       }
     }
-  }
-
-  pub fn iter_depth_first_preorder_forward_2(&self, mut explorer: impl FnMut(&SafeNode<N>)) {
-    let root = self.get_exactly_one_root().unwrap();
-    DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
-      explorer(node);
-    });
   }
 
   /// Synchronously traverse graph in depth-first postorder fashion forward (from roots to leaves, along edge directions).
