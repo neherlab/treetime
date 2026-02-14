@@ -1,7 +1,12 @@
 use ndarray::Array1;
 
 /// Exponential PDF: f(x) = rate * exp(-rate * x) for x >= 0, 0 otherwise.
+///
+/// # Preconditions
+///
+/// `rate` must be positive. Non-positive rates do not define a valid exponential distribution.
 pub fn exponential_pdf(rate: f64, x: f64) -> f64 {
+  debug_assert!(rate > 0.0, "exponential_pdf: rate must be positive");
   if x < 0.0 { 0.0 } else { rate * (-rate * x).exp() }
 }
 
@@ -16,7 +21,12 @@ pub fn exponential_pdf_grid(rate: f64, grid: &Array1<f64>) -> Array1<f64> {
 /// the convolution (f * g)(x) is:
 /// - For a != b: (a * b) / (a - b) * (1 - exp(-(a - b) * x)) * exp(-b * x)
 /// - For a = b (limit form): a * b * x * exp(-a * x)
+///
+/// # Preconditions
+///
+/// Both `a` and `b` must be positive. Non-positive rates do not define valid exponential distributions.
 pub fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
+  debug_assert!(a > 0.0 && b > 0.0, "exponential_convolution: rates must be positive");
   if x < 0.0 {
     0.0
   } else if (a - b).abs() < 1e-15 {
