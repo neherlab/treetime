@@ -87,7 +87,7 @@ Date and time parsing for phylogenetic metadata:
 ### Sync (`sync`)
 
 - `mutex` - `unwrap_arc_rwlock()` for extracting inner value from `Arc<RwLock<T>>`
-- `random` - seeded RNG creation with `Isaac64Rng`, `random_choice()`, `random_remove()`, `random_pop()`, `random_sequence()`
+- `random` - seeded RNG creation with `Isaac64Rng`, `random_choice()`, `random_sequence()`
 
 ### Testing (`testing`)
 
