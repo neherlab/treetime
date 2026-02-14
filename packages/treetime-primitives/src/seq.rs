@@ -147,17 +147,6 @@ impl Seq {
       data: self.data.split_off(at),
     }
   }
-
-  // pub fn splice<I>(
-  //   &mut self,
-  //   range: core::ops::Range<usize>,
-  //   replace_with: I,
-  // ) -> std::vec::Splice<'_, <I as IntoIterator>::IntoIter>
-  // where
-  //   I: IntoIterator<Item = u8>,
-  // {
-  //   self.data.splice(range, replace_with.into_iter().map(AsciiChar::from))
-  // }
 }
 
 impl PartialEq for Seq {
