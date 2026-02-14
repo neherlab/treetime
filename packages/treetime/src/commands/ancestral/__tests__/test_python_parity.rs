@@ -10,7 +10,7 @@ mod tests {
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
-  use eyre::{eyre, Report};
+  use eyre::{Report, eyre};
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
@@ -307,7 +307,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    let partitions = [partition1.clone(), partition2.clone()];
+    let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -373,7 +373,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    let partitions = [partition1.clone(), partition2.clone()];
+    let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -428,7 +428,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    let dense_log_lh = initialize_marginal(&graph, &[dense_partition.clone()], &aln)?;
+    let dense_log_lh = initialize_marginal(&graph, std::slice::from_ref(&dense_partition), &aln)?;
 
     // Sparse partition
     let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
@@ -440,8 +440,8 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    compress_sequences(&graph, &[sparse_partition.clone()], &aln)?;
-    let sparse_log_lh = update_marginal(&graph, &[sparse_partition.clone()])?;
+    compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    let sparse_log_lh = update_marginal(&graph, std::slice::from_ref(&sparse_partition))?;
 
     // Log-likelihoods should match for clean sequences
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
