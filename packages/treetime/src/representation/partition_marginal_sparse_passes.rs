@@ -1,7 +1,7 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::partition_marginal_sparse_helpers::{combine_messages, propagate_raw};
+use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
