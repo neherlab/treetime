@@ -1,10 +1,10 @@
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
+
 use num_traits::Float;
 use pretty_dtoa::{FmtFloatConfig, dtoa};
 
-lazy_static! {
-  static ref FLOAT_CONFIG: FmtFloatConfig = FmtFloatConfig::default().add_point_zero(true).radix_point('.').round();
-}
+static FLOAT_CONFIG: LazyLock<FmtFloatConfig> =
+  LazyLock::new(|| FmtFloatConfig::default().add_point_zero(true).radix_point('.').round());
 
 #[allow(clippy::string_slice)]
 fn trim_trailing_zeros(input: &str) -> String {

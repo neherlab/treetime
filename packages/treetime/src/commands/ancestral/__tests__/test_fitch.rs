@@ -11,11 +11,10 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
-  use lazy_static::lazy_static;
   use maplit::btreemap;
   use parking_lot::RwLock;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
+  use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
@@ -117,9 +116,7 @@ mod tests {
       .collect()
   }
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {

@@ -1,5 +1,5 @@
-use lazy_static::lazy_static;
 use maplit::btreemap;
+use std::sync::LazyLock;
 use regex::{Error, Regex};
 use std::collections::BTreeMap;
 
@@ -18,8 +18,8 @@ pub fn date_format_to_regex(format: &str) -> Result<Regex, Error> {
   Regex::new(&format!("^{result}$"))
 }
 
-lazy_static! {
-  static ref SPEC_MAP: BTreeMap<char, &'static str> = btreemap! {
+static SPEC_MAP: LazyLock<BTreeMap<char, &'static str>> = LazyLock::new(|| {
+  btreemap! {
     'Y' => r"(?P<year>[\dX]{4})",
     'y' => r"(?P<year_short>[\dX]{2})",
     'm' => r"(?P<month>[\dX]{2})",
@@ -29,8 +29,8 @@ lazy_static! {
     'S' => r"(?P<second>[\dX]{2})",
     'w' => r"(?P<week_day>[\dX]{1})",
     'W' => r"(?P<week>[\dX]{2})",
-  };
-}
+  }
+});
 
 #[cfg(test)]
 mod tests {

@@ -1,16 +1,17 @@
 #![allow(clippy::excessive_precision, clippy::lossy_float_literal)]
 
+use std::sync::LazyLock;
+
 use crate::array::ndarray::*;
 use crate::pretty_assert_ulps_eq;
 use ::ndarray::{Array0, Array1, Array2, Axis, arr0, array};
 use eyre::Report;
-use lazy_static::lazy_static;
 use rand::SeedableRng;
 use rand_isaac::Isaac64Rng;
 use rstest::rstest;
 
-lazy_static! {
-  static ref INPUT: Array2<f64> = array![
+static INPUT: LazyLock<Array2<f64>> = LazyLock::new(|| {
+  array![
     [0.19356424, 0.25224431, 0.21259213, 0.19217803, 0.14942128],
     [0.19440831, 0.13170981, 0.26841564, 0.29005381, 0.11541244],
     [0.27439982, 0.18330691, 0.19687558, 0.32079767, 0.02462001],
@@ -18,8 +19,8 @@ lazy_static! {
     [0.31185458, 0.25466645, 0.14705881, 0.24872985, 0.03769030],
     [0.24016971, 0.05380214, 0.35454510, 0.19585567, 0.15562739],
     [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417],
-  ];
-}
+  ]
+});
 
 #[rstest]
 fn computes_argmin_axis_0() {

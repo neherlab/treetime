@@ -12,17 +12,14 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
-  use std::sync::Arc;
+  use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

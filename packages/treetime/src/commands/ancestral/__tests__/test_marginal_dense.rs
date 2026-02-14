@@ -12,13 +12,12 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
-  use lazy_static::lazy_static;
   use maplit::btreemap;
   use ndarray::prelude::*;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
+  use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
@@ -82,9 +81,7 @@ mod tests {
     Ok(log_lh)
   }
 
-  lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-  }
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {

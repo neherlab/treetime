@@ -4,8 +4,8 @@ use crate::datetime::year_fraction::year_fraction_to_date;
 use crate::make_error;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use eyre::{Report, WrapErr};
-use lazy_static::lazy_static;
 use regex::Regex;
+use std::sync::LazyLock;
 
 pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
@@ -95,9 +95,7 @@ pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Re
   make_error!("Unrecognized date range format: {date_range_str}")
 }
 
-lazy_static! {
-  static ref DATE_RANGE_REGEX: Vec<(Regex, String)> = create_date_range_regexes();
-}
+static DATE_RANGE_REGEX: LazyLock<Vec<(Regex, String)>> = LazyLock::new(create_date_range_regexes);
 
 fn create_date_range_regexes() -> Vec<(Regex, String)> {
   #[rustfmt::skip]

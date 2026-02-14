@@ -2,13 +2,17 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use std::sync::LazyLock;
 use treetime_primitives::AsciiChar;
 use treetime_utils::error::to_eyre_error;
+
+static NUC_MUT_RE: LazyLock<Regex> = LazyLock::new(|| {
+  Regex::new(r"((?P<ref>[A-Z-])(?P<pos>\d{1,10})(?P<qry>[A-Z-]))").expect("NUC_MUT_RE regex compilation")
+});
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
 #[getset(get_copy = "pub")]
@@ -63,13 +67,7 @@ impl FromStr for Sub {
 
   /// Parses nucleotide substitution from string. Expects IUPAC notation commonly used in bioinformatics.
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    const NUC_MUT_REGEX: &str = r"((?P<ref>[A-Z-])(?P<pos>\d{1,10})(?P<qry>[A-Z-]))";
-    lazy_static! {
-      static ref RE: Regex = Regex::new(NUC_MUT_REGEX)
-        .wrap_err_with(|| format!("When compiling regular expression '{NUC_MUT_REGEX}'"))
-        .unwrap();
-    }
-    if let Some(captures) = RE.captures(s) {
+    if let Some(captures) = NUC_MUT_RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
           let reff = AsciiChar(reff.as_str().bytes().next().unwrap());
