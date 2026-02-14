@@ -24,8 +24,6 @@ treetime-ops = { path = "../treetime-ops" }
 treetime-validation = { path = "../treetime-validation" }
 treetime-io = { path = "../treetime-io" }
 treetime-utils = { path = "../treetime-utils" }
-usher-mat-utils = { path = "../usher-mat-utils" }
-
 approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
