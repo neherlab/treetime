@@ -1,14 +1,16 @@
-use crate::datetime::date_range::DateRange;
-use crate::datetime::options::DateParserOptions;
-use crate::datetime::parse_uncertain_date::parse_date_uncertain;
-use pretty_assertions::assert_eq;
-use rstest::rstest;
+#[cfg(test)]
+mod tests {
+  use crate::datetime::date_range::DateRange;
+  use crate::datetime::options::DateParserOptions;
+  use crate::datetime::parse_uncertain_date::parse_date_uncertain;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
-fn r(begin: &str, end: &str) -> DateRange {
-  DateRange::from_iso(begin, end)
-}
+  fn r(begin: &str, end: &str) -> DateRange {
+    DateRange::from_iso(begin, end)
+  }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::ymd_dash_full("2024-07-23", r("2024-07-23T00:00:00.000Z", "2024-07-23T23:59:59.999999999Z"))]
   #[case::ymd_dash_day_xx("2024-07-XX", r("2024-07-01T00:00:00.000Z", "2024-07-31T23:59:59.999999999Z"))]
@@ -72,7 +74,7 @@ fn r(begin: &str, end: &str) -> DateRange {
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::all_x_ymd_dash("XXXX-XX-XX")]
   #[case::all_x_ymd_slash("XXXX/XX/XX")]
@@ -95,3 +97,4 @@ fn r(begin: &str, end: &str) -> DateRange {
     let actual = parse_date_uncertain(input, &options).ok();
     assert_eq!(None, actual);
   }
+}

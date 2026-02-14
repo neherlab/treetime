@@ -1,3 +1,4 @@
+#[cfg(test)]
 pub mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;

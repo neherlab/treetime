@@ -1,8 +1,10 @@
-use crate::fmt::string::*;
-use pretty_assertions::assert_eq;
-use rstest::rstest;
+#[cfg(test)]
+mod tests {
+  use crate::fmt::string::*;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "hello wo")]
   #[case::near_full("hello world",                    10, "hello worl")]
@@ -31,7 +33,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "lo world")]
   #[case::near_full("hello world",                    10, "ello world")]
@@ -60,7 +62,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "hellorld")]
   #[case::short_limit("hello world",                     4, "held")]
@@ -90,7 +92,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "hello...")]
   #[case::short_limit("hello world",                     4, "h...")]
@@ -121,7 +123,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "...world")]
   #[case::short_limit("hello world",                     4, "...d")]
@@ -155,7 +157,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::basic_truncate("hello world",                     8, "he...rld")]
   #[case::near_full("hello world",                     9, "hel...rld")]
@@ -189,7 +191,7 @@ use rstest::rstest;
     assert_eq!(expected, actual);
   }
 
-#[rustfmt::skip]
+  #[rustfmt::skip]
   #[rstest]
   #[case::right_empty_ellipsis("hello world",          8, "",       TruncateDirection::Right,  "hello wo")]
   #[case::right_custom_cut("hello world",          8, "<cut>",  TruncateDirection::Right,  "hel<cut>")]
@@ -218,3 +220,4 @@ use rstest::rstest;
     let actual = truncate(input, max_len, Some(ellipsis), direction);
     assert_eq!(expected, actual);
   }
+}
