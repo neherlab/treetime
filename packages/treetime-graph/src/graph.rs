@@ -200,7 +200,7 @@ where
   }
 
   /// Iterates nodes synchronously and in unspecified order
-  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E, D>)) {
+  pub fn for_each(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E, D>)) {
     self
       .nodes
       .iter()
