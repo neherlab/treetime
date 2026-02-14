@@ -25,7 +25,7 @@ use treetime::commands::timetree::utils::{
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::o;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
-use treetime::representation::partition_marginal_dense::PartitionMarginalDense;
+use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use treetime::representation::partition_timetree::GraphTimetree;
 use treetime_distribution::Distribution;

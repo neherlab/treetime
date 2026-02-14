@@ -1,5 +1,5 @@
 use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
-use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use ndarray::Array1;

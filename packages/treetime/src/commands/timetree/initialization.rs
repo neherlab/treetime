@@ -10,7 +10,7 @@ use crate::make_report;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::payload::timetree::NodeTimetree;
-use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition_timetree::{GraphTimetree, PartitionTimetreeAllVec};
 use eyre::{Report, WrapErr};

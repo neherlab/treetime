@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use approx::assert_ulps_eq;
   use eyre::Report;
