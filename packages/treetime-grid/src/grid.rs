@@ -133,11 +133,19 @@ impl<T: InterpElem> Grid<T> {
   }
 
   /// Finds grid interval index containing given x value
+  ///
+  /// Returns index of the left endpoint of the interval containing x.
+  /// For x below grid minimum, returns 0.
+  /// For x at or above grid maximum, returns n_points - 2 (last valid interval).
   pub fn find_interval_index(&self, x: T) -> usize
   where
     T: Float,
   {
-    let idx = ((x - self.x_min) / self.dx).floor().to_usize().unwrap();
+    let rel = (x - self.x_min) / self.dx;
+    if rel < T::zero() {
+      return 0;
+    }
+    let idx = rel.floor().to_usize().unwrap();
     min(idx, self.n_points - 2)
   }
 
