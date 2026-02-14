@@ -23,8 +23,14 @@ impl BitSet128 {
     Self { bits: 0 }
   }
 
+  /// Creates a bitset with a single bit set at position `c`.
+  ///
+  /// # Panics (debug only)
+  /// Panics if `c >= 128`.
   pub fn from_char<T: Into<u32>>(c: T) -> Self {
-    Self { bits: 1 << c.into() }
+    let c = c.into();
+    debug_assert!(c < 128, "BitSet128::from_char requires c < 128, got {c}");
+    Self { bits: 1 << c }
   }
 
   pub fn is_empty(&self) -> bool {
@@ -39,16 +45,34 @@ impl BitSet128 {
     self.bits = 0;
   }
 
+  /// Returns true if the bit at position `c` is set.
+  ///
+  /// # Panics (debug only)
+  /// Panics if `c >= 128`.
   pub fn contains<T: Into<u32>>(&self, c: T) -> bool {
-    (self.bits & (1 << c.into())) != 0
+    let c = c.into();
+    debug_assert!(c < 128, "BitSet128::contains requires c < 128, got {c}");
+    (self.bits & (1 << c)) != 0
   }
 
+  /// Sets the bit at position `c`.
+  ///
+  /// # Panics (debug only)
+  /// Panics if `c >= 128`.
   pub fn insert<T: Into<u32>>(&mut self, c: T) {
-    self.bits |= 1 << c.into();
+    let c = c.into();
+    debug_assert!(c < 128, "BitSet128::insert requires c < 128, got {c}");
+    self.bits |= 1 << c;
   }
 
+  /// Clears the bit at position `c`.
+  ///
+  /// # Panics (debug only)
+  /// Panics if `c >= 128`.
   pub fn remove<T: Into<u32>>(&mut self, c: T) {
-    self.bits &= !(1 << c.into());
+    let c = c.into();
+    debug_assert!(c < 128, "BitSet128::remove requires c < 128, got {c}");
+    self.bits &= !(1 << c);
   }
 
   pub fn union(&self, other: &Self) -> Self {
