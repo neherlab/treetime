@@ -7,7 +7,7 @@ use crate::representation::payload::sparse::{
   SparseSeqInfo,
 };
 use crate::representation::partition::traits::PartitionCompressed;
-use crate::representation::partition_fitch::PartitionFitch;
+use crate::representation::partition::fitch::PartitionFitch;
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
