@@ -1,3 +1,4 @@
+mod __tests__;
 pub mod auspice;
 pub mod auspice_types;
 pub mod concat;

@@ -1,3 +1,4 @@
+mod __tests__;
 pub mod bitset128;
 pub mod seq;
 pub mod seq_char;

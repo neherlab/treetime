@@ -3970,6 +3970,8 @@ version = "1.0.0"
 dependencies = [
  "auto_ops",
  "itertools 0.14.0",
+ "pretty_assertions",
+ "rstest",
  "serde",
 ]
 

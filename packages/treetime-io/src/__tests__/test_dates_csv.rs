@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::pretty_assert_ulps_eq;
+  use crate::dates_csv::*;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_io::dates_csv::*;
   use treetime_utils::datetime::options::DateParserOptions;
   use treetime_utils::o;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[rustfmt::skip]
   #[rstest]
