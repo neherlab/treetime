@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::gtr::gtr::GTR;
-use crate::representation::partitions_parsimony::PartitionParsimony;
+use crate::representation::partition::fitch_config::PartitionFitchConfig;
 use eyre::Report;
 use treetime_io::fasta::FastaRecord;
 
@@ -37,7 +37,7 @@ impl PartitionLikelihood {
     Self { gtr, alphabet, length }
   }
 
-  pub fn from_fitch(gtr: GTR, partition: PartitionParsimony) -> Self {
+  pub fn from_fitch(gtr: GTR, partition: PartitionFitchConfig) -> Self {
     Self::new(gtr, partition.alphabet, partition.length)
   }
 }
