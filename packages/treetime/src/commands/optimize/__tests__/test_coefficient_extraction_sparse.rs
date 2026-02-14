@@ -197,7 +197,7 @@ mod tests {
     // Multiplicity 5
     let site5 = SiteContribution {
       multiplicity: 5.0,
-      coefficients: coefficients.clone(),
+      coefficients,
     };
     let contribution5 = PartitionContribution {
       site_contributions: vec![site5],
@@ -376,7 +376,10 @@ mod tests {
 
     for &branch_length in &[0.001, 0.01, 0.1, 1.0] {
       let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-      assert!(metrics.log_lh.is_finite(), "log-LH should be finite at branch_length={branch_length}");
+      assert!(
+        metrics.log_lh.is_finite(),
+        "log-LH should be finite at branch_length={branch_length}"
+      );
       assert!(
         metrics.derivative.is_finite(),
         "derivative should be finite at branch_length={branch_length}"
@@ -405,7 +408,7 @@ mod tests {
 
     let site3 = SiteContribution {
       multiplicity: 3.0,
-      coefficients: coefficients.clone(),
+      coefficients,
     };
     let contribution3 = PartitionContribution {
       site_contributions: vec![site3],
@@ -526,7 +529,7 @@ mod tests {
     assert_eq!(zero_count, 1, "JC69 should have exactly one zero eigenvalue");
 
     // All eigenvalues should be <= 0
-    for &ev in gtr.eigvals.iter() {
+    for &ev in &gtr.eigvals {
       assert!(ev <= 1e-10, "JC69 eigenvalues should be non-positive");
     }
   }

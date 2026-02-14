@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, is_zero_branch_optimal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use ndarray::{array, Array2};
+  use ndarray::{Array2, array};
 
   /// Create a dense contribution with specified coefficients and JC69 GTR model.
   ///
@@ -20,7 +20,7 @@ mod tests {
   /// Create a sparse contribution with specified site contributions and JC69 eigenvalues.
   fn make_sparse_contribution(sites: Vec<(f64, Vec<f64>)>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
-    let eigenvalues = gtr.eigvals.clone();
+    let eigenvalues = gtr.eigvals;
 
     let site_contributions = sites
       .into_iter()
