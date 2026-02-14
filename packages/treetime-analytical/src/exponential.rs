@@ -22,7 +22,12 @@ pub fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
   } else if (a - b).abs() < 1e-15 {
     a * b * x * (-a * x).exp()
   } else {
-    (a * b) / (a - b) * (1.0 - (-(a - b) * x).exp()) * (-b * x).exp()
+    // Use exp_m1 to avoid catastrophic cancellation when a ≈ b.
+    // Since 1 - exp(y) = -exp_m1(y), we have:
+    // (1 - exp(-(a-b)*x)) = -exp_m1(-(a-b)*x)
+    // Formula: (a*b)/(a-b) * (1 - exp(-(a-b)*x)) * exp(-b*x)
+    //        = (a*b)/(b-a) * exp_m1(-(a-b)*x) * exp(-b*x)
+    (a * b) / (b - a) * (-(a - b) * x).exp_m1() * (-b * x).exp()
   }
 }
 
@@ -110,5 +115,20 @@ mod tests {
     assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
     assert_ulps_eq!(result[1], 0.0, max_ulps = 4);
     assert!(result[2] > 0.0);
+  }
+
+  #[test]
+  fn test_exponential_convolution_near_equal_rates() {
+    // Test numerical stability when rates are nearly equal.
+    // The exp_m1 formulation should avoid catastrophic cancellation.
+    let a = 1.0;
+    let b = 1.0 + 1e-10;
+    let x = 2.0;
+    let result = exponential_convolution(a, b, x);
+
+    // Result should be close to the equal-rates limit: a * b * x * exp(-a * x)
+    let limit = a * b * x * (-a * x).exp();
+    assert!((result - limit).abs() < 1e-6, "result={result}, limit={limit}");
+    assert!(result.is_finite(), "result should be finite");
   }
 }
