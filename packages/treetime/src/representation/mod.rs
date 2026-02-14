@@ -11,4 +11,5 @@ mod partition_marginal_sparse_passes;
 pub mod partition_timetree;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
+pub mod partition;
 pub mod payload;
