@@ -6,20 +6,10 @@ use prost::bytes::{Buf, BufMut};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
 
-mod mutation_detailed {
-  #![allow(dead_code, unnameable_types)]
-  #![allow(clippy::all)]
-  include!(concat!(env!("OUT_DIR"), "/mutation_detailed.rs"));
-}
 mod parsimony {
   #![allow(dead_code, unnameable_types)]
   #![allow(clippy::all)]
   include!(concat!(env!("OUT_DIR"), "/parsimony.rs"));
-}
-mod taxodium {
-  #![allow(dead_code, unnameable_types)]
-  #![allow(clippy::all)]
-  include!(concat!(env!("OUT_DIR"), "/taxodium.rs"));
 }
 
 pub type UsherTree = parsimony::Data;

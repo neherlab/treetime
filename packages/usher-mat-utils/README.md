@@ -8,11 +8,7 @@ Provide utilities for working with phylogenetic trees produced by [UShER](https:
 
 ## Supported Formats
 
-Three protobuf schemas are supported:
-
 - **parsimony** - Standard UShER MAT format with tree structure, mutations, condensed nodes, and clade annotations
-- **mutation_detailed** - Extended format with detailed mutation encoding and sample placement data
-- **taxodium** - Format used by [Taxodium](https://github.com/theosanderson/taxodium) for web-based tree visualization
 
 ## API
 
