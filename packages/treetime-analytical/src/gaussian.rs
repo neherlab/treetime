@@ -22,7 +22,17 @@ pub struct GaussianParams {
 /// - log_scale = -0.5 * quadratic_term + sum(ln(A_i))
 ///
 /// Returns (mu_star, sigma_star, log_scale).
+///
+/// # Preconditions
+///
+/// All `sigma` values must be positive (non-zero). Zero sigma represents a Dirac delta
+/// which cannot be represented as a Gaussian product.
 pub fn gaussian_product_params(params: &[GaussianParams]) -> (f64, f64, f64) {
+  debug_assert!(
+    params.iter().all(|p| p.sigma > 0.0),
+    "gaussian_product_params: all sigma values must be positive"
+  );
+
   if params.is_empty() {
     return (0.0, f64::INFINITY, 0.0);
   }
@@ -60,7 +70,12 @@ pub fn gaussian_evaluate(params: &GaussianParams, grid: &Array1<f64>) -> Array1<
 /// Normalized Gaussian PDF.
 ///
 /// f(x) = exp(-0.5 * ((x - mu) / sigma)^2) / (sigma * sqrt(2 * pi))
+///
+/// # Preconditions
+///
+/// `sigma` must be positive. Zero sigma represents a Dirac delta which has no finite PDF value.
 pub fn gaussian_pdf(mu: f64, sigma: f64, x: f64) -> f64 {
+  debug_assert!(sigma > 0.0, "gaussian_pdf: sigma must be positive");
   (-(0.5 * ((x - mu) / sigma).powi(2))).exp() / (sigma * (2.0 * PI).sqrt())
 }
 
