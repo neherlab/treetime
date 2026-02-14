@@ -12,7 +12,6 @@ Error macros built on `eyre`:
 - `make_report!()` - create error report for `.map_err()`
 - `make_internal_error!()` / `make_internal_report!()` - internal bug errors with developer contact info
 - `report_to_string()` - flatten error chain into a single string
-- `keep_ok()` - filter a slice of `Result` values, keeping only `Ok` variants
 
 ### Array (`array`)
 
