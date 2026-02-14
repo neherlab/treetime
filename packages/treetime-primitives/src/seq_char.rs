@@ -32,32 +32,52 @@ impl From<u8> for AsciiChar {
   }
 }
 
+/// # Panics
+///
+/// Debug builds panic if `item >= 256`.
 impl From<u16> for AsciiChar {
   fn from(item: u16) -> Self {
+    debug_assert!(item < 256, "AsciiChar::from(u16): value {item} >= 256");
     AsciiChar(item as u8)
   }
 }
 
+/// # Panics
+///
+/// Debug builds panic if `item >= 256`.
 impl From<u32> for AsciiChar {
   fn from(item: u32) -> Self {
+    debug_assert!(item < 256, "AsciiChar::from(u32): value {item} >= 256");
     AsciiChar(item as u8)
   }
 }
 
+/// # Panics
+///
+/// Debug builds panic if `item >= 256`.
 impl From<u64> for AsciiChar {
   fn from(item: u64) -> Self {
+    debug_assert!(item < 256, "AsciiChar::from(u64): value {item} >= 256");
     AsciiChar(item as u8)
   }
 }
 
+/// # Panics
+///
+/// Debug builds panic if `item >= 256`.
 impl From<usize> for AsciiChar {
   fn from(item: usize) -> Self {
+    debug_assert!(item < 256, "AsciiChar::from(usize): value {item} >= 256");
     AsciiChar(item as u8)
   }
 }
 
+/// # Panics
+///
+/// Debug builds panic if `item` is not ASCII (code point >= 128).
 impl From<char> for AsciiChar {
   fn from(item: char) -> Self {
+    debug_assert!(item.is_ascii(), "AsciiChar::from(char): '{item}' is not ASCII");
     AsciiChar(item as u8)
   }
 }
