@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::optimize_dense;
-  use crate::commands::optimize::optimize_unified::{evaluate_mixed, OptimizationContribution};
-  use crate::gtr::get_gtr::{jc69, JC69Params};
+  use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
-  use ndarray::{array, Array1};
+  use ndarray::{Array1, array};
   use ordered_float::OrderedFloat;
 
   /// Create a dense contribution with specified coefficients and JC69 GTR model.
@@ -14,11 +14,7 @@ mod tests {
   }
 
   /// Simulate grid search: find branch length with maximum log-LH from a grid of points.
-  fn grid_search(
-    contributions: &[OptimizationContribution],
-    branch_length: f64,
-    one_mutation: f64,
-  ) -> f64 {
+  fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
     let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
 
     branch_lengths
@@ -113,11 +109,7 @@ mod tests {
   #[test]
   fn test_grid_search_finds_maximum_log_lh() {
     // Grid search should find the branch length that maximizes log-LH
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-      [0.1, 0.1, 0.7, 0.1],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04], [0.1, 0.1, 0.7, 0.1],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -142,10 +134,7 @@ mod tests {
   #[test]
   fn test_grid_search_result_in_range() {
     // Result should be within the search range
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -164,10 +153,7 @@ mod tests {
   #[test]
   fn test_grid_search_with_small_branch_length() {
     // Grid search should work even with very small branch lengths
-    let coefficients = array![
-      [0.99, 0.003, 0.003, 0.004],
-      [0.003, 0.99, 0.003, 0.004],
-    ];
+    let coefficients = array![[0.99, 0.003, 0.003, 0.004], [0.003, 0.99, 0.003, 0.004],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -183,10 +169,7 @@ mod tests {
   #[test]
   fn test_grid_search_with_large_branch_length() {
     // Grid search should work with larger branch lengths
-    let coefficients = array![
-      [0.5, 0.15, 0.15, 0.2],
-      [0.15, 0.5, 0.15, 0.2],
-    ];
+    let coefficients = array![[0.5, 0.15, 0.15, 0.2], [0.15, 0.5, 0.15, 0.2],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -207,14 +190,8 @@ mod tests {
   #[test]
   fn test_grid_search_multiple_partitions() {
     // Grid search should work with multiple contributions
-    let coefficients1 = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
-    let coefficients2 = array![
-      [0.8, 0.06, 0.06, 0.08],
-      [0.06, 0.8, 0.06, 0.08],
-    ];
+    let coefficients1 = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
+    let coefficients2 = array![[0.8, 0.06, 0.06, 0.08], [0.06, 0.8, 0.06, 0.08],];
     let contribution1 = make_dense_contribution(coefficients1);
     let contribution2 = make_dense_contribution(coefficients2);
     let contributions = vec![contribution1, contribution2];
@@ -238,10 +215,7 @@ mod tests {
   fn test_grid_search_uniform_coefficients() {
     // With uniform coefficients, any branch length gives similar log-LH
     // Grid search should still return a valid result
-    let coefficients = array![
-      [0.25, 0.25, 0.25, 0.25],
-      [0.25, 0.25, 0.25, 0.25],
-    ];
+    let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -262,10 +236,7 @@ mod tests {
   fn test_grid_search_one_mutation_dominates_range() {
     // When one_mutation is large relative to branch_length,
     // the range should still be valid
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -286,19 +257,11 @@ mod tests {
   #[test]
   fn test_grid_search_preserves_positive_branch_length() {
     // Grid search should always return a positive branch length
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
-    let test_cases = [
-      (0.1, 0.001),
-      (0.01, 0.001),
-      (0.001, 0.0001),
-      (1.0, 0.001),
-    ];
+    let test_cases = [(0.1, 0.001), (0.01, 0.001), (0.001, 0.0001), (1.0, 0.001)];
 
     for (branch_length, one_mutation) in test_cases {
       let best_bl = grid_search(&contributions, branch_length, one_mutation);

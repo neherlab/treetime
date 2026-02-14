@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::optimize_dense;
-  use crate::commands::optimize::optimize_unified::{evaluate_mixed, OptimizationContribution};
-  use crate::gtr::get_gtr::{jc69, JC69Params};
+  use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
   use ndarray::array;
   use num::clamp;
@@ -113,10 +113,7 @@ mod tests {
   #[test]
   fn test_evaluate_mixed_returns_finite_values() {
     // evaluate_mixed should return finite values for any valid coefficients
-    let coefficients = array![
-      [0.25, 0.25, 0.25, 0.25],
-      [0.25, 0.25, 0.25, 0.25],
-    ];
+    let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -130,10 +127,7 @@ mod tests {
   #[test]
   fn test_evaluate_mixed_log_lh_negative() {
     // Log-likelihood should be negative (probabilities < 1)
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -146,10 +140,7 @@ mod tests {
   #[test]
   fn test_evaluate_mixed_multiple_branch_lengths() {
     // evaluate_mixed should work across a range of branch lengths
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -172,11 +163,7 @@ mod tests {
   #[test]
   fn test_newton_iteration_converges_within_bounds() {
     // Simulate the Newton loop from optimize_unified.rs
-    let coefficients = array![
-      [0.9, 0.03, 0.03, 0.04],
-      [0.03, 0.9, 0.03, 0.04],
-      [0.1, 0.1, 0.7, 0.1],
-    ];
+    let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04], [0.1, 0.1, 0.7, 0.1],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
@@ -216,10 +203,7 @@ mod tests {
   #[test]
   fn test_newton_iteration_respects_max_iter() {
     // Even with slow convergence, should stop at max_iter
-    let coefficients = array![
-      [0.25, 0.25, 0.25, 0.25],
-      [0.25, 0.25, 0.25, 0.25],
-    ];
+    let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 

@@ -208,8 +208,7 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_complex_tree() -> Result<(), Report> {
-    let mut graph =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
@@ -288,8 +287,7 @@ pub mod tests {
 
   #[test]
   fn test_collapse_edge_adjacency_lists_maintained() -> Result<(), Report> {
-    let mut graph =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
+    let mut graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;

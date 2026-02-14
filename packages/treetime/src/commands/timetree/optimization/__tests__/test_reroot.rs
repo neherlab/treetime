@@ -10,7 +10,6 @@ mod tests {
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
-  use crate::test_utils::find_node_key_by_name;
   use crate::representation::edge_timetree::EdgeTimetree;
   use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition};
   use crate::representation::node_timetree::NodeTimetree;
@@ -18,6 +17,7 @@ mod tests {
   use crate::representation::partition_timetree::GraphTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;

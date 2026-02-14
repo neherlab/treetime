@@ -23,11 +23,7 @@ where
 }
 
 /// Find an edge key by source and target node names.
-pub fn find_edge_key<N, E, D>(
-  graph: &Graph<N, E, D>,
-  source_name: &str,
-  target_name: &str,
-) -> Option<GraphEdgeKey>
+pub fn find_edge_key<N, E, D>(graph: &Graph<N, E, D>, source_name: &str, target_name: &str) -> Option<GraphEdgeKey>
 where
   N: GraphNode + Named,
   E: GraphEdge,

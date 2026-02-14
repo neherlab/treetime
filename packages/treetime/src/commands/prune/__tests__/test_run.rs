@@ -90,10 +90,10 @@ mod tests {
                   ..SparseEdgePartition::default()
                 },
               );
-            }
+            },
             None => {
               partition.edges.insert(edge_key, SparseEdgePartition::default());
-            }
+            },
           }
         }
       }
@@ -234,8 +234,7 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_empty_simple_leaf_case() -> Result<(), Report> {
     // Single leaf edge with no mutations should be preserved
-    let (mut graph, partitions) =
-      create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
+    let (mut graph, partitions) = create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
 
     prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
 
@@ -503,8 +502,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_named_internal_node() -> Result<(), Report> {
-    let (mut graph, partitions) =
-      create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
+    let (mut graph, partitions) = create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
     prune_nodes(
       &mut graph,
       &partitions,
@@ -862,10 +860,7 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![
-      Arc::new(RwLock::new(partition1)),
-      Arc::new(RwLock::new(partition2)),
-    ];
+    let partitions = vec![Arc::new(RwLock::new(partition1)), Arc::new(RwLock::new(partition2))];
 
     // Collapse internal node by name
     prune_nodes(
@@ -1001,13 +996,7 @@ mod tests {
         branch_length: Some(0.5),
       },
     )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: None,
-      },
-    )?;
+    graph.add_edge(internal, a, EdgeAncestral { branch_length: None })?;
     graph.add_edge(
       internal,
       b,
@@ -1072,13 +1061,7 @@ mod tests {
     });
 
     // Root -> internal has None, internal -> A has Some
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: None,
-      },
-    )?;
+    graph.add_edge(root, internal, EdgeAncestral { branch_length: None })?;
     graph.add_edge(
       internal,
       a,
@@ -1148,27 +1131,9 @@ mod tests {
       desc: None,
     });
 
-    graph.add_edge(
-      root,
-      internal,
-      EdgeAncestral {
-        branch_length: None,
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      a,
-      EdgeAncestral {
-        branch_length: None,
-      },
-    )?;
-    graph.add_edge(
-      internal,
-      b,
-      EdgeAncestral {
-        branch_length: None,
-      },
-    )?;
+    graph.add_edge(root, internal, EdgeAncestral { branch_length: None })?;
+    graph.add_edge(internal, a, EdgeAncestral { branch_length: None })?;
+    graph.add_edge(internal, b, EdgeAncestral { branch_length: None })?;
 
     graph.build()?;
 
