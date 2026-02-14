@@ -5,6 +5,5 @@ pub mod partition_marginal_sparse;
 pub(crate) mod partition_marginal_sparse_helpers;
 mod partition_marginal_sparse_passes;
 pub mod partition_timetree;
-pub mod partitions_likelihood;
 pub mod partition;
 pub mod payload;
