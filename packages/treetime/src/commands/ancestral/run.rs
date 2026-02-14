@@ -7,7 +7,7 @@ use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;

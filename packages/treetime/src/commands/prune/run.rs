@@ -4,7 +4,7 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr, jc69};
 use crate::make_error;
 use crate::representation::payload::ancestral::GraphAncestral;
-use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;

@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;

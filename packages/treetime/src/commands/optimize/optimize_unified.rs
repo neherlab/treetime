@@ -6,7 +6,7 @@ use crate::commands::optimize::optimize_sparse_eval::{
 };
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use ndarray::Axis;
 use ndarray_stats::QuantileExt;

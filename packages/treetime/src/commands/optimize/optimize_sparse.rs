@@ -22,7 +22,7 @@
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::representation::payload::ancestral::GraphAncestral;
-use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;

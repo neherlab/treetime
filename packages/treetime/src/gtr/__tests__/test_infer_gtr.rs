@@ -8,7 +8,7 @@ mod tests {
   use crate::gtr::infer_gtr::{InferGtrOptions, MutationCounts, distance, get_mutation_counts, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

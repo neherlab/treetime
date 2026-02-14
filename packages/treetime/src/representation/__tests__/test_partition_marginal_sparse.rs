@@ -4,7 +4,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
-  use crate::representation::partition_marginal_sparse::compose_substitutions;
+  use crate::representation::partition::marginal_sparse::compose_substitutions;
   use crate::seq::mutation::Sub;
 
   fn sub(reff: char, pos: usize, qry: char) -> Sub {

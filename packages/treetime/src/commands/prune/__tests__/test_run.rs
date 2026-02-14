@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::representation::payload::sparse::SparseEdgePartition;
-  use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::{assert_relative_eq, assert_ulps_eq};
