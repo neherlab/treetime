@@ -5,7 +5,7 @@ use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::representation::payload::ancestral::GraphAncestral;
-use crate::representation::infer_dense::infer_dense;
+use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;

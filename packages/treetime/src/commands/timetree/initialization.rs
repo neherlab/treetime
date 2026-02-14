@@ -8,7 +8,7 @@ use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::make_error;
 use crate::make_report;
 use crate::representation::payload::timetree::EdgeTimetree;
-use crate::representation::infer_dense::infer_dense;
+use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::payload::timetree::NodeTimetree;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;

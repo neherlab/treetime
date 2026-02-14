@@ -4,7 +4,7 @@ use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
 use crate::representation::payload::ancestral::GraphAncestral;
-use crate::representation::infer_dense::infer_dense;
+use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;

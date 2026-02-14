@@ -1,4 +1,4 @@
 mod __tests__;
-pub mod infer_dense;
+pub mod algo;
 pub mod partition;
 pub mod payload;
