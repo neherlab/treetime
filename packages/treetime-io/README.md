@@ -1,43 +1,58 @@
 # treetime-io
 
-I/O utilities for reading and writing JSON and YAML files with serde serialization.
+I/O for phylogenetic data formats: trees, sequences, metadata, and serialization.
 
-## Supported Formats
+## Formats
 
-- **JSON** - via `serde_json` with support for deeply nested structures (uses `serde_stacker` to avoid recursion limits)
-- **YAML** - via `serde_yaml`
+| Module                | Format                                                          | Read | Write |
+| --------------------- | --------------------------------------------------------------- | ---- | ----- |
+| `nwk`                 | Newick tree format                                              | yes  | yes   |
+| `nex`                 | Nexus tree format                                               | -    | yes   |
+| `fasta`               | FASTA sequences (with transparent xz/gz/bz2/zstd decompression) | yes  | yes   |
+| `auspice`             | Auspice v2 JSON (Nextstrain visualization)                      | yes  | yes   |
+| `phyloxml`            | PhyloXML tree format                                            | yes  | yes   |
+| `usher_mat`           | UShER MAT protobuf                                              | yes  | yes   |
+| `json`                | JSON via `serde_json` (with `serde_stacker` for deep nesting)   | yes  | yes   |
+| `yaml`                | YAML via `serde_yaml`                                           | yes  | yes   |
+| `csv`                 | CSV/TSV with auto-delimiter detection                           | yes  | yes   |
+| `dates_csv`           | Date metadata from CSV/TSV (year fractions, date ranges)        | yes  | -     |
+| `discrete_states_csv` | Discrete trait metadata from CSV/TSV                            | yes  | -     |
+| `graphviz`            | Graphviz DOT format                                             | -    | yes   |
 
-## API
+## Utilities
 
-### JSON
+| Module            | Purpose                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `auspice_types`   | Auspice v2 JSON schema types                                   |
+| `concat`          | Reader adaptor that concatenates multiple readers sequentially |
+| `parse_delimited` | Split input by byte delimiter into string chunks               |
 
-| Function                             | Description                                                             |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `json_read_file(path)`               | Read and deserialize JSON from file                                     |
-| `json_read_str(s)`                   | Deserialize JSON from string                                            |
-| `json_read(reader)`                  | Deserialize JSON from any `std::io::Read`                               |
-| `json_write_file(path, obj, pretty)` | Serialize and write JSON to file                                        |
-| `json_write_str(obj, pretty)`        | Serialize to JSON string                                                |
-| `json_write(writer, obj, pretty)`    | Serialize JSON to any `std::io::Write`                                  |
-| `json_or_yaml_write_file(path, obj)` | Write JSON or YAML based on file extension                              |
-| `is_json_value_null(t)`              | Check if value serializes to null (for `#[serde(skip_serializing_if)]`) |
+## Key types
 
-### YAML
+- `FastaRecord` - sequence name, description, sequence data, index
+- `DateOrRange` - year fraction or year fraction range parsed from date metadata
+- `CsvStructWriter` / `CsvStructFileWriter` - typed CSV writing via serde
+- `JsonPretty(bool)` - controls JSON pretty-printing
 
-| Function                     | Description                               |
-| ---------------------------- | ----------------------------------------- |
-| `yaml_read_file(path)`       | Read and deserialize YAML from file       |
-| `yaml_read_str(s)`           | Deserialize YAML from string              |
-| `yaml_read(reader)`          | Deserialize YAML from any `std::io::Read` |
-| `yaml_write_file(path, obj)` | Serialize and write YAML to file          |
-| `yaml_write_str(obj)`        | Serialize to YAML string                  |
-| `yaml_write(writer, obj)`    | Serialize YAML to any `std::io::Write`    |
+## Tree I/O traits
 
-## Usage
+Tree readers/writers use trait bounds on graph node and edge types:
+
+- `NodeFromNwk` / `EdgeFromNwk` - construct nodes and edges from Newick data
+- `NodeToNwk` / `EdgeToNwk` - serialize nodes and edges to Newick
+- `NodeToGraphviz` / `EdgeToGraphviz` - serialize to Graphviz DOT
+- `AuspiceRead` / `AuspiceWrite` - convert to/from Auspice v2 JSON
+- `UsherRead` - convert from UShER MAT protobuf
+- `PhyloxmlToGraph` / `PhyloxmlDataToGraphData` - convert to/from PhyloXML
+
+## API patterns
+
+File functions accept `impl AsRef<Path>` and support stdin/stdout via `treetime-utils` file utilities. Each format provides `_file`, `_str`, and raw reader/writer variants where applicable.
 
 ```rust
 use treetime_io::json::{json_read_file, json_write_file, JsonPretty};
 use treetime_io::yaml::{yaml_read_file, yaml_write_file};
+use treetime_io::fasta::{FastaRecord, read_fasta_file};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -46,21 +61,18 @@ struct Config {
     value: i32,
 }
 
-// Read JSON
+// JSON
 let config: Config = json_read_file("config.json")?;
-
-// Write JSON (pretty-printed)
 json_write_file("output.json", &config, JsonPretty(true))?;
 
-// Read YAML
+// YAML
 let config: Config = yaml_read_file(&Some("config.yaml"))?;
-
-// Write YAML
 yaml_write_file("output.yaml", &config)?;
 ```
 
 ## Notes
 
-- File functions support stdin/stdout via `treetime-utils` file utilities
 - JSON reading disables recursion limits to handle deeply nested structures
-- `json_or_yaml_write_file` determines format by extension (`.yaml`/`.yml` for YAML, otherwise JSON)
+- `json_or_yaml_write_file` determines format by file extension (`.yaml`/`.yml` for YAML, otherwise JSON)
+- FASTA reading transparently decompresses `.xz`, `.gz`, `.bz2`, `.zst` files
+- CSV delimiter is auto-detected from file extension (`.tsv` uses tab, `.csv` uses comma)

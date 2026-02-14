@@ -59,4 +59,5 @@ phyloxml_write(out, &data)?;
 
 - `quick-xml` - XML parsing and serialization with serde support
 - `serde` - Serialization framework
+- `serde_json` - Preserving unrecognized elements via flattened maps
 - `xml` - Pretty-printing output

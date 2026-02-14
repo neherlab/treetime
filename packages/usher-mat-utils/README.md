@@ -26,6 +26,15 @@ pub type UsherMutationList = parsimony::MutationList;
 pub type UsherMetadata = parsimony::NodeMetadata;
 ```
 
+### Methods
+
+```rust
+impl UsherTree {
+    /// Collect all mutation positions across the tree into a sorted set.
+    fn get_all_positions(&self) -> BTreeSet<i32>;
+}
+```
+
 ### Functions
 
 ```rust

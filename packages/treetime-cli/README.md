@@ -150,6 +150,8 @@ Supported formats:
 - `auspice` - Auspice JSON
 - `newick` / `nexus` - standard tree formats
 - `phyloxml` - PhyloXML
+- `phyloxml-json` - PhyloXML as JSON
+- `phylo-graph` - graph JSON
 - `mat-pb` / `mat-json` - Usher mutation-annotated tree
 
 Options:
@@ -170,6 +172,13 @@ All commands support:
 - Alignments: FASTA (plain or compressed: gz, bz2, xz, zstd)
 - Trees: Newick, Nexus, Phylip
 - Metadata: CSV or TSV with header row
+
+## Workspace Dependencies
+
+- `treetime` - core library (commands, models, algorithms)
+- `treetime-graph` - graph data structure
+- `treetime-io` - JSON/YAML serialization
+- `treetime-utils` - error handling, compression, logging
 
 ## References
 
