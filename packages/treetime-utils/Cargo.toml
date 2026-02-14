@@ -91,7 +91,6 @@ tikv-jemallocator = { workspace = true }
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-atty = { workspace = true }
 blas-src = { workspace = true }
 bzip2 = { workspace = true }
 crossterm = { workspace = true }
