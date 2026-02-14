@@ -6,7 +6,7 @@ use crate::representation::payload::sparse::{
   Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   SparseSeqInfo,
 };
-use crate::representation::partition_compressed::PartitionCompressed;
+use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition_fitch::PartitionFitch;
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;

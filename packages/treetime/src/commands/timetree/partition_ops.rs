@@ -1,7 +1,7 @@
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::representation::log_lh::HasLogLh;
-use crate::representation::partition_marginal::PartitionMarginalOps;
+use crate::representation::partition::traits::HasLogLh;
+use crate::representation::partition::traits::PartitionMarginalOps;
 use eyre::Report;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::node::{GraphNode, Named};

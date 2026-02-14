@@ -1,9 +1,6 @@
 mod __tests__;
 pub mod infer_dense;
-pub mod log_lh;
-pub mod partition_compressed;
 pub mod partition_fitch;
-pub mod partition_marginal;
 pub mod partition_marginal_dense;
 pub mod partition_marginal_sparse;
 pub(crate) mod partition_marginal_sparse_helpers;
