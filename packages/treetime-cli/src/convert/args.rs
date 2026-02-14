@@ -1,6 +1,5 @@
 use crate::cli::verbosity::Verbosity;
 use clap::{Parser, ValueEnum, ValueHint};
-use std::sync::LazyLock;
 use std::path::{Path, PathBuf};
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::io::fs::extension;
@@ -69,9 +68,6 @@ pub struct Args {
   #[clap(flatten, next_help_heading = "Verbosity")]
   pub verbosity: Verbosity,
 }
-
-static VERBOSITIES: LazyLock<&'static [&'static str]> =
-  LazyLock::new(|| &["off", "error", "warn", "info", "debug", "trace"]);
 
 pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<TreeFormat> {
   let filepath = filepath.as_ref();
