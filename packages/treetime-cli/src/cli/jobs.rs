@@ -1,10 +1,15 @@
 use clap::Args;
 use serde::Serialize;
+use std::thread::available_parallelism;
+
+fn default_jobs() -> usize {
+  available_parallelism().map_or(1, |n| n.get())
+}
 
 #[derive(Args, Debug, Clone)]
 pub struct Jobs {
   /// Number of processing jobs. If not specified, all available CPU threads will be used.
-  #[clap(global = true, display_order = 90, long, short = 'j', default_value_t = num_cpus::get())]
+  #[clap(global = true, display_order = 90, long, short = 'j', default_value_t = default_jobs())]
   pub jobs: usize,
 }
 

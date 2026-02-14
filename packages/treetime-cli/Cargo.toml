@@ -22,7 +22,6 @@ indoc = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
-num_cpus = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
