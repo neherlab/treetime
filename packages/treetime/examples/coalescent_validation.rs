@@ -15,7 +15,7 @@ use std::sync::LazyLock;
 use treetime::commands::clock::date_constraints::load_date_constraints;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::o;
-use treetime::representation::partition_timetree::GraphTimetree;
+use treetime::representation::partition::timetree::GraphTimetree;
 use treetime_distribution::Distribution;
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_grid::grid::Grid;

@@ -14,7 +14,7 @@ mod tests {
   use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
   use crate::representation::payload::timetree::NodeTimetree;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition_timetree::GraphTimetree;
+  use crate::representation::partition::timetree::GraphTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;

@@ -6,7 +6,7 @@ use crate::commands::clock::reroot::{RerootChanges, RerootParams};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
-use crate::representation::partition_timetree::GraphTimetree;
+use crate::representation::partition::timetree::GraphTimetree;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::info;

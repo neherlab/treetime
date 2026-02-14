@@ -27,7 +27,7 @@ use treetime::o;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use treetime::representation::partition_timetree::GraphTimetree;
+use treetime::representation::partition::timetree::GraphTimetree;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_graph::edge::HasBranchLength;

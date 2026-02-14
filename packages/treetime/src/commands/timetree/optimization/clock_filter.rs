@@ -1,4 +1,4 @@
-use crate::representation::partition_timetree::GraphTimetree;
+use crate::representation::partition::timetree::GraphTimetree;
 use eyre::Report;
 
 /// Detect and mark branches that violate molecular clock assumptions.

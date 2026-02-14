@@ -13,7 +13,7 @@ use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
-use crate::representation::partition_timetree::GraphTimetree;
+use crate::representation::partition::timetree::GraphTimetree;
 use eyre::{Report, WrapErr};
 use log::{debug, info};
 use parking_lot::RwLock;

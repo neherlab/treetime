@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::events::collect_tree_events;
-  use crate::representation::partition_timetree::GraphTimetree;
+  use crate::representation::partition::timetree::GraphTimetree;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
