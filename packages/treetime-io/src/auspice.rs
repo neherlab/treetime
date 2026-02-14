@@ -58,7 +58,7 @@ where
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   auspice_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When reading Auspice v2 JSON file '{}'", filepath.display()))?;
+    .wrap_err_with(|| format!("When writing Auspice v2 JSON file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }

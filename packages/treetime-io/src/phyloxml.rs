@@ -98,7 +98,7 @@ where
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  phyloxml_write(&mut f, graph).wrap_err_with(|| format!("When reading PhyloXML file '{}'", filepath.display()))?;
+  phyloxml_write(&mut f, graph).wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
