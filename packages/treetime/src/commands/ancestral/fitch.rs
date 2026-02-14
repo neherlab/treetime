@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+use crate::representation::partition::fitch::PartitionFitch;
+use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::payload::sparse::{
   Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   SparseSeqInfo,
 };
-use crate::representation::partition::traits::PartitionCompressed;
-use crate::representation::partition::fitch::PartitionFitch;
 use crate::seq::composition::Composition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::representation::partition::traits::PartitionCompressed;
+use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;

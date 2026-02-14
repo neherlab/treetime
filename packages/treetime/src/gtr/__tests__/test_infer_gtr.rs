@@ -7,8 +7,8 @@ mod tests {
   use crate::gtr::gtr::avg_transition;
   use crate::gtr::infer_gtr::{InferGtrOptions, MutationCounts, distance, get_mutation_counts, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

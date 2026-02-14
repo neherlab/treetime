@@ -4,9 +4,9 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::{RerootChanges, RerootParams};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
-use crate::representation::partition::timetree::GraphTimetree;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::info;

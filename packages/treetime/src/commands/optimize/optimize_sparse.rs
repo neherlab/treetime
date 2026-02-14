@@ -21,8 +21,8 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;

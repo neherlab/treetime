@@ -3,9 +3,9 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::prune::run::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::representation::payload::sparse::SparseEdgePartition;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::{assert_relative_eq, assert_ulps_eq};

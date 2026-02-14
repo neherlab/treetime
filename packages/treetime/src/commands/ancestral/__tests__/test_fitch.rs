@@ -6,8 +6,8 @@ mod tests {
     get_common_length,
   };
   use crate::o;
-  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;

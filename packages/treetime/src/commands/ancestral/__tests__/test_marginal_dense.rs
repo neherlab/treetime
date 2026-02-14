@@ -7,8 +7,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;

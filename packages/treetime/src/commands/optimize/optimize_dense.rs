@@ -22,9 +22,9 @@
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::gtr::gtr::GTR;
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::DenseSeqDis;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array2, Axis};
 use num::clamp;

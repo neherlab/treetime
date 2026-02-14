@@ -10,11 +10,13 @@ mod tests {
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
-  use crate::representation::payload::timetree::EdgeTimetree;
-  use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
-  use crate::representation::payload::timetree::NodeTimetree;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::timetree::GraphTimetree;
+  use crate::representation::payload::sparse::{
+    MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
+  };
+  use crate::representation::payload::timetree::EdgeTimetree;
+  use crate::representation::payload::timetree::NodeTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
