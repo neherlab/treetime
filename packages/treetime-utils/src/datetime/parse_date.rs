@@ -129,7 +129,7 @@ fn create_date_range_regexes() -> Vec<(Regex, String)> {
         for separator in SEPARATORS {
           let format = pattern.0;
           let regex = Regex::new(&format!(
-            r"^{left_paren}\s*(P<begin>{format})\s*{right_paren}\s*{separator}\s*{left_paren}\s*(P<end>{format})\s*{right_paren}$"
+            r"^{left_paren}\s*(?P<begin>{format})\s*{right_paren}\s*{separator}\s*{left_paren}\s*(?P<end>{format})\s*{right_paren}$"
           ))
           .unwrap();
           regexes.push((regex, pattern.1.to_owned()));
