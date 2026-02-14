@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::graph_ancestral::GraphAncestral;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use eyre::Report;
   use maplit::btreemap;

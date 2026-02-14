@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::{GTR, GTRParams, avg_transition};
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;

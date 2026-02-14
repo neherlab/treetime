@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::representation::graph_ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::representation::graph_sparse::{
+use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::payload::sparse::{
   Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   SparseSeqInfo,
 };

@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::representation::graph_ancestral::GraphAncestral;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::partition_marginal_dense::PartitionMarginalDense;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::test_utils::find_node_key_by_name;

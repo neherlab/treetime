@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::inference::runner::create_branch_distributions_input_mode;
-  use crate::representation::edge_timetree::EdgeTimetree;
-  use crate::representation::node_timetree::NodeTimetree;
+  use crate::representation::payload::timetree::EdgeTimetree;
+  use crate::representation::payload::timetree::NodeTimetree;
   use approx::assert_ulps_eq;
   use bio::io::newick;
   use eyre::Report;

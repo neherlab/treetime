@@ -1,6 +1,6 @@
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::representation::edge_timetree::EdgeTimetree;
-use crate::representation::node_timetree::NodeTimetree;
+use crate::representation::payload::timetree::EdgeTimetree;
+use crate::representation::payload::timetree::NodeTimetree;
 use crate::representation::partition_timetree::GraphTimetree;
 use eyre::Report;
 use parking_lot::RwLock;

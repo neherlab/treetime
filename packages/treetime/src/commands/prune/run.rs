@@ -3,7 +3,7 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr, jc69};
 use crate::make_error;
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use itertools::Itertools;

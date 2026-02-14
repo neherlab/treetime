@@ -1,11 +1,6 @@
 mod __tests__;
-pub mod edge_timetree;
-pub mod graph_ancestral;
-pub mod graph_dense;
-pub mod graph_sparse;
 pub mod infer_dense;
 pub mod log_lh;
-pub mod node_timetree;
 pub mod partition_compressed;
 pub mod partition_fitch;
 pub mod partition_marginal;
@@ -16,3 +11,4 @@ mod partition_marginal_sparse_passes;
 pub mod partition_timetree;
 pub mod partitions_likelihood;
 pub mod partitions_parsimony;
+pub mod payload;

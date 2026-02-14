@@ -10,9 +10,9 @@ mod tests {
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
-  use crate::representation::edge_timetree::EdgeTimetree;
-  use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, SparseEdgePartition};
-  use crate::representation::node_timetree::NodeTimetree;
+  use crate::representation::payload::timetree::EdgeTimetree;
+  use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
+  use crate::representation::payload::timetree::NodeTimetree;
   use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition_timetree::GraphTimetree;
   use crate::seq::indel::InDel;
@@ -161,8 +161,8 @@ mod tests {
       alphabet: alphabet.clone(),
       length: 16,
       nodes: btreemap! {
-        root_key => crate::representation::graph_sparse::SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
-        a_key => crate::representation::graph_sparse::SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
+        root_key => SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
       },
       edges: btreemap! {
         edge_to_a_key => SparseEdgePartition {
@@ -259,8 +259,8 @@ mod tests {
       alphabet: alphabet.clone(),
       length: 8,
       nodes: btreemap! {
-        root_key => crate::representation::graph_sparse::SparseNodePartition::new(&root_seq, &alphabet)?,
-        a_key => crate::representation::graph_sparse::SparseNodePartition::new(&seq![b'A'; 8], &alphabet)?,
+        root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![b'A'; 8], &alphabet)?,
       },
       edges: btreemap! {
         edge_to_a_key => SparseEdgePartition {

@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::optimize::optimize_dense::{PartitionContribution, evaluate, get_coefficients};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::graph_dense::DenseSeqDis;
+  use crate::representation::payload::dense::DenseSeqDis;
   use approx::assert_ulps_eq;
   use ndarray::{Array2, array};
 

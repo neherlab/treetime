@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::{PartitionWithGtrInference, infer_gtr};
-use crate::representation::graph_ancestral::GraphAncestral;
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};

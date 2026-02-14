@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::graph_sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;
