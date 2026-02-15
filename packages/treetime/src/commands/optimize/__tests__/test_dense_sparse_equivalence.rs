@@ -331,7 +331,10 @@ mod tests {
       assert!(*dense_bl >= 0.0);
       assert!(*sparse_bl >= 0.0);
       assert!(*dense_bl < 10.0, "Dense branch length {dense_bl} should be reasonable");
-      assert!(*sparse_bl < 10.0, "Sparse branch length {sparse_bl} should be reasonable");
+      assert!(
+        *sparse_bl < 10.0,
+        "Sparse branch length {sparse_bl} should be reasonable"
+      );
     }
 
     // Dense and sparse should produce similar branch lengths
@@ -345,7 +348,11 @@ mod tests {
     );
 
     // Individual branch lengths should also be close
-    for (i, (dense_bl, sparse_bl)) in branch_lengths_dense.iter().zip(branch_lengths_sparse.iter()).enumerate() {
+    for (i, (dense_bl, sparse_bl)) in branch_lengths_dense
+      .iter()
+      .zip(branch_lengths_sparse.iter())
+      .enumerate()
+    {
       let diff = (dense_bl - sparse_bl).abs();
       assert!(
         diff < 0.05,
@@ -434,10 +441,7 @@ mod tests {
 
     // Best likelihood achieved should be reasonable
     let best_lh = lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-    assert!(
-      best_lh > -50.0,
-      "Best log-LH {best_lh} should be better than -50"
-    );
+    assert!(best_lh > -50.0, "Best log-LH {best_lh} should be better than -50");
 
     Ok(())
   }

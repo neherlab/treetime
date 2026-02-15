@@ -47,7 +47,9 @@ mod tests {
       .time_distribution()
       .as_ref()
       .expect("internal node should have time distribution after backward pass");
-    let likely_time = time_dist.likely_time().expect("time distribution should have likely_time");
+    let likely_time = time_dist
+      .likely_time()
+      .expect("time distribution should have likely_time");
 
     assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
     assert!(likely_time < 2013.0, "Parent should be older than child");
@@ -105,7 +107,9 @@ mod tests {
       .time_distribution()
       .as_ref()
       .expect("internal node should have time distribution");
-    let likely_time = time_dist.likely_time().expect("time distribution should have likely_time");
+    let likely_time = time_dist
+      .likely_time()
+      .expect("time distribution should have likely_time");
 
     assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
 

@@ -202,7 +202,10 @@ mod tests {
 
     // Total tree length should be reasonable (not zero, not huge)
     assert!(final_total > 0.0, "Total tree length should be positive");
-    assert!(final_total < 50.0, "Total tree length unreasonably large: {final_total}");
+    assert!(
+      final_total < 50.0,
+      "Total tree length unreasonably large: {final_total}"
+    );
 
     // Tree length should be in same order of magnitude as initial
     // (optimization shouldn't drastically change overall scale)

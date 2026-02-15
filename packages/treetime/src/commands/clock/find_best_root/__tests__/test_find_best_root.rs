@@ -67,7 +67,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -91,7 +94,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -111,7 +117,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -138,7 +147,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -158,7 +170,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -185,7 +200,10 @@ mod tests {
     assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, max_ulps = 4);
 
     // Verify split is in valid range
-    assert!(best_root.split >= 0.0 && best_root.split <= 1.0, "split should be in [0, 1]");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
+    );
 
     // Verify edge position - best root is on edge from root to CD
     let (source, target) = get_edge_node_names(&graph, &best_root);
@@ -220,8 +238,14 @@ mod tests {
     );
 
     // All methods should find the same edge
-    assert_eq!(grid_result.edge, brent_result.edge, "Brent should find same edge as grid");
-    assert_eq!(grid_result.edge, golden_result.edge, "Golden section should find same edge as grid");
+    assert_eq!(
+      grid_result.edge, brent_result.edge,
+      "Brent should find same edge as grid"
+    );
+    assert_eq!(
+      grid_result.edge, golden_result.edge,
+      "Golden section should find same edge as grid"
+    );
 
     Ok(())
   }
