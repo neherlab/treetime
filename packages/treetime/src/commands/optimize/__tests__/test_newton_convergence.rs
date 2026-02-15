@@ -3,7 +3,6 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
   use ndarray::array;
   use num::clamp;
 
@@ -12,60 +11,6 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
   }
-
-  /// Simulate one Newton step: branch_length - clamp(d1/d2, -1.0, branch_length)
-  fn newton_step(branch_length: f64, derivative: f64, second_derivative: f64) -> f64 {
-    branch_length - clamp(derivative / second_derivative, -1.0, branch_length)
-  }
-
-  // ============================================================================
-  // Step clamping tests
-  // ============================================================================
-
-  #[test]
-  fn test_newton_step_clamps_negative_to_minus_one() {
-    // When derivative/second_derivative < -1.0, clamp to -1.0
-    // This prevents stepping backward by more than 1.0
-    let branch_length = 0.5;
-    let derivative = 10.0;
-    let second_derivative = -2.0; // d1/d2 = -5.0, clamped to -1.0
-
-    let result = newton_step(branch_length, derivative, second_derivative);
-
-    // new = 0.5 - (-1.0) = 1.5
-    assert_ulps_eq!(result, 1.5, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_newton_step_clamps_positive_to_branch_length() {
-    // When derivative/second_derivative > branch_length, clamp to branch_length
-    // This prevents new_branch_length from going negative
-    let branch_length = 0.1;
-    let derivative = -10.0;
-    let second_derivative = -2.0; // d1/d2 = 5.0, clamped to 0.1
-
-    let result = newton_step(branch_length, derivative, second_derivative);
-
-    // new = 0.1 - 0.1 = 0.0
-    assert_ulps_eq!(result, 0.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_newton_step_no_clamping_in_valid_range() {
-    // When -1.0 <= d1/d2 <= branch_length, no clamping occurs
-    let branch_length = 0.5;
-    let derivative = -0.1;
-    let second_derivative = -1.0; // d1/d2 = 0.1, in range [-1.0, 0.5]
-
-    let result = newton_step(branch_length, derivative, second_derivative);
-
-    // new = 0.5 - 0.1 = 0.4
-    assert_ulps_eq!(result, 0.4, max_ulps = 4);
-  }
-
-  // ============================================================================
-  // evaluate_mixed with real contributions
-  // ============================================================================
 
   #[test]
   fn test_evaluate_mixed_returns_finite_values() {
@@ -191,36 +136,5 @@ mod tests {
     }
 
     assert!(n_iter <= max_iter);
-  }
-
-  #[test]
-  fn test_newton_step_preserves_positivity() {
-    // For any valid inputs, result should be non-negative when starting positive
-    let test_cases = [
-      (0.5, 1.0, -2.0),   // normal case
-      (0.1, -10.0, -2.0), // large positive step, clamped
-      (0.01, 5.0, -1.0),  // negative step
-      (1.0, 0.0, -1.0),   // zero derivative
-    ];
-
-    for (branch_length, derivative, second_derivative) in test_cases {
-      let result = newton_step(branch_length, derivative, second_derivative);
-      assert!(
-        result >= 0.0,
-        "newton_step({branch_length}, {derivative}, {second_derivative}) = {result} should be >= 0"
-      );
-    }
-  }
-
-  #[test]
-  fn test_newton_step_zero_derivative_no_change() {
-    // When derivative is zero, step is zero
-    let branch_length = 0.5;
-    let derivative = 0.0;
-    let second_derivative = -1.0;
-
-    let result = newton_step(branch_length, derivative, second_derivative);
-
-    assert_ulps_eq!(result, branch_length, max_ulps = 4);
   }
 }
