@@ -64,49 +64,6 @@ mod tests {
   }
 
   // ============================================================================
-  // Convergence threshold tests (|new - old| > 0.001 * old)
-  // ============================================================================
-
-  #[test]
-  fn test_convergence_threshold_above_continues() {
-    // When |new - old| > 0.001 * old, iteration should continue
-    let old: f64 = 1.0;
-    let new: f64 = 1.002; // |1.002 - 1.0| = 0.002 > 0.001 * 1.0 = 0.001
-
-    assert!((new - old).abs() > 0.001 * old);
-  }
-
-  #[test]
-  fn test_convergence_threshold_at_boundary_stops() {
-    // When |new - old| <= 0.001 * old, iteration should stop
-    let old: f64 = 1.0;
-    let new: f64 = 1.001; // |1.001 - 1.0| = 0.001 = 0.001 * 1.0, NOT > so stops
-
-    assert!((new - old).abs() <= 0.001 * old);
-  }
-
-  #[test]
-  fn test_convergence_threshold_below_stops() {
-    let old: f64 = 1.0;
-    let new: f64 = 1.0005; // |0.0005| < 0.001 * 1.0
-
-    assert!((new - old).abs() <= 0.001 * old);
-  }
-
-  #[test]
-  fn test_convergence_threshold_scales_with_branch_length() {
-    // For small branch lengths, threshold is proportionally smaller
-    let old: f64 = 0.01;
-    let threshold = 0.001 * old; // = 0.00001
-
-    assert_ulps_eq!(threshold, 0.00001, max_ulps = 4);
-
-    // A change of 0.00002 would continue (> 0.00001)
-    let new: f64 = 0.01002;
-    assert!((new - old).abs() > 0.001 * old);
-  }
-
-  // ============================================================================
   // evaluate_mixed with real contributions
   // ============================================================================
 
@@ -234,16 +191,6 @@ mod tests {
     }
 
     assert!(n_iter <= max_iter);
-  }
-
-  #[test]
-  fn test_newton_early_exit_on_non_concave() {
-    // If second_derivative becomes non-negative mid-iteration, loop should break
-    // This is tested by checking the branch condition rather than mocking
-    let second_derivative = 0.1; // >= 0, should cause break
-
-    // The condition in the loop is: if new_metrics.second_derivative < 0.0
-    assert!(second_derivative >= 0.0); // would break
   }
 
   #[test]
