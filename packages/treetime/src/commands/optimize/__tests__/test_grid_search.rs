@@ -3,17 +3,14 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use ordered_float::OrderedFloat;
 
-  /// Create a dense contribution with specified coefficients and JC69 GTR model.
   fn make_dense_contribution(coefficients: ndarray::Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
     OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
   }
 
-  /// Simulate grid search: find branch length with maximum log-LH from a grid of points.
   fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
     let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
 
@@ -26,85 +23,6 @@ mod tests {
       .copied()
       .unwrap_or(branch_length)
   }
-
-  // ============================================================================
-  // Grid search trigger condition tests
-  // ============================================================================
-
-  #[test]
-  fn test_grid_search_triggered_when_d2_zero() {
-    // When second_derivative == 0, Newton's method cannot proceed (division by zero)
-    // Grid search should be used instead
-    let second_derivative = 0.0;
-    assert!(second_derivative >= 0.0); // triggers grid search path
-  }
-
-  #[test]
-  fn test_grid_search_triggered_when_d2_positive() {
-    // When second_derivative > 0, function is convex (not concave)
-    // Newton would move away from maximum, so grid search is needed
-    let second_derivative = 0.5;
-    assert!(second_derivative >= 0.0); // triggers grid search path
-  }
-
-  #[test]
-  fn test_newton_path_when_d2_negative() {
-    // When second_derivative < 0, function is concave - Newton's method works
-    let second_derivative = -0.5;
-    assert!(second_derivative < 0.0); // Newton's method path
-  }
-
-  // ============================================================================
-  // Grid search range tests
-  // ============================================================================
-
-  #[test]
-  fn test_grid_search_range_lower_bound() {
-    // Lower bound is 0.1 * one_mutation
-    let one_mutation = 0.01; // 1 mutation in 100 sites
-    let lower = 0.1 * one_mutation;
-
-    assert_ulps_eq!(lower, 0.001, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_grid_search_range_upper_bound() {
-    // Upper bound is 1.5 * branch_length + one_mutation
-    let branch_length = 0.1;
-    let one_mutation = 0.01;
-    let upper = 1.5 * branch_length + one_mutation;
-
-    assert_ulps_eq!(upper, 0.16, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_grid_search_range_100_points() {
-    // Grid search uses exactly 100 points
-    let branch_length = 0.1;
-    let one_mutation = 0.01;
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
-
-    assert_eq!(branch_lengths.len(), 100);
-  }
-
-  #[test]
-  fn test_grid_search_range_evenly_spaced() {
-    // Points should be evenly spaced
-    let branch_length = 0.1;
-    let one_mutation = 0.01;
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
-
-    let expected_step = (1.5 * branch_length + one_mutation - 0.1 * one_mutation) / 99.0;
-
-    for i in 1..branch_lengths.len() {
-      let actual_step = branch_lengths[i] - branch_lengths[i - 1];
-      assert_ulps_eq!(actual_step, expected_step, max_ulps = 4);
-    }
-  }
-
-  // ============================================================================
-  // Grid search finds maximum tests
-  // ============================================================================
 
   #[test]
   fn test_grid_search_finds_maximum_log_lh() {
