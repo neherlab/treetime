@@ -361,7 +361,7 @@ mod tests {
   // ==========================================================================
 
   #[test]
-  fn test_evaluate_sparse_returns_finite_derivatives() {
+  fn test_evaluate_sparse_derivative_matches_numerical() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let site = SiteContribution {
@@ -374,19 +374,26 @@ mod tests {
       eigenvalues: gtr.eigvals.to_owned(),
     };
 
-    for &branch_length in &[0.001, 0.01, 0.1, 1.0] {
+    // Verify analytical first derivative against numerical approximation
+    let h = 1e-6;
+    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
       let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-      assert!(
-        metrics.log_lh.is_finite(),
-        "log-LH should be finite at branch_length={branch_length}"
-      );
-      assert!(
-        metrics.derivative.is_finite(),
-        "derivative should be finite at branch_length={branch_length}"
-      );
+
+      // Numerical first derivative: (f(t+h) - f(t-h)) / 2h
+      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+      let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
+
+      assert_ulps_eq!(metrics.derivative, numerical_d1, epsilon = 1e-4);
+
+      // Second derivative should be finite and negative (log-likelihood is concave)
       assert!(
         metrics.second_derivative.is_finite(),
         "second_derivative should be finite at branch_length={branch_length}"
+      );
+      assert!(
+        metrics.second_derivative < 0.0,
+        "second_derivative should be negative (concave) at branch_length={branch_length}"
       );
     }
   }
@@ -431,15 +438,17 @@ mod tests {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     // Variable sites (multiplicity 1)
+    let variable_coeffs = array![0.3, 0.3, 0.2, 0.2];
     let variable_site = SiteContribution {
       multiplicity: 1.0,
-      coefficients: array![0.3, 0.3, 0.2, 0.2],
+      coefficients: variable_coeffs.clone(),
     };
 
     // Fixed sites (multiplicity > 1)
+    let fixed_coeffs = array![0.7, 0.1, 0.1, 0.1];
     let fixed_site = SiteContribution {
       multiplicity: 100.0,
-      coefficients: array![0.7, 0.1, 0.1, 0.1],
+      coefficients: fixed_coeffs.clone(),
     };
 
     let contribution = PartitionContribution {
@@ -447,11 +456,35 @@ mod tests {
       eigenvalues: gtr.eigvals.to_owned(),
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.1);
+    let branch_length = 0.1;
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
 
-    // Total contribution is sum of both
-    assert!(metrics.log_lh.is_finite());
-    assert!(metrics.derivative.is_finite());
+    // Compute expected log-LH as sum of individual site contributions
+    let variable_contribution = PartitionContribution {
+      site_contributions: vec![SiteContribution {
+        multiplicity: 1.0,
+        coefficients: variable_coeffs,
+      }],
+      eigenvalues: gtr.eigvals.to_owned(),
+    };
+    let fixed_contribution = PartitionContribution {
+      site_contributions: vec![SiteContribution {
+        multiplicity: 100.0,
+        coefficients: fixed_coeffs,
+      }],
+      eigenvalues: gtr.eigvals.to_owned(),
+    };
+
+    let variable_metrics = evaluate_sparse_contribution(&variable_contribution, branch_length);
+    let fixed_metrics = evaluate_sparse_contribution(&fixed_contribution, branch_length);
+
+    // Total log-LH equals sum of individual contributions
+    let expected_log_lh = variable_metrics.log_lh + fixed_metrics.log_lh;
+    assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
+
+    // Total derivative equals sum of individual derivatives
+    let expected_derivative = variable_metrics.derivative + fixed_metrics.derivative;
+    assert_ulps_eq!(metrics.derivative, expected_derivative, max_ulps = 100);
   }
 
   #[test]
