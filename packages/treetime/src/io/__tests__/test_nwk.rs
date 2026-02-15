@@ -49,7 +49,7 @@ mod tests {
     for edge in graph.get_edges() {
       let branch_len = edge.read_arc().payload().read_arc().branch_length();
       assert!(
-        branch_len.map_or(false, |v| v.is_nan()),
+        branch_len.is_some_and(|v| v.is_nan()),
         "Missing branch length should be parsed as NaN"
       );
     }
@@ -127,13 +127,7 @@ mod tests {
     let zero_branches: usize = graph
       .get_edges()
       .iter()
-      .filter(|e| {
-        e.read_arc()
-          .payload()
-          .read_arc()
-          .branch_length()
-          .map_or(false, |len| len == 0.0)
-      })
+      .filter(|e| e.read_arc().payload().read_arc().branch_length() == Some(0.0))
       .count();
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
