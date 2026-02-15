@@ -122,7 +122,7 @@ fn compute_kurtosis(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
+  use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use ndarray::array;
 
   #[test]
@@ -130,8 +130,18 @@ mod tests {
     let errors = array![1.0, 2.0, 3.0, 4.0, 5.0];
     let stats = compute_error_statistics(&errors).unwrap();
 
+    // For [1,2,3,4,5]: mean=3, variance=2.5 (sample), std=sqrt(2.5)
+    let expected_std = 2.5_f64.sqrt();
+
     assert_ulps_eq!(stats.mean, 3.0, max_ulps = 4);
     assert_ulps_eq!(stats.median, 3.0, max_ulps = 4);
-    assert!(stats.std > 0.0);
+    assert_ulps_eq!(stats.std, expected_std, max_ulps = 4);
+
+    // Symmetric distribution: skewness = 0
+    assert_ulps_eq!(stats.skewness, 0.0, max_ulps = 4);
+
+    // For uniform-like distribution: kurtosis < 0 (platykurtic)
+    // Exact: -1.2 for 5-point uniform
+    assert_abs_diff_eq!(stats.kurtosis, -1.2, epsilon = 1e-14);
   }
 }
