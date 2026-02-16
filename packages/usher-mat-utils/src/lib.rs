@@ -1,8 +1,8 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use prost::bytes::{Buf, BufMut};
 use eyre::{Context, Report};
 use prost::Message;
+use prost::bytes::{Buf, BufMut};
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
 

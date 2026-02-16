@@ -1,7 +1,7 @@
 use maplit::btreemap;
-use std::sync::LazyLock;
 use regex::{Error, Regex};
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
 /// Try to convert strftime-style format string to a corresponding regular expression.
 ///
