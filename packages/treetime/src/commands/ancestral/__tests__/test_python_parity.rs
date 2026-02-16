@@ -1,19 +1,24 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::get_common_length;
-  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal};
+  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use eyre::Report;
+  use crate::test_utils::find_node_key_by_name;
+  use eyre::{eyre, Report};
   use maplit::btreemap;
+  use ndarray::array;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
-  use std::sync::Arc;
-  use treetime_io::fasta::read_many_fasta;
-  use treetime_io::nwk::nwk_read_file;
+  use std::sync::{Arc, LazyLock};
+  use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
+  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
   fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -72,6 +77,374 @@ mod tests {
     let expected = "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA";
 
     assert_eq!(expected, root_seq, "Root sequence mismatch with Python v0");
+
+    Ok(())
+  }
+
+  // ============================================================================
+  // T12: Comprehensive internal node validation
+  // ============================================================================
+
+  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+  /// Python reference: test_scripts/ancestral_sparse.py:241-250
+  /// Tree: ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;
+  /// GTR: pi=[0.2, 0.3, 0.15, 0.35]
+  fn make_python_reference_gtr() -> Result<GTR, Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    GTR::new(GTRParams {
+      alphabet,
+      mu: 1.0,
+      W: None,
+      pi: array![0.2, 0.3, 0.15, 0.35],
+    })
+  }
+
+  /// Python reference: test_scripts/ancestral_sparse.py:255
+  fn make_python_reference_gtr2() -> Result<GTR, Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    GTR::new(GTRParams {
+      alphabet,
+      mu: 1.0,
+      W: None,
+      pi: array![0.4, 0.15, 0.12, 0.33],
+    })
+  }
+
+  const PYTHON_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+
+  const PYTHON_ALN: &str = ">A\nACATCGCCNNA--GAC\n>B\nGCATCCCTGTA-NG--\n>C\nCCGGCGATGTRTTG--\n>D\nTCGGCCGTGTRTTG--\n";
+
+  /// Test internal node AB profile matches Python v0.
+  ///
+  /// Python reference: test_scripts/ancestral_sparse.py:249-250
+  /// Expected: node_AB.profile.variable[0].dis = [0.51275208, 0.09128506, 0.24647255, 0.14949031]
+  #[test]
+  fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+    let gtr = make_python_reference_gtr()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    // Find node AB and check profile at position 0
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre!("Node AB not found"))?;
+    let partition = partitions[0].read();
+    let ab_profile = &partition.nodes[&ab_key].profile.dis;
+
+    // Position 0 is variable in Python (first variable position)
+    // Python: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
+    // Order: A, C, G, T
+    let pos0_profile = ab_profile.row(0);
+
+    pretty_assert_ulps_eq!(pos0_profile[0], 0.51275208, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[1], 0.09128506, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[2], 0.24647255, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[3], 0.14949031, epsilon = 1e-6);
+
+    Ok(())
+  }
+
+  /// Test root profile matches Python v0.
+  ///
+  /// Python reference: test_scripts/ancestral_sparse.py:245
+  /// Expected: seq_info_root.profile.variable[0].dis = [0.28212327, 0.21643546, 0.13800802, 0.36343326]
+  #[test]
+  fn test_root_profile_matches_python() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+    let gtr = make_python_reference_gtr()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    // Find root node
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre!("Node root not found"))?;
+    let partition = partitions[0].read();
+    let root_profile = &partition.nodes[&root_key].profile.dis;
+
+    // Position 0 profile
+    // Python: [0.28212327, 0.21643546, 0.13800802, 0.36343326]
+    let pos0_profile = root_profile.row(0);
+
+    pretty_assert_ulps_eq!(pos0_profile[0], 0.28212327, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[1], 0.21643546, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[2], 0.13800802, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_profile[3], 0.36343326, epsilon = 1e-6);
+
+    Ok(())
+  }
+
+  /// Test CD internal node profile is computed correctly.
+  /// Verifies the other branch of the tree computes valid distributions.
+  #[test]
+  fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+    let gtr = make_python_reference_gtr()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| eyre!("Node CD not found"))?;
+    let partition = partitions[0].read();
+    let cd_profile = &partition.nodes[&cd_key].profile.dis;
+
+    // Verify all positions are normalized and valid
+    for (pos, row) in cd_profile.rows().into_iter().enumerate() {
+      let sum: f64 = row.sum();
+      assert!(
+        (sum - 1.0).abs() < 1e-10,
+        "CD profile row {pos} not normalized: sum={sum}"
+      );
+      for (state, &val) in row.iter().enumerate() {
+        assert!(val >= 0.0, "CD profile row {pos} state {state} negative: {val}");
+        assert!(val.is_finite(), "CD profile row {pos} state {state} not finite: {val}");
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Test all internal nodes have valid normalized profiles.
+  #[test]
+  fn test_all_internal_nodes_normalized() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+    let gtr = make_python_reference_gtr()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    let partition = partitions[0].read();
+
+    for (key, node_data) in &partition.nodes {
+      let profile = &node_data.profile.dis;
+      for (pos, row) in profile.rows().into_iter().enumerate() {
+        let sum: f64 = row.sum();
+        assert!(
+          (sum - 1.0).abs() < 1e-10,
+          "Node {key:?} row {pos} not normalized: sum={sum}"
+        );
+      }
+    }
+
+    Ok(())
+  }
+
+  // ============================================================================
+  // T13: Multi-partition test
+  // ============================================================================
+
+  /// Test dual-partition case: two alignments with different GTRs on same tree.
+  ///
+  /// Python reference: test_scripts/ancestral_sparse.py:252-274
+  /// Uses same alignment twice but with different GTR parameters.
+  /// Verifies partitions compute independently.
+  #[test]
+  fn test_multi_partition_independent_computation() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+
+    let gtr1 = make_python_reference_gtr()?;
+    let gtr2 = make_python_reference_gtr2()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let length = get_common_length(&aln)?;
+
+    // Create two partitions with different GTRs
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: gtr1,
+      alphabet: alphabet.clone(),
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 1,
+      gtr: gtr2,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    let partitions = [partition1.clone(), partition2.clone()];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    // Check root profiles differ between partitions
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre!("Node root not found"))?;
+
+    let p1 = partition1.read();
+    let p2 = partition2.read();
+
+    let root1 = &p1.nodes[&root_key].profile.dis;
+    let root2 = &p2.nodes[&root_key].profile.dis;
+
+    // Position 0 profiles should differ due to different pi values
+    // Python GTR1: [0.28212327, 0.21643546, 0.13800802, 0.36343326]
+    // Python GTR2: [0.29664652, 0.20554302, 0.13582953, 0.36198093]
+    let pos0_p1 = root1.row(0);
+    let pos0_p2 = root2.row(0);
+
+    // Verify partition 1 matches Python GTR1 reference
+    pretty_assert_ulps_eq!(pos0_p1[0], 0.28212327, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p1[1], 0.21643546, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p1[2], 0.13800802, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p1[3], 0.36343326, epsilon = 1e-6);
+
+    // Verify partition 2 matches Python GTR2 reference
+    pretty_assert_ulps_eq!(pos0_p2[0], 0.29664652, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p2[1], 0.20554302, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p2[2], 0.13582953, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_p2[3], 0.36198093, epsilon = 1e-6);
+
+    Ok(())
+  }
+
+  /// Test multi-partition internal node AB matches Python reference.
+  ///
+  /// Python reference: test_scripts/ancestral_sparse.py:273-274
+  /// node_AB partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
+  #[test]
+  fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
+
+    let gtr1 = make_python_reference_gtr()?;
+    let gtr2 = make_python_reference_gtr2()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let length = get_common_length(&aln)?;
+
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: gtr1,
+      alphabet: alphabet.clone(),
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 1,
+      gtr: gtr2,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    let partitions = [partition1.clone(), partition2.clone()];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre!("Node AB not found"))?;
+
+    // Partition 1: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
+    let p1 = partition1.read();
+    let ab1 = &p1.nodes[&ab_key].profile.dis;
+    let pos0_ab1 = ab1.row(0);
+
+    pretty_assert_ulps_eq!(pos0_ab1[0], 0.51275208, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab1[1], 0.09128506, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab1[2], 0.24647255, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab1[3], 0.14949031, epsilon = 1e-6);
+
+    // Partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
+    let p2 = partition2.read();
+    let ab2 = &p2.nodes[&ab_key].profile.dis;
+    let pos0_ab2 = ab2.row(0);
+
+    pretty_assert_ulps_eq!(pos0_ab2[0], 0.52331521, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab2[1], 0.08336271, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab2[2], 0.24488808, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(pos0_ab2[3], 0.148434, epsilon = 1e-6);
+
+    Ok(())
+  }
+
+  /// Test sparse partition multi-partition parity with dense using simple sequences.
+  ///
+  /// Uses clean ACGT sequences (no gaps, no ambiguous codes) where dense and
+  /// sparse modes should produce identical results.
+  #[test]
+  fn test_multi_partition_sparse_dense_consistency() -> Result<(), Report> {
+    // Use simple alignment without gaps or ambiguous characters
+    let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
+
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;
+
+    let gtr = make_python_reference_gtr()?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let length = get_common_length(&aln)?;
+
+    // Dense partition
+    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: gtr.clone(),
+      alphabet: alphabet.clone(),
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    let dense_log_lh = initialize_marginal(&graph, &[dense_partition.clone()], &aln)?;
+
+    // Sparse partition
+    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    compress_sequences(&graph, &[sparse_partition.clone()], &aln)?;
+    let sparse_log_lh = update_marginal(&graph, &[sparse_partition.clone()])?;
+
+    // Log-likelihoods should match for clean sequences
+    pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
 
     Ok(())
   }
