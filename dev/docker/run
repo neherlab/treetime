@@ -152,7 +152,23 @@ else
   fi
 fi
 
+# Resolve build directories (handles symlinks from worktrees to main repo)
+# These match ralph's BUILD_DIRS: node_modules, target, .build, .cache
+declare -A build_dirs=()
+for dir in node_modules target .build .cache; do
+  if [[ -e "${dir}" ]] || [[ -L "${dir}" ]]; then
+    build_dirs["${dir}"]=$(readlink -f "${dir}")
+  else
+    build_dirs["${dir}"]="$(pwd)/${dir}"
+  fi
+done
+mkdir -p "${build_dirs[@]}"
+
 declare -A volumes=(
+  ["${build_dirs[node_modules]}"]="/workdir/node_modules"
+  ["${build_dirs[target]}"]="/workdir/target"
+  ["${build_dirs[.build]}"]="/workdir/.build"
+  ["${build_dirs[.cache]}"]="/workdir/.cache"
   ["${cache_dir}/cargo/git"]="/home/${USER}/.cargo/git"
   ["${cache_dir}/cargo/install"]="/home/${USER}/.cargo/install"
   ["${cache_dir}/cargo/registry/cache"]="/home/${USER}/.cargo/registry/cache"
