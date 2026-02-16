@@ -15,21 +15,23 @@ mod tests {
   use crate::commands::optimize::optimize_dense::run_optimize_dense;
   use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::representation::graph_ancestral::GraphAncestral;
+  use crate::representation::partition_marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition_marginal_sparse::PartitionMarginalSparse;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
+  use lazy_static::lazy_static;
   use maplit::btreemap;
   use parking_lot::RwLock;
   use std::sync::Arc;
-  use std::sync::LazyLock;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
 
-  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+  lazy_static! {
+    static ref NUC_ALPHABET: Alphabet = Alphabet::default();
+  }
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

@@ -2,9 +2,9 @@
 mod tests {
   use crate::commands::optimize::optimize_dense::{PartitionContribution, evaluate, get_coefficients};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::payload::dense::DenseSeqDis;
+  use crate::representation::graph_dense::DenseSeqDis;
   use approx::assert_ulps_eq;
-  use ndarray::{Array2, array};
+  use ndarray::{array, Array2};
 
   /// Create a DenseSeqDis from a 2D array of probabilities.
   fn make_dense_seq_dis(dis: Array2<f64>) -> DenseSeqDis {
@@ -123,14 +123,14 @@ mod tests {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let parent = array![
-      [1.0, 0.0, 0.0, 0.0],     // position 0: certain A
-      [0.0, 1.0, 0.0, 0.0],     // position 1: certain C
-      [0.25, 0.25, 0.25, 0.25]  // position 2: uniform
+      [1.0, 0.0, 0.0, 0.0], // position 0: certain A
+      [0.0, 1.0, 0.0, 0.0], // position 1: certain C
+      [0.25, 0.25, 0.25, 0.25] // position 2: uniform
     ];
     let child = array![
-      [1.0, 0.0, 0.0, 0.0],     // position 0: certain A (match)
-      [0.0, 1.0, 0.0, 0.0],     // position 1: certain C (match)
-      [0.25, 0.25, 0.25, 0.25]  // position 2: uniform
+      [1.0, 0.0, 0.0, 0.0], // position 0: certain A (match)
+      [0.0, 1.0, 0.0, 0.0], // position 1: certain C (match)
+      [0.25, 0.25, 0.25, 0.25] // position 2: uniform
     ];
     let msg_to_parent = make_dense_seq_dis(parent);
     let msg_to_child = make_dense_seq_dis(child);
@@ -150,11 +150,8 @@ mod tests {
     // Single position with certain A
     let single_parent = array![[1.0, 0.0, 0.0, 0.0]];
     let single_child = array![[0.25, 0.25, 0.25, 0.25]];
-    let single_contribution = get_coefficients(
-      &make_dense_seq_dis(single_parent),
-      &make_dense_seq_dis(single_child),
-      &gtr,
-    );
+    let single_contribution =
+      get_coefficients(&make_dense_seq_dis(single_parent), &make_dense_seq_dis(single_child), &gtr);
 
     // Multiple positions, first matches the single case
     let multi_parent = array![
@@ -165,11 +162,8 @@ mod tests {
       [0.25, 0.25, 0.25, 0.25],
       [0.5, 0.5, 0.0, 0.0] // different distribution
     ];
-    let multi_contribution = get_coefficients(
-      &make_dense_seq_dis(multi_parent),
-      &make_dense_seq_dis(multi_child),
-      &gtr,
-    );
+    let multi_contribution =
+      get_coefficients(&make_dense_seq_dis(multi_parent), &make_dense_seq_dis(multi_child), &gtr);
 
     // First row should match single contribution
     for i in 0..4 {
@@ -252,14 +246,8 @@ mod tests {
     // Test at various branch lengths
     for &branch_length in &[0.001, 0.01, 0.1, 1.0] {
       let metrics = evaluate(&contributions, branch_length);
-      assert!(
-        metrics.log_lh.is_finite(),
-        "log-LH should be finite at branch_length={branch_length}"
-      );
-      assert!(
-        metrics.derivative.is_finite(),
-        "derivative should be finite at branch_length={branch_length}"
-      );
+      assert!(metrics.log_lh.is_finite(), "log-LH should be finite at branch_length={branch_length}");
+      assert!(metrics.derivative.is_finite(), "derivative should be finite at branch_length={branch_length}");
       assert!(
         metrics.second_derivative.is_finite(),
         "second_derivative should be finite at branch_length={branch_length}"
@@ -321,7 +309,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
     let coefficients = array![[0.1, 0.2, 0.3, 0.4], [0.4, 0.3, 0.2, 0.1]];
 
-    let contribution = PartitionContribution::new(coefficients.clone(), gtr);
+    let contribution = PartitionContribution::new(coefficients.clone(), gtr.clone());
 
     assert_eq!(contribution.coefficients.shape(), coefficients.shape());
     for i in 0..2 {
