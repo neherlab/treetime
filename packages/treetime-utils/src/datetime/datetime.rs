@@ -1,6 +1,5 @@
 use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use eyre::{Report, WrapErr};
-use std::time::{Duration, UNIX_EPOCH};
 use time::Month;
 
 pub fn date_now() -> DateTime<Utc> {
@@ -33,8 +32,12 @@ pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
   datetime.timestamp() * 1000
 }
 
+/// Convert millisecond timestamp to DateTime.
+///
+/// # Panics
+/// Panics if timestamp is out of range for DateTime (approximately ±262,000 years from epoch).
 pub fn timestamp_to_date(timestamp: i64) -> DateTime<Utc> {
-  DateTime::<Utc>::from(UNIX_EPOCH + Duration::from_millis(timestamp as u64))
+  DateTime::from_timestamp_millis(timestamp).expect("timestamp out of DateTime range")
 }
 
 pub fn timestamp_from_iso(iso: &str) -> Result<i64, Report> {
