@@ -20,7 +20,12 @@ mod tests {
 
     // Verify root
     let root = graph.get_exactly_one_root()?;
-    let root_name = root.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned());
+    let root_name = root
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name()
+      .map(|n| n.as_ref().to_owned());
     assert_eq!(root_name.as_deref(), Some("root"));
 
     // Verify roundtrip
@@ -62,7 +67,12 @@ mod tests {
     assert_eq!(graph.get_leaves().len(), 1, "Should have 1 leaf");
 
     let root = graph.get_exactly_one_root()?;
-    let root_name = root.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned());
+    let root_name = root
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name()
+      .map(|n| n.as_ref().to_owned());
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
@@ -156,10 +166,26 @@ mod tests {
     }
 
     // Use epsilon of 1e-6 to accommodate f32 precision in parser
-    assert_abs_diff_eq!(branch_lengths["A"].expect("A should have branch length"), 0.123, epsilon = 1e-6);
-    assert_abs_diff_eq!(branch_lengths["B"].expect("B should have branch length"), 0.456, epsilon = 1e-6);
-    assert_abs_diff_eq!(branch_lengths["AB"].expect("AB should have branch length"), 0.789, epsilon = 1e-6);
-    assert_abs_diff_eq!(branch_lengths["C"].expect("C should have branch length"), 1.5, epsilon = 1e-6);
+    assert_abs_diff_eq!(
+      branch_lengths["A"].expect("A should have branch length"),
+      0.123,
+      epsilon = 1e-6
+    );
+    assert_abs_diff_eq!(
+      branch_lengths["B"].expect("B should have branch length"),
+      0.456,
+      epsilon = 1e-6
+    );
+    assert_abs_diff_eq!(
+      branch_lengths["AB"].expect("AB should have branch length"),
+      0.789,
+      epsilon = 1e-6
+    );
+    assert_abs_diff_eq!(
+      branch_lengths["C"].expect("C should have branch length"),
+      1.5,
+      epsilon = 1e-6
+    );
 
     Ok(())
   }

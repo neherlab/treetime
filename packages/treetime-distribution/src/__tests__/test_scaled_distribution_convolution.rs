@@ -80,9 +80,7 @@ mod tests {
     assert_ulps_eq!(result_ab.log_scale(), result_ba.log_scale(), max_ulps = 4);
 
     // Verify full distributions match, not just log_scale
-    if let (Distribution::Function(f_ab), Distribution::Function(f_ba)) =
-      (result_ab.inner(), result_ba.inner())
-    {
+    if let (Distribution::Function(f_ab), Distribution::Function(f_ba)) = (result_ab.inner(), result_ba.inner()) {
       // Same grid bounds
       assert_ulps_eq!(f_ab.grid().x_min(), f_ba.grid().x_min(), max_ulps = 4);
       assert_ulps_eq!(f_ab.grid().x_max(), f_ba.grid().x_max(), max_ulps = 4);
