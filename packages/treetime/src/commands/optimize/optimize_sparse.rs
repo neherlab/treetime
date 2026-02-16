@@ -27,6 +27,7 @@ use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use num::clamp;
+use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use std::iter::zip;
 use std::sync::Arc;
@@ -200,13 +201,13 @@ pub fn run_optimize_sparse(
       let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
 
       // this seems like a bit of a mess.
-      let (best_branch_length, _) = branch_lengths
+      let best_branch_length = branch_lengths
         .iter()
-        .map(|&bl| {
+        .copied()
+        .max_by_key(|&bl| {
           let metrics = evaluate_sparse(&coefficients, bl);
-          (bl, metrics.log_lh)
+          OrderedFloat(metrics.log_lh)
         })
-        .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();
       new_branch_length = best_branch_length;
     }
