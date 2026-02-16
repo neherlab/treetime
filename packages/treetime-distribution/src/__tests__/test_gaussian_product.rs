@@ -11,6 +11,7 @@ mod tests {
   use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use ndarray::Array1;
+  use ordered_float::OrderedFloat;
 
   const GAUSSIAN_GRID_HALF_WIDTH_SIGMAS: f64 = 5.0;
 
@@ -267,7 +268,7 @@ mod tests {
       let max_idx = y
         .iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .max_by_key(|&(_, v)| OrderedFloat(*v))
         .map(|(i, _)| i)
         .unwrap();
       let peak_t = t[max_idx];

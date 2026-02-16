@@ -31,6 +31,7 @@ ndarray-stats = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }
+ordered-float = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 treetime-analytical = { path = "../treetime-analytical" }
