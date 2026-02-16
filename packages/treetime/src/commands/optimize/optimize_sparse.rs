@@ -120,7 +120,7 @@ pub fn get_coefficients(
 
 // Function that takes two message projections, and gtr model, and the length of branch and returns the
 // likelihood as well as its derivative with respect to the branch length
-fn evaluate_sparse(coefficients: &Vec<PartitionContribution>, branch_length: f64) -> OptimizationMetrics {
+fn evaluate_sparse(coefficients: &[PartitionContribution], branch_length: f64) -> OptimizationMetrics {
   let mut log_likelihood = 0.0;
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
