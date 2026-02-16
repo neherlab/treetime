@@ -174,12 +174,28 @@ mod tests {
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    // Branch lengths should be valid
+    let final_lh = update_marginal(&graph, &partitions)?;
+
+    // Final log-LH should be in expected range for this simple tree
+    // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
+
+    // Optimization should improve or maintain likelihood
+    assert!(
+      final_lh >= initial_lh - 1.0,
+      "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
+    );
+
+    // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
       let bl = edge.read_arc().payload().read_arc().branch_length();
       if let Some(bl) = bl {
         assert!(bl.is_finite(), "Branch length should be finite");
         assert!(bl >= 0.0, "Branch length should be non-negative");
+        assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");
       }
     }
 
@@ -201,12 +217,28 @@ mod tests {
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    // Branch lengths should be valid
+    let final_lh = update_marginal(&graph, &partitions)?;
+
+    // Final log-LH should be in expected range for this simple tree
+    // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
+
+    // Optimization should improve or maintain likelihood
+    assert!(
+      final_lh >= initial_lh - 1.0,
+      "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
+    );
+
+    // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
       let bl = edge.read_arc().payload().read_arc().branch_length();
       if let Some(bl) = bl {
         assert!(bl.is_finite(), "Branch length should be finite");
         assert!(bl >= 0.0, "Branch length should be non-negative");
+        assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");
       }
     }
 
@@ -243,15 +275,22 @@ mod tests {
 
     let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
 
-    // Both modes should produce finite log-LH
-    assert!(log_lh_dense.is_finite());
-    assert!(log_lh_sparse.is_finite());
+    // Both modes should produce finite log-LH in expected range
+    assert!(
+      log_lh_dense > -100.0 && log_lh_dense < -10.0,
+      "Dense log-LH {log_lh_dense} should be in range [-100, -10]"
+    );
+    assert!(
+      log_lh_sparse > -100.0 && log_lh_sparse < -10.0,
+      "Sparse log-LH {log_lh_sparse} should be in range [-100, -10]"
+    );
 
-    // Difference should be bounded (within 1.0 log-LH units)
-    // Due to different zero-branch thresholds (0.01 vs 0.0001) and optimization paths
+    // Dense and sparse should converge to similar values
+    // Differences arise from zero-branch thresholds (0.01 dense vs 0.0001 sparse)
+    // and different optimization paths, but should be bounded
     let diff = (log_lh_dense - log_lh_sparse).abs();
     assert!(
-      diff < 1.0,
+      diff < 0.5,
       "Log-LH difference should be bounded: dense={log_lh_dense}, sparse={log_lh_sparse}, diff={diff}"
     );
 
@@ -287,12 +326,40 @@ mod tests {
     // Both modes should produce same number of edges
     assert_eq!(branch_lengths_dense.len(), branch_lengths_sparse.len());
 
-    // All branch lengths should be valid
+    // All branch lengths should be valid and bounded
     for (dense_bl, sparse_bl) in branch_lengths_dense.iter().zip(branch_lengths_sparse.iter()) {
       assert!(dense_bl.is_finite());
       assert!(sparse_bl.is_finite());
       assert!(*dense_bl >= 0.0);
       assert!(*sparse_bl >= 0.0);
+      assert!(*dense_bl < 10.0, "Dense branch length {dense_bl} should be reasonable");
+      assert!(
+        *sparse_bl < 10.0,
+        "Sparse branch length {sparse_bl} should be reasonable"
+      );
+    }
+
+    // Dense and sparse should produce similar branch lengths
+    // Compare total tree length as a summary statistic
+    let total_dense: f64 = branch_lengths_dense.iter().sum();
+    let total_sparse: f64 = branch_lengths_sparse.iter().sum();
+    let total_diff = (total_dense - total_sparse).abs();
+    assert!(
+      total_diff < 0.1,
+      "Total tree length should be similar: dense={total_dense}, sparse={total_sparse}, diff={total_diff}"
+    );
+
+    // Individual branch lengths should also be close
+    for (i, (dense_bl, sparse_bl)) in branch_lengths_dense
+      .iter()
+      .zip(branch_lengths_sparse.iter())
+      .enumerate()
+    {
+      let diff = (dense_bl - sparse_bl).abs();
+      assert!(
+        diff < 0.05,
+        "Branch {i} lengths should be similar: dense={dense_bl}, sparse={sparse_bl}, diff={diff}"
+      );
     }
 
     Ok(())
@@ -308,23 +375,37 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_only(&graph, &aln)?;
 
-    let mut prev_lh = f64::NEG_INFINITY;
-    let convergence_threshold = 1e-4;
+    let initial_lh = update_marginal(&graph, &partitions)?;
+    let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
       run_optimize_dense(&graph, &partitions)?;
       let lh = update_marginal(&graph, &partitions)?;
-
-      if (lh - prev_lh).abs() < convergence_threshold {
-        return Ok(()); // Converged
-      }
-
-      prev_lh = lh;
+      lh_history.push(lh);
     }
 
-    // Even if not fully converged, final log-LH should be stable
-    let final_lh = update_marginal(&graph, &partitions)?;
-    assert!(final_lh.is_finite());
+    let final_lh = *lh_history.last().unwrap();
+
+    // Final log-LH should be in expected range
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
+
+    // Optimization should improve or maintain likelihood overall
+    assert!(
+      final_lh >= initial_lh - 1.0,
+      "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
+    );
+
+    // Check convergence: variance of last 5 iterations should be small
+    let last_5: Vec<f64> = lh_history.iter().rev().take(5).copied().collect();
+    let mean: f64 = last_5.iter().sum::<f64>() / last_5.len() as f64;
+    let variance: f64 = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_5.len() as f64;
+    assert!(
+      variance < 1.0,
+      "Optimization should stabilize: variance of last 5 iterations = {variance}"
+    );
 
     Ok(())
   }
@@ -335,23 +416,34 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_sparse_only(&graph, &aln)?;
 
-    let mut prev_lh = f64::NEG_INFINITY;
-    let convergence_threshold = 1e-4;
+    let initial_lh = update_marginal(&graph, &partitions)?;
+    let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
       run_optimize_sparse(&graph, &partitions)?;
       let lh = update_marginal(&graph, &partitions)?;
-
-      if (lh - prev_lh).abs() < convergence_threshold {
-        return Ok(()); // Converged
-      }
-
-      prev_lh = lh;
+      lh_history.push(lh);
     }
 
-    // Even if not fully converged, final log-LH should be stable
-    let final_lh = update_marginal(&graph, &partitions)?;
-    assert!(final_lh.is_finite());
+    let final_lh = *lh_history.last().unwrap();
+
+    // Final log-LH should be in expected range
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
+
+    // All iterations should stay in valid range
+    for (i, lh) in lh_history.iter().enumerate() {
+      assert!(
+        *lh > -200.0 && *lh < 0.0,
+        "Iteration {i} log-LH {lh} should be in valid range [-200, 0]"
+      );
+    }
+
+    // Best likelihood achieved should be reasonable
+    let best_lh = lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    assert!(best_lh > -50.0, "Best log-LH {best_lh} should be better than -50");
 
     Ok(())
   }

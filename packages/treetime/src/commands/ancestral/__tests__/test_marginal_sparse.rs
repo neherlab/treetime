@@ -192,7 +192,12 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let gtr = jc69(JC69Params::default())?;
 
-    let (_, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
+
+    // Verify log-likelihood is in expected range (tree with 4 leaves, 16 sites)
+    // Matches test_ancestral_reconstruction_marginal_sparse value
+    pretty_assert_ulps_eq!(-55.55428496980045, log_lh, epsilon = 1e-6);
+
     let partition = partitions[0].read_arc();
 
     for node_data in partition.nodes.values() {
@@ -240,6 +245,10 @@ mod tests {
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
+    // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
+    pretty_assert_ulps_eq!(-55.55428496980045, log_lh_first, epsilon = 1e-6);
+
+    // Verify idempotency
     assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

@@ -185,7 +185,11 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
+    let (log_lh, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
+
+    // Verify log-likelihood is in expected range (tree with 7 nodes, 16 sites)
+    pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
+
     let partition = partitions[0].read_arc();
     let max_ulps = 4;
 
@@ -238,6 +242,10 @@ mod tests {
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
+    // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
+    pretty_assert_ulps_eq!(-57.712498930787206, log_lh_first, epsilon = 1e-6);
+
+    // Verify idempotency
     assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

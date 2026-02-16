@@ -26,11 +26,12 @@ mod tests {
 
   #[test]
   fn test_gaussian_exponential_convolution_positive_x() {
-    let a = 0.5;
-    let x = 1.0;
-    let result = gaussian_exponential_convolution(a, x);
-    let expected = 0.5 * a * (-x * a + 0.5 * a.powi(2)).exp() * erfc((a - x) / 2_f64.sqrt());
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    // a=0.5, x=1.0
+    // Expected value computed via scipy.special.erfc in Python:
+    //   0.5 * 0.5 * exp(-0.375) * erfc(-0.5/sqrt(2)) = 0.23761736816002352
+    // Breakdown: exp(-0.375)=0.6872892787909286, erfc(-0.35355...)=1.3829125739416065
+    let result = gaussian_exponential_convolution(0.5, 1.0);
+    assert_ulps_eq!(result, 0.23761736816002352, max_ulps = 4);
   }
 
   #[test]

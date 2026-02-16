@@ -1,47 +1,159 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
+  use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;
-  use treetime_distribution::DistributionPlain as Distribution;
-  use treetime_distribution::distribution_convolution;
+  use std::sync::Arc;
+  use treetime_distribution::Distribution;
+  use treetime_graph::edge::BranchDistribution;
+  use treetime_graph::node::TimeConstraint;
+  use treetime_io::nwk::nwk_read_str;
 
+  /// Test backward pass on a simple 2-leaf tree:
+  /// ((A:2.5)I:1.0)root;
+  /// A has time 2013.0, I should get 2013.0 - 2.5 = 2010.5
   #[test]
-  fn test_inverse_convolution_integration() -> Result<(), Report> {
-    // Test that the refactored code uses the same operation as the standalone function
-    let child_dist: Distribution = Distribution::point(2013.0, 1.0);
-    let branch_dist: Distribution = Distribution::point(2.5, 0.8);
+  fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?;
 
-    let negated_branch_dist: Distribution = branch_dist.negate();
-    let result: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
-
-    if let Some(parent_time) = result.likely_time() {
-      assert_ulps_eq!(parent_time, 2010.5, max_ulps = 4);
-      assert!(parent_time < 2013.0, "Parent should be older than child");
-    } else {
-      panic!("Expected valid parent time");
+    // Set leaf A's time distribution to point at 2013.0
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    {
+      let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
+      let mut payload = leaf_node.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 1.0)));
     }
+
+    // Set branch length distribution on edge from I to A (branch length 2.5 years)
+    for edge in graph.get_edges() {
+      let edge_read = edge.read_arc();
+      if edge_read.target() == leaf_key {
+        let mut payload = edge_read.payload().write_arc();
+        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 1.0))));
+      }
+    }
+
+    // Run backward pass
+    propagate_distributions_backward(&graph, None)?;
+
+    // Check internal node I has time distribution centered at 2013.0 - 2.5 = 2010.5
+    let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
+    let payload = internal_node.read_arc().payload().read_arc();
+
+    let time_dist = payload
+      .time_distribution()
+      .as_ref()
+      .expect("internal node should have time distribution after backward pass");
+    let likely_time = time_dist
+      .likely_time()
+      .expect("time distribution should have likely_time");
+
+    assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
+    assert!(likely_time < 2013.0, "Parent should be older than child");
 
     Ok(())
   }
 
+  /// Test backward pass with two children: messages are multiplied (intersection).
+  /// Tree: ((A:3.0,B:2.0)I:1.0)root;
+  /// A at 2015.0, B at 2014.0
+  /// I gets messages: from A -> 2015-3=2012, from B -> 2014-2=2012
+  /// Both agree, so I should be at 2012.0
   #[test]
-  fn test_backward_pass_time_direction() -> Result<(), Report> {
-    // Test that backward pass correctly computes older times for ancestors
-    let child_time = 2012.0;
-    let branch_length = 1.5;
-    let expected_parent_time = child_time - branch_length; // 2010.5
+  fn test_backward_pass_multiplies_child_messages() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
 
-    let child_dist: Distribution = Distribution::point(child_time, 1.0);
-    let branch_dist: Distribution = Distribution::point(branch_length, 1.0);
+    let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
 
-    let negated_branch_dist: Distribution = branch_dist.negate();
-    let parent_dist: Distribution = distribution_convolution(&child_dist, &negated_branch_dist)?;
+    // Set time distributions on leaves
+    {
+      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
+      let mut payload = node_a.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(2015.0, 1.0)));
+    }
+    {
+      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
+      let mut payload = node_b.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(2014.0, 1.0)));
+    }
 
-    if let Some(actual_parent_time) = parent_dist.likely_time() {
-      assert_ulps_eq!(actual_parent_time, expected_parent_time, max_ulps = 4);
-      assert!(actual_parent_time < child_time, "Parent must be older than child");
-    } else {
-      panic!("Expected valid parent time");
+    // Set branch length distributions
+    for edge in graph.get_edges() {
+      let edge_read = edge.read_arc();
+      let target = edge_read.target();
+      let branch_length = if target == leaf_a_key {
+        3.0
+      } else if target == leaf_b_key {
+        2.0
+      } else {
+        continue;
+      };
+      let mut payload = edge_read.payload().write_arc();
+      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+    }
+
+    propagate_distributions_backward(&graph, None)?;
+
+    // Internal node I should have time at 2012.0 (both children agree)
+    let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
+    let payload = internal_node.read_arc().payload().read_arc();
+
+    let time_dist = payload
+      .time_distribution()
+      .as_ref()
+      .expect("internal node should have time distribution");
+    let likely_time = time_dist
+      .likely_time()
+      .expect("time distribution should have likely_time");
+
+    assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// Test that backward pass stores msg_to_parent on edges.
+  #[test]
+  fn test_backward_pass_sets_edge_messages() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?;
+
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    // Set leaf time distribution
+    {
+      let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
+      let mut payload = leaf_node.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 1.0)));
+    }
+
+    // Set branch length distribution
+    for edge in graph.get_edges() {
+      let edge_read = edge.read_arc();
+      if edge_read.target() == leaf_key {
+        let mut payload = edge_read.payload().write_arc();
+        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 1.0))));
+      }
+    }
+
+    propagate_distributions_backward(&graph, None)?;
+
+    // Check edge from I to A has msg_to_parent set
+    for edge in graph.get_edges() {
+      let edge_read = edge.read_arc();
+      if edge_read.target() == leaf_key {
+        let payload = edge_read.payload().read_arc();
+        let msg = payload
+          .msg_to_parent()
+          .as_ref()
+          .expect("edge should have msg_to_parent after backward pass");
+        let msg_time = msg.likely_time().expect("message should have likely_time");
+        // Message should be parent time: 2013.0 - 2.5 = 2010.5
+        assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
+      }
     }
 
     Ok(())

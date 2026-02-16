@@ -37,14 +37,28 @@ mod tests {
 
   #[test]
   fn test_scaled_distribution_divide_functions() {
+    // [2.5, 10, 5] / [1, 2, 1] = [2.5, 5, 5] (elementwise on normalized forms)
     let dividend = make_function(array![0.0, 1.0, 2.0], array![2.5, 10.0, 5.0]);
     let divisor = make_function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]);
 
     let result = scaled_distribution_division(&dividend, &divisor).unwrap();
 
-    assert!(!result.is_empty());
-    assert!(result.log_scale().is_finite());
+    // Verify actual y-values after normalization
+    // dividend_norm = [0.25, 1, 0.5], divisor_norm = [0.5, 1, 0.5]
+    // quotient = [0.5, 1, 1], already max=1, normalized: [0.5, 1, 1]
+    if let Distribution::Function(f) = result.inner() {
+      assert_ulps_eq!(f.y()[0], 0.5, max_ulps = 4);
+      assert_ulps_eq!(f.y()[1], 1.0, max_ulps = 4);
+      assert_ulps_eq!(f.y()[2], 1.0, max_ulps = 4);
+    } else {
+      unreachable!("Expected Function distribution");
+    }
+
+    // Verify normalization
     assert_ulps_eq!(result.inner().max_value(), 1.0, max_ulps = 4);
+    // Verify peak value = dividend.peak / divisor.peak * quotient_max
+    // = 10 / 2 * 1 = 5
+    assert_ulps_eq!(result.peak_value(), 5.0, max_ulps = 4);
   }
 
   #[test]

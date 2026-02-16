@@ -103,8 +103,12 @@ mod tests {
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];
 
+    // Record initial state
+    let initial_leaf_count = graph.get_leaves().len();
+    let initial_node_count = graph.get_nodes().len();
+
     // Should complete without error - edge split and trivial root removal are now always enabled
-    let _clock_model = reroot_tree(
+    let clock_model = reroot_tree(
       &mut graph,
       &partitions,
       &clock_params,
@@ -113,7 +117,38 @@ mod tests {
     )?;
 
     // Verify we still have a valid tree with exactly one root
-    let _root = graph.get_exactly_one_root()?;
+    let root = graph.get_exactly_one_root()?;
+
+    // Root should have no parent edges (it's the true root)
+    assert!(
+      root.read_arc().inbound().is_empty(),
+      "Root should have no inbound edges"
+    );
+
+    // Leaf count must be preserved
+    assert_eq!(
+      graph.get_leaves().len(),
+      initial_leaf_count,
+      "Leaf count should be unchanged"
+    );
+
+    // Node count may increase by 1 if edge was split, but never decrease
+    assert!(
+      graph.get_nodes().len() >= initial_node_count,
+      "Node count should not decrease after reroot"
+    );
+
+    // Clock model should have reasonable R² (r_val² > 0.5 for this well-structured tree)
+    let r_val = clock_model.r_val().expect("Clock model should have r_val");
+    let r_squared = r_val * r_val;
+    assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
+
+    // Clock model chisq should be finite and positive
+    let chisq = clock_model.chisq().expect("Clock model should have chisq");
+    assert!(
+      chisq.is_finite() && chisq >= 0.0,
+      "Chisq should be finite and non-negative"
+    );
 
     Ok(())
   }
@@ -338,11 +373,14 @@ mod tests {
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];
 
+    // Record initial state
+    let initial_leaf_count = graph.get_leaves().len();
+
     // Initialize marginal for the sparse partition
     update_marginal(&graph, &partitions)?;
 
     // First reroot call (simulating keep_root=false flow)
-    let clock_model = reroot_tree(
+    let clock_model_1 = reroot_tree(
       &mut graph,
       &partitions,
       &clock_params,
@@ -350,16 +388,50 @@ mod tests {
       &BranchPointOptimizationParams::default(),
     )?;
 
+    // Verify tree validity after first reroot
+    drop(graph.get_exactly_one_root()?);
+    assert_eq!(
+      graph.get_leaves().len(),
+      initial_leaf_count,
+      "Leaf count should be unchanged after first reroot"
+    );
+
+    let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
+
     // Second reroot call (simulating refinement iteration)
-    let _clock_model = reroot_tree(
+    let clock_model_2 = reroot_tree(
       &mut graph,
       &partitions,
       &clock_params,
-      Some(clock_model.clock_rate()),
+      Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),
     )?;
 
-    // If we reach here without panic, the test passes
+    // Verify tree validity after second reroot
+    drop(graph.get_exactly_one_root()?);
+    assert_eq!(
+      graph.get_leaves().len(),
+      initial_leaf_count,
+      "Leaf count should be unchanged after second reroot"
+    );
+
+    // Second reroot with fixed rate should maintain or improve R²
+    // (or have no r_val if rate was fixed)
+    if let (Some(r2_1), Some(r2_2)) = (r_squared_1, clock_model_2.r_val().map(|r| r * r)) {
+      // Allow small tolerance for floating point
+      assert!(
+        r2_2 >= r2_1 - 1e-6,
+        "Second reroot R² ({r2_2}) should be >= first R² ({r2_1})"
+      );
+    }
+
+    // Both clock models should have finite chisq
+    let chisq_1 = clock_model_1.chisq().expect("First clock model should have chisq");
+    assert!(
+      chisq_1.is_finite() && chisq_1 >= 0.0,
+      "First chisq should be finite and non-negative"
+    );
+
     Ok(())
   }
 }

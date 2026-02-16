@@ -39,12 +39,26 @@ mod tests {
 
   #[test]
   fn test_scaled_distribution_multiply_functions() {
+    // [1,2,1] * [2,1,2] = [2,2,2] (elementwise), normalized to [1,1,1]
     let a = make_function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]);
     let b = make_function(array![0.0, 1.0, 2.0], array![2.0, 1.0, 2.0]);
     let result = scaled_distribution_multiplication(&a, &b).unwrap();
 
-    assert!(!result.is_empty());
+    // Verify actual y-values after normalization
+    // Normalized inputs: a_norm = [0.5, 1, 0.5], b_norm = [1, 0.5, 1]
+    // Product: [0.5, 0.5, 0.5], max=0.5, normalized: [1, 1, 1]
+    if let Distribution::Function(f) = result.inner() {
+      assert_ulps_eq!(f.y()[0], 1.0, max_ulps = 4);
+      assert_ulps_eq!(f.y()[1], 1.0, max_ulps = 4);
+      assert_ulps_eq!(f.y()[2], 1.0, max_ulps = 4);
+    } else {
+      unreachable!("Expected Function distribution");
+    }
+
+    // Verify log_scale is finite and produces correct peak value
+    // Peak of product = 2 * 2 * 0.5 = 2 (from a.max * b.max * normalized_product_max)
     assert!(result.log_scale().is_finite());
+    assert_ulps_eq!(result.peak_value(), 2.0, max_ulps = 4);
   }
 
   #[test]

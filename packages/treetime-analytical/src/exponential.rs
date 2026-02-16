@@ -75,21 +75,19 @@ mod tests {
 
   #[test]
   fn test_exponential_convolution_distinct_rates() {
-    let a = 1.0;
-    let b = 2.0;
-    let x = 1.0;
-    let result = exponential_convolution(a, b, x);
-    let expected = (a * b) / (a - b) * (1.0 - (-(a - b) * x).exp()) * (-b * x).exp();
+    // a=1, b=2, x=1: 2*(e-1)*e^(-2) = 0.46509...
+    // Independent derivation: integral from 0 to x of a*exp(-a*t) * b*exp(-b*(x-t)) dt
+    let result = exponential_convolution(1.0, 2.0, 1.0);
+    let expected = 2.0 * 1.0_f64.exp_m1() * (-2.0_f64).exp();
     assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_equal_rates() {
-    let a = 1.5;
-    let b = 1.5;
-    let x = 2.0;
-    let result = exponential_convolution(a, b, x);
-    let expected = a * b * x * (-a * x).exp();
+    // a=b=1.5, x=2: 4.5 * e^(-3) = 0.22404...
+    // Limit form when a=b: a^2 * x * exp(-a*x)
+    let result = exponential_convolution(1.5, 1.5, 2.0);
+    let expected = 4.5 * (-3.0_f64).exp();
     assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
