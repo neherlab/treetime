@@ -33,7 +33,7 @@ fn main() -> Result<(), Report> {
     .ok_or_else(|| {
       make_report!("Output format was not specified and unable to autodetect. Please provide --output-format argument")
     })
-    .with_section(|| format!("'{}'", &args.input.display()).header("Output file:"))?;
+    .with_section(|| format!("'{}'", &args.output.display()).header("Output file:"))?;
 
   let graph: ConverterGraph = convert_read_file(&args, input_format)?;
 

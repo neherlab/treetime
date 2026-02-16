@@ -129,7 +129,7 @@ where
       return make_internal_error!(
         "Only trees with exactly one parent per node are currently supported, but node '{}' has {} parents",
         node.key(),
-        self.roots.len()
+        parents.len()
       );
     }
 

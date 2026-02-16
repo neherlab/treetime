@@ -93,7 +93,7 @@ where
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
   usher_mat_pb_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When reading Usher MAT protobuf file '{}'", filepath.display()))?;
+    .wrap_err_with(|| format!("When writing Usher MAT protobuf file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
