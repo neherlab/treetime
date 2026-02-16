@@ -120,7 +120,7 @@ fn parse_node_names(
 
 pub(super) fn prune_nodes(
   graph: &mut GraphAncestral,
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -133,7 +133,7 @@ pub(super) fn prune_nodes(
 }
 
 pub(super) fn get_edge_num_muts(
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
 ) -> Option<usize> {
   let mut total_muts = 0;
@@ -152,7 +152,7 @@ pub(super) fn get_edge_num_muts(
 
 fn prune_internal_nodes(
   graph: &mut GraphAncestral,
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -192,7 +192,7 @@ fn prune_internal_nodes(
 
 fn prune_leaves(
   graph: &mut GraphAncestral,
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_names: &BTreeSet<String>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
@@ -223,7 +223,7 @@ fn prune_leaves(
 
 pub(super) fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut GraphAncestral,
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
@@ -254,7 +254,7 @@ fn should_collapse_parent(graph: &GraphAncestral, node_key: GraphNodeKey) -> boo
 
 fn collapse_sparse_edge(
   graph: &mut GraphAncestral,
-  partitions: &Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
   let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
