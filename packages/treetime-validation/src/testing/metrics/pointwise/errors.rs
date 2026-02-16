@@ -1,5 +1,6 @@
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
@@ -67,7 +68,7 @@ pub(super) fn compute_pointwise_errors(
   let rel_mean = relative.mean().unwrap_or(0.0);
   let rel_max = relative.iter().copied().fold(0.0_f64, f64::max);
   let mut rel_sorted: Vec<f64> = relative.iter().copied().collect();
-  rel_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+  rel_sorted.sort_by_key(|&x| OrderedFloat(x));
   let rel_median = compute_median(&rel_sorted);
 
   let signed_bias = signed.mean().unwrap_or(0.0);
