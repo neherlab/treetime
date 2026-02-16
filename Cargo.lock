@@ -3814,6 +3814,7 @@ dependencies = [
  "ndarray",
  "ndarray-stats",
  "num",
+ "ordered-float",
  "pretty_assertions",
  "rstest",
  "serde",

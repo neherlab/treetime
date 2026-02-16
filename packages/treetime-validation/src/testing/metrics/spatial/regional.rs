@@ -1,5 +1,6 @@
 use crate::testing::metrics::config::SpatialConfig;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
@@ -38,7 +39,7 @@ pub(super) fn compute_regional_metrics(
   let peak_idx_expected = expected
     .iter()
     .enumerate()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+    .max_by_key(|&(_, v)| OrderedFloat(*v))
     .map_or(0, |(i, _)| i);
   let peak_x = x[peak_idx_expected];
 
