@@ -1,6 +1,7 @@
 use crate::testing::metrics::distribution::statistics::{compute_quantile, compute_std};
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +63,7 @@ pub(super) fn compute_distribution_properties(
 
 fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   let mut sorted_errors: Vec<f64> = errors.iter().copied().filter(|&x| x > 0.0 && x.is_finite()).collect();
-  sorted_errors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+  sorted_errors.sort_by_key(|&x| OrderedFloat(x));
 
   if sorted_errors.len() < 10 {
     return TailBehavior::Light;

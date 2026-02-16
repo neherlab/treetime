@@ -1,6 +1,7 @@
 use crate::testing::metrics::config::ToleranceThresholds;
 use itertools::izip;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 
 /// Tolerance counts for different threshold levels
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -57,7 +58,7 @@ pub fn find_max_error_location(x: &Array1<f64>, actual: &Array1<f64>, expected: 
   let max_idx = abs_errors
     .iter()
     .enumerate()
-    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+    .max_by_key(|&(_, v)| OrderedFloat(*v))
     .map_or(0, |(idx, _)| idx);
 
   MaxErrorLocation {
