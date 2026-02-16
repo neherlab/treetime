@@ -67,10 +67,9 @@ pub fn is_path_stdout(filepath: impl AsRef<Path>) -> bool {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod non_wasm {
-  use atty::{Stream, is as is_tty};
   use log::warn;
+  use std::io::{IsTerminal, stdin};
 
-  #[cfg(not(target_arch = "wasm32"))]
   const TTY_WARNING: &str = r#"Reading from standard input which is a TTY (e.g. an interactive terminal). This is likely not what you meant. Instead:
 
  - if you want to read fasta from the output of another program, try:
@@ -83,7 +82,7 @@ mod non_wasm {
 "#;
 
   pub fn warn_if_tty() {
-    if is_tty(Stream::Stdin) {
+    if stdin().is_terminal() {
       warn!("{TTY_WARNING}");
     }
   }
