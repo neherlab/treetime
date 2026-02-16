@@ -27,7 +27,6 @@ itertools = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
 ordered-float = { workspace = true }
-parking_lot = { workspace = true }
 plotters = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
@@ -35,18 +34,6 @@ serde_json = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-
-[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "musl"))'.dependencies]
-tikv-jemallocator = { workspace = true }
-
-[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
-tikv-jemallocator = { workspace = true }
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
