@@ -26,6 +26,7 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::DenseSeqDis;
 use eyre::Report;
+use ordered_float::OrderedFloat;
 use ndarray::{Array2, Axis};
 use num::clamp;
 use parking_lot::RwLock;
@@ -147,13 +148,13 @@ pub fn run_optimize_dense(
       // Evaluate on a vector of branch lengths to find the maximum
       let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 10);
       // This seems like a bit of a mess.
-      let (best_branch_length, _) = branch_lengths
+      let best_branch_length = branch_lengths
         .iter()
-        .map(|&bl| {
+        .copied()
+        .max_by_key(|&bl| {
           let metrics = evaluate(&contributions, bl);
-          (bl, metrics.log_lh)
+          OrderedFloat(metrics.log_lh)
         })
-        .max_by(|&(_, ll1), &(_, ll2)| ll1.partial_cmp(&ll2).unwrap())
         .unwrap();
       new_branch_length = best_branch_length;
     }
