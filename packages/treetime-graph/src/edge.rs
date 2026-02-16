@@ -58,10 +58,6 @@ impl GraphEdgeKey {
   pub const fn as_usize(self) -> usize {
     self.0
   }
-
-  pub fn invalid() -> Self {
-    Self(usize::MAX)
-  }
 }
 
 /// Edge representing a connection between two nodes. Relevant data can be
