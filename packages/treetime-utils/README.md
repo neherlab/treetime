@@ -47,7 +47,6 @@ Custom serialization for `ndarray` and related types:
 
 - `container` - `get_exactly_one()`, `get_one()`, `minmax()`
 - `vec` - `vec_of_owned![]`, `vec_u8![]` macros
-- `manyzip` - `Manyzip` iterator for zipping a dynamic number of iterators
 
 ### DateTime (`datetime`)
 
