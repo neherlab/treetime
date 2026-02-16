@@ -17,7 +17,7 @@ use treetime_utils::make_error;
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
 /// Represents a function as a set of (x, y) points on a uniformly-spaced grid, providing
-/// linear interpolation between points and linear extrapolation beyond the grid boundaries.
+/// linear interpolation between points and constant extrapolation beyond the grid boundaries.
 ///
 /// # Invariants
 ///
@@ -250,8 +250,8 @@ impl<T: InterpElem> GridFn<T> {
 
   /// Interpolate function value at a single point
   ///
-  /// Uses piecewise linear interpolation within grid bounds and linear extrapolation
-  /// outside bounds using slopes from the nearest grid intervals.
+  /// Uses piecewise linear interpolation within grid bounds and constant extrapolation
+  /// outside bounds (returns boundary values).
   ///
   /// # Arguments
   ///
@@ -281,7 +281,7 @@ impl<T: InterpElem> GridFn<T> {
 
   /// Interpolate function values at multiple points
   ///
-  /// Uses piecewise linear interpolation within grid bounds and linear extrapolation
+  /// Uses piecewise linear interpolation within grid bounds and constant extrapolation
   /// outside bounds.
   ///
   /// # Arguments
