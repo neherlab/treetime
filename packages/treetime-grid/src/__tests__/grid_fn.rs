@@ -138,7 +138,7 @@ mod tests {
   #[test]
   fn test_gridfn_negate_arg_inplace() -> Result<(), Report> {
     let mut grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    grid_fn.negate_arg_inplace();
+    grid_fn.negate_arg_inplace()?;
     let expected = GridFn::from_range_values((-2.0, 0.0), array![3.0, 2.0, 1.0])?;
     assert_eq!(expected, grid_fn);
     Ok(())

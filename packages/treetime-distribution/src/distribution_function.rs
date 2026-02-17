@@ -227,23 +227,22 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.len() == 0
   }
 
-  #[must_use]
-  pub fn negate_arg(&self) -> Self
+  pub fn negate_arg(&self) -> Result<Self, Report>
   where
     T: Float,
   {
-    let grid_fn = self.grid_fn.negate_arg();
-    Self {
+    let grid_fn = self.grid_fn.negate_arg()?;
+    Ok(Self {
       grid_fn,
       _policy: PolicyMarker::new(),
-    }
+    })
   }
 
-  pub fn negate_arg_inplace(&mut self)
+  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
   {
-    self.grid_fn.negate_arg_inplace();
+    self.grid_fn.negate_arg_inplace()
   }
 
   /// Find the most likely time point (x-value corresponding to maximum y-value)

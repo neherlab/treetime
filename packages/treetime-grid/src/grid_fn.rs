@@ -356,34 +356,34 @@ impl<T: InterpElem> GridFn<T> {
   /// This reflects the function across the y-axis.
   /// The domain [x_min, x_max] becomes [-x_max, -x_min].
   /// The y-values are reversed.
-  #[must_use]
-  pub fn negate_arg(&self) -> Self
+  pub fn negate_arg(&self) -> Result<Self, Report>
   where
     T: Float,
   {
     let mut result = self.clone();
-    result.negate_arg_inplace();
-    result
+    result.negate_arg_inplace()?;
+    Ok(result)
   }
 
   /// Negates the argument of the function in-place: f(x) -> f(-x).
   /// This reflects the function across the y-axis.
   /// The domain [x_min, x_max] becomes [-x_max, -x_min].
   /// The y-values are reversed.
-  pub fn negate_arg_inplace(&mut self)
+  pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
   {
     let x_max = self.grid.x_max();
     let dx = self.grid.dx();
     let n_points = self.grid.n_points();
-    self.grid = Grid::from_start_dx(-x_max, dx, n_points).unwrap();
+    self.grid = Grid::from_start_dx(-x_max, dx, n_points)?;
 
     // Reverse y in-place
     let n = self.y.len();
     for i in 0..n / 2 {
       self.y.swap(i, n - 1 - i);
     }
+    Ok(())
   }
 
   /// Resamples function to a new grid

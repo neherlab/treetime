@@ -116,12 +116,12 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  pub fn negate(&self) -> Self {
+  pub fn negate(&self) -> Result<Self, Report> {
     distribution_negation(self)
   }
 
-  pub fn negate_inplace(&mut self) {
-    distribution_negation_inplace(self);
+  pub fn negate_inplace(&mut self) -> Result<(), Report> {
+    distribution_negation_inplace(self)
   }
 
   pub fn time_bounds(&self) -> (f64, f64) {

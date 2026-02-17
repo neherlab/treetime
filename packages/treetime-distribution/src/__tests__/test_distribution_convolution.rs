@@ -2,6 +2,7 @@
 mod tests {
   use crate::DistributionPlain as Distribution;
   use crate::distribution_convolution::distribution_convolution;
+  use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
 
@@ -209,17 +210,18 @@ mod tests {
   }
 
   #[test]
-  fn test_backward_pass_temporal_direction() {
+  fn test_backward_pass_temporal_direction() -> Result<(), Report> {
     // Test the specific use case in backward pass: parent_time = child_time + (-branch_length)
     let child_time_dist = Distribution::point(2013.0, 1.0);
     let branch_length_dist = Distribution::point(2.5, 1.0);
 
     // In backward pass, we negate the branch distribution
-    let negated_branch = branch_length_dist.negate();
-    let actual = distribution_convolution(&child_time_dist, &negated_branch).unwrap();
+    let negated_branch = branch_length_dist.negate()?;
+    let actual = distribution_convolution(&child_time_dist, &negated_branch)?;
 
     let expected = Distribution::point(2010.5, 1.0);
     assert_eq!(expected, actual);
+    Ok(())
   }
 
   #[test]
