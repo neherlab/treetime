@@ -4,6 +4,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
+use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
@@ -26,7 +27,16 @@ pub fn run_refinement_iteration(
   let mut is_tree_dirty = false;
 
   if !args.relax.is_empty() {
-    todo!("apply_relaxed_clock not yet implemented");
+    // Get sequence length from first partition, or use a default
+    let one_mutation = partitions
+      .first()
+      .map_or(1e-4, |p| 1.0 / p.read_arc().get_sequence_length() as f64);
+    info!(
+      "Applying relaxed clock with slack={}, coupling={}",
+      args.relax.first().copied().unwrap_or(1.0),
+      args.relax.get(1).copied().unwrap_or(1.0)
+    );
+    apply_relaxed_clock(graph, &args.relax, one_mutation);
   }
 
   let n_resolved = if args.resolve_polytomies {
