@@ -10,6 +10,19 @@ pub fn to_eyre_error<T, E: Into<eyre::Error>>(val_or_err: Result<T, E>) -> Resul
   val_or_err.map_err(|report| eyre!(report))
 }
 
+pub fn report_to_string_debug_only(report: &Report) -> String {
+  #[cfg(not(debug_assertions))]
+  return "An unexpected error occurred. Please try again later.".to_owned();
+
+  #[cfg(debug_assertions)]
+  report_to_string(report)
+}
+
+/// Preserves only the Result::Ok values in a given collection
+pub fn keep_ok<T, E>(results: &[Result<T, E>]) -> impl Iterator<Item = &T> {
+  results.iter().filter_map(|r| r.as_ref().ok())
+}
+
 #[macro_export(local_inner_macros)]
 macro_rules! make_error {
   ($($arg:tt)*) => {
