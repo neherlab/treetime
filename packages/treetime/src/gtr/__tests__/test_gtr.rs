@@ -3,7 +3,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::get_gtr::{JC69Params, Jtt92Params, jc69, jtt92};
   use crate::gtr::gtr::{GTR, GTRParams, avg_transition, eig_single_site};
   use crate::pretty_assert_ulps_eq;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
@@ -528,6 +528,66 @@ mod tests {
 
     // propagating the profile far into the future gives the equilibrium probabilities pi
     assert_ulps_eq!(distant_future.slice(s![0, ..]), pi, epsilon = 1e-10);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn jtt92_creates() -> Result<(), Report> {
+    let gtr = jtt92(Jtt92Params::default())?;
+
+    // Alphabet has 20 canonical amino acids (no stop codon)
+    assert_eq!(gtr.pi.len(), 20);
+
+    // Pi vector sums to 1.0
+    assert_ulps_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
+
+    // Mu is normalized
+    assert!(gtr.mu > 0.0);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn jtt92_w_matrix_symmetric() -> Result<(), Report> {
+    let gtr = jtt92(Jtt92Params::default())?;
+
+    // W matrix should be symmetric: W[i,j] == W[j,i]
+    let n = gtr.W.shape()[0];
+    for i in 0..n {
+      for j in i + 1..n {
+        assert_ulps_eq!(gtr.W[[i, j]], gtr.W[[j, i]], epsilon = 1e-10);
+      }
+    }
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn jtt92_q_matrix_columns_sum_to_zero() -> Result<(), Report> {
+    let gtr = jtt92(Jtt92Params::default())?;
+
+    // Q matrix columns should sum to 0
+    let q = gtr.Q();
+    let col_sums = q.sum_axis(Axis(0));
+    let total_abs_sum: f64 = col_sums.mapv(f64::abs).sum();
+    assert_ulps_eq!(total_abs_sum, 0.0, epsilon = 1e-12);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn jtt92_eigendecomposition_valid() -> Result<(), Report> {
+    let gtr = jtt92(Jtt92Params::default())?;
+
+    // v @ v_inv = I
+    let identity = gtr.v.dot(&gtr.v_inv);
+    let diff_from_eye = (&identity - &Array2::<f64>::eye(20)).mapv(f64::abs).sum();
+    assert_ulps_eq!(diff_from_eye, 0.0, epsilon = 1e-10);
+
+    // Eigenvectors non-zero
+    let v_sum_abs = gtr.v.mapv(f64::abs).sum();
+    assert!(v_sum_abs > 1e-10, "Eigenvectors should be non-zero");
 
     Ok(())
   }

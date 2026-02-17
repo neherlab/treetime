@@ -24,6 +24,8 @@ pub enum AlphabetName {
   #[default]
   Nuc,
   Aa,
+  #[value(name = "aa-no-stop")]
+  AaNoStop,
 }
 
 pub type ProfileMap = IndexMap<AsciiChar, Array1<f64>>;
@@ -86,6 +88,19 @@ impl Alphabet {
       AlphabetName::Aa => Self::with_config(&AlphabetConfig {
         canonical: vec_u8![
           'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*',
+        ],
+        ambiguous: indexmap! {
+          b'B' => vec_u8!['N', 'D'],
+          b'Z' => vec_u8!['Q', 'E'],
+          b'J' => vec_u8!['L', 'I'],
+        },
+        unknown: b'X',
+        gap: b'-',
+        treat_gap_as_unknown,
+      }),
+      AlphabetName::AaNoStop => Self::with_config(&AlphabetConfig {
+        canonical: vec_u8![
+          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
         ],
         ambiguous: indexmap! {
           b'B' => vec_u8!['N', 'D'],
