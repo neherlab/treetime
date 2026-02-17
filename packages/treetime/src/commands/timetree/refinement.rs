@@ -4,6 +4,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::inference::runner::run_timetree;
+use crate::commands::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -40,7 +41,12 @@ pub fn run_refinement_iteration(
   }
 
   let n_resolved = if args.resolve_polytomies {
-    todo!("resolve_polytomies not yet implemented");
+    let n = resolve_polytomies(graph, partitions).wrap_err("Polytomy resolution failed")?;
+    if n > 0 {
+      info!("Resolved polytomies, introduced {n} new nodes");
+      prepare_tree_after_topology_change(graph).wrap_err("Failed to prepare tree after topology change")?;
+    }
+    n
   } else {
     0
   };
