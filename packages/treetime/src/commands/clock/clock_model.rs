@@ -124,4 +124,14 @@ impl ClockModel {
       float_to_significant_digits(self.intercept().abs(), 3)
     )
   }
+
+  /// Create a clock model with specified rate and intercept (for testing)
+  #[cfg(test)]
+  pub fn for_testing(clock_rate: f64, intercept: f64) -> Self {
+    Self {
+      clock_rate,
+      intercept,
+      stats: ClockModelStats::Fixed,
+    }
+  }
 }
