@@ -23,7 +23,7 @@ pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   clock_model: &ClockModel,
-  coalescent_tc: Option<f64>,
+  coalescent_tc: Option<&Distribution>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode,
@@ -48,8 +48,8 @@ where
   }
 
   let coalescent_contributions = if let Some(tc) = coalescent_tc {
-    info!("## Computing coalescent contributions with Tc = {tc:.6e}");
-    Some(compute_coalescent_contributions(graph, &Distribution::constant(tc))?)
+    info!("## Computing coalescent contributions");
+    Some(compute_coalescent_contributions(graph, tc)?)
   } else {
     None
   };

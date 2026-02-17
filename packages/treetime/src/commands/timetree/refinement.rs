@@ -15,6 +15,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 
 #[allow(clippy::useless_let_if_seq)]
 pub fn run_refinement_iteration(
@@ -24,6 +25,7 @@ pub fn run_refinement_iteration(
   clock_model: &mut ClockModel,
   clock_params: &ClockParams,
   branch_params: &BranchPointOptimizationParams,
+  coalescent_tc: Option<&Distribution>,
 ) -> Result<(usize, usize), Report> {
   let mut is_tree_dirty = false;
 
@@ -57,7 +59,7 @@ pub fn run_refinement_iteration(
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, clock_model, args.coalescent).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, coalescent_tc).wrap_err("Timetree inference failed")?;
 
     if !partitions.is_empty() {
       update_marginal(graph, partitions)?;
@@ -69,7 +71,7 @@ pub fn run_refinement_iteration(
     }
 
     info!("Updating node times via timetree inference");
-    run_timetree(graph, partitions, clock_model, args.coalescent).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, coalescent_tc).wrap_err("Timetree inference failed")?;
   }
 
   let n_diff = 0;

@@ -6,6 +6,7 @@ use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
+use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
@@ -21,6 +22,7 @@ use eyre::{Report, WrapErr};
 use log::{debug, info};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_write_file};
 
@@ -93,7 +95,25 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### Initializing node times from date constraints");
   initialize_clock_totals_from_time_distributions(&graph)?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None)?;
+  // Create coalescent Tc distribution
+  let coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
+    info!("### Optimizing skyline coalescent model with {} grid points", args.n_skyline);
+    let skyline_params = SkylineParams {
+      n_points: args.n_skyline,
+      ..SkylineParams::default()
+    };
+    let skyline_result = optimize_skyline(&graph, &skyline_params)
+      .wrap_err("Failed to optimize skyline coalescent model")?;
+    info!(
+      "Skyline optimization completed: log_likelihood={:.4}",
+      skyline_result.log_likelihood
+    );
+    Some(skyline_result.tc_distribution)
+  } else {
+    args.coalescent.map(Distribution::constant)
+  };
+
+  run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())?;
 
   if !args.keep_root {
     info!("Reroot (post-ancestral)");
@@ -111,6 +131,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       &mut clock_model,
       &clock_params,
       &branch_params,
+      coalescent_tc.as_ref(),
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
 
@@ -127,11 +148,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut graph, &partitions, &clock_model, args.coalescent).wrap_err("Final timetree inference failed")?;
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref()).wrap_err("Final timetree inference failed")?;
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
-    info!("Wrote confidence intervals to {}", ci_path.display());
+    info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
   }
 
   info!("### TreeTime: writing outputs");
