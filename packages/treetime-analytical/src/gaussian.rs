@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime_ops::ScaledArray;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GaussianParams {
   pub mu: f64,
   pub sigma: f64,
