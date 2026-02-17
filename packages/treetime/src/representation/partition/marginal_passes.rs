@@ -107,7 +107,7 @@ where
     edge_data.msg_from_child = propagate_raw(
       &partition.gtr.expQt(branch_length).t().to_owned(),
       &msg_to_parent,
-      edge_data.transmission.as_ref(),
+      edge_data.transmission.as_deref(),
     );
     edge_data.msg_to_parent = msg_to_parent;
     partition.edges.insert(*edge_key, edge_data);
@@ -159,7 +159,7 @@ where
       msgs_to_combine.push(propagate_raw(
         &partition.gtr.expQt(branch_length),
         &edge_data.msg_to_child,
-        edge_data.transmission.as_ref(),
+        edge_data.transmission.as_deref(),
       ));
       msgs_to_combine.push(edge_data.msg_to_parent.clone());
 

@@ -94,7 +94,7 @@ pub fn combine_messages(
 pub fn propagate_raw(
   exp_qt: &Array2<f64>,
   seq_dis: &MarginalSparseSeqDistribution,
-  transmission: Option<&Vec<(usize, usize)>>,
+  transmission: Option<&[(usize, usize)]>,
 ) -> MarginalSparseSeqDistribution {
   let mut message = MarginalSparseSeqDistribution {
     variable: btreemap! {},
