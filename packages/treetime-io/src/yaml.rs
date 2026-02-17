@@ -4,9 +4,10 @@ use std::io::Write;
 use std::path::Path;
 use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
 
-pub fn yaml_read_file<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(filepath: &Option<P>) -> Result<T, Report> {
-  yaml_read(open_file_or_stdin(filepath)?)
-    .wrap_err_with(|| format!("When reading YAML file: {:#?}", filepath.as_ref().map(AsRef::as_ref)))
+pub fn yaml_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<T, Report> {
+  let filepath = filepath.as_ref();
+  yaml_read(open_file_or_stdin(&Some(filepath))?)
+    .wrap_err_with(|| format!("When reading YAML file: '{}'", filepath.display()))
 }
 
 pub fn yaml_read_str<T: for<'de> Deserialize<'de>>(s: impl AsRef<str>) -> Result<T, Report> {

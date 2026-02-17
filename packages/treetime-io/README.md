@@ -66,7 +66,7 @@ let config: Config = json_read_file("config.json")?;
 json_write_file("output.json", &config, JsonPretty(true))?;
 
 // YAML
-let config: Config = yaml_read_file(&Some("config.yaml"))?;
+let config: Config = yaml_read_file("config.yaml")?;
 yaml_write_file("output.yaml", &config)?;
 ```
 
