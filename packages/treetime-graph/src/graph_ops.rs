@@ -5,7 +5,7 @@ use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_utils::sync::mutex::unwrap_arc_rwlock;
-use treetime_utils::{make_error, make_internal_report};
+use treetime_utils::{make_error, make_internal_report, make_report};
 
 impl<N, E, D> Graph<N, E, D>
 where
@@ -62,15 +62,13 @@ where
       );
     }
 
-    let source_lock = self
-      .get_node(source_key)
-      .ok_or_else(|| format!("When adding a graph edge {source_key}->{target_key}: Node {source_key} not found."))
-      .unwrap();
+    let source_lock = self.get_node(source_key).ok_or_else(|| {
+      make_report!("When adding a graph edge {source_key}->{target_key}: Node {source_key} not found.")
+    })?;
 
-    let target_lock = self
-      .get_node(target_key)
-      .ok_or_else(|| format!("When adding a graph edge {source_key}->{target_key}: Node {target_key} not found."))
-      .unwrap();
+    let target_lock = self.get_node(target_key).ok_or_else(|| {
+      make_report!("When adding a graph edge {source_key}->{target_key}: Node {target_key} not found.")
+    })?;
 
     let edge_key = GraphEdgeKey(self.edges.len());
     let new_edge = Arc::new(RwLock::new(Edge::new(edge_key, source_key, target_key, edge_payload)));
@@ -81,7 +79,7 @@ where
       let already_connected = source
         .outbound()
         .iter()
-        .any(|edge| self.get_edge(*edge).unwrap().read().target() == target.key());
+        .any(|edge| self.get_edge(*edge).is_some_and(|e| e.read().target() == target.key()));
 
       if already_connected {
         return make_error!(
