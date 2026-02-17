@@ -339,10 +339,10 @@ impl AuspiceTree {
     DftPost::new(&self.tree, |node: &'a AuspiceTreeNode| node.children.iter())
   }
 
-  fn map_nodes_rec(index: usize, node: &AuspiceTreeNode, action: fn((usize, &AuspiceTreeNode))) {
-    action((index, node));
+  fn map_nodes_rec(depth: usize, node: &AuspiceTreeNode, action: fn((usize, &AuspiceTreeNode))) {
+    action((depth, node));
     for child in &node.children {
-      Self::map_nodes_rec(index + 1, child, action);
+      Self::map_nodes_rec(depth + 1, child, action);
     }
   }
 
@@ -351,10 +351,10 @@ impl AuspiceTree {
     Self::map_nodes_rec(0, &self.tree, action);
   }
 
-  fn map_nodes_mut_rec(index: usize, node: &mut AuspiceTreeNode, action: fn((usize, &mut AuspiceTreeNode))) {
-    action((index, node));
+  fn map_nodes_mut_rec(depth: usize, node: &mut AuspiceTreeNode, action: fn((usize, &mut AuspiceTreeNode))) {
+    action((depth, node));
     for child in &mut node.children {
-      Self::map_nodes_mut_rec(index + 1, child, action);
+      Self::map_nodes_mut_rec(depth + 1, child, action);
     }
   }
 
