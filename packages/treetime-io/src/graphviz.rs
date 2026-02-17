@@ -1,13 +1,12 @@
 use eyre::Report;
 use itertools::{Itertools, iproduct};
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::{Graph, SafeNode};
-use treetime_graph::node::{GraphNode, Node};
+use treetime_graph::node::GraphNode;
+use treetime_utils::make_internal_report;
 use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -49,14 +48,14 @@ digraph Phylogeny {{
   node  [shape=box];
 "#
   )?;
-  print_nodes(graph, &mut writer);
+  print_nodes(graph, &mut writer)?;
   writeln!(writer)?;
-  print_edges(graph, &mut writer);
+  print_edges(graph, &mut writer)?;
   writeln!(writer, "}}")?;
   Ok(())
 }
 
-fn print_node<W, N>(mut writer: W, node: &SafeNode<N>)
+fn print_node<W, N>(mut writer: W, node: &SafeNode<N>) -> Result<(), Report>
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
@@ -67,52 +66,56 @@ where
 
   if let Some(label) = label {
     let label = label.as_ref();
-    writeln!(writer, "    {key} [label=\"({key}) {label}\"]").unwrap();
+    writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
   } else {
-    writeln!(writer, "    {key} [label=\"({key})\"]").unwrap();
+    writeln!(writer, "    {key} [label=\"({key})\"]")?;
   }
+  Ok(())
 }
 
-fn print_nodes<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
+fn print_nodes<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
-  writeln!(writer, "\n  subgraph roots {{").unwrap();
+  writeln!(writer, "\n  subgraph roots {{")?;
   let roots = graph.get_roots();
   for node in &roots {
-    print_node(&mut writer, node);
+    print_node(&mut writer, node)?;
   }
-  print_fake_edges(&mut writer, &roots);
+  print_fake_edges(&mut writer, &roots)?;
 
-  writeln!(writer, "  }}\n\n  subgraph internals {{").unwrap();
+  writeln!(writer, "  }}\n\n  subgraph internals {{")?;
   let internal = graph.get_internal_nodes();
   for node in internal {
-    print_node(&mut writer, &node);
+    print_node(&mut writer, &node)?;
   }
 
-  writeln!(writer, "  }}\n\n  subgraph leaves {{").unwrap();
+  writeln!(writer, "  }}\n\n  subgraph leaves {{")?;
   let leaves = graph.get_leaves();
   for node in &leaves {
-    print_node(&mut writer, node);
+    print_node(&mut writer, node)?;
   }
-  print_fake_edges(&mut writer, &leaves);
+  print_fake_edges(&mut writer, &leaves)?;
 
-  writeln!(writer, "  }}").unwrap();
+  writeln!(writer, "  }}")?;
+  Ok(())
 }
 
-fn print_edges<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W)
+fn print_edges<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
   E: GraphEdge + EdgeToGraphviz,
   D: Send + Sync,
 {
-  graph.get_nodes().iter().for_each(&mut |node: &Arc<RwLock<Node<N>>>| {
+  for node in graph.get_nodes() {
     for edge_key in node.read().outbound() {
-      let edge = graph.get_edge(*edge_key).unwrap();
+      let edge = graph
+        .get_edge(*edge_key)
+        .ok_or_else(|| make_internal_report!("Outbound edge {edge_key} not found in graph"))?;
       let source = edge.read_arc().source();
       let target = edge.read_arc().target();
       let payload = edge.read_arc().payload().read_arc();
@@ -131,15 +134,16 @@ where
       let attrs = attrs.join(", ");
 
       if !attrs.is_empty() {
-        writeln!(writer, "  {source} -> {target} [{attrs}]").unwrap();
+        writeln!(writer, "  {source} -> {target} [{attrs}]")?;
       } else {
-        writeln!(writer, "  {source} -> {target}").unwrap();
+        writeln!(writer, "  {source} -> {target}")?;
       }
     }
-  });
+  }
+  Ok(())
 }
 
-fn print_fake_edges<W, N>(mut writer: W, nodes: &[SafeNode<N>])
+fn print_fake_edges<W, N>(mut writer: W, nodes: &[SafeNode<N>]) -> Result<(), Report>
 where
   W: Write,
   N: GraphNode + NodeToGraphviz,
@@ -159,9 +163,9 @@ where
     writeln!(
       writer,
       "\n    // fake edges for alignment of nodes\n    {{\n      rank=same\n{fake_edges}\n    }}"
-    )
-    .unwrap();
+    )?;
   }
+  Ok(())
 }
 
 /// Defines how to display node information when writing to GraphViz (.dot) file
