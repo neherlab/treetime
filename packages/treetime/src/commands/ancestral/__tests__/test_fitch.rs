@@ -510,7 +510,7 @@ mod tests {
     }
 
     // Run forward pass
-    fitch_forward(&graph, &partitions);
+    fitch_forward(&graph, &partitions)?;
 
     {
       let partition = partitions[0].read_arc();

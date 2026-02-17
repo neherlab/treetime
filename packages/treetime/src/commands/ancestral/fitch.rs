@@ -86,19 +86,19 @@ where
   P: PartitionCompressed,
 {
   graph.par_iter_breadth_first_backward(|node| {
-    run_fitch_backward(partitions, &node).unwrap();
+    run_fitch_backward(partitions, &node);
     GraphTraversalContinuation::Continue
   });
 }
 
-fn run_fitch_backward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report>
+fn run_fitch_backward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeBackward<N, E, ()>)
 where
   N: GraphNode,
   E: GraphEdge,
   P: PartitionCompressed,
 {
   if node.is_leaf {
-    return Ok(());
+    return;
   }
 
   for partition in partitions {
@@ -263,20 +263,41 @@ where
 
     partition.nodes_mut().insert(node.key, new_node_data);
   }
-
-  Ok(())
 }
 
-pub(crate) fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+pub(crate) fn fitch_forward<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
   P: PartitionCompressed,
 {
+  let error: Arc<parking_lot::Mutex<Option<Report>>> = Arc::new(parking_lot::Mutex::new(None));
   graph.par_iter_breadth_first_forward(|node| {
-    run_fitch_forward(partitions, &node).unwrap();
+    if let Err(e) = run_fitch_forward(partitions, &node) {
+      let mut guard = error.lock();
+      if guard.is_none() {
+        *guard = Some(e);
+      }
+      return GraphTraversalContinuation::Stop;
+    }
     GraphTraversalContinuation::Continue
   });
+  match Arc::try_unwrap(error) {
+    Ok(mutex) => {
+      if let Some(e) = mutex.into_inner() {
+        return Err(e);
+      }
+    }
+    Err(arc) => {
+      if let Some(e) = arc.lock().take() {
+        return Err(e);
+      }
+    }
+  }
+  Ok(())
 }
 
 fn run_fitch_forward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>
@@ -515,7 +536,7 @@ where
 {
   attach_seqs_to_graph(graph, partitions, aln)?;
   fitch_backward(graph, partitions);
-  fitch_forward(graph, partitions);
+  fitch_forward(graph, partitions)?;
   fitch_cleanup(graph, partitions);
   Ok(())
 }
