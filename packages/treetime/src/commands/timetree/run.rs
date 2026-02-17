@@ -1,6 +1,7 @@
 use crate::commands::ancestral::marginal::initialize_marginal;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -71,7 +72,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   if args.clock_filter > 0.0 {
-    clock_filter_inplace(&graph, &clock_model, args.clock_filter);
+    let result = clock_filter_inplace(&graph, &clock_model, args.clock_filter);
+    report_bad_branches(&graph, &clock_model, result.iqd);
   }
 
   if let Some(aln) = aln.as_deref() {

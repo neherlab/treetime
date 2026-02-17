@@ -121,7 +121,7 @@ fn estimate_clock_model_with_prefilter(
     .then(|| -> Result<i32, Report> {
       let params = BranchPointOptimizationParams::from(branch_split);
       let pre_clock_model = get_clock_model(graph, &ClockParams::default(), keep_root, &params)?;
-      Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold))
+      Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold).new_outliers)
     })
     .transpose()?;
 

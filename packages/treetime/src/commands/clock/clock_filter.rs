@@ -7,12 +7,18 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
+#[derive(Debug, Clone, Copy)]
+pub struct ClockFilterResult {
+  pub new_outliers: i32,
+  pub iqd: f64,
+}
+
 /// Filter outliers based on clock model residuals.
 ///
 /// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`
 /// where IQD is the interquartile distance of clock deviations.
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace<N, E, D>(graph: &Graph<N, E, D>, clock_model: &ClockModel, threshold: f64) -> i32
+pub fn clock_filter_inplace<N, E, D>(graph: &Graph<N, E, D>, clock_model: &ClockModel, threshold: f64) -> ClockFilterResult
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -91,5 +97,5 @@ where
     leaf_clock_deviations.last().copied().unwrap_or(0.0)
   );
 
-  new_outliers
+  ClockFilterResult { new_outliers, iqd }
 }
