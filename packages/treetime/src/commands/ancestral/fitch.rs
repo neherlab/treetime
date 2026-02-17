@@ -265,10 +265,7 @@ where
   }
 }
 
-pub(crate) fn fitch_forward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-) -> Result<(), Report>
+pub(crate) fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -290,12 +287,12 @@ where
       if let Some(e) = mutex.into_inner() {
         return Err(e);
       }
-    }
+    },
     Err(arc) => {
       if let Some(e) = arc.lock().take() {
         return Err(e);
       }
-    }
+    },
   }
   Ok(())
 }

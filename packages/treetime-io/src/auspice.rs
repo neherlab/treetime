@@ -1,7 +1,6 @@
 use crate::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
 use crate::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
-use treetime_utils::make_internal_report;
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
 use std::collections::VecDeque;
@@ -14,6 +13,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::make_internal_report;
 
 pub fn auspice_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where

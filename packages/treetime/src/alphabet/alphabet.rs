@@ -229,9 +229,12 @@ impl Alphabet {
   /// Get index of a character (indexed in the same order as given by `.chars()`)
   pub fn index(&self, c: impl Into<usize> + Copy + std::fmt::Debug) -> Result<usize, Report> {
     let idx = c.into();
-    self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
-      make_report!("When accessing alphabet index: Unknown character: '{c:?}' (index {idx})")
-    })
+    self
+      .char_to_index
+      .get(idx)
+      .copied()
+      .flatten()
+      .ok_or_else(|| make_report!("When accessing alphabet index: Unknown character: '{c:?}' (index {idx})"))
   }
 
   pub fn n_chars(&self) -> usize {

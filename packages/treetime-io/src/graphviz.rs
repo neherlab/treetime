@@ -6,8 +6,8 @@ use std::path::Path;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::{Graph, SafeNode};
 use treetime_graph::node::GraphNode;
-use treetime_utils::make_internal_report;
 use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::make_internal_report;
 
 pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where

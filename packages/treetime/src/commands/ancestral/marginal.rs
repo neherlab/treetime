@@ -103,12 +103,12 @@ where
       if let Some(e) = mutex.into_inner() {
         return Err(e);
       }
-    }
+    },
     Err(arc) => {
       if let Some(e) = arc.lock().take() {
         return Err(e);
       }
-    }
+    },
   }
   Ok(())
 }
@@ -152,12 +152,12 @@ where
       if let Some(e) = mutex.into_inner() {
         return Err(e);
       }
-    }
+    },
     Err(arc) => {
       if let Some(e) = arc.lock().take() {
         return Err(e);
       }
-    }
+    },
   }
   Ok(())
 }

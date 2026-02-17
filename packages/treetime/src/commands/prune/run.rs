@@ -110,8 +110,8 @@ fn parse_node_names(
   }
 
   if let Some(prune_nodes_list_file) = prune_nodes_list_file {
-    let names: Vec<String> = parse_delimited_file(prune_nodes_list_file, prune_nodes_list_file_delimiter as u8)?
-      .try_collect()?;
+    let names: Vec<String> =
+      parse_delimited_file(prune_nodes_list_file, prune_nodes_list_file_delimiter as u8)?.try_collect()?;
     node_names.extend(names);
   }
 

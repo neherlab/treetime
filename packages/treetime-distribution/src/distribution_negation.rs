@@ -24,11 +24,11 @@ pub fn distribution_negation_inplace<Y: YAxisPolicy>(dist: &mut Distribution<Y>)
     Distribution::Point(p) => {
       negate_point_inplace(p);
       Ok(())
-    }
+    },
     Distribution::Range(r) => {
       negate_range_inplace(r);
       Ok(())
-    }
+    },
     Distribution::Function(f) => negate_function_inplace(f),
     Distribution::Formula(_) => make_error!("Negation in place not implemented for Formula distributions"),
   }

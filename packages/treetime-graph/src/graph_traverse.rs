@@ -273,7 +273,9 @@ where
   where
     F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
   {
-    let root = self.get_exactly_one_root().wrap_err("Graph must have exactly one root")?;
+    let root = self
+      .get_exactly_one_root()
+      .wrap_err("Graph must have exactly one root")?;
     let mut stack = Vec::from([(Arc::clone(&root), None)]);
     while let Some((current_node, _current_edge)) = stack.pop() {
       let current_node = current_node.read_arc();
