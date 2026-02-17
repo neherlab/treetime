@@ -227,12 +227,18 @@ impl<T: InterpElem> GridFn<T> {
     self.grid.dx()
   }
 
+  /// Returns the minimum y value.
+  ///
+  /// Uses `fold` starting from first element since `GridFn` invariants guarantee at least 2 points.
   pub fn y_min(&self) -> T {
-    *self.y.min().unwrap()
+    self.y.iter().copied().skip(1).fold(self.y[0], |a, b| if a < b { a } else { b })
   }
 
+  /// Returns the maximum y value.
+  ///
+  /// Uses `fold` starting from first element since `GridFn` invariants guarantee at least 2 points.
   pub fn y_max(&self) -> T {
-    *self.y.max().unwrap()
+    self.y.iter().copied().skip(1).fold(self.y[0], |a, b| if a > b { a } else { b })
   }
 
   pub fn y_range(&self) -> (T, T) {
