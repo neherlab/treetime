@@ -5,7 +5,7 @@ use eyre::{Report, WrapErr};
 use flate2::Compression as GzCompressionLevel;
 use flate2::read::MultiGzDecoder;
 use flate2::write::GzEncoder;
-use log::debug;
+use log::{debug, error};
 use num::Integer;
 use num_traits::NumCast;
 use std::env;
@@ -223,6 +223,14 @@ impl Write for Compressor<'_> {
 
 impl Drop for Compressor<'_> {
   fn drop(&mut self) {
-    self.flush().unwrap();
+    if let Err(e) = self.flush() {
+      error!(
+        "Failed to flush compressor on drop: {e}{}",
+        self
+          .filepath
+          .as_ref()
+          .map_or(String::new(), |p| format!(" (file: {p})"))
+      );
+    }
   }
 }
