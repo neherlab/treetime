@@ -1,6 +1,7 @@
 use crate::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
 use crate::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
+use treetime_utils::make_internal_report;
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
 use std::collections::VecDeque;
@@ -245,6 +246,9 @@ where
   }
 
   let data = converter.auspice_data_from_graph_data(graph)?;
-  let tree = node_map.remove(&root.read_arc().key()).unwrap();
+  let root_key = root.read_arc().key();
+  let tree = node_map
+    .remove(&root_key)
+    .ok_or_else(|| make_internal_report!("Root node {root_key} not found in node_map"))?;
   Ok(AuspiceTree { data, tree })
 }
