@@ -56,7 +56,7 @@ fn divide_point_by_function<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
   let dividend_value = point.amplitude();
-  let divisor_value = divisor.interp(t).unwrap_or_else(|_| Y::multiplicative_identity());
+  let divisor_value = divisor.interp(t);
   let safe_divisor_value = Y::safe_divisor(divisor_value);
   let result_value = Y::divide(dividend_value, safe_divisor_value);
 

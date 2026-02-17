@@ -22,7 +22,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp(query);
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -44,7 +44,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp(query);
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -65,7 +65,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp(query);
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -86,7 +86,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query)?;
+    let actual = grid_fn.interp(query);
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -96,7 +96,7 @@ mod tests {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
     let queries = array![0.5, 1.0, 1.5];
     let expected = array![5.0, 10.0, 15.0];
-    let actual = grid_fn.interp_many(&queries)?;
+    let actual = grid_fn.interp_many(&queries);
     assert_eq!(expected, actual);
     Ok(())
   }

@@ -11,7 +11,7 @@ mod tests {
   #[test]
   fn test_distribution_function_interpolate() -> Result<(), Report> {
     let f: DistFn = DistributionFunction::from_range_values((0.0, 3.0), array![0.0, 10.0, 20.0, 30.0])?;
-    pretty_assert_ulps_eq!(f.interp(1.5)?, 15.0);
+    pretty_assert_ulps_eq!(f.interp(1.5), 15.0);
     Ok(())
   }
 
@@ -22,7 +22,7 @@ mod tests {
     let query = array![1.5, 2.25, 2.7];
     let expected = array![15.0, 22.5, 27.0];
 
-    pretty_assert_ulps_eq!(f.interp_many(&query)?, expected);
+    pretty_assert_ulps_eq!(f.interp_many(&query), expected);
     Ok(())
   }
 }

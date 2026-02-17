@@ -260,7 +260,7 @@ impl<T: InterpElem> GridFn<T> {
   /// # Returns
   ///
   /// Interpolated or extrapolated function value at `xi`
-  pub fn interp(&self, xi: T) -> Result<T, Report>
+  pub fn interp(&self, xi: T) -> T
   where
     T: Float,
   {
@@ -268,15 +268,15 @@ impl<T: InterpElem> GridFn<T> {
     let x_max = self.grid.x_max();
 
     if xi < x_min {
-      return Ok(self.extrapolate_left(xi));
+      return self.extrapolate_left(xi);
     }
 
     if xi > x_max {
-      return Ok(self.extrapolate_right(xi));
+      return self.extrapolate_right(xi);
     }
 
     let idx = self.grid.find_interval_index(xi);
-    Ok(self.interpolate_at(xi, idx))
+    self.interpolate_at(xi, idx)
   }
 
   /// Interpolate function values at multiple points
@@ -291,11 +291,11 @@ impl<T: InterpElem> GridFn<T> {
   /// # Returns
   ///
   /// Array of interpolated or extrapolated function values at each query point
-  pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
+  pub fn interp_many(&self, queries: &Array1<T>) -> Array1<T>
   where
     T: Float,
   {
-    queries.iter().map(|&q| self.interp(q)).try_collect()
+    queries.mapv(|q| self.interp(q))
   }
 
   fn extrapolate_left(&self, _q: T) -> T
@@ -403,7 +403,7 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     let n_points = grid.n_points();
-    let y_new = (0..n_points).map(|i| self.interp(grid.x_at(i))).try_collect()?;
+    let y_new = Array1::from_shape_fn(n_points, |i| self.interp(grid.x_at(i)));
     Self::from_grid_array(*grid, y_new)
   }
 

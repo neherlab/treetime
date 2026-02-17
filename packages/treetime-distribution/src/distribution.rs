@@ -132,7 +132,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   pub fn eval(&self, t: f64) -> Result<f64, Report> {
     match self {
-      Self::Function(f) => f.interp(t),
+      Self::Function(f) => Ok(f.interp(t)),
       Self::Formula(f) => f.eval_single(t),
       Self::Point(p) => {
         if ulps_eq!(t, p.t(), max_ulps = 10) {
@@ -154,7 +154,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
     match self {
-      Self::Function(f) => f.interp_many(t),
+      Self::Function(f) => Ok(f.interp_many(t)),
       Self::Formula(f) => f.eval_many(t),
       Self::Point(p) => {
         let results = t
