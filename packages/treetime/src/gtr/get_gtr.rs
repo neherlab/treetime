@@ -23,6 +23,7 @@ pub enum GtrModelName {
   F81,
   HKY85,
   T92,
+  TN93,
   #[value(name = "jtt92")]
   Jtt92,
 }
@@ -39,6 +40,7 @@ pub fn get_gtr<P: PartitionWithGtrInference>(
     GtrModelName::HKY85 => hky85(HKY85Params::default()),
     GtrModelName::K80 => k80(K80Params::default()),
     GtrModelName::T92 => t92(T92Params::default()),
+    GtrModelName::TN93 => tn93(TN93Params::default()),
     GtrModelName::Jtt92 => jtt92(Jtt92Params::default()),
   }
   .wrap_err_with(|| make_report!("When creating model '{name}'"))
@@ -61,7 +63,7 @@ pub struct JC69Params {
 /// This model assumes equal concentrations of the nucleotides and equal transition rates
 /// between nucleotide states.
 ///
-/// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21–132
+/// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21-132
 pub fn jc69(
   JC69Params {
     mu,
@@ -100,7 +102,7 @@ pub struct K80Params {
 ///
 /// NOTE: Current implementation of the model does not account for the gaps.
 ///
-/// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111–120. doi:10.1007/BF01731581.
+/// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
 pub fn k80(
   K80Params {
     mu,
@@ -133,7 +135,7 @@ pub struct F81Params {
 /// Assumes non-equal concentrations across nucleotides,
 /// but the transition rate between all states is assumed to be equal.
 ///
-/// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368–376. doi:10.1007/BF01734359
+/// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
 pub fn f81(
   F81Params {
     mu,
@@ -175,7 +177,7 @@ pub struct HKY85Params {
 ///
 /// NOTE: Current implementation of the model does not account for the gaps
 ///
-/// See: Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160–174. doi:10.1007/BF02101694
+/// See: Hasegawa, Kishino, Yano (1985), J. Mol. Evol. 22 (2): 160-174. doi:10.1007/BF02101694
 pub fn hky85(
   HKY85Params {
     mu,
@@ -221,7 +223,7 @@ pub struct T92Params {
 ///
 /// NOTE: Current implementation of the model does not account for the gaps
 ///
-/// See: Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678–687.  DOI: 10.1093/oxfordjournals.molbev.a040752
+/// See: Tamura K (1992),  Mol.  Biol. Evol. 9 (4): 678-687.  DOI: 10.1093/oxfordjournals.molbev.a040752
 pub fn t92(
   T92Params {
     mu,
@@ -332,4 +334,66 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
   W[[2, 0]] = kappa;
   W[[3, 1]] = kappa;
   Ok(W)
+}
+
+#[derive(Clone, Debug, SmartDefault)]
+pub struct TN93Params {
+  /// Substitution rate
+  #[default = 1.0]
+  pub mu: f64,
+
+  /// Transversion rate (A<->C, A<->T, G<->C, G<->T) relative to A<->G = 1
+  #[default = 1.0]
+  pub kappa1: f64,
+
+  /// Pyrimidine transition rate (C<->T) relative to A<->G = 1
+  #[default = 1.0]
+  pub kappa2: f64,
+
+  /// Equilibrium frequencies [piA, piC, piG, piT]
+  #[default(None)]
+  pub pi: Option<Array1<f64>>,
+
+  #[default(AlphabetName::Nuc)]
+  pub alphabet: AlphabetName,
+
+  pub treat_gap_as_unknown: bool,
+}
+
+/// Tamura-Nei 1993 model.
+///
+/// Distinguishes between the two types of transitions: A<->G has rate 1 (reference),
+/// C<->T has rate kappa2. All transversions have rate kappa1. Equilibrium frequencies
+/// can be non-uniform.
+///
+/// See: Tamura, Nei (1993), Mol Biol Evol. 10(3): 512-526. DOI: 10.1093/oxfordjournals.molbev.a040023
+pub fn tn93(
+  TN93Params {
+    mu,
+    kappa1,
+    kappa2,
+    pi,
+    alphabet,
+    treat_gap_as_unknown,
+  }: TN93Params,
+) -> Result<GTR, Report> {
+  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+  let num_chars = alphabet.n_canonical();
+
+  // W matrix for alphabet [A, C, G, T]:
+  // - A<->G (purine transition): rate = 1 (reference)
+  // - C<->T (pyrimidine transition): rate = kappa2
+  // - All transversions: rate = kappa1
+  #[rustfmt::skip]
+  let W = Some(array![
+    [1.0,    kappa1, 1.0,    kappa1],  // A
+    [kappa1, 1.0,    kappa1, kappa2],  // C
+    [1.0,    kappa1, 1.0,    kappa1],  // G
+    [kappa1, kappa2, kappa1, 1.0   ]   // T
+  ]);
+
+  let pi = pi.unwrap_or_else(|| Array1::ones(num_chars) / (num_chars as f64));
+  let pi = &pi / pi.sum();
+
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
