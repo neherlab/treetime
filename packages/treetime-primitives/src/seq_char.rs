@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as StdFmtWrite;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AsciiChar(pub u8);
 
 impl AsciiChar {
