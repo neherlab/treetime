@@ -85,8 +85,8 @@ let f = GridFn::from_arrays_nonuniform(&x, &y)?;
 ### Interpolation
 
 ```rust
-let y = f.interp(0.5)?;
-let ys = f.interp_many(&array![0.25, 0.5, 0.75])?;
+let y = f.interp(0.5);
+let ys = f.interp_many(&array![0.25, 0.5, 0.75]);
 ```
 
 ### Resampling
