@@ -266,12 +266,7 @@ mod tests {
     // Star tree with different states at leaves
     let gtr = jc69(JC69Params::default())?;
     let t = 0.2;
-    let observations = [
-      state_index('A'),
-      state_index('C'),
-      state_index('G'),
-      state_index('T'),
-    ];
+    let observations = [state_index('A'), state_index('C'), state_index('G'), state_index('T')];
 
     let expected_lh = analytical_star_tree_likelihood(&gtr, &observations, t);
     let expected_log_lh = expected_lh.ln();
@@ -296,12 +291,7 @@ mod tests {
     })?;
 
     let t = 0.15;
-    let observations = [
-      state_index('T'),
-      state_index('T'),
-      state_index('G'),
-      state_index('C'),
-    ];
+    let observations = [state_index('T'), state_index('T'), state_index('G'), state_index('C')];
 
     let expected_lh = analytical_star_tree_likelihood(&gtr, &observations, t);
     let expected_log_lh = expected_lh.ln();

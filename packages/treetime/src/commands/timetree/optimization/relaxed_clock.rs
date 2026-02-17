@@ -65,8 +65,9 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
         if denom.abs() > 1e-10 {
           let ratio = coupling / denom;
           node_coeffs.k2 += coupling * (1.0 - ratio).powi(2) + child_coeffs.k2 * ratio.powi(2);
-          node_coeffs.k1 +=
-            coupling * (1.0 - ratio) * child_coeffs.k1 / denom - coupling * child_coeffs.k1 * child_coeffs.k2 / denom.powi(2) + coupling * child_coeffs.k1 / denom;
+          node_coeffs.k1 += coupling * (1.0 - ratio) * child_coeffs.k1 / denom
+            - coupling * child_coeffs.k1 * child_coeffs.k2 / denom.powi(2)
+            + coupling * child_coeffs.k1 / denom;
         }
       }
     }

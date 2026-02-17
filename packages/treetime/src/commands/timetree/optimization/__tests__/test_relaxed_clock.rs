@@ -64,10 +64,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let gamma = edge.payload().read_arc().gamma;
-      assert!(
-        gamma >= 0.1,
-        "gamma={gamma} must be >= 0.1 (algorithm minimum bound)"
-      );
+      assert!(gamma >= 0.1, "gamma={gamma} must be >= 0.1 (algorithm minimum bound)");
     }
 
     Ok(())
@@ -139,10 +136,7 @@ mod tests {
       }
     }
 
-    assert!(
-      any_changed,
-      "At least one gamma should differ from default 1.0"
-    );
+    assert!(any_changed, "At least one gamma should differ from default 1.0");
 
     Ok(())
   }

@@ -1,7 +1,6 @@
 use crate::commands::ancestral::marginal::initialize_marginal;
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -11,6 +10,7 @@ use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_sky
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
+use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -137,7 +137,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
         Ok(result) => {
           if result.success {
             coalescent_tc = Some(Distribution::constant(result.tc));
-            info!("Optimized Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+            info!(
+              "Optimized Tc = {:.6e} (likelihood = {:.4})",
+              result.tc, result.likelihood
+            );
           } else {
             warn!("Tc optimization did not converge, keeping Tc = {initial_tc:.6e}");
           }

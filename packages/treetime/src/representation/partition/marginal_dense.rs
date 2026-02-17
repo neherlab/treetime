@@ -271,4 +271,3 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   }
   norm.mapv(f64::ln).sum()
 }
-

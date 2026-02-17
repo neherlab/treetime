@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
   use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
   use crate::o;
-  use crate::seq::div::{compute_divs, OnlyLeaves};
+  use crate::seq::div::{OnlyLeaves, compute_divs};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -13,8 +13,7 @@ mod tests {
   // OnlyLeaves(false) - all nodes
   #[test]
   fn test_all_nodes() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = compute_divs(&graph, OnlyLeaves(false));
 
@@ -39,8 +38,7 @@ mod tests {
   // OnlyLeaves(true) - leaves only
   #[test]
   fn test_only_leaves() -> Result<(), Report> {
-    let graph: GraphClock =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = compute_divs(&graph, OnlyLeaves(true));
 
@@ -62,8 +60,7 @@ mod tests {
   // Unnamed internal nodes get auto-generated names
   #[test]
   fn test_unnamed_internals() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> =
-      nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
 
     let actual = compute_divs(&graph, OnlyLeaves(true));
 
@@ -133,8 +130,7 @@ mod tests {
   // Zero branch lengths
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> =
-      nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
 
     let actual = compute_divs(&graph, OnlyLeaves(true));
 

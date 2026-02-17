@@ -52,7 +52,10 @@ pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd:
   }
 
   warn!("Clock filter marked {} outliers:", outliers.len());
-  warn!("{:>20} {:>12} {:>14} {:>10}", "name", "given_date", "apparent_date", "residual");
+  warn!(
+    "{:>20} {:>12} {:>14} {:>10}",
+    "name", "given_date", "apparent_date", "residual"
+  );
   for r in &outliers {
     warn!(
       "{:>20} {:>12.2} {:>14.2} {:>10.2}",

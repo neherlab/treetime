@@ -18,7 +18,11 @@ pub struct ClockFilterResult {
 /// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`
 /// where IQD is the interquartile distance of clock deviations.
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace<N, E, D>(graph: &Graph<N, E, D>, clock_model: &ClockModel, threshold: f64) -> ClockFilterResult
+pub fn clock_filter_inplace<N, E, D>(
+  graph: &Graph<N, E, D>,
+  clock_model: &ClockModel,
+  threshold: f64,
+) -> ClockFilterResult
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,

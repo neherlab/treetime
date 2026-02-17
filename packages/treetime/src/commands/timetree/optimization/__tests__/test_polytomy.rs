@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::optimization::polytomy::{
-    resolve_polytomies_with_options, DEFAULT_RESOLUTION_THRESHOLD,
+    DEFAULT_RESOLUTION_THRESHOLD, resolve_polytomies_with_options,
   };
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
@@ -97,7 +97,11 @@ mod tests {
 
     // Find ABC node and verify it starts with 3 children
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| eyre::eyre!("ABC not found"))?;
-    let initial_children = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
+    let initial_children = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(initial_children, 3, "ABC should start with 3 children");
 
     // Resolve with very low threshold (should merge all possible pairs)
@@ -105,7 +109,11 @@ mod tests {
     let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false)?;
 
     // After resolution, ABC should have 2 children (one merge happened)
-    let final_children = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
+    let final_children = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(final_children, 2, "ABC should have 2 children after resolution");
     assert_eq!(n_resolved, 1, "Should have created 1 new node");
 
@@ -142,7 +150,11 @@ mod tests {
 
     // ABC should still have 3 children
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| eyre::eyre!("ABC not found"))?;
-    let children = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
+    let children = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(children, 3, "ABC should still have 3 children");
 
     Ok(())
@@ -252,7 +264,11 @@ mod tests {
     }
 
     let abcde_key = find_node_key_by_name(&graph, "ABCDE").ok_or_else(|| eyre::eyre!("ABCDE not found"))?;
-    let initial_children = graph.get_node(abcde_key).expect("Node must exist").read_arc().degree_out();
+    let initial_children = graph
+      .get_node(abcde_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(initial_children, 5, "ABCDE should start with 5 children");
 
     // Resolve with very low threshold
@@ -263,7 +279,11 @@ mod tests {
     assert_eq!(n_resolved, 3, "Should create 3 new nodes to resolve 5-way polytomy");
 
     // ABCDE should now have 2 children
-    let final_children = graph.get_node(abcde_key).expect("Node must exist").read_arc().degree_out();
+    let final_children = graph
+      .get_node(abcde_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(final_children, 2, "ABCDE should have 2 children after full resolution");
 
     Ok(())

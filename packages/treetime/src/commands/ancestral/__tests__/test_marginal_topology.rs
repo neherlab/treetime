@@ -69,7 +69,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Caterpillar tree should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Caterpillar tree should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -86,7 +89,10 @@ mod tests {
 
     let log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Sparse caterpillar tree should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Sparse caterpillar tree should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -120,7 +126,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Varied sequences should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Varied sequences should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -136,7 +145,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Asymmetric branches should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Asymmetric branches should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -164,7 +176,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Deep tree (10 levels) should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Deep tree (10 levels) should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -184,7 +199,10 @@ mod tests {
 
     let log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Deep tree (sparse) should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Deep tree (sparse) should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -224,7 +242,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Deep tree with extreme branches should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Deep tree with extreme branches should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())
@@ -282,7 +303,10 @@ mod tests {
     let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr.clone())?;
     let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(dense_log_lh.is_finite(), "Mixed tree should produce finite log-likelihood");
+    assert!(
+      dense_log_lh.is_finite(),
+      "Mixed tree should produce finite log-likelihood"
+    );
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
 
     Ok(())
@@ -299,7 +323,10 @@ mod tests {
 
     let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    assert!(log_lh.is_finite(), "Large polytomy should produce finite log-likelihood");
+    assert!(
+      log_lh.is_finite(),
+      "Large polytomy should produce finite log-likelihood"
+    );
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive");
 
     Ok(())

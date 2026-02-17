@@ -9,7 +9,10 @@ use std::sync::Arc;
 use treetime_graph::edge::HasBranchLength;
 
 /// Infer GTR model from sparse partition data.
-pub fn infer_gtr_sparse(partition: &Arc<RwLock<PartitionMarginalSparse>>, graph: &GraphAncestral) -> Result<GTR, Report> {
+pub fn infer_gtr_sparse(
+  partition: &Arc<RwLock<PartitionMarginalSparse>>,
+  graph: &GraphAncestral,
+) -> Result<GTR, Report> {
   let counts = get_mutation_counts(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let alphabet = partition.read_arc().alphabet.clone();
@@ -28,7 +31,11 @@ pub fn get_mutation_counts(
     let root = graph.get_exactly_one_root()?;
     let root_key = root.read_arc().key();
     let root_composition = &partition.nodes[&root_key].seq.composition;
-    Array1::<f64>::from_iter(alphabet.canonical().map(|nuc| root_composition.get(nuc).unwrap_or(0) as f64))
+    Array1::<f64>::from_iter(
+      alphabet
+        .canonical()
+        .map(|nuc| root_composition.get(nuc).unwrap_or(0) as f64),
+    )
   };
 
   let N = alphabet.n_canonical();

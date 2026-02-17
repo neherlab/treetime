@@ -144,8 +144,14 @@ mod tests {
       let aln = ">A\nACGT\n>B\nTGCA\n";
       let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr.clone())?;
 
-      assert!(log_lh.is_finite(), "Log-likelihood should be finite at t={t}, got {log_lh}");
-      assert!(log_lh <= 0.0, "Log-likelihood should be non-positive at t={t}, got {log_lh}");
+      assert!(
+        log_lh.is_finite(),
+        "Log-likelihood should be finite at t={t}, got {log_lh}"
+      );
+      assert!(
+        log_lh <= 0.0,
+        "Log-likelihood should be non-positive at t={t}, got {log_lh}"
+      );
     }
     Ok(())
   }
@@ -220,7 +226,11 @@ mod tests {
     let aln = ">A\nA\n>B\nT\n";
     let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = EQUILIBRIUM_EPSILON);
+    pretty_assert_ulps_eq!(
+      expected_equilibrium_log_lh,
+      actual_log_lh,
+      epsilon = EQUILIBRIUM_EPSILON
+    );
     Ok(())
   }
 
@@ -236,7 +246,11 @@ mod tests {
     let aln = ">A\nA\n>B\nT\n";
     let actual_log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
 
-    pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = EQUILIBRIUM_EPSILON);
+    pretty_assert_ulps_eq!(
+      expected_equilibrium_log_lh,
+      actual_log_lh,
+      epsilon = EQUILIBRIUM_EPSILON
+    );
     Ok(())
   }
 
@@ -261,7 +275,11 @@ mod tests {
     let aln = ">A\nA\n>B\nG\n";
     let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = EQUILIBRIUM_EPSILON);
+    pretty_assert_ulps_eq!(
+      expected_equilibrium_log_lh,
+      actual_log_lh,
+      epsilon = EQUILIBRIUM_EPSILON
+    );
     Ok(())
   }
 
@@ -280,7 +298,11 @@ mod tests {
     let aln = ">A\nACG\n>B\nTCA\n";
     let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = EQUILIBRIUM_EPSILON);
+    pretty_assert_ulps_eq!(
+      expected_equilibrium_log_lh,
+      actual_log_lh,
+      epsilon = EQUILIBRIUM_EPSILON
+    );
     Ok(())
   }
 
@@ -298,7 +320,11 @@ mod tests {
     let aln = ">A\nA\n>B\nC\n>C\nG\n>D\nT\n";
     let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
 
-    pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = EQUILIBRIUM_EPSILON);
+    pretty_assert_ulps_eq!(
+      expected_equilibrium_log_lh,
+      actual_log_lh,
+      epsilon = EQUILIBRIUM_EPSILON
+    );
     Ok(())
   }
 

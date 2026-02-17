@@ -55,9 +55,7 @@ pub fn resolve_polytomies_with_options(
     total_resolved += n_resolved;
 
     let new_n_children = graph.degree_out(node_key)?;
-    debug!(
-      "Polytomy at node {node_key}: {prior_n_children} -> {new_n_children} children, resolved {n_resolved}"
-    );
+    debug!("Polytomy at node {node_key}: {prior_n_children} -> {new_n_children} children, resolved {n_resolved}");
   }
 
   // Remove obsolete nodes (single-child internal nodes created during resolution)
@@ -244,7 +242,10 @@ fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) 
       .best_param
       .unwrap_or_else(|| f64::midpoint(parent_time, child_min_time));
     let cost_gain = -res.state().best_cost; // We minimized negative gain
-    Some(MergeCandidate { optimal_time, cost_gain })
+    Some(MergeCandidate {
+      optimal_time,
+      cost_gain,
+    })
   } else {
     // Fallback: evaluate at midpoint
     let mid_time = f64::midpoint(parent_time, child_min_time);
@@ -382,22 +383,21 @@ fn remove_obsolete_nodes(graph: &mut GraphTimetree) -> Result<usize, Report> {
 
   loop {
     // Find a single-child internal node (not root)
-    let obsolete_key = graph
-      .get_nodes()
-      .into_iter()
-      .find_map(|node| {
-        let node = node.read_arc();
-        let is_single_child = node.has_one_child();
-        let is_internal = !node.is_root() && !node.is_leaf();
-        (is_single_child && is_internal).then_some(node.key())
-      });
+    let obsolete_key = graph.get_nodes().into_iter().find_map(|node| {
+      let node = node.read_arc();
+      let is_single_child = node.has_one_child();
+      let is_internal = !node.is_root() && !node.is_leaf();
+      (is_single_child && is_internal).then_some(node.key())
+    });
 
     let Some(node_key) = obsolete_key else {
       break;
     };
 
     // Collapse this node: connect parent directly to child
-    let inbound_edge_key = graph.parent_inbound_edge(node_key)?.expect("Internal node must have parent");
+    let inbound_edge_key = graph
+      .parent_inbound_edge(node_key)?
+      .expect("Internal node must have parent");
     graph.collapse_edge(inbound_edge_key)?;
     removed_count += 1;
   }

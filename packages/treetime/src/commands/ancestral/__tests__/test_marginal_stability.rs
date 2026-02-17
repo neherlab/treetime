@@ -36,10 +36,7 @@ mod tests {
           val.is_finite(),
           "Position {pos}, index {idx} has non-finite value: {val}"
         );
-        assert!(
-          val >= -1e-15,
-          "Position {pos}, index {idx} has negative value: {val}"
-        );
+        assert!(val >= -1e-15, "Position {pos}, index {idx} has negative value: {val}");
       }
     }
   }
