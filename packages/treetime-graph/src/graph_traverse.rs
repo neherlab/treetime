@@ -265,6 +265,26 @@ where
     }
   }
 
+  /// Fallible version of `iter_depth_first_preorder_forward`.
+  ///
+  /// Traverses graph in depth-first preorder fashion forward (from roots to leaves).
+  /// Returns early if the explorer closure returns an error.
+  pub fn try_iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
+  where
+    F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
+  {
+    let root = self.get_exactly_one_root().wrap_err("Graph must have exactly one root")?;
+    let mut stack = Vec::from([(Arc::clone(&root), None)]);
+    while let Some((current_node, _current_edge)) = stack.pop() {
+      let current_node = current_node.read_arc();
+      explorer(GraphNodeForward::new(self, &current_node))?;
+      for (child, edge) in self.children_of(&current_node).into_iter().rev() {
+        stack.push((child, Some(edge)));
+      }
+    }
+    Ok(())
+  }
+
   pub fn iter_depth_first_preorder_forward_2(&self, mut explorer: impl FnMut(&SafeNode<N>)) {
     let root = self.get_exactly_one_root().unwrap();
     DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
