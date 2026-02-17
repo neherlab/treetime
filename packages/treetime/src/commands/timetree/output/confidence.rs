@@ -93,7 +93,7 @@ pub fn combine_confidence(
       let min_val = center - (c1.0 - center).hypot(c2.0 - center);
       let max_val = center + (c1.1 - center).hypot(c2.1 - center);
       (min_val, max_val)
-    }
+    },
   };
 
   (limits.0.max(min_val), limits.1.min(max_val))

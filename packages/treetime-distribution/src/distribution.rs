@@ -251,7 +251,7 @@ impl Distribution<Plain> {
         let start = range.start();
         let end = range.end();
         Some(start + p * (end - start))
-      }
+      },
       Distribution::Function(f) => {
         let t = f.t();
         let y = f.y();
@@ -300,11 +300,11 @@ impl Distribution<Plain> {
         }
 
         Some(t[n - 1])
-      }
+      },
       Distribution::Formula(_) => {
         // Formula distributions don't support quantile computation directly
         self.likely_time()
-      }
+      },
     }
   }
 
