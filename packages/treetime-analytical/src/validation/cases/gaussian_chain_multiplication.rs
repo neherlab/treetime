@@ -1,7 +1,7 @@
 use crate::gaussian::GaussianParams;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianChainMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,
