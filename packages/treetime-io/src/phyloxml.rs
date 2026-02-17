@@ -19,7 +19,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::make_internal_error;
+use treetime_utils::{make_internal_error, make_internal_report};
 
 pub fn phyloxml_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -323,7 +323,10 @@ where
   }
 
   let mut data = graph.data().read_arc().phyloxml_data_from_graph_data()?;
-  let clade = node_map.remove(&root.read_arc().key()).unwrap();
+  let root_key = root.read_arc().key();
+  let clade = node_map
+    .remove(&root_key)
+    .ok_or_else(|| make_internal_report!("Root node not found in node_map during PhyloXML export"))?;
   data.phylogeny[0].clade = Some(clade);
   Ok(data)
 }
