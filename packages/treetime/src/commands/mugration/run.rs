@@ -6,6 +6,7 @@ use itertools::Itertools;
 use log::warn;
 use ndarray::Array1;
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use std::fmt::Display;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
@@ -114,6 +115,7 @@ pub fn chr<I: ToPrimitive + Display + Copy>(i: I) -> Result<char, Report> {
   Ok(c)
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DiscreteAttrAlphabet {
   pub attr_to_letter: IndexMap<String, char>,
   pub letter_to_attr: IndexMap<char, String>,
