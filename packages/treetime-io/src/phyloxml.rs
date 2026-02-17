@@ -103,7 +103,7 @@ where
   Ok(())
 }
 
-pub fn phyloxml_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn phyloxml_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -111,7 +111,8 @@ where
   (): PhyloxmlFromGraph<N, E, D>,
 {
   let mut buf = Vec::new();
-  phyloxml_write(&mut buf, graph).wrap_err("When writing PhyloXML string")
+  phyloxml_write(&mut buf, graph).wrap_err("When writing PhyloXML string")?;
+  String::from_utf8(buf).wrap_err("PhyloXML output is not valid UTF-8")
 }
 
 pub fn phyloxml_write<N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
