@@ -98,13 +98,16 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   // Create coalescent Tc distribution
   let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
-    info!("### Optimizing skyline coalescent model with {} grid points", args.n_skyline);
+    info!(
+      "### Optimizing skyline coalescent model with {} grid points",
+      args.n_skyline
+    );
     let skyline_params = SkylineParams {
       n_points: args.n_skyline,
       ..SkylineParams::default()
     };
-    let skyline_result = optimize_skyline(&graph, &skyline_params)
-      .wrap_err("Failed to optimize skyline coalescent model")?;
+    let skyline_result =
+      optimize_skyline(&graph, &skyline_params).wrap_err("Failed to optimize skyline coalescent model")?;
     info!(
       "Skyline optimization completed: log_likelihood={:.4}",
       skyline_result.log_likelihood
@@ -128,10 +131,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     // Optimize Tc if requested (requires at least 2 iterations per Python v0)
     // Note: Tc optimization only applies when not using skyline (skyline has its own optimization)
     if args.coalescent_opt && !args.coalescent_skyline && i >= 2 {
-      let initial_tc = coalescent_tc
-        .as_ref()
-        .and_then(|d| d.mean())
-        .unwrap_or(1.0);
+      // For constant distributions, max_value() returns the Tc amplitude
+      let initial_tc = coalescent_tc.as_ref().map_or(1.0, |d| d.max_value());
       match optimize_tc(&graph, initial_tc) {
         Ok(result) => {
           if result.success {
@@ -171,7 +172,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref()).wrap_err("Final timetree inference failed")?;
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
+      .wrap_err("Final timetree inference failed")?;
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;

@@ -111,8 +111,7 @@ mod tests {
 
   #[test]
   fn test_optimize_skyline_larger_tree() -> Result<(), Report> {
-    const TREE_NWK: &str =
-      "(((a:1,b:1)ab:1,(c:1,d:1)cd:1)abcd:1,((e:1,f:1)ef:1,(g:1,h:1)gh:1)efgh:1)root:1;";
+    const TREE_NWK: &str = "(((a:1,b:1)ab:1,(c:1,d:1)cd:1)abcd:1,((e:1,f:1)ef:1,(g:1,h:1)gh:1)efgh:1)root:1;";
     let dates = btreemap! {
       "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
       "abcd".to_owned() => Some(DateOrRange::YearFraction(2002.0)),
