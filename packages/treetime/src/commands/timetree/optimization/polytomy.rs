@@ -210,10 +210,14 @@ fn collect_children_info(graph: &GraphTimetree, node_key: GraphNodeKey) -> Resul
 /// - P_new = P(branch1_new) * P(branch2_new) * P(new_branch)
 ///
 /// The new branch has zero mutations, so its probability depends on time only.
+///
+/// Time convention: v1 uses calendar time where parent_time < child_time
+/// (parent is in the past with smaller calendar year, children are in the future).
 fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) -> Option<MergeCandidate> {
-  // Bounds for the new node time: must be between children and parent
-  let child_max_time = f64::max(child1.time, child2.time);
-  if child_max_time >= parent_time {
+  // In calendar time: parent is older (smaller), children are younger (larger)
+  // New node must be between parent and children: parent_time < new_time < min(child_times)
+  let child_min_time = f64::min(child1.time, child2.time);
+  if parent_time >= child_min_time {
     return None; // Invalid time constraints
   }
 
@@ -228,7 +232,8 @@ fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) 
   };
 
   // Use Brent optimization to find optimal merge time
-  let solver = BrentOpt::new(child_max_time + 1e-10, parent_time - 1e-10);
+  // Bounds: parent_time < new_node_time < child_min_time
+  let solver = BrentOpt::new(parent_time + 1e-10, child_min_time - 1e-10);
   let result = Executor::new(cost_fn.clone(), solver)
     .configure(|cfg| cfg.max_iters(50))
     .run();
@@ -237,12 +242,12 @@ fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) 
     let optimal_time = res
       .state()
       .best_param
-      .unwrap_or_else(|| f64::midpoint(child_max_time, parent_time));
+      .unwrap_or_else(|| f64::midpoint(parent_time, child_min_time));
     let cost_gain = -res.state().best_cost; // We minimized negative gain
     Some(MergeCandidate { optimal_time, cost_gain })
   } else {
     // Fallback: evaluate at midpoint
-    let mid_time = f64::midpoint(child_max_time, parent_time);
+    let mid_time = f64::midpoint(parent_time, child_min_time);
     let cost_gain = -cost_fn.cost(&mid_time).unwrap_or(0.0);
     Some(MergeCandidate {
       optimal_time: mid_time,
@@ -268,14 +273,16 @@ impl CostFunction for MergeCostFunction<'_> {
   fn cost(&self, t: &Self::Param) -> Result<Self::Output, argmin::core::Error> {
     let new_node_time = *t;
 
-    // Old branch lengths (parent_time - child_time)
-    let old_branch1 = self.parent_time - self.child1_time;
-    let old_branch2 = self.parent_time - self.child2_time;
+    // Branch lengths in calendar time: child_time - parent_time (positive since child > parent)
+    // Old branches: from original parent directly to children
+    let old_branch1 = self.child1_time - self.parent_time;
+    let old_branch2 = self.child2_time - self.parent_time;
 
-    // New branch lengths
-    let new_branch1 = new_node_time - self.child1_time;
-    let new_branch2 = new_node_time - self.child2_time;
-    let new_branch_to_parent = self.parent_time - new_node_time;
+    // New branches: from new internal node to children
+    let new_branch1 = self.child1_time - new_node_time;
+    let new_branch2 = self.child2_time - new_node_time;
+    // Branch from parent to new node
+    let new_branch_to_parent = new_node_time - self.parent_time;
 
     // Evaluate log probabilities using branch length distributions
     // Distribution::eval returns probability, so we take log
@@ -335,7 +342,8 @@ fn merge_children(
   let new_node_key = graph.add_node(new_payload);
 
   // Create edge from parent to new node
-  let new_branch_length = parent_time - new_node_time;
+  // Branch length in calendar time: child - parent (new_node is the "child" of parent)
+  let new_branch_length = new_node_time - parent_time;
   let new_edge_payload = EdgeTimetree {
     time_length: Some(new_branch_length),
     ..EdgeTimetree::default()
@@ -343,7 +351,8 @@ fn merge_children(
   graph.add_edge(parent_key, new_node_key, new_edge_payload)?;
 
   // Reparent child1: remove old edge from parent, create edge from new node
-  let new_branch1_length = new_node_time - child1.time;
+  // Branch length: child1.time - new_node_time
+  let new_branch1_length = child1.time - new_node_time;
   graph.remove_edge(child1.edge_key)?;
   let child1_edge_payload = EdgeTimetree {
     time_length: Some(new_branch1_length),
@@ -352,7 +361,8 @@ fn merge_children(
   graph.add_edge(new_node_key, child1.node_key, child1_edge_payload)?;
 
   // Reparent child2: remove old edge from parent, create edge from new node
-  let new_branch2_length = new_node_time - child2.time;
+  // Branch length: child2.time - new_node_time
+  let new_branch2_length = child2.time - new_node_time;
   graph.remove_edge(child2.edge_key)?;
   let child2_edge_payload = EdgeTimetree {
     time_length: Some(new_branch2_length),
