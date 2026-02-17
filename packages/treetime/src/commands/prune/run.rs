@@ -105,14 +105,14 @@ fn parse_node_names(
   let mut node_names = btreeset! {};
 
   if let Some(prune_nodes_list) = prune_nodes_list {
-    node_names.extend(parse_delimited_str(prune_nodes_list, prune_nodes_list_delimiter as u8));
+    let names: Vec<String> = parse_delimited_str(prune_nodes_list, prune_nodes_list_delimiter as u8).try_collect()?;
+    node_names.extend(names);
   }
 
   if let Some(prune_nodes_list_file) = prune_nodes_list_file {
-    node_names.extend(parse_delimited_file(
-      prune_nodes_list_file,
-      prune_nodes_list_file_delimiter as u8,
-    )?);
+    let names: Vec<String> = parse_delimited_file(prune_nodes_list_file, prune_nodes_list_file_delimiter as u8)?
+      .try_collect()?;
+    node_names.extend(names);
   }
 
   Ok(node_names)
