@@ -6,6 +6,7 @@ use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
+use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
 use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
@@ -19,7 +20,7 @@ use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use eyre::{Report, WrapErr};
-use log::{debug, info};
+use log::{debug, info, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -96,7 +97,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   initialize_clock_totals_from_time_distributions(&graph)?;
 
   // Create coalescent Tc distribution
-  let coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
+  let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
     info!("### Optimizing skyline coalescent model with {} grid points", args.n_skyline);
     let skyline_params = SkylineParams {
       n_points: args.n_skyline,
@@ -124,6 +125,28 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
+    // Optimize Tc if requested (requires at least 2 iterations per Python v0)
+    // Note: Tc optimization only applies when not using skyline (skyline has its own optimization)
+    if args.coalescent_opt && !args.coalescent_skyline && i >= 2 {
+      let initial_tc = coalescent_tc
+        .as_ref()
+        .and_then(|d| d.mean())
+        .unwrap_or(1.0);
+      match optimize_tc(&graph, initial_tc) {
+        Ok(result) => {
+          if result.success {
+            coalescent_tc = Some(Distribution::constant(result.tc));
+            info!("Optimized Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+          } else {
+            warn!("Tc optimization did not converge, keeping Tc = {initial_tc:.6e}");
+          }
+        },
+        Err(e) => {
+          warn!("Tc optimization failed: {e}, keeping Tc = {initial_tc:.6e}");
+        },
+      }
+    }
+
     let (n_diff, n_resolved) = run_refinement_iteration(
       args,
       &mut graph,

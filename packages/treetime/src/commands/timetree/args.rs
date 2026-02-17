@@ -151,6 +151,14 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub coalescent: Option<f64>,
 
+  /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
+  ///
+  /// When set, TreeTime will find the optimal Tc using Brent's method. This is equivalent
+  /// to Python v0's `--coalescent=opt`. If --coalescent is also provided, that value is
+  /// used as the initial guess; otherwise defaults to 1.0.
+  #[clap(long)]
+  pub coalescent_opt: bool,
+
   /// Use skyline coalescent model instead of constant Tc.
   ///
   /// Estimates a piecewise constant coalescent rate history. Requires --n-skyline to specify
