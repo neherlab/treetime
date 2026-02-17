@@ -3,7 +3,7 @@ use crate::representation::partition::traits::PartitionMarginalOps;
 use crate::representation::partition::traits::graph_log_lh;
 use eyre::Report;
 use log::debug;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
@@ -89,10 +89,29 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
+  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_backward(|node| {
-    run_marginal_backward(partitions, &node).unwrap();
+    if let Err(e) = run_marginal_backward(partitions, &node) {
+      let mut guard = error.lock();
+      if guard.is_none() {
+        *guard = Some(e);
+      }
+      return GraphTraversalContinuation::Stop;
+    }
     GraphTraversalContinuation::Continue
   });
+  match Arc::try_unwrap(error) {
+    Ok(mutex) => {
+      if let Some(e) = mutex.into_inner() {
+        return Err(e);
+      }
+    }
+    Err(arc) => {
+      if let Some(e) = arc.lock().take() {
+        return Err(e);
+      }
+    }
+  }
   Ok(())
 }
 
@@ -119,10 +138,29 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
+  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_forward(|node| {
-    run_marginal_forward(graph, partitions, &node).unwrap();
+    if let Err(e) = run_marginal_forward(graph, partitions, &node) {
+      let mut guard = error.lock();
+      if guard.is_none() {
+        *guard = Some(e);
+      }
+      return GraphTraversalContinuation::Stop;
+    }
     GraphTraversalContinuation::Continue
   });
+  match Arc::try_unwrap(error) {
+    Ok(mutex) => {
+      if let Some(e) = mutex.into_inner() {
+        return Err(e);
+      }
+    }
+    Err(arc) => {
+      if let Some(e) = arc.lock().take() {
+        return Err(e);
+      }
+    }
+  }
   Ok(())
 }
 
