@@ -6,7 +6,7 @@ use std::borrow::Borrow;
 
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug)]
-pub enum Bitset128Status {
+pub enum BitSet128Status {
   Empty,
   Unambiguous(AsciiChar),
   Ambiguous(BitSet128),
@@ -140,11 +140,11 @@ impl BitSet128 {
     self.iter()
   }
 
-  pub fn get(&self) -> Bitset128Status {
+  pub fn get(&self) -> BitSet128Status {
     match self.bits.count_ones() {
-      0 => Bitset128Status::Empty,
-      1 => Bitset128Status::Unambiguous(self.get_one()),
-      _ => Bitset128Status::Ambiguous(*self),
+      0 => BitSet128Status::Empty,
+      1 => BitSet128Status::Unambiguous(self.get_one()),
+      _ => BitSet128Status::Ambiguous(*self),
     }
   }
 

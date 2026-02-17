@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::{AsciiChar, BitSet128, Bitset128Status, bitset128};
+  use crate::{AsciiChar, BitSet128, BitSet128Status, bitset128};
   use pretty_assertions::{assert_eq, assert_ne};
   use rstest::rstest;
   use std::hash::{DefaultHasher, Hash, Hasher};
@@ -243,20 +243,20 @@ mod tests {
   #[test]
   fn test_bitset128_get_empty() {
     let set = BitSet128::new();
-    assert!(matches!(set.get(), Bitset128Status::Empty));
+    assert!(matches!(set.get(), BitSet128Status::Empty));
   }
 
   #[test]
   fn test_bitset128_get_unambiguous() {
     let set = BitSet128::from_char('A');
-    assert!(matches!(set.get(), Bitset128Status::Unambiguous(AsciiChar(b'A'))));
+    assert!(matches!(set.get(), BitSet128Status::Unambiguous(AsciiChar(b'A'))));
   }
 
   #[test]
   fn test_bitset128_get_ambiguous() {
     let set = BitSet128::from_iter(vec!['A', 'C']);
-    assert!(matches!(set.get(), Bitset128Status::Ambiguous(_)));
-    if let Bitset128Status::Ambiguous(actual) = set.get() {
+    assert!(matches!(set.get(), BitSet128Status::Ambiguous(_)));
+    if let BitSet128Status::Ambiguous(actual) = set.get() {
       let expected = bitset128! {'A', 'C'};
       assert_eq!(actual, expected);
     }

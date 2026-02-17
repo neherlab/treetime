@@ -45,7 +45,7 @@ let union = set | other;
 let intersection = set & other;
 ```
 
-`Bitset128Status` classifies a bitset as `Empty`, `Unambiguous(AsciiChar)`, or `Ambiguous(BitSet128)`.
+`BitSet128Status` classifies a bitset as `Empty`, `Unambiguous(AsciiChar)`, or `Ambiguous(BitSet128)`.
 
 ### `StateSet` / `stateset!`
 

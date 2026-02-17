@@ -3,7 +3,7 @@ pub mod bitset128;
 pub mod seq;
 pub mod seq_char;
 
-pub use bitset128::{BitSet128, Bitset128Status};
+pub use bitset128::{BitSet128, BitSet128Status};
 pub use seq::Seq;
 pub use seq_char::AsciiChar;
 
@@ -25,7 +25,7 @@ impl<A: AlphabetLike> AlphabetLike for &A {
 }
 
 pub type StateSet = BitSet128;
-pub type StateSetStatus = Bitset128Status;
+pub type StateSetStatus = BitSet128Status;
 
 #[macro_export]
 macro_rules! stateset {
