@@ -10,6 +10,7 @@ use crate::commands::timetree::convergence::metrics::{IterationContext, Timetree
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::optimization::reroot::reroot_tree;
+use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
@@ -127,7 +128,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
     run_timetree(&mut graph, &partitions, &clock_model, args.coalescent).wrap_err("Final timetree inference failed")?;
-    todo!("extract_confidence_intervals not yet implemented");
+    let intervals = extract_confidence_intervals(&graph);
+    let ci_path = args.outdir.join("confidence_intervals.tsv");
+    write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
+    info!("Wrote confidence intervals to {}", ci_path.display());
   }
 
   info!("### TreeTime: writing outputs");
