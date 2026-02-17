@@ -49,11 +49,11 @@ pub fn get_gtr_sparse(
 pub fn get_gtr_dense(name: &GtrModelName) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => {
-      make_error!("GTR model inference is not supported for dense representation. Please specify an explicit model (e.g., --model jc69).")
+      make_error!("GTR inference is not implemented for dense representation. Use --model to specify a GTR model (e.g., --model jc69), or omit --dense to use sparse representation.")
     },
     _ => get_gtr_by_name(*name),
   }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+  .wrap_err_with(|| make_report!("When creating GTR model"))
 }
 
 fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
