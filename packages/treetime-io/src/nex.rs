@@ -34,7 +34,7 @@ where
   Ok(())
 }
 
-pub fn nex_write_string<N, E, D>(graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<String, Report>
+pub fn nex_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
