@@ -1,15 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
-use crate::seq::composition::Composition;
-use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
@@ -276,16 +272,3 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   norm.mapv(f64::ln).sum()
 }
 
-impl PartitionWithGtrInference for PartitionMarginalDense {
-  fn alphabet(&self) -> &Alphabet {
-    &self.alphabet
-  }
-
-  fn get_seq_composition(&self, _node_key: GraphNodeKey) -> &Composition {
-    unimplemented!("Dense node composition is not implemented yet")
-  }
-
-  fn get_edge_substitutions(&self, _edge_key: GraphEdgeKey, _graph: &GraphAncestral) -> Vec<Sub> {
-    unimplemented!("Dense node substitutions lookup is not implemented yet")
-  }
-}

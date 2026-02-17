@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::{PartitionWithGtrInference, infer_gtr};
+use crate::gtr::infer_gtr::infer_gtr_sparse;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
@@ -28,13 +29,36 @@ pub enum GtrModelName {
   Jtt92,
 }
 
-pub fn get_gtr<P: PartitionWithGtrInference>(
+pub fn get_gtr_sparse(
   name: &GtrModelName,
-  partition: &Arc<RwLock<P>>,
+  partition: &Arc<RwLock<PartitionMarginalSparse>>,
   graph: &GraphAncestral,
 ) -> Result<GTR, Report> {
   match name {
-    GtrModelName::Infer => infer_gtr(partition, graph),
+    GtrModelName::Infer => infer_gtr_sparse(partition, graph),
+    _ => get_gtr_by_name(*name),
+  }
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+}
+
+/// Get GTR model for dense representation.
+///
+/// Dense representation uses full probability matrices and does not track individual
+/// substitutions or composition. GTR inference requires sparse-style mutation tracking,
+/// so users must specify an explicit model (e.g., `--model jc69`).
+pub fn get_gtr_dense(name: &GtrModelName) -> Result<GTR, Report> {
+  match name {
+    GtrModelName::Infer => {
+      make_error!("GTR model inference is not supported for dense representation. Please specify an explicit model (e.g., --model jc69).")
+    },
+    _ => get_gtr_by_name(*name),
+  }
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+}
+
+fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
+  match name {
+    GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
     GtrModelName::HKY85 => hky85(HKY85Params::default()),
@@ -43,7 +67,6 @@ pub fn get_gtr<P: PartitionWithGtrInference>(
     GtrModelName::TN93 => tn93(TN93Params::default()),
     GtrModelName::Jtt92 => jtt92(Jtt92Params::default()),
   }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]

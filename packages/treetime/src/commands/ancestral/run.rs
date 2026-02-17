@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
-use crate::gtr::get_gtr::{JC69Params, get_gtr, jc69};
+use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -127,7 +127,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
           // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
           for partition in &partitions_marginal_sparse {
-            let gtr = get_gtr(model_name, partition, &graph)?;
+            let gtr = get_gtr_sparse(model_name, partition, &graph)?;
             partition.write_arc().gtr = gtr;
           }
 
@@ -163,7 +163,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
           // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
           for partition in &partitions_marginal_dense {
-            let gtr = get_gtr(model_name, partition, &graph)?;
+            let gtr = get_gtr_dense(model_name)?;
             partition.write_arc().gtr = gtr;
           }
 

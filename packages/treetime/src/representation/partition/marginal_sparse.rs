@@ -2,15 +2,12 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::PartitionWithGtrInference;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
-use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray_stats::QuantileExt;
@@ -255,20 +252,6 @@ where
 
   fn get_sequence_length(&self) -> usize {
     self.length
-  }
-}
-
-impl PartitionWithGtrInference for PartitionMarginalSparse {
-  fn alphabet(&self) -> &Alphabet {
-    &self.alphabet
-  }
-
-  fn get_seq_composition(&self, node_key: GraphNodeKey) -> &Composition {
-    &self.nodes[&node_key].seq.composition
-  }
-
-  fn get_edge_substitutions(&self, edge_key: GraphEdgeKey, _graph: &GraphAncestral) -> Vec<Sub> {
-    self.edges[&edge_key].subs.clone()
   }
 }
 
