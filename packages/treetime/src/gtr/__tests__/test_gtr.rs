@@ -3,7 +3,7 @@ mod tests {
   #![allow(clippy::excessive_precision)]
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::get_gtr::{JC69Params, Jtt92Params, jc69, jtt92};
+  use crate::gtr::get_gtr::{JC69Params, Jtt92Params, TN93Params, jc69, jtt92, tn93};
   use crate::gtr::gtr::{GTR, GTRParams, avg_transition, eig_single_site};
   use crate::pretty_assert_ulps_eq;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
@@ -528,6 +528,118 @@ mod tests {
 
     // propagating the profile far into the future gives the equilibrium probabilities pi
     assert_ulps_eq!(distant_future.slice(s![0, ..]), pi, epsilon = 1e-10);
+
+    Ok(())
+  }
+
+  /// TN93 with default parameters (kappa1=1, kappa2=1) equals uniform rates
+  #[rstest]
+  fn tn93_default_params_uniform_rates() -> Result<(), Report> {
+    let gtr = tn93(TN93Params::default())?;
+
+    // Default: kappa1=1, kappa2=1 means all rates equal
+    // W matrix is normalized by GTR, but all off-diagonal elements should be equal
+    let off_diag_val = gtr.W[[0, 1]];
+    for i in 0..4 {
+      for j in 0..4 {
+        if i == j {
+          assert_ulps_eq!(gtr.W[[i, j]], 0.0, epsilon = 1e-12);
+        } else {
+          assert_ulps_eq!(gtr.W[[i, j]], off_diag_val, epsilon = 1e-12);
+        }
+      }
+    }
+
+    // Uniform equilibrium frequencies
+    assert_ulps_eq!(gtr.pi, array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-12);
+
+    Ok(())
+  }
+
+  /// TN93 with custom kappa values produces correct rate matrix structure
+  #[rstest]
+  fn tn93_custom_kappa_values() -> Result<(), Report> {
+    let kappa1 = 0.5; // transversion rate
+    let kappa2 = 2.0; // C<->T transition rate
+
+    let gtr = tn93(TN93Params {
+      kappa1,
+      kappa2,
+      ..TN93Params::default()
+    })?;
+
+    // Verify W matrix structure (normalized, but ratios preserved):
+    // A<->G = 1.0 (reference purine transition)
+    // C<->T = kappa2 (pyrimidine transition)
+    // All transversions = kappa1
+    // Ratios should be: transversion:purine = kappa1:1, pyrimidine:purine = kappa2:1
+    let purine_rate = gtr.W[[0, 2]]; // A<->G
+    let pyrimidine_rate = gtr.W[[1, 3]]; // C<->T
+    let transversion_rate = gtr.W[[0, 1]]; // A<->C (a transversion)
+
+    // Check ratio kappa1 = transversion / purine
+    assert_ulps_eq!(transversion_rate / purine_rate, kappa1, epsilon = 1e-12);
+
+    // Check ratio kappa2 = pyrimidine / purine
+    assert_ulps_eq!(pyrimidine_rate / purine_rate, kappa2, epsilon = 1e-12);
+
+    // Verify symmetry
+    assert_ulps_eq!(gtr.W[[0, 2]], gtr.W[[2, 0]], epsilon = 1e-12); // A<->G
+    assert_ulps_eq!(gtr.W[[1, 3]], gtr.W[[3, 1]], epsilon = 1e-12); // C<->T
+
+    Ok(())
+  }
+
+  /// TN93 eigendecomposition is valid (v @ v_inv = I)
+  #[rstest]
+  fn tn93_valid_eigendecomposition() -> Result<(), Report> {
+    let gtr = tn93(TN93Params {
+      kappa1: 0.3,
+      kappa2: 2.5,
+      ..TN93Params::default()
+    })?;
+
+    // v @ v_inv should be identity
+    let identity = gtr.v.dot(&gtr.v_inv);
+    let diff_from_eye = (&identity - &Array2::<f64>::eye(4)).mapv(f64::abs).sum();
+    assert_ulps_eq!(diff_from_eye, 0.0, epsilon = 1e-10);
+
+    // Q matrix columns sum to 0
+    let q = gtr.Q();
+    let col_sums = q.sum_axis(Axis(0));
+    let total_abs_sum: f64 = col_sums.mapv(f64::abs).sum();
+    assert_ulps_eq!(total_abs_sum, 0.0, epsilon = 1e-14);
+
+    // Last column of v is proportional to pi (eigenvector sign may vary)
+    let last_col = gtr.v.column(3);
+    let ratio = last_col[0] / gtr.pi[0];
+    for i in 0..4 {
+      assert_ulps_eq!(last_col[i] / gtr.pi[i], ratio, epsilon = 1e-10);
+    }
+
+    // Last row of v_inv has uniform values (sign may vary)
+    let last_row = gtr.v_inv.row(3);
+    let first_val = last_row[0];
+    for i in 0..4 {
+      assert_ulps_eq!(last_row[i], first_val, epsilon = 1e-12);
+    }
+
+    Ok(())
+  }
+
+  /// TN93 with custom equilibrium frequencies
+  #[rstest]
+  fn tn93_custom_equilibrium_frequencies() -> Result<(), Report> {
+    let pi = array![0.3, 0.2, 0.25, 0.25];
+
+    let gtr = tn93(TN93Params {
+      pi: Some(pi.clone()),
+      ..TN93Params::default()
+    })?;
+
+    // Frequencies should be normalized (they already sum to 1 here)
+    assert_ulps_eq!(gtr.pi, pi, epsilon = 1e-12);
+    assert_ulps_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-14);
 
     Ok(())
   }
