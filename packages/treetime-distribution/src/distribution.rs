@@ -230,6 +230,94 @@ impl Distribution<Plain> {
     self.scale_by(1.0 / max_val)
   }
 
+  /// Compute quantile (inverse CDF) for the distribution.
+  ///
+  /// Given probability p in [0, 1], returns the x value where CDF(x) = p.
+  /// Uses trapezoidal integration to compute CDF and linear interpolation to find quantile.
+  ///
+  /// For Point distributions, returns the point location for any p.
+  /// For Range distributions, returns linear interpolation between bounds.
+  /// For Function distributions, computes from discrete CDF.
+  #[allow(clippy::many_single_char_names)]
+  pub fn quantile(&self, p: f64) -> Option<f64> {
+    if !(0.0..=1.0).contains(&p) {
+      return None;
+    }
+
+    match self {
+      Distribution::Empty => None,
+      Distribution::Point(point) => Some(point.t()),
+      Distribution::Range(range) => {
+        let start = range.start();
+        let end = range.end();
+        Some(start + p * (end - start))
+      }
+      Distribution::Function(f) => {
+        let t = f.t();
+        let y = f.y();
+        let n = t.len();
+        if n == 0 {
+          return None;
+        }
+        if n == 1 {
+          return Some(t[0]);
+        }
+
+        // Compute CDF using trapezoidal rule
+        let dx = f.dx();
+        let mut cdf = Array1::<f64>::zeros(n);
+        for i in 1..n {
+          cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
+        }
+
+        // Normalize
+        let total = cdf[n - 1];
+        if total <= 0.0 || !total.is_finite() {
+          return self.likely_time();
+        }
+        cdf.mapv_inplace(|v| v / total);
+
+        // Find where CDF crosses p using linear interpolation
+        if p <= 0.0 {
+          return Some(t[0]);
+        }
+        if p >= 1.0 {
+          return Some(t[n - 1]);
+        }
+
+        for i in 1..n {
+          if cdf[i] >= p {
+            let t0 = t[i - 1];
+            let t1 = t[i];
+            let c0 = cdf[i - 1];
+            let c1 = cdf[i];
+            if ulps_eq!(c0, c1, max_ulps = 10) {
+              return Some(t0);
+            }
+            let frac = (p - c0) / (c1 - c0);
+            return Some(t0 + frac * (t1 - t0));
+          }
+        }
+
+        Some(t[n - 1])
+      }
+      Distribution::Formula(_) => {
+        // Formula distributions don't support quantile computation directly
+        self.likely_time()
+      }
+    }
+  }
+
+  /// Compute confidence interval bounds at given probabilities.
+  ///
+  /// Returns (lower, upper) where lower = quantile(p_lower) and upper = quantile(p_upper).
+  /// Default interval is 95% CI: (0.025, 0.975).
+  pub fn confidence_interval(&self, p_lower: f64, p_upper: f64) -> Option<(f64, f64)> {
+    let lower = self.quantile(p_lower)?;
+    let upper = self.quantile(p_upper)?;
+    Some((lower, upper))
+  }
+
   pub fn to_neglog(&self) -> Distribution<NegLog> {
     match self {
       Self::Empty => Distribution::Empty,
