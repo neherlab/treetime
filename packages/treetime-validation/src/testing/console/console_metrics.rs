@@ -1,10 +1,12 @@
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
+use eyre::Report;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
+use treetime_utils::make_internal_report;
 
 use crate::testing::console::console::ValidationConsole;
 
@@ -14,7 +16,7 @@ impl ValidationConsole {
   pub(crate) fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,
     grouped_by_algorithm: &BTreeMap<String, Vec<&TestResult<T>>>,
-  ) -> BTreeMap<String, BTreeMap<&'static str, String>> {
+  ) -> Result<BTreeMap<String, BTreeMap<&'static str, String>>, Report> {
     let mut all_metrics = BTreeMap::new();
 
     for (algorithm, algorithm_results) in grouped_by_algorithm {
@@ -22,7 +24,7 @@ impl ValidationConsole {
         .algorithm_summaries
         .iter()
         .find(|s| s.algorithm_name == *algorithm)
-        .unwrap();
+        .ok_or_else(|| make_internal_report!("Algorithm summary not found for '{algorithm}'"))?;
 
       let correlation_mean: f64 = algorithm_results
         .iter()
@@ -262,6 +264,6 @@ impl ValidationConsole {
       all_metrics.insert(algorithm.clone(), metrics.into_iter().collect::<BTreeMap<_, _>>());
     }
 
-    all_metrics
+    Ok(all_metrics)
   }
 }

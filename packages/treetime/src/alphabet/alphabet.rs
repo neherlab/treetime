@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
-use crate::{make_error, vec_u8};
+use crate::{make_error, make_report, vec_u8};
 use clap::ValueEnum;
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
@@ -167,17 +167,13 @@ impl Alphabet {
   }
 
   #[inline]
-  pub fn get_profile(&self, c: AsciiChar) -> &Array1<f64> {
-    self
-      .profile_map
-      .get(&c)
-      .ok_or_else(|| {
-        format!(
-          "When accessing profile map: Unknown character: '{c}'. Known characters: {}",
-          self.profile_map.keys().join(", ")
-        )
-      })
-      .unwrap()
+  pub fn get_profile(&self, c: AsciiChar) -> Result<&Array1<f64>, Report> {
+    self.profile_map.get(&c).ok_or_else(|| {
+      make_report!(
+        "When accessing profile map: Unknown character: '{c}'. Known characters: {}",
+        self.profile_map.keys().join(", ")
+      )
+    })
   }
 
   /// Create a profile vector given a set of characters
@@ -190,29 +186,30 @@ impl Alphabet {
     for c in chars {
       let chars = self.char_to_set(*c.borrow());
       for c in chars.iter() {
-        let index = self.index(c);
+        let index = self.index(c)?;
         profile[index] = 1.0;
       }
     }
     Ok(profile)
   }
 
-  pub fn get_code(&self, profile: &Array1<f64>) -> AsciiChar {
+  pub fn get_code(&self, profile: &Array1<f64>) -> Result<AsciiChar, Report> {
     // TODO(perf): this mapping needs to be precomputed
     self
       .profile_map
       .iter()
       .find_map(|(&c, p)| (p == profile).then_some(c))
-      .ok_or_else(|| format!("When accessing profile map: Unknown profile: '{profile}'"))
-      .unwrap()
+      .ok_or_else(|| make_report!("When accessing profile map: Unknown profile: '{profile}'"))
   }
 
   #[allow(single_use_lifetimes)] // TODO: remove when anonymous lifetimes in `impl Trait` are stabilized
   pub fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
-    let prof = stack(
-      Axis(0),
-      &chars.into_iter().map(|&c| self.get_profile(c).view()).collect_vec(),
-    )?;
+    let profiles = chars
+      .into_iter()
+      .map(|&c| self.get_profile(c))
+      .collect::<Result<Vec<_>, _>>()?;
+    let views = profiles.iter().map(|p| p.view()).collect_vec();
+    let prof = stack(Axis(0), &views)?;
     Ok(prof)
   }
 
@@ -230,8 +227,11 @@ impl Alphabet {
   }
 
   /// Get index of a character (indexed in the same order as given by `.chars()`)
-  pub fn index(&self, c: impl Into<usize>) -> usize {
-    self.char_to_index[c.into()].unwrap()
+  pub fn index(&self, c: impl Into<usize> + Copy + std::fmt::Debug) -> Result<usize, Report> {
+    let idx = c.into();
+    self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
+      make_report!("When accessing alphabet index: Unknown character: '{c:?}' (index {idx})")
+    })
   }
 
   pub fn n_chars(&self) -> usize {

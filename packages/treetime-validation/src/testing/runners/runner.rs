@@ -93,7 +93,7 @@ where
 
   let summary = generate_summary_generic(test_suite_name, &outcomes, algorithms);
 
-  ValidationConsole::print_summary(&summary, &outcomes);
+  ValidationConsole::print_summary(&summary, &outcomes)?;
 
   save_results_json(&output_dir, &outcomes, &summary)?;
 

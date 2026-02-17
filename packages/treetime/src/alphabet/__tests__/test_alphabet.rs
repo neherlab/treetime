@@ -207,7 +207,7 @@ mod tests {
   #[trace]
   fn test_alphabet_nuc_index(#[case] c: u8, #[case] expected: usize) {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-    assert_eq!(expected, alphabet.index(c as usize));
+    assert_eq!(expected, alphabet.index(c as usize).unwrap());
   }
 
   #[rstest]
@@ -225,25 +225,25 @@ mod tests {
   fn test_alphabet_nuc_get_profile_canonical() {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
 
-    let profile_a = alphabet.get_profile(AsciiChar(b'A'));
+    let profile_a = alphabet.get_profile(AsciiChar(b'A')).unwrap();
     let expected_a = array![1.0, 0.0, 0.0, 0.0];
     for (actual, expected) in profile_a.iter().zip(expected_a.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
-    let profile_c = alphabet.get_profile(AsciiChar(b'C'));
+    let profile_c = alphabet.get_profile(AsciiChar(b'C')).unwrap();
     let expected_c = array![0.0, 1.0, 0.0, 0.0];
     for (actual, expected) in profile_c.iter().zip(expected_c.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
-    let profile_g = alphabet.get_profile(AsciiChar(b'G'));
+    let profile_g = alphabet.get_profile(AsciiChar(b'G')).unwrap();
     let expected_g = array![0.0, 0.0, 1.0, 0.0];
     for (actual, expected) in profile_g.iter().zip(expected_g.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
-    let profile_t = alphabet.get_profile(AsciiChar(b'T'));
+    let profile_t = alphabet.get_profile(AsciiChar(b'T')).unwrap();
     let expected_t = array![0.0, 0.0, 0.0, 1.0];
     for (actual, expected) in profile_t.iter().zip(expected_t.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
@@ -254,13 +254,13 @@ mod tests {
   fn test_alphabet_nuc_get_profile_ambiguous() {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
 
-    let profile_r = alphabet.get_profile(AsciiChar(b'R'));
+    let profile_r = alphabet.get_profile(AsciiChar(b'R')).unwrap();
     let expected_r = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in profile_r.iter().zip(expected_r.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
-    let profile_y = alphabet.get_profile(AsciiChar(b'Y'));
+    let profile_y = alphabet.get_profile(AsciiChar(b'Y')).unwrap();
     let expected_y = array![0.0, 1.0, 0.0, 1.0];
     for (actual, expected) in profile_y.iter().zip(expected_y.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
@@ -270,7 +270,7 @@ mod tests {
   #[test]
   fn test_alphabet_nuc_get_profile_unknown() {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
-    let profile_n = alphabet.get_profile(AsciiChar(b'N'));
+    let profile_n = alphabet.get_profile(AsciiChar(b'N')).unwrap();
     let expected_n = array![1.0, 1.0, 1.0, 1.0];
     for (actual, expected) in profile_n.iter().zip(expected_n.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
@@ -281,15 +281,15 @@ mod tests {
   fn test_alphabet_nuc_get_code() {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
 
-    let actual = alphabet.get_code(&array![1.0, 0.0, 0.0, 0.0]);
+    let actual = alphabet.get_code(&array![1.0, 0.0, 0.0, 0.0]).unwrap();
     let expected = AsciiChar(b'A');
     assert_eq!(expected, actual);
 
-    let actual = alphabet.get_code(&array![0.0, 1.0, 0.0, 1.0]);
+    let actual = alphabet.get_code(&array![0.0, 1.0, 0.0, 1.0]).unwrap();
     let expected = AsciiChar(b'Y');
     assert_eq!(expected, actual);
 
-    let actual = alphabet.get_code(&array![1.0, 1.0, 1.0, 1.0]);
+    let actual = alphabet.get_code(&array![1.0, 1.0, 1.0, 1.0]).unwrap();
     let expected = AsciiChar(b'N');
     assert_eq!(expected, actual);
   }
@@ -356,8 +356,8 @@ mod tests {
   #[test]
   fn test_alphabet_treat_gap_as_unknown_true() {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
-    let profile_gap = alphabet.get_profile(AsciiChar(b'-'));
-    let profile_unknown = alphabet.get_profile(AsciiChar(b'N'));
+    let profile_gap = alphabet.get_profile(AsciiChar(b'-')).unwrap();
+    let profile_unknown = alphabet.get_profile(AsciiChar(b'N')).unwrap();
     for (gap, unk) in profile_gap.iter().zip(profile_unknown.iter()) {
       assert_ulps_eq!(*unk, *gap, max_ulps = 4);
     }
@@ -541,7 +541,7 @@ mod tests {
     let expected_gap = AsciiChar(b'-');
     assert_eq!(expected_gap, alphabet.gap());
 
-    let profile_w = alphabet.get_profile(AsciiChar(b'W'));
+    let profile_w = alphabet.get_profile(AsciiChar(b'W')).unwrap();
     let expected_w = array![1.0, 1.0, 0.0];
     for (actual, expected) in profile_w.iter().zip(expected_w.iter()) {
       assert_ulps_eq!(*expected, *actual, max_ulps = 4);
@@ -608,7 +608,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
     for i in 0..alphabet.n_canonical() {
       let c = alphabet.char(i);
-      let idx = alphabet.index(c);
+      let idx = alphabet.index(c).unwrap();
       assert_eq!(i, idx);
     }
   }

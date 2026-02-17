@@ -1,6 +1,7 @@
 use crate::testing::framework::results::TestRunOutcome;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
+use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -87,7 +88,10 @@ impl ValidationConsole {
   }
 
   /// Print comprehensive metrics table
-  pub(crate) fn print_unified_metrics_table<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
+  pub(crate) fn print_unified_metrics_table<T: TestCase>(
+    summary: &TestSummary,
+    outcomes: &[TestRunOutcome<T>],
+  ) -> Result<(), Report> {
     let successes: Vec<_> = outcomes
       .iter()
       .filter_map(|outcome| match outcome {
@@ -97,7 +101,7 @@ impl ValidationConsole {
       .collect();
 
     if successes.is_empty() {
-      return;
+      return Ok(());
     }
 
     println!("### By Algorithm\n");
@@ -108,10 +112,11 @@ impl ValidationConsole {
       .into_iter()
       .collect();
     let algorithms: Vec<_> = grouped_by_algorithm.keys().cloned().collect();
-    let all_metrics = Self::compute_all_metrics(summary, &grouped_by_algorithm);
+    let all_metrics = Self::compute_all_metrics(summary, &grouped_by_algorithm)?;
 
     Self::print_metrics_table_headers(&algorithms, &all_metrics);
     Self::print_metrics_table_rows(&algorithms, &all_metrics);
+    Ok(())
   }
 
   /// Print metrics table headers

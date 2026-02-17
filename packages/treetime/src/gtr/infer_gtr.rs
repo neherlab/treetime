@@ -186,8 +186,8 @@ pub(super) fn get_mutation_counts<P: PartitionWithGtrInference>(
     let subs = partition_guard.get_edge_substitutions(edge_key, graph);
     for m in &subs {
       m.check_canonical(alphabet)?;
-      let i = alphabet.index(m.qry());
-      let j = alphabet.index(m.reff());
+      let i = alphabet.index(m.qry())?;
+      let j = alphabet.index(m.reff())?;
       nij[[i, j]] += 1.0;
       Ti[i] -= 0.5 * branch_length;
       Ti[j] += 0.5 * branch_length;

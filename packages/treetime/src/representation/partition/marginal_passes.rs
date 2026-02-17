@@ -29,8 +29,8 @@ where
     let alphabet = &partition.alphabet;
     let fixed = alphabet
       .determined()
-      .map(|state| (state, alphabet.get_profile(state).clone()))
-      .collect();
+      .map(|state| Ok((state, alphabet.get_profile(state)?.clone())))
+      .collect::<Result<_, Report>>()?;
 
     // convert the parsimony variable states to sparseSeqDis format
     let variable = seq_info

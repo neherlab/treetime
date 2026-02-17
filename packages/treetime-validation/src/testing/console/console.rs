@@ -309,12 +309,13 @@ impl ValidationConsole {
   }
 
   /// Print comprehensive summary to console
-  pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) {
+  pub fn print_summary<T: TestCase>(summary: &TestSummary, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report> {
     println!("\n## Results\n");
 
     Self::print_overall_statistics(summary);
     Self::print_per_test_case_comparison(outcomes);
-    Self::print_unified_metrics_table(summary, outcomes);
+    Self::print_unified_metrics_table(summary, outcomes)?;
+    Ok(())
   }
 
   /// Print overall statistics section
