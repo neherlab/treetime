@@ -5,6 +5,7 @@ use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::representation::payload::ancestral::{EdgeAncestral, NodeAncestral};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -150,12 +151,17 @@ impl TimetreeNode for NodeTimetree {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, SmartDefault, Debug, Serialize, Deserialize)]
 pub struct EdgeTimetree {
   pub base: EdgeAncestral,
   pub time_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
   pub msg_to_parent: Option<Arc<Distribution>>,
+  /// Branch-specific rate multiplier for relaxed molecular clock.
+  /// Default 1.0 means branch evolves at the average clock rate.
+  /// Values > 1.0 indicate faster evolution, < 1.0 slower.
+  #[default = 1.0]
+  pub gamma: f64,
   #[serde(skip)]
   pub clock_to_parent: ClockSet,
   #[serde(skip)]
