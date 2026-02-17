@@ -70,3 +70,76 @@ pub fn write_confidence_intervals(intervals: &[NodeConfidenceInterval], filepath
   let mut writer = CsvStructFileWriter::new(filepath, b'\t')?;
   intervals.iter().try_for_each(|ci| writer.write(ci))
 }
+
+/// Combine two confidence interval contributions via quadrature sum.
+///
+/// Given a center date and physical limits, combines up to two independent
+/// confidence interval contributions (e.g., from mutation uncertainty and rate uncertainty).
+/// Returns bounds clipped to the physical limits.
+///
+/// Formula:
+/// - `lower = center - sqrt((c1_lo - center)² + (c2_lo - center)²)`
+/// - `upper = center + sqrt((c1_hi - center)² + (c2_hi - center)²)`
+pub fn combine_confidence(
+  center: f64,
+  limits: (f64, f64),
+  c1: Option<(f64, f64)>,
+  c2: Option<(f64, f64)>,
+) -> (f64, f64) {
+  let (min_val, max_val) = match (c1, c2) {
+    (None, None) => return limits,
+    (Some(c), None) | (None, Some(c)) => c,
+    (Some(c1), Some(c2)) => {
+      let min_val = center - (c1.0 - center).hypot(c2.0 - center);
+      let max_val = center + (c1.1 - center).hypot(c2.1 - center);
+      (min_val, max_val)
+    }
+  };
+
+  (limits.0.max(min_val), limits.1.min(max_val))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::combine_confidence;
+  use approx::assert_relative_eq;
+
+  #[test]
+  fn test_combine_confidence_no_contributions() {
+    let result = combine_confidence(10.0, (5.0, 15.0), None, None);
+    assert_relative_eq!(result.0, 5.0);
+    assert_relative_eq!(result.1, 15.0);
+  }
+
+  #[test]
+  fn test_combine_confidence_single_contribution() {
+    let result = combine_confidence(10.0, (0.0, 20.0), Some((8.0, 12.0)), None);
+    assert_relative_eq!(result.0, 8.0);
+    assert_relative_eq!(result.1, 12.0);
+
+    let result = combine_confidence(10.0, (0.0, 20.0), None, Some((7.0, 13.0)));
+    assert_relative_eq!(result.0, 7.0);
+    assert_relative_eq!(result.1, 13.0);
+  }
+
+  #[test]
+  fn test_combine_confidence_quadrature() {
+    // c1: (8, 12) -> deviations of 2 from center 10
+    // c2: (7, 13) -> deviations of 3 from center 10
+    // Combined: sqrt(2² + 3²) = sqrt(13) ≈ 3.606
+    let result = combine_confidence(10.0, (0.0, 20.0), Some((8.0, 12.0)), Some((7.0, 13.0)));
+    let expected_dev = (4.0_f64 + 9.0).sqrt();
+    assert_relative_eq!(result.0, 10.0 - expected_dev, epsilon = 1e-10);
+    assert_relative_eq!(result.1, 10.0 + expected_dev, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_combine_confidence_clipped_to_limits() {
+    // Large contributions that exceed limits
+    let result = combine_confidence(10.0, (5.0, 15.0), Some((0.0, 20.0)), Some((0.0, 20.0)));
+    // Quadrature would give sqrt(100 + 100) = 14.14 deviation
+    // But limits clip to (5, 15)
+    assert_relative_eq!(result.0, 5.0);
+    assert_relative_eq!(result.1, 15.0);
+  }
+}
