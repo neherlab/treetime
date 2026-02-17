@@ -1,15 +1,24 @@
-use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
-use treetime_graph::edge::HasBranchLength;
-use treetime_graph::node::Outlier;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
-/// Get results of the root-to-tip clock inference.
+/// Filter outliers based on clock model residuals.
+///
+/// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`
+/// where IQD is the interquartile distance of clock deviations.
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_filter_threshold: f64) -> i32 {
-  log::info!("### Filtering outliers (threshold={clock_filter_threshold})");
+pub fn clock_filter_inplace<N, E, D>(graph: &Graph<N, E, D>, clock_model: &ClockModel, threshold: f64) -> i32
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  log::info!("### Filtering outliers (threshold={threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",
     clock_model.clock_rate(),
@@ -18,14 +27,15 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
 
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
-    node.payload.div = node
+    let div = node
       .get_exactly_one_parent()
       .map(|(parent, edge)| {
         let branch_length = edge.read_arc().branch_length().unwrap_or_default();
-        let parent_div = parent.read_arc().div;
+        let parent_div = parent.read_arc().div();
         parent_div + branch_length
       })
       .unwrap_or(0.0);
+    node.payload.set_div(div);
     GraphTraversalContinuation::Continue
   });
 
@@ -34,8 +44,11 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
     .get_leaves()
     .iter()
     .filter_map(|leaf| {
-      let div = leaf.read_arc().payload().read().div;
-      let time = leaf.read_arc().payload().read().time;
+      let node = leaf.read_arc();
+      let payload_arc = node.payload();
+      let payload = payload_arc.read();
+      let div = payload.div();
+      let time = payload.likely_time();
       time.map(|time| clock_model.clock_deviation(time, div))
     })
     .map(OrderedFloat)
@@ -52,16 +65,19 @@ pub fn clock_filter_inplace(graph: &GraphClock, clock_model: &ClockModel, clock_
   let mut new_outliers: i32 = 0;
   // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
   graph.get_leaves().iter().for_each(|leaf| {
-    let div = leaf.read_arc().payload().read().div;
-    let time = leaf.read_arc().payload().read().time;
-    let was_outlier = leaf.read_arc().payload().read().is_outlier();
+    let node = leaf.read_arc();
+    let payload_arc = node.payload();
+    let (div, time, was_outlier) = {
+      let payload = payload_arc.read();
+      (payload.div(), payload.likely_time(), payload.is_outlier())
+    };
     if let Some(time) = time {
       let clock_deviation = clock_model.clock_deviation(time, div);
-      let is_outlier = clock_deviation.abs() > iqd * clock_filter_threshold;
+      let is_outlier = clock_deviation.abs() > iqd * threshold;
       if was_outlier != is_outlier {
         new_outliers += 1;
       }
-      leaf.read_arc().payload().write().set_is_outlier(is_outlier);
+      payload_arc.write().set_is_outlier(is_outlier);
     }
   });
 

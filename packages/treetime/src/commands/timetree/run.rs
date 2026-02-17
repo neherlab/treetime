@@ -1,4 +1,5 @@
 use crate::commands::ancestral::marginal::initialize_marginal;
+use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
@@ -70,7 +71,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   if args.clock_filter > 0.0 {
-    // todo!("clock_filter not yet implemented");
+    clock_filter_inplace(&graph, &clock_model, args.clock_filter);
   }
 
   if let Some(aln) = aln.as_deref() {
