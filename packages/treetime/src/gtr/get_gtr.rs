@@ -31,7 +31,7 @@ pub fn get_gtr<P: PartitionWithGtrInference>(
   graph: &GraphAncestral,
 ) -> Result<GTR, Report> {
   match name {
-    GtrModelName::Infer => infer_gtr(partition, graph)?,
+    GtrModelName::Infer => infer_gtr(partition, graph),
     GtrModelName::JC69 => jc69(JC69Params::default()),
     GtrModelName::F81 => f81(F81Params::default()),
     GtrModelName::HKY85 => hky85(HKY85Params::default()),

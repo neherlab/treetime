@@ -22,12 +22,12 @@ pub trait PartitionWithGtrInference {
 pub fn infer_gtr<P: PartitionWithGtrInference>(
   partition: &Arc<RwLock<P>>,
   graph: &GraphAncestral,
-) -> Result<Result<GTR, Report>, Report> {
+) -> Result<GTR, Report> {
   let counts = get_mutation_counts(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let alphabet = partition.read_arc().alphabet().clone();
   let W = Some(W);
-  Ok(GTR::new(GTRParams { alphabet, mu, W, pi }))
+  GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
 #[derive(Clone, Debug)]
