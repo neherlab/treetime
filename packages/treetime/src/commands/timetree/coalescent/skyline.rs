@@ -46,7 +46,7 @@ impl Default for SkylineParams {
 /// Result of skyline optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineResult {
-  /// Optimized Tc distribution (piecewise constant).
+  /// Optimized Tc distribution (piecewise linear).
   pub tc_distribution: Distribution,
   /// Time grid points.
   pub time_grid: Array1<f64>,
@@ -90,6 +90,12 @@ where
 
   // Create time grid spanning the tree event range
   let breakpoints = lineage_counts.breakpoints();
+  if breakpoints.len() < 2 {
+    return Err(make_report!(
+      "Skyline optimization requires at least 2 breakpoints, got {}",
+      breakpoints.len()
+    ));
+  }
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
@@ -130,7 +136,7 @@ where
     .map(|w| (w[1] - w[0]).powi(2))
     .sum::<f64>()
     * params.stiffness;
-  let boundary_penalty = compute_boundary_penalty(&opt_log_tc, params.regularization);
+  let boundary_penalty = compute_boundary_penalty(opt_log_tc.as_slice().unwrap(), params.regularization);
   let log_likelihood = -(final_cost - smoothness_penalty - boundary_penalty);
 
   info!("Skyline optimization completed: final_cost={final_cost:.4}, log_likelihood={log_likelihood:.4}");
@@ -159,10 +165,8 @@ impl CostFunction for &SkylineCostFunction {
   type Output = f64;
 
   fn cost(&self, log_tc: &Self::Param) -> Result<Self::Output, Error> {
-    let log_tc = Array1::from_vec(log_tc.clone());
-
     // Clamp log_tc to avoid overflow/underflow
-    let log_tc_clamped = log_tc.mapv(|x| x.clamp(-200.0, 100.0));
+    let log_tc_clamped = Array1::from_iter(log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
 
     // Build Tc distribution from log values
     let tc_dist = build_tc_distribution(&self.time_grid, &log_tc_clamped);
@@ -175,7 +179,8 @@ impl CostFunction for &SkylineCostFunction {
     let neg_log_lh = compute_total_neg_log_lh(&integral_merger_rate, &self.lineage_counts, &tc_dist);
 
     // Add smoothness penalty: stiffness * sum(diff(logTc)^2)
-    let smoothness_penalty: f64 = log_tc
+    // Use clamped values so optimizer gradients match the cost surface
+    let smoothness_penalty: f64 = log_tc_clamped
       .windows(2)
       .into_iter()
       .map(|w| (w[1] - w[0]).powi(2))
@@ -183,14 +188,14 @@ impl CostFunction for &SkylineCostFunction {
       * self.stiffness;
 
     // Add boundary penalty for log_tc outside [-100, 0]
-    let boundary_penalty = compute_boundary_penalty(&log_tc, self.regularization);
+    let boundary_penalty = compute_boundary_penalty(log_tc, self.regularization);
 
     Ok(neg_log_lh + smoothness_penalty + boundary_penalty)
   }
 }
 
 /// Computes boundary penalty for log_tc values outside [-100, 0].
-fn compute_boundary_penalty(log_tc: &Array1<f64>, regularization: f64) -> f64 {
+fn compute_boundary_penalty(log_tc: &[f64], regularization: f64) -> f64 {
   log_tc
     .iter()
     .map(|&x| {
@@ -201,11 +206,11 @@ fn compute_boundary_penalty(log_tc: &Array1<f64>, regularization: f64) -> f64 {
     .sum()
 }
 
-/// Builds a piecewise constant Tc distribution from time grid and log values.
+/// Builds a piecewise linear Tc distribution from time grid and log values.
 fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Distribution {
   let tc_values: Vec<f64> = log_tc.iter().map(|&x| x.exp()).collect();
 
-  // Create piecewise constant by linear interpolation between grid points
+  // Create piecewise linear distribution by interpolating between grid points
   // For Distribution, we use a formula-based approach
   let time_grid = time_grid.clone();
   let tc_values = Array1::from_vec(tc_values);
@@ -272,10 +277,11 @@ fn compute_total_neg_log_lh(
     // Merger event contribution at t1 (if it's a merger, not a sample)
     let k = lineage_counts.eval(t1);
     if k < lineage_counts.eval(t0) {
-      // This is a merger event
+      // This is a merger event - compute total merger rate (Kingman coalescent)
+      // Rate proportional to k*(k-1)/2 pairs of lineages
       if let Ok(tc) = tc_dist.eval(t1) {
-        let k_clamped = f64::max(0.5, k);
-        let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc;
+        let nlineages = f64::max(0.5, k - 1.0);
+        let lambda = 0.5 * nlineages * (nlineages + 1.0) / tc;
         neg_log_lh -= lambda.ln();
       }
     }
@@ -292,10 +298,12 @@ fn create_initial_simplex(initial: &Array1<f64>) -> Vec<Vec<f64>> {
   // First vertex is the initial point
   simplex.push(initial.to_vec());
 
-  // Other vertices are perturbations along each dimension
+  // Other vertices are perturbations along each dimension.
+  // Perturbation of 0.5 in log-space corresponds to ~1.65x multiplicative factor in Tc,
+  // providing reasonable exploration without extreme values.
   for i in 0..n {
     let mut vertex = initial.to_vec();
-    vertex[i] += 0.5; // Small perturbation
+    vertex[i] += 0.5;
     simplex.push(vertex);
   }
 
