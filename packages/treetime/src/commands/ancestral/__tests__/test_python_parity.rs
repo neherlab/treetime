@@ -71,6 +71,7 @@ mod tests {
       if node.name.as_deref() == Some("NODE_0000000") {
         root_seq = seq.to_string();
       }
+      Ok(())
     })?;
 
     // Expected root sequence from Python v0 (packages/legacy/treetime/test/test_treetime.py:134)

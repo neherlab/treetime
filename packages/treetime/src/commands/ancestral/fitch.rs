@@ -549,22 +549,21 @@ pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq),
+  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq) -> Result<(), Report>,
 ) -> Result<(), Report> {
-  graph.iter_depth_first_preorder_forward(|node| {
-    run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node);
-  });
-  Ok(())
+  graph.try_iter_depth_first_preorder_forward(|node| {
+    run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node)
+  })
 }
 
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq),
+  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq) -> Result<(), Report>,
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
-) -> bool {
+) -> Result<(), Report> {
   if !include_leaves && node.is_leaf {
-    return true;
+    return Ok(());
   }
 
   for partition in partitions {
@@ -607,9 +606,9 @@ fn run_fitch_reconstruction(
 
     seq.sequence = sequence;
 
-    visitor(node, &seq.sequence);
+    visitor(node, &seq.sequence)?;
   }
-  false
+  Ok(())
 }
 
 pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {

@@ -102,7 +102,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         ancestral_reconstruction_fitch(&graph, *reconstruct_tip_states, &partitions_parsimony, |node, seq| {
           let name = node.payload.name.as_deref().unwrap_or("");
           let desc = &node.payload.desc;
-          output_fasta.write(name, desc, seq).unwrap();
+          output_fasta.write(name, desc, seq)
         })?;
       }
     },
@@ -139,7 +139,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             |node, seq| {
               let name = node.name.as_deref().unwrap_or("");
               let desc = &node.desc;
-              output_fasta.write(name, desc, seq).unwrap();
+              output_fasta.write(name, desc, seq)
             },
           )?;
         }
@@ -174,7 +174,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             |node, seq| {
               let name = node.name.as_deref().unwrap_or("");
               let desc = &node.desc;
-              output_fasta.write(name, desc, seq).unwrap();
+              output_fasta.write(name, desc, seq)
             },
           )?;
         }

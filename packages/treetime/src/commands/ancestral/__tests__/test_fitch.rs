@@ -168,6 +168,7 @@ mod tests {
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions_parsimony, |node, seq| {
       actual.insert(node.payload.name.clone(), seq.to_string());
+      Ok(())
     })?;
 
     assert_eq!(
@@ -236,6 +237,7 @@ mod tests {
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions_parsimony, |node, seq| {
       actual.insert(node.payload.name.clone(), seq.to_string());
+      Ok(())
     })?;
 
     assert_eq!(

@@ -161,6 +161,7 @@ mod tests {
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(&graph, false, &partitions_marginal_sparse, |node, seq| {
       actual.insert(node.name.clone(), seq.to_string());
+      Ok(())
     })?;
 
     assert_eq!(

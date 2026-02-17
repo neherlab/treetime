@@ -55,16 +55,16 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   include_leaves: bool,
   partitions: &[Arc<RwLock<P>>],
-  mut visitor: impl FnMut(&N, &Seq),
+  mut visitor: impl FnMut(&N, &Seq) -> Result<(), Report>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
-  graph.iter_depth_first_preorder_forward(|node| {
+  graph.try_iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
-      return;
+      return Ok(());
     }
 
     let seq: Seq = if !partitions.is_empty() {
@@ -76,10 +76,8 @@ where
       seq![]
     };
 
-    visitor(&node.payload, &seq);
-  });
-
-  Ok(())
+    visitor(&node.payload, &seq)
+  })
 }
 
 /// Backward pass: calculates ingroup profiles
