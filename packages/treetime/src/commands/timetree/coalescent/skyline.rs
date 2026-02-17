@@ -1,0 +1,303 @@
+use crate::commands::timetree::coalescent::events::collect_tree_events;
+use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
+use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::make_report;
+use argmin::core::{CostFunction, Error, Executor};
+use argmin::solver::neldermead::NelderMead;
+use eyre::Report;
+use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
+use log::info;
+use ndarray::Array1;
+use std::sync::Arc;
+use treetime_distribution::{Distribution, DistributionFormula};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
+
+/// Parameters for skyline optimization.
+#[derive(Debug, Clone)]
+pub struct SkylineParams {
+  /// Number of grid points for the piecewise constant Tc(t).
+  pub n_points: usize,
+  /// Penalty for rapid changes in log(Tc).
+  pub stiffness: f64,
+  /// Penalty for log(Tc) outside [-100, 0].
+  pub regularization: f64,
+  /// Optimization tolerance.
+  pub tolerance: f64,
+  /// Maximum iterations.
+  pub max_iter: u64,
+}
+
+impl Default for SkylineParams {
+  fn default() -> Self {
+    Self {
+      n_points: 20,
+      stiffness: 2.0,
+      regularization: 10.0,
+      tolerance: 0.03,
+      max_iter: 1000,
+    }
+  }
+}
+
+/// Result of skyline optimization.
+#[derive(Debug, Clone)]
+pub struct SkylineResult {
+  /// Optimized Tc distribution (piecewise constant).
+  pub tc_distribution: Distribution,
+  /// Time grid points.
+  pub time_grid: Array1<f64>,
+  /// Optimized log(Tc) values at grid points.
+  pub log_tc_values: Array1<f64>,
+  /// Final coalescent log-likelihood.
+  pub log_likelihood: f64,
+}
+
+/// Optimizes the skyline coalescent model to find the best Tc(t) trajectory.
+///
+/// This estimates a piecewise constant Tc(t) history that maximizes coalescent
+/// likelihood with smoothness regularization.
+///
+/// The cost function minimizes:
+/// - `-total_coalescent_LH` (negative log likelihood)
+/// - `+ stiffness * sum(diff(logTc)^2)` (smoothness penalty)
+/// - `+ regularization * boundary_penalty` (keep logTc in [-100, 0])
+pub fn optimize_skyline<N, E, D>(
+  graph: &Graph<N, E, D>,
+  params: &SkylineParams,
+) -> Result<SkylineResult, Report>
+where
+  N: GraphNode + TimetreeNode + Named,
+  E: GraphEdge,
+  D: Sync + Send,
+{
+  info!(
+    "Starting skyline optimization with {} grid points, stiffness={}, regularization={}",
+    params.n_points, params.stiffness, params.regularization
+  );
+
+  // Collect tree events and compute lineage counts
+  let (present_time, events_calendar) = collect_tree_events(graph)?;
+  let events_tbp: Vec<_> = events_calendar
+    .iter()
+    .map(|(t, delta)| (present_time - *t, *delta))
+    .collect();
+
+  let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
+
+  // Create time grid spanning the tree event range
+  let breakpoints = lineage_counts.breakpoints();
+  let t_min = breakpoints[0];
+  let t_max = breakpoints[breakpoints.len() - 1];
+
+  let time_grid = Array1::linspace(t_min, t_max, params.n_points);
+
+  // Initial guess: constant log(Tc) = 0 (Tc = 1)
+  let initial_log_tc = Array1::zeros(params.n_points);
+
+  // Create cost function
+  let cost_fn = SkylineCostFunction {
+    lineage_counts: Arc::new(lineage_counts),
+    time_grid: time_grid.clone(),
+    stiffness: params.stiffness,
+    regularization: params.regularization,
+  };
+
+  // Set up Nelder-Mead solver with initial simplex
+  let simplex = create_initial_simplex(&initial_log_tc);
+  let solver = NelderMead::new(simplex);
+
+  // Run optimization
+  let result = Executor::new(&cost_fn, solver)
+    .configure(|cfg| cfg.max_iters(params.max_iter).target_cost(params.tolerance))
+    .run()
+    .map_err(|e| make_report!("Skyline optimization failed: {e}"))?;
+
+  let opt_log_tc = result
+    .state
+    .best_param
+    .ok_or_else(|| make_report!("Skyline optimization returned no result"))?;
+  let opt_log_tc = Array1::from_vec(opt_log_tc);
+
+  // Compute final likelihood
+  let final_cost = result.state.best_cost;
+  let smoothness_penalty: f64 = opt_log_tc
+    .windows(2)
+    .into_iter()
+    .map(|w| (w[1] - w[0]).powi(2))
+    .sum::<f64>()
+    * params.stiffness;
+  let boundary_penalty = compute_boundary_penalty(&opt_log_tc, params.regularization);
+  let log_likelihood = -(final_cost - smoothness_penalty - boundary_penalty);
+
+  info!("Skyline optimization completed: final_cost={final_cost:.4}, log_likelihood={log_likelihood:.4}");
+
+  // Build piecewise constant Tc distribution
+  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc);
+
+  Ok(SkylineResult {
+    tc_distribution,
+    time_grid,
+    log_tc_values: opt_log_tc,
+    log_likelihood,
+  })
+}
+
+/// Cost function for skyline optimization.
+struct SkylineCostFunction {
+  lineage_counts: Arc<PiecewiseConstantFn>,
+  time_grid: Array1<f64>,
+  stiffness: f64,
+  regularization: f64,
+}
+
+impl CostFunction for &SkylineCostFunction {
+  type Param = Vec<f64>;
+  type Output = f64;
+
+  fn cost(&self, log_tc: &Self::Param) -> Result<Self::Output, Error> {
+    let log_tc = Array1::from_vec(log_tc.clone());
+
+    // Clamp log_tc to avoid overflow/underflow
+    let log_tc_clamped = log_tc.mapv(|x| x.clamp(-200.0, 100.0));
+
+    // Build Tc distribution from log values
+    let tc_dist = build_tc_distribution(&self.time_grid, &log_tc_clamped);
+
+    // Compute integral merger rate and total coalescent likelihood
+    let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)
+      .map_err(|e| Error::msg(format!("Failed to compute integral merger rate: {e}")))?;
+
+    // Compute negative log-likelihood (sum over all breakpoints)
+    let neg_log_lh = compute_total_neg_log_lh(&integral_merger_rate, &self.lineage_counts, &tc_dist);
+
+    // Add smoothness penalty: stiffness * sum(diff(logTc)^2)
+    let smoothness_penalty: f64 = log_tc
+      .windows(2)
+      .into_iter()
+      .map(|w| (w[1] - w[0]).powi(2))
+      .sum::<f64>()
+      * self.stiffness;
+
+    // Add boundary penalty for log_tc outside [-100, 0]
+    let boundary_penalty = compute_boundary_penalty(&log_tc, self.regularization);
+
+    Ok(neg_log_lh + smoothness_penalty + boundary_penalty)
+  }
+}
+
+/// Computes boundary penalty for log_tc values outside [-100, 0].
+fn compute_boundary_penalty(log_tc: &Array1<f64>, regularization: f64) -> f64 {
+  log_tc
+    .iter()
+    .map(|&x| {
+      let upper_penalty = if x > 0.0 { x } else { 0.0 };
+      let lower_penalty = if x < -100.0 { -x - 100.0 } else { 0.0 };
+      (upper_penalty + lower_penalty) * regularization
+    })
+    .sum()
+}
+
+/// Builds a piecewise constant Tc distribution from time grid and log values.
+fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Distribution {
+  let tc_values: Vec<f64> = log_tc.iter().map(|&x| x.exp()).collect();
+
+  // Create piecewise constant by linear interpolation between grid points
+  // For Distribution, we use a formula-based approach
+  let time_grid = time_grid.clone();
+  let tc_values = Array1::from_vec(tc_values);
+
+  let t_min = time_grid[0];
+  let t_max = time_grid[time_grid.len() - 1];
+
+  // Create interpolating distribution
+  let time_grid = Arc::new(time_grid);
+  let tc_values = Arc::new(tc_values);
+
+  Distribution::Formula(DistributionFormula::new(
+    move |t| {
+      // Find the segment containing t
+      let n = time_grid.len();
+      if t <= time_grid[0] {
+        return Ok(tc_values[0]);
+      }
+      if t >= time_grid[n - 1] {
+        return Ok(tc_values[n - 1]);
+      }
+
+      // Binary search for segment
+      let idx = time_grid.as_slice().unwrap().partition_point(|&x| x < t);
+      let idx = idx.saturating_sub(1).min(n - 2);
+
+      // Linear interpolation
+      let t0 = time_grid[idx];
+      let t1 = time_grid[idx + 1];
+      let v0 = tc_values[idx];
+      let v1 = tc_values[idx + 1];
+
+      let alpha = (t - t0) / (t1 - t0);
+      Ok(v0 + alpha * (v1 - v0))
+    },
+    t_min,
+    t_max,
+  ))
+}
+
+/// Computes total negative log-likelihood from the coalescent model.
+///
+/// This sums contributions from all tree segments based on the integral merger rate.
+fn compute_total_neg_log_lh(
+  integral_merger_rate: &PiecewiseLinearFn,
+  lineage_counts: &PiecewiseConstantFn,
+  tc_dist: &Distribution,
+) -> f64 {
+  let breakpoints = lineage_counts.breakpoints();
+  let n = breakpoints.len();
+
+  // Sum contributions from each segment
+  let mut neg_log_lh = 0.0;
+
+  for i in 1..n {
+    let t0 = breakpoints[i - 1];
+    let t1 = breakpoints[i];
+
+    // Integral contribution: I(t1) - I(t0)
+    let i0 = integral_merger_rate.eval(t0);
+    let i1 = integral_merger_rate.eval(t1);
+    neg_log_lh += i1 - i0;
+
+    // Merger event contribution at t1 (if it's a merger, not a sample)
+    let k = lineage_counts.eval(t1);
+    if k < lineage_counts.eval(t0) {
+      // This is a merger event
+      if let Ok(tc) = tc_dist.eval(t1) {
+        let k_clamped = f64::max(0.5, k);
+        let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc;
+        neg_log_lh -= lambda.ln();
+      }
+    }
+  }
+
+  neg_log_lh
+}
+
+/// Creates initial simplex for Nelder-Mead optimization.
+fn create_initial_simplex(initial: &Array1<f64>) -> Vec<Vec<f64>> {
+  let n = initial.len();
+  let mut simplex = Vec::with_capacity(n + 1);
+
+  // First vertex is the initial point
+  simplex.push(initial.to_vec());
+
+  // Other vertices are perturbations along each dimension
+  for i in 0..n {
+    let mut vertex = initial.to_vec();
+    vertex[i] += 0.5; // Small perturbation
+    simplex.push(vertex);
+  }
+
+  simplex
+}
