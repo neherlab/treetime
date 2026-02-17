@@ -72,8 +72,7 @@ where
 
   info!(
     "Tc optimization completed after {} iterations: Tc = {optimized_tc:.6e} (log(Tc) = {best_log_tc:.4}), LH = {:.4}",
-    result.state.iter,
-    -best_cost
+    result.state.iter, -best_cost
   );
 
   Ok(OptimizeTcResult {
