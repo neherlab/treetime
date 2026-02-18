@@ -1,11 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::Distribution;
-  use crate::distribution_core::function::DistributionFunction;
-  use crate::distribution_scaled::convolve::scaled_distribution_convolution;
-  use crate::distribution_scaled::distribution_scaled::ScaledDistribution;
-  use crate::distribution_scaled::multiply::{scaled_distribution_multiplication, scaled_distribution_multiply_many};
-  use crate::policy::Plain;
+  use crate::{
+    Distribution, DistributionFunction, Plain, ScaledDistribution, scaled_distribution_convolution,
+    scaled_distribution_multiplication, scaled_distribution_multiply_many,
+  };
   use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use ndarray::Array1;
