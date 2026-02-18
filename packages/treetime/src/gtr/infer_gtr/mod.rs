@@ -1,8 +1,10 @@
 mod dense;
 mod sparse;
 
-pub use dense::infer_gtr_dense;
-pub use sparse::{get_mutation_counts, infer_gtr_sparse};
+pub(crate) use dense::infer_gtr_dense;
+#[cfg(test)]
+pub(crate) use sparse::get_mutation_counts;
+pub(crate) use sparse::infer_gtr_sparse;
 
 use crate::gtr::gtr::avg_transition;
 use eyre::Report;
@@ -12,7 +14,7 @@ use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::outer;
 
 #[derive(Clone, Debug)]
-pub struct MutationCounts {
+pub(crate) struct MutationCounts {
   /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
   pub nij: Array2<f64>,
 
@@ -24,7 +26,7 @@ pub struct MutationCounts {
 }
 
 #[derive(Clone, Debug, SmartDefault)]
-pub struct InferGtrOptions {
+pub(crate) struct InferGtrOptions {
   /// Optional fixed equilibrium state frequencies. If `None`, then frequencies are estimated.
   pub fixed_pi: Option<Array1<f64>>,
 
@@ -42,7 +44,7 @@ pub struct InferGtrOptions {
 }
 
 #[derive(Clone, Debug)]
-pub struct InferGtrResult {
+pub(crate) struct InferGtrResult {
   /// Substitution attempt matrix calculated during the GTR inference.
   pub W: Array2<f64>,
   /// Estimated equilibrium state frequencies.
@@ -67,7 +69,7 @@ pub struct InferGtrResult {
 /// in a particular state. the modified equation is
 ///
 /// $$ n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state) $$
-pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
+pub(crate) fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
     fixed_pi,
@@ -126,6 +128,6 @@ pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Res
   Ok(InferGtrResult { W, pi, mu })
 }
 
-pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
+pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
