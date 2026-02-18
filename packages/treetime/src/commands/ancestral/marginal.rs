@@ -12,6 +12,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
+use treetime_utils::sync::mutex::extract_parallel_error;
 
 /// Initialize partitions with sequence data and run marginal reconstruction.
 ///
@@ -98,19 +99,7 @@ where
     }
     GraphTraversalContinuation::Continue
   });
-  match Arc::try_unwrap(error) {
-    Ok(mutex) => {
-      if let Some(e) = mutex.into_inner() {
-        return Err(e);
-      }
-    },
-    Err(arc) => {
-      if let Some(e) = arc.lock().take() {
-        return Err(e);
-      }
-    },
-  }
-  Ok(())
+  extract_parallel_error(error)
 }
 
 fn run_marginal_backward<N, E, P>(
@@ -147,19 +136,7 @@ where
     }
     GraphTraversalContinuation::Continue
   });
-  match Arc::try_unwrap(error) {
-    Ok(mutex) => {
-      if let Some(e) = mutex.into_inner() {
-        return Err(e);
-      }
-    },
-    Err(arc) => {
-      if let Some(e) = arc.lock().take() {
-        return Err(e);
-      }
-    },
-  }
-  Ok(())
+  extract_parallel_error(error)
 }
 
 fn run_marginal_forward<N, E, P>(

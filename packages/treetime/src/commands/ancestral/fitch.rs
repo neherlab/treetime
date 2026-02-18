@@ -30,6 +30,7 @@ use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_complement::range_complement;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
+use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub(crate) fn attach_seqs_to_graph<N, E, P>(
   graph: &Graph<N, E, ()>,
@@ -284,19 +285,7 @@ where
     }
     GraphTraversalContinuation::Continue
   });
-  match Arc::try_unwrap(error) {
-    Ok(mutex) => {
-      if let Some(e) = mutex.into_inner() {
-        return Err(e);
-      }
-    },
-    Err(arc) => {
-      if let Some(e) = arc.lock().take() {
-        return Err(e);
-      }
-    },
-  }
-  Ok(())
+  extract_parallel_error(error)
 }
 
 fn run_fitch_forward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>
