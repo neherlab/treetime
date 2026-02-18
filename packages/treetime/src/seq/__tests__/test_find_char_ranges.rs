@@ -57,7 +57,7 @@ mod tests {
   #[case::n_middle_gaps_end("ATGNNNTTTT---",    vec![(3, 6), (10, 13)])]
   #[case::gaps_middle_n_end("ATG---TTTTNNN",    vec![(3, 6), (10, 13)])]
   fn test_find_undetermined_ranges(#[case] seq: &str, #[case] expected: Vec<(usize, usize)>) {
-    let actual = find_letter_ranges_by(&seq.into(), |c| c == AsciiChar(b'N') || c == AsciiChar(b'-'));
+    let actual = find_letter_ranges_by(&seq.into(), |c| c == AsciiChar::new(b'N') || c == AsciiChar::new(b'-'));
     assert_eq!(expected, actual);
   }
 }

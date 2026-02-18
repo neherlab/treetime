@@ -12,9 +12,9 @@ use std::fmt::Display;
 use strum_macros::Display;
 use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, StateSet, stateset};
 
-pub const NON_CHAR: AsciiChar = AsciiChar(b'.');
-pub const VARIABLE_CHAR: AsciiChar = AsciiChar(b'~');
-pub const FILL_CHAR: AsciiChar = AsciiChar(b' ');
+pub const NON_CHAR: AsciiChar = AsciiChar::new(b'.');
+pub const VARIABLE_CHAR: AsciiChar = AsciiChar::new(b'~');
+pub const FILL_CHAR: AsciiChar = AsciiChar::new(b' ');
 
 #[derive(
   Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum, Serialize, Deserialize,
@@ -134,7 +134,7 @@ impl Alphabet {
 
     let ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>> = ambiguous
       .iter()
-      .map(|(k, v)| (AsciiChar(*k), v.iter().copied().map(AsciiChar).collect()))
+      .map(|(k, v)| (AsciiChar::new(*k), v.iter().copied().map(AsciiChar::new).collect()))
       .collect();
     let ambiguous_keys = ambiguous.keys().collect();
 

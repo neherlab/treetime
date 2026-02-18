@@ -33,7 +33,7 @@ impl Sub {
     let qry = qry.into();
     let reff = reff.into();
 
-    if qry == AsciiChar(b'-') || reff == AsciiChar(b'-') {
+    if qry == AsciiChar::new(b'-') || reff == AsciiChar::new(b'-') {
       return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
     }
 
@@ -70,9 +70,9 @@ impl FromStr for Sub {
     if let Some(captures) = NUC_MUT_RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = AsciiChar(reff.as_str().bytes().next().unwrap());
+          let reff = AsciiChar::new(reff.as_str().bytes().next().unwrap());
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = AsciiChar(qry.as_str().bytes().next().unwrap());
+          let qry = AsciiChar::new(qry.as_str().bytes().next().unwrap());
           Ok(Self { pos, qry, reff })
         },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),

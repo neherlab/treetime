@@ -34,7 +34,12 @@ impl Seq {
   pub fn from_str(s: &str) -> Self {
     assert!(s.is_ascii(), "Seq::from_str: input contains non-ASCII characters");
     Self {
-      data: s.as_bytes().iter().copied().map(AsciiChar::from).collect(),
+      data: s
+        .as_bytes()
+        .iter()
+        .copied()
+        .map(AsciiChar::from_byte_unchecked)
+        .collect(),
     }
   }
 
@@ -184,7 +189,7 @@ impl PartialEq<Vec<u8>> for Seq {
     if self.data.len() != other.len() {
       return false;
     }
-    self.data.iter().zip(other).all(|(&AsciiChar(c), &b)| c == b)
+    self.data.iter().zip(other).all(|(c, &b)| c.inner() == b)
   }
 }
 
@@ -193,7 +198,7 @@ impl PartialEq<str> for Seq {
     if self.data.len() != other.len() {
       return false;
     }
-    self.data.iter().zip(other.as_bytes()).all(|(&AsciiChar(c), &b)| c == b)
+    self.data.iter().zip(other.as_bytes()).all(|(c, &b)| c.inner() == b)
   }
 }
 

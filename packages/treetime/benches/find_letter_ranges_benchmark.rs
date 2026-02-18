@@ -29,7 +29,7 @@ const SEQ: &str = "\
 ";
 
 fn pred(c: AsciiChar) -> bool {
-  c == AsciiChar(b'N') || c == AsciiChar(b'-')
+  c == AsciiChar::new(b'N') || c == AsciiChar::new(b'-')
 }
 
 pub fn bench_1(c: &mut Criterion) {

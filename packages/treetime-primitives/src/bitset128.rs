@@ -133,7 +133,7 @@ impl BitSet128 {
   }
 
   pub fn iter(&self) -> impl Iterator<Item = AsciiChar> + '_ {
-    (0..128).filter(|&i| (self.bits & (1 << i)) != 0).map(AsciiChar)
+    (0..128).filter(|&i| (self.bits & (1 << i)) != 0).map(AsciiChar::new)
   }
 
   pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {

@@ -326,12 +326,12 @@ mod tests {
     let inverted_sub = &edge_data.subs[0];
     assert_eq!(
       inverted_sub.reff(),
-      AsciiChar(b'T'),
+      AsciiChar::new(b'T'),
       "After inversion, reff should be T (was qry)"
     );
     assert_eq!(
       inverted_sub.qry(),
-      AsciiChar(b'G'),
+      AsciiChar::new(b'G'),
       "After inversion, qry should be G (was reff)"
     );
     assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");

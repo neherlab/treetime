@@ -2,10 +2,30 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Write as StdFmtWrite;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AsciiChar(pub u8);
+pub struct AsciiChar(u8);
 
 impl AsciiChar {
+  /// Create an `AsciiChar` from a byte value.
+  ///
+  /// # Panics
+  ///
+  /// Panics if `value` is not ASCII (>= 128).
   pub const fn new(value: u8) -> Self {
+    assert!(value < 128, "AsciiChar::new: value >= 128");
+    Self(value)
+  }
+
+  /// Create an `AsciiChar` from a pre-validated byte value.
+  ///
+  /// # Precondition
+  ///
+  /// The caller must ensure that `value` is ASCII (< 128). Passing non-ASCII
+  /// input violates the type invariant and causes undefined behavior when
+  /// the resulting `AsciiChar` is used in a `Seq` and converted to `&str`.
+  ///
+  /// Use [`new`](Self::new) or [`From<u8>`] for untrusted input.
+  pub const fn from_byte_unchecked(value: u8) -> Self {
+    debug_assert!(value < 128, "AsciiChar::from_byte_unchecked: value >= 128");
     Self(value)
   }
 
@@ -26,59 +46,63 @@ impl core::fmt::Debug for AsciiChar {
   }
 }
 
+/// # Panics
+///
+/// Panics if `item` is not ASCII (>= 128).
 impl From<u8> for AsciiChar {
   fn from(item: u8) -> Self {
-    AsciiChar(item)
+    assert!(item < 128, "AsciiChar::from(u8): value {item} >= 128");
+    Self(item)
   }
 }
 
 /// # Panics
 ///
-/// Debug builds panic if `item >= 256`.
+/// Panics if `item` is not ASCII (>= 128).
 impl From<u16> for AsciiChar {
   fn from(item: u16) -> Self {
-    debug_assert!(item < 256, "AsciiChar::from(u16): value {item} >= 256");
-    AsciiChar(item as u8)
+    assert!(item < 128, "AsciiChar::from(u16): value {item} >= 128");
+    Self(item as u8)
   }
 }
 
 /// # Panics
 ///
-/// Debug builds panic if `item >= 256`.
+/// Panics if `item` is not ASCII (>= 128).
 impl From<u32> for AsciiChar {
   fn from(item: u32) -> Self {
-    debug_assert!(item < 256, "AsciiChar::from(u32): value {item} >= 256");
-    AsciiChar(item as u8)
+    assert!(item < 128, "AsciiChar::from(u32): value {item} >= 128");
+    Self(item as u8)
   }
 }
 
 /// # Panics
 ///
-/// Debug builds panic if `item >= 256`.
+/// Panics if `item` is not ASCII (>= 128).
 impl From<u64> for AsciiChar {
   fn from(item: u64) -> Self {
-    debug_assert!(item < 256, "AsciiChar::from(u64): value {item} >= 256");
-    AsciiChar(item as u8)
+    assert!(item < 128, "AsciiChar::from(u64): value {item} >= 128");
+    Self(item as u8)
   }
 }
 
 /// # Panics
 ///
-/// Debug builds panic if `item >= 256`.
+/// Panics if `item` is not ASCII (>= 128).
 impl From<usize> for AsciiChar {
   fn from(item: usize) -> Self {
-    debug_assert!(item < 256, "AsciiChar::from(usize): value {item} >= 256");
-    AsciiChar(item as u8)
+    assert!(item < 128, "AsciiChar::from(usize): value {item} >= 128");
+    Self(item as u8)
   }
 }
 
 /// # Panics
 ///
-/// Debug builds panic if `item` is not ASCII (code point >= 128).
+/// Panics if `item` is not ASCII (code point >= 128).
 impl From<char> for AsciiChar {
   fn from(item: char) -> Self {
-    debug_assert!(item.is_ascii(), "AsciiChar::from(char): '{item}' is not ASCII");
-    AsciiChar(item as u8)
+    assert!(item.is_ascii(), "AsciiChar::from(char): '{item}' is not ASCII");
+    Self(item as u8)
   }
 }
 

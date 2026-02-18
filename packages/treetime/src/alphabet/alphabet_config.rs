@@ -48,7 +48,7 @@ impl AlphabetConfig {
     let mut profile_map: ProfileMap = canonical
       .iter()
       .zip(eye.rows())
-      .map(|(s, x)| (AsciiChar(*s), x.to_owned()))
+      .map(|(s, x)| (AsciiChar::new(*s), x.to_owned()))
       .collect();
 
     // Add unknown to profile map
@@ -61,7 +61,7 @@ impl AlphabetConfig {
         .enumerate()
         .map(|(i, c)| if values.contains(c) { 1.0 } else { 0.0 })
         .collect::<Array1<f64>>();
-      profile_map.insert(AsciiChar(key), profile);
+      profile_map.insert(AsciiChar::new(key), profile);
     });
 
     if *treat_gap_as_unknown {
