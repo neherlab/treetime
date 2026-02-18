@@ -34,7 +34,7 @@ pub struct SkylineParams {
 impl Default for SkylineParams {
   fn default() -> Self {
     Self {
-      n_points: 20,
+      n_points: 10,
       stiffness: 2.0,
       regularization: 10.0,
       tolerance: 0.03,

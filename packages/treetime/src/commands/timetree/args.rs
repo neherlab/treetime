@@ -7,6 +7,14 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
+fn parse_n_skyline(s: &str) -> Result<usize, String> {
+  let n: usize = s.parse().map_err(|_err| format!("'{s}' is not a valid number"))?;
+  if n < 2 {
+    return Err("n-skyline must be at least 2".to_owned());
+  }
+  Ok(n)
+}
+
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
@@ -164,14 +172,16 @@ pub struct TreetimeTimetreeArgs {
   /// Estimates a piecewise constant coalescent rate history. Requires --n-skyline to specify
   /// the number of change points.
   #[clap(long)]
+  #[clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")]
   pub coalescent_skyline: bool,
 
   /// Number of grid points in skyline coalescent model.
   ///
-  /// Only used when --coalescent-skyline is set. Defines how many piecewise constant segments
-  /// are used to model Tc(t) over time.
+  /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
+  /// are used to model Tc(t) over time. Must be at least 2.
   #[default = 10]
   #[clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline)]
+  #[clap(value_parser = parse_n_skyline)]
   pub n_skyline: usize,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
