@@ -1,6 +1,7 @@
 use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::make_report;
 use argmin::core::observers::{Observe, ObserverMode};
@@ -86,8 +87,8 @@ where
 ///
 /// Computes negative total coalescent likelihood for a given log(Tc) value.
 struct TcCostFunction {
-  /// Tree events as (time_before_present, delta_branches).
-  events_tbp: Vec<(f64, i32)>,
+  /// Lineage count distribution k(t), precomputed from tree events.
+  lineage_counts: PiecewiseConstantFn,
   /// Node branch data: (time_before_present, branch_length, multiplicity).
   /// For each node with a parent edge.
   node_branches: Vec<NodeBranchData>,
@@ -116,6 +117,9 @@ impl TcCostFunction {
       .iter()
       .map(|(t, delta)| (present_time - *t, *delta))
       .collect();
+
+    // Precompute lineage count distribution - depends only on tree structure, not Tc
+    let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
 
     // Collect node branch data for likelihood computation
     let mut node_branches = Vec::new();
@@ -177,7 +181,7 @@ impl TcCostFunction {
     });
 
     Ok(Self {
-      events_tbp,
+      lineage_counts,
       node_branches,
     })
   }
@@ -190,8 +194,7 @@ impl TcCostFunction {
   /// where cost = I(t_merger) - I(t_node) - log(λ(t_merger)) * (m-1)/m
   fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {
     let tc_dist = Distribution::constant(tc);
-    let lineage_counts = compute_lineage_count_distribution(&self.events_tbp)?;
-    let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
+    let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)?;
 
     let mut total_lh = 0.0;
 
@@ -208,7 +211,7 @@ impl TcCostFunction {
       let i_node = integral_merger_rate.eval(t_node);
 
       // Total merger rate λ(t) = k(k-1)/(2*Tc)
-      let k = lineage_counts.eval(t_merger);
+      let k = self.lineage_counts.eval(t_merger);
       let k_clamped = f64::max(0.5, k - 1.0);
       let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc;
 
