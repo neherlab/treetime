@@ -17,6 +17,13 @@ use treetime_graph::node::GraphNodeKey;
 /// Default minimum likelihood gain required to merge two children.
 pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 
+/// Result of finding the best pair of children to merge.
+struct BestPair {
+  child_idx_a: usize,
+  child_idx_b: usize,
+  likelihood_gain: f64,
+}
+
 /// Resolve multifurcations using temporal constraints and sequence data.
 ///
 /// Scans tree for polytomies (nodes with >2 children), resolves them using greedy
@@ -142,24 +149,28 @@ fn resolve_single_polytomy(
     }
 
     // Find best pair
-    let (best_i, best_j, best_gain) = find_best_pair(&gains);
-    if best_gain < resolution_threshold {
-      debug!("Best gain {best_gain:.4} below threshold {resolution_threshold:.4}, stopping");
+    let BestPair {
+      child_idx_a,
+      child_idx_b,
+      likelihood_gain,
+    } = find_best_pair(&gains);
+    if likelihood_gain < resolution_threshold {
+      debug!("Best gain {likelihood_gain:.4} below threshold {resolution_threshold:.4}, stopping");
       break;
     }
 
-    let optimal_time = optimal_times[[best_i, best_j]];
+    let optimal_time = optimal_times[[child_idx_a, child_idx_b]];
     debug!(
-      "Merging children {} and {} with gain {best_gain:.4} at time {optimal_time:.4}",
-      children[best_i].node_key, children[best_j].node_key
+      "Merging children {} and {} with gain {likelihood_gain:.4} at time {optimal_time:.4}",
+      children[child_idx_a].node_key, children[child_idx_b].node_key
     );
 
     // Create new internal node and reparent the two children
     merge_children(
       graph,
       node_key,
-      &children[best_i],
-      &children[best_j],
+      &children[child_idx_a],
+      &children[child_idx_b],
       optimal_time,
       parent_time,
     )?;
@@ -307,23 +318,27 @@ impl CostFunction for MergeCostFunction<'_> {
 }
 
 /// Find the pair with maximum cost gain.
-fn find_best_pair(gains: &Array2<f64>) -> (usize, usize, f64) {
+fn find_best_pair(gains: &Array2<f64>) -> BestPair {
   let n = gains.nrows();
-  let mut best_i = 0;
-  let mut best_j = 1;
-  let mut best_gain = f64::NEG_INFINITY;
+  let mut child_idx_a = 0;
+  let mut child_idx_b = 1;
+  let mut likelihood_gain = f64::NEG_INFINITY;
 
   for i in 0..n {
     for j in (i + 1)..n {
-      if gains[[i, j]] > best_gain {
-        best_gain = gains[[i, j]];
-        best_i = i;
-        best_j = j;
+      if gains[[i, j]] > likelihood_gain {
+        likelihood_gain = gains[[i, j]];
+        child_idx_a = i;
+        child_idx_b = j;
       }
     }
   }
 
-  (best_i, best_j, best_gain)
+  BestPair {
+    child_idx_a,
+    child_idx_b,
+    likelihood_gain,
+  }
 }
 
 /// Merge two children under a new internal node.
