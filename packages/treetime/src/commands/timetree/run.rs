@@ -168,6 +168,27 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       .wrap_err_with(|| format!("When running round {i}"))?;
   }
 
+  // Re-optimize skyline with stabilized node times (matching v0 behavior where skyline
+  // optimization happens only on the final iteration after times have converged)
+  if args.coalescent_skyline {
+    info!("### Re-optimizing skyline coalescent with stabilized node times");
+    let skyline_params = SkylineParams {
+      n_points: args.n_skyline,
+      ..SkylineParams::default()
+    };
+    let skyline_result =
+      optimize_skyline(&graph, &skyline_params).wrap_err("Failed to re-optimize skyline coalescent model")?;
+    info!(
+      "Skyline re-optimization completed: log_likelihood={:.4}",
+      skyline_result.log_likelihood
+    );
+    coalescent_tc = Some(skyline_result.tc_distribution);
+
+    // Run final timetree pass with optimized skyline
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
+      .wrap_err("Final timetree pass with optimized skyline failed")?;
+  }
+
   info!("### TreeTime: postprocessing");
   if args.vary_rate {
     todo!("calc_rate_susceptibility not yet implemented");
