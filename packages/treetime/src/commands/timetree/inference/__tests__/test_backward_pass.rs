@@ -116,6 +116,91 @@ mod tests {
     Ok(())
   }
 
+  /// Test that backward pass preserves leaf time_distribution when coalescent is provided.
+  /// This is a regression test for a bug where coalescent contributions overwrote leaf dates,
+  /// causing subsequent clock regression to fail with "No variation in sampling dates".
+  #[test]
+  fn test_backward_pass_preserves_leaf_time_distribution_with_coalescent() -> Result<(), Report> {
+    use indexmap::IndexMap;
+    use treetime_distribution::DistributionNegLog;
+
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+
+    let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+
+    let date_a = 2015.0;
+    let date_b = 2014.0;
+
+    // Set time distributions on leaves (date constraints)
+    {
+      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
+      let mut payload = node_a.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(date_a, 1.0)));
+    }
+    {
+      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
+      let mut payload = node_b.read_arc().payload().write_arc();
+      payload.time_distribution = Some(Arc::new(Distribution::point(date_b, 1.0)));
+    }
+
+    // Set branch length distributions
+    for edge in graph.get_edges() {
+      let edge_read = edge.read_arc();
+      let target = edge_read.target();
+      let branch_length = if target == leaf_a_key {
+        3.0
+      } else if target == leaf_b_key {
+        2.0
+      } else {
+        continue;
+      };
+      let mut payload = edge_read.payload().write_arc();
+      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+    }
+
+    // Create coalescent contributions for all nodes (simulating --coalescent option)
+    let mut coalescent_contributions: IndexMap<_, Arc<DistributionNegLog>> = IndexMap::new();
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      // Use a constant coalescent contribution
+      coalescent_contributions.insert(key, Arc::new(DistributionNegLog::constant(0.01)));
+    }
+
+    // Run backward pass WITH coalescent contributions
+    propagate_distributions_backward(&graph, Some(&coalescent_contributions))?;
+
+    // Verify leaf A still has its original date
+    {
+      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
+      let payload = node_a.read_arc().payload().read_arc();
+      let time_dist = payload
+        .time_distribution()
+        .as_ref()
+        .expect("leaf A should have time distribution");
+      let likely_time = time_dist
+        .likely_time()
+        .expect("leaf A time distribution should have likely_time");
+      assert_ulps_eq!(likely_time, date_a, max_ulps = 4);
+    }
+
+    // Verify leaf B still has its original date
+    {
+      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
+      let payload = node_b.read_arc().payload().read_arc();
+      let time_dist = payload
+        .time_distribution()
+        .as_ref()
+        .expect("leaf B should have time distribution");
+      let likely_time = time_dist
+        .likely_time()
+        .expect("leaf B time distribution should have likely_time");
+      assert_ulps_eq!(likely_time, date_b, max_ulps = 4);
+    }
+
+    Ok(())
+  }
+
   /// Test that backward pass stores msg_to_parent on edges.
   #[test]
   fn test_backward_pass_sets_edge_messages() -> Result<(), Report> {

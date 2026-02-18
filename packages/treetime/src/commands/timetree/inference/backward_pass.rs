@@ -40,23 +40,15 @@ where
   E: TimetreeEdge,
   D: Send + Sync,
 {
-  if node.is_leaf {
-    // Apply precalculated coalescent contribution to leaf
-    if let (Some(time_dist), Some(coalescent_contrib)) = (
-      node.payload.time_distribution(),
-      coalescent_contribs.and_then(|c| c.get(&node.key)),
-    ) {
-      let coalescent_contrib_plain = coalescent_contrib.to_plain();
-      let combined = distribution_multiplication(time_dist.as_ref(), &coalescent_contrib_plain)?;
-      node.payload.set_time_distribution(Some(Arc::new(combined)));
-    }
-    return Ok(());
-  }
-
-  // For internal node, initialize distribution with coalescent contribution
-  let mut result: Option<Distribution> = coalescent_contribs
-    .and_then(|contributions| contributions.get(&node.key))
-    .map(|contrib| (**contrib).to_plain());
+  // For internal node, initialize distribution with coalescent contribution.
+  // Skip leaves - their time_distribution represents date constraints that must not be modified.
+  let mut result: Option<Distribution> = if node.is_leaf {
+    None
+  } else {
+    coalescent_contribs
+      .and_then(|contributions| contributions.get(&node.key))
+      .map(|contrib| (**contrib).to_plain())
+  };
 
   for (child, edge) in &node.children {
     let child = child.read_arc();
