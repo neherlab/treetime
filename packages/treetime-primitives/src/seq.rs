@@ -161,7 +161,9 @@ impl Seq {
   /// Panics if `s` contains non-ASCII characters.
   pub fn push_str(&mut self, s: &str) {
     assert!(s.is_ascii(), "Seq::push_str: input contains non-ASCII characters");
-    self.data.extend(s.as_bytes().iter().copied().map(AsciiChar::from));
+    self
+      .data
+      .extend(s.as_bytes().iter().copied().map(AsciiChar::from_byte_unchecked));
   }
 
   pub fn contains_str(&self, s: &str) -> bool {
