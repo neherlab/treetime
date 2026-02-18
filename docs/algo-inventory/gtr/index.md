@@ -1,6 +1,6 @@
 # GTR Substitution Models
 
-[Back to index](../)
+[Back to index](../index.md)
 
 ## Substitution Models
 
@@ -93,7 +93,7 @@ Iterative coordinate descent: update W, normalize, update pi, update mu.
 
 ## Unimplemented
 
-See [unimplemented](../unimplemented/) for full details:
+See [unimplemented](../unimplemented/index.md) for full details:
 
 - Site-specific GTR (`gtr_site_specific.py`)
 - Random GTR generation

@@ -1,6 +1,6 @@
 # Ancestral Reconstruction Algorithms
 
-[Back to index](../)
+[Back to index](../index.md)
 
 ## Fitch Parsimony
 

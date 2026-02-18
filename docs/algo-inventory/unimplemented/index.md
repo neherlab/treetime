@@ -1,6 +1,6 @@
 # Unimplemented Algorithms
 
-[Back to index](../)
+[Back to index](../index.md)
 
 Algorithms present in v0 Python that have not been ported to v1 Rust. Full detail for implementation planning.
 

@@ -1,6 +1,6 @@
 # Numerical Optimization Algorithms
 
-[Back to index](../)
+[Back to index](../index.md)
 
 ## Newton-Raphson
 

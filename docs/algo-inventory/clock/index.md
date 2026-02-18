@@ -1,6 +1,6 @@
 # Clock Inference Algorithms
 
-[Back to index](../)
+[Back to index](../index.md)
 
 ## WLS Sufficient Stats
 
@@ -91,7 +91,7 @@ Edge inversion along path from old root to new root, with trivial node cleanup.
 
 ## Unimplemented
 
-See [unimplemented](../unimplemented/) for full details:
+See [unimplemented](../unimplemented/index.md) for full details:
 
 - Local outlier filter (z-score based)
 - Full covariance matrix computation

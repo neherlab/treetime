@@ -1,6 +1,6 @@
 # Timetree Inference Algorithms
 
-[Back to index](../)
+[Back to index](../index.md)
 
 ## Belief Propagation
 
