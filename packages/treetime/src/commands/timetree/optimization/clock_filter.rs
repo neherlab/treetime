@@ -1,12 +1,12 @@
 use crate::commands::clock::clock_model::ClockModel;
+use crate::commands::clock::clock_traits::ClockNode;
 use crate::representation::partition::timetree::GraphTimetree;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
-use serde::Serialize;
-use treetime_graph::node::Named;
+use treetime_graph::node::{Named, Outlier};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct OutlierRecord {
   pub name: String,
   pub given_date: f64,
@@ -23,12 +23,12 @@ pub fn collect_outliers(graph: &GraphTimetree, clock_model: &ClockModel, iqd: f6
       let node = leaf.read_arc();
       let payload_arc = node.payload();
       let payload = payload_arc.read();
-      if !payload.is_outlier {
+      if !payload.is_outlier() {
         return None;
       }
       let name = payload.name().map(|n| n.as_ref().to_owned())?;
-      let given_date = payload.time_distribution.as_ref()?.likely_time()?;
-      let div = payload.div;
+      let given_date = payload.likely_time()?;
+      let div = payload.div();
       let apparent_date = clock_model.date(div);
       let clock_deviation = clock_model.clock_deviation(given_date, div);
       let residual = if iqd > 0.0 { clock_deviation / iqd } else { 0.0 };
