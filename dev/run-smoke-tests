@@ -118,6 +118,102 @@ PRUNE_BATCH_RUNS = [
 ]
 # fmt: on @formatter:on
 
+# Add timetree command runs here.
+# fmt: off @formatter:off
+TIMETREE_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory                # additional args (appended to the batch args)
+
+  # === Basic runs ===
+  ("flu/h3n2/20",                 "flu/h3n2/20/basic",                 ""),
+  ("ebola",                       "ebola/basic",                       ""),
+
+  # === Single argument coverage ===
+
+  # Clock rate
+  ("flu/h3n2/200",                "flu/h3n2/200/fixed-clock",          "--clock-rate=0.003"),
+
+  # Branch length mode
+  ("flu/h3n2/20",                 "flu/h3n2/20/branch-input",          "--branch-length-mode=input"),
+
+  # Time marginal modes
+  ("flu/h3n2/20",                 "flu/h3n2/20/marginal-always",       "--time-marginal=always"),
+  ("flu/h3n2/20",                 "flu/h3n2/20/marginal-final",        "--time-marginal=only-final"),
+  ("flu/h3n2/20",                 "flu/h3n2/20/confidence",            "--confidence"),
+
+  # Polytomies
+  ("flu/h3n2/20",                 "flu/h3n2/20/keep-polytomies",       "--keep-polytomies"),
+  ("flu/h3n2/20",                 "flu/h3n2/20/resolve-polytomies",    "--resolve-polytomies --max-iter=3"),
+
+  # Relaxed clock variants
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-corr",         "--relax 1.0 0.5 --max-iter=3"),
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-uncorr",       "--relax 1.0 0.0 --max-iter=3"),
+
+  # Coalescent models
+  ("flu/h3n2/200",                "flu/h3n2/200/coalescent",           "--coalescent=10.0 --max-iter=3"),
+  ("flu/h3n2/200",                "flu/h3n2/200/coal-opt",             "--coalescent-opt --max-iter=3"),
+  ("flu/h3n2/200",                "flu/h3n2/200/skyline",              "--coalescent-skyline --n-skyline=5 --max-iter=3"),
+
+  # Reroot strategies
+  ("ebola",                       "ebola/reroot-mindev",               "--reroot=min-dev"),
+  ("ebola",                       "ebola/reroot-oldest",               "--reroot=oldest"),
+  ("ebola",                       "ebola/keep-root",                   "--keep-root"),
+
+  # Clock filter
+  ("flu/h3n2/200",                "flu/h3n2/200/no-filter",            "--clock-filter=0"),
+  ("flu/h3n2/200",                "flu/h3n2/200/strict-filter",        "--clock-filter=5.0"),
+
+  # Covariation
+  ("flu/h3n2/200",                "flu/h3n2/200/covariation",          "--covariation"),
+
+  # Ancestral method
+  ("flu/h3n2/20",                 "flu/h3n2/20/parsimony",             "--method-anc=parsimony --max-iter=1"),
+
+  # Dense mode
+  ("flu/h3n2/20",                 "flu/h3n2/20/dense",                 "--dense=true --gtr=jc69"),
+
+  # Rate sensitivity
+  ("flu/h3n2/20",                 "flu/h3n2/20/vary-rate",             "--vary-rate"),
+
+  # === Combinations ===
+
+  # Coalescent + polytomy resolution
+  ("flu/h3n2/200",                "flu/h3n2/200/coal-polytomy",        "--coalescent=10.0 --resolve-polytomies --max-iter=3"),
+
+  # Coalescent opt + time marginal
+  ("flu/h3n2/200",                "flu/h3n2/200/coal-opt-marginal",    "--coalescent-opt --time-marginal=always --max-iter=3"),
+
+  # Reroot with covariation
+  ("flu/h3n2/200",                "flu/h3n2/200/reroot-covar",         "--reroot=least-squares --covariation"),
+
+  # Relaxed clock + coalescent
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-coal",         "--relax 1.0 0.5 --coalescent=10.0 --max-iter=3"),
+
+  # Input branch lengths + keep root (trust input tree)
+  ("ebola",                       "ebola/input-keeproot",              "--branch-length-mode=input --keep-root"),
+
+  # Confidence + time marginal final (efficient posteriors)
+  ("flu/h3n2/20",                 "flu/h3n2/20/conf-marginal-final",   "--confidence --time-marginal=only-final"),
+
+  # No filtering + keep root (trust input completely)
+  ("ebola",                       "ebola/no-filter-keeproot",          "--clock-filter=0 --keep-root"),
+
+  # Relaxed clock + polytomy resolution
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-polytomy",     "--relax 1.0 0.5 --resolve-polytomies --max-iter=3"),
+
+  # Skyline + confidence
+  ("flu/h3n2/200",                "flu/h3n2/200/skyline-conf",         "--coalescent-skyline --n-skyline=5 --confidence --max-iter=3"),
+
+  # Vary rate + confidence
+  ("flu/h3n2/20",                 "flu/h3n2/20/vary-rate-conf",        "--vary-rate --confidence"),
+
+  # Dense + coalescent
+  ("flu/h3n2/20",                 "flu/h3n2/20/dense-coal",            "--dense=true --gtr=jc69 --coalescent=10.0 --max-iter=3"),
+
+  # Parsimony + fast (minimal iterations)
+  ("flu/h3n2/200",                "flu/h3n2/200/fast",                 "--method-anc=parsimony --max-iter=1 --keep-polytomies"),
+]
+# fmt: on @formatter:on
+
 
 # Add arbitrary CLI invocations here
 def make_additional_commands(exe, data_dir, out_dir):
@@ -270,6 +366,18 @@ def run_prune(name: str, out: str, extra_args: str):
   return run_batch_cmd(name, "prune", cmd)
 
 
+def run_timetree(name: str, out: str, extra_args: str):
+  cmd = f"""
+  {TREETIME_BIN} timetree
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --dates={DATA_DIR}/{name}/metadata.tsv
+  --outdir={RESULTS_DIR}/timetree/{out}
+  {DATA_DIR}/{name}/aln.fasta.xz
+  {extra_args}
+  """
+  return run_batch_cmd(name, "timetree", cmd)
+
+
 def init_worker():
   signal(SIGINT, SIG_IGN)
 
@@ -332,6 +440,7 @@ if __name__ == "__main__":
     (run_optimize, [("false", *args) for args in OPTIMIZE_BATCH_RUNS]),
     # (run_optimize, [("true", *args) for args in OPTIMIZE_BATCH_RUNS]), # TODO: enable optimize dense tests
     (run_prune, PRUNE_BATCH_RUNS),
+    (run_timetree, TIMETREE_BATCH_RUNS),
     (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
   ]
 
