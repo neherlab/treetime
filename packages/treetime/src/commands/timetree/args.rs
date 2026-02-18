@@ -169,8 +169,8 @@ pub struct TreetimeTimetreeArgs {
 
   /// Use skyline coalescent model instead of constant Tc.
   ///
-  /// Estimates a piecewise constant coalescent rate history. Requires --n-skyline to specify
-  /// the number of change points.
+  /// Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify
+  /// the number of grid points.
   #[clap(long)]
   #[clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")]
   pub coalescent_skyline: bool,
