@@ -43,12 +43,22 @@ impl Seq {
     }
   }
 
+  /// Create a sequence from a vector of bytes.
+  ///
+  /// # Panics
+  ///
+  /// Panics if any byte is not ASCII (>= 128).
   pub fn from_vec(vec: Vec<u8>) -> Self {
     Self {
       data: vec.into_iter().map(AsciiChar::from).collect(),
     }
   }
 
+  /// Create a sequence from a byte slice.
+  ///
+  /// # Panics
+  ///
+  /// Panics if any byte is not ASCII (>= 128).
   pub fn from_slice(slice: &[u8]) -> Self {
     Self {
       data: slice.iter().copied().map(AsciiChar::from).collect(),
