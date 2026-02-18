@@ -272,6 +272,29 @@ mod tests {
     Ok(())
   }
 
+  /// Regression test for C2: when partitions are empty (BranchLengthMode::Input),
+  /// the relaxed clock should handle zero-length sequences gracefully.
+  /// This tests defense-in-depth: if the guard in refinement.rs fails,
+  /// apply_relaxed_clock should not produce NaN or crash with one_mutation near zero.
+  #[test]
+  fn test_relaxed_clock_handles_tiny_one_mutation() -> Result<(), Report> {
+    let graph = build_simple_tree()?;
+    let params = [1.0, 1.0];
+
+    // Simulate what would happen if one_mutation were computed from very short sequences
+    // (defense-in-depth - the guard in refinement.rs should prevent this)
+    let tiny_one_mutation = 1e-15;
+    apply_relaxed_clock(&graph, &params, tiny_one_mutation);
+
+    for edge in graph.get_edges() {
+      let gamma = edge.read_arc().payload().read_arc().gamma;
+      assert!(gamma.is_finite(), "gamma must be finite, got {gamma}");
+      assert!(gamma >= 0.1, "gamma must respect minimum bound, got {gamma}");
+    }
+
+    Ok(())
+  }
+
   /// Regression test for T4: root node must compute branch penalty using one_mutation.
   /// Root gamma should be influenced by its own branch penalty (k1/k2 from one_mutation),
   /// not just child coupling.
