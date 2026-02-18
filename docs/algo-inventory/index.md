@@ -23,47 +23,47 @@ Full unimplemented algorithm details: [unimplemented/index.md](unimplemented/ind
 
 ## Quick Reference
 
-| Algorithm                                                          | Type       | Domain       | Location                          | Status        |
-| ------------------------------------------------------------------ | ---------- | ------------ | --------------------------------- | ------------- |
-| [Fitch Parsimony](ancestral/index.md#fitch-parsimony)              | well-known | ancestral    | `ancestral/fitch.rs`              | complete      |
-| [Marginal ML](ancestral/index.md#marginal-ml)                      | well-known | ancestral    | `partition/marginal_*.rs`         | complete      |
-| [Joint ML](unimplemented/index.md#joint-ml)                        | well-known | ancestral    | -                                 | unimplemented |
-| [WLS Sufficient Stats](clock/index.md#wls-sufficient-stats)        | custom     | clock        | `clock/clock_set.rs`              | complete      |
-| [Tree Regression](clock/index.md#tree-regression)                  | well-known | clock        | `clock/clock_regression.rs`       | complete      |
-| [Brent's Method](clock/index.md#brents-method)                     | well-known | clock        | `find_best_root/method_brent.rs`  | complete      |
-| [IQD Outlier Detection](clock/index.md#iqd-outlier-detection)      | well-known | clock        | `clock/clock_filter.rs`           | complete      |
-| [Belief Propagation](timetree/index.md#belief-propagation)         | well-known | timetree     | `inference/*.rs`                  | complete      |
-| [Kingman Coalescent](timetree/index.md#kingman-coalescent)         | well-known | timetree     | `coalescent/*.rs`                 | complete      |
-| [Skyline Coalescent](timetree/index.md#skyline-coalescent)         | well-known | timetree     | `coalescent/skyline.rs`           | complete      |
-| [Relaxed Clock](timetree/index.md#relaxed-clock)                   | well-known | timetree     | `optimization/relaxed_clock.rs`   | complete      |
-| [FFT Convolution](distribution/index.md#fft-convolution)           | well-known | distribution | `treetime-ops/convolution.rs`     | complete      |
-| [Gaussian Convolution](distribution/index.md#gaussian-convolution) | well-known | distribution | `treetime-analytical/gaussian.rs` | complete      |
-| [GTR Models](gtr/index.md#substitution-models)                     | well-known | gtr          | `gtr/get_gtr.rs`                  | complete      |
-| [Matrix Exponentiation](gtr/index.md#matrix-exponentiation)        | well-known | gtr          | `gtr/gtr.rs`                      | complete      |
-| [Parallel BFS](graph/index.md#parallel-bfs)                        | well-known | graph        | `treetime-graph/breadth_first.rs` | complete      |
-| [Newton-Raphson](optimization/index.md#newton-raphson)             | well-known | optimization | `optimize/optimize_unified.rs`    | complete      |
+| Algorithm                                                          | Type       | Domain       | Location                                                                                                                                               | Status        |
+| ------------------------------------------------------------------ | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| [Fitch Parsimony](ancestral/index.md#fitch-parsimony)              | well-known | ancestral    | [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)                                         | complete      |
+| [Marginal ML](ancestral/index.md#marginal-ml)                      | well-known | ancestral    | [`packages/treetime/src/representation/partition/marginal_*.rs`](../../packages/treetime/src/representation/partition/)                                | complete      |
+| [Joint ML](unimplemented/index.md#joint-ml)                        | well-known | ancestral    | -                                                                                                                                                      | unimplemented |
+| [WLS Sufficient Stats](clock/index.md#wls-sufficient-stats)        | custom     | clock        | [`packages/treetime/src/commands/clock/clock_set.rs`](../../packages/treetime/src/commands/clock/clock_set.rs)                                         | complete      |
+| [Tree Regression](clock/index.md#tree-regression)                  | well-known | clock        | [`packages/treetime/src/commands/clock/clock_regression.rs`](../../packages/treetime/src/commands/clock/clock_regression.rs)                           | complete      |
+| [Brent's Method](clock/index.md#brents-method)                     | well-known | clock        | [`packages/treetime/src/commands/clock/find_best_root/method_brent.rs`](../../packages/treetime/src/commands/clock/find_best_root/method_brent.rs)     | complete      |
+| [IQD Outlier Detection](clock/index.md#iqd-outlier-detection)      | well-known | clock        | [`packages/treetime/src/commands/clock/clock_filter.rs`](../../packages/treetime/src/commands/clock/clock_filter.rs)                                   | complete      |
+| [Belief Propagation](timetree/index.md#belief-propagation)         | well-known | timetree     | [`packages/treetime/src/commands/timetree/inference/`](../../packages/treetime/src/commands/timetree/inference/)                                       | complete      |
+| [Kingman Coalescent](timetree/index.md#kingman-coalescent)         | well-known | timetree     | [`packages/treetime/src/commands/timetree/coalescent/`](../../packages/treetime/src/commands/timetree/coalescent/)                                     | complete      |
+| [Skyline Coalescent](timetree/index.md#skyline-coalescent)         | well-known | timetree     | [`packages/treetime/src/commands/timetree/coalescent/skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs)                 | complete      |
+| [Relaxed Clock](timetree/index.md#relaxed-clock)                   | well-known | timetree     | [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs) | complete      |
+| [FFT Convolution](distribution/index.md#fft-convolution)           | well-known | distribution | [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                                                           | complete      |
+| [Gaussian Convolution](distribution/index.md#gaussian-convolution) | well-known | distribution | [`packages/treetime-analytical/src/gaussian.rs`](../../packages/treetime-analytical/src/gaussian.rs)                                                   | complete      |
+| [GTR Models](gtr/index.md#substitution-models)                     | well-known | gtr          | [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                                                   | complete      |
+| [Matrix Exponentiation](gtr/index.md#matrix-exponentiation)        | well-known | gtr          | [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                                                                           | complete      |
+| [Parallel BFS](graph/index.md#parallel-bfs)                        | well-known | graph        | [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs)                                                   | complete      |
+| [Newton-Raphson](optimization/index.md#newton-raphson)             | well-known | optimization | [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)                     | complete      |
 
 ---
 
 ## File Index
 
-| Domain       | Files                                                                                     | Algorithms                                    |
-| ------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Ancestral    | `commands/ancestral/*.rs`, `partition/marginal_*.rs`                                      | Fitch, Marginal ML                            |
-| Clock        | `commands/clock/*.rs`                                                                     | WLS, regression, Brent, outlier detection     |
-| Timetree     | `commands/timetree/**/*.rs`                                                               | Belief propagation, coalescent, relaxed clock |
-| Distribution | `treetime-ops/src/*.rs`, `treetime-analytical/src/*.rs`, `treetime-distribution/src/*.rs` | Convolution, multiplication, analytical       |
-| GTR          | `gtr/*.rs`                                                                                | JC69, K80, HKY85, TN93, JTT92, inference      |
-| Graph        | `treetime-graph/src/*.rs`                                                                 | BFS, DFS, path finding                        |
-| Optimization | `commands/optimize/*.rs`, `treetime-grid/src/*.rs`                                        | Newton-Raphson, interpolation                 |
+| Domain       | Files                                                                                                                                                                                                                                | Algorithms                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| Ancestral    | [`packages/treetime/src/commands/ancestral/`](../../packages/treetime/src/commands/ancestral/), [`packages/treetime/src/representation/partition/marginal_*.rs`](../../packages/treetime/src/representation/partition/)              | Fitch, Marginal ML                            |
+| Clock        | [`packages/treetime/src/commands/clock/`](../../packages/treetime/src/commands/clock/)                                                                                                                                               | WLS, regression, Brent, outlier detection     |
+| Timetree     | [`packages/treetime/src/commands/timetree/`](../../packages/treetime/src/commands/timetree/)                                                                                                                                         | Belief propagation, coalescent, relaxed clock |
+| Distribution | [`packages/treetime-ops/src/`](../../packages/treetime-ops/src/), [`packages/treetime-analytical/src/`](../../packages/treetime-analytical/src/), [`packages/treetime-distribution/src/`](../../packages/treetime-distribution/src/) | Convolution, multiplication, analytical       |
+| GTR          | [`packages/treetime/src/gtr/`](../../packages/treetime/src/gtr/)                                                                                                                                                                     | JC69, K80, HKY85, TN93, JTT92, inference      |
+| Graph        | [`packages/treetime-graph/src/`](../../packages/treetime-graph/src/)                                                                                                                                                                 | BFS, DFS, path finding                        |
+| Optimization | [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/), [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                     | Newton-Raphson, interpolation                 |
 
 ---
 
 ## Known Issues
 
-1. **Joint ML not implemented** (`ancestral/run.rs:184`)
+1. **Joint ML not implemented** ([`packages/treetime/src/commands/ancestral/run.rs#L184`](../../packages/treetime/src/commands/ancestral/run.rs#L184))
 2. **F81/HKY85 lack pi parameter** - always use uniform frequencies
-3. **Dense GTR inference not implemented** (`infer_gtr/dense.rs`)
+3. **Dense GTR inference not implemented** ([`packages/treetime/src/representation/algo/infer_dense.rs`](../../packages/treetime/src/representation/algo/infer_dense.rs))
 4. **Non-randomized Fitch root selection** - deterministic bias
 5. **Likelihood tracking stubs** in convergence module
 6. **Stochastic polytomy resolution not ported**

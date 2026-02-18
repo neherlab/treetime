@@ -8,13 +8,13 @@ Algorithms present in v0 Python that have not been ported to v1 Rust. Full detai
 
 ## Joint ML
 
-| Property    | Value                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Type        | Well-known (Viterbi-like)                                                                                             |
-| v0 Location | `packages/legacy/treetime/treetime/treeanc.py:934-1080:`                                                              |
-| Functions   | `_ml_anc_joint()`                                                                                                     |
-| v1 Status   | Declared in `MethodAncestral::Joint` but `unimplemented!()` at `packages/treetime/src/commands/ancestral/run.rs:184:` |
-| Reference   | Pupko et al. (2000). "A fast algorithm for joint reconstruction." Mol Biol Evol, 17(6):890-896                        |
+| Property    | Value                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Well-known (Viterbi-like)                                                                                                                                                                                             |
+| v0 Location | [`packages/legacy/treetime/treetime/treeanc.py#L934-L1080`](../../../packages/legacy/treetime/treetime/treeanc.py#L934-L1080)                                                                                         |
+| Functions   | `_ml_anc_joint()` (`#_ml_anc_joint`)                                                                                                                                                                                  |
+| v1 Status   | Declared in `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L184`](../../../packages/treetime/src/commands/ancestral/run.rs#L184) |
+| Reference   | Pupko et al. (2000). "A fast algorithm for joint reconstruction." Mol Biol Evol, 17(6):890-896                                                                                                                        |
 
 **Algorithm**:
 
@@ -40,12 +40,12 @@ Forward pass (lines 1043-1063):
 
 ## Local Outlier Filter
 
-| Property    | Value                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------- |
-| Type        | Custom (TreeTime-specific)                                                             |
-| v0 Location | `packages/legacy/treetime/treetime/clock_filter_methods.py:43-219:`                    |
-| Functions   | `local_filter()`, `calculate_node_timings()`, `collect_node_info()`, `flag_outliers()` |
-| v1 Status   | Not ported                                                                             |
+| Property    | Value                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Type        | Custom (TreeTime-specific)                                                                                                                                                     |
+| v0 Location | [`packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219`](../../../packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219)                            |
+| Functions   | `local_filter()` (`#local_filter`), `calculate_node_timings()` (`#calculate_node_timings`), `collect_node_info()` (`#collect_node_info`), `flag_outliers()` (`#flag_outliers`) |
+| v1 Status   | Not ported                                                                                                                                                                     |
 
 **Algorithm**:
 
@@ -70,12 +70,12 @@ Forward pass (lines 1043-1063):
 
 ## Full Covariance Matrix
 
-| Property    | Value                                                                        |
-| ----------- | ---------------------------------------------------------------------------- |
-| Type        | Standard linear algebra                                                      |
-| v0 Location | `packages/legacy/treetime/treetime/treeregression.py:125-155:`               |
-| Functions   | `Cov()`, `CovInv()`, `recurse()`                                             |
-| v1 Status   | Not needed - sufficient statistics approach avoids materializing full matrix |
+| Property    | Value                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Standard linear algebra                                                                                                                   |
+| v0 Location | [`packages/legacy/treetime/treetime/treeregression.py#L125-L155`](../../../packages/legacy/treetime/treetime/treeregression.py#L125-L155) |
+| Functions   | `Cov()` (`#Cov`), `CovInv()` (`#CovInv`), `recurse()` (`#recurse`)                                                                        |
+| v1 Status   | Not needed - sufficient statistics approach avoids materializing full matrix                                                              |
 
 **Algorithm**:
 
@@ -92,12 +92,12 @@ Forward pass (lines 1043-1063):
 
 ## Rate Susceptibility Analysis
 
-| Property    | Value                                                              |
-| ----------- | ------------------------------------------------------------------ |
-| Type        | Sensitivity analysis                                               |
-| v0 Location | `packages/legacy/treetime/treetime/clock_tree.py:1010-1066:`       |
-| Functions   | `calc_rate_susceptibility()`                                       |
-| v1 Status   | `todo!()` at `packages/treetime/src/commands/timetree/run.rs:173:` |
+| Property    | Value                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Sensitivity analysis                                                                                                                  |
+| v0 Location | [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066`](../../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066) |
+| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`)                                                                            |
+| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/run.rs#L173`](../../../packages/treetime/src/commands/timetree/run.rs#L173)    |
 
 **Algorithm**:
 
@@ -113,12 +113,12 @@ Forward pass (lines 1043-1063):
 
 ## Numerical Hessian for Root Position
 
-| Property    | Value                                                          |
-| ----------- | -------------------------------------------------------------- |
-| Type        | Numerical differentiation                                      |
-| v0 Location | `packages/legacy/treetime/treetime/treeregression.py:355-382:` |
-| Functions   | Within `find_best_root()`                                      |
-| v1 Status   | Not ported - v1 Hessian is 2x2 (rate, intercept) only          |
+| Property    | Value                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Numerical differentiation                                                                                                                 |
+| v0 Location | [`packages/legacy/treetime/treetime/treeregression.py#L355-L382`](../../../packages/legacy/treetime/treetime/treeregression.py#L355-L382) |
+| Functions   | Within `find_best_root()` (`#find_best_root`)                                                                                             |
+| v1 Status   | Not ported - v1 Hessian is 2x2 (rate, intercept) only                                                                                     |
 
 **Algorithm**:
 
@@ -136,12 +136,12 @@ After finding optimal root position `x*`:
 
 ## Site-Specific GTR
 
-| Property    | Value                                                                 |
-| ----------- | --------------------------------------------------------------------- |
-| Type        | Extension of GTR                                                      |
-| v0 Location | `packages/legacy/treetime/treetime/gtr_site_specific.py:1-350:`       |
-| Class       | `GTR_site_specific(GTR)`                                              |
-| v1 Status   | `GTR.is_site_specific` field exists (always false); no implementation |
+| Property    | Value                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Extension of GTR                                                                                                                            |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L350`](../../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L350) |
+| Class       | `GTR_site_specific(GTR)` (`#GTR_site_specific`)                                                                                             |
+| v1 Status   | `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation                                                 |
 
 **Algorithm**:
 
@@ -158,15 +158,15 @@ Site-specific GTR extends to:
 
 Key methods:
 
-`_make_expQt_interpolator()` (lines 92-130): Pre-computes exp(Qt) on a grid of t values, then uses linear interpolation. Avoids repeated eigendecomposition during tree traversal.
+`_make_expQt_interpolator()` (`#_make_expQt_interpolator`) (lines 92-130): Pre-computes exp(Qt) on a grid of t values, then uses linear interpolation. Avoids repeated eigendecomposition during tree traversal.
 
-`prob_t_profiles()` (lines 180-250): Computes P(child|parent) for profile pairs using einsum over sites:
+`prob_t_profiles()` (`#prob_t_profiles`) (lines 180-250): Computes P(child|parent) for profile pairs using einsum over sites:
 
 ```python
 einsum('ij,sij,sj->s', parent_prof, expQt_site, child_prof)
 ```
 
-`infer()` (lines 280-340): Site-specific inference accumulates:
+`infer()` (`#infer`) (lines 280-340): Site-specific inference accumulates:
 
 - `n_ija[site, state_i, state_j]`: transition counts per site
 - `T_ia[site, state_i]`: total time in state i per site
@@ -175,12 +175,12 @@ einsum('ij,sij,sj->s', parent_prof, expQt_site, child_prof)
 
 ## Stochastic Polytomy Resolution
 
-| Property    | Value                                                    |
-| ----------- | -------------------------------------------------------- |
-| Type        | Monte Carlo / coalescent simulation                      |
-| v0 Location | `packages/legacy/treetime/treetime/treetime.py:872-950:` |
-| Functions   | `generate_subtree()`                                     |
-| v1 Status   | Not ported - v1 only has greedy deterministic approach   |
+| Property    | Value                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Monte Carlo / coalescent simulation                                                                                           |
+| v0 Location | [`packages/legacy/treetime/treetime/treetime.py#L872-L950`](../../../packages/legacy/treetime/treetime/treetime.py#L872-L950) |
+| Functions   | `generate_subtree()` (`#generate_subtree`)                                                                                    |
+| v1 Status   | Not ported - v1 only has greedy deterministic approach                                                                        |
 
 **Algorithm**:
 
@@ -200,12 +200,12 @@ Given a polytomy (node with k > 2 children):
 
 ## FFT Convolution with Delta Approximation
 
-| Property    | Value                                                                            |
-| ----------- | -------------------------------------------------------------------------------- |
-| Type        | Well-known (FFT) + domain heuristic                                              |
-| v0 Location | `packages/legacy/treetime/treetime/node_interpolator.py:161-265:`                |
-| Functions   | `NodeInterpolator.convolve_fft()`                                                |
-| v1 Status   | v1 has FFT in treetime-ops but not the delta approximation or tail extrapolation |
+| Property    | Value                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Well-known (FFT) + domain heuristic                                                                                                             |
+| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L161-L265`](../../../packages/legacy/treetime/treetime/node_interpolator.py#L161-L265) |
+| Functions   | `NodeInterpolator.convolve_fft()` (`#NodeInterpolator`, `#convolve_fft`)                                                                        |
+| v1 Status   | v1 has FFT in treetime-ops but not the delta approximation or tail extrapolation                                                                |
 
 **Algorithm**:
 
@@ -227,12 +227,12 @@ Given a polytomy (node with k > 2 children):
 
 ## Adaptive Simpson's Rule Convolution
 
-| Property    | Value                                                             |
-| ----------- | ----------------------------------------------------------------- |
-| Type        | Well-known (adaptive quadrature)                                  |
-| v0 Location | `packages/legacy/treetime/treetime/node_interpolator.py:268-409:` |
-| Functions   | `NodeInterpolator.convolve()`, `_evaluate_convolution()`          |
-| v1 Status   | Not ported - v1 uses grid-based Riemann sum                       |
+| Property    | Value                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Well-known (adaptive quadrature)                                                                                                                |
+| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L268-L409`](../../../packages/legacy/treetime/treetime/node_interpolator.py#L268-L409) |
+| Functions   | `NodeInterpolator.convolve()` (`#NodeInterpolator`, `#convolve`), `_evaluate_convolution()` (`#_evaluate_convolution`)                          |
+| v1 Status   | Not ported - v1 uses grid-based Riemann sum                                                                                                     |
 
 **Algorithm**:
 
@@ -257,12 +257,12 @@ Given a polytomy (node with k > 2 children):
 
 ## FWHM Computation
 
-| Property    | Value                                                      |
-| ----------- | ---------------------------------------------------------- |
-| Type        | Standard statistics                                        |
-| v0 Location | `packages/legacy/treetime/treetime/distribution.py:24-65:` |
-| Functions   | `Distribution.calc_fwhm()`                                 |
-| v1 Status   | Not implemented                                            |
+| Property    | Value                                                                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Standard statistics                                                                                                               |
+| v0 Location | [`packages/legacy/treetime/treetime/distribution.py#L24-L65`](../../../packages/legacy/treetime/treetime/distribution.py#L24-L65) |
+| Functions   | `Distribution.calc_fwhm()` (`#Distribution`, `#calc_fwhm`)                                                                        |
+| v1 Status   | Not implemented                                                                                                                   |
 
 **Algorithm**:
 
@@ -279,12 +279,12 @@ In neg-log probability space, FWHM corresponds to region where `-log(P) < -log(P
 
 ## Branch Length Interpolator (Input Mode)
 
-| Property    | Value                                                                             |
-| ----------- | --------------------------------------------------------------------------------- |
-| Type        | Poisson/Gaussian approximation                                                    |
-| v0 Location | `packages/legacy/treetime/treetime/branch_len_interpolator.py:64-100:`            |
-| Functions   | `BranchLenInterpolator.__init__()` input mode                                     |
-| v1 Status   | Partially in `branch_length_likelihood.rs` but without Poisson/Gaussian switching |
+| Property    | Value                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Poisson/Gaussian approximation                                                                                                                                                                                                |
+| v0 Location | [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L100`](../../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L100)                                                                     |
+| Functions   | `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode                                                                                                                                                      |
+| v1 Status   | Partially in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching |
 
 **Algorithm**:
 
@@ -306,12 +306,12 @@ Transition: Switches from Poisson to Gaussian when `mutation_count > threshold` 
 
 ## Random GTR Generation
 
-| Property    | Value                                               |
-| ----------- | --------------------------------------------------- |
-| Type        | Testing utility                                     |
-| v0 Location | `packages/legacy/treetime/treetime/gtr.py:550-580:` |
-| Functions   | `GTR.random()`                                      |
-| v1 Status   | Not ported                                          |
+| Property    | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Type        | Testing utility                                                                                                     |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L550-L580`](../../../packages/legacy/treetime/treetime/gtr.py#L550-L580) |
+| Functions   | `GTR.random()` (`#GTR`, `#random`)                                                                                  |
+| v1 Status   | Not ported                                                                                                          |
 
 **Algorithm**:
 
@@ -326,12 +326,12 @@ Transition: Switches from Poisson to Gaussian when `mutation_count > threshold` 
 
 ## File-Based GTR Loading
 
-| Property    | Value                                               |
-| ----------- | --------------------------------------------------- |
-| Type        | I/O utility                                         |
-| v0 Location | `packages/legacy/treetime/treetime/gtr.py:480-520:` |
-| Functions   | `GTR.from_file()`                                   |
-| v1 Status   | Not ported                                          |
+| Property    | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Type        | I/O utility                                                                                                         |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L480-L520`](../../../packages/legacy/treetime/treetime/gtr.py#L480-L520) |
+| Functions   | `GTR.from_file()` (`#GTR`, `#from_file`)                                                                            |
+| v1 Status   | Not ported                                                                                                          |
 
 **Algorithm**:
 
@@ -357,12 +357,12 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 
 ## GTR Optimal Branch Length
 
-| Property    | Value                                                            |
-| ----------- | ---------------------------------------------------------------- |
-| Type        | Optimization                                                     |
-| v0 Location | `packages/legacy/treetime/treetime/gtr.py:350-400:`              |
-| Functions   | `GTR.optimal_t()`, `GTR.optimal_t_compressed()`                  |
-| v1 Status   | Functionality exists in `optimize` command but not as GTR method |
+| Property    | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Type        | Optimization                                                                                                        |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L350-L400`](../../../packages/legacy/treetime/treetime/gtr.py#L350-L400) |
+| Functions   | `GTR.optimal_t()` (`#GTR`, `#optimal_t`), `GTR.optimal_t_compressed()` (`#optimal_t_compressed`)                    |
+| v1 Status   | Functionality exists in `optimize` command but not as GTR method                                                    |
 
 **Algorithm**:
 
