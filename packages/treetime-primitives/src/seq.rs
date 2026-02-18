@@ -31,21 +31,24 @@ impl Seq {
   /// Panics if `s` contains non-ASCII characters. This validation is required
   /// because [`as_str`](Self::as_str) uses `from_utf8_unchecked` which requires
   /// all bytes to be valid ASCII (a subset of UTF-8).
+  #[allow(unsafe_code)]
   pub fn from_str(s: &str) -> Self {
     assert!(s.is_ascii(), "Seq::from_str: input contains non-ASCII characters");
-    Self::from_str_unchecked(s)
+    // SAFETY: We just validated that s.is_ascii() above
+    unsafe { Self::from_str_unchecked(s) }
   }
 
   /// Create a sequence from a pre-validated ASCII string.
   ///
-  /// # Precondition
+  /// # Safety
   ///
   /// The caller must ensure that `s` contains only ASCII characters (bytes 0-127).
   /// Passing non-ASCII input violates the type invariant and causes undefined behavior
   /// when calling [`as_str`](Self::as_str).
   ///
   /// Use [`from_str`](Self::from_str) for untrusted input.
-  pub fn from_str_unchecked(s: &str) -> Self {
+  #[allow(unsafe_code)]
+  pub unsafe fn from_str_unchecked(s: &str) -> Self {
     debug_assert!(
       s.is_ascii(),
       "Seq::from_str_unchecked: input contains non-ASCII characters"
@@ -448,6 +451,7 @@ impl serde::Serialize for Seq {
   }
 }
 
+#[allow(unsafe_code)]
 impl<'de> serde::Deserialize<'de> for Seq {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -457,7 +461,8 @@ impl<'de> serde::Deserialize<'de> for Seq {
     if !s.is_ascii() {
       return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
     }
-    Ok(Seq::from_str_unchecked(&s))
+    // SAFETY: We just validated that s.is_ascii() above
+    Ok(unsafe { Seq::from_str_unchecked(&s) })
   }
 }
 
