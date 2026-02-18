@@ -36,25 +36,30 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
   graph.iter_depth_first_postorder_forward(|node| {
     let mut node_coeffs = RelaxedClockCoeffs::default();
 
-    // Get edge to parent if not root
-    if !node.is_root {
-      if let Some(parent_edge) = node.parent_edges.first() {
-        // mutation_length (opt_len) = branch_length in substitutions per site
-        let opt_len = parent_edge.branch_length().unwrap_or(0.0);
-        // clock_length (act_len) = time_length * clock_rate, but we use time_length directly
-        // In v0: act_len = clock_length if hasattr else branch_length
-        // Here we use time_length if available, else branch_length
-        let act_len = parent_edge.time_length().unwrap_or(opt_len);
+    // Compute branch penalty coefficients
+    // For root: use one_mutation as both opt_len and act_len (v0 lines 1096-1105)
+    // For non-root: use actual edge lengths
+    let (opt_len, act_len) = if node.is_root {
+      (one_mutation, one_mutation)
+    } else if let Some(parent_edge) = node.parent_edges.first() {
+      // mutation_length (opt_len) = branch_length in substitutions per site
+      let opt_len = parent_edge.branch_length().unwrap_or(0.0);
+      // clock_length (act_len) = time_length * clock_rate, but we use time_length directly
+      // In v0: act_len = clock_length if hasattr else branch_length
+      // Here we use time_length if available, else branch_length
+      let act_len = parent_edge.time_length().unwrap_or(opt_len);
+      (opt_len, act_len)
+    } else {
+      (one_mutation, one_mutation)
+    };
 
-        // Contact term: stiffness * (gamma * act_len - opt_len)^2 + slack * (gamma - 1)^2
-        // Expanding: (slack + c * act_len^2 / (opt_len + one_mutation)) * gamma^2
-        //          - 2 * (c * act_len * opt_len / (opt_len + one_mutation) + slack) * gamma + C
-        // = k2 * gamma^2 + k1 * gamma + C
-        let denom = opt_len + one_mutation;
-        node_coeffs.k2 = slack + c * act_len * act_len / denom;
-        node_coeffs.k1 = -2.0 * (c * act_len * opt_len / denom + slack);
-      }
-    }
+    // Contact term: stiffness * (gamma * act_len - opt_len)^2 + slack * (gamma - 1)^2
+    // Expanding: (slack + c * act_len^2 / (opt_len + one_mutation)) * gamma^2
+    //          - 2 * (c * act_len * opt_len / (opt_len + one_mutation) + slack) * gamma + C
+    // = k2 * gamma^2 + k1 * gamma + C
+    let denom = opt_len + one_mutation;
+    node_coeffs.k2 = slack + c * act_len * act_len / denom;
+    node_coeffs.k1 = -2.0 * (c * act_len * opt_len / denom + slack);
 
     // Coupling term: sum over children of coupling * (gamma - gamma_child)^2 + Cost_child(gamma_child | gamma)
     // Given gamma, optimal gamma_child = (coupling * gamma - 0.5 * child.k1) / (coupling + child.k2)
