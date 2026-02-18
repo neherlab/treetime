@@ -135,8 +135,13 @@ impl<T: InterpElem> Grid<T> {
   /// Finds grid interval index containing given x value
   ///
   /// Returns index of the left endpoint of the interval containing x.
-  /// For x below grid minimum, returns 0.
   /// For x at or above grid maximum, returns n_points - 2 (last valid interval).
+  ///
+  /// # Out-of-bounds behavior
+  ///
+  /// For `x < x_min`, returns 0 (same as `x == x_min`). This is intentional
+  /// clamping, not validation. Callers requiring strict bounds checking must
+  /// verify `x >= x_min` before calling.
   pub fn find_interval_index(&self, x: T) -> usize
   where
     T: Float,
