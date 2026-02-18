@@ -1,9 +1,66 @@
+use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+use crate::gtr::gtr::GTR;
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::payload::ancestral::GraphAncestral;
+use eyre::Report;
+use maplit::btreemap;
+use parking_lot::RwLock;
+use std::sync::{Arc, LazyLock};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node::Named;
+use treetime_io::fasta::read_many_fasta_str;
+use treetime_io::nwk::nwk_read_str;
+
+/// Default nucleotide alphabet for test helpers.
+pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+/// Run dense marginal reconstruction on a tree given as Newick string.
+///
+/// Returns the log-likelihood of the reconstruction.
+pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
+  let graph: GraphAncestral = nwk_read_str(newick)?;
+  let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
+  let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+  let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+    index: 0,
+    gtr,
+    alphabet,
+    length: get_common_length(&aln)?,
+    nodes: btreemap! {},
+    edges: btreemap! {},
+  }))];
+
+  initialize_marginal(&graph, &partitions, &aln)
+}
+
+/// Run sparse marginal reconstruction on a tree given as Newick string.
+///
+/// Returns the log-likelihood of the reconstruction.
+pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
+  let graph: GraphAncestral = nwk_read_str(newick)?;
+  let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
+  let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+
+  let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
+    index: 0,
+    gtr,
+    alphabet,
+    length: get_common_length(&aln)?,
+    nodes: btreemap! {},
+    edges: btreemap! {},
+  }))];
+
+  compress_sequences(&graph, &partitions, &aln)?;
+  update_marginal(&graph, &partitions)
+}
 
 /// Find a node key by its name in a graph where nodes implement `Named`.
 pub fn find_node_key_by_name<N, E, D>(graph: &Graph<N, E, D>, name: &str) -> Option<GraphNodeKey>
