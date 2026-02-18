@@ -8,7 +8,7 @@ use argmin::core::observers::{Observe, ObserverMode};
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use log::{debug, info};
+use log::{debug, info, warn};
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
@@ -163,8 +163,15 @@ impl TcCostFunction {
                 parent_tbp - t_node
               })
           })
-        })
-        .unwrap_or(0.0);
+        });
+
+      let Some(branch_length) = branch_length else {
+        warn!(
+          "Tc optimization: skipping node (key={:?}) with undetermined branch length",
+          node.key
+        );
+        return;
+      };
 
       // Multiplicity: number of children for internal nodes, 2 for leaves
       let multiplicity = if node.child_edges.is_empty() {
