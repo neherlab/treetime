@@ -12,6 +12,7 @@ Error macros built on `eyre`:
 - `make_report!()` - create error report for `.map_err()`
 - `make_internal_error!()` / `make_internal_report!()` - internal bug errors with developer contact info
 - `report_to_string()` - flatten error chain into a single string
+- `keep_ok()` - filter a slice of `Result` values, keeping only `Ok` variants
 
 ### Array (`array`)
 
@@ -45,8 +46,9 @@ Custom serialization for `ndarray` and related types:
 
 ### Collections (`collections`)
 
-- `container` - `get_exactly_one()`, `get_one()`, `minmax()`
+- `container` - `count_occurrences()`, `get_exactly_one()`, `get_one()`, `minmax()`
 - `vec` - `vec_of_owned![]`, `vec_u8![]` macros
+- `manyzip` - `Manyzip` iterator for zipping a dynamic number of iterators
 
 ### DateTime (`datetime`)
 
@@ -86,7 +88,7 @@ Date and time parsing for phylogenetic metadata:
 ### Sync (`sync`)
 
 - `mutex` - `unwrap_arc_rwlock()` for extracting inner value from `Arc<RwLock<T>>`
-- `random` - seeded RNG creation with `Isaac64Rng`, `random_choice()`, `random_sequence()`
+- `random` - seeded RNG creation with `Isaac64Rng`, `random_choice()`, `random_remove()`, `random_pop()`, `random_sequence()`
 
 ### Testing (`testing`)
 

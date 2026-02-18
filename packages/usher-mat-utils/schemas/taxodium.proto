@@ -1,0 +1,41 @@
+syntax = "proto3";
+package Taxodium;
+
+message MutationList{
+	repeated int32 mutation = 1;
+}
+
+message MetadataSingleValuePerNode{
+	string metadata_name = 1;
+	string metadata_title = 2;
+	repeated string mapping = 3;
+	repeated int32 node_values = 4;
+}
+
+message AllNodeData {
+	repeated string names = 1;
+	repeated float x = 2;
+	repeated float y = 3;
+	repeated int32 countries = 4;//Deprecated: DO NOT USE (use metadata_singles)
+	repeated int32 dates = 7;
+	repeated int32 lineages = 5;//Deprecated: DO NOT USE (use metadata_singles)
+
+	repeated MutationList mutations = 6; 
+	repeated int32 parents = 8;
+	repeated string genbanks = 9;
+	repeated int32 epi_isl_numbers = 10;
+	repeated int32 num_tips = 11;
+	repeated MetadataSingleValuePerNode metadata_singles = 12;
+
+}
+
+
+message AllData{
+	AllNodeData node_data= 1;
+	repeated string country_mapping = 2;//Deprecated: DO NOT USE (use metadata_singles above)
+	repeated string lineage_mapping = 3; //Deprecated: DO NOT USE (use metadata_singles above)
+	repeated string mutation_mapping = 4;
+	repeated string date_mapping = 5;
+	string tree_description = 6;
+	string tree_title = 7;
+}

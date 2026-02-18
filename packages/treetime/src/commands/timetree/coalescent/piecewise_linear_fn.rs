@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use ndarray::Array1;
 
 /// Piecewise linear function represented by breakpoints and values.
@@ -45,7 +46,6 @@ impl PiecewiseLinearFn {
   }
 
   /// Get values at breakpoints.
-  #[cfg_attr(not(test), allow(dead_code))]
   pub fn values(&self) -> &Array1<f64> {
     &self.values
   }
@@ -74,7 +74,6 @@ impl PiecewiseLinearFn {
   }
 
   /// Evaluate at multiple points (must be monotonically sorted ascending).
-  #[cfg_attr(not(test), allow(dead_code))]
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));
 

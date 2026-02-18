@@ -86,7 +86,7 @@ where
     &output_dir,
   );
 
-  let outcomes = run_all_tests::<R>(&suite, &selected_test_cases, algorithms, args.verbose)?;
+  let outcomes = run_all_tests::<R>(&suite, &all_test_cases, &selected_test_cases, algorithms, args.verbose)?;
 
   generate_plot_outputs(&output_dir, &outcomes)?;
   generate_tsv_outputs(&output_dir, &outcomes)?;
@@ -136,6 +136,7 @@ fn filter_by_slowness<T: TestCase>(test_cases: &[T], threshold: f64) -> Vec<T> {
 
 fn run_all_tests<R: TestRunner>(
   suite: &R::Suite,
+  all_test_cases: &[R::TestCase],
   selected_test_cases: &[R::TestCase],
   algorithms: &[R::Algorithm],
   verbose: bool,

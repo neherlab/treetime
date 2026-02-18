@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::traits::PartitionCompressed;

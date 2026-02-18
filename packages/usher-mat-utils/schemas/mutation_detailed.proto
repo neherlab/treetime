@@ -1,0 +1,73 @@
+syntax = "proto3";                                                                                                                                                                                              
+package Mutation_Detailed;
+
+message node {
+    repeated int32 mutation_positions = 1;
+    repeated fixed32 mutation_other_fields = 2;
+    repeated int32 ignored_range_start = 3;
+    repeated int32 ignored_range_end = 4;
+    uint64 node_id = 5;
+    repeated int64 children_offsets =6;
+    repeated int32 children_lengths =7;
+    repeated string condensed_nodes =8;
+    int32 changed =9;
+}
+
+message node_idx{
+    int64 node_id = 1;
+    string node_name=2;
+}
+
+message meta {
+    repeated int32 ref_nuc=1;
+    int64 nodes_idx_next=2;
+    repeated string chromosomes=3;
+    int64 root_offset=4;
+    int64 root_length=5;
+    repeated node_idx node_idx_map=6;
+}
+
+message sample_to_place{
+    uint64 sample_id=1;
+    repeated int32 sample_mutation_positions=2;
+    repeated fixed32 sample_mutation_other_fields=3;
+}
+message placed_target{
+    uint64 target_node_id=1;
+    uint64 split_node_id=2;
+    repeated int32 sample_mutation_positions=3;
+    repeated fixed32 sample_mutation_other_fields=4;
+    repeated int32 split_mutation_positions=5;
+    repeated fixed32 split_mutation_other_fields=6;
+    repeated int32 shared_mutation_positions=7;
+    repeated fixed32 shared_mutation_other_fields=8;
+    uint64 sample_id=9;
+}
+
+message target{
+    uint64 target_node_id=1;
+    uint64 parent_node_id=2;
+    repeated int32 sample_mutation_positions=3;
+    repeated fixed32 sample_mutation_other_fields=4;
+    repeated int32 split_mutation_positions=5;
+    repeated fixed32 split_mutation_other_fields=6;
+    repeated int32 shared_mutation_positions=7;
+    repeated fixed32 shared_mutation_other_fields=8;
+}
+
+
+message search_result{
+    uint64 sample_id=1;
+    repeated target place_targets=2;
+}
+
+message mutation_at_each_pos{
+    repeated int64 node_id=1;
+    repeated int32 mut=2;
+}
+
+message mutation_collection{
+    int64 node_idx=1;
+    repeated int32 positions=3;
+    repeated fixed32 other_fields=4;
+}
