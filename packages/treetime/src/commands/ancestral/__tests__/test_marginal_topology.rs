@@ -107,19 +107,15 @@ mod tests {
   }
 
   // ============================================================================
-  // T10: Deep tree stress tests
+  // Deep tree stress tests
   // ============================================================================
 
   #[test]
-  fn test_deep_binary_tree_10_levels() -> Result<(), Report> {
-    // Create a balanced binary tree with 10 levels (1023 internal nodes, 1024 leaves)
-    // This tests numerical stability and stack safety for deep recursion
+  fn test_deep_caterpillar_tree_10_leaves() -> Result<(), Report> {
+    // Create a caterpillar tree with 10 leaves (A-J)
+    // Tests numerical stability and stack safety for deep recursion
     let gtr = jc69(JC69Params::default())?;
     let t = 0.1;
-
-    // Build tree recursively: depth 10 = 2^10 = 1024 leaves
-    // For simplicity, we'll build a smaller balanced tree with 16 leaves (4 levels)
-    // and an unbalanced caterpillar with 10 levels
     let newick = format!(
       "(((((((((A:{t},B:{t}):{t},C:{t}):{t},D:{t}):{t},E:{t}):{t},F:{t}):{t},G:{t}):{t},H:{t}):{t},I:{t}):{t},J:{t})root;"
     );
