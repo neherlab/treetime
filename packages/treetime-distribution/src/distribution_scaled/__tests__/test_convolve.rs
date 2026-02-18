@@ -84,11 +84,9 @@ mod tests {
       // Same grid bounds
       assert_ulps_eq!(f_ab.grid().x_min(), f_ba.grid().x_min(), max_ulps = 4);
       assert_ulps_eq!(f_ab.grid().x_max(), f_ba.grid().x_max(), max_ulps = 4);
+      // Same y-values (full array comparison)
       assert_eq!(f_ab.y().len(), f_ba.y().len());
-      // Same y-values
-      for i in 0..f_ab.y().len() {
-        assert_ulps_eq!(f_ab.y()[i], f_ba.y()[i], max_ulps = 4);
-      }
+      approx::assert_ulps_eq!(f_ab.y().as_slice().unwrap(), f_ba.y().as_slice().unwrap(), max_ulps = 4);
     } else {
       unreachable!("Expected Function distributions");
     }

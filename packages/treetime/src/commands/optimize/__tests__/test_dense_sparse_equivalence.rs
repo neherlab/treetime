@@ -325,17 +325,18 @@ mod tests {
     assert_eq!(branch_lengths_dense.len(), branch_lengths_sparse.len());
 
     // All branch lengths should be valid and bounded
-    for (dense_bl, sparse_bl) in branch_lengths_dense.iter().zip(branch_lengths_sparse.iter()) {
-      assert!(dense_bl.is_finite());
-      assert!(sparse_bl.is_finite());
-      assert!(*dense_bl >= 0.0);
-      assert!(*sparse_bl >= 0.0);
-      assert!(*dense_bl < 10.0, "Dense branch length {dense_bl} should be reasonable");
-      assert!(
-        *sparse_bl < 10.0,
-        "Sparse branch length {sparse_bl} should be reasonable"
-      );
-    }
+    assert!(
+      branch_lengths_dense
+        .iter()
+        .all(|bl| bl.is_finite() && *bl >= 0.0 && *bl < 10.0),
+      "All dense branch lengths should be finite, non-negative, and < 10: {branch_lengths_dense:?}"
+    );
+    assert!(
+      branch_lengths_sparse
+        .iter()
+        .all(|bl| bl.is_finite() && *bl >= 0.0 && *bl < 10.0),
+      "All sparse branch lengths should be finite, non-negative, and < 10: {branch_lengths_sparse:?}"
+    );
 
     // Dense and sparse should produce similar branch lengths
     // Compare total tree length as a summary statistic
@@ -348,17 +349,15 @@ mod tests {
     );
 
     // Individual branch lengths should also be close
-    for (i, (dense_bl, sparse_bl)) in branch_lengths_dense
+    let max_diff = branch_lengths_dense
       .iter()
       .zip(branch_lengths_sparse.iter())
-      .enumerate()
-    {
-      let diff = (dense_bl - sparse_bl).abs();
-      assert!(
-        diff < 0.05,
-        "Branch {i} lengths should be similar: dense={dense_bl}, sparse={sparse_bl}, diff={diff}"
-      );
-    }
+      .map(|(d, s)| (d - s).abs())
+      .fold(0.0_f64, f64::max);
+    assert!(
+      max_diff < 0.05,
+      "Branch lengths should be similar: max_diff={max_diff}, dense={branch_lengths_dense:?}, sparse={branch_lengths_sparse:?}"
+    );
 
     Ok(())
   }
@@ -432,12 +431,10 @@ mod tests {
     );
 
     // All iterations should stay in valid range
-    for (i, lh) in lh_history.iter().enumerate() {
-      assert!(
-        *lh > -200.0 && *lh < 0.0,
-        "Iteration {i} log-LH {lh} should be in valid range [-200, 0]"
-      );
-    }
+    assert!(
+      lh_history.iter().all(|lh| *lh > -200.0 && *lh < 0.0),
+      "All log-LH values should be in valid range [-200, 0]: {lh_history:?}"
+    );
 
     // Best likelihood achieved should be reasonable
     let best_lh = lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
