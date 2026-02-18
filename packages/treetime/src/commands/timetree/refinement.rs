@@ -30,10 +30,8 @@ pub fn run_refinement_iteration(
   let mut is_tree_dirty = false;
 
   if !args.relax.is_empty() {
-    // Get sequence length from first partition, or use a default
-    let one_mutation = partitions
-      .first()
-      .map_or(1e-4, |p| 1.0 / p.read_arc().get_sequence_length() as f64);
+    let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
+    let one_mutation = 1.0 / total_length as f64;
     info!(
       "Applying relaxed clock with slack={}, coupling={}",
       args.relax.first().copied().unwrap_or(1.0),
