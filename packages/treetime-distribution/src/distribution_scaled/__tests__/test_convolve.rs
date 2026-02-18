@@ -2,7 +2,7 @@
 mod tests {
   use crate::Distribution;
   use crate::distribution_scaled::convolve::scaled_distribution_convolution;
-  use crate::distribution_scaled::distribution_scaled::ScaledDistribution;
+  use crate::distribution_scaled::scaled::ScaledDistribution;
   use crate::policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};

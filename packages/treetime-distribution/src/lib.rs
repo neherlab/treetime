@@ -24,7 +24,7 @@ pub use distribution_ops::time_bounds::{
   distribution_time_bounds_union,
 };
 pub use distribution_scaled::convolve::scaled_distribution_convolution;
-pub use distribution_scaled::distribution_scaled::ScaledDistribution;
 pub use distribution_scaled::divide::scaled_distribution_division;
 pub use distribution_scaled::multiply::{scaled_distribution_multiplication, scaled_distribution_multiply_many};
+pub use distribution_scaled::scaled::ScaledDistribution;
 pub use policy::{NegLog, Plain, PolicyMarker, SupportsConvolution, SupportsSubtraction, YAxisPolicy};

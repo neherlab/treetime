@@ -1,7 +1,7 @@
 use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_ops::multiply::distribution_multiplication;
-use crate::distribution_scaled::distribution_scaled::ScaledDistribution;
+use crate::distribution_scaled::scaled::ScaledDistribution;
 use crate::policy::Plain;
 use approx::ulps_eq;
 use eyre::Report;

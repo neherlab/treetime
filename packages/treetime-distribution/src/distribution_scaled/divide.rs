@@ -1,5 +1,5 @@
 use crate::distribution_ops::divide::distribution_division;
-use crate::distribution_scaled::distribution_scaled::ScaledDistribution;
+use crate::distribution_scaled::scaled::ScaledDistribution;
 use eyre::Report;
 use treetime_utils::make_error;
 

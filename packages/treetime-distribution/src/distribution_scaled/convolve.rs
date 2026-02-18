@@ -1,5 +1,5 @@
 use crate::distribution_ops::convolve::distribution_convolution;
-use crate::distribution_scaled::distribution_scaled::ScaledDistribution;
+use crate::distribution_scaled::scaled::ScaledDistribution;
 use eyre::Report;
 
 /// Convolve two scaled distributions.
