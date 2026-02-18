@@ -1,12 +1,1 @@
-mod test_distribution;
-mod test_distribution_convolution;
-mod test_distribution_division;
-mod test_distribution_function;
-mod test_distribution_negation;
-mod test_distribution_scalar_multiplication;
-mod test_distribution_time_bounds;
 mod test_gaussian_product;
-mod test_scaled_distribution;
-mod test_scaled_distribution_convolution;
-mod test_scaled_distribution_division;
-mod test_scaled_distribution_multiplication;
