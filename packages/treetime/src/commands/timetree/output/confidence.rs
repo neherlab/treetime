@@ -36,7 +36,7 @@ pub fn compute_rate_susceptibility(
 
 /// Extract confidence intervals from marginal posterior distributions.
 ///
-/// Computes 95% CI for each node from time distribution using quantiles at 0.05 and 0.95.
+/// Computes 95% CI for each node from time distribution using quantiles at 0.025 and 0.975.
 /// For delta distributions (point estimates), returns identity interval `[date, date]`.
 pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidenceInterval> {
   graph
@@ -51,7 +51,7 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       let (lower, upper) = payload
         .time_distribution()
         .as_ref()
-        .and_then(|dist| dist.confidence_interval(0.05, 0.95))
+        .and_then(|dist| dist.confidence_interval(0.025, 0.975))
         .unwrap_or((date, date));
 
       Some(NodeConfidenceInterval {
