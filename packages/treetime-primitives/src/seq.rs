@@ -33,6 +33,23 @@ impl Seq {
   /// all bytes to be valid ASCII (a subset of UTF-8).
   pub fn from_str(s: &str) -> Self {
     assert!(s.is_ascii(), "Seq::from_str: input contains non-ASCII characters");
+    Self::from_str_unchecked(s)
+  }
+
+  /// Create a sequence from a pre-validated ASCII string.
+  ///
+  /// # Precondition
+  ///
+  /// The caller must ensure that `s` contains only ASCII characters (bytes 0-127).
+  /// Passing non-ASCII input violates the type invariant and causes undefined behavior
+  /// when calling [`as_str`](Self::as_str).
+  ///
+  /// Use [`from_str`](Self::from_str) for untrusted input.
+  pub fn from_str_unchecked(s: &str) -> Self {
+    debug_assert!(
+      s.is_ascii(),
+      "Seq::from_str_unchecked: input contains non-ASCII characters"
+    );
     Self {
       data: s
         .as_bytes()
@@ -440,7 +457,7 @@ impl<'de> serde::Deserialize<'de> for Seq {
     if !s.is_ascii() {
       return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
     }
-    Ok(Seq::from_str(&s))
+    Ok(Seq::from_str_unchecked(&s))
   }
 }
 
