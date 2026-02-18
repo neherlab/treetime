@@ -19,7 +19,7 @@ use treetime_graph::node::{GraphNode, Named};
 /// Parameters for skyline optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineParams {
-  /// Number of grid points for the piecewise constant Tc(t).
+  /// Number of grid points for the piecewise linear Tc(t).
   pub n_points: usize,
   /// Penalty for rapid changes in log(Tc).
   pub stiffness: f64,
@@ -58,7 +58,7 @@ pub struct SkylineResult {
 
 /// Optimizes the skyline coalescent model to find the best Tc(t) trajectory.
 ///
-/// This estimates a piecewise constant Tc(t) history that maximizes coalescent
+/// This estimates a piecewise linear Tc(t) history that maximizes coalescent
 /// likelihood with smoothness regularization.
 ///
 /// The cost function minimizes:
@@ -125,9 +125,10 @@ where
     .ok_or_else(|| make_report!("Skyline optimization returned no result"))?;
   let opt_log_tc = Array1::from_vec(opt_log_tc);
 
-  // Compute final likelihood
+  // Compute final likelihood using clamped values (consistent with cost function)
   let final_cost = result.state.best_cost;
-  let smoothness_penalty: f64 = opt_log_tc
+  let opt_log_tc_clamped = Array1::from_iter(opt_log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
+  let smoothness_penalty: f64 = opt_log_tc_clamped
     .windows(2)
     .into_iter()
     .map(|w| (w[1] - w[0]).powi(2))
