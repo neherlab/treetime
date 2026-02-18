@@ -31,13 +31,17 @@ pub fn run_refinement_iteration(
 
   if !args.relax.is_empty() {
     let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
-    let one_mutation = 1.0 / total_length as f64;
-    info!(
-      "Applying relaxed clock with slack={}, coupling={}",
-      args.relax.first().copied().unwrap_or(1.0),
-      args.relax.get(1).copied().unwrap_or(1.0)
-    );
-    apply_relaxed_clock(graph, &args.relax, one_mutation);
+    if total_length == 0 {
+      info!("Skipping relaxed clock: no sequence data (partitions empty or zero-length)");
+    } else {
+      let one_mutation = 1.0 / total_length as f64;
+      info!(
+        "Applying relaxed clock with slack={}, coupling={}",
+        args.relax.first().copied().unwrap_or(1.0),
+        args.relax.get(1).copied().unwrap_or(1.0)
+      );
+      apply_relaxed_clock(graph, &args.relax, one_mutation);
+    }
   }
 
   let n_resolved = if args.resolve_polytomies {
