@@ -1,6 +1,6 @@
 # Graph Traversal Algorithms
 
-[Back to index](index.md)
+[Back to index](../)
 
 ## Parallel BFS
 

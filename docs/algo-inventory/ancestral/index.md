@@ -1,6 +1,6 @@
 # Ancestral Reconstruction Algorithms
 
-[Back to index](index.md)
+[Back to index](../)
 
 ## Fitch Parsimony
 
@@ -41,7 +41,7 @@ Belief propagation / sum-product algorithm on trees. Backward pass computes part
 
 ## Joint ML (Unimplemented)
 
-See [unimplemented.md](unimplemented.md#joint-ml) for full details.
+See [unimplemented](../unimplemented/#joint-ml) for full details.
 
 | Property    | Value                                                                                          |
 | ----------- | ---------------------------------------------------------------------------------------------- |

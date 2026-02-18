@@ -1,6 +1,6 @@
 # Timetree Inference Algorithms
 
-[Back to index](index.md)
+[Back to index](../)
 
 ## Belief Propagation
 
@@ -77,7 +77,7 @@ Two-pass quadratic penalty optimization for rate variation.
 
 Greedy pairwise merging with Brent optimization per pair.
 
-**Note**: Stochastic resolution (v0's `generate_subtree()`) not ported. See [unimplemented.md](unimplemented.md#stochastic-polytomy-resolution).
+**Note**: Stochastic resolution (v0's `generate_subtree()`) not ported. See [unimplemented](../unimplemented/#stochastic-polytomy-resolution).
 
 ---
 

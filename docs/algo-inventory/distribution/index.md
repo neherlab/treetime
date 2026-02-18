@@ -1,6 +1,6 @@
 # Distribution and Convolution Algorithms
 
-[Back to index](index.md)
+[Back to index](../)
 
 ## FFT Convolution
 
@@ -97,7 +97,7 @@ Normalizes only when max drops below 1e-100, reducing rounding error vs aggressi
 
 ## Unimplemented
 
-See [unimplemented.md](unimplemented.md) for full details:
+See [unimplemented](../unimplemented/) for full details:
 
 - FFT Convolution with Delta Approximation
 - Adaptive Simpson's Rule Convolution
