@@ -96,7 +96,7 @@ def main() -> None:
     data_dir = Path("data/flu/h3n2/20")
     tree_path = data_dir / "tree.nwk"
     aln_path = data_dir / "aln.fasta.xz"
-    output_path = Path("packages/treetime/src/gtr/__tests__/fixtures/gtr_inference_dense.json")
+    output_path = Path("packages/treetime/src/gtr/infer_gtr/__tests__/fixtures/gtr_inference_dense.json")
 
     log.info("Loading tree from %s", tree_path)
     nwk_str = tree_path.read_text()

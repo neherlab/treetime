@@ -1,4 +1,4 @@
-//! GTR inference tests.
+//! Tests for dense GTR inference.
 //!
 //! Golden master tests validate dense GTR inference against Python v0 reference outputs.
 //! The fixture (`fixtures/gtr_inference_dense.json`) contains mutation counts and inferred
@@ -14,16 +14,13 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::avg_transition;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, distance, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
-  use crate::gtr::infer_gtr::sparse::get_mutation_counts;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -41,176 +38,6 @@ mod tests {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
   }
 
-  #[test]
-  fn test_infer_gtr_only() -> Result<(), Report> {
-    let nij = array![
-      [0.0, 1.0, 2.0, 1.0],
-      [1.0, 0.0, 3.0, 2.0],
-      [2.0, 3.0, 0.0, 1.0],
-      [2.0, 3.0, 3.0, 0.0]
-    ];
-    let Ti = array![12.0, 20.0, 14.0, 12.4];
-    let root_state = array![3.0, 2.0, 3.0, 4.0];
-
-    let actual = infer_gtr_impl(
-      &MutationCounts { nij, Ti, root_state },
-      &InferGtrOptions {
-        pc: 0.1,
-        ..InferGtrOptions::default()
-      },
-    )?;
-
-    #[rustfmt::skip]
-    pretty_assert_ulps_eq!(
-      array![
-        [ 0.0000000000000000,  0.7358152606066288,  1.8250024541741396,  1.1480276310375928],
-        [ 0.7358152606066288,  0.0000000000000000,  1.9426167902218199,  1.2779572118106166],
-        [ 1.8250024541741396,  1.9426167902218199,  0.0000000000000000,  1.3712594037821175],
-        [ 1.1480276310375928,  1.2779572118106166,  1.3712594037821175,  0.0000000000000000],
-      ],
-      &actual.W,
-      epsilon = 1e-9
-    );
-
-    pretty_assert_ulps_eq!(
-      array![
-        0.209080146491563,
-        0.245288114914305,
-        0.209258588641852,
-        0.336373149952278,
-      ],
-      &actual.pi,
-      epsilon = 1e-9
-    );
-
-    pretty_assert_ulps_eq!(0.4004706866848004, actual.mu, epsilon = 1e-9);
-
-    pretty_assert_ulps_eq!(1.0, avg_transition(&actual.W, &actual.pi)?, epsilon = 1e-5);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_infer_gtr_with_mutation_counts() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
-      indoc! {r#"
-      >A
-      ACATCGCCNNA--GAC
-      >B
-      GCATCCCTGTA-NG--
-      >C
-      CCGGCGATGTRTTG--
-      >D
-      TCGGCCGTGTRTTG--
-      "#},
-      &*NUC_ALPHABET,
-    )?;
-
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let alphabet = Alphabet::default();
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
-
-    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
-
-    let counts_actual = get_mutation_counts(&graph, &partition)?;
-    let counts_expected = MutationCounts {
-      nij: array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
-      Ti: array![1.98, 2.945, 2.515, 2.64],
-      root_state: array![4.0, 3.0, 3.0, 4.0],
-    };
-
-    pretty_assert_ulps_eq!(counts_expected.nij, counts_actual.nij, epsilon = 1e-9);
-    pretty_assert_ulps_eq!(counts_expected.Ti, counts_actual.Ti, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(counts_expected.root_state, counts_actual.root_state, epsilon = 1e-9);
-
-    let actual = infer_gtr_impl(
-      &counts_actual,
-      &InferGtrOptions {
-        pc: 0.1,
-        ..InferGtrOptions::default()
-      },
-    )?;
-
-    #[rustfmt::skip]
-    pretty_assert_ulps_eq!(
-      array![
-        [0.0, 2.1751124, 2.95601658, 0.18620301],
-        [2.1751124, 0.0, 1.40528091, 1.41465696],
-        [2.95601658, 1.40528091, 0.0, 0.74490315],
-        [0.18620301, 1.41465696, 0.74490315, 0.0]
-      ],
-      &actual.W,
-      epsilon = 1e-7
-    );
-
-    pretty_assert_ulps_eq!(
-      array![0.14878846, 0.24051536, 0.31239203, 0.29830414],
-      &actual.pi,
-      epsilon = 1e-7
-    );
-    pretty_assert_ulps_eq!(0.9471364432348814, actual.mu, epsilon = 1e-7);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_infer_gtr_distance_1() {
-    let actual = distance(&array![0.0, 0.0, 0.0, 0.0], &array![0.25, 0.25, 0.25, 0.25]);
-    let expected = 0.5;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
-  }
-
-  #[test]
-  fn test_infer_gtr_distance_2() {
-    let actual = distance(
-      &array![0.25, 0.25, 0.25, 0.25],
-      &array![0.16031624, 0.24247873, 0.3087257, 0.28847933],
-    );
-    let expected = 0.11414514039292292;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
-  }
-
-  #[test]
-  fn test_infer_gtr_distance_3() {
-    let actual = distance(
-      &array![0.16031624, 0.24247873, 0.3087257, 0.28847933],
-      &array![0.14968981, 0.24040983, 0.31181279, 0.29808757],
-    );
-    let expected = 0.014800329884495377;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
-  }
-
-  #[test]
-  fn test_infer_gtr_distance_4() {
-    let actual = distance(
-      &array![0.14878286, 0.24052002, 0.31238389, 0.29831323],
-      &array![0.14878922, 0.24051699, 0.31239221, 0.29830159],
-    );
-    let expected = 1.59484629332816e-05;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
-  }
-
-  #[test]
-  fn test_infer_gtr_distance_5() {
-    let same = &array![0.14878286, 0.24052002, 0.31238389, 0.29831323];
-    let actual = distance(same, same);
-    let expected = 0.0;
-    pretty_assert_ulps_eq!(actual, expected, max_ulps = 3);
-  }
-
-  // ============================================================================
-  // Golden master test for dense GTR inference
-  // ============================================================================
-
   fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
@@ -218,6 +45,37 @@ mod tests {
       .map(PathBuf::from)
       .expect("project has workspace root")
   }
+
+  /// Helper to create a dense partition and run marginal reconstruction.
+  fn setup_dense_partition(
+    tree_nwk: &str,
+    aln: &[FastaRecord],
+    treat_gap_as_unknown: bool,
+  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      treat_gap_as_unknown,
+      ..JC69Params::default()
+    })?;
+
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    initialize_marginal(&graph, std::slice::from_ref(&partition), aln)?;
+    Ok((graph, partition))
+  }
+
+  // ============================================================================
+  // Golden master test
+  // ============================================================================
 
   #[derive(Debug, Deserialize)]
   struct GtrInferenceDenseFixture {
@@ -230,9 +88,9 @@ mod tests {
   /// Dataset: flu/h3n2/20
   /// Compares: mutation counts (nij, Ti, root_state) and inferred GTR parameters (W, pi, mu)
   #[test]
-  fn test_infer_gtr_dense_golden_master() -> Result<(), Report> {
+  fn test_golden_master() -> Result<(), Report> {
     let fixture_path =
-      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/__tests__/fixtures/gtr_inference_dense.json");
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/infer_gtr/__tests__/fixtures/gtr_inference_dense.json");
     let fixture_str = std::fs::read_to_string(&fixture_path)?;
     let fixture: GtrInferenceDenseFixture = serde_json::from_str(&fixture_str)?;
 
@@ -282,39 +140,12 @@ mod tests {
   }
 
   // ============================================================================
-  // Unit tests for dense GTR inference (T6)
+  // Unit tests
   // ============================================================================
-
-  /// Helper to create a dense partition and run marginal reconstruction.
-  fn setup_dense_partition(
-    tree_nwk: &str,
-    aln: &[FastaRecord],
-    treat_gap_as_unknown: bool,
-  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
-    let gtr = jc69(JC69Params {
-      alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown,
-      ..JC69Params::default()
-    })?;
-
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
-
-    initialize_marginal(&graph, std::slice::from_ref(&partition), aln)?;
-    Ok((graph, partition))
-  }
 
   /// All sequences identical -> zero off-diagonal nij (no substitutions).
   #[test]
-  fn test_infer_gtr_dense_uniform_sequences() -> Result<(), Report> {
+  fn test_uniform_sequences() -> Result<(), Report> {
     let aln = read_many_fasta_str(
       indoc! {r#"
       >A
@@ -351,7 +182,7 @@ mod tests {
 
   /// Single mutation from A to C at one position.
   #[test]
-  fn test_infer_gtr_dense_single_mutation() -> Result<(), Report> {
+  fn test_single_mutation() -> Result<(), Report> {
     // Simple tree: root -> A, root -> B
     // A has "ACGT", B has "CCGT" (A->C at position 0)
     let aln = read_many_fasta_str(
@@ -398,7 +229,7 @@ mod tests {
   /// Dense inference produces valid GTR model on realistic data.
   /// Verifies that the inferred model has valid properties (symmetric W, normalized pi, positive mu).
   #[test]
-  fn test_infer_gtr_dense_produces_valid_model() -> Result<(), Report> {
+  fn test_produces_valid_model() -> Result<(), Report> {
     let aln = read_many_fasta_str(
       indoc! {r#"
       >A

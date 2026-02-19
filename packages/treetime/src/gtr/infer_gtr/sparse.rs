@@ -13,14 +13,14 @@ pub fn infer_gtr_sparse(
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
   graph: &GraphAncestral,
 ) -> Result<GTR, Report> {
-  let counts = get_mutation_counts(graph, partition)?;
+  let counts = get_mutation_counts_sparse(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let alphabet = partition.read_arc().alphabet.clone();
   let W = Some(W);
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
-pub fn get_mutation_counts(
+pub fn get_mutation_counts_sparse(
   graph: &GraphAncestral,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
 ) -> Result<MutationCounts, Report> {
