@@ -71,6 +71,12 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
+  debug_assert!(
+    params.n_points >= 2,
+    "skyline requires at least 2 grid points, got {}",
+    params.n_points
+  );
+
   info!(
     "Starting skyline optimization with {} grid points, stiffness={}, regularization={}",
     params.n_points, params.stiffness, params.regularization
