@@ -3,12 +3,17 @@ mod tests {
   use eyre::Result;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_primitives::AsciiChar;
 
   use crate::representation::partition::marginal_sparse::compose_substitutions;
   use crate::seq::mutation::Sub;
 
-  fn sub(reff: char, pos: usize, qry: char) -> Sub {
-    Sub::new(reff, pos, qry).unwrap()
+  fn c(b: u8) -> AsciiChar {
+    AsciiChar::from_byte_unchecked(b)
+  }
+
+  fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
+    Sub::new(c(reff), pos, c(qry)).unwrap()
   }
 
   #[test]
@@ -20,7 +25,7 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_empty_parent() -> Result<()> {
-    let child = vec![sub('A', 5, 'G'), sub('C', 10, 'T')];
+    let child = vec![sub(b'A', 5, b'G'), sub(b'C', 10, b'T')];
     let result = compose_substitutions(&[], &child)?;
     assert_eq!(child, result);
     Ok(())
@@ -28,7 +33,7 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_empty_child() -> Result<()> {
-    let parent = vec![sub('A', 5, 'G'), sub('C', 10, 'T')];
+    let parent = vec![sub(b'A', 5, b'G'), sub(b'C', 10, b'T')];
     let result = compose_substitutions(&parent, &[])?;
     assert_eq!(parent, result);
     Ok(())
@@ -36,28 +41,28 @@ mod tests {
 
   #[test]
   fn test_compose_substitutions_no_overlap() -> Result<()> {
-    let parent = vec![sub('A', 5, 'G')];
-    let child = vec![sub('C', 10, 'T')];
+    let parent = vec![sub(b'A', 5, b'G')];
+    let child = vec![sub(b'C', 10, b'T')];
     let result = compose_substitutions(&parent, &child)?;
-    assert_eq!(vec![sub('A', 5, 'G'), sub('C', 10, 'T')], result);
+    assert_eq!(vec![sub(b'A', 5, b'G'), sub(b'C', 10, b'T')], result);
     Ok(())
   }
 
   #[test]
   fn test_compose_substitutions_chain() -> Result<()> {
     // A5G + G5T = A5T (composition at same position)
-    let parent = vec![sub('A', 5, 'G')];
-    let child = vec![sub('G', 5, 'T')];
+    let parent = vec![sub(b'A', 5, b'G')];
+    let child = vec![sub(b'G', 5, b'T')];
     let result = compose_substitutions(&parent, &child)?;
-    assert_eq!(vec![sub('A', 5, 'T')], result);
+    assert_eq!(vec![sub(b'A', 5, b'T')], result);
     Ok(())
   }
 
   #[test]
   fn test_compose_substitutions_cancellation() -> Result<()> {
     // A5G + G5A = no mutation (cancellation)
-    let parent = vec![sub('A', 5, 'G')];
-    let child = vec![sub('G', 5, 'A')];
+    let parent = vec![sub(b'A', 5, b'G')];
+    let child = vec![sub(b'G', 5, b'A')];
     let result = compose_substitutions(&parent, &child)?;
     assert_eq!(Vec::<Sub>::new(), result);
     Ok(())
@@ -69,24 +74,27 @@ mod tests {
     // Position 10: C->T (parent only)
     // Position 15: G->A (child only)
     // Position 20: T->C + C->T = no mutation (cancellation)
-    let parent = vec![sub('A', 5, 'G'), sub('C', 10, 'T'), sub('T', 20, 'C')];
-    let child = vec![sub('G', 5, 'T'), sub('G', 15, 'A'), sub('C', 20, 'T')];
+    let parent = vec![sub(b'A', 5, b'G'), sub(b'C', 10, b'T'), sub(b'T', 20, b'C')];
+    let child = vec![sub(b'G', 5, b'T'), sub(b'G', 15, b'A'), sub(b'C', 20, b'T')];
     let result = compose_substitutions(&parent, &child)?;
     // Expected: pos 5 chained, pos 10 kept, pos 15 added, pos 20 cancelled
-    assert_eq!(vec![sub('A', 5, 'T'), sub('C', 10, 'T'), sub('G', 15, 'A')], result);
+    assert_eq!(
+      vec![sub(b'A', 5, b'T'), sub(b'C', 10, b'T'), sub(b'G', 15, b'A')],
+      result
+    );
     Ok(())
   }
 
   #[rstest]
-  #[case('A', 'G', 'T', Some(('A', 'T')))] // chain: A->G->T = A->T
-  #[case('A', 'G', 'A', None)] // cancel: A->G->A = none
-  #[case('C', 'T', 'G', Some(('C', 'G')))] // chain: C->T->G = C->G
-  #[case('G', 'A', 'G', None)] // cancel: G->A->G = none
+  #[case(b'A', b'G', b'T', Some((b'A', b'T')))] // chain: A->G->T = A->T
+  #[case(b'A', b'G', b'A', None)] // cancel: A->G->A = none
+  #[case(b'C', b'T', b'G', Some((b'C', b'G')))] // chain: C->T->G = C->G
+  #[case(b'G', b'A', b'G', None)] // cancel: G->A->G = none
   fn test_compose_substitutions_single_position(
-    #[case] parent_reff: char,
-    #[case] intermediate: char,
-    #[case] child_qry: char,
-    #[case] expected: Option<(char, char)>,
+    #[case] parent_reff: u8,
+    #[case] intermediate: u8,
+    #[case] child_qry: u8,
+    #[case] expected: Option<(u8, u8)>,
   ) -> Result<()> {
     let parent = vec![sub(parent_reff, 0, intermediate)];
     let child = vec![sub(intermediate, 0, child_qry)];

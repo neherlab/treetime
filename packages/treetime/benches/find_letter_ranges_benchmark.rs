@@ -29,11 +29,11 @@ const SEQ: &str = "\
 ";
 
 fn pred(c: AsciiChar) -> bool {
-  c == AsciiChar::new(b'N') || c == AsciiChar::new(b'-')
+  c == AsciiChar::from_byte_unchecked(b'N') || c == AsciiChar::from_byte_unchecked(b'-')
 }
 
 pub fn bench_1(c: &mut Criterion) {
-  let seq: Seq = SEQ.into();
+  let seq = Seq::try_from_str(SEQ).unwrap();
   c.bench_function("find_letter_ranges_by", |b| {
     b.iter(|| find_letter_ranges_by(black_box(&seq), pred));
   });

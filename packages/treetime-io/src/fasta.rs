@@ -156,7 +156,8 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
 
       record.seq.reserve(trimmed.len());
       for c in trimmed.chars() {
-        let uc = AsciiChar::from(c.to_ascii_uppercase());
+        let uc = AsciiChar::try_from_char(c.to_ascii_uppercase())
+          .wrap_err_with(|| format!("When processing sequence #{}: \"{}\"", self.index, record.header()))?;
         if self.alphabet.contains(uc) {
           record.seq.push(uc);
         } else {

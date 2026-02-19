@@ -31,7 +31,11 @@ mod tests {
   use treetime_graph::node::{Named, TimeConstraint};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::{AsciiChar, seq};
+  use treetime_primitives::{AsciiChar, Seq, seq};
+
+  fn c(b: u8) -> AsciiChar {
+    AsciiChar::from_byte_unchecked(b)
+  }
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -189,8 +193,14 @@ mod tests {
       .ok_or_else(|| eyre::eyre!("Edge to A not found"))?;
 
     // Create sparse partition with manually seeded edge data
-    let sub_original = Sub::new(b'A', 5_usize, b'G')?; // A5G: ref=A, qry=G
-    let indel_original = InDel::del((10, 12), seq![b'A', b'C']); // deletion=true
+    let sub_original = Sub::new(c(b'A'), 5_usize, c(b'G'))?; // A5G: ref=A, qry=G
+    let indel_original = InDel::del(
+      (10, 12),
+      seq![
+        AsciiChar::from_byte_unchecked(b'A'),
+        AsciiChar::from_byte_unchecked(b'C')
+      ],
+    ); // deletion=true
 
     let mut sparse_partition = PartitionMarginalSparse {
       index: 0,
@@ -198,8 +208,8 @@ mod tests {
       alphabet: alphabet.clone(),
       length: 16,
       nodes: btreemap! {
-        root_key => SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
-        a_key => SparseNodePartition::new(&seq![b'A'; 16], &alphabet)?,
+        root_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet)?,
       },
       edges: btreemap! {
         edge_to_a_key => SparseEdgePartition {
@@ -218,7 +228,7 @@ mod tests {
 
     // Manually set root sequence
     if let Some(n) = sparse_partition.nodes.get_mut(&root_key) {
-      n.seq.sequence = seq![b'A'; 16];
+      n.seq.sequence = seq![AsciiChar::from_byte_unchecked(b'A'); 16];
     }
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
@@ -233,8 +243,8 @@ mod tests {
     // Verify substitution is inverted
     let edge_data = &sparse_partition.edges[&edge_to_a_key];
     let sub_after = &edge_data.subs[0];
-    assert_eq!(sub_after.reff(), b'G'.into(), "Sub ref should be swapped to G");
-    assert_eq!(sub_after.qry(), b'A'.into(), "Sub qry should be swapped to A");
+    assert_eq!(sub_after.reff(), c(b'G'), "Sub ref should be swapped to G");
+    assert_eq!(sub_after.qry(), c(b'A'), "Sub qry should be swapped to A");
 
     // Verify indel is inverted
     let indel_after = &edge_data.indels[0];
@@ -285,10 +295,10 @@ mod tests {
       .ok_or_else(|| eyre::eyre!("Edge to A not found"))?;
 
     // Create root sequence with specific characters
-    let root_seq = seq![b'A', b'C', b'G', b'T', b'A', b'C', b'G', b'T'];
+    let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
 
     // Edge has substitution at position 2: root has G, child has T (G->T in parent->child direction)
-    let sub = Sub::new(b'G', 2_usize, b'T')?;
+    let sub = Sub::new(c(b'G'), 2_usize, c(b'T'))?;
 
     let mut sparse_partition = PartitionMarginalSparse {
       index: 0,
@@ -297,7 +307,7 @@ mod tests {
       length: 8,
       nodes: btreemap! {
         root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
-        a_key => SparseNodePartition::new(&seq![b'A'; 8], &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet)?,
       },
       edges: btreemap! {
         edge_to_a_key => SparseEdgePartition {
@@ -326,12 +336,12 @@ mod tests {
     let inverted_sub = &edge_data.subs[0];
     assert_eq!(
       inverted_sub.reff(),
-      AsciiChar::new(b'T'),
+      AsciiChar::from_byte_unchecked(b'T'),
       "After inversion, reff should be T (was qry)"
     );
     assert_eq!(
       inverted_sub.qry(),
-      AsciiChar::new(b'G'),
+      AsciiChar::from_byte_unchecked(b'G'),
       "After inversion, qry should be G (was reff)"
     );
     assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");

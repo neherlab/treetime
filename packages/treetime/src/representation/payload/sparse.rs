@@ -127,7 +127,7 @@ impl Default for MarginalSparseSeqDistribution {
       variable: btreemap! {},
       variable_indel: btreemap! {},
       fixed: btreemap! {},
-      fixed_counts: Composition::new(std::iter::empty::<u8>(), b'-'),
+      fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: 0.0,
     }
   }

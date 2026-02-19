@@ -249,7 +249,7 @@ mod tests {
   #[test]
   fn test_bitset128_get_unambiguous() {
     let set = BitSet128::from_char('A');
-    assert!(matches!(set.get(), BitSet128Status::Unambiguous(c) if c == AsciiChar::new(b'A')));
+    assert!(matches!(set.get(), BitSet128Status::Unambiguous(c) if c == AsciiChar::from_byte_unchecked(b'A')));
   }
 
   #[test]
@@ -266,7 +266,7 @@ mod tests {
   fn test_bitset128_get_one() {
     let set = BitSet128::from_iter(['T', 'A']);
     let actual = set.get_one();
-    let expected = AsciiChar::new(b'A');
+    let expected = AsciiChar::from_byte_unchecked(b'A');
     assert_eq!(actual, expected);
   }
 
@@ -274,7 +274,7 @@ mod tests {
   fn test_bitset128_get_one_exactly() {
     let set = BitSet128::from_iter(['T']);
     let actual = set.get_one();
-    let expected = AsciiChar::new(b'T');
+    let expected = AsciiChar::from_byte_unchecked(b'T');
     assert_eq!(actual, expected);
   }
 

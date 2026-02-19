@@ -11,7 +11,8 @@ Single ASCII character wrapper around `u8`. Used as the element type for sequenc
 ```rust
 use treetime_primitives::AsciiChar;
 
-let c = AsciiChar::new(b'A');
+let c = AsciiChar::try_new(b'A')?;  // fallible
+let c = AsciiChar::from_byte_unchecked(b'A');  // unchecked for known-valid literals
 let n: u8 = c.into();
 ```
 
@@ -22,11 +23,9 @@ Ordered collection of `AsciiChar` values representing a genetic sequence. Backed
 ```rust
 use treetime_primitives::Seq;
 
-let seq = Seq::from_str("ACGT");
+let seq = Seq::try_from_str("ACGT")?;
 assert_eq!(seq.len(), 4);
 assert_eq!(seq.as_str(), "ACGT");
-
-let repeated = Seq::from_elem(b'N', 10); // "NNNNNNNNNN"
 ```
 
 ### `BitSet128`

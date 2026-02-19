@@ -15,8 +15,10 @@ crate-type = ["lib"]
 
 [dependencies]
 auto_ops = { workspace = true }
+eyre = { workspace = true }
 itertools = { workspace = true }
 serde = { workspace = true }
+treetime-utils = { path = "../treetime-utils" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

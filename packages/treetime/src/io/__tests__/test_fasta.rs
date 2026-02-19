@@ -8,11 +8,16 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::io::Cursor;
   use treetime_io::fasta::*;
+  use treetime_primitives::Seq;
   use treetime_utils::error::report_to_string;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
     static ref AA_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+  }
+
+  fn seq(s: &str) -> Seq {
+    Seq::try_from_str(s).unwrap()
   }
 
   #[test]
@@ -68,7 +73,7 @@ mod tests {
     reader.read(&mut record).unwrap();
 
     assert_eq!(record.seq_name, "seq1");
-    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.seq, seq("ATCG"));
     assert_eq!(record.index, 0);
   }
 
@@ -81,7 +86,7 @@ mod tests {
     reader.read(&mut record).unwrap();
 
     assert_eq!(record.seq_name, "seq1");
-    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.seq, seq("ATCG"));
     assert_eq!(record.index, 0);
   }
 
@@ -94,7 +99,7 @@ mod tests {
     reader.read(&mut record).unwrap();
 
     assert_eq!(record.seq_name, "seq1");
-    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.seq, seq("ATCG"));
     assert_eq!(record.index, 0);
   }
 
@@ -107,7 +112,7 @@ mod tests {
     reader.read(&mut record).unwrap();
 
     assert_eq!(record.seq_name, "seq1");
-    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.seq, seq("ATCG"));
     assert_eq!(record.index, 0);
   }
 
@@ -123,11 +128,11 @@ mod tests {
     reader.read(&mut record2).unwrap();
 
     assert_eq!(record1.seq_name, "seq1");
-    assert_eq!(record1.seq, "ATCG");
+    assert_eq!(record1.seq, seq("ATCG"));
     assert_eq!(record1.index, 0);
 
     assert_eq!(record2.seq_name, "seq2");
-    assert_eq!(record2.seq, "GCTA");
+    assert_eq!(record2.seq, seq("GCTA"));
     assert_eq!(record2.index, 1);
   }
 
@@ -143,11 +148,11 @@ mod tests {
     reader.read(&mut record2).unwrap();
 
     assert_eq!(record1.seq_name, "seq1");
-    assert_eq!(record1.seq, "ATCG");
+    assert_eq!(record1.seq, seq("ATCG"));
     assert_eq!(record1.index, 0);
 
     assert_eq!(record2.seq_name, "seq2");
-    assert_eq!(record2.seq, "GCTA");
+    assert_eq!(record2.seq, seq("GCTA"));
     assert_eq!(record2.index, 1);
   }
 
@@ -160,7 +165,7 @@ mod tests {
     reader.read(&mut record).unwrap();
 
     assert_eq!(record.seq_name, "seq1");
-    assert_eq!(record.seq, "ATCG");
+    assert_eq!(record.seq, seq("ATCG"));
     assert_eq!(record.index, 0);
   }
 
@@ -177,7 +182,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: "ACGCTCGATC".into(),
+        seq: seq("ACGCTCGATC"),
         index: 0,
       }
     );
@@ -189,7 +194,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: "CCGCGC".into(),
+        seq: seq("CCGCGC"),
         index: 1,
       }
     );
@@ -208,7 +213,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: "ACGCTCGATC".into(),
+        seq: seq("ACGCTCGATC"),
         index: 0,
       }
     );
@@ -220,7 +225,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: "CCGCGC".into(),
+        seq: seq("CCGCGC"),
         index: 1,
       }
     );
@@ -232,7 +237,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: "".into(),
+        seq: seq(""),
         index: 2,
       }
     );
@@ -251,7 +256,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("a"),
         desc: None,
-        seq: "ACGCTCGATC".into(),
+        seq: seq("ACGCTCGATC"),
         index: 0,
       }
     );
@@ -263,7 +268,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("b"),
         desc: None,
-        seq: "".into(),
+        seq: seq(""),
         index: 1,
       }
     );
@@ -275,7 +280,7 @@ mod tests {
       FastaRecord {
         seq_name: o!("c"),
         desc: None,
-        seq: "CCGCGC".into(),
+        seq: seq("CCGCGC"),
         index: 2,
       }
     );
@@ -299,13 +304,13 @@ mod tests {
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description")),
-        seq: "ACGT".into(),
+        seq: seq("ACGT"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Identifier"),
         desc: Some(o!("Description with spaces")),
-        seq: "ACGT".into(),
+        seq: seq("ACGT"),
         index: 1,
       },
     ];
@@ -341,43 +346,43 @@ mod tests {
       FastaRecord {
         seq_name: o!("FluBuster-001"),
         desc: None,
-        seq: "ACAGCCATGTATTG--".into(),
+        seq: seq("ACAGCCATGTATTG--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("CommonCold-AB"),
         desc: None,
-        seq: "ACATCCCTGTA-TG--".into(),
+        seq: seq("ACATCCCTGTA-TG--"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("Ecoli/Joke/2024|XD"),
         desc: None,
-        seq: "ACATCGCCNNA--GAC".into(),
+        seq: seq("ACATCGCCNNA--GAC"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("Sniffles-B"),
         desc: None,
-        seq: "GCATCCCTGTA-NG--".into(),
+        seq: seq("GCATCCCTGTA-NG--"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("StrawberryYogurtCulture|🍓"),
         desc: None,
-        seq: "CCGGCCATGTATTG--".into(),
+        seq: seq("CCGGCCATGTATTG--"),
         index: 4,
       },
       FastaRecord {
         seq_name: o!(""),
         desc: Some(o!("SneezeC-19")),
-        seq: "CCGGCGATGTRTTG--".into(),
+        seq: seq("CCGGCGATGTRTTG--"),
         index: 5,
       },
       FastaRecord {
         seq_name: o!("MisindentedVirus|D-skew"),
         desc: None,
-        seq: "TCGGCCGTGTRTTG--".into(),
+        seq: seq("TCGGCCGTGTRTTG--"),
         index: 6,
       },
     ];
@@ -409,31 +414,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("Prot/000|β-Napkinase"),
         desc: None,
-        seq: "MXDXXXTQ-B--".into(),
+        seq: seq("MXDXXXTQ-B--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("Enzyme/2024|LaughzymeFactor"),
         desc: None,
-        seq: "AX*XB-TQVWR*".into(),
+        seq: seq("AX*XB-TQVWR*"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("😊-Gigglecatalyst"),
         desc: None,
-        seq: "MKXTQWX-B**".into(),
+        seq: seq("MKXTQWX-B**"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("CellFunSignal"),
         desc: None,
-        seq: "MQXQXXBQRW**".into(),
+        seq: seq("MQXQXXBQRW**"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("Pathway/042|Doodlease"),
         desc: None,
-        seq: "MXQ-*XTQWBQR".into(),
+        seq: seq("MXQ-*XTQWBQR"),
         index: 4,
       },
     ];
@@ -468,31 +473,31 @@ mod tests {
       FastaRecord {
         seq_name: o!("MixedCaseSeq"),
         desc: None,
-        seq: "ACAGCCATGTATTG--".into(),
+        seq: seq("ACAGCCATGTATTG--"),
         index: 0,
       },
       FastaRecord {
         seq_name: o!("LowercaseSeq"),
         desc: None,
-        seq: "ACAGCCATGTATTG--".into(),
+        seq: seq("ACAGCCATGTATTG--"),
         index: 1,
       },
       FastaRecord {
         seq_name: o!("UppercaseSeq"),
         desc: None,
-        seq: "ACAGCCATGTATTG--".into(),
+        seq: seq("ACAGCCATGTATTG--"),
         index: 2,
       },
       FastaRecord {
         seq_name: o!("MultilineSeq"),
         desc: None,
-        seq: "ACAGCCATGTATTG--".into(),
+        seq: seq("ACAGCCATGTATTG--"),
         index: 3,
       },
       FastaRecord {
         seq_name: o!("SkewedIndentSeq"),
         desc: None,
-        seq: "ACAGCCATGTATTGATTG--".into(),
+        seq: seq("ACAGCCATGTATTGATTG--"),
         index: 4,
       },
     ];

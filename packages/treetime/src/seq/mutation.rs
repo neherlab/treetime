@@ -24,16 +24,10 @@ pub struct Sub {
 }
 
 impl Sub {
-  pub fn new<CR: Into<AsciiChar>, CQ: Into<AsciiChar>, P: Into<usize>>(
-    reff: CR,
-    pos: P,
-    qry: CQ,
-  ) -> Result<Self, Report> {
+  pub fn new<P: Into<usize>>(reff: AsciiChar, pos: P, qry: AsciiChar) -> Result<Self, Report> {
     let pos = pos.into();
-    let qry = qry.into();
-    let reff = reff.into();
 
-    if qry == AsciiChar::new(b'-') || reff == AsciiChar::new(b'-') {
+    if qry == AsciiChar::from_byte_unchecked(b'-') || reff == AsciiChar::from_byte_unchecked(b'-') {
       return make_internal_error!("Substitution cannot be from or to gap, but found: '{reff}{pos}{qry}'");
     }
 
@@ -70,9 +64,11 @@ impl FromStr for Sub {
     if let Some(captures) = NUC_MUT_RE.captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = AsciiChar::new(reff.as_str().bytes().next().unwrap());
+          let reff = AsciiChar::try_new(reff.as_str().bytes().next().unwrap())
+            .wrap_err_with(|| format!("When parsing ref character in '{s}'"))?;
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = AsciiChar::new(qry.as_str().bytes().next().unwrap());
+          let qry = AsciiChar::try_new(qry.as_str().bytes().next().unwrap())
+            .wrap_err_with(|| format!("When parsing qry character in '{s}'"))?;
           Ok(Self { pos, qry, reff })
         },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),

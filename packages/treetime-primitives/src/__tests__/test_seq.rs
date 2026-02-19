@@ -1,22 +1,23 @@
 #[cfg(test)]
 mod tests {
   use crate::Seq;
+  use treetime_utils::assert_error;
 
   #[test]
-  #[should_panic(expected = "Seq::from_str: input contains non-ASCII characters")]
-  fn test_from_str_non_ascii_panics() {
-    let _unused = Seq::from_str("hello\u{0080}world");
+  fn test_try_from_str_non_ascii_error() {
+    let result = Seq::try_from_str("hello\u{0080}world");
+    assert_error!(result, "Seq: input contains non-ASCII characters");
   }
 
   #[test]
-  #[should_panic(expected = "AsciiChar::from(u8): value 128 >= 128")]
-  fn test_from_vec_non_ascii_panics() {
-    let _unused = Seq::from_vec(vec![65, 66, 128, 67]);
+  fn test_try_from_vec_non_ascii_error() {
+    let result = Seq::try_from_vec(vec![65, 66, 128, 67]);
+    assert_error!(result, "AsciiChar: value 128 is not ASCII (>= 128)");
   }
 
   #[test]
-  #[should_panic(expected = "AsciiChar::from(u8): value 200 >= 128")]
-  fn test_from_slice_non_ascii_panics() {
-    let _unused = Seq::from_slice(&[65, 66, 200, 67]);
+  fn test_try_from_slice_non_ascii_error() {
+    let result = Seq::try_from_slice(&[65, 66, 200, 67]);
+    assert_error!(result, "AsciiChar: value 200 is not ASCII (>= 128)");
   }
 }

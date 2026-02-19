@@ -133,7 +133,9 @@ impl BitSet128 {
   }
 
   pub fn iter(&self) -> impl Iterator<Item = AsciiChar> + '_ {
-    (0..128).filter(|&i| (self.bits & (1 << i)) != 0).map(AsciiChar::new)
+    (0..128)
+      .filter(|&i| (self.bits & (1 << i)) != 0)
+      .map(AsciiChar::from_byte_unchecked)
   }
 
   pub fn chars(&self) -> impl Iterator<Item = AsciiChar> + '_ {
@@ -149,11 +151,11 @@ impl BitSet128 {
   }
 
   pub fn first(&self) -> Option<AsciiChar> {
-    (!self.is_empty()).then_some((self.bits.trailing_zeros() as u8).into())
+    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
   }
 
   pub fn last(&self) -> Option<AsciiChar> {
-    (!self.is_empty()).then_some(((127 - self.bits.leading_zeros()) as u8).into())
+    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked((127 - self.bits.leading_zeros()) as u8))
   }
 
   pub fn get_one_maybe(&self) -> Option<AsciiChar> {

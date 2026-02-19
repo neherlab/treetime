@@ -19,6 +19,11 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_primitives::AsciiChar;
+
+  fn c(b: u8) -> AsciiChar {
+    AsciiChar::from_byte_unchecked(b)
+  }
 
   fn create_test_graph_with_partitions(
     nwk: &str,
@@ -45,7 +50,9 @@ mod tests {
             partition.edges.insert(
               edge_key,
               SparseEdgePartition {
-                subs: (0..*num_muts).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
+                subs: (0..*num_muts)
+                  .map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap())
+                  .collect_vec(),
                 ..SparseEdgePartition::default()
               },
             );
@@ -86,7 +93,7 @@ mod tests {
               partition.edges.insert(
                 edge_key,
                 SparseEdgePartition {
-                  subs: (0..*n).map(|i| Sub::new('A', i, 'T').unwrap()).collect_vec(),
+                  subs: (0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec(),
                   ..SparseEdgePartition::default()
                 },
               );
@@ -602,7 +609,10 @@ mod tests {
     partition.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T')?, Sub::new('A', 1_usize, 'C')?],
+        subs: vec![
+          Sub::new(c(b'A'), 0_usize, c(b'T'))?,
+          Sub::new(c(b'A'), 1_usize, c(b'C'))?,
+        ],
         ..SparseEdgePartition::default()
       },
     );
@@ -610,7 +620,10 @@ mod tests {
     partition.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('G', 2_usize, 'T')?, Sub::new('C', 3_usize, 'A')?],
+        subs: vec![
+          Sub::new(c(b'G'), 2_usize, c(b'T'))?,
+          Sub::new(c(b'C'), 3_usize, c(b'A'))?,
+        ],
         ..SparseEdgePartition::default()
       },
     );
@@ -680,7 +693,7 @@ mod tests {
     };
 
     // Both edges have the same mutation A0T
-    let same_mutation = Sub::new('A', 0_usize, 'T')?;
+    let same_mutation = Sub::new(c(b'A'), 0_usize, c(b'T'))?;
     partition.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
@@ -752,14 +765,14 @@ mod tests {
     partition.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T')?],
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
         ..SparseEdgePartition::default()
       },
     );
     partition.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'C')?], // Different qry
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'C'))?], // Different qry
         ..SparseEdgePartition::default()
       },
     );
@@ -819,14 +832,14 @@ mod tests {
     partition1.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('A', 0_usize, 'T')?],
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
         ..SparseEdgePartition::default()
       },
     );
     partition1.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('G', 1_usize, 'C')?],
+        subs: vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?],
         ..SparseEdgePartition::default()
       },
     );
@@ -845,14 +858,17 @@ mod tests {
     partition2.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('C', 10_usize, 'A')?, Sub::new('T', 11_usize, 'G')?],
+        subs: vec![
+          Sub::new(c(b'C'), 10_usize, c(b'A'))?,
+          Sub::new(c(b'T'), 11_usize, c(b'G'))?,
+        ],
         ..SparseEdgePartition::default()
       },
     );
     partition2.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new('A', 12_usize, 'T')?],
+        subs: vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?],
         ..SparseEdgePartition::default()
       },
     );

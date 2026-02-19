@@ -12,9 +12,9 @@ use std::fmt::Display;
 use strum_macros::Display;
 use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, StateSet, stateset};
 
-pub const NON_CHAR: AsciiChar = AsciiChar::new(b'.');
-pub const VARIABLE_CHAR: AsciiChar = AsciiChar::new(b'~');
-pub const FILL_CHAR: AsciiChar = AsciiChar::new(b' ');
+pub const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
+pub const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
+pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
 #[derive(
   Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum, Serialize, Deserialize,
@@ -124,8 +124,8 @@ impl Alphabet {
       treat_gap_as_unknown,
     } = config;
 
-    let gap = AsciiChar::from(*gap);
-    let unknown = AsciiChar::from(*unknown);
+    let gap = AsciiChar::try_new(*gap)?;
+    let unknown = AsciiChar::try_new(*unknown)?;
 
     let canonical = StateSet::from_iter(canonical);
     if canonical.is_empty() {
@@ -134,8 +134,16 @@ impl Alphabet {
 
     let ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>> = ambiguous
       .iter()
-      .map(|(k, v)| (AsciiChar::new(*k), v.iter().copied().map(AsciiChar::new).collect()))
-      .collect();
+      .map(|(k, v)| -> Result<_, Report> {
+        let key = AsciiChar::try_new(*k)?;
+        let values = v
+          .iter()
+          .copied()
+          .map(AsciiChar::try_new)
+          .collect::<Result<Vec<_>, _>>()?;
+        Ok((key, values))
+      })
+      .collect::<Result<_, _>>()?;
     let ambiguous_keys = ambiguous.keys().collect();
 
     let undetermined = stateset! {unknown, gap};
@@ -245,7 +253,7 @@ impl Alphabet {
   pub fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();
     self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
-      let c = AsciiChar::new(idx as u8);
+      let c = AsciiChar::try_new(idx as u8).map_or_else(|_| '?'.to_string(), |c| c.to_string());
       make_report!("When accessing alphabet index: Unknown character: '{c}' (code {idx})")
     })
   }

@@ -1,4 +1,6 @@
 use crate::seq_char::AsciiChar;
+use eyre::Report;
+use treetime_utils::error::make_error;
 
 /// Represents genetic sequence (ASCII characters only)
 #[must_use]
@@ -18,24 +20,19 @@ impl Seq {
     }
   }
 
-  pub fn from_elem<T: Into<u8>>(elem: T, n: usize) -> Self {
-    Self {
-      data: vec![AsciiChar::from(elem.into()); n],
-    }
+  pub fn try_from_elem<T: Into<u8>>(elem: T, n: usize) -> Result<Self, Report> {
+    let ch = AsciiChar::try_new(elem.into())?;
+    Ok(Self { data: vec![ch; n] })
   }
 
   /// Create a sequence from an ASCII string.
-  ///
-  /// # Panics
-  ///
-  /// Panics if `s` contains non-ASCII characters. This validation is required
-  /// because [`as_str`](Self::as_str) uses `from_utf8_unchecked` which requires
-  /// all bytes to be valid ASCII (a subset of UTF-8).
   #[allow(unsafe_code)]
-  pub fn from_str(s: &str) -> Self {
-    assert!(s.is_ascii(), "Seq::from_str: input contains non-ASCII characters");
+  pub fn try_from_str(s: &str) -> Result<Self, Report> {
+    if !s.is_ascii() {
+      return make_error!("Seq: input contains non-ASCII characters");
+    }
     // SAFETY: We just validated that s.is_ascii() above
-    unsafe { Self::from_str_unchecked(s) }
+    Ok(unsafe { Self::from_str_unchecked(s) })
   }
 
   /// Create a sequence from a pre-validated ASCII string.
@@ -45,8 +42,6 @@ impl Seq {
   /// The caller must ensure that `s` contains only ASCII characters (bytes 0-127).
   /// Passing non-ASCII input violates the type invariant and causes undefined behavior
   /// when calling [`as_str`](Self::as_str).
-  ///
-  /// Use [`from_str`](Self::from_str) for untrusted input.
   #[allow(unsafe_code)]
   pub unsafe fn from_str_unchecked(s: &str) -> Self {
     debug_assert!(
@@ -64,25 +59,19 @@ impl Seq {
   }
 
   /// Create a sequence from a vector of bytes.
-  ///
-  /// # Panics
-  ///
-  /// Panics if any byte is not ASCII (>= 128).
-  pub fn from_vec(vec: Vec<u8>) -> Self {
-    Self {
-      data: vec.into_iter().map(AsciiChar::from).collect(),
-    }
+  pub fn try_from_vec(vec: Vec<u8>) -> Result<Self, Report> {
+    let data = vec.into_iter().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()?;
+    Ok(Self { data })
   }
 
   /// Create a sequence from a byte slice.
-  ///
-  /// # Panics
-  ///
-  /// Panics if any byte is not ASCII (>= 128).
-  pub fn from_slice(slice: &[u8]) -> Self {
-    Self {
-      data: slice.iter().copied().map(AsciiChar::from).collect(),
-    }
+  pub fn try_from_slice(slice: &[u8]) -> Result<Self, Report> {
+    let data = slice
+      .iter()
+      .copied()
+      .map(AsciiChar::try_new)
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(Self { data })
   }
 
   pub fn len(&self) -> usize {
@@ -142,28 +131,31 @@ impl Seq {
     &mut self.data
   }
 
-  pub fn insert(&mut self, index: usize, byte: u8) {
-    self.data.insert(index, AsciiChar::from(byte));
+  pub fn try_insert(&mut self, index: usize, byte: u8) -> Result<(), Report> {
+    let ch = AsciiChar::try_new(byte)?;
+    self.data.insert(index, ch);
+    Ok(())
   }
 
   pub fn remove(&mut self, index: usize) -> u8 {
     self.data.remove(index).into()
   }
 
-  pub fn append(&mut self, other: &mut Vec<u8>) {
-    self.data.extend(other.drain(..).map(AsciiChar::from));
+  pub fn try_append(&mut self, other: &mut Vec<u8>) -> Result<(), Report> {
+    for byte in other.drain(..) {
+      self.data.push(AsciiChar::try_new(byte)?);
+    }
+    Ok(())
   }
 
-  /// Append an ASCII string to this sequence.
-  ///
-  /// # Panics
-  ///
-  /// Panics if `s` contains non-ASCII characters.
-  pub fn push_str(&mut self, s: &str) {
-    assert!(s.is_ascii(), "Seq::push_str: input contains non-ASCII characters");
+  pub fn try_push_str(&mut self, s: &str) -> Result<(), Report> {
+    if !s.is_ascii() {
+      return make_error!("Seq: input contains non-ASCII characters");
+    }
     self
       .data
       .extend(s.as_bytes().iter().copied().map(AsciiChar::from_byte_unchecked));
+    Ok(())
   }
 
   pub fn contains_str(&self, s: &str) -> bool {
@@ -186,10 +178,14 @@ impl Seq {
     self.as_str().rfind(substring)
   }
 
-  pub fn replace(&mut self, from: &str, to: &str) -> &mut Self {
+  pub fn try_replace(&mut self, from: &str, to: &str) -> Result<&mut Self, Report> {
     let replaced = self.as_str().replace(from, to);
-    self.data = replaced.into_bytes().into_iter().map(AsciiChar::from).collect();
-    self
+    self.data = replaced
+      .into_bytes()
+      .into_iter()
+      .map(AsciiChar::try_new)
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(self)
   }
 
   pub fn split_off(&mut self, at: usize) -> Seq {
@@ -273,35 +269,15 @@ impl core::ops::DerefMut for Seq {
   }
 }
 
-impl From<&str> for Seq {
-  fn from(s: &str) -> Self {
-    Self::from_str(s)
-  }
-}
-
-impl From<&[u8]> for Seq {
-  fn from(slice: &[u8]) -> Self {
-    Self::from_slice(slice)
-  }
-}
-
 impl From<&[AsciiChar]> for Seq {
   fn from(slice: &[AsciiChar]) -> Self {
     slice.iter().copied().collect()
   }
 }
 
-impl Extend<u8> for Seq {
-  fn extend<I: IntoIterator<Item = u8>>(&mut self, iter: I) {
-    self.data.extend(iter.into_iter().map(AsciiChar::from));
-  }
-}
-
-impl FromIterator<u8> for Seq {
-  fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> Self {
-    Self {
-      data: iter.into_iter().map(AsciiChar::from).collect(),
-    }
+impl Extend<AsciiChar> for Seq {
+  fn extend<I: IntoIterator<Item = AsciiChar>>(&mut self, iter: I) {
+    self.data.extend(iter);
   }
 }
 
@@ -433,7 +409,11 @@ impl std::io::Read for Seq {
 
 impl std::io::Write for Seq {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-    self.extend(buf.iter().copied());
+    for &byte in buf {
+      let ch =
+        AsciiChar::try_new(byte).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+      self.data.push(ch);
+    }
     Ok(buf.len())
   }
 
@@ -468,13 +448,18 @@ impl<'de> serde::Deserialize<'de> for Seq {
   }
 }
 
+/// Create a `Seq` from `AsciiChar` values.
+///
+/// - `seq!()` creates an empty sequence
+/// - `seq![ch; n]` creates a sequence with `n` copies of `AsciiChar` `ch`
+/// - `seq![ch1, ch2, ...]` creates a sequence from `AsciiChar` values
 #[macro_export]
 macro_rules! seq {
   () => (
       $crate::seq::Seq::new()
   );
   ($elem:expr; $n:expr) => (
-      $crate::seq::Seq::from_elem($elem, $n)
+      $crate::seq::Seq::from_iter(::std::iter::repeat_n($elem, $n))
   );
   ($($char:expr),* $(,)?) => {
     {

@@ -1,49 +1,48 @@
 #[cfg(test)]
 mod tests {
   use crate::AsciiChar;
+  use eyre::Report;
   use pretty_assertions::assert_eq;
+  use treetime_utils::assert_error;
 
   #[test]
-  fn test_new_valid() {
-    let actual = AsciiChar::new(127);
-    let expected = AsciiChar::new(b'~' + 1);
+  fn test_try_new_valid() -> Result<(), Report> {
+    let actual = AsciiChar::try_new(127)?;
+    let expected = AsciiChar::from_byte_unchecked(b'~' + 1);
     assert_eq!(actual.inner(), expected.inner());
+    Ok(())
   }
 
   #[test]
-  #[should_panic(expected = "AsciiChar::new: value >= 128")]
-  fn test_new_invalid_panics() {
-    let _ = AsciiChar::new(128);
+  fn test_try_new_invalid_error() {
+    let result = AsciiChar::try_new(128);
+    assert_error!(result, "AsciiChar: value 128 is not ASCII (>= 128)");
   }
 
   #[test]
-  fn test_from_u8_valid() {
-    let actual = AsciiChar::from(0_u8);
+  fn test_try_new_zero_valid() -> Result<(), Report> {
+    let actual = AsciiChar::try_new(0)?;
     assert_eq!(actual.inner(), 0);
+    Ok(())
   }
 
   #[test]
-  #[should_panic(expected = "AsciiChar::from(u8): value 128 >= 128")]
-  fn test_from_u8_invalid_panics() {
-    let _ = AsciiChar::from(128_u8);
-  }
-
-  #[test]
-  fn test_from_char_valid() {
-    let actual = AsciiChar::from('~');
+  fn test_try_from_char_valid() -> Result<(), Report> {
+    let actual = AsciiChar::try_from_char('~')?;
     assert_eq!(actual.inner(), b'~');
+    Ok(())
   }
 
   #[test]
-  #[should_panic(expected = "AsciiChar::from(char): 'ñ' is not ASCII")]
-  fn test_from_char_invalid_panics() {
-    let _ = AsciiChar::from('ñ');
+  fn test_try_from_char_invalid_error() {
+    let result = AsciiChar::try_from_char('ñ');
+    assert_error!(result, "AsciiChar: 'ñ' is not ASCII");
   }
 
   #[test]
   fn test_deserialize_valid() {
     let actual: AsciiChar = serde_json::from_str("65").unwrap();
-    let expected = AsciiChar::new(b'A');
+    let expected = AsciiChar::from_byte_unchecked(b'A');
     assert_eq!(actual, expected);
   }
 

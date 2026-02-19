@@ -72,6 +72,6 @@ pub mod old {
 
 /// Finds contiguous ranges (segments) consisting of a given letter in the sequence.
 #[inline]
-pub fn find_letter_ranges(seq: &Seq, letter: impl Into<AsciiChar> + Copy) -> Vec<(usize, usize)> {
-  find_letter_ranges_by(seq, |candidate: AsciiChar| candidate == letter.into())
+pub fn find_letter_ranges(seq: &Seq, letter: AsciiChar) -> Vec<(usize, usize)> {
+  find_letter_ranges_by(seq, |candidate: AsciiChar| candidate == letter)
 }

@@ -13,27 +13,24 @@ pub struct Composition {
 
 impl Composition {
   /// Initialize counters with zeros, given an alphabet
-  pub fn new<I, IC, GC>(alphabet_chars: I, gap: GC) -> Self
+  pub fn new<I>(alphabet_chars: I, gap: AsciiChar) -> Self
   where
-    I: IntoIterator<Item = IC>,
-    IC: Into<AsciiChar>,
-    GC: Into<AsciiChar>,
+    I: IntoIterator<Item = AsciiChar>,
   {
-    let counts = alphabet_chars.into_iter().map(|c| (c.into(), 0)).collect();
-    let gap = gap.into();
+    let counts = alphabet_chars.into_iter().map(|c| (c, 0)).collect();
     Self { counts, gap }
   }
 
   /// Construct a `Composition` directly from a precomputed map and a gap character.
-  pub fn from<C: Into<AsciiChar>, I: IntoIterator<Item = (C, usize)>>(counts: I, gap: C) -> Self {
+  pub fn from_counts<I: IntoIterator<Item = (AsciiChar, usize)>>(counts: I, gap: AsciiChar) -> Self {
     Self {
-      counts: counts.into_iter().map(|(c, count)| (c.into(), count)).collect(),
-      gap: gap.into(),
+      counts: counts.into_iter().collect(),
+      gap,
     }
   }
 
-  pub fn get<C: Into<AsciiChar>>(&self, c: C) -> Option<usize> {
-    self.counts.get(&c.into()).copied()
+  pub fn get(&self, c: AsciiChar) -> Option<usize> {
+    self.counts.get(&c).copied()
   }
 
   pub fn counts(&self) -> &BTreeMap<AsciiChar, usize> {
@@ -41,26 +38,22 @@ impl Composition {
   }
 
   /// Initialize counters to the composition of a given sequence
-  pub fn with_sequence<SC, SI, AI, AC, GC>(sequence: SI, alphabet_chars: AI, gap: GC) -> Self
+  pub fn with_sequence<SI, AI>(sequence: SI, alphabet_chars: AI, gap: AsciiChar) -> Self
   where
-    SI: IntoIterator<Item = SC>,
-    SC: Into<AsciiChar>,
-    AI: IntoIterator<Item = AC>,
-    AC: Into<AsciiChar>,
-    GC: Into<AsciiChar>,
+    SI: IntoIterator<Item = AsciiChar>,
+    AI: IntoIterator<Item = AsciiChar>,
   {
     let mut this = Self::new(alphabet_chars, gap);
-    this.add_sequence(sequence.into_iter().map(Into::into));
+    this.add_sequence(sequence);
     this
   }
 
   /// Add composition of a given sequence to the counts
-  pub fn add_sequence<C, I>(&mut self, sequence: I)
+  pub fn add_sequence<I>(&mut self, sequence: I)
   where
-    I: IntoIterator<Item = C>,
-    C: Into<AsciiChar>,
+    I: IntoIterator<Item = AsciiChar>,
   {
-    let counts = sequence.into_iter().map(Into::into).counts();
+    let counts = sequence.into_iter().counts();
     self.counts.extend(counts);
   }
 
@@ -79,8 +72,8 @@ impl Composition {
     }
   }
 
-  pub fn adjust_count<C: Into<AsciiChar>>(&mut self, nuc: C, change: isize) {
-    let count = self.counts.entry(nuc.into()).or_default();
+  pub fn adjust_count(&mut self, nuc: AsciiChar, change: isize) {
+    let count = self.counts.entry(nuc).or_default();
     *count = count.saturating_add_signed(change);
   }
 }
