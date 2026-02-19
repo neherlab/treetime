@@ -4,10 +4,12 @@ mod tests {
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::vec_u8;
   use approx::assert_ulps_eq;
+  use eyre::Report;
   use indexmap::indexmap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_primitives::AsciiChar;
 
   fn make_valid_config() -> AlphabetConfig {
@@ -267,11 +269,12 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_config_serde_roundtrip() {
+  fn test_alphabet_config_serde_roundtrip() -> Result<(), Report> {
     let config = make_valid_config();
-    let json = serde_json::to_string(&config).unwrap();
-    let deserialized: AlphabetConfig = serde_json::from_str(&json).unwrap();
+    let json = json_write_str(&config, JsonPretty(false))?;
+    let deserialized: AlphabetConfig = json_read_str(&json)?;
     assert_eq!(config, deserialized);
+    Ok(())
   }
 
   #[rstest]

@@ -24,6 +24,7 @@ treetime-utils = { path = "../treetime-utils" }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 serde_json = { workspace = true }
+treetime-io = { path = "../treetime-io" }
 
 [lints]
 workspace = true

@@ -19,6 +19,7 @@ mod tests {
   use std::path::PathBuf;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
+  use treetime_io::json::json_read_file;
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
   use treetime_utils::array::serde::{array1_from_vec, array2_from_vec};
 
@@ -97,8 +98,7 @@ mod tests {
   fn test_golden_master() -> Result<(), Report> {
     let fixture_path =
       PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/infer_gtr/__tests__/fixtures/gtr_inference_dense.json");
-    let fixture_str = std::fs::read_to_string(&fixture_path)?;
-    let expected: InferGtrDenseGoldenMaster = serde_json::from_str(&fixture_str)?;
+    let expected: InferGtrDenseGoldenMaster = json_read_file(&fixture_path)?;
 
     let root = project_root();
     let tree_path = root.join("data/flu/h3n2/20/tree.nwk");

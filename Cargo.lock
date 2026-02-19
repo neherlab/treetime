@@ -3921,6 +3921,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "treetime-io",
  "treetime-utils",
 ]
 
