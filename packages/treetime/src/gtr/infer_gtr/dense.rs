@@ -101,6 +101,7 @@ fn count_substitutions(
   Ti: &mut Array1<f64>,
   branch_length: f64,
 ) -> Result<(), Report> {
+  let N = alphabet.n_canonical();
   for (&parent_ch, &child_ch) in parent_seq.iter().zip(child_seq.iter()) {
     if parent_ch == child_ch {
       continue;
@@ -113,7 +114,6 @@ fn count_substitutions(
       continue;
     };
 
-    let N = alphabet.n_canonical();
     if i >= N || j >= N {
       continue;
     }
