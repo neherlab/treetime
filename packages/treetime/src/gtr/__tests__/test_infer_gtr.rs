@@ -1,12 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::Alphabet;
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::avg_transition;
-  use crate::gtr::infer_gtr::{InferGtrOptions, MutationCounts, distance, get_mutation_counts, infer_gtr_impl};
+  use crate::gtr::infer_gtr::{
+    InferGtrOptions, MutationCounts, distance, get_mutation_counts, get_mutation_counts_dense, infer_gtr_impl,
+  };
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -15,9 +18,11 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use serde::Deserialize;
+  use std::path::PathBuf;
   use std::sync::Arc;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
+  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -187,5 +192,164 @@ mod tests {
     let actual = distance(same, same);
     let expected = 0.0;
     pretty_assert_ulps_eq!(actual, expected, max_ulps = 3);
+  }
+
+  // ============================================================================
+  // Golden master test for dense GTR inference
+  // ============================================================================
+
+  fn project_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .parent()
+      .and_then(|p| p.parent())
+      .map(PathBuf::from)
+      .expect("project has workspace root")
+  }
+
+  #[derive(Debug, Deserialize)]
+  struct GtrInferenceDenseFixture {
+    mutation_counts: MutationCountsFixture,
+    inferred_gtr: InferredGtrFixture,
+  }
+
+  #[derive(Debug, Deserialize)]
+  struct MutationCountsFixture {
+    nij: Vec<Vec<f64>>,
+    #[serde(rename = "Ti")]
+    ti: Vec<f64>,
+    root_state: Vec<f64>,
+  }
+
+  #[derive(Debug, Deserialize)]
+  struct InferredGtrFixture {
+    #[serde(rename = "W")]
+    w: Vec<Vec<f64>>,
+    pi: Vec<f64>,
+    mu: f64,
+  }
+
+  /// Golden master test: dense GTR inference matches Python v0 reference.
+  ///
+  /// Loads flu/h3n2/20 dataset, runs dense marginal reconstruction with JC69,
+  /// extracts mutation counts, infers GTR, and compares against fixture from v0.
+  #[test]
+  fn test_infer_gtr_dense_golden_master() -> Result<(), Report> {
+    let fixture_path =
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/__tests__/fixtures/gtr_inference_dense.json");
+    let fixture_str = std::fs::read_to_string(&fixture_path)?;
+    let fixture: GtrInferenceDenseFixture = serde_json::from_str(&fixture_str)?;
+
+    let root = project_root();
+    let tree_path = root.join("data/flu/h3n2/20/tree.nwk");
+    let aln_path = root.join("data/flu/h3n2/20/aln.fasta.xz");
+
+    let treat_gap_as_unknown = true;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let aln = read_many_fasta(&[aln_path], &alphabet)?;
+
+    let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      treat_gap_as_unknown,
+      ..JC69Params::default()
+    })?;
+
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
+
+    let counts = get_mutation_counts_dense(&graph, &partition)?;
+
+    let expected_nij = array![
+      [
+        fixture.mutation_counts.nij[0][0],
+        fixture.mutation_counts.nij[0][1],
+        fixture.mutation_counts.nij[0][2],
+        fixture.mutation_counts.nij[0][3]
+      ],
+      [
+        fixture.mutation_counts.nij[1][0],
+        fixture.mutation_counts.nij[1][1],
+        fixture.mutation_counts.nij[1][2],
+        fixture.mutation_counts.nij[1][3]
+      ],
+      [
+        fixture.mutation_counts.nij[2][0],
+        fixture.mutation_counts.nij[2][1],
+        fixture.mutation_counts.nij[2][2],
+        fixture.mutation_counts.nij[2][3]
+      ],
+      [
+        fixture.mutation_counts.nij[3][0],
+        fixture.mutation_counts.nij[3][1],
+        fixture.mutation_counts.nij[3][2],
+        fixture.mutation_counts.nij[3][3]
+      ],
+    ];
+    let expected_ti = array![
+      fixture.mutation_counts.ti[0],
+      fixture.mutation_counts.ti[1],
+      fixture.mutation_counts.ti[2],
+      fixture.mutation_counts.ti[3],
+    ];
+    let expected_root_state = array![
+      fixture.mutation_counts.root_state[0],
+      fixture.mutation_counts.root_state[1],
+      fixture.mutation_counts.root_state[2],
+      fixture.mutation_counts.root_state[3],
+    ];
+
+    pretty_assert_ulps_eq!(expected_nij, counts.nij, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_ti, counts.Ti, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(expected_root_state, counts.root_state, epsilon = 1e-7);
+
+    let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+
+    let expected_w = array![
+      [
+        fixture.inferred_gtr.w[0][0],
+        fixture.inferred_gtr.w[0][1],
+        fixture.inferred_gtr.w[0][2],
+        fixture.inferred_gtr.w[0][3]
+      ],
+      [
+        fixture.inferred_gtr.w[1][0],
+        fixture.inferred_gtr.w[1][1],
+        fixture.inferred_gtr.w[1][2],
+        fixture.inferred_gtr.w[1][3]
+      ],
+      [
+        fixture.inferred_gtr.w[2][0],
+        fixture.inferred_gtr.w[2][1],
+        fixture.inferred_gtr.w[2][2],
+        fixture.inferred_gtr.w[2][3]
+      ],
+      [
+        fixture.inferred_gtr.w[3][0],
+        fixture.inferred_gtr.w[3][1],
+        fixture.inferred_gtr.w[3][2],
+        fixture.inferred_gtr.w[3][3]
+      ],
+    ];
+    let expected_pi = array![
+      fixture.inferred_gtr.pi[0],
+      fixture.inferred_gtr.pi[1],
+      fixture.inferred_gtr.pi[2],
+      fixture.inferred_gtr.pi[3],
+    ];
+
+    pretty_assert_ulps_eq!(expected_w, result.W, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_pi, result.pi, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(fixture.inferred_gtr.mu, result.mu, epsilon = 1e-7);
+
+    Ok(())
   }
 }

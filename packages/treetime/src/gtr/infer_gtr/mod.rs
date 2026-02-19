@@ -1,6 +1,8 @@
 mod dense;
 mod sparse;
 
+#[cfg(test)]
+pub(crate) use dense::get_mutation_counts_dense;
 pub(crate) use dense::infer_gtr_dense;
 #[cfg(test)]
 pub(crate) use sparse::get_mutation_counts;
