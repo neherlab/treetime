@@ -134,8 +134,8 @@ mod tests {
   }
 
   #[test]
-  fn test_deep_binary_tree_sparse() -> Result<(), Report> {
-    // Same deep tree with sparse partition
+  fn test_deep_caterpillar_tree_sparse() -> Result<(), Report> {
+    // Same deep caterpillar tree with sparse partition
     let gtr = jc69(JC69Params::default())?;
     let t = 0.1;
 
