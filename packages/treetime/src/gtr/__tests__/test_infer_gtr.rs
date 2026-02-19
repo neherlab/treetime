@@ -1,3 +1,16 @@
+//! GTR inference tests.
+//!
+//! Golden master tests validate dense GTR inference against Python v0 reference outputs.
+//! The fixture (`fixtures/gtr_inference_dense.json`) contains mutation counts and inferred
+//! GTR parameters from running Python v0 on the flu/h3n2/20 dataset.
+//!
+//! # Regenerate fixture
+//!
+//! Run from project root in container:
+//! ```bash
+//! ./dev/docker/python test_scripts/dump_gtr_inference_dense.py
+//! ```
+
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -6,7 +19,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::avg_transition;
   use crate::gtr::infer_gtr::{
-    InferGtrOptions, MutationCounts, distance, get_mutation_counts, get_mutation_counts_dense, infer_gtr_impl,
+    InferGtrOptions, InferGtrResult, MutationCounts, distance, get_mutation_counts, get_mutation_counts_dense,
+    infer_gtr_impl,
   };
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -16,7 +30,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use maplit::btreemap;
-  use ndarray::array;
+  use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
   use serde::Deserialize;
   use std::path::PathBuf;
@@ -220,6 +234,18 @@ mod tests {
     root_state: Vec<f64>,
   }
 
+  impl From<MutationCountsFixture> for MutationCounts {
+    fn from(f: MutationCountsFixture) -> Self {
+      let n = f.nij.len();
+      let nij_flat: Vec<f64> = f.nij.into_iter().flatten().collect();
+      Self {
+        nij: Array2::from_shape_vec((n, n), nij_flat).expect("nij shape mismatch"),
+        Ti: Array1::from_vec(f.ti),
+        root_state: Array1::from_vec(f.root_state),
+      }
+    }
+  }
+
   #[derive(Debug, Deserialize)]
   struct InferredGtrFixture {
     #[serde(rename = "W")]
@@ -228,16 +254,31 @@ mod tests {
     mu: f64,
   }
 
+  impl From<InferredGtrFixture> for InferGtrResult {
+    fn from(f: InferredGtrFixture) -> Self {
+      let n = f.w.len();
+      let w_flat: Vec<f64> = f.w.into_iter().flatten().collect();
+      Self {
+        W: Array2::from_shape_vec((n, n), w_flat).expect("W shape mismatch"),
+        pi: Array1::from_vec(f.pi),
+        mu: f.mu,
+      }
+    }
+  }
+
   /// Golden master test: dense GTR inference matches Python v0 reference.
   ///
-  /// Loads flu/h3n2/20 dataset, runs dense marginal reconstruction with JC69,
-  /// extracts mutation counts, infers GTR, and compares against fixture from v0.
+  /// Dataset: flu/h3n2/20
+  /// Compares: mutation counts (nij, Ti, root_state) and inferred GTR parameters (W, pi, mu)
   #[test]
   fn test_infer_gtr_dense_golden_master() -> Result<(), Report> {
     let fixture_path =
       PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/__tests__/fixtures/gtr_inference_dense.json");
     let fixture_str = std::fs::read_to_string(&fixture_path)?;
     let fixture: GtrInferenceDenseFixture = serde_json::from_str(&fixture_str)?;
+
+    let expected_counts: MutationCounts = fixture.mutation_counts.into();
+    let expected_gtr: InferGtrResult = fixture.inferred_gtr.into();
 
     let root = project_root();
     let tree_path = root.join("data/flu/h3n2/20/tree.nwk");
@@ -268,87 +309,15 @@ mod tests {
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
-    let expected_nij = array![
-      [
-        fixture.mutation_counts.nij[0][0],
-        fixture.mutation_counts.nij[0][1],
-        fixture.mutation_counts.nij[0][2],
-        fixture.mutation_counts.nij[0][3]
-      ],
-      [
-        fixture.mutation_counts.nij[1][0],
-        fixture.mutation_counts.nij[1][1],
-        fixture.mutation_counts.nij[1][2],
-        fixture.mutation_counts.nij[1][3]
-      ],
-      [
-        fixture.mutation_counts.nij[2][0],
-        fixture.mutation_counts.nij[2][1],
-        fixture.mutation_counts.nij[2][2],
-        fixture.mutation_counts.nij[2][3]
-      ],
-      [
-        fixture.mutation_counts.nij[3][0],
-        fixture.mutation_counts.nij[3][1],
-        fixture.mutation_counts.nij[3][2],
-        fixture.mutation_counts.nij[3][3]
-      ],
-    ];
-    let expected_ti = array![
-      fixture.mutation_counts.ti[0],
-      fixture.mutation_counts.ti[1],
-      fixture.mutation_counts.ti[2],
-      fixture.mutation_counts.ti[3],
-    ];
-    let expected_root_state = array![
-      fixture.mutation_counts.root_state[0],
-      fixture.mutation_counts.root_state[1],
-      fixture.mutation_counts.root_state[2],
-      fixture.mutation_counts.root_state[3],
-    ];
-
-    pretty_assert_ulps_eq!(expected_nij, counts.nij, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected_ti, counts.Ti, epsilon = 1e-5);
-    pretty_assert_ulps_eq!(expected_root_state, counts.root_state, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_counts.nij, counts.nij, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_counts.Ti, counts.Ti, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(expected_counts.root_state, counts.root_state, epsilon = 1e-7);
 
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
-    let expected_w = array![
-      [
-        fixture.inferred_gtr.w[0][0],
-        fixture.inferred_gtr.w[0][1],
-        fixture.inferred_gtr.w[0][2],
-        fixture.inferred_gtr.w[0][3]
-      ],
-      [
-        fixture.inferred_gtr.w[1][0],
-        fixture.inferred_gtr.w[1][1],
-        fixture.inferred_gtr.w[1][2],
-        fixture.inferred_gtr.w[1][3]
-      ],
-      [
-        fixture.inferred_gtr.w[2][0],
-        fixture.inferred_gtr.w[2][1],
-        fixture.inferred_gtr.w[2][2],
-        fixture.inferred_gtr.w[2][3]
-      ],
-      [
-        fixture.inferred_gtr.w[3][0],
-        fixture.inferred_gtr.w[3][1],
-        fixture.inferred_gtr.w[3][2],
-        fixture.inferred_gtr.w[3][3]
-      ],
-    ];
-    let expected_pi = array![
-      fixture.inferred_gtr.pi[0],
-      fixture.inferred_gtr.pi[1],
-      fixture.inferred_gtr.pi[2],
-      fixture.inferred_gtr.pi[3],
-    ];
-
-    pretty_assert_ulps_eq!(expected_w, result.W, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected_pi, result.pi, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(fixture.inferred_gtr.mu, result.mu, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_gtr.W, result.W, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_gtr.pi, result.pi, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected_gtr.mu, result.mu, epsilon = 1e-7);
 
     Ok(())
   }

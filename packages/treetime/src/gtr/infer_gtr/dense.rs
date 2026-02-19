@@ -13,6 +13,11 @@ use treetime_graph::edge::HasBranchLength;
 use treetime_primitives::Seq;
 
 /// Infer GTR model from dense partition data.
+///
+/// Requires profiles to be populated via `initialize_marginal` + `update_marginal` before calling.
+/// When `--model=infer --dense=true`, marginal reconstruction runs twice: once to populate profiles
+/// for GTR inference, and again after inferring the GTR. Sparse inference avoids this by tracking
+/// mutations incrementally during Fitch compression.
 pub fn infer_gtr_dense(partition: &Arc<RwLock<PartitionMarginalDense>>, graph: &GraphAncestral) -> Result<GTR, Report> {
   let counts = get_mutation_counts_dense(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;

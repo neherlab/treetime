@@ -160,10 +160,13 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         if !partitions_marginal_dense.is_empty() {
           initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
 
+          // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+          // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
           // For model inference, we need profiles populated first. Run marginal reconstruction
           // with dummy GTR, then infer the real GTR, then re-run if model changed.
           update_marginal(&graph, &partitions_marginal_dense)?;
 
+          // Triggers second marginal pass internally when model=infer
           for partition in &partitions_marginal_dense {
             let gtr = get_gtr_dense(model_name, partition, &graph)?;
             partition.write_arc().gtr = gtr;

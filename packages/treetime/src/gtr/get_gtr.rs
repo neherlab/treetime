@@ -18,6 +18,9 @@ use strum_macros::Display;
   Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize,
 )]
 pub enum GtrModelName {
+  /// Infer GTR parameters from data.
+  ///
+  /// Dense mode requires pre-populated profiles, causing two reconstruction passes.
   #[default]
   Infer,
   JC69,

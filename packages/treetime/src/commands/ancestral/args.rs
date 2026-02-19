@@ -73,9 +73,10 @@ pub struct TreetimeAncestralArgs {
   #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
   pub method_anc: MethodAncestral,
 
-  /// Use dense representation
+  /// Use dense representation (stores full probability vectors at each position)
   ///
-  /// TODO: explain this better
+  /// When combined with `--model infer`, marginal reconstruction runs twice: once to populate
+  /// profiles for GTR inference, and again with the inferred GTR.
   #[clap(long)]
   pub dense: Option<bool>,
 
