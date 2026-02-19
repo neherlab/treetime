@@ -182,9 +182,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     );
     coalescent_tc = Some(skyline_result.tc_distribution);
 
-    // Run final timetree pass with optimized skyline
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
-      .wrap_err("Final timetree pass with optimized skyline failed")?;
+    // Run final timetree pass with optimized skyline, unless OnlyFinal mode will run it below
+    if args.time_marginal != TimeMarginalMode::OnlyFinal {
+      run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
+        .wrap_err("Final timetree pass with optimized skyline failed")?;
+    }
   }
 
   info!("### TreeTime: postprocessing");
