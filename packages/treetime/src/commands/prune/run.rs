@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69};
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69, write_gtr_json};
 use crate::make_error;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
@@ -74,6 +74,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
     for partition in &partitions {
       let gtr = get_gtr_sparse(&GtrModelName::JC69, partition, &graph)?;
+      write_gtr_json(&gtr, GtrModelName::JC69, outdir)?;
       partition.write_arc().gtr = gtr;
     }
 

@@ -10,6 +10,7 @@ use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_sky
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
@@ -65,7 +66,12 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     },
     BranchLengthMode::Marginal => {
       info!("Branch length mode: Marginal - initializing partitions from alignment");
-      initialize_partitions(args, &graph, alphabet, aln.as_deref())?
+      let partitions = initialize_partitions(args, &graph, alphabet, aln.as_deref())?;
+      // Write GTR model used for marginal reconstruction
+      // FIXME: currently hardcoded to JC69, should use args.gtr when model selection is implemented
+      let gtr = jc69(JC69Params::default())?;
+      write_gtr_json(&gtr, GtrModelName::JC69, &args.outdir)?;
+      partitions
     },
   };
 

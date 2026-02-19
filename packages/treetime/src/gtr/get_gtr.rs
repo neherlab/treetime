@@ -12,8 +12,64 @@ use ndarray::{Array1, Array2, array};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::path::Path;
 use std::sync::Arc;
 use strum_macros::Display;
+use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
+
+/// Classification of how the GTR model was obtained.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GtrModelType {
+  /// Standard named model (JC69, K80, etc.)
+  Named,
+  /// Model inferred from data
+  Inferred,
+  /// User-provided custom parameters
+  Custom,
+}
+
+/// GTR model output for JSON serialization.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GtrOutput {
+  /// How the model was obtained: named, inferred, or custom
+  pub model_type: GtrModelType,
+  /// Specific model name
+  pub model_name: GtrModelName,
+  /// Substitution rate
+  pub mu: f64,
+  /// Equilibrium frequencies
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  pub pi: Array1<f64>,
+  /// Symmetrized rate matrix
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  #[serde(rename = "W")]
+  pub w: Array2<f64>,
+}
+
+impl GtrOutput {
+  pub fn new(gtr: &GTR, model_name: GtrModelName) -> Self {
+    let model_type = match model_name {
+      GtrModelName::Infer => GtrModelType::Inferred,
+      _ => GtrModelType::Named,
+    };
+    Self {
+      model_type,
+      model_name,
+      mu: gtr.mu,
+      pi: gtr.pi.clone(),
+      w: gtr.W.clone(),
+    }
+  }
+}
+
+/// Write GTR model parameters to JSON file.
+pub fn write_gtr_json(gtr: &GTR, model_name: GtrModelName, outdir: impl AsRef<Path>) -> Result<(), Report> {
+  let output = GtrOutput::new(gtr, model_name);
+  let path = outdir.as_ref().join("gtr.json");
+  json_write_file(path, &output, JsonPretty(true))
+}
 
 #[derive(
   Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize,

@@ -3,7 +3,7 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
-use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -77,6 +77,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     // For now, use JC69 for both partitions to avoid GTR inference issues with dense partitions
     for partition in &sparse_partitions {
       let gtr = jc69(JC69Params::default())?; // FIXME: allow other models and model inference
+      write_gtr_json(&gtr, GtrModelName::JC69, outdir)?;
       partition.write_arc().gtr = gtr;
     }
 
