@@ -17,13 +17,6 @@ use treetime_graph::node::GraphNodeKey;
 /// Default minimum likelihood gain required to merge two children.
 pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 
-/// Result of finding the best pair of children to merge.
-struct BestPair {
-  child_idx_a: usize,
-  child_idx_b: usize,
-  likelihood_gain: f64,
-}
-
 /// Resolve multifurcations using temporal constraints and sequence data.
 ///
 /// Scans tree for polytomies (nodes with >2 children), resolves them using greedy
@@ -104,6 +97,13 @@ struct ChildInfo {
 struct MergeCandidate {
   optimal_time: f64,
   cost_gain: f64,
+}
+
+/// Result of finding the best pair of children to merge.
+struct BestPair {
+  child_idx_a: usize,
+  child_idx_b: usize,
+  likelihood_gain: f64,
 }
 
 /// Resolve a single polytomy node using greedy pairwise merging.
