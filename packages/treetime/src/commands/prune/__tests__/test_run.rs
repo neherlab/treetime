@@ -20,6 +20,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_primitives::AsciiChar;
+  use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -350,7 +351,7 @@ mod tests {
 
     // Find the edge leading to leaf A
     let a_inbound_edge =
-      find_edge_key(&graph, "internal2", "A").ok_or_else(|| eyre::eyre!("Edge internal2->A not found"))?;
+      find_edge_key(&graph, "internal2", "A").ok_or_else(|| make_report!("Edge internal2->A not found"))?;
 
     // Recursively prune leaf A and its childless ancestors
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
@@ -382,7 +383,7 @@ mod tests {
 
     // Find the edge leading to leaf A
     let a_inbound_edge =
-      find_edge_key(&graph, "internal1", "A").ok_or_else(|| eyre::eyre!("Edge internal1->A not found"))?;
+      find_edge_key(&graph, "internal1", "A").ok_or_else(|| make_report!("Edge internal1->A not found"))?;
 
     // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;

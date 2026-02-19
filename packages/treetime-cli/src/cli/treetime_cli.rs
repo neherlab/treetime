@@ -5,7 +5,7 @@ use crate::cli::verbosity::Verbosity;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
-use eyre::{Report, eyre};
+use eyre::Report;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io;
@@ -19,6 +19,7 @@ use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
+use treetime_utils::make_report;
 
 pub static SHELLS: LazyLock<Vec<&'static str>> =
   LazyLock::new(|| vec!["bash", "elvish", "fish", "fig", "powershell", "zsh"]);
@@ -101,7 +102,7 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   }
 
   let generator = <Shell as ValueEnum>::from_str(&shell.to_lowercase(), true)
-    .map_err(|err| eyre!("{}: Possible values: {}", err, SHELLS.join(", ")))?;
+    .map_err(|err| make_report!("{err}: Possible values: {}", SHELLS.join(", ")))?;
 
   let bin_name = command.get_name().to_owned();
 

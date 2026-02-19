@@ -1,5 +1,5 @@
 use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
-use eyre::{Report, eyre};
+use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -7,6 +7,7 @@ use treetime_utils::error::to_eyre_error;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::fs::{extension, read_file_to_string};
 use treetime_utils::make_error;
+use treetime_utils::make_report;
 
 /// Writes CSV. Each row is a serde-annotated struct.
 pub struct CsvStructWriter<W: Write + Send> {
@@ -139,7 +140,7 @@ pub fn get_col_name(
       .iter()
       .position(|header| possible_names.contains(header))
       .ok_or_else(|| {
-        eyre!(
+        make_report!(
           "Unable to find column:\n  Looking for: {}\n  Available columns are: {}",
           possible_names.join(", "),
           headers.join(", ")
@@ -151,7 +152,7 @@ pub fn get_col_name(
 pub fn guess_csv_delimiter(filepath: impl AsRef<Path>) -> Result<u8, Report> {
   let filepath = filepath.as_ref();
   let ext = extension(filepath)
-    .ok_or_else(|| eyre!("Unable to detect file extension: '{filepath:?}': "))?
+    .ok_or_else(|| make_report!("Unable to detect file extension: '{filepath:?}': "))?
     .to_lowercase();
   match ext.as_str() {
     "csv" => Ok(b','),

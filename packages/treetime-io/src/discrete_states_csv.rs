@@ -1,11 +1,11 @@
 use crate::csv::{get_col_name, guess_csv_delimiter};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
-use eyre::{Report, WrapErr, eyre};
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::{make_internal_report, vec_of_owned};
+use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 pub fn read_discrete_attrs<T>(
   filepath: impl AsRef<Path>,
@@ -28,7 +28,7 @@ pub fn read_discrete_attrs<T>(
   let headers = reader
     .headers()
     .map(|record| record.iter().map(str::to_owned).collect_vec())
-    .map_err(|err| eyre!("{err}"))?
+    .map_err(|err| make_report!("{err}"))?
     .iter()
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').to_owned())
     .collect_vec();

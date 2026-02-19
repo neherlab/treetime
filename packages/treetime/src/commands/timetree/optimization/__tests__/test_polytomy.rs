@@ -10,6 +10,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::make_report;
 
   /// Create a tree with a polytomy (node with 3+ children).
   /// Tree: ((A,B,C)ABC)root where ABC has 3 children
@@ -20,7 +21,7 @@ mod tests {
     // Set times for all nodes (tips have explicit times, internals derived)
     let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
     for (name, time) in tip_times {
-      let key = find_node_key_by_name(&graph, name).ok_or_else(|| eyre::eyre!("{name} not found"))?;
+      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
       let node = graph.get_node(key).expect("Node must exist");
       node.write_arc().payload().write_arc().time = Some(time);
     }
@@ -96,7 +97,7 @@ mod tests {
     let mut graph = create_polytomy_tree()?;
 
     // Find ABC node and verify it starts with 3 children
-    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| eyre::eyre!("ABC not found"))?;
+    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let initial_children = graph
       .get_node(abc_key)
       .expect("Node must exist")
@@ -149,7 +150,7 @@ mod tests {
     assert_eq!(n_resolved, 0, "Very high threshold should prevent any merges");
 
     // ABC should still have 3 children
-    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| eyre::eyre!("ABC not found"))?;
+    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let children = graph
       .get_node(abc_key)
       .expect("Node must exist")
@@ -164,7 +165,7 @@ mod tests {
   fn test_resolve_polytomies_new_node_has_correct_time() -> Result<(), Report> {
     let mut graph = create_polytomy_tree()?;
 
-    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| eyre::eyre!("ABC not found"))?;
+    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let abc_time = graph
       .get_node(abc_key)
       .expect("Node must exist")
@@ -263,7 +264,7 @@ mod tests {
       payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
     }
 
-    let abcde_key = find_node_key_by_name(&graph, "ABCDE").ok_or_else(|| eyre::eyre!("ABCDE not found"))?;
+    let abcde_key = find_node_key_by_name(&graph, "ABCDE").ok_or_else(|| make_report!("ABCDE not found"))?;
     let initial_children = graph
       .get_node(abcde_key)
       .expect("Node must exist")

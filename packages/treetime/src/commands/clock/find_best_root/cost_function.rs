@@ -6,6 +6,7 @@ use eyre::Report;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_utils::make_report;
 
 /// Cost function for branch point optimization using various optimization methods
 pub struct BranchPointCostFunction<'a> {
@@ -31,17 +32,17 @@ impl<'a> BranchPointCostFunction<'a> {
   {
     let edge_obj = graph
       .get_edge(edge)
-      .ok_or_else(|| eyre::eyre!("Edge not found: {}", edge))?;
+      .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
     let edge_payload = edge_obj.read_arc().payload().read_arc();
     let target_node = graph
       .get_node(edge_obj.read_arc().target())
-      .ok_or_else(|| eyre::eyre!("Target node not found for edge: {}", edge))?;
+      .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
     let target_node_payload = target_node.read_arc().payload().read_arc();
     let is_leaf = target_node.read_arc().is_leaf();
     let node_time = target_node_payload.likely_time();
     let branch_length = edge_payload
       .branch_length()
-      .ok_or_else(|| eyre::eyre!("Edge {} has no weight", edge))?;
+      .ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
     Ok(BranchPointCostFunction {

@@ -10,13 +10,13 @@ use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_sky
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;

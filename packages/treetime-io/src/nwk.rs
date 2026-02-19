@@ -1,5 +1,5 @@
 use bio::io::newick;
-use eyre::{Report, WrapErr, eyre};
+use eyre::{Report, WrapErr};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use log::warn;
@@ -20,6 +20,7 @@ use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
+use treetime_utils::make_report;
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -84,11 +85,11 @@ where
 
     let source = index_map
       .get(&source)
-      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {source} not found."))?;
+      .ok_or_else(|| make_report!("When inserting edge {nwk_idx}: Node with index {source} not found."))?;
 
     let target = index_map
       .get(&target)
-      .ok_or_else(|| eyre!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
+      .ok_or_else(|| make_report!("When inserting edge {nwk_idx}: Node with index {target} not found."))?;
 
     let edge = E::from_nwk(Some(weight))?;
     graph.add_edge(*source, *target, edge)?;

@@ -1,5 +1,6 @@
 use crate::io::file::open_file_or_stdin;
-use eyre::{Report, WrapErr, eyre};
+use crate::make_report;
+use eyre::{Report, WrapErr};
 use std::ffi::{OsStr, OsString};
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -22,7 +23,7 @@ pub fn ensure_dir(filepath: impl AsRef<Path>) -> Result<(), Report> {
   {
     let parent_dir = filepath
       .parent()
-      .ok_or_else(|| eyre!("Unable to get parent path for '{}'", filepath.display()))?;
+      .ok_or_else(|| make_report!("Unable to get parent path for '{}'", filepath.display()))?;
 
     let parent_path = absolute_path(parent_dir)?;
 

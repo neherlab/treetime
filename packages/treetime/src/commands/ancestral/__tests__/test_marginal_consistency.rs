@@ -18,6 +18,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::make_report;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -123,8 +124,8 @@ mod tests {
     let (_, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (_, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre::eyre!("Root node not found"))?;
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre::eyre!("AB node not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Root node not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("AB node not found"))?;
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();

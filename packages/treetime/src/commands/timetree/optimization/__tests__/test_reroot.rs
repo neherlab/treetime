@@ -32,6 +32,7 @@ mod tests {
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq, seq};
+  use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -176,8 +177,8 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre::eyre!("root not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| eyre::eyre!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
 
     // Find edge from root to A
     let edge_to_a_key = graph
@@ -190,7 +191,7 @@ mod tests {
         (src == root_key && tgt == a_key) || (src == a_key && tgt == root_key)
       })
       .map(|e| e.read_arc().key())
-      .ok_or_else(|| eyre::eyre!("Edge to A not found"))?;
+      .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     // Create sparse partition with manually seeded edge data
     let sub_original = Sub::new(c(b'A'), 5_usize, c(b'G'))?; // A5G: ref=A, qry=G
@@ -278,8 +279,8 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre::eyre!("root not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| eyre::eyre!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
 
     // Find edge from root to A
     let edge_to_a_key = graph
@@ -292,7 +293,7 @@ mod tests {
         (src == root_key && tgt == a_key) || (src == a_key && tgt == root_key)
       })
       .map(|e| e.read_arc().key())
-      .ok_or_else(|| eyre::eyre!("Edge to A not found"))?;
+      .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     // Create root sequence with specific characters
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;

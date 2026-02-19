@@ -26,6 +26,7 @@ use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::global_init;
+use treetime_utils::make_report;
 
 #[ctor]
 fn init() {
@@ -282,13 +283,13 @@ where
   for (key, value) in map {
     let node = graph
       .get_node(*key)
-      .ok_or_else(|| eyre::eyre!("Node key not found in graph: {key:?}"))?;
+      .ok_or_else(|| make_report!("Node key not found in graph: {key:?}"))?;
     let name = node
       .read_arc()
       .payload()
       .read_arc()
       .name()
-      .ok_or_else(|| eyre::eyre!("Node has no name: {key:?}"))?
+      .ok_or_else(|| make_report!("Node has no name: {key:?}"))?
       .as_ref()
       .to_owned();
     out.insert(name, value.clone());

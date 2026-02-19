@@ -59,7 +59,7 @@ pub fn optimize_golden_section(
     })
     .add_observer(GoldenSectionObserver, ObserverMode::Always)
     .run()
-    .map_err(|e| eyre::eyre!("Golden section search optimization failed: {}", e))?;
+    .map_err(|e| make_report!("Golden section search optimization failed: {e}"))?;
 
   let best_split = result.state.best_param.unwrap();
   let best_chisq = result.state.best_cost;

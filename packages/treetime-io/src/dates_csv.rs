@@ -1,6 +1,6 @@
 use crate::csv::{get_col_name, guess_csv_delimiter};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
-use eyre::{Report, WrapErr, eyre};
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -11,7 +11,7 @@ use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range, date_to_year_fraction};
 use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::{make_internal_report, vec_of_owned};
+use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DateOrRange {
@@ -46,7 +46,7 @@ pub fn read_dates_from_reader(
   let headers = reader
     .headers()
     .map(|record| record.iter().map(str::to_owned).collect_vec())
-    .map_err(|err| eyre!("{err}"))?
+    .map_err(|err| make_report!("{err}"))?
     .iter()
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
     .collect_vec();

@@ -4,7 +4,7 @@ use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_cou
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
-use crate::make_report;
+use crate::{make_error, make_report};
 use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::neldermead::NelderMead;
 use eyre::Report;
@@ -94,10 +94,10 @@ where
   // Create time grid spanning the tree event range
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
-    return Err(make_report!(
+    return make_error!(
       "Skyline optimization requires at least 2 breakpoints, got {}",
       breakpoints.len()
-    ));
+    );
   }
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];

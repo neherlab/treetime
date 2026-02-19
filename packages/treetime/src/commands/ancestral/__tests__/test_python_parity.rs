@@ -10,7 +10,7 @@ mod tests {
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
-  use eyre::{Report, eyre};
+  use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
@@ -19,6 +19,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_utils::make_report;
 
   fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -139,7 +140,7 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Find node AB and check profile at position 0
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre!("Node AB not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
     let partition = partitions[0].read();
     let ab_profile = &partition.nodes[&ab_key].profile.dis;
 
@@ -179,7 +180,7 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Find root node
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre!("Node root not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
     let partition = partitions[0].read();
     let root_profile = &partition.nodes[&root_key].profile.dis;
 
@@ -215,7 +216,7 @@ mod tests {
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
-    let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| eyre!("Node CD not found"))?;
+    let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let partition = partitions[0].read();
     let cd_profile = &partition.nodes[&cd_key].profile.dis;
 
@@ -313,7 +314,7 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Check root profiles differ between partitions
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| eyre!("Node root not found"))?;
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
     let p1 = partition1.read();
     let p2 = partition2.read();
@@ -378,7 +379,7 @@ mod tests {
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| eyre!("Node AB not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
     // Partition 1: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
     let p1 = partition1.read();
