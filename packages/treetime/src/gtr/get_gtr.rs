@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::infer_gtr_sparse;
+use crate::gtr::infer_gtr::{infer_gtr_dense, infer_gtr_sparse};
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
@@ -42,18 +43,16 @@ pub fn get_gtr_sparse(
 }
 
 /// Get GTR model for dense representation.
-///
-/// Dense representation uses full probability matrices and does not track individual
-/// substitutions or composition. GTR inference requires sparse-style mutation tracking,
-/// so users must specify an explicit model (e.g., `--model jc69`).
-pub fn get_gtr_dense(name: &GtrModelName) -> Result<GTR, Report> {
+pub fn get_gtr_dense(
+  name: &GtrModelName,
+  partition: &Arc<RwLock<PartitionMarginalDense>>,
+  graph: &GraphAncestral,
+) -> Result<GTR, Report> {
   match name {
-    GtrModelName::Infer => {
-      make_error!("GTR inference is not implemented for dense representation. Use --model to specify a GTR model (e.g., --model jc69), or omit --dense to use sparse representation.")
-    },
+    GtrModelName::Infer => infer_gtr_dense(partition, graph),
     _ => get_gtr_by_name(*name),
   }
-  .wrap_err_with(|| make_report!("When creating GTR model"))
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))
 }
 
 fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
