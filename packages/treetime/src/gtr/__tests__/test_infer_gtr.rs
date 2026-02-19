@@ -21,7 +21,7 @@ mod tests {
   use serde::Deserialize;
   use std::path::PathBuf;
   use std::sync::Arc;
-  use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
   lazy_static! {
@@ -349,6 +349,166 @@ mod tests {
     pretty_assert_ulps_eq!(expected_w, result.W, epsilon = 1e-7);
     pretty_assert_ulps_eq!(expected_pi, result.pi, epsilon = 1e-7);
     pretty_assert_ulps_eq!(fixture.inferred_gtr.mu, result.mu, epsilon = 1e-7);
+
+    Ok(())
+  }
+
+  // ============================================================================
+  // Unit tests for dense GTR inference (T6)
+  // ============================================================================
+
+  /// Helper to create a dense partition and run marginal reconstruction.
+  fn setup_dense_partition(
+    tree_nwk: &str,
+    aln: &[FastaRecord],
+    treat_gap_as_unknown: bool,
+  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      treat_gap_as_unknown,
+      ..JC69Params::default()
+    })?;
+
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr,
+      alphabet,
+      length: get_common_length(aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    initialize_marginal(&graph, std::slice::from_ref(&partition), aln)?;
+    Ok((graph, partition))
+  }
+
+  /// All sequences identical -> zero off-diagonal nij (no substitutions).
+  #[test]
+  fn test_infer_gtr_dense_uniform_sequences() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACGT
+      >B
+      ACGT
+      >C
+      ACGT
+      >D
+      ACGT
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let (graph, partition) =
+      setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln, true)?;
+
+    let counts = get_mutation_counts_dense(&graph, &partition)?;
+
+    // No substitutions -> all off-diagonal elements are zero
+    for i in 0..4 {
+      for j in 0..4 {
+        if i != j {
+          pretty_assert_ulps_eq!(0.0, counts.nij[[i, j]], epsilon = 1e-9);
+        }
+      }
+    }
+
+    // Root composition: 1 of each nucleotide (ACGT)
+    pretty_assert_ulps_eq!(array![1.0, 1.0, 1.0, 1.0], counts.root_state, epsilon = 1e-9);
+
+    Ok(())
+  }
+
+  /// Single mutation from A to C at one position.
+  #[test]
+  fn test_infer_gtr_dense_single_mutation() -> Result<(), Report> {
+    // Simple tree: root -> A, root -> B
+    // A has "ACGT", B has "CCGT" (A->C at position 0)
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACGT
+      >B
+      CCGT
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let (graph, partition) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln, true)?;
+
+    let counts = get_mutation_counts_dense(&graph, &partition)?;
+
+    // The root should be reconstructed with some state at position 0.
+    // With marginal reconstruction on a symmetric tree, the root gets
+    // probability split between A and C at position 0.
+    // Due to argmax, it picks one (likely A or C based on alphabet order).
+
+    // Check that nij has at least one non-zero off-diagonal element
+    // (there's definitely a mutation from parent to child on one edge)
+    let total_mutations: f64 = counts
+      .nij
+      .iter()
+      .enumerate()
+      .filter_map(|(idx, &val)| {
+        let i = idx / 4;
+        let j = idx % 4;
+        (i != j).then_some(val)
+      })
+      .sum();
+
+    // At least one mutation expected (A->C or C->A depending on root reconstruction)
+    assert!(
+      total_mutations >= 1.0,
+      "Expected at least 1 mutation, got {total_mutations}"
+    );
+
+    Ok(())
+  }
+
+  /// Dense inference produces valid GTR model on realistic data.
+  /// Verifies that the inferred model has valid properties (symmetric W, normalized pi, positive mu).
+  #[test]
+  fn test_infer_gtr_dense_produces_valid_model() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCGTAGAC
+      >B
+      GCATCCCTGTAGGG
+      >C
+      CCGGCGATGTGTTG
+      >D
+      TCGGCCGTGTGTTG
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+    let (graph, partition) = setup_dense_partition(tree_nwk, &aln, true)?;
+
+    let counts = get_mutation_counts_dense(&graph, &partition)?;
+    let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+
+    // W should be symmetric
+    for i in 0..4 {
+      for j in 0..4 {
+        pretty_assert_ulps_eq!(result.W[[i, j]], result.W[[j, i]], epsilon = 1e-9);
+      }
+    }
+
+    // pi should sum to 1
+    let pi_sum: f64 = result.pi.iter().sum();
+    pretty_assert_ulps_eq!(1.0, pi_sum, epsilon = 1e-9);
+
+    // All pi values should be positive
+    for &p in &result.pi {
+      assert!(p > 0.0, "pi values should be positive, got {p}");
+    }
+
+    // mu should be positive
+    assert!(result.mu > 0.0, "mu should be positive, got {}", result.mu);
 
     Ok(())
   }
