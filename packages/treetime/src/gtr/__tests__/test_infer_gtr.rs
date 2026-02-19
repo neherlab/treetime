@@ -30,7 +30,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use maplit::btreemap;
-  use ndarray::{Array1, Array2, array};
+  use ndarray::array;
   use parking_lot::RwLock;
   use serde::Deserialize;
   use std::path::PathBuf;
@@ -222,48 +222,8 @@ mod tests {
 
   #[derive(Debug, Deserialize)]
   struct GtrInferenceDenseFixture {
-    mutation_counts: MutationCountsFixture,
-    inferred_gtr: InferredGtrFixture,
-  }
-
-  #[derive(Debug, Deserialize)]
-  struct MutationCountsFixture {
-    nij: Vec<Vec<f64>>,
-    #[serde(rename = "Ti")]
-    ti: Vec<f64>,
-    root_state: Vec<f64>,
-  }
-
-  impl From<MutationCountsFixture> for MutationCounts {
-    fn from(f: MutationCountsFixture) -> Self {
-      let n = f.nij.len();
-      let nij_flat: Vec<f64> = f.nij.into_iter().flatten().collect();
-      Self {
-        nij: Array2::from_shape_vec((n, n), nij_flat).expect("nij shape mismatch"),
-        Ti: Array1::from_vec(f.ti),
-        root_state: Array1::from_vec(f.root_state),
-      }
-    }
-  }
-
-  #[derive(Debug, Deserialize)]
-  struct InferredGtrFixture {
-    #[serde(rename = "W")]
-    w: Vec<Vec<f64>>,
-    pi: Vec<f64>,
-    mu: f64,
-  }
-
-  impl From<InferredGtrFixture> for InferGtrResult {
-    fn from(f: InferredGtrFixture) -> Self {
-      let n = f.w.len();
-      let w_flat: Vec<f64> = f.w.into_iter().flatten().collect();
-      Self {
-        W: Array2::from_shape_vec((n, n), w_flat).expect("W shape mismatch"),
-        pi: Array1::from_vec(f.pi),
-        mu: f.mu,
-      }
-    }
+    mutation_counts: MutationCounts,
+    inferred_gtr: InferGtrResult,
   }
 
   /// Golden master test: dense GTR inference matches Python v0 reference.
@@ -277,8 +237,8 @@ mod tests {
     let fixture_str = std::fs::read_to_string(&fixture_path)?;
     let fixture: GtrInferenceDenseFixture = serde_json::from_str(&fixture_str)?;
 
-    let expected_counts: MutationCounts = fixture.mutation_counts.into();
-    let expected_gtr: InferGtrResult = fixture.inferred_gtr.into();
+    let expected_counts = fixture.mutation_counts;
+    let expected_gtr = fixture.inferred_gtr;
 
     let root = project_root();
     let tree_path = root.join("data/flu/h3n2/20/tree.nwk");

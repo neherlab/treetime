@@ -45,6 +45,16 @@ def count_composition(seq: str, alphabet: str = "ACGT") -> np.ndarray:
     return composition
 
 
+def array1_to_serde(arr: np.ndarray) -> dict:
+    """Convert 1D numpy array to ndarray-serde format for Rust deserialization."""
+    return {"v": 1, "dim": list(arr.shape), "data": arr.flatten().tolist()}
+
+
+def array2_to_serde(arr: np.ndarray) -> dict:
+    """Convert 2D numpy array to ndarray-serde format for Rust deserialization."""
+    return {"v": 1, "dim": list(arr.shape), "data": arr.flatten().tolist()}
+
+
 def get_mutation_counts_dense(graph: Graph) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract mutation counts from dense profiles (argmax sequences)."""
     root = graph.get_one_root()
@@ -117,13 +127,13 @@ def main() -> None:
         "dataset": "flu/h3n2/20",
         "initial_gtr": "JC69",
         "mutation_counts": {
-            "nij": nij.tolist(),
-            "Ti": ti.tolist(),
-            "root_state": root_state.tolist(),
+            "nij": array2_to_serde(nij),
+            "Ti": array1_to_serde(ti),
+            "root_state": array1_to_serde(root_state),
         },
         "inferred_gtr": {
-            "W": result["W"].tolist(),
-            "pi": result["pi"].tolist(),
+            "W": array2_to_serde(result["W"]),
+            "pi": array1_to_serde(result["pi"]),
             "mu": float(result["mu"]),
         },
     }

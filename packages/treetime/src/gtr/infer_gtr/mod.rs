@@ -12,10 +12,11 @@ use crate::gtr::gtr::avg_transition;
 use eyre::Report;
 use log::warn;
 use ndarray::{Array1, Array2, Axis};
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::outer;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct MutationCounts {
   /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
   pub nij: Array2<f64>,
@@ -45,7 +46,7 @@ pub(crate) struct InferGtrOptions {
   pub max_iter: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct InferGtrResult {
   /// Substitution attempt matrix calculated during the GTR inference.
   pub W: Array2<f64>,
