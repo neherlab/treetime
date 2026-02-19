@@ -190,7 +190,7 @@ fi
 mkdir -p "${!volumes[@]}"
 
 # shellcheck disable=SC2046
-docker run --rm $(tty -s && echo "-it") \
+docker run --rm -i $(tty -s && echo "-t") \
   --init \
   --name="${docker_container_name}" \
   --hostname="${docker_repo_name_safe}" \
@@ -210,4 +210,4 @@ docker run --rm $(tty -s && echo "-it") \
   $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
   --ulimit="core=0" \
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
-  bash -c "${*:-bash}"
+  "${@:-bash}"

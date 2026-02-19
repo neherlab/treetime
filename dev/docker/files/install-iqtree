@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest="${1:-/usr/local}"
+mkdir -p "${dest}/bin"
+
+version="3.0.1"
+
+curl -fsSL "https://github.com/iqtree/iqtree3/releases/download/v${version}/iqtree-${version}-Linux-intel.tar.gz" \
+  | tar --strip-components=2 -C "${dest}/bin" -xz "iqtree-${version}-Linux-intel/bin/iqtree3"
+
+ln -sf "${dest}/bin/iqtree3" "${dest}/bin/iqtree"
+
+ls "${dest}/bin/iqtree3"
+iqtree3 --version

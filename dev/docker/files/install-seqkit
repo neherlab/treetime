@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest="${1:-/usr/local}"
+mkdir -p "${dest}/bin"
+
+version="2.12.0"
+
+curl -fsSL "https://github.com/shenwei356/seqkit/releases/download/v${version}/seqkit_linux_amd64.tar.gz" \
+  | tar -C "${dest}/bin" -xz seqkit
+
+ls "${dest}/bin/seqkit"
+seqkit version

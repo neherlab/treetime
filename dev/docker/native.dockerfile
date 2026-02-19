@@ -61,6 +61,12 @@ RUN /install-protobuf
 COPY --link "dev/docker/files/install-hyperfine" "/"
 RUN /install-hyperfine
 
+COPY --link "dev/docker/files/install-seqkit" "/"
+RUN /install-seqkit
+
+COPY --link "dev/docker/files/install-iqtree" "/"
+RUN /install-iqtree
+
 COPY --link "dev/docker/files/install-sccache" "/"
 RUN /install-sccache
 

@@ -53,7 +53,7 @@ declare -A volumes=(
 mkdir -p "${!volumes[@]}"
 
 # shellcheck disable=SC2046
-docker run --rm $(tty -s && echo "-it") \
+docker run --rm -i $(tty -s && echo "-t") \
   --init \
   --network="host" \
   --name="${docker_container_name}" \

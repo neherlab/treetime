@@ -59,10 +59,8 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-command="$*"
-
 # shellcheck disable=SC2046
-docker run --rm $(tty -s && echo "-it") \
+docker run --rm -i $(tty -s && echo "-t") \
   --init \
   --network="host" \
   --name="${docker_container_name}" \
@@ -82,4 +80,4 @@ docker run --rm $(tty -s && echo "-it") \
   --env="LANG=C.UTF-8" \
   --ulimit="core=0" \
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
-  bash -c "${command}"
+  "$@"
