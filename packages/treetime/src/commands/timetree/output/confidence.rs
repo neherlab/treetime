@@ -12,6 +12,11 @@ use std::sync::Arc;
 use treetime_graph::node::{Named, TimeConstraint};
 use treetime_io::csv::CsvStructFileWriter;
 
+/// Lower quantile for 95% confidence interval (2.5th percentile)
+const CI_LOWER_QUANTILE: f64 = 0.025;
+/// Upper quantile for 95% confidence interval (97.5th percentile)
+const CI_UPPER_QUANTILE: f64 = 0.975;
+
 /// Confidence interval for a node's inferred date.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeConfidenceInterval {
@@ -51,7 +56,7 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       let (lower, upper) = payload
         .time_distribution()
         .as_ref()
-        .and_then(|dist| dist.confidence_interval(0.025, 0.975))
+        .and_then(|dist| dist.confidence_interval(CI_LOWER_QUANTILE, CI_UPPER_QUANTILE))
         .unwrap_or((date, date));
 
       Some(NodeConfidenceInterval {
