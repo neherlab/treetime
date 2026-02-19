@@ -5,16 +5,20 @@ use ndarray::{Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::outer;
+use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MutationCounts {
   /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub nij: Array2<f64>,
 
   /// An N-vector representing the total time spent in each character state.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub Ti: Array1<f64>,
 
   /// An N-vector representing the state counts at the root of the phylogenetic tree.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub root_state: Array1<f64>,
 }
 
@@ -39,8 +43,10 @@ pub struct InferGtrOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InferGtrResult {
   /// Substitution attempt matrix calculated during the GTR inference.
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub W: Array2<f64>,
   /// Estimated equilibrium state frequencies.
+  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub pi: Array1<f64>,
   /// Scale factor for the rates matrix.
   pub mu: f64,

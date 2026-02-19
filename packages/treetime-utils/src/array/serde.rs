@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use ndarray::Array1;
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Output empty value if false
@@ -44,6 +44,37 @@ where
 {
   let vec = Vec::<T>::deserialize(deserializer)?;
   Ok(Array1::from_vec(vec))
+}
+
+/// Serialize Array2<T> as a nested JSON array (row-major)
+///
+/// Usage:
+///     #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+///     pub values: Array2<T>
+pub fn array2_as_vec<T, S>(array: &Array2<T>, serializer: S) -> Result<S::Ok, S::Error>
+where
+  T: Serialize,
+  S: Serializer,
+{
+  let rows: Vec<&[T]> = array.rows().into_iter().map(|row| row.to_slice().unwrap()).collect();
+  rows.serialize(serializer)
+}
+
+/// Deserialize Array2<T> from a nested JSON array (row-major)
+///
+/// Usage:
+///     #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+///     pub values: Array2<T>
+pub fn array2_from_vec<'de, T, D>(deserializer: D) -> Result<Array2<T>, D::Error>
+where
+  T: Deserialize<'de>,
+  D: Deserializer<'de>,
+{
+  let nested = Vec::<Vec<T>>::deserialize(deserializer)?;
+  let nrows = nested.len();
+  let ncols = nested.first().map_or(0, Vec::len);
+  let flat: Vec<T> = nested.into_iter().flatten().collect();
+  Array2::from_shape_vec((nrows, ncols), flat).map_err(serde::de::Error::custom)
 }
 
 /// Deserialize IndexMap<String, Array1<f64>> from JSON object

@@ -1,23 +1,10 @@
-//! Tests for dense GTR inference.
-//!
-//! Golden master tests validate dense GTR inference against Python v0 reference outputs.
-//! The fixture (`fixtures/gtr_inference_dense.json`) contains mutation counts and inferred
-//! GTR parameters from running Python v0 on the flu/h3n2/20 dataset.
-//!
-//! # Regenerate fixture
-//!
-//! Run from project root in container:
-//! ```bash
-//! ./dev/docker/python test_scripts/dump_gtr_inference_dense.py
-//! ```
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -26,13 +13,14 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use maplit::btreemap;
-  use ndarray::array;
+  use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
   use serde::Deserialize;
   use std::path::PathBuf;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_utils::array::serde::{array1_from_vec, array2_from_vec};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -77,25 +65,40 @@ mod tests {
   // Golden master test
   // ============================================================================
 
+  /// Golden master values for dense GTR inference test.
+  ///
+  /// Combines mutation counts (nij, Ti, root_state) and inferred GTR parameters (W, pi, mu).
   #[derive(Debug, Deserialize)]
-  struct GtrInferenceDenseFixture {
-    mutation_counts: MutationCounts,
-    inferred_gtr: InferGtrResult,
+  struct InferGtrDenseGoldenMaster {
+    #[serde(deserialize_with = "array2_from_vec")]
+    nij: Array2<f64>,
+    #[serde(deserialize_with = "array1_from_vec")]
+    Ti: Array1<f64>,
+    #[serde(deserialize_with = "array1_from_vec")]
+    root_state: Array1<f64>,
+    #[serde(deserialize_with = "array2_from_vec")]
+    W: Array2<f64>,
+    #[serde(deserialize_with = "array1_from_vec")]
+    pi: Array1<f64>,
+    mu: f64,
   }
 
   /// Golden master test: dense GTR inference matches Python v0 reference.
   ///
   /// Dataset: flu/h3n2/20
-  /// Compares: mutation counts (nij, Ti, root_state) and inferred GTR parameters (W, pi, mu)
+  ///
+  /// # Regenerate fixture
+  ///
+  /// Run from project root in container:
+  /// ```bash
+  /// ./dev/docker/python test_scripts/dump_gtr_inference_dense.py
+  /// ```
   #[test]
   fn test_golden_master() -> Result<(), Report> {
     let fixture_path =
       PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/gtr/infer_gtr/__tests__/fixtures/gtr_inference_dense.json");
     let fixture_str = std::fs::read_to_string(&fixture_path)?;
-    let fixture: GtrInferenceDenseFixture = serde_json::from_str(&fixture_str)?;
-
-    let expected_counts = fixture.mutation_counts;
-    let expected_gtr = fixture.inferred_gtr;
+    let expected: InferGtrDenseGoldenMaster = serde_json::from_str(&fixture_str)?;
 
     let root = project_root();
     let tree_path = root.join("data/flu/h3n2/20/tree.nwk");
@@ -126,15 +129,15 @@ mod tests {
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
-    pretty_assert_ulps_eq!(expected_counts.nij, counts.nij, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected_counts.Ti, counts.Ti, epsilon = 1e-5);
-    pretty_assert_ulps_eq!(expected_counts.root_state, counts.root_state, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.nij, counts.nij, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.Ti, counts.Ti, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(expected.root_state, counts.root_state, epsilon = 1e-7);
 
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
-    pretty_assert_ulps_eq!(expected_gtr.W, result.W, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected_gtr.pi, result.pi, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected_gtr.mu, result.mu, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.W, result.W, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.pi, result.pi, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(expected.mu, result.mu, epsilon = 1e-7);
 
     Ok(())
   }
