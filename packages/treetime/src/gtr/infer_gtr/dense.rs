@@ -101,7 +101,7 @@ fn count_substitutions(
   Ti: &mut Array1<f64>,
   branch_length: f64,
 ) -> Result<(), Report> {
-  for (pos, (&parent_ch, &child_ch)) in parent_seq.iter().zip(child_seq.iter()).enumerate() {
+  for (&parent_ch, &child_ch) in parent_seq.iter().zip(child_seq.iter()) {
     if parent_ch == child_ch {
       continue;
     }
