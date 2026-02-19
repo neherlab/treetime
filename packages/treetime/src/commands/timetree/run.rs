@@ -96,16 +96,18 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### Initializing node times from date constraints");
   initialize_clock_totals_from_time_distributions(&graph)?;
 
+  // Skyline coalescent parameters (constructed once, reused for initial and final optimization)
+  let skyline_params = SkylineParams {
+    n_points: args.n_skyline,
+    ..SkylineParams::default()
+  };
+
   // Create coalescent Tc distribution
   let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
     info!(
       "### Optimizing skyline coalescent model with {} grid points",
       args.n_skyline
     );
-    let skyline_params = SkylineParams {
-      n_points: args.n_skyline,
-      ..SkylineParams::default()
-    };
     let skyline_result =
       optimize_skyline(&graph, &skyline_params).wrap_err("Failed to optimize skyline coalescent model")?;
     info!(
@@ -172,10 +174,6 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // optimization happens only on the final iteration after times have converged)
   if args.coalescent_skyline {
     info!("### Re-optimizing skyline coalescent with stabilized node times");
-    let skyline_params = SkylineParams {
-      n_points: args.n_skyline,
-      ..SkylineParams::default()
-    };
     let skyline_result =
       optimize_skyline(&graph, &skyline_params).wrap_err("Failed to re-optimize skyline coalescent model")?;
     info!(
