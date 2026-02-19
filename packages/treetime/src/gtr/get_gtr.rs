@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::{infer_gtr_dense, infer_gtr_sparse};
+use crate::gtr::infer_gtr::dense::infer_gtr_dense;
+use crate::gtr::infer_gtr::sparse::infer_gtr_sparse;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;

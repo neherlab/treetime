@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::DenseSeqDis;

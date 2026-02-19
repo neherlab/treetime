@@ -1,5 +1,5 @@
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;

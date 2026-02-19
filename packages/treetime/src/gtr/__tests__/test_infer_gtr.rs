@@ -18,10 +18,9 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::avg_transition;
-  use crate::gtr::infer_gtr::{
-    InferGtrOptions, InferGtrResult, MutationCounts, distance, get_mutation_counts, get_mutation_counts_dense,
-    infer_gtr_impl,
-  };
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, distance, infer_gtr_impl};
+  use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
+  use crate::gtr::infer_gtr::sparse::get_mutation_counts;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
