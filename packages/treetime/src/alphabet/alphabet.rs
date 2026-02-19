@@ -244,12 +244,10 @@ impl Alphabet {
   /// Get index of a character (indexed in the same order as given by `.chars()`)
   pub fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();
-    self
-      .char_to_index
-      .get(idx)
-      .copied()
-      .flatten()
-      .ok_or_else(|| make_report!("When accessing alphabet index: Unknown character index: {idx}"))
+    self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
+      let c = AsciiChar::new(idx as u8);
+      make_report!("When accessing alphabet index: Unknown character: '{c}' (code {idx})")
+    })
   }
 
   pub fn n_chars(&self) -> usize {
