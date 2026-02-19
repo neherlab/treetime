@@ -4,7 +4,7 @@ use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
-use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, log_gtr};
 use crate::make_error;
 use crate::make_report;
 use crate::representation::algo::infer_dense::infer_dense;
@@ -84,9 +84,12 @@ pub fn initialize_partitions(
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
+    let gtr = jc69(JC69Params::default())?;
+    log_gtr(&gtr, GtrModelName::JC69);
+
     let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
+      gtr,
       alphabet,
       length,
       nodes: btreemap! {},
@@ -98,10 +101,13 @@ pub fn initialize_partitions(
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     Ok(vec![partition])
   } else {
+    let gtr = jc69(JC69Params::default())?;
+    log_gtr(&gtr, GtrModelName::JC69);
+
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(PartitionMarginalDense {
         index: 0,
-        gtr: jc69(JC69Params::default())?,
+        gtr,
         alphabet,
         length,
         nodes: btreemap! {},

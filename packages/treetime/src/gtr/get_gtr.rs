@@ -8,6 +8,7 @@ use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
+use log::info;
 use ndarray::{Array1, Array2, array};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,7 @@ use smart_default::SmartDefault;
 use std::path::Path;
 use std::sync::Arc;
 use strum_macros::Display;
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 
 /// Classification of how the GTR model was obtained.
@@ -64,6 +65,13 @@ impl GtrOutput {
   }
 }
 
+/// Log GTR model parameters as JSON.
+pub fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
+  let output = GtrOutput::new(gtr, model_name);
+  let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
+  info!("GTR model initialized:\n{json}");
+}
+
 /// Write GTR model parameters to JSON file.
 pub fn write_gtr_json(gtr: &GTR, model_name: GtrModelName, outdir: impl AsRef<Path>) -> Result<(), Report> {
   let output = GtrOutput::new(gtr, model_name);
@@ -95,11 +103,13 @@ pub fn get_gtr_sparse(
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
   graph: &GraphAncestral,
 ) -> Result<GTR, Report> {
-  match name {
+  let gtr = match name {
     GtrModelName::Infer => infer_gtr_sparse(partition, graph),
     _ => get_gtr_by_name(*name),
   }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))?;
+  log_gtr(&gtr, *name);
+  Ok(gtr)
 }
 
 /// Get GTR model for dense representation.
@@ -108,11 +118,13 @@ pub fn get_gtr_dense(
   partition: &Arc<RwLock<PartitionMarginalDense>>,
   graph: &GraphAncestral,
 ) -> Result<GTR, Report> {
-  match name {
+  let gtr = match name {
     GtrModelName::Infer => infer_gtr_dense(partition, graph),
     _ => get_gtr_by_name(*name),
   }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))
+  .wrap_err_with(|| make_report!("When creating model '{name}'"))?;
+  log_gtr(&gtr, *name);
+  Ok(gtr)
 }
 
 fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
