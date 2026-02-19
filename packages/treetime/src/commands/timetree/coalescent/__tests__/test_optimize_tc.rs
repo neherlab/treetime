@@ -50,15 +50,16 @@ mod tests {
     let result_a = optimize_tc(&graph, initial_tc_a)?;
     let result_b = optimize_tc(&graph, initial_tc_b)?;
 
-    if result_a.success && result_b.success {
-      let ratio = result_b.tc / result_a.tc;
-      assert!(
-        ratio > 0.5 && ratio < 2.0,
-        "Optimized Tc values should be similar regardless of initial value: {:.4e} vs {:.4e}",
-        result_a.tc,
-        result_b.tc
-      );
-    }
+    assert!(result_a.success, "optimization from {initial_tc_a} failed");
+    assert!(result_b.success, "optimization from {initial_tc_b} failed");
+
+    let ratio = result_b.tc / result_a.tc;
+    assert!(
+      ratio > 0.5 && ratio < 2.0,
+      "Optimized Tc values should be similar regardless of initial value: {:.4e} vs {:.4e}",
+      result_a.tc,
+      result_b.tc
+    );
 
     Ok(())
   }
