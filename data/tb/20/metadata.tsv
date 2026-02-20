@@ -1,0 +1,21 @@
+strain	accession	date	region	country	location	db	authors	cluster	paper_url	title
+G22677	16490	1995-XX-XX	north_america	canada	village_e	genbank	Lee et al	Mj-IV.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22685	50045	1996-XX-XX	north_america	canada	village_d	genbank	Lee et al	Mj-IV.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22694	56828	2000-XX-XX	north_america	canada	other_village	genbank	Lee et al	Mn	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22703	63878	2004-XX-XX	north_america	canada	village_c	genbank	Lee et al	Mj-IV.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22669	9965	1991-XX-XX	north_america	canada	village_d	genbank	Lee et al	Mj-IV.a	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22587	MT-0972	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22721	MT-13-2012	2013-XX-XX	north_america	canada	village_a	genbank	Lee et al	Mn	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22598	MT-1393	2008-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.a	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22600	MT-1403	2009-XX-XX	north_america	canada	village_e	genbank	Lee et al	Mj-IV.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22607	MT-1838	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22608	MT-1971	2011-XX-XX	north_america	canada	village_c	genbank	Lee et al	Mj-IV.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22618	MT-2474	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22629	MT-2800	2010-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.a	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22632	MT-2905	2006-XX-XX	north_america	canada	village_c	genbank	Lee et al	Mj-V.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22639	MT-3194	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22654	MT-405	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22665	MT-504	2011-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.b	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22571	MT-5543	2007-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-V.a	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit
+G22733	MT-578	2012-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.c	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 
+G22574	MT-5983	2011-XX-XX	north_america	canada	village_k	genbank	Lee et al	Mj-III.a	http://www.pnas.org/content/112/44/13609	Population_Genomics_of_Mycobacterium_tuberculosis_in_the_Inuit 

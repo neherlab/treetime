@@ -1,0 +1,397 @@
+#!/usr/bin/env python3
+"""
+Subsample phylogenetic datasets with temporal stratification.
+
+Deterministic selection: sorts by numeric date, picks at equal intervals.
+Reproducible tree inference: IQ-TREE with fixed random seed.
+
+Usage:
+    ./dev/docker/run python3 data/subsample                     # regenerate all
+    ./dev/docker/run python3 data/subsample dengue/20 ebola/100 # specific targets
+    ./dev/docker/run python3 data/subsample --dry-run           # preview only
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+IQTREE_SEED = 42
+IQTREE_MODEL = "GTR+G"
+IQTREE_THREADS = 1  # fixed for reproducibility
+
+
+@dataclass(frozen=True)
+class DatasetConfig:
+    """Column mappings for a dataset family."""
+
+    name_col: str  # tree tip names / FASTA IDs
+    date_col: str  # collection date
+
+
+@dataclass(frozen=True)
+class SubsampleSpec:
+    """Subsample operation specification."""
+
+    source: str  # e.g., "dengue/500"
+    target: str  # e.g., "dengue/20"
+    count: int  # sequences to select
+
+
+@dataclass
+class Result:
+    """Processing result with buffered output."""
+
+    target: str
+    success: bool
+    messages: list[str] = field(default_factory=list)
+
+    def log(self, msg: str) -> None:
+        self.messages.append(msg)
+
+
+DATASET_CONFIGS: dict[str, DatasetConfig] = {
+    "dengue": DatasetConfig(name_col="genbank_accession", date_col="num_date"),
+    "ebola": DatasetConfig(name_col="name", date_col='" date"'),
+    "flu/h3n2": DatasetConfig(name_col="name", date_col='" date"'),
+    "lassa/L": DatasetConfig(name_col="accession", date_col="num_date"),
+    "mpox/clade-ii": DatasetConfig(name_col="accession", date_col="num_date"),
+    "rsv/a": DatasetConfig(name_col="accession", date_col="num_date"),
+    "tb": DatasetConfig(name_col="strain", date_col="date"),
+    "zika": DatasetConfig(name_col="#name", date_col="date"),
+}
+
+SUBSAMPLE_SPECS: list[SubsampleSpec] = [
+    SubsampleSpec("dengue/500", "dengue/20", 20),
+    SubsampleSpec("dengue/500", "dengue/100", 100),
+    SubsampleSpec("ebola/362", "ebola/20", 20),
+    SubsampleSpec("ebola/362", "ebola/100", 100),
+    SubsampleSpec("lassa/L/50", "lassa/L/20", 20),
+    SubsampleSpec("mpox/clade-ii/500", "mpox/clade-ii/20", 20),
+    SubsampleSpec("mpox/clade-ii/500", "mpox/clade-ii/100", 100),
+    SubsampleSpec("rsv/a/500", "rsv/a/20", 20),
+    SubsampleSpec("rsv/a/500", "rsv/a/100", 100),
+    SubsampleSpec("tb/149", "tb/20", 20),
+    SubsampleSpec("tb/149", "tb/100", 100),
+    SubsampleSpec("zika/86", "zika/20", 20),
+]
+
+
+def get_config(path: str) -> DatasetConfig:
+    """Get dataset configuration by matching path prefix."""
+    for prefix, config in sorted(DATASET_CONFIGS.items(), key=lambda x: -len(x[0])):
+        if path.startswith(prefix):
+            return config
+    msg = f"No configuration for dataset: {path}"
+    raise ValueError(msg)
+
+
+def parse_numeric_date(date_str: str) -> float:
+    """Parse date string to numeric year fraction."""
+    date_str = date_str.strip().strip('"')
+
+    try:
+        return float(date_str)
+    except ValueError:
+        pass
+
+    if match := re.match(r"\[([0-9.]+):([0-9.]+)\]", date_str):
+        return (float(match.group(1)) + float(match.group(2))) / 2
+
+    if "XX" in date_str[:4]:
+        return float("inf")
+
+    if match := re.match(r"(\d{4})-(\d{2}|XX)-(\d{2}|XX)", date_str):
+        year = int(match.group(1))
+        month_str, day_str = match.group(2), match.group(3)
+        month = 6 if month_str == "XX" else int(month_str)
+        day = 15 if day_str == "XX" else int(day_str)
+        return year + ((month - 1) * 30.44 + day) / 365.25
+
+    if match := re.match(r"(\d{4})-(\d{2})-(\d{2})", date_str):
+        year, month, day = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        return year + ((month - 1) * 30.44 + day) / 365.25
+
+    msg = f"Cannot parse date: {date_str}"
+    raise ValueError(msg)
+
+
+def read_metadata(path: Path, config: DatasetConfig) -> list[tuple[str, float]]:
+    """Read metadata, return (name, numeric_date) tuples."""
+    with path.open() as f:
+        header = f.readline().rstrip("\n").split("\t")
+        name_idx = header.index(config.name_col)
+        date_idx = header.index(config.date_col)
+        return [
+            (cols[name_idx], parse_numeric_date(cols[date_idx]))
+            for line in f
+            if (cols := line.rstrip("\n").split("\t"))
+        ]
+
+
+def select_temporal_stratified(
+    entries: list[tuple[str, float]], count: int
+) -> list[str]:
+    """Select sequences at equal intervals across temporal range."""
+    sorted_entries = sorted(entries, key=lambda x: (x[1], x[0]))
+    n = len(sorted_entries)
+    if count >= n:
+        return [e[0] for e in sorted_entries]
+    step = n / count
+    return [sorted_entries[int(i * step)][0] for i in range(count)]
+
+
+def run_cmd(
+    args: Sequence[str],
+    *,
+    check: bool = True,
+    capture: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    """Run command, capture output."""
+    return subprocess.run(list(args), check=check, capture_output=capture, text=True)  # noqa: S603
+
+
+def compute_hash(path: Path) -> str:
+    """MD5 hash prefix for provenance."""
+    return hashlib.md5(path.read_bytes()).hexdigest()[:12]  # noqa: S324
+
+
+def generate_readme(spec: SubsampleSpec, config: DatasetConfig, data_dir: Path) -> str:
+    """Generate README documenting reproducible derivation."""
+    source_dir = data_dir / spec.source
+    target_dir = data_dir / spec.target
+
+    source_aln_hash = compute_hash(source_dir / "aln.fasta.xz")
+    source_meta_hash = compute_hash(source_dir / "metadata.tsv")
+
+    entries = read_metadata(target_dir / "metadata.tsv", config)
+    dates = [e[1] for e in entries]
+    date_min, date_max = min(dates), max(dates)
+
+    return f"""# `{spec.target}`
+
+Subsample of `{spec.source}` ({spec.count} sequences).
+
+> /!\ Prepared by AI.
+
+## Methodology
+
+1. Read metadata from source dataset
+2. Parse dates from `{config.date_col}` column (numeric year or ISO format)
+3. Sort sequences by date, then by `{config.name_col}` for deterministic tie-breaking
+4. Select {spec.count} sequences at equal intervals across temporal range
+5. Extract selected sequences from alignment using seqkit
+6. Filter metadata to selected sequences
+7. Build ML tree using IQ-TREE with GTR+G model, fixed seed, single thread
+
+Date range: {date_min:.2f} - {date_max:.2f}
+
+## Provenance
+
+Source checksums (MD5, first 12 chars):
+- aln.fasta.xz: {source_aln_hash}
+- metadata.tsv: {source_meta_hash}
+
+IQ-TREE: model={IQTREE_MODEL}, seed={IQTREE_SEED}, threads={IQTREE_THREADS}
+
+## Regenerate
+
+See `data/subsample` script.
+
+```bash
+./dev/docker/run python3 data/subsample {spec.target}
+```
+
+"""
+
+
+def process_subsample(
+    spec: SubsampleSpec, data_dir: Path, *, dry_run: bool = False
+) -> Result:
+    """Process single subsample. Returns Result with buffered messages."""
+    result = Result(target=spec.target, success=False)
+    config = get_config(spec.source)
+
+    source_dir = data_dir / spec.source
+    target_dir = data_dir / spec.target
+
+    source_aln = source_dir / "aln.fasta.xz"
+    source_meta = source_dir / "metadata.tsv"
+
+    if not source_aln.exists() or not source_meta.exists():
+        result.log(f"SKIP {spec.target}: source missing")
+        return result
+
+    result.log(f"{spec.target}: {spec.source} -> {spec.target} ({spec.count} seqs)")
+
+    entries = read_metadata(source_meta, config)
+    selected = select_temporal_stratified(entries, spec.count)
+    result.log(f"  selected {len(selected)}/{len(entries)} sequences")
+
+    if dry_run:
+        result.success = True
+        return result
+
+    # Create target directory
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+
+        # Write names file
+        names_file = tmp / "names.txt"
+        names_file.write_text("\n".join(selected) + "\n")
+
+        # Extract alignment (seqkit handles compression natively)
+        target_aln = target_dir / "aln.fasta.xz"
+        run_cmd(
+            [
+                "seqkit",
+                "grep",
+                "-f",
+                str(names_file),
+                "-o",
+                str(target_aln),
+                str(source_aln),
+            ]
+        )
+        result.log("  extracted alignment")
+
+        # Extract metadata
+        target_meta = target_dir / "metadata.tsv"
+        name_set = set(selected)
+        with source_meta.open() as f:
+            header = f.readline()
+            header_cols = header.rstrip("\n").split("\t")
+            name_idx = header_cols.index(config.name_col)
+            rows = [header] + [
+                line
+                for line in f
+                if line.rstrip("\n").split("\t")[name_idx] in name_set
+            ]
+        target_meta.write_text("".join(rows))
+        result.log("  extracted metadata")
+
+        # Build tree in temp dir
+        target_tree = target_dir / "tree.nwk"
+        aln_fasta = tmp / "aln.fasta"
+        iqtree_prefix = tmp / "iqtree"
+
+        run_cmd(["sh", "-c", f"xz -dkc {target_aln} > {aln_fasta}"])
+        run_cmd(
+            [
+                "iqtree3",
+                "-s",
+                str(aln_fasta),
+                "-m",
+                IQTREE_MODEL,
+                "-seed",
+                str(IQTREE_SEED),
+                "-T",
+                str(IQTREE_THREADS),
+                "--prefix",
+                str(iqtree_prefix),
+                "-redo",
+                "-quiet",
+                "--cptime",
+                "99999",
+            ]
+        )
+        shutil.move(iqtree_prefix.with_suffix(".treefile"), target_tree)
+        result.log("  built tree")
+
+    # Generate README
+    readme = generate_readme(spec, config, data_dir)
+    (target_dir / "README.md").write_text(readme)
+    result.log("  generated README")
+
+    result.success = True
+    return result
+
+
+def process_wrapper(args: tuple[SubsampleSpec, Path, bool]) -> Result:
+    """Wrapper for multiprocessing."""
+    spec, data_dir, dry_run = args
+    try:
+        return process_subsample(spec, data_dir, dry_run=dry_run)
+    except Exception as e:
+        result = Result(target=spec.target, success=False)
+        result.log(f"ERROR {spec.target}: {e}")
+        return result
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    log = logging.getLogger(__name__)
+
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "targets", nargs="*", help="Targets to regenerate (e.g., dengue/20 ebola/100)"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without changes"
+    )
+    parser.add_argument(
+        "-j", "--jobs", type=int, default=os.cpu_count(), help="Parallel jobs"
+    )
+    args = parser.parse_args(argv)
+
+    data_dir = Path(__file__).resolve().parent
+
+    if args.targets:
+        target_set = set(args.targets)
+        specs = [s for s in SUBSAMPLE_SPECS if s.target in target_set]
+        if not specs:
+            log.error(
+                "No matching targets. Available: %s",
+                [s.target for s in SUBSAMPLE_SPECS],
+            )
+            return 1
+    else:
+        specs = SUBSAMPLE_SPECS
+
+    # Process in parallel, collect results
+    work = [(spec, data_dir, args.dry_run) for spec in specs]
+
+    if args.jobs == 1 or len(specs) == 1:
+        results = [process_wrapper(w) for w in work]
+    else:
+        with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+            futures = {pool.submit(process_wrapper, w): w[0].target for w in work}
+            results = []
+            for future in as_completed(futures):
+                results.append(future.result())
+
+    # Print results in spec order (non-interleaved)
+    results_by_target = {r.target: r for r in results}
+    failed = 0
+    for spec in specs:
+        result = results_by_target.get(spec.target)
+        if result:
+            for msg in result.messages:
+                log.info(msg)
+            if not result.success:
+                failed += 1
+
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

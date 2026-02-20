@@ -36,24 +36,34 @@ verbose = True
 # fmt: off @formatter:off
 ANCESTRAL_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/20",                   "dengue/20",                ""),
+  ("dengue/100",                  "dengue/100",               ""),
   ("dengue/500",                  "dengue/500",               ""),
   # ("dengue/1000",                 "dengue/1000",              ""),
   # ("dengue/2000",                 "dengue/2000",              ""),
-  ("ebola",                       "ebola",                    ""),
+  ("ebola/20",                    "ebola/20",                 ""),
+  ("ebola/100",                   "ebola/100",                ""),
+  ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
   ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
   # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
+  ("rsv/a/20",                    "rsv/a/20",                 ""),
+  ("rsv/a/100",                   "rsv/a/100",                ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
-  ("tb",                          "tb",                       ""),
-  ("zika",                        "zika",                     "")
+  ("tb/20",                       "tb/20",                    ""),
+  ("tb/100",                      "tb/100",                   ""),
+  ("tb/149",                      "tb/149",                   ""),
+  ("zika/20",                     "zika/20",                  ""),
+  ("zika/86",                     "zika/86",                  ""),
 ]
 # fmt: on @formatter:on
 
@@ -61,24 +71,34 @@ ANCESTRAL_BATCH_RUNS = [
 # fmt: off @formatter:off
 CLOCK_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/20",                   "dengue/20",                "--name-column=genbank_accession"),
+  ("dengue/100",                  "dengue/100",               "--name-column=genbank_accession"),
   ("dengue/500",                  "dengue/500",               "--name-column=genbank_accession"),
   # ("dengue/1000",                 "dengue/1000",              "--name-column=genbank_accession"),
   # ("dengue/2000",                 "dengue/2000",              "--name-column=genbank_accession"),
-  ("ebola",                       "ebola",                    ""),
+  ("ebola/20",                    "ebola/20",                 ""),
+  ("ebola/100",                   "ebola/100",                ""),
+  ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              "--sequence-length=1400"),
   ("flu/h3n2/200",                "flu/h3n2/200",             "--sequence-length=1400"),
   ("flu/h3n2/500",                "flu/h3n2/500",             "--sequence-length=1400"),
+  ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
   # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
+  ("rsv/a/20",                    "rsv/a/20",                 ""),
+  ("rsv/a/100",                   "rsv/a/100",                ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
-  ("tb",                          "tb",                       ""),
-  ("zika",                        "zika",                     "")
+  ("tb/20",                       "tb/20",                    ""),
+  ("tb/100",                      "tb/100",                   ""),
+  ("tb/149",                      "tb/149",                   ""),
+  ("zika/20",                     "zika/20",                  ""),
+  ("zika/86",                     "zika/86",                  ""),
 ]
 # fmt: on @formatter:on
 
@@ -86,17 +106,27 @@ CLOCK_BATCH_RUNS = [
 # fmt: off @formatter:off
 OPTIMIZE_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/20",                   "dengue/20",                ""),
+  ("dengue/100",                  "dengue/100",               ""),
   ("dengue/500",                  "dengue/500",               ""),
-  ("ebola",                       "ebola",                    ""),
+  ("ebola/20",                    "ebola/20",                 ""),
+  ("ebola/100",                   "ebola/100",                ""),
+  ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
   ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("rsv/a/20",                    "rsv/a/20",                 ""),
+  ("rsv/a/100",                   "rsv/a/100",                ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
-  ("tb",                          "tb",                       ""),
-  ("zika",                        "zika",                     "")
+  ("tb/20",                       "tb/20",                    ""),
+  ("tb/100",                      "tb/100",                   ""),
+  ("tb/149",                      "tb/149",                   ""),
+  ("zika/20",                     "zika/20",                  ""),
+  ("zika/86",                     "zika/86",                  ""),
 ]
 # fmt: on @formatter:on
 
@@ -104,17 +134,27 @@ OPTIMIZE_BATCH_RUNS = [
 # fmt: off @formatter:off
 PRUNE_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
+  ("dengue/20",                   "dengue/20",                ""),
+  ("dengue/100",                  "dengue/100",               ""),
   ("dengue/500",                  "dengue/500",               ""),
-  ("ebola",                       "ebola",                    ""),
+  ("ebola/20",                    "ebola/20",                 ""),
+  ("ebola/100",                   "ebola/100",                ""),
+  ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
   ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
   ("lassa/L/500",                 "lassa/L/500",              ""),
+  ("rsv/a/20",                    "rsv/a/20",                 ""),
+  ("rsv/a/100",                   "rsv/a/100",                ""),
   ("rsv/a/500",                   "rsv/a/500",                ""),
-  ("tb",                          "tb",                       ""),
-  ("zika",                        "zika",                     "")
+  ("tb/20",                       "tb/20",                    ""),
+  ("tb/100",                      "tb/100",                   ""),
+  ("tb/149",                      "tb/149",                   ""),
+  ("zika/20",                     "zika/20",                  ""),
+  ("zika/86",                     "zika/86",                  ""),
 ]
 # fmt: on @formatter:on
 
@@ -125,7 +165,7 @@ TIMETREE_BATCH_RUNS = [
 
   # === Basic runs ===
   ("flu/h3n2/20",                 "flu/h3n2/20/basic",                 ""),
-  ("ebola",                       "ebola/basic",                       ""),
+  ("ebola/362",                   "ebola/362/basic",                   ""),
 
   # === Single argument coverage ===
 
@@ -154,9 +194,9 @@ TIMETREE_BATCH_RUNS = [
   ("flu/h3n2/200",                "flu/h3n2/200/skyline",              "--coalescent-skyline --n-skyline=5 --max-iter=3"),
 
   # Reroot strategies
-  ("ebola",                       "ebola/reroot-mindev",               "--reroot=min-dev"),
-  ("ebola",                       "ebola/reroot-oldest",               "--reroot=oldest"),
-  ("ebola",                       "ebola/keep-root",                   "--keep-root"),
+  ("ebola/362",                   "ebola/362/reroot-mindev",           "--reroot=min-dev"),
+  ("ebola/362",                   "ebola/362/reroot-oldest",           "--reroot=oldest"),
+  ("ebola/362",                   "ebola/362/keep-root",               "--keep-root"),
 
   # Clock filter
   ("flu/h3n2/200",                "flu/h3n2/200/no-filter",            "--clock-filter=0"),
@@ -189,13 +229,13 @@ TIMETREE_BATCH_RUNS = [
   ("flu/h3n2/200",                "flu/h3n2/200/relaxed-coal",         "--relax 1.0 0.5 --coalescent=10.0 --max-iter=3"),
 
   # Input branch lengths + keep root (trust input tree)
-  ("ebola",                       "ebola/input-keeproot",              "--branch-length-mode=input --keep-root"),
+  ("ebola/362",                   "ebola/362/input-keeproot",          "--branch-length-mode=input --keep-root"),
 
   # Confidence + time marginal final (efficient posteriors)
   ("flu/h3n2/20",                 "flu/h3n2/20/conf-marginal-final",   "--confidence --time-marginal=only-final"),
 
   # No filtering + keep root (trust input completely)
-  ("ebola",                       "ebola/no-filter-keeproot",          "--clock-filter=0 --keep-root"),
+  ("ebola/362",                   "ebola/362/no-filter-keeproot",      "--clock-filter=0 --keep-root"),
 
   # Relaxed clock + polytomy resolution
   ("flu/h3n2/200",                "flu/h3n2/200/relaxed-polytomy",     "--relax 1.0 0.5 --resolve-polytomies --max-iter=3"),
