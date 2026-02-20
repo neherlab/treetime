@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for GTR models.
+
+Reads inputs from gm_gtr_inputs.json, captures outputs from Python v0
+reference implementation, writes to gm_gtr_outputs.json.
+
+The outputs serve as the oracle for validating Rust v1 implementation.
+Rust tests in test_gm_gtr.rs load these outputs and compare against
+v1 results to ensure scientific agreement between implementations.
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_capture
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent / "legacy" / "treetime"))
+
+from treetime.gtr import GTR
+from treetime.nuc_models import JC69, K80, F81, HKY85, T92
+
+FIXTURES_DIR = Path(__file__).parent
+TIMES = [0.0, 0.1, 0.5, 1.0, 5.0]
+
+
+def serialize_outputs(gtr: GTR) -> dict:
+    """Extract GTR outputs for comparison."""
+    return {
+        "mu": float(gtr.mu),
+        "pi": gtr.Pi.tolist(),
+        "W": gtr.W.tolist(),
+        "Q": gtr.Q.tolist(),
+        "eigenvals": gtr.eigenvals.tolist(),
+        "expQts": [{"time": t, "expQt": gtr.expQt(t).tolist()} for t in TIMES],
+    }
+
+
+def capture_jc69(cases: dict) -> dict:
+    """Capture JC69 outputs."""
+    return {
+        key: serialize_outputs(JC69(mu=params["mu"], alphabet="nuc_nogap"))
+        for key, params in cases.items()
+    }
+
+
+def capture_k80(cases: dict) -> dict:
+    """Capture K80 outputs."""
+    return {
+        key: serialize_outputs(K80(mu=params["mu"], kappa=params["kappa"]))
+        for key, params in cases.items()
+    }
+
+
+def capture_f81(cases: dict) -> dict:
+    """Capture F81 outputs."""
+    return {
+        key: serialize_outputs(
+            F81(mu=params["mu"], pi=np.array(params["pi"]) if params["pi"] else None, alphabet="nuc_nogap")
+        )
+        for key, params in cases.items()
+    }
+
+
+def capture_hky85(cases: dict) -> dict:
+    """Capture HKY85 outputs."""
+    return {
+        key: serialize_outputs(
+            HKY85(mu=params["mu"], kappa=params["kappa"], pi=np.array(params["pi"]) if params["pi"] else None)
+        )
+        for key, params in cases.items()
+    }
+
+
+def capture_t92(cases: dict) -> dict:
+    """Capture T92 outputs."""
+    return {
+        key: serialize_outputs(T92(mu=params["mu"], kappa=params["kappa"], pi_GC=params["pi_gc"]))
+        for key, params in cases.items()
+    }
+
+
+def capture_tn93(cases: dict) -> dict:
+    """Capture TN93 outputs.
+
+    NOTE: Python v0 TN93 has a bug (uses 5-state alphabet with 4x4 W matrix).
+    We construct TN93 correctly using GTR.custom with 4 states.
+    """
+    def build_tn93(params: dict) -> GTR:
+        kappa1, kappa2 = params["kappa1"], params["kappa2"]
+        W = np.array([
+            [1.0,    kappa1, 1.0,    kappa1],
+            [kappa1, 1.0,    kappa1, kappa2],
+            [1.0,    kappa1, 1.0,    kappa1],
+            [kappa1, kappa2, kappa1, 1.0],
+        ])
+        pi = np.array(params["pi"]) if params["pi"] else np.array([0.25, 0.25, 0.25, 0.25])
+        return GTR.custom(mu=params["mu"], pi=pi, W=W, alphabet="nuc_nogap")
+
+    return {key: serialize_outputs(build_tn93(params)) for key, params in cases.items()}
+
+
+def capture_custom(cases: dict) -> dict:
+    """Capture custom GTR outputs."""
+    return {
+        key: serialize_outputs(
+            GTR.custom(mu=params["mu"], pi=np.array(params["pi"]), W=np.array(params["W"]), alphabet="nuc_nogap")
+        )
+        for key, params in cases.items()
+    }
+
+
+def main():
+    inputs_path = FIXTURES_DIR / "gm_gtr_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_gtr_outputs.json"
+
+    with open(inputs_path) as f:
+        inputs = json.load(f)
+
+    print("GTR Golden Master Capture")
+    print("=" * 40)
+
+    outputs = {
+        "jc69": capture_jc69(inputs["jc69"]),
+        "k80": capture_k80(inputs["k80"]),
+        "f81": capture_f81(inputs["f81"]),
+        "hky85": capture_hky85(inputs["hky85"]),
+        "t92": capture_t92(inputs["t92"]),
+        "tn93": capture_tn93(inputs["tn93"]),
+        "custom": capture_custom(inputs["custom"]),
+    }
+
+    with open(outputs_path, "w") as f:
+        json.dump(outputs, f, indent=2)
+
+    print("=" * 40)
+    print(f"Written: {outputs_path}")
+
+
+if __name__ == "__main__":
+    main()
