@@ -134,6 +134,7 @@ textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
+proptest = "=1.6.0"
 
 treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }

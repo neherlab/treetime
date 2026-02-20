@@ -118,6 +118,7 @@ zstd = { workspace = true }
 [dev-dependencies]
 criterion = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 rstest = { workspace = true }
 rstest_reuse = { workspace = true }
 
