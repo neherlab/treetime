@@ -212,11 +212,15 @@ pub fn k80(
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, SmartDefault)]
 pub struct F81Params {
   /// Substitution rate
   #[default = 1.0]
   pub mu: f64,
+
+  /// Equilibrium frequencies
+  #[default(None)]
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
@@ -233,6 +237,7 @@ pub struct F81Params {
 pub fn f81(
   F81Params {
     mu,
+    pi,
     alphabet,
     treat_gap_as_unknown,
   }: F81Params,
@@ -240,15 +245,11 @@ pub fn f81(
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
   let num_chars = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
-  let pi: Array1<f64> = {
-    let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
-    let sum = pi.sum();
-    pi / sum
-  };
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(num_chars) / (num_chars as f64));
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, SmartDefault)]
 pub struct HKY85Params {
   /// Substitution rate
   #[default = 1.0]
@@ -257,6 +258,10 @@ pub struct HKY85Params {
   /// Ratio of transversion/transition rates
   #[default = 0.1]
   pub kappa: f64,
+
+  /// Equilibrium frequencies
+  #[default(None)]
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
@@ -276,6 +281,7 @@ pub fn hky85(
   HKY85Params {
     mu,
     kappa,
+    pi,
     alphabet,
     treat_gap_as_unknown,
   }: HKY85Params,
@@ -283,11 +289,7 @@ pub fn hky85(
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
   let num_chars = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
-  let pi: Array1<f64> = {
-    let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
-    let sum = pi.sum();
-    pi / sum
-  };
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(num_chars) / (num_chars as f64));
   GTR::new(GTRParams { alphabet, mu, W, pi })
 }
 

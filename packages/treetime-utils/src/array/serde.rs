@@ -77,6 +77,35 @@ where
   Array2::from_shape_vec((nrows, ncols), flat).map_err(serde::de::Error::custom)
 }
 
+/// Serialize Option<Array1<T>> as a simple JSON array or null
+///
+/// Usage:
+///     #[serde(default, serialize_with = "option_array1_as_vec", deserialize_with = "option_array1_from_vec")]
+///     pub values: Option<Array1<T>>
+pub fn option_array1_as_vec<T, S>(array: &Option<Array1<T>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+  T: Serialize,
+  S: Serializer,
+{
+  match array {
+    Some(arr) => arr.as_slice().unwrap().serialize(serializer),
+    None => serializer.serialize_none(),
+  }
+}
+
+/// Deserialize Option<Array1<T>> from a simple JSON array or null
+///
+/// Usage:
+///     #[serde(default, serialize_with = "option_array1_as_vec", deserialize_with = "option_array1_from_vec")]
+///     pub values: Option<Array1<T>>
+pub fn option_array1_from_vec<'de, T, D>(deserializer: D) -> Result<Option<Array1<T>>, D::Error>
+where
+  T: Deserialize<'de>,
+  D: Deserializer<'de>,
+{
+  Option::<Vec<T>>::deserialize(deserializer).map(|opt| opt.map(Array1::from_vec))
+}
+
 /// Deserialize IndexMap<String, Array1<f64>> from JSON object
 ///
 /// Usage:

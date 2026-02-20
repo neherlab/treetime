@@ -9,8 +9,10 @@ use ndarray_rand::RandomExt;
 use ndarray_rand::rand::Rng;
 use ndarray_rand::rand::distributions::Uniform;
 use ndarray_rand::rand::distributions::uniform::SampleUniform;
+use num_traits::float::FloatCore;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};
+use ordered_float::OrderedFloat;
 use std::f64::consts::E;
 use std::ops::{AddAssign, Mul};
 
@@ -235,6 +237,18 @@ pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T
   let mut reversed = arr.view().to_owned();
   reverse_inplace(&mut reversed);
   reversed
+}
+
+/// Sort 1D float array in place
+pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
+  arr.as_slice_mut().unwrap().sort_by_key(|x| OrderedFloat(*x));
+}
+
+/// Return sorted copy of 1D float array
+pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
+  let mut result = arr.clone();
+  sort_inplace(&mut result);
+  result
 }
 
 /// Check if array spacing is uniform
