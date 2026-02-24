@@ -52,6 +52,9 @@ pub struct InferGtrResult {
   pub mu: f64,
 }
 
+/// Small constant to prevent division by zero, matching Python's ttconf.TINY_NUMBER.
+const TINY_NUMBER: f64 = 1e-12;
+
 /// Infer a GTR model by specifying the number of transitions and time spent in each character. The basic equation
 /// that is being solved is
 ///
@@ -105,13 +108,17 @@ pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Res
     }
 
     pi_old.assign(&pi);
-    W.fill(0.0);
-    W = (&(&nij.view() + &nij.t() + 2.0 * &pc_mat) / mu) / (&outer(&pi, Ti)? + &outer(Ti, &pi)? + 2.0 * &pc_mat);
+
+    // W calculation matching Python: includes TINY_NUMBER for numerical stability
+    W = (&(&nij.view() + &nij.t() + 2.0 * &pc_mat) / mu)
+      / (&outer(&pi, Ti)? + &outer(Ti, &pi)? + TINY_NUMBER + 2.0 * &pc_mat);
+    W.diag_mut().fill(0.0);
     W /= avg_transition(&W, &pi)?;
 
     if fixed_pi.is_none() {
+      // pi calculation matching Python: includes TINY_NUMBER for numerical stability
       pi = (&nij.sum_axis(Axis(1)) + &pc_mat.sum_axis(Axis(1)) + root_state)
-        / (mu * W.dot(Ti) + root_state.sum() + pc_mat.sum_axis(Axis(1)));
+        / (TINY_NUMBER + mu * W.dot(Ti) + root_state.sum() + pc_mat.sum_axis(Axis(1)));
       pi /= pi.sum();
       mu = (nij.sum() + pc) / (pi.dot(&W.dot(Ti)) + pc);
     } else {
