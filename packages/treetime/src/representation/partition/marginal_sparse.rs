@@ -10,7 +10,6 @@ use crate::representation::partition::traits::{PartitionMarginal, PartitionMargi
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use std::mem;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
@@ -19,6 +18,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 
 #[derive(Clone, Debug)]
@@ -239,9 +239,10 @@ where
       seq[r.0..r.1].fill(ambig_char);
     }
 
-    // change variable sites to their most likely state
+    // Change variable sites to their most likely state.
+    // Uses argmax_first for NumPy-compatible tie-breaking.
     for (pos, states) in &node_data.profile.variable {
-      seq[*pos] = alphabet.char(states.dis.argmax().unwrap());
+      seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
     }
 
     node_data.seq.sequence = seq.clone();

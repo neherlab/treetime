@@ -9,7 +9,6 @@ use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartiti
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::prelude::*;
-use ndarray_stats::QuantileExt;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -17,6 +16,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_intersection::range_intersection;
 
@@ -128,6 +128,9 @@ where
       };
       self.nodes.insert(node.key, node_data);
 
+      // Combine child messages in log-space to match v0's numerical behavior.
+      // v0 uses: tmp_log_subtree_LH += ch.marginal_log_Lx (treeanc.py:874)
+      // where marginal_log_Lx = np.log(profile.dot(Qt))
       let msgs = node
         .child_keys
         .iter()
@@ -136,11 +139,17 @@ where
         })
         .collect_vec();
 
-      let mut dis = msgs[0].clone().to_owned();
+      // Convert to log and sum (equivalent to multiply in prob space)
+      let mut log_dis = msgs[0].mapv(f64::ln);
       for msg in &msgs[1..] {
-        dis *= msg;
+        log_dis += &msg.mapv(f64::ln);
       }
-      let delta_ll = normalize_inplace(&mut dis);
+
+      // Normalize using v0's normalize_profile(log=True) algorithm:
+      // 1. Subtract row max (logsumexp trick)
+      // 2. Exponentiate
+      // 3. Normalize by row sum
+      let (dis, delta_ll) = normalize_from_log(&log_dis);
       let log_lh = node
         .child_keys
         .iter()
@@ -255,10 +264,14 @@ fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
   seq
 }
 
+/// Extract sequence from profile by taking argmax at each position.
+///
+/// Uses `argmax_first` for NumPy-compatible tie-breaking: when multiple states
+/// have equal probability, returns the first (lowest index) state.
 fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
   let mut seq = seq! {};
   for row in profile.dis.rows() {
-    let argmax = row.argmax().unwrap();
+    let argmax = argmax_first(&row).unwrap_or(0);
     seq.push(alphabet.char(argmax));
   }
   seq
@@ -270,4 +283,39 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
     row /= norm[ri];
   }
   norm.mapv(f64::ln).sum()
+}
+
+/// Normalize a log-probability matrix to probability matrix.
+///
+/// Matches v0's normalize_profile(in_profile, log=True) algorithm (seq_utils.py:296-307):
+/// 1. Subtract row max (logsumexp trick for numerical stability)
+/// 2. Exponentiate
+/// 3. Normalize by row sum
+fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
+  let (nrows, ncols) = log_dis.dim();
+  let mut dis = Array2::zeros((nrows, ncols));
+  let mut total_log_lh = 0.0;
+
+  for (ri, log_row) in log_dis.outer_iter().enumerate() {
+    // Step 1: Find row max (logsumexp trick)
+    let max_val = log_row.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+
+    // Step 2: Exponentiate (relative to max)
+    let mut row_sum = 0.0;
+    for (ci, &log_val) in log_row.iter().enumerate() {
+      let val = (log_val - max_val).exp();
+      dis[[ri, ci]] = val;
+      row_sum += val;
+    }
+
+    // Step 3: Normalize by row sum
+    for ci in 0..ncols {
+      dis[[ri, ci]] /= row_sum;
+    }
+
+    // Accumulate log-likelihood: log(sum(exp(log_vals))) = max_val + log(row_sum)
+    total_log_lh += max_val + row_sum.ln();
+  }
+
+  (dis, total_log_lh)
 }
