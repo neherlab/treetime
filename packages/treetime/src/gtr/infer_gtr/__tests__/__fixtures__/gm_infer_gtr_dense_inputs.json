@@ -1,0 +1,125 @@
+{
+  "$comment": "Test inputs for infer_gtr_dense golden master tests. Synthetic cases use inline tree/alignment; real cases reference data/ files.",
+  "synthetic": {
+    "simple_4taxa": {
+      "description": "Simple 4-taxa balanced tree with single mutation",
+      "tree": "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root;",
+      "alignment": {
+        "A": "ACGTACGT",
+        "B": "CCGTACGT",
+        "C": "ACGTACGT",
+        "D": "ACGTACGT"
+      }
+    },
+    "star_topology": {
+      "description": "Star tree - all tips connect to root (tests root-centric computation)",
+      "tree": "(A:0.1,B:0.15,C:0.2,D:0.12,E:0.08)root;",
+      "alignment": {
+        "A": "ACGTACGTAA",
+        "B": "CCGTACGTAA",
+        "C": "ACGTACGTCA",
+        "D": "ACGTACGTGA",
+        "E": "ACGTACGTAA"
+      }
+    },
+    "caterpillar": {
+      "description": "Caterpillar topology - linear chain (tests deep branches)",
+      "tree": "(A:0.05,(B:0.05,(C:0.05,(D:0.05,E:0.05)DE:0.03)CDE:0.03)BCDE:0.03)root;",
+      "alignment": {
+        "A": "AAAAAAAAAA",
+        "B": "CAAAAAAAAA",
+        "C": "CCAAAAAAAA",
+        "D": "CCCAAAAAAA",
+        "E": "CCCCAAAAAA"
+      }
+    },
+    "multiple_mutations": {
+      "description": "Multiple distinct mutations at different positions",
+      "tree": "((A:0.2,B:0.2)AB:0.1,(C:0.2,D:0.2)CD:0.1)root;",
+      "alignment": {
+        "A": "ACGTACGTACGT",
+        "B": "GCGTACGTACGT",
+        "C": "ACGTGCGTACGT",
+        "D": "ACGTACGTGCGT"
+      }
+    },
+    "varying_branch_lengths": {
+      "description": "Tree with varying branch lengths to test Ti accumulation",
+      "tree": "((A:0.01,B:0.5)AB:0.1,(C:0.25,D:0.05)CD:0.3)root;",
+      "alignment": {
+        "A": "ACGTACGT",
+        "B": "TCGTACGT",
+        "C": "ACGTTCGT",
+        "D": "ACGTACGT"
+      }
+    },
+    "large_branchy_uneven": {
+      "description": "Larger unbalanced tree (25 taxa) with uneven structure and branch lengths",
+      "tree": "(((((A:0.02,B:0.03)AB:0.01,C:0.08)ABC:0.02,(D:0.01,E:0.015)DE:0.05)ABCDE:0.03,((F:0.04,(G:0.02,H:0.025)GH:0.03)FGH:0.02,I:0.12)FGHI:0.04)left:0.05,((((J:0.03,K:0.02)JK:0.015,(L:0.01,M:0.02,N:0.03)LMN:0.025)JKLMN:0.02,((O:0.05,P:0.04)OP:0.01,Q:0.07)OPQ:0.03)mid:0.04,(((R:0.02,S:0.03)RS:0.02,T:0.04)RST:0.03,((U:0.01,V:0.02)UV:0.015,(W:0.025,X:0.02,Y:0.03)WXY:0.02)UVWXY:0.025)right:0.035)farside:0.03)root;",
+      "alignment": {
+        "A": "ACGTACGTACGTACGTACGTACGTACGTACGT",
+        "B": "GCGTACGTACGTACGTACGTACGTACGTACGT",
+        "C": "ACGTGCGTACGTACGTACGTACGTACGTACGT",
+        "D": "ACGTACGTGCGTACGTACGTACGTACGTACGT",
+        "E": "ACGTACGTACGTGCGTACGTACGTACGTACGT",
+        "F": "ACGTACGTACGTACGTGCGTACGTACGTACGT",
+        "G": "ACGTACGTACGTACGTACGTGCGTACGTACGT",
+        "H": "ACGTACGTACGTACGTACGTACGTGCGTACGT",
+        "I": "TCGTACGTACGTACGTACGTACGTACGTACGT",
+        "J": "ACGTTCGTACGTACGTACGTACGTACGTACGT",
+        "K": "ACGTACGTTCGTACGTACGTACGTACGTACGT",
+        "L": "ACGTACGTACGTTCGTACGTACGTACGTACGT",
+        "M": "ACGTACGTACGTACGTTCGTACGTACGTACGT",
+        "N": "ACGTACGTACGTACGTACGTTCGTACGTACGT",
+        "O": "ACGTACGTACGTACGTACGTACGTTCGTACGT",
+        "P": "ACGTACGTACGTACGTACGTACGTACGTTCGT",
+        "Q": "CCGTACGTACGTACGTACGTACGTACGTACGT",
+        "R": "ACGTCCGTACGTACGTACGTACGTACGTACGT",
+        "S": "ACGTACGTCCGTACGTACGTACGTACGTACGT",
+        "T": "ACGTACGTACGTCCGTACGTACGTACGTACGT",
+        "U": "ACGTACGTACGTACGTCCGTACGTACGTACGT",
+        "V": "ACGTACGTACGTACGTACGTCCGTACGTACGT",
+        "W": "ACGTACGTACGTACGTACGTACGTCCGTACGT",
+        "X": "ACGTACGTACGTACGTACGTACGTACGTCCGT",
+        "Y": "AAGTACGTACGTACGTACGTACGTACGTACGT"
+      }
+    }
+  },
+  "real": {
+    "dengue_20": {
+      "description": "Dengue virus with 20 sequences",
+      "tree_path": "data/dengue/20/tree.nwk",
+      "alignment_path": "data/dengue/20/aln.fasta.xz"
+    },
+    "ebola_20": {
+      "description": "Ebola virus with 20 sequences",
+      "tree_path": "data/ebola/20/tree.nwk",
+      "alignment_path": "data/ebola/20/aln.fasta.xz"
+    },
+    "flu_h3n2_20": {
+      "description": "Influenza H3N2 dataset with 20 sequences",
+      "tree_path": "data/flu/h3n2/20/tree.nwk",
+      "alignment_path": "data/flu/h3n2/20/aln.fasta.xz"
+    },
+    "lassa_L_50": {
+      "description": "Lassa virus L segment with 50 sequences",
+      "tree_path": "data/lassa/L/50/tree.nwk",
+      "alignment_path": "data/lassa/L/50/aln.fasta.xz"
+    },
+    "mpox_clade_ii_20": {
+      "description": "Mpox clade II with 20 sequences",
+      "tree_path": "data/mpox/clade-ii/20/tree.nwk",
+      "alignment_path": "data/mpox/clade-ii/20/aln.fasta.xz"
+    },
+    "rsv_a_20": {
+      "description": "RSV-A with 20 sequences",
+      "tree_path": "data/rsv/a/20/tree.nwk",
+      "alignment_path": "data/rsv/a/20/aln.fasta.xz"
+    },
+    "tb_20": {
+      "description": "Tuberculosis with 20 sequences",
+      "tree_path": "data/tb/20/tree.nwk",
+      "alignment_path": "data/tb/20/aln.fasta.xz"
+    }
+  }
+}
