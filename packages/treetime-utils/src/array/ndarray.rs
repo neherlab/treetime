@@ -112,6 +112,73 @@ pub fn argmax_axis<T: 'static + Copy + PartialOrd + Bounded, D: RemoveAxis>(
     .mapv_into_any(|(_, i, _)| i)
 }
 
+/// Find index of maximum value in a 1D array, returning the **first** index on tie.
+///
+/// This function provides deterministic tie-breaking behavior matching NumPy's `argmax`:
+/// when multiple elements share the maximum value, the lowest index is returned.
+///
+/// # Why this exists
+///
+/// The standard `ndarray` / `ndarray-stats` `argmax()` has **unspecified** tie-breaking
+/// behavior that may depend on memory layout. From ndarray-stats documentation:
+///
+/// > "Even if there are multiple (equal) elements that are maxima, only one index is
+/// > returned. (Which one is returned is unspecified and may depend on the memory
+/// > layout of the array.)"
+///
+/// In contrast, NumPy's `argmax` guarantees first-index-wins behavior. This difference
+/// causes reproducibility issues when porting algorithms from Python to Rust, as
+/// positions with tied probabilities (e.g., P(A) = P(T) in nucleotide profiles) may
+/// resolve to different states.
+///
+/// # Arguments
+///
+/// * `arr` - A 1D array view of comparable elements
+///
+/// # Returns
+///
+/// Index of the maximum element. On tie, returns the smallest index.
+/// Returns `None` if the array is empty.
+///
+/// # Example
+///
+/// ```
+/// use ndarray::array;
+/// use treetime_utils::array::ndarray::argmax_first;
+///
+/// // Clear maximum
+/// assert_eq!(argmax_first(&array![1.0, 3.0, 2.0].view()), Some(1));
+///
+/// // Tie at indices 0 and 3 - returns first (0)
+/// assert_eq!(argmax_first(&array![0.3, 0.2, 0.2, 0.3].view()), Some(0));
+///
+/// // Empty array
+/// assert_eq!(argmax_first(&array![].view()), None);
+/// ```
+///
+/// # Usage
+///
+/// Replace `row.argmax()` with `argmax_first(&row)` when NumPy-compatible tie-breaking
+/// is required, particularly in:
+///
+/// - Profile-to-sequence conversion (`prof2seq`)
+/// - Maximum likelihood state assignment
+/// - Any algorithm where Python v0 parity is needed
+pub fn argmax_first<T: PartialOrd>(arr: &ArrayView<T, Ix1>) -> Option<usize> {
+  if arr.is_empty() {
+    return None;
+  }
+  let mut max_idx = 0;
+  let mut max_val = &arr[0];
+  for (i, val) in arr.iter().enumerate().skip(1) {
+    if val > max_val {
+      max_idx = i;
+      max_val = val;
+    }
+  }
+  Some(max_idx)
+}
+
 /// Element-wise minimum of two arrays
 pub fn minimum<T: Copy + PartialOrd, D: Dimension>(x: &Array<T, D>, y: &Array<T, D>) -> Array<T, D> {
   assert_eq!(x.shape(), y.shape());
