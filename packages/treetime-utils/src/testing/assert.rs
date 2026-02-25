@@ -1,5 +1,11 @@
 use crate::testing::map_like::MapLike;
+use regex::Regex;
 use std::fmt::Debug;
+use std::sync::LazyLock;
+
+static NDARRAY_METADATA_RE: LazyLock<Regex> = LazyLock::new(|| {
+  Regex::new(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)").unwrap()
+});
 
 #[macro_export]
 macro_rules! pretty_assert_eq {
@@ -67,9 +73,7 @@ pub fn format_map<M: Debug>(map: &M) -> String {
 }
 
 fn strip_ndarray_metadata(s: &str) -> String {
-  let re =
-    regex::Regex::new(r"(, shape=\[[^\]]*\], strides=\[[^\]]*\], layout=\w+ \(0x\w+\))|(, const ndim=\d+)").unwrap();
-  re.replace_all(s, "").into_owned()
+  NDARRAY_METADATA_RE.replace_all(s, "").into_owned()
 }
 
 #[macro_export]
