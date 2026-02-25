@@ -119,8 +119,7 @@ pub fn format_newlines(s: impl AsRef<str>) -> String {
 }
 
 pub fn format_array(s: impl AsRef<str>) -> String {
-  let re = regex::Regex::new(r", shape=.*").unwrap();
-  re.replace(&format_newlines(s), "").into_owned()
+  strip_ndarray_metadata(&format_newlines(s))
 }
 
 #[macro_export]
