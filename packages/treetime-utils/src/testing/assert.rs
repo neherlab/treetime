@@ -44,11 +44,13 @@ where
 #[macro_export]
 macro_rules! pretty_assert_map_abs_diff_eq {
   ($expected:expr, $actual:expr, epsilon = $eps:expr $(,)?) => {{
+    let expected = &$expected;
+    let actual = &$actual;
     let eps = $eps;
-    if !$crate::testing::assert::maps_eq(&$expected, &$actual, |a, b| approx::abs_diff_eq!(a, b, epsilon = eps)) {
+    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| approx::abs_diff_eq!(a, b, epsilon = eps)) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_map(&$expected),
-        $crate::testing::assert::format_map(&$actual),
+        $crate::testing::assert::format_map(expected),
+        $crate::testing::assert::format_map(actual),
       );
     }
   }};
@@ -57,11 +59,13 @@ macro_rules! pretty_assert_map_abs_diff_eq {
 #[macro_export]
 macro_rules! pretty_assert_map_ulps_eq {
   ($expected:expr, $actual:expr, max_ulps = $ulps:expr $(,)?) => {{
+    let expected = &$expected;
+    let actual = &$actual;
     let ulps = $ulps;
-    if !$crate::testing::assert::maps_eq(&$expected, &$actual, |a, b| approx::ulps_eq!(a, b, max_ulps = ulps)) {
+    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| approx::ulps_eq!(a, b, max_ulps = ulps)) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_map(&$expected),
-        $crate::testing::assert::format_map(&$actual),
+        $crate::testing::assert::format_map(expected),
+        $crate::testing::assert::format_map(actual),
       );
     }
   }};
@@ -79,18 +83,22 @@ fn strip_ndarray_metadata(s: &str) -> String {
 #[macro_export]
 macro_rules! pretty_assert_ulps_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
-    if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::ulps_eq!(lhs, rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::testing::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
       );
     }
   }};
   ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
-    if ! approx::ulps_eq!($lhs, $rhs, $($opt = $val,)*) {
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::ulps_eq!(lhs, rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::testing::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
         $msg $(, $arg)*
       );
     }
@@ -100,18 +108,22 @@ macro_rules! pretty_assert_ulps_eq {
 #[macro_export]
 macro_rules! pretty_assert_abs_diff_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
-    if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::abs_diff_eq!(lhs, rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::testing::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
       );
     }
   }};
   ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
-    if ! approx::abs_diff_eq!($lhs, $rhs, $($opt = $val,)*) {
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if !approx::abs_diff_eq!(lhs, rhs, $($opt = $val,)*) {
       pretty_assertions::assert_eq!(
-        $crate::testing::assert::format_array(format!("{:#?}", $lhs)),
-        $crate::testing::assert::format_array(format!("{:#?}", $rhs)),
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
         $msg $(, $arg)*
       );
     }
