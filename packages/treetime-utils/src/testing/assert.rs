@@ -142,7 +142,10 @@ pub fn format_array(s: impl AsRef<str>) -> String {
 #[macro_export]
 macro_rules! assert_error {
   ($result:expr, $expected_message:expr) => {{
-    let error = $result.unwrap_err();
+    let error = match $result {
+      Ok(_) => panic!("expected Err, got Ok"),
+      Err(e) => e,
+    };
     let actual_message = $crate::error::report_to_string(&error);
     pretty_assertions::assert_eq!(actual_message, $expected_message);
   }};
