@@ -118,6 +118,7 @@ macro_rules! pretty_assert_abs_diff_eq {
   }};
 }
 
+/// Replace newlines with NEL (U+0085) to keep multi-line Debug output on one diff line in pretty_assertions.
 pub fn format_newlines(s: impl AsRef<str>) -> String {
   s.as_ref().replace('\n', "\u{0085}")
 }
