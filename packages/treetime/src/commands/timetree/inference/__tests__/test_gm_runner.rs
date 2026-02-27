@@ -12,7 +12,7 @@ mod tests {
   //!
   //! Golden outputs captured via `gm_runner_capture` script from v0 Python TreeTime.
   //!
-  //! Tolerances are wide (4e-1 for poisson, 9e-1 for marginal) because v0 and v1 use
+  //! Tolerances are wide (3e-1 for poisson, 9e-1 for marginal) because v0 and v1 use
   //! different numerical implementations. The root node dominates the max diff in all
   //! cases - non-root nodes typically agree within 1e-2. These serve as regression
   //! guards: any code change that significantly worsens agreement will be caught.
@@ -32,7 +32,8 @@ mod tests {
   use crate::commands::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
   use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
   use crate::commands::timetree::utils::{
-    initialize_clock_totals_from_time_distributions, initialize_node_divergences,
+    create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
+    initialize_node_divergences,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -40,21 +41,14 @@ mod tests {
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
-  use lazy_static::lazy_static;
   use maplit::btreemap;
-  use ndarray::Array1;
-  use ordered_float::OrderedFloat;
   use parking_lot::RwLock;
   use rstest::rstest;
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
-  use std::sync::Arc;
-  use treetime_distribution::Distribution;
-  use treetime_distribution::DistributionFunction;
-  use treetime_graph::edge::HasBranchLength;
-  use treetime_graph::node::Named;
+  use std::sync::{Arc, LazyLock};
   use treetime_io::dates_csv::read_dates;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
   use treetime_io::nwk::nwk_read_str;
@@ -77,7 +71,7 @@ mod tests {
     propagate_distributions_forward(&graph)?;
 
     let actual = extract_node_times(&graph);
-    assert_node_times_match(expected, &actual, 4e-1, dataset, "poisson");
+    assert_node_times_match(expected, &actual, 3e-1, dataset, "poisson");
 
     Ok(())
   }
@@ -194,24 +188,27 @@ mod tests {
     marginal_dense: BTreeMap<String, f64>,
   }
 
-  lazy_static! {
-    static ref OUTPUTS: BTreeMap<String, DatasetOutputs> = {
-      let path = Path::new(FIXTURES_DIR).join("gm_runner_outputs.json");
-      let content = fs::read_to_string(&path).expect("Failed to read gm_runner_outputs.json");
-      serde_json::from_str(&content).expect("Failed to parse gm_runner_outputs.json")
-    };
-    static ref INPUTS: BTreeMap<String, DatasetInput> = {
-      let path = Path::new(FIXTURES_DIR).join("gm_runner_inputs.json");
-      let content = fs::read_to_string(&path).expect("Failed to read gm_runner_inputs.json");
-      serde_json::from_str(&content).expect("Failed to parse gm_runner_inputs.json")
-    };
-    static ref ALPHABET: Alphabet = Alphabet::default();
-    static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
+    let path = Path::new(FIXTURES_DIR).join("gm_runner_outputs.json");
+    let content = fs::read_to_string(&path).expect("Failed to read gm_runner_outputs.json");
+    serde_json::from_str(&content).expect("Failed to parse gm_runner_outputs.json")
+  });
+
+  static INPUTS: LazyLock<BTreeMap<String, DatasetInput>> = LazyLock::new(|| {
+    let path = Path::new(FIXTURES_DIR).join("gm_runner_inputs.json");
+    let content = fs::read_to_string(&path).expect("Failed to read gm_runner_inputs.json");
+    serde_json::from_str(&content).expect("Failed to parse gm_runner_inputs.json")
+  });
+
+  static ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .expect("Failed to find project root")
-      .to_path_buf();
-  }
+      .to_path_buf()
+  });
 
   #[derive(Debug, Deserialize)]
   struct DatasetInput {
@@ -233,20 +230,6 @@ mod tests {
     let input = &INPUTS[dataset];
     let aln_path = PROJECT_ROOT.join(&input.aln_path);
     read_many_fasta(&[&aln_path], &*ALPHABET)
-  }
-
-  fn extract_node_times(graph: &GraphTimetree) -> BTreeMap<String, f64> {
-    graph
-      .get_nodes()
-      .into_iter()
-      .filter_map(|node_ref| {
-        let node = node_ref.read_arc();
-        let payload = node.payload().read_arc();
-        let name = payload.name()?.as_ref().to_owned();
-        let time = payload.time?;
-        Some((name, time))
-      })
-      .collect()
   }
 
   /// Strip Bio.Phylo confidence suffix from internal node names.
@@ -308,48 +291,4 @@ mod tests {
     );
   }
 
-  /// Replicate v0 Python's Poisson branch-length distribution construction.
-  ///
-  /// For each edge with branch length `b`, creates a discretized distribution
-  /// P(dt) ~ exp(-dt * mu * L) * (dt * mu * L)^(b * L), where:
-  /// - `mu` = clock rate (substitutions/site/year)
-  /// - `L` = sequence length
-  /// - `b` = branch length (substitutions/site)
-  fn create_poisson_branch_distributions(
-    graph: &GraphTimetree,
-    mu: f64,
-    seq_len: usize,
-    n_points: usize,
-  ) -> Result<(), Report> {
-    let seq_len_f64 = seq_len as f64;
-
-    for edge_ref in graph.get_edges() {
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-
-      if let Some(branch_length) = edge.branch_length() {
-        let expected_time = branch_length / mu;
-        let max_time = 3.0 * expected_time.max(1.0);
-        let dx = max_time / (n_points - 1) as f64;
-
-        let y = Array1::from_shape_fn(n_points, |i| {
-          let dt = i as f64 * dx;
-          if dt < 1e-10 {
-            0.0
-          } else {
-            let log_p = -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln();
-            log_p.exp()
-          }
-        });
-
-        let y_max = y.iter().copied().map(OrderedFloat).max().map_or(1.0, |x| x.0);
-        let y_normalized = y.mapv(|v| v / y_max);
-
-        let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, y_normalized)?;
-        let distribution = Distribution::Function(distribution_fn);
-        edge.branch_length_distribution = Some(Arc::new(distribution));
-      }
-    }
-
-    Ok(())
-  }
 }

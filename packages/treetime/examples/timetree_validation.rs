@@ -2,7 +2,6 @@ use clap::Parser;
 use ctor::ctor;
 use eyre::Report;
 use maplit::btreemap;
-use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,8 @@ use treetime::commands::timetree::inference::forward_pass::propagate_distributio
 use treetime::commands::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
 use treetime::commands::timetree::partition_ops::PartitionTimetreeAll;
 use treetime::commands::timetree::utils::{
-  initialize_clock_totals_from_time_distributions, initialize_node_divergences,
+  create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
+  initialize_node_divergences,
 };
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::o;
@@ -28,10 +28,6 @@ use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
-use treetime_distribution::Distribution;
-use treetime_distribution::DistributionFunction;
-use treetime_graph::edge::HasBranchLength;
-use treetime_graph::node::Named;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::json::{JsonPretty, json_write_file};
@@ -444,58 +440,6 @@ fn run_marginal_dense_test(args: &Args) -> Result<TestResult, Report> {
     expected,
     actual,
   })
-}
-
-fn extract_node_times(graph: &GraphTimetree) -> BTreeMap<String, f64> {
-  graph
-    .get_nodes()
-    .into_iter()
-    .filter_map(|node_ref| {
-      let node = node_ref.read_arc();
-      let payload = node.payload().read_arc();
-      let name = payload.name()?.as_ref().to_owned();
-      let time = payload.time?;
-      Some((name, time))
-    })
-    .collect()
-}
-
-fn create_poisson_branch_distributions(
-  graph: &GraphTimetree,
-  mu: f64,
-  seq_len: usize,
-  n_points: usize,
-) -> Result<(), Report> {
-  let seq_len_f64 = seq_len as f64;
-
-  for edge_ref in graph.get_edges() {
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-
-    if let Some(branch_length) = edge.branch_length() {
-      let expected_time = branch_length / mu;
-      let max_time = 3.0 * expected_time.max(1.0);
-      let dx = max_time / (n_points - 1) as f64;
-
-      let y = Array1::from_shape_fn(n_points, |i| {
-        let dt = i as f64 * dx;
-        if dt < 1e-10 {
-          0.0
-        } else {
-          let log_p = -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln();
-          log_p.exp()
-        }
-      });
-
-      let y_max = y.iter().copied().map(OrderedFloat).max().map_or(1.0, |x| x.0);
-      let y_normalized = y.mapv(|v| v / y_max);
-
-      let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, y_normalized)?;
-      let distribution = Distribution::Function(distribution_fn);
-      edge.branch_length_distribution = Some(Arc::new(distribution));
-    }
-  }
-
-  Ok(())
 }
 
 fn calculate_diff_stats(expected: &BTreeMap<String, f64>, actual: &BTreeMap<String, f64>) -> DiffStats {
