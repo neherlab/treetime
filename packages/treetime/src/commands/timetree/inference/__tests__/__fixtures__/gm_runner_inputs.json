@@ -1,0 +1,22 @@
+{
+  "flu_h3n2_20": {
+    "tree_path": "data/flu/h3n2/20/tree.nwk",
+    "aln_path": "data/flu/h3n2/20/aln.fasta.xz",
+    "metadata_path": "data/flu/h3n2/20/metadata.tsv"
+  },
+  "ebola_20": {
+    "tree_path": "data/ebola/20/tree.nwk",
+    "aln_path": "data/ebola/20/aln.fasta.xz",
+    "metadata_path": "data/ebola/20/metadata.tsv"
+  },
+  "rsv_a_20": {
+    "tree_path": "data/rsv/a/20/tree.nwk",
+    "aln_path": "data/rsv/a/20/aln.fasta.xz",
+    "metadata_path": "data/rsv/a/20/metadata.tsv"
+  },
+  "tb_20": {
+    "tree_path": "data/tb/20/tree.nwk",
+    "aln_path": "data/tb/20/aln.fasta.xz",
+    "metadata_path": "data/tb/20/metadata.tsv"
+  }
+}

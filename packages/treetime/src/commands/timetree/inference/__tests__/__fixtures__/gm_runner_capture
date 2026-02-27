@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for timetree inference.
+
+Reads inputs from gm_runner_inputs.json, captures outputs from Python v0
+reference implementation, writes to gm_runner_outputs.json.
+
+The outputs serve as the oracle for validating Rust v1 timetree inference.
+Rust tests in test_gm_runner.rs load these outputs and compare against
+v1 results to ensure scientific agreement between implementations.
+
+For each dataset:
+1. Run v0 clock estimation to reroot tree and obtain clock rate
+2. Run v0 timetree with branch-length-mode=input (Poisson distributions)
+3. Run v0 timetree with branch-length-mode=marginal, time-marginal=true
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/commands/timetree/inference/__tests__/__fixtures__/gm_runner_capture
+"""
+
+import copy
+import json
+import lzma
+import sys
+import tempfile
+import traceback
+from io import StringIO
+from pathlib import Path
+
+from Bio import AlignIO, Phylo
+from Bio.Align import MultipleSeqAlignment
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "legacy" / "treetime"))
+
+from treetime import TreeTime
+from treetime import utils as tt_utils
+
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[8]
+FIXTURES_DIR: Path = Path(__file__).parent
+
+
+def load_alignment(path: Path) -> MultipleSeqAlignment:
+    """Load alignment from FASTA file (supports .xz compression)."""
+    if path.suffix == ".xz":
+        with lzma.open(path, "rt") as f:
+            return AlignIO.read(StringIO(f.read()), "fasta")
+    return AlignIO.read(str(path), "fasta")
+
+
+def export_tree_nwk(tree: Phylo.BaseTree.Tree) -> str:
+    """Export Bio.Phylo tree to Newick string via temp file.
+
+    Direct StringIO roundtrip fails for node names containing special
+    characters (e.g. '|' in flu strain names), so write to a temp file
+    and read back.
+    """
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".nwk", delete=False) as f:
+        Phylo.write(tree, f, "newick")
+        tmp_path = Path(f.name)
+    nwk = tmp_path.read_text().strip()
+    tmp_path.unlink()
+    return nwk
+
+
+def extract_node_times(tree: Phylo.BaseTree.Tree) -> dict[str, float]:
+    """Extract node name -> numeric date map from Bio.Phylo tree."""
+    times: dict[str, float] = {}
+    for node in tree.find_clades():
+        if hasattr(node, "numdate") and node.numdate is not None:
+            try:
+                t = float(node.numdate)
+                if t == t:  # not NaN
+                    times[node.name] = round(t, 6)
+            except (TypeError, ValueError):
+                pass
+    return dict(sorted(times.items()))
+
+
+def capture_dataset(name: str, config: dict[str, str]) -> dict:
+    """Capture golden master outputs for one dataset."""
+    print(f"\n  {name}:")
+
+    tree_path = PROJECT_ROOT / config["tree_path"]
+    aln_path = PROJECT_ROOT / config["aln_path"]
+    metadata_path = PROJECT_ROOT / config["metadata_path"]
+
+    aln = load_alignment(aln_path)
+    seq_length: int = aln.get_alignment_length()
+    print(f"    sequence_length={seq_length}")
+
+    dates: dict = tt_utils.parse_dates(str(metadata_path))
+
+    # Clock estimation: reroot tree and obtain clock rate.
+    # TreeTime.clock_filter() reroots the tree and fits a molecular clock.
+    print("    clock estimation...")
+    tt_clock = TreeTime(
+        dates=dates,
+        tree=str(tree_path),
+        gtr="JC69",
+        seq_len=seq_length,
+        verbose=0,
+    )
+    tt_clock.clock_filter(reroot="best", n_iqd=3, plot=False)
+
+    rerooted_nwk = export_tree_nwk(tt_clock.tree)
+    clock_rate = float(tt_clock.date2dist.clock_rate)
+    print(f"    clock_rate={clock_rate}")
+
+    # Timetree with branch-length-mode=input (Poisson branch lengths).
+    # Pass a deepcopy of the rerooted tree object - NWK string roundtrip
+    # fails for node names with special characters.
+    print("    timetree input mode...")
+    tt_input = TreeTime(
+        dates=dates,
+        tree=copy.deepcopy(tt_clock.tree),
+        gtr="JC69",
+        seq_len=seq_length,
+        verbose=0,
+        branch_length_mode="input",
+    )
+    tt_input.run(
+        root=None,
+        resolve_polytomies=False,
+        max_iter=0,
+        fixed_clock_rate=clock_rate,
+        time_marginal=False,
+        branch_length_mode="input",
+    )
+    poisson_times = extract_node_times(tt_input.tree)
+    print(f"    poisson: {len(poisson_times)} nodes")
+
+    # Timetree with branch-length-mode=marginal, time-marginal=true
+    print("    timetree marginal mode...")
+    tt_marginal = TreeTime(
+        dates=dates,
+        tree=copy.deepcopy(tt_clock.tree),
+        aln=aln,
+        gtr="JC69",
+        seq_len=seq_length,
+        verbose=0,
+        branch_length_mode="marginal",
+    )
+    tt_marginal.run(
+        root=None,
+        resolve_polytomies=False,
+        max_iter=0,
+        fixed_clock_rate=clock_rate,
+        time_marginal=True,
+        branch_length_mode="marginal",
+    )
+    marginal_times = extract_node_times(tt_marginal.tree)
+    print(f"    marginal_dense: {len(marginal_times)} nodes")
+
+    return {
+        "rerooted_tree_nwk": rerooted_nwk,
+        "clock_rate": round(clock_rate, 6),
+        "sequence_length": seq_length,
+        "poisson": poisson_times,
+        "marginal_dense": marginal_times,
+    }
+
+
+def main() -> None:
+    inputs_path = FIXTURES_DIR / "gm_runner_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_runner_outputs.json"
+
+    with open(inputs_path) as f:
+        inputs: dict = json.load(f)
+
+    print("Timetree Inference Golden Master Capture")
+    print("=" * 50)
+
+    outputs: dict = {}
+    for name, config in inputs.items():
+        try:
+            outputs[name] = capture_dataset(name, config)
+        except Exception as e:
+            print(f"    FAILED: {e}")
+            traceback.print_exc()
+            continue
+
+    with open(outputs_path, "w") as f:
+        json.dump(outputs, f, indent=2)
+
+    print(f"\nWritten: {outputs_path}")
+    print(f"Captured: {len(outputs)}/{len(inputs)}")
+
+
+if __name__ == "__main__":
+    main()
