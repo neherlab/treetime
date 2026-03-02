@@ -56,11 +56,7 @@ const FIXTURES_DIR: &str = concat!(
 )]
 pub struct Args {
   /// Datasets to validate (comma-separated)
-  #[arg(
-    long,
-    value_delimiter = ',',
-    default_value = "flu_h3n2_20,ebola_20"
-  )]
+  #[arg(long, value_delimiter = ',', default_value = "flu_h3n2_20,ebola_20")]
   datasets: Vec<String>,
 
   /// Tests to run per dataset (comma-separated: poisson, marginal_sparse, marginal_dense)

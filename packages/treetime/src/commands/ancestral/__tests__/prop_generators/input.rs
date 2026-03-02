@@ -4,10 +4,10 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::commands::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::commands::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
 use crate::gtr::gtr::{GTR, GTRParams};
+use crate::representation::payload::ancestral::GraphAncestral;
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
-use crate::representation::payload::ancestral::GraphAncestral;
 use treetime_graph::node::Named;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_read_str;
@@ -76,8 +76,12 @@ pub fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Str
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
 
-  (arb_tree_topology(taxa), arb_alignment(taxa_for_aln, seq_len), arb_gtr_nuc()).prop_map(
-    move |(tree, alignment, gtr)| {
+  (
+    arb_tree_topology(taxa),
+    arb_alignment(taxa_for_aln, seq_len),
+    arb_gtr_nuc(),
+  )
+    .prop_map(move |(tree, alignment, gtr)| {
       let newick = format!("({tree})root:0.001;");
       MarginalTestInput {
         newick,
@@ -86,8 +90,7 @@ pub fn arb_marginal_input_with_params(n_taxa: usize, seq_len: usize) -> impl Str
         n_taxa,
         seq_len,
       }
-    },
-  )
+    })
 }
 
 /// Generate marginal test input with gap-free alignment.
@@ -95,8 +98,12 @@ pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strateg
   let taxa = taxa_names(n_taxa);
   let taxa_for_aln = taxa.clone();
 
-  (arb_tree_topology(taxa), arb_alignment_no_gaps(taxa_for_aln, seq_len), arb_gtr_nuc()).prop_map(
-    move |(tree, alignment, gtr)| {
+  (
+    arb_tree_topology(taxa),
+    arb_alignment_no_gaps(taxa_for_aln, seq_len),
+    arb_gtr_nuc(),
+  )
+    .prop_map(move |(tree, alignment, gtr)| {
       let newick = format!("({tree})root:0.001;");
       MarginalTestInput {
         newick,
@@ -105,8 +112,7 @@ pub fn arb_marginal_input_no_gaps(n_taxa: usize, seq_len: usize) -> impl Strateg
         n_taxa,
         seq_len,
       }
-    },
-  )
+    })
 }
 
 /// Generate marginal test input with default parameters.

@@ -286,9 +286,6 @@ mod tests {
 
     assert!(compared > 0, "[{dataset}/{algo}] no nodes compared");
 
-    eprintln!(
-      "[{dataset}/{algo}] compared {compared} nodes, max_diff={max_diff:.2e} at {max_diff_node:?}"
-    );
+    eprintln!("[{dataset}/{algo}] compared {compared} nodes, max_diff={max_diff:.2e} at {max_diff_node:?}");
   }
-
 }

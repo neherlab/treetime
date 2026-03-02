@@ -5,8 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
   use eyre::Report;
-  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::fasta::FastaRecord;
+  use treetime_io::fasta::read_many_fasta_str;
 
   fn example_input() -> Result<MarginalTestInput, Report> {
     let alignment = read_many_fasta_str(
@@ -102,12 +102,19 @@ ACGTACGC
     let partition = partitions[0].read_arc();
     for node_data in partition.nodes.values() {
       let profile = &node_data.profile;
-      assert!(profile.log_lh.is_finite(), "Sparse node profile log-lh is not finite: {}", profile.log_lh);
+      assert!(
+        profile.log_lh.is_finite(),
+        "Sparse node profile log-lh is not finite: {}",
+        profile.log_lh
+      );
       for var_pos in profile.variable.values() {
         let sum: f64 = var_pos.dis.sum();
         assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
         for &value in &var_pos.dis {
-          assert!(value.is_finite(), "Non-finite value in sparse variable profile: {value}");
+          assert!(
+            value.is_finite(),
+            "Non-finite value in sparse variable profile: {value}"
+          );
           assert!(value >= -1e-14, "Negative value in sparse variable profile: {value}");
         }
       }
@@ -122,20 +129,33 @@ ACGTACGC
     }
     for edge_data in partition.edges.values() {
       let profile = &edge_data.msg_to_child;
-      assert!(profile.log_lh.is_finite(), "Sparse edge message log-lh is not finite: {}", profile.log_lh);
+      assert!(
+        profile.log_lh.is_finite(),
+        "Sparse edge message log-lh is not finite: {}",
+        profile.log_lh
+      );
       for var_pos in profile.variable.values() {
         let sum: f64 = var_pos.dis.sum();
         assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
         for &value in &var_pos.dis {
-          assert!(value.is_finite(), "Non-finite value in sparse edge variable profile: {value}");
-          assert!(value >= -1e-14, "Negative value in sparse edge variable profile: {value}");
+          assert!(
+            value.is_finite(),
+            "Non-finite value in sparse edge variable profile: {value}"
+          );
+          assert!(
+            value >= -1e-14,
+            "Negative value in sparse edge variable profile: {value}"
+          );
         }
       }
       for fixed_dis in profile.fixed.values() {
         let sum: f64 = fixed_dis.sum();
         assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
         for &value in fixed_dis {
-          assert!(value.is_finite(), "Non-finite value in sparse edge fixed profile: {value}");
+          assert!(
+            value.is_finite(),
+            "Non-finite value in sparse edge fixed profile: {value}"
+          );
           assert!(value >= -1e-14, "Negative value in sparse edge fixed profile: {value}");
         }
       }

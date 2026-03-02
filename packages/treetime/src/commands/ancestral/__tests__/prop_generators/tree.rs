@@ -6,9 +6,9 @@
 //! - Caterpillar: maximally unbalanced (for edge cases)
 
 use crate::commands::ancestral::__tests__::prop_generators::branch_length::arb_branch_length;
+use crate::representation::payload::ancestral::GraphAncestral;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
-use crate::representation::payload::ancestral::GraphAncestral;
 use treetime_graph::node::Named;
 use treetime_io::nwk::nwk_read_str;
 
@@ -51,7 +51,7 @@ fn is_valid_tree(newick: &str, expected_taxa: &[String]) -> bool {
           b'(' => depth += 1,
           b')' => depth -= 1,
           b',' if depth == 1 => has_comma_at_depth_1 = true,
-          _ => {}
+          _ => {},
         }
         i += 1;
       }

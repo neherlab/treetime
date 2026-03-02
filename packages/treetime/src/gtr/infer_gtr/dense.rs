@@ -166,4 +166,3 @@ pub fn get_mutation_counts_dense(
 
   Ok(MutationCounts { nij, Ti, root_state })
 }
-

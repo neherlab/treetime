@@ -9,7 +9,10 @@ mod tests {
   fn assert_dense_rows_normalized(dis: &Array2<f64>) -> Result<(), TestCaseError> {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
-      prop_assert!((sum - 1.0).abs() < 1e-8, "Row {row_idx} sum={sum} not normalized to 1.0");
+      prop_assert!(
+        (sum - 1.0).abs() < 1e-8,
+        "Row {row_idx} sum={sum} not normalized to 1.0"
+      );
       for (col_idx, &val) in row.iter().enumerate() {
         prop_assert!(val.is_finite(), "Row {row_idx}, col {col_idx} non-finite: {val}");
         prop_assert!(val >= -1e-14, "Row {row_idx}, col {col_idx} negative: {val}");
@@ -19,11 +22,18 @@ mod tests {
   }
 
   fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution) -> Result<(), TestCaseError> {
-    prop_assert!(profile.log_lh.is_finite(), "Profile log_lh non-finite: {}", profile.log_lh);
+    prop_assert!(
+      profile.log_lh.is_finite(),
+      "Profile log_lh non-finite: {}",
+      profile.log_lh
+    );
 
     for (pos, var_pos) in &profile.variable {
       let sum: f64 = var_pos.dis.sum();
-      prop_assert!((sum - 1.0).abs() < 1e-8, "Variable position {pos} sum={sum} not normalized");
+      prop_assert!(
+        (sum - 1.0).abs() < 1e-8,
+        "Variable position {pos} sum={sum} not normalized"
+      );
       for (idx, &val) in var_pos.dis.iter().enumerate() {
         prop_assert!(val.is_finite(), "Variable pos {pos}, idx {idx} non-finite: {val}");
         prop_assert!(val >= -1e-14, "Variable pos {pos}, idx {idx} negative: {val}");
@@ -32,7 +42,10 @@ mod tests {
 
     for (char_key, fixed_dis) in &profile.fixed {
       let sum: f64 = fixed_dis.sum();
-      prop_assert!((sum - 1.0).abs() < 1e-8, "Fixed distribution for {char_key:?} sum={sum} not normalized");
+      prop_assert!(
+        (sum - 1.0).abs() < 1e-8,
+        "Fixed distribution for {char_key:?} sum={sum} not normalized"
+      );
       for (idx, &val) in fixed_dis.iter().enumerate() {
         prop_assert!(val.is_finite(), "Fixed {char_key:?}, idx {idx} non-finite: {val}");
         prop_assert!(val >= -1e-14, "Fixed {char_key:?}, idx {idx} negative: {val}");
