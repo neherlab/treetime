@@ -21,19 +21,25 @@ Usage:
 import copy
 import json
 import lzma
+import random
 import sys
 import tempfile
 import traceback
 from io import StringIO
 from pathlib import Path
 
+import numpy as np
 from Bio import AlignIO, Phylo
 from Bio.Align import MultipleSeqAlignment
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "legacy" / "treetime"))
 
-from treetime import TreeTime
-from treetime import utils as tt_utils
+from treetime import TreeTime  # noqa: E402
+from treetime import utils as tt_utils  # noqa: E402
+
+SEED = 1010336213
+random.seed(SEED)
+np.random.seed(SEED)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[8]
 FIXTURES_DIR: Path = Path(__file__).parent
@@ -55,7 +61,7 @@ def export_tree_nwk(tree: Phylo.BaseTree.Tree) -> str:
     and read back.
     """
     with tempfile.NamedTemporaryFile(mode="w", suffix=".nwk", delete=False) as f:
-        Phylo.write(tree, f, "newick")
+        Phylo.write(tree, f, "newick", branch_length_only=True)
         tmp_path = Path(f.name)
     nwk = tmp_path.read_text().strip()
     tmp_path.unlink()
@@ -100,6 +106,7 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
         gtr="JC69",
         seq_len=seq_length,
         verbose=0,
+        rng_seed=SEED,
     )
     tt_clock.clock_filter(reroot="best", n_iqd=3, plot=False)
 
@@ -117,6 +124,7 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
         gtr="JC69",
         seq_len=seq_length,
         verbose=0,
+        rng_seed=SEED,
         branch_length_mode="input",
     )
     tt_input.run(
@@ -139,6 +147,7 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
         gtr="JC69",
         seq_len=seq_length,
         verbose=0,
+        rng_seed=SEED,
         branch_length_mode="marginal",
     )
     tt_marginal.run(
