@@ -16,10 +16,6 @@ mod tests {
   //! different numerical implementations. The root node dominates the max diff in all
   //! cases - non-root nodes typically agree within 1e-2. These serve as regression
   //! guards: any code change that significantly worsens agreement will be caught.
-  //!
-  //! Datasets rsv_a_20 and tb_20 are captured in fixtures but excluded from tests
-  //! due to pre-existing crashes in distribution functions (zero-length branches).
-  //! ebola_20 marginal_dense crashes in `process_node_backward` and is also excluded.
 
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::ancestral::fitch::compress_sequences;
@@ -56,8 +52,15 @@ mod tests {
   // --- Poisson tests ---
 
   #[rstest]
-  #[case::flu_h3n2_20("flu_h3n2_20")]
+  // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
   #[case::ebola_20("ebola_20")]
+  #[case::flu_h3n2_20("flu_h3n2_20")]
+  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
+  #[trace]
   fn test_gm_runner_poisson(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = &case.poisson;
@@ -77,10 +80,17 @@ mod tests {
   }
 
   // --- Marginal dense tests ---
-  // ebola_20 excluded: crashes in process_node_backward with "x array must be uniformly spaced"
 
   #[rstest]
+  // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::ebola_20("ebola_20")]         // TODO: alphabet doesn't handle gap character '-'
   #[case::flu_h3n2_20("flu_h3n2_20")]
+  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
+  #[trace]
   fn test_gm_runner_marginal_dense(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = &case.marginal_dense;
@@ -123,12 +133,17 @@ mod tests {
   }
 
   // --- Marginal sparse tests ---
-  // Sparse is a v1 optimization of dense. v0 has no sparse mode.
-  // These tests compare sparse output against v0 marginal dense golden values.
 
   #[rstest]
-  #[case::flu_h3n2_20("flu_h3n2_20")]
+  // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
   #[case::ebola_20("ebola_20")]
+  #[case::flu_h3n2_20("flu_h3n2_20")]
+  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
+  #[trace]
   fn test_gm_runner_marginal_sparse(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = &case.marginal_dense;
@@ -216,6 +231,7 @@ mod tests {
     tree_path: String,
     aln_path: String,
     metadata_path: String,
+    name_column: Option<String>,
   }
 
   // --- Helper functions ---
@@ -223,7 +239,7 @@ mod tests {
   fn load_dates_for_dataset(dataset: &str) -> Result<treetime_io::dates_csv::DatesMap, Report> {
     let input = &INPUTS[dataset];
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
-    read_dates(&metadata_path, &None, &None)
+    read_dates(&metadata_path, &input.name_column, &None)
   }
 
   fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {

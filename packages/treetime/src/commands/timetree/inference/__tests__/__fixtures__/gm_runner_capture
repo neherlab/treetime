@@ -88,7 +88,8 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
     seq_length: int = aln.get_alignment_length()
     print(f"    sequence_length={seq_length}")
 
-    dates: dict = tt_utils.parse_dates(str(metadata_path))
+    name_col: str | None = config.get("name_column")
+    dates: dict = tt_utils.parse_dates(str(metadata_path), name_col=name_col)
 
     # Clock estimation: reroot tree and obtain clock rate.
     # TreeTime.clock_filter() reroots the tree and fits a molecular clock.
