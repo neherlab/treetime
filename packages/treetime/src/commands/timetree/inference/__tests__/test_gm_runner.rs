@@ -51,11 +51,12 @@ mod tests {
 
   // --- Poisson tests ---
 
+  #[rustfmt::skip]
   #[rstest]
   // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
   #[case::ebola_20("ebola_20")]
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::lassa_l_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
@@ -81,11 +82,12 @@ mod tests {
 
   // --- Marginal dense tests ---
 
+  #[rustfmt::skip]
   #[rstest]
   // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::ebola_20("ebola_20")]         // TODO: alphabet doesn't handle gap character '-'
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::lassa_l_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
@@ -134,11 +136,12 @@ mod tests {
 
   // --- Marginal sparse tests ---
 
+  #[rustfmt::skip]
   #[rstest]
   // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
   #[case::ebola_20("ebola_20")]
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // #[case::lassa_L_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::lassa_l_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
@@ -248,23 +251,6 @@ mod tests {
     read_many_fasta(&[&aln_path], &*ALPHABET)
   }
 
-  /// Strip Bio.Phylo confidence suffix from internal node names.
-  ///
-  /// Bio.Phylo's NWK writer concatenates name and confidence without a separator:
-  /// `NODE_00000161.00` = name `NODE_0000016` + confidence `1.00`.
-  /// TreeTime v0 uses 7-digit zero-padded indices: `NODE_XXXXXXX` (12 chars).
-  #[allow(clippy::string_slice)]
-  fn normalize_node_name(name: &str) -> &str {
-    // NODE_ names are always ASCII, so byte indexing is safe
-    if name.starts_with("NODE_") && name.len() > 12 {
-      let suffix = &name[12..];
-      if suffix.parse::<f64>().is_ok() {
-        return &name[..12];
-      }
-    }
-    name
-  }
-
   fn assert_node_times_match(
     expected: &BTreeMap<String, f64>,
     actual: &BTreeMap<String, f64>,
@@ -272,17 +258,13 @@ mod tests {
     dataset: &str,
     algo: &str,
   ) {
-    let actual_normalized: BTreeMap<&str, f64> = actual
-      .iter()
-      .map(|(name, &time)| (normalize_node_name(name), time))
-      .collect();
 
     let mut compared = 0;
     let mut max_diff = 0.0_f64;
     let mut max_diff_node = String::new();
 
     for (name, &expected_time) in expected {
-      let Some(&actual_time) = actual_normalized.get(name.as_str()) else {
+      let Some(&actual_time) = actual.get(name) else {
         panic!("[{dataset}/{algo}] node {name:?} not found in actual output")
       };
 

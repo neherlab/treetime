@@ -236,28 +236,6 @@ fn skip_reason(dataset: &str, test: &str) -> Option<&'static str> {
   }
 }
 
-/// Strip Bio.Phylo confidence suffix from internal node names.
-///
-/// Bio.Phylo's NWK writer concatenates name and confidence without a separator:
-/// `NODE_00000161.00` = name `NODE_0000016` + confidence `1.00`.
-/// TreeTime v0 uses 7-digit zero-padded indices: `NODE_XXXXXXX` (12 chars).
-#[allow(clippy::string_slice)]
-fn normalize_node_name(name: &str) -> &str {
-  if name.starts_with("NODE_") && name.len() > 12 {
-    let suffix = &name[12..];
-    if suffix.parse::<f64>().is_ok() {
-      return &name[..12];
-    }
-  }
-  name
-}
-
-fn normalize_node_times(times: BTreeMap<String, f64>) -> BTreeMap<String, f64> {
-  times
-    .into_iter()
-    .map(|(name, time)| (normalize_node_name(&name).to_owned(), time))
-    .collect()
-}
 
 fn dump_graph(graph: &GraphTimetree, output_dir: &str, filename: &str) -> Result<(), Report> {
   let output_path = Path::new(output_dir);
@@ -295,7 +273,7 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
     "003_after_propagate_distributions_forward.json",
   )?;
 
-  let actual = normalize_node_times(extract_node_times(&graph));
+  let actual = extract_node_times(&graph);
 
   println!("Completed\n");
 
@@ -352,7 +330,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   run_timetree(&mut graph, &partitions, &clock_model, None)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = normalize_node_times(extract_node_times(&graph));
+  let actual = extract_node_times(&graph);
 
   println!("Completed\n");
 
@@ -406,7 +384,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   run_timetree(&mut graph, &partitions, &clock_model, None)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = normalize_node_times(extract_node_times(&graph));
+  let actual = extract_node_times(&graph);
 
   println!("Completed\n");
 
