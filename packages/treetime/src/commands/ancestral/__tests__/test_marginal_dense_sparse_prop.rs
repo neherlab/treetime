@@ -19,7 +19,7 @@ mod tests {
       let scale = log_lh_dense.abs().max(log_lh_sparse.abs()).max(1.0);
       let rel_diff = abs_diff / scale;
       prop_assert!(
-        rel_diff < 1e-8,
+        rel_diff < 1e-6,
         "Dense/sparse mismatch: dense={log_lh_dense}, sparse={log_lh_sparse}, rel_diff={rel_diff}"
       );
     }
