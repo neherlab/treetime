@@ -48,6 +48,7 @@ mod tests {
   use treetime_io::dates_csv::read_dates;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Poisson tests ---
 
@@ -75,7 +76,7 @@ mod tests {
     propagate_distributions_forward(&graph)?;
 
     let actual = extract_node_times(&graph);
-    assert_node_times_match(expected, &actual, 3e-1, dataset, "poisson");
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 3e-1);
 
     Ok(())
   }
@@ -129,7 +130,7 @@ mod tests {
     run_timetree(&mut graph, &partitions, &clock_model, None)?;
 
     let actual = extract_node_times(&graph);
-    assert_node_times_match(expected, &actual, 9e-1, dataset, "marginal_dense");
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 9e-1);
 
     Ok(())
   }
@@ -185,7 +186,7 @@ mod tests {
     run_timetree(&mut graph, &partitions, &clock_model, None)?;
 
     let actual = extract_node_times(&graph);
-    assert_node_times_match(expected, &actual, 9e-1, dataset, "marginal_sparse");
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 9e-1);
 
     Ok(())
   }
@@ -249,41 +250,5 @@ mod tests {
     let input = &INPUTS[dataset];
     let aln_path = PROJECT_ROOT.join(&input.aln_path);
     read_many_fasta(&[&aln_path], &*ALPHABET)
-  }
-
-  fn assert_node_times_match(
-    expected: &BTreeMap<String, f64>,
-    actual: &BTreeMap<String, f64>,
-    epsilon: f64,
-    dataset: &str,
-    algo: &str,
-  ) {
-
-    let mut compared = 0;
-    let mut max_diff = 0.0_f64;
-    let mut max_diff_node = String::new();
-
-    for (name, &expected_time) in expected {
-      let Some(&actual_time) = actual.get(name) else {
-        panic!("[{dataset}/{algo}] node {name:?} not found in actual output")
-      };
-
-      let diff = (expected_time - actual_time).abs();
-      if diff > max_diff {
-        max_diff = diff;
-        max_diff_node = name.clone();
-      }
-
-      assert!(
-        diff <= epsilon,
-        "[{dataset}/{algo}] node {name:?}: expected={expected_time}, actual={actual_time}, diff={diff}, epsilon={epsilon}"
-      );
-
-      compared += 1;
-    }
-
-    assert!(compared > 0, "[{dataset}/{algo}] no nodes compared");
-
-    eprintln!("[{dataset}/{algo}] compared {compared} nodes, max_diff={max_diff:.2e} at {max_diff_node:?}");
   }
 }
