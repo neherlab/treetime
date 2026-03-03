@@ -60,8 +60,7 @@ mod tests {
     /// Companion example test: `test_marginal_normalization_example_dense`.
     #[test]
     fn test_prop_marginal_normalization_dense(input in arb_marginal_input_small()) {
-      let (log_lh, partitions) = run_dense_marginal(&input)
-        .map_err(|e| TestCaseError::fail(format!("Dense marginal failed: {e}")))?;
+      let (log_lh, partitions) = run_dense_marginal(&input).unwrap();
 
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
@@ -82,8 +81,7 @@ mod tests {
     /// Companion example test: `test_marginal_normalization_example_sparse`.
     #[test]
     fn test_prop_marginal_normalization_sparse(input in arb_marginal_input_small()) {
-      let (log_lh, partitions) = run_sparse_marginal(&input)
-        .map_err(|e| TestCaseError::fail(format!("Sparse marginal failed: {e}")))?;
+      let (log_lh, partitions) = run_sparse_marginal(&input).unwrap();
 
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
@@ -100,8 +98,7 @@ mod tests {
     /// Companion example test: `test_marginal_normalization_example_dense`.
     #[test]
     fn test_prop_marginal_normalization_dense_log_lh_finite(input in arb_marginal_input()) {
-      let (log_lh, _) = run_dense_marginal(&input)
-        .map_err(|e| TestCaseError::fail(format!("Dense marginal failed: {e}")))?;
+      let (log_lh, _) = run_dense_marginal(&input).unwrap();
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
     }
@@ -109,8 +106,7 @@ mod tests {
     /// Companion example test: `test_marginal_normalization_example_sparse`.
     #[test]
     fn test_prop_marginal_normalization_sparse_log_lh_finite(input in arb_marginal_input()) {
-      let (log_lh, _) = run_sparse_marginal(&input)
-        .map_err(|e| TestCaseError::fail(format!("Sparse marginal failed: {e}")))?;
+      let (log_lh, _) = run_sparse_marginal(&input).unwrap();
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
     }

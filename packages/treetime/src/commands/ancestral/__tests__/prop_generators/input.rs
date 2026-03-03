@@ -184,8 +184,7 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick)
-        .map_err(|e| TestCaseError::fail(format!("Generated Newick should parse: {}. Error: {e}", input.newick)))?;
+      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
 
       let mut leaf_names = Vec::new();
       for leaf in graph.get_leaves() {
