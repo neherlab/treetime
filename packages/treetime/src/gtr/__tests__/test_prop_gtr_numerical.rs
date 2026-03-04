@@ -6,6 +6,7 @@ mod tests {
   //! random GTR models and branch lengths.
 
   use crate::gtr::__tests__::generators::tests::generators::{arb_branch_len, arb_gtr_nuc, arb_profile_nuc};
+  use crate::gtr::__tests__::prop_support::prop_assert_rows_sum_to;
   use proptest::prelude::*;
 
   proptest! {
@@ -95,19 +96,9 @@ mod tests {
     ) {
       let evolved = gtr.evolve(&profile, t, false);
 
-      for i in 0..5 {
-        let row_sum = evolved.row(i).sum();
-        prop_assert!(
-          (row_sum - 1.0).abs() < 1e-10,
-          "evolve row {i} sum = {row_sum}, expected 1.0 at t={t}"
-        );
-        for j in 0..4 {
-          prop_assert!(
-            evolved[[i, j]] >= -1e-14,
-            "evolve[{i},{j}] = {} is negative at t={t}",
-            evolved[[i, j]]
-          );
-        }
+      prop_assert_rows_sum_to(&evolved, 1.0, 1e-10)?;
+      for ((i, j), &val) in evolved.indexed_iter() {
+        prop_assert!(val >= -1e-14, "evolve[{i},{j}] = {val} is negative");
       }
     }
   }

@@ -6,9 +6,10 @@ mod tests {
   //! column-stochastic (columns sum to 1), not row-stochastic.
 
   use crate::gtr::__tests__::generators::tests::generators::{arb_branch_len, arb_gtr_nuc, arb_profile_nuc};
-  use approx::assert_abs_diff_eq;
+  use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_rows_sum_to};
   use ndarray::Array2;
   use proptest::prelude::*;
+  use treetime_utils::prop_assert_array_abs_diff_eq;
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -26,13 +27,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_expqt_stochastic_columns(gtr in arb_gtr_nuc(), t in arb_branch_len()) {
       let p = gtr.expQt(t);
-      for j in 0..4 {
-        let col_sum = p.column(j).sum();
-        prop_assert!(
-          (col_sum - 1.0).abs() < 1e-10,
-          "P(t={t}) column {j} sum = {col_sum}, expected 1.0"
-        );
-      }
+      prop_assert_columns_sum_to(&p, 1.0, 1e-10)?;
     }
 
     /// All entries of P(t) are transition probabilities, hence non-negative:
@@ -85,7 +80,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_expqt_zero_is_identity(gtr in arb_gtr_nuc()) {
       let p = gtr.expQt(0.0);
-      assert_abs_diff_eq!(p, Array2::eye(4), epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(p, Array2::eye(4), epsilon = 1e-10);
     }
 
     /// As t -> infinity, P(t) converges to the equilibrium distribution.
@@ -113,7 +108,7 @@ mod tests {
       // In transposed convention: P[i,j] -> pi[i] for all j
       // Each row of the equilibrium matrix is gtr.pi[i] repeated across columns
       let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi[i]);
-      assert_abs_diff_eq!(p, expected, epsilon = 1e-6);
+      prop_assert_array_abs_diff_eq!(p, expected, epsilon = 1e-6);
     }
 
     /// The transition matrices form a semigroup under matrix multiplication:
@@ -130,7 +125,7 @@ mod tests {
       let p_t = gtr.expQt(t);
       let p_st = gtr.expQt(s + t);
       let p_s_times_p_t = p_s.dot(&p_t);
-      assert_abs_diff_eq!(p_st, p_s_times_p_t, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(p_st, p_s_times_p_t, epsilon = 1e-10);
     }
 
     /// The equilibrium distribution pi is preserved under time evolution:
@@ -144,7 +139,7 @@ mod tests {
     fn test_prop_gtr_expqt_stationary_preserved(gtr in arb_gtr_nuc(), t in arb_branch_len()) {
       let p = gtr.expQt(t);
       let pi_evolved = p.dot(&gtr.pi);
-      assert_abs_diff_eq!(pi_evolved, gtr.pi, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(pi_evolved, gtr.pi, epsilon = 1e-10);
     }
 
     /// In ancestral reconstruction, two operations propagate information:
@@ -178,21 +173,15 @@ mod tests {
       let evolved_gtr = gtr.evolve(&profile, t, false);
 
       // Verify propagate_profile matches profile @ P(t)
-      assert_abs_diff_eq!(propagated_gtr, propagated, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(propagated_gtr, propagated, epsilon = 1e-10);
 
       // Verify evolve matches profile @ P(t).T
-      assert_abs_diff_eq!(evolved_gtr, evolved, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(evolved_gtr, evolved, epsilon = 1e-10);
 
       // In transposed convention, P is column-stochastic.
       // evolve uses P.T which is row-stochastic, so evolve preserves row sums.
       // propagate uses P which is column-stochastic, so propagate doesn't preserve row sums.
-      for i in 0..5 {
-        let evol_row_sum = evolved_gtr.row(i).sum();
-        prop_assert!(
-          (evol_row_sum - 1.0).abs() < 1e-10,
-          "evolve row {i} sum = {evol_row_sum}, expected 1.0"
-        );
-      }
+      prop_assert_rows_sum_to(&evolved_gtr, 1.0, 1e-10)?;
     }
   }
 }

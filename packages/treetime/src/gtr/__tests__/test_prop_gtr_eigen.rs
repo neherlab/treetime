@@ -3,9 +3,9 @@ mod tests {
   //! Eigendecomposition invariants for GTR rate matrices.
 
   use crate::gtr::__tests__::generators::tests::generators::arb_gtr_nuc;
-  use approx::assert_abs_diff_eq;
   use ndarray::Array2;
   use proptest::prelude::*;
+  use treetime_utils::prop_assert_array_abs_diff_eq;
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -53,7 +53,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_eigen_eigendecomposition_v_times_v_inv_is_identity(gtr in arb_gtr_nuc()) {
       let product = gtr.v.dot(&gtr.v_inv);
-      assert_abs_diff_eq!(product, Array2::eye(4), epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(product, Array2::eye(4), epsilon = 1e-10);
     }
   }
 }

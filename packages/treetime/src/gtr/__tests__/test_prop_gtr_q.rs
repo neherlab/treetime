@@ -9,9 +9,10 @@ mod tests {
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::__tests__::generators::tests::generators::{arb_gtr_nuc, arb_pi_nuc, arb_w_nuc};
+  use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_detailed_balance};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use approx::assert_abs_diff_eq;
   use proptest::prelude::*;
+  use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq};
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -25,13 +26,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_columns_sum_to_zero(gtr in arb_gtr_nuc()) {
       let q = gtr.Q();
-      for j in 0..4 {
-        let col_sum = q.column(j).sum();
-        prop_assert!(
-          col_sum.abs() < 1e-10,
-          "Column {j} sum = {col_sum}, expected 0.0"
-        );
-      }
+      prop_assert_columns_sum_to(&q, 0.0, 1e-10)?;
     }
 
     /// Off-diagonal elements Q[i,j] (i != j) represent instantaneous rates
@@ -83,20 +78,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_detailed_balance(gtr in arb_gtr_nuc()) {
       let q = gtr.Q();
-      let pi = &gtr.pi;
-      for i in 0..4 {
-        for j in 0..4 {
-          if i != j {
-            // In transposed convention: Q[i,j] is rate from j to i
-            let flux_ji = pi[j] * q[[i, j]];  // flux from j to i
-            let flux_ij = pi[i] * q[[j, i]];  // flux from i to j
-            prop_assert!(
-              (flux_ji - flux_ij).abs() < 1e-10,
-              "Detailed balance violated: pi[{j}]*Q[{i},{j}] = {flux_ji}, pi[{i}]*Q[{j},{i}] = {flux_ij}"
-            );
-          }
-        }
-      }
+      prop_assert_detailed_balance(&q, &gtr.pi, 1e-10)?;
     }
 
     /// The exchangeability matrix W captures symmetric mutation rates independent
@@ -109,7 +91,7 @@ mod tests {
     /// equilibrium frequencies.
     #[test]
     fn test_prop_gtr_q_w_symmetric(gtr in arb_gtr_nuc()) {
-      assert_abs_diff_eq!(gtr.W, gtr.W.t(), epsilon = 1e-14);
+      prop_assert_array_abs_diff_eq!(gtr.W, gtr.W.t().to_owned(), epsilon = 1e-14);
     }
 
     /// The equilibrium frequency vector pi represents the stationary distribution:
@@ -118,11 +100,7 @@ mod tests {
     /// Formula: sum(pi) = 1
     #[test]
     fn test_prop_gtr_q_pi_sums_to_one(gtr in arb_gtr_nuc()) {
-      let pi_sum = gtr.pi.sum();
-      prop_assert!(
-        (pi_sum - 1.0).abs() < 1e-10,
-        "pi sum = {pi_sum}, expected 1.0"
-      );
+      prop_assert_abs_diff_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
     }
 
     /// Each equilibrium frequency must be strictly positive. A zero frequency
@@ -174,7 +152,7 @@ mod tests {
       // P_1(2t) should equal P_2(t)
       let p1 = gtr1.expQt(2.0 * t);
       let p2 = gtr2.expQt(t);
-      assert_abs_diff_eq!(p1, p2, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(p1, p2, epsilon = 1e-10);
     }
   }
 }
