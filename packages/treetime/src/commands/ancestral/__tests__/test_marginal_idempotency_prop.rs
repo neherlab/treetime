@@ -6,6 +6,7 @@ mod tests {
   use crate::representation::payload::ancestral::GraphAncestral;
   use proptest::prelude::*;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::prop_assert_abs_diff_eq;
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
@@ -19,10 +20,7 @@ mod tests {
       let log_lh_first = update_marginal(&graph, &partitions).unwrap();
       let log_lh_second = update_marginal(&graph, &partitions).unwrap();
 
-      prop_assert!(
-        (log_lh_first - log_lh_second).abs() < 1e-10,
-        "Idempotency violated: {log_lh_first} != {log_lh_second}"
-      );
+      prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
 
     /// Companion example test: `test_marginal_idempotency_example_sparse`.
@@ -34,10 +32,7 @@ mod tests {
       let log_lh_first = update_marginal(&graph, &partitions).unwrap();
       let log_lh_second = update_marginal(&graph, &partitions).unwrap();
 
-      prop_assert!(
-        (log_lh_first - log_lh_second).abs() < 1e-10,
-        "Idempotency violated: {log_lh_first} != {log_lh_second}"
-      );
+      prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
   }
 }
