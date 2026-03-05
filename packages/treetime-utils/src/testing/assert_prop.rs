@@ -11,11 +11,14 @@ macro_rules! prop_assert_abs_diff_eq {
     let lhs = &$lhs;
     let rhs = &$rhs;
     if !approx::abs_diff_eq!(lhs, rhs $(, $opt = $val)*) {
+      let lhs_fmt = format!("{lhs:?}");
+      let rhs_fmt = format!("{rhs:?}");
       return Err(proptest::test_runner::TestCaseError::fail(format!(
-        "prop_assert_abs_diff_eq!({}, {}{})\n\n    left  = {lhs:?}\n    right = {rhs:?}\n",
+        "prop_assert_abs_diff_eq!({}, {}{})\n\n{}",
         stringify!($lhs),
         stringify!($rhs),
         stringify!($(, $opt = $val)*),
+        pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
       )));
     }
   }};
@@ -27,11 +30,14 @@ macro_rules! prop_assert_ulps_eq {
     let lhs = &$lhs;
     let rhs = &$rhs;
     if !approx::ulps_eq!(lhs, rhs $(, $opt = $val)*) {
+      let lhs_fmt = format!("{lhs:?}");
+      let rhs_fmt = format!("{rhs:?}");
       return Err(proptest::test_runner::TestCaseError::fail(format!(
-        "prop_assert_ulps_eq!({}, {}{})\n\n    left  = {lhs:?}\n    right = {rhs:?}\n",
+        "prop_assert_ulps_eq!({}, {}{})\n\n{}",
         stringify!($lhs),
         stringify!($rhs),
         stringify!($(, $opt = $val)*),
+        pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
       )));
     }
   }};
@@ -43,11 +49,14 @@ macro_rules! prop_assert_relative_eq {
     let lhs = &$lhs;
     let rhs = &$rhs;
     if !approx::relative_eq!(lhs, rhs $(, $opt = $val)*) {
+      let lhs_fmt = format!("{lhs:?}");
+      let rhs_fmt = format!("{rhs:?}");
       return Err(proptest::test_runner::TestCaseError::fail(format!(
-        "prop_assert_relative_eq!({}, {}{})\n\n    left  = {lhs:?}\n    right = {rhs:?}\n",
+        "prop_assert_relative_eq!({}, {}{})\n\n{}",
         stringify!($lhs),
         stringify!($rhs),
         stringify!($(, $opt = $val)*),
+        pretty_assertions::StrComparison::new(&lhs_fmt, &rhs_fmt),
       )));
     }
   }};
