@@ -71,6 +71,14 @@ impl TimetreeOptimizer {
     Ok(())
   }
 
+  pub fn iteration_count(&self) -> usize {
+    self.i
+  }
+
+  pub fn trace(&self) -> &[ConvergenceMetrics] {
+    &self.trace
+  }
+
   fn has_converged(&self) -> bool {
     self.trace.last().is_some_and(|m| m.has_converged())
   }
