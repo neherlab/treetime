@@ -109,9 +109,13 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     ..SkylineParams::default()
   };
 
-  // Create coalescent Tc distribution.
+  // First pass without coalescent: establish internal node time distributions via
+  // backward+forward pass. Coalescent contributions read node times that only exist
+  // after the backward pass writes them.
+  run_timetree(&mut graph, &partitions, &clock_model, None)?;
+
+  // Build coalescent Tc using established node times.
   // For skyline mode: use constant Tc during iterations, switch to skyline after convergence.
-  // This matches v0's progressive strategy where skyline optimization uses stabilized node times.
   let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
     let initial_tc = 1.0;
     info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
@@ -133,7 +137,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     args.coalescent.map(Distribution::constant)
   };
 
-  run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())?;
+  // Second pass with coalescent prior
+  if coalescent_tc.is_some() {
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())?;
+  }
 
   if !args.keep_root {
     info!("Reroot (post-ancestral)");
