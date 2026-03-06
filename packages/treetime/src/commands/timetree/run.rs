@@ -155,9 +155,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
-    // Optimize Tc if requested (requires at least 2 iterations per Python v0)
-    // Note: Tc optimization only applies when not using skyline (skyline has its own optimization)
-    if args.coalescent_opt && !args.coalescent_skyline && i >= 2 {
+    // Re-optimize constant Tc each iteration (requires at least 2 iterations per v0).
+    // In skyline mode, v0 uses constant Tc during loop iterations and defers the full
+    // skyline fit to post-convergence, but still re-optimizes constant Tc each iteration.
+    if (args.coalescent_opt || args.coalescent_skyline) && i >= 2 {
       // For constant distributions, max_value() returns the Tc amplitude
       let initial_tc = coalescent_tc.as_ref().map_or(1.0, |d| d.max_value());
       match optimize_tc(&graph, initial_tc) {
