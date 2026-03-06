@@ -1,4 +1,8 @@
+use crate::commands::timetree::convergence::likelihood::{
+  compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
+};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use eyre::Report;
@@ -46,26 +50,35 @@ impl TimetreeOptimizer {
     &mut self,
     n_diff: usize,
     n_resolved: usize,
-    _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+    graph: &GraphTimetree,
+    partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   ) -> Result<(), Report> {
-    let metric = ConvergenceMetrics::from_iteration(n_diff, n_resolved);
+    let lh_seq = compute_sequence_likelihood(graph, partitions);
+    let lh_pos = compute_positional_likelihood(graph);
+    let lh_coal = compute_coalescent_likelihood();
+    let lh_total = [lh_seq, lh_pos, lh_coal].into_iter().flatten().reduce(|acc, v| acc + v);
+
+    let metric = ConvergenceMetrics {
+      n_diff,
+      n_resolved,
+      lh_seq,
+      lh_pos,
+      lh_coal,
+      lh_total,
+    };
 
     if let Some(writer) = &mut self.tracelog_writer {
       writer.write(&metric)?;
     }
 
-    if metric.has_converged() {
-      info!(
-        "Converged at iteration {} (n_diff={n_diff}, n_resolved={n_resolved})",
-        self.i
-      );
-    } else {
-      info!(
-        "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, total_LH={:.2}",
-        self.i,
-        metric.lh_total.unwrap_or(f64::NAN)
-      );
-    }
+    info!(
+      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, lh_seq={:.2}, lh_pos={:.2}, total_LH={:.2}{}",
+      self.i,
+      metric.lh_seq.unwrap_or(f64::NAN),
+      metric.lh_pos.unwrap_or(f64::NAN),
+      metric.lh_total.unwrap_or(f64::NAN),
+      if metric.has_converged() { " [converged]" } else { "" }
+    );
 
     self.trace.push(metric);
     Ok(())
@@ -115,17 +128,6 @@ pub struct ConvergenceMetrics {
 }
 
 impl ConvergenceMetrics {
-  fn from_iteration(n_diff: usize, n_resolved: usize) -> Self {
-    Self {
-      n_diff,
-      n_resolved,
-      lh_seq: None,
-      lh_pos: None,
-      lh_coal: None,
-      lh_total: None,
-    }
-  }
-
   fn has_converged(&self) -> bool {
     self.n_diff == 0 && self.n_resolved == 0
   }
