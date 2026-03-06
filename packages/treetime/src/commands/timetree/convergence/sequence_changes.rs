@@ -2,6 +2,7 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
+use log::debug;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -14,11 +15,21 @@ pub type AncestralStateSnapshot = Vec<BTreeMap<GraphNodeKey, Seq>>;
 /// Count positions where ancestral sequences differ between two snapshots.
 ///
 /// Compares position-by-position across all internal nodes and partitions.
+/// Nodes present in only one snapshot are skipped (topology changes between snapshots).
 pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
   previous
     .iter()
     .zip(current.iter())
-    .map(|(prev_partition, curr_partition)| {
+    .enumerate()
+    .map(|(partition_idx, (prev_partition, curr_partition))| {
+      let prev_only = prev_partition.keys().filter(|k| !curr_partition.contains_key(k)).count();
+      let curr_only = curr_partition.keys().filter(|k| !prev_partition.contains_key(k)).count();
+      if prev_only > 0 || curr_only > 0 {
+        debug!(
+          "Partition {partition_idx}: {prev_only} nodes removed, {curr_only} nodes added between snapshots"
+        );
+      }
+
       prev_partition
         .iter()
         .filter_map(|(key, prev_seq)| {
