@@ -30,7 +30,7 @@ where
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>;
 
   /// Extract ancestral sequence from node profile
-  fn extract_ancestral_sequence(&mut self, node_key: GraphNodeKey) -> Seq;
+  fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
 
   /// Reconstruct ancestral sequences for a specific node during tree traversal
   fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq>;

@@ -45,7 +45,7 @@ pub fn capture_ancestral_states(
   partitions
     .iter()
     .map(|partition| {
-      let mut partition = partition.write_arc();
+      let partition = partition.read_arc();
       internal_keys
         .iter()
         .map(|&key| (key, partition.extract_ancestral_sequence(key)))

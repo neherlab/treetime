@@ -228,7 +228,7 @@ where
     Ok(())
   }
 
-  fn extract_ancestral_sequence(&mut self, node_key: GraphNodeKey) -> Seq {
+  fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     if let Some(seq_info) = self.nodes.get(&node_key) {
       assign_sequence(seq_info, &self.alphabet)
     } else {

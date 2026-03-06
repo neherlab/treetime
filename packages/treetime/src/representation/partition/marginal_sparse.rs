@@ -186,7 +186,7 @@ where
     marginal_passes::process_node_forward(self, graph, node)
   }
 
-  fn extract_ancestral_sequence(&mut self, node_key: GraphNodeKey) -> Seq {
+  fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     if let Some(node_data) = self.nodes.get(&node_key) {
       if !node_data.seq.sequence.is_empty() {
         node_data.seq.sequence.clone()
