@@ -1,0 +1,7 @@
+mod test_coefficient_extraction_sparse_coefficients;
+mod test_coefficient_extraction_sparse_derivatives;
+mod test_coefficient_extraction_sparse_eigenvalues;
+mod test_coefficient_extraction_sparse_evaluate;
+mod test_coefficient_extraction_sparse_mixed_sites;
+mod test_coefficient_extraction_sparse_partition;
+mod test_coefficient_extraction_sparse_site;

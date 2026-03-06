@@ -236,7 +236,6 @@ fn skip_reason(dataset: &str, test: &str) -> Option<&'static str> {
   }
 }
 
-
 fn dump_graph(graph: &GraphTimetree, output_dir: &str, filename: &str) -> Result<(), Report> {
   let output_path = Path::new(output_dir);
   json_write_file(output_path.join(filename), graph, JsonPretty(true))?;

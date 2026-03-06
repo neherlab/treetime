@@ -1,0 +1,6 @@
+mod test_coefficient_extraction_dense_basic;
+mod test_coefficient_extraction_dense_gtr;
+mod test_coefficient_extraction_dense_partition;
+mod test_coefficient_extraction_dense_positions;
+mod test_coefficient_extraction_dense_properties;
+mod test_coefficient_extraction_dense_support;
