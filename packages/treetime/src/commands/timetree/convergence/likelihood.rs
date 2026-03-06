@@ -59,7 +59,12 @@ pub fn compute_positional_likelihood(graph: &GraphTimetree) -> Option<f64> {
         total += p.ln();
         count += 1;
       },
-      _ => {},
+      Ok(p) => {
+        debug!("Edge {parent_key:?}->{child_key:?}: zero or negative probability {p:.6e} at time_diff={time_diff:.6e}");
+      },
+      Err(e) => {
+        debug!("Edge {parent_key:?}->{child_key:?}: distribution eval failed at time_diff={time_diff:.6e}: {e}");
+      },
     }
   }
 
