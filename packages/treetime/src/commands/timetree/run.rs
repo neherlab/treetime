@@ -10,7 +10,7 @@ use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_sky
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
-use crate::commands::timetree::optimization::clock_filter::report_bad_branches;
+use crate::commands::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -84,6 +84,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   if args.clock_filter > 0.0 {
     let result = clock_filter_inplace(&graph, &clock_model, args.clock_filter);
     report_bad_branches(&graph, &clock_model, result.iqd);
+    apply_outlier_bad_branches(&graph);
   }
 
   if let Some(aln) = aln.as_deref() {

@@ -54,6 +54,11 @@ where
     let child = child.read_arc();
     let mut edge = edge.write_arc();
 
+    // Skip bad branches: outlier leaves and dateless leaves should not constrain parent time
+    if child.bad_branch() {
+      continue;
+    }
+
     if let (Some(branch_dist), Some(child_time_dist)) = (edge.branch_length_distribution(), child.time_distribution()) {
       // Compute parent time distribution using regular convolution with negated branch: parent_time = child_time + (-branch_length)
       let negated_branch_dist = branch_dist.negate()?;

@@ -8,7 +8,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::edge::BranchDistribution;
-  use treetime_graph::node::TimeConstraint;
+  use treetime_graph::node::{GraphNodeKey, TimeConstraint};
   use treetime_io::nwk::nwk_read_str;
 
   /// Test backward pass on a simple 2-leaf tree:
@@ -243,4 +243,135 @@ mod tests {
 
     Ok(())
   }
+
+  /// Test backward pass skips children with bad_branch=true.
+  /// Tree: ((A:3.0,B:2.0)I:1.0)root;
+  /// A at 2015.0, B at 2014.0. Mark B as bad_branch.
+  /// I should get time from A only: 2015.0 - 3.0 = 2012.0
+  #[test]
+  fn test_backward_pass_skips_bad_branch_children() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+
+    let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+
+    // Set time distributions on leaves
+    set_leaf_time(&graph, leaf_a_key, 2015.0);
+    set_leaf_time(&graph, leaf_b_key, 2014.0);
+
+    // Mark B as bad_branch
+    {
+      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
+      node_b.read_arc().payload().write_arc().bad_branch = true;
+    }
+
+    // Set branch length distributions on both edges
+    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+
+    propagate_distributions_backward(&graph, None)?;
+
+    // I should get time only from A: 2015.0 - 3.0 = 2012.0
+    let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
+    let payload = internal_node.read_arc().payload().read_arc();
+
+    let time_dist = payload
+      .time_distribution()
+      .as_ref()
+      .expect("internal node should have time distribution");
+    let likely_time = time_dist
+      .likely_time()
+      .expect("time distribution should have likely_time");
+
+    assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// Test that marking a leaf as bad_branch produces identical parent time
+  /// to a tree where that leaf is absent.
+  #[test]
+  fn test_backward_pass_bad_branch_equivalent_to_removal() -> Result<(), Report> {
+    // Reference tree: only A
+    let ref_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
+    let ref_a_key = find_node_key_by_name(&ref_graph, "A").expect("leaf A not found");
+    set_leaf_time(&ref_graph, ref_a_key, 2015.0);
+    set_edge_branch_dist(&ref_graph, ref_a_key, 3.0);
+    propagate_distributions_backward(&ref_graph, None)?;
+
+    let ref_internal_key = find_node_key_by_name(&ref_graph, "I").expect("internal I not found");
+    let ref_time = ref_graph
+      .get_node(ref_internal_key)
+      .expect("I exists")
+      .read_arc()
+      .payload()
+      .read_arc()
+      .time_distribution()
+      .as_ref()
+      .expect("should have time dist")
+      .likely_time()
+      .expect("should have likely_time");
+
+    // Test tree: A + B(bad)
+    let test_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let test_a_key = find_node_key_by_name(&test_graph, "A").expect("leaf A not found");
+    let test_b_key = find_node_key_by_name(&test_graph, "B").expect("leaf B not found");
+    set_leaf_time(&test_graph, test_a_key, 2015.0);
+    set_leaf_time(&test_graph, test_b_key, 2014.0);
+    set_edge_branch_dist(&test_graph, test_a_key, 3.0);
+    set_edge_branch_dist(&test_graph, test_b_key, 2.0);
+
+    // Mark B as bad
+    test_graph
+      .get_node(test_b_key)
+      .expect("B exists")
+      .read_arc()
+      .payload()
+      .write_arc()
+      .bad_branch = true;
+
+    propagate_distributions_backward(&test_graph, None)?;
+
+    let test_internal_key = find_node_key_by_name(&test_graph, "I").expect("internal I not found");
+    let test_time = test_graph
+      .get_node(test_internal_key)
+      .expect("I exists")
+      .read_arc()
+      .payload()
+      .read_arc()
+      .time_distribution()
+      .as_ref()
+      .expect("should have time dist")
+      .likely_time()
+      .expect("should have likely_time");
+
+    assert_ulps_eq!(ref_time, test_time, max_ulps = 4);
+
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+    use treetime_graph::graph::Graph;
+
+    pub(super) fn set_leaf_time(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, key: GraphNodeKey, time: f64) {
+      let node = graph.get_node(key).expect("node exists");
+      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
+    }
+
+    pub(super) fn set_edge_branch_dist(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, target_key: GraphNodeKey, bl: f64) {
+      for edge in graph.get_edges() {
+        let edge_read = edge.read_arc();
+        if edge_read.target() == target_key {
+          edge_read
+            .payload()
+            .write_arc()
+            .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 1.0))));
+        }
+      }
+    }
+  }
+
+  use helpers::*;
 }

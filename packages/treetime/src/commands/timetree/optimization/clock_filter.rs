@@ -67,6 +67,47 @@ pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd:
   }
 }
 
+/// Convert outlier flags to bad_branch flags for backward pass exclusion.
+///
+/// After clock_filter_inplace marks leaves as outliers (is_outlier=true), this
+/// sets bad_branch=true on those leaves and propagates upward: an internal node
+/// is bad only when all its children are bad.
+pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
+  // Set bad_branch on outlier leaves
+  for leaf in graph.get_leaves() {
+    let node = leaf.read_arc();
+    let mut payload = node.payload().write_arc();
+    if payload.is_outlier {
+      payload.bad_branch = true;
+    }
+  }
+
+  // Propagate upward in postorder: parent is bad only when all children are bad
+  graph.iter_depth_first_postorder_forward(|node| {
+    if node.is_leaf {
+      return;
+    }
+
+    let all_children_bad = node.child_keys.iter().all(|(child_key, _)| {
+      graph
+        .get_node(*child_key)
+        .expect("child must exist")
+        .read_arc()
+        .payload()
+        .read_arc()
+        .bad_branch
+    });
+
+    graph
+      .get_node(node.key)
+      .expect("node must exist")
+      .read_arc()
+      .payload()
+      .write_arc()
+      .bad_branch = all_children_bad;
+  });
+}
+
 fn truncate_name(name: &str, max_len: usize) -> String {
   if name.chars().count() <= max_len {
     name.to_owned()
