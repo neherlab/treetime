@@ -13,4 +13,8 @@ pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution>> {
 
 /// Trait for edge types that support timetree inference.
 /// Combines clock edge capabilities with branch distribution and time length.
-pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution>> + TimeLength {}
+pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution>> + TimeLength {
+  /// Per-branch relaxed clock rate multiplier. Default 1.0 (strict clock).
+  fn gamma(&self) -> f64;
+  fn set_gamma(&mut self, gamma: f64);
+}

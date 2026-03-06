@@ -88,8 +88,9 @@ where
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
     let branch_length = edge.branch_length().unwrap_or(one_mutation);
+    let gamma = edge.gamma();
 
-    debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}");
+    debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
     let contributions = collect_contributions(partitions, edge_key)?;
     let distribution = compute_branch_length_distribution(
@@ -98,6 +99,7 @@ where
       one_mutation,
       BRANCH_GRID_SIZE,
       clock_rate,
+      gamma,
     )?;
 
     if let Some(likely_time) = distribution.likely_time() {
@@ -151,7 +153,9 @@ where
 
     if let Some(branch_length) = edge.branch_length() {
       // Convert branch length (substitutions/site) to time duration (years)
-      let time_duration = branch_length / clock_rate;
+      // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
+      let effective_clock_rate = clock_rate * edge.gamma();
+      let time_duration = branch_length / effective_clock_rate;
       let distribution = Distribution::point(time_duration, 1.0);
       edge.set_time_length(Some(time_duration));
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));

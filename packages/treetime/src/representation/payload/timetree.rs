@@ -265,4 +265,12 @@ impl EdgeToGraphviz for EdgeTimetree {
   }
 }
 
-impl TimetreeEdge for EdgeTimetree {}
+impl TimetreeEdge for EdgeTimetree {
+  fn gamma(&self) -> f64 {
+    self.gamma
+  }
+
+  fn set_gamma(&mut self, gamma: f64) {
+    self.gamma = gamma;
+  }
+}

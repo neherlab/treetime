@@ -33,8 +33,10 @@ pub fn compute_branch_length_distribution(
   one_mutation: f64,
   n_grid_points: usize,
   clock_rate: f64,
+  gamma: f64,
 ) -> Result<Arc<Distribution>, Report> {
   debug_assert!(clock_rate >= 0.0);
+  debug_assert!(gamma > 0.0);
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
@@ -43,9 +45,11 @@ pub fn compute_branch_length_distribution(
 
   let normalized_prob = (&log_lh - *max_log_lh).exp();
 
-  // Convert branch length grid to time grid by dividing by clock rate
-  let time_min = grid[0] / clock_rate;
-  let time_max = grid[grid.len() - 1] / clock_rate;
+  // Convert branch length grid to time grid: time = branch_length / (clock_rate * gamma)
+  // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
+  let effective_clock_rate = clock_rate * gamma;
+  let time_min = grid[0] / effective_clock_rate;
+  let time_max = grid[grid.len() - 1] / effective_clock_rate;
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), normalized_prob)?;
   Ok(Arc::new(Distribution::Function(distribution_fn)))
