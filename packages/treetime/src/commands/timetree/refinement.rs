@@ -49,6 +49,11 @@ pub fn run_refinement_iteration(
     if n > 0 {
       info!("Resolved polytomies, introduced {n} new nodes");
       prepare_tree_after_topology_change(graph).wrap_err("Failed to prepare tree after topology change")?;
+
+      // Ensure partition entries exist for new nodes/edges created by polytomy resolution
+      for partition in partitions {
+        partition.write_arc().reconcile_topology(graph);
+      }
     }
     n
   } else {

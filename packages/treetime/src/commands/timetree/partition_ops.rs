@@ -3,7 +3,8 @@ use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
 use eyre::Report;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
 /// Trait for partition updates during reroot operations.
@@ -32,6 +33,13 @@ where
 {
   /// Create optimization contribution for branch length likelihood computation.
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
+
+  /// Ensure partition has entries for all nodes and edges in the graph.
+  ///
+  /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.
+  /// This adds empty/default entries for missing elements and removes stale entries for
+  /// elements no longer in the graph. The subsequent marginal update pass recomputes values.
+  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>);
 }
 
 /// Combined trait for partitions that support both marginal and timetree operations.

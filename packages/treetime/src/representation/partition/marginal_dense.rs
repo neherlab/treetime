@@ -58,6 +58,30 @@ where
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
+
+  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
+    let graph_node_keys: std::collections::BTreeSet<GraphNodeKey> =
+      graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
+    let graph_edge_keys: std::collections::BTreeSet<GraphEdgeKey> =
+      graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
+
+    // Add missing nodes with default partition data (backward pass will recompute)
+    for &key in &graph_node_keys {
+      self.nodes.entry(key).or_insert_with(|| DenseNodePartition {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDis::default(),
+      });
+    }
+
+    // Add missing edges with default partition data
+    for &key in &graph_edge_keys {
+      self.edges.entry(key).or_insert_with(DenseEdgePartition::default);
+    }
+
+    // Remove stale entries for nodes/edges no longer in graph
+    self.nodes.retain(|k, _| graph_node_keys.contains(k));
+    self.edges.retain(|k, _| graph_edge_keys.contains(k));
+  }
 }
 
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalDense
