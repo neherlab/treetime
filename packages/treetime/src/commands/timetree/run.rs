@@ -109,6 +109,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     ..SkylineParams::default()
   };
 
+  if args.n_branches_posterior.is_some() {
+    todo!("n_branches_posterior: use posterior time distributions for coalescent branch counting");
+  }
+
   // First pass without coalescent: establish internal node time distributions via
   // backward+forward pass. Coalescent contributions read node times that only exist
   // after the backward pass writes them.
