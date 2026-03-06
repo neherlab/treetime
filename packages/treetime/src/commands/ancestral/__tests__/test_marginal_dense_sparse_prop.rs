@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::__tests__::prop_generators::input::arb_marginal_input_no_gaps;
-  use crate::commands::ancestral::__tests__::prop_marginal_support::{run_dense_marginal, run_sparse_marginal};
+  use crate::commands::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use proptest::prelude::*;
   use treetime_utils::prop_assert_relative_eq;
 

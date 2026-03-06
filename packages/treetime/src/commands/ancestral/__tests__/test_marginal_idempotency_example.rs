@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::commands::ancestral::__tests__::prop_marginal_support::{run_dense_marginal, run_sparse_marginal};
+  use crate::commands::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::payload::ancestral::GraphAncestral;

@@ -1,93 +1,96 @@
-use crate::commands::ancestral::marginal::update_marginal;
-use crate::commands::optimize::optimize_dense::run_optimize_dense;
-use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
-use crate::representation::payload::ancestral::GraphAncestral;
-use eyre::Report;
-use treetime_io::nwk::nwk_read_str;
+#[cfg(test)]
+mod tests {
+  use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_dense::run_optimize_dense;
+  use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
+  use crate::representation::payload::ancestral::GraphAncestral;
+  use eyre::Report;
+  use treetime_io::nwk::nwk_read_str;
 
-use super::test_dense_sparse_equivalence_support::{
-  TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
-};
-
-#[test]
-fn test_dense_optimization_converges() -> Result<(), Report> {
-  let aln = gap_free_alignment()?;
-  let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-  let partitions = setup_dense_only(&graph, &aln)?;
-
-  let initial_lh = update_marginal(&graph, &partitions)?;
-  let mut lh_history = vec![initial_lh];
-
-  for _ in 0..50 {
-    run_optimize_dense(&graph, &partitions)?;
-    let lh = update_marginal(&graph, &partitions)?;
-    lh_history.push(lh);
-  }
-
-  let final_lh = match lh_history.last() {
-    Some(final_lh) => *final_lh,
-    None => unreachable!("likelihood history always contains the initial value"),
+  use super::super::test_dense_sparse_equivalence_support::tests::{
+    TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
   };
 
-  // Final log-LH should be in expected range
-  assert!(
-    final_lh > -100.0 && final_lh < -10.0,
-    "Final log-LH {final_lh} should be in range [-100, -10]"
-  );
+  #[test]
+  fn test_dense_optimization_converges() -> Result<(), Report> {
+    let aln = gap_free_alignment()?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let partitions = setup_dense_only(&graph, &aln)?;
 
-  // Optimization should improve or maintain likelihood overall
-  assert!(
-    final_lh >= initial_lh - 1.0,
-    "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
-  );
+    let initial_lh = update_marginal(&graph, &partitions)?;
+    let mut lh_history = vec![initial_lh];
 
-  // Check convergence: variance of last 5 iterations should be small
-  let last_5: Vec<f64> = lh_history.iter().rev().take(5).copied().collect();
-  let mean: f64 = last_5.iter().sum::<f64>() / last_5.len() as f64;
-  let variance: f64 = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_5.len() as f64;
-  assert!(
-    variance < 1.0,
-    "Optimization should stabilize: variance of last 5 iterations = {variance}"
-  );
+    for _ in 0..50 {
+      run_optimize_dense(&graph, &partitions)?;
+      let lh = update_marginal(&graph, &partitions)?;
+      lh_history.push(lh);
+    }
 
-  Ok(())
-}
+    let final_lh = match lh_history.last() {
+      Some(final_lh) => *final_lh,
+      None => unreachable!("likelihood history always contains the initial value"),
+    };
 
-#[test]
-fn test_sparse_optimization_converges() -> Result<(), Report> {
-  let aln = gap_free_alignment()?;
-  let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-  let partitions = setup_sparse_only(&graph, &aln)?;
+    // Final log-LH should be in expected range
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
 
-  let initial_lh = update_marginal(&graph, &partitions)?;
-  let mut lh_history = vec![initial_lh];
+    // Optimization should improve or maintain likelihood overall
+    assert!(
+      final_lh >= initial_lh - 1.0,
+      "Optimization should not significantly decrease likelihood: initial={initial_lh}, final={final_lh}"
+    );
 
-  for _ in 0..50 {
-    run_optimize_sparse(&graph, &partitions)?;
-    let lh = update_marginal(&graph, &partitions)?;
-    lh_history.push(lh);
+    // Check convergence: variance of last 5 iterations should be small
+    let last_5: Vec<f64> = lh_history.iter().rev().take(5).copied().collect();
+    let mean: f64 = last_5.iter().sum::<f64>() / last_5.len() as f64;
+    let variance: f64 = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_5.len() as f64;
+    assert!(
+      variance < 1.0,
+      "Optimization should stabilize: variance of last 5 iterations = {variance}"
+    );
+
+    Ok(())
   }
 
-  let final_lh = match lh_history.last() {
-    Some(final_lh) => *final_lh,
-    None => unreachable!("likelihood history always contains the initial value"),
-  };
+  #[test]
+  fn test_sparse_optimization_converges() -> Result<(), Report> {
+    let aln = gap_free_alignment()?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let partitions = setup_sparse_only(&graph, &aln)?;
 
-  // Final log-LH should be in expected range
-  assert!(
-    final_lh > -100.0 && final_lh < -10.0,
-    "Final log-LH {final_lh} should be in range [-100, -10]"
-  );
+    let initial_lh = update_marginal(&graph, &partitions)?;
+    let mut lh_history = vec![initial_lh];
 
-  // All iterations should stay in valid range
-  assert!(
-    lh_history.iter().all(|lh| *lh > -200.0 && *lh < 0.0),
-    "All log-LH values should be in valid range [-200, 0]: {lh_history:?}"
-  );
+    for _ in 0..50 {
+      run_optimize_sparse(&graph, &partitions)?;
+      let lh = update_marginal(&graph, &partitions)?;
+      lh_history.push(lh);
+    }
 
-  // Best likelihood achieved should be reasonable
-  let best_lh = lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  assert!(best_lh > -50.0, "Best log-LH {best_lh} should be better than -50");
+    let final_lh = match lh_history.last() {
+      Some(final_lh) => *final_lh,
+      None => unreachable!("likelihood history always contains the initial value"),
+    };
 
-  Ok(())
+    // Final log-LH should be in expected range
+    assert!(
+      final_lh > -100.0 && final_lh < -10.0,
+      "Final log-LH {final_lh} should be in range [-100, -10]"
+    );
+
+    // All iterations should stay in valid range
+    assert!(
+      lh_history.iter().all(|lh| *lh > -200.0 && *lh < 0.0),
+      "All log-LH values should be in valid range [-200, 0]: {lh_history:?}"
+    );
+
+    // Best likelihood achieved should be reasonable
+    let best_lh = lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    assert!(best_lh > -50.0, "Best log-LH {best_lh} should be better than -50");
+
+    Ok(())
+  }
 }
