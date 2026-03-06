@@ -5,36 +5,57 @@ use crate::representation::payload::timetree::NodeTimetree;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::Seq;
 
-/// Stores ancestral sequence states for change tracking between iterations.
-///
-/// Maps node keys to their reconstructed sequences to enable n_diff calculation.
-pub type AncestralStateSnapshot = BTreeMap<String, Vec<u8>>;
+/// Per-partition map of internal node keys to their reconstructed sequences.
+pub type AncestralStateSnapshot = Vec<BTreeMap<GraphNodeKey, Seq>>;
 
-/// Count ancestral sequence changes between iterations.
+/// Count positions where ancestral sequences differ between two snapshots.
 ///
-/// Core: Primary convergence criterion (stop when n_diff == 0).
-/// Why: No sequence changes indicates reconstruction has stabilized.
-/// How: Compare current and previous ancestral sequences, count differing positions.
-pub fn count_sequence_changes(
-  _previous_states: &AncestralStateSnapshot,
-  _current_states: &AncestralStateSnapshot,
-) -> usize {
-  // TODO: Compare sequences position-by-position across all internal nodes
-  // Return total count of positions where ancestral state changed
-  0
+/// Compares position-by-position across all internal nodes and partitions.
+pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
+  previous
+    .iter()
+    .zip(current.iter())
+    .map(|(prev_partition, curr_partition)| {
+      prev_partition
+        .iter()
+        .filter_map(|(key, prev_seq)| {
+          curr_partition
+            .get(key)
+            .map(|curr_seq| count_differing_positions(prev_seq, curr_seq))
+        })
+        .sum::<usize>()
+    })
+    .sum()
 }
 
-/// Capture current ancestral sequence states for change tracking.
-///
-/// Core: Required for n_diff calculation between iterations.
-/// Why: Need snapshot to compare before/after reconstruction.
-/// How: Extract reconstructed sequences from all internal nodes.
+/// Snapshot current ancestral sequences for all internal nodes across partitions.
 pub fn capture_ancestral_states(
-  _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
 ) -> AncestralStateSnapshot {
-  // TODO: Extract ancestral sequences from partition node data
-  // Map node keys to their current sequence states
-  BTreeMap::new()
+  if partitions.is_empty() {
+    return vec![];
+  }
+
+  let internal_keys: Vec<GraphNodeKey> = graph.filter_map(|node| if node.is_leaf { None } else { Some(node.key) });
+
+  partitions
+    .iter()
+    .map(|partition| {
+      let mut partition = partition.write_arc();
+      internal_keys
+        .iter()
+        .map(|&key| (key, partition.extract_ancestral_sequence(key)))
+        .collect()
+    })
+    .collect()
+}
+
+fn count_differing_positions(a: &Seq, b: &Seq) -> usize {
+  let shared = a.iter().zip(b.iter()).filter(|(ca, cb)| ca != cb).count();
+  let length_diff = a.len().abs_diff(b.len());
+  shared + length_diff
 }

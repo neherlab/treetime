@@ -3,10 +3,10 @@ use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
+use crate::commands::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
-use crate::commands::timetree::optimization::reroot::reroot_tree;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
@@ -59,6 +59,9 @@ pub fn run_refinement_iteration(
     is_tree_dirty = true;
   }
 
+  // Snapshot ancestral states before reconstruction for n_diff tracking
+  let prev_states = capture_ancestral_states(graph, partitions);
+
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
     run_timetree(graph, partitions, clock_model, coalescent_tc).wrap_err("Timetree inference failed")?;
@@ -76,15 +79,13 @@ pub fn run_refinement_iteration(
     run_timetree(graph, partitions, clock_model, coalescent_tc).wrap_err("Timetree inference failed")?;
   }
 
-  let n_diff = 0;
+  // Compute n_diff from ancestral state changes
+  let curr_states = capture_ancestral_states(graph, partitions);
+  let n_diff = count_sequence_changes(&prev_states, &curr_states);
 
-  *clock_model = if args.keep_root {
-    estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, true, branch_params)
-      .wrap_err("Failed to update clock model")?
-  } else {
-    reroot_tree(graph, partitions, clock_params, args.clock_rate, branch_params)
-      .wrap_err("Failed to update clock model with reroot")?
-  };
+  // Re-estimate clock model without rerooting (v0 does not reroot inside the loop)
+  *clock_model = estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, true, branch_params)
+    .wrap_err("Failed to update clock model")?;
 
   Ok((n_diff, n_resolved))
 }
