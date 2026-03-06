@@ -121,6 +121,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // Build coalescent Tc using established node times.
   // For skyline mode: use constant Tc during iterations, switch to skyline after convergence.
   let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
+    // Starting point for Brent's method bounded search; insensitive to initial value
     let initial_tc = 1.0;
     info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
     match optimize_tc(&graph, initial_tc) {
