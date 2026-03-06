@@ -23,11 +23,11 @@ mod tests {
 
   /// Assert that a dense marginal profile is numerically stable.
   ///
-  /// Checks three conditions at every alignment position:
-  /// - Row sum equals 1.0 within `max_ulps` units in last place.
+  /// Checks four conditions:
+  /// - `log_lh` is finite.
+  /// - Row sum equals 1.0 within `max_ulps` units in last place (at every position).
   /// - All values are finite (no NaN or Inf from overflow/underflow).
   /// - All values are non-negative (probabilities in [0, 1]).
-  /// - `log_lh` is finite.
   ///
   /// The ULP-based tolerance scales with floating-point magnitude, making it
   /// appropriate for detecting numerical drift across diverse parameter regimes.
@@ -101,8 +101,11 @@ mod tests {
   /// log-likelihood and partition array.
   ///
   /// Parses the Newick tree and FASTA alignment, constructs a single dense partition
-  /// with the given GTR model, and runs `initialize_marginal` (Felsenstein's pruning
-  /// algorithm). Returns the computed log-likelihood and the partition for inspection.
+  /// with the given GTR model, and runs `initialize_marginal` (two-pass marginal
+  /// ancestral reconstruction: backward pass computes partial likelihoods via
+  /// Felsenstein's pruning algorithm, forward pass propagates root information
+  /// back to compute marginal posteriors). Returns the computed log-likelihood
+  /// and the partition for inspection.
   fn run_dense_marginal_with_partitions(
     newick: &str,
     aln_str: &str,
@@ -162,13 +165,14 @@ mod tests {
   /// Numerical stability with extremely short branches (t = 1e-10), dense representation.
   ///
   /// When t is near zero, the transition probability matrix approaches the identity:
-  /// exp(Qt) ~ I + Qt. This requires precise cancellation in the eigendecomposition
-  /// exp(Qt) = V * diag(exp(lambda_i * t)) * V^-1, where exp(lambda_i * t) ~ 1 for
-  /// all eigenvalues. Off-diagonal elements are O(t) ~ 1e-10, testing whether the
-  /// implementation preserves normalization at near-machine-epsilon scale.
+  /// P(t) ~ I + Qt. The implementation computes P(t) = v * diag(exp(lambda_i * mu * t)) * v_inv,
+  /// where v and v_inv incorporate D^{+-1/2} factors from the symmetrization of the rate
+  /// matrix (see `eig_single_site()`). When exp(lambda_i * mu * t) ~ 1 for all eigenvalues,
+  /// the off-diagonal elements of P(t) are O(mu*t) ~ 1e-10, testing whether the
+  /// back-transform preserves normalization at near-machine-epsilon scale.
   ///
   /// Uses identical sequences (ACGT) on both leaves so the likelihood is dominated
-  /// by the diagonal of exp(Qt).
+  /// by the diagonal of P(t).
   #[test]
   fn test_extreme_short_branch_dense() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -215,10 +219,11 @@ mod tests {
   /// Numerical stability with extremely long branches (t = 10.0), dense representation.
   ///
   /// When t is large, the transition matrix approaches the equilibrium distribution:
-  /// exp(Qt) -> 1 * pi^T, because exp(lambda_i * t) -> 0 for all non-zero eigenvalues
-  /// (which are negative for a valid rate matrix). The posterior at each position
-  /// converges to the prior pi regardless of observed state. This tests whether
-  /// exp(Qt) computation handles large negative exponents without underflow.
+  /// P(t) -> pi * 1^T (each column converges to pi), because exp(lambda_i * mu * t) -> 0
+  /// for all non-zero eigenvalues (which are negative for a valid rate matrix). The
+  /// posterior at each position converges to the prior pi regardless of observed state.
+  /// This tests whether P(t) computation handles large negative exponents without
+  /// underflow.
   ///
   /// Uses completely different sequences (ACGT vs TGCA) to ensure non-trivial
   /// likelihood computation despite the near-equilibrium regime.
@@ -267,11 +272,12 @@ mod tests {
 
   /// Numerical stability with asymmetric branch lengths (t1 = 1e-10, t2 = 10.0), dense.
   ///
-  /// One branch has a near-identity transition matrix (exp(Qt) ~ I) while the other
-  /// has a near-equilibrium matrix (exp(Qt) ~ 1 * pi^T). The root must combine messages
-  /// from two branches spanning ~11 orders of magnitude in transition probabilities.
-  /// This tests whether message multiplication and normalization handle the scale
-  /// mismatch without overflow, underflow, or loss of precision.
+  /// One branch has a near-identity transition matrix (P(t) ~ I) while the other
+  /// has a near-equilibrium matrix (P(t) -> pi * 1^T, each column converges to pi).
+  /// The root must combine messages from two branches spanning ~11 orders of magnitude
+  /// in transition probabilities. This tests whether message multiplication and
+  /// normalization handle the scale mismatch without overflow, underflow, or loss of
+  /// precision.
   #[test]
   fn test_extreme_asymmetric_branches_dense() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
@@ -327,9 +333,11 @@ mod tests {
   /// the site likelihood P(data_site) involves products of small transition
   /// probabilities, and the log-likelihood should be strongly negative (< -10).
   ///
-  /// Near-zero pi also causes near-singular eigenvector matrices in the GTR
-  /// eigendecomposition Q = V * diag(lambda) * V^-1, testing robustness of the
-  /// matrix exponential computation.
+  /// Near-zero pi also stresses the D^{-1/2} back-transform in the eigendecomposition
+  /// (dividing by sqrt(pi_i) amplifies rounding errors when pi_i is small), testing
+  /// robustness of the matrix exponential computation. The eigenvectors of the
+  /// symmetrized matrix S remain orthogonal (computed via `eigh`), but the
+  /// back-transformed v and v_inv matrices inherit the poor conditioning.
   #[test]
   fn test_near_zero_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
@@ -432,10 +440,11 @@ mod tests {
 
   /// Numerical stability with extremely skewed equilibrium frequencies, dense.
   ///
-  /// Equilibrium: pi = [0.9997, 0.0001, 0.0001, 0.0001]. The three minority states
-  /// have frequencies near the denormalized float boundary relative to the dominant
-  /// state. Sequences contain all four states (ACGT), forcing the algorithm to compute
-  /// likelihoods for states with pi ~ 1e-4. This stresses the eigenvector matrix
+  /// Equilibrium: pi = [0.9997, 0.0001, 0.0001, 0.0001]. The ratio pi_max/pi_min ~ 10^4
+  /// produces a large condition number in the D^{-1/2} back-transform (dividing by
+  /// sqrt(1e-4) = 0.01 amplifies errors 100x relative to the dominant state).
+  /// Sequences contain all four states (ACGT), forcing the algorithm to compute
+  /// likelihoods for states with pi ~ 1e-4. This stresses the back-transform
   /// conditioning and log-space arithmetic more severely than pi = [0.97, 0.01, 0.01, 0.01].
   #[test]
   fn test_extremely_skewed_pi_dense() -> Result<(), Report> {
@@ -471,10 +480,12 @@ mod tests {
   ///
   /// With mu = 10 and t = 0.1, the effective evolutionary distance mu*t = 1.0 places
   /// the transition matrix in an intermediate regime where off-diagonal elements are
-  /// large (high probability of state change). The rate matrix Q = mu * (Pi * W - I)
-  /// has large off-diagonal entries, producing eigenvalues with large absolute values.
-  /// The matrix exponential exp(Qt) must remain a valid stochastic matrix (rows sum
-  /// to 1, all entries non-negative) despite the large scaling.
+  /// large (high probability of state change). The rate matrix Q has off-diagonal
+  /// entries Q[i,j] = W[i,j] * pi[j] (row-stochastic convention, rows sum to zero),
+  /// and mu scales the eigenvalues in P(t) = v * diag(exp(lambda_i * mu * t)) * v_inv.
+  /// Large mu produces large exponent magnitudes, and P(t) must remain a valid
+  /// column-stochastic matrix (columns sum to 1, all entries non-negative) despite
+  /// the large scaling.
   ///
   /// Uses uniform pi = [0.25, 0.25, 0.25, 0.25] (JC69-like).
   #[test]
@@ -537,7 +548,7 @@ mod tests {
   ///
   /// With mu = 100 and t = 0.01, the effective distance mu*t = 1.0 (same regime as
   /// mu = 10, t = 0.1). The rate matrix eigenvalues are 100x larger, producing
-  /// exp(lambda_i * t) values that span a wider dynamic range in the eigendecomposition.
+  /// exp(lambda_i * mu * t) values that span a wider dynamic range in the eigendecomposition.
   /// Despite the extreme scaling of Q, the product mu*t determines the physical regime,
   /// so the transition matrix should still be well-conditioned.
   ///
@@ -571,11 +582,12 @@ mod tests {
   /// Numerical stability with high mutation rate and non-uniform equilibrium, dense.
   ///
   /// Combines mu = 10 with asymmetric pi = [0.4, 0.1, 0.2, 0.3] on a 3-taxon tree.
-  /// Non-uniform pi breaks the symmetry of the JC69 model, producing a general GTR
-  /// rate matrix where the eigenvector matrix V is not orthogonal. The combination of
-  /// high mu and asymmetric pi tests whether the eigendecomposition and matrix
-  /// exponential remain stable when neither the rate scaling nor the equilibrium
-  /// is simple.
+  /// Non-uniform pi breaks the symmetry of the JC69 model. The eigenvectors of the
+  /// symmetrized matrix S remain orthogonal (computed via `eigh`), but the
+  /// back-transformed v and v_inv matrices incorporate non-trivial D^{+-1/2} scaling
+  /// that is absent under uniform pi. The combination of high mu and asymmetric pi
+  /// tests whether the eigendecomposition and matrix exponential remain stable when
+  /// neither the rate scaling nor the equilibrium is simple.
   #[test]
   fn test_high_mutation_nonuniform_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
@@ -605,15 +617,16 @@ mod tests {
   /// Numerical stability under combined extreme conditions, dense representation.
   ///
   /// Simultaneously applies three stress factors:
-  /// - Skewed pi = [0.9, 0.03, 0.04, 0.03] (near-singular eigenvector matrix).
-  /// - High mutation rate mu = 50 (large off-diagonal Q entries).
-  /// - Very short branches t = 1e-8 (exp(Qt) ~ I + Qt, requiring precise cancellation).
+  /// - Skewed pi = [0.9, 0.03, 0.04, 0.03] (poorly conditioned D^{-1/2} back-transform).
+  /// - High mutation rate mu = 50 (large eigenvalue magnitudes in exp(lambda_i * mu * t)).
+  /// - Very short branches t = 1e-8 (P(t) ~ I + Qt, requiring precise cancellation).
   ///
   /// The effective distance mu*t = 5e-7 is extremely small, so the transition matrix
   /// is near-identity despite the high rate. Sequences use only rare states (C, G),
   /// producing very small site likelihoods. This is the most adversarial combination
   /// for the eigendecomposition: large eigenvalues multiplied by tiny t, with
-  /// near-singular V from skewed pi, and small likelihood values from rare observations.
+  /// poorly conditioned v/v_inv from skewed pi (dividing by sqrt(0.03) amplifies
+  /// rounding errors ~5.8x), and small likelihood values from rare observations.
   #[test]
   fn test_combined_extreme_parameters_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;

@@ -18,36 +18,36 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  /// Numerical tolerance for likelihood comparisons.
-  /// The implementation performs multiple normalization steps that accumulate
-  /// floating-point errors. A tolerance of 1e-7 allows for this while still
-  /// catching any significant algorithmic errors.
+  /// Absolute difference tolerance for log-likelihood comparisons.
+  /// Error sources: eigendecomposition-based matrix exponentiation
+  /// P(t) = V * diag(exp(lambda * mu * t)) * V^{-1}, summation over states at the root,
+  /// and aggregation across alignment positions. 1e-7 is the tightest 1e-N that passes.
   const LIKELIHOOD_EPSILON: f64 = 1e-7;
 
-  /// Compute analytical likelihood for two-taxon tree: (A:t1,B:t2)root;
+  /// Felsenstein site likelihood for a two-taxon rooted tree: (A:t1,B:t2)root;
   ///
-  /// Formula (Felsenstein pruning for two leaves):
-  ///   L = sum_s pi[s] * P(obs_A|s,t1) * P(obs_B|s,t2)
+  /// Formula (Felsenstein 1981, degenerate case with no internal nodes besides root):
+  ///   L = sum_s pi[s] * P(obs_A | s, t1) * P(obs_B | s, t2)
   ///
-  /// where P(obs|s,t) = expQt[obs,s] is the transition probability from state s
-  /// to observed state obs over branch length t.
+  /// where P(i | j, t) = expQt[i, j] is the transition probability from ancestral
+  /// state j to descendant state i over branch length t (column-stochastic convention).
   fn analytical_two_taxon_likelihood(gtr: &GTR, obs_a: usize, obs_b: usize, t1: f64, t2: f64) -> f64 {
     let exp_qt1 = gtr.expQt(t1);
     let exp_qt2 = gtr.expQt(t2);
 
     let mut likelihood = 0.0;
     for s in 0..gtr.pi.len() {
-      // P(obs_A|s,t1) * P(obs_B|s,t2) * pi[s]
-      // expQt[i,j] = P(i|j,t) = probability of observing state i given ancestral state j
+      // pi[s] * P(obs_A | s, t1) * P(obs_B | s, t2)
+      // expQt[i, j] = P(j -> i, t): column-stochastic transition probability
       likelihood += gtr.pi[s] * exp_qt1[[obs_a, s]] * exp_qt2[[obs_b, s]];
     }
     likelihood
   }
 
-  /// Compute analytical likelihood for star tree: (A:t,B:t,C:t,D:t)root;
+  /// Felsenstein site likelihood for a star tree (polytomy): (A:t,B:t,C:t,D:t)root;
   ///
-  /// Formula:
-  ///   L = sum_s pi[s] * prod_i P(obs_i|s,t)
+  /// Formula (generalization to multifurcation at root):
+  ///   L = sum_s pi[s] * prod_i P(obs_i | s, t)
   fn analytical_star_tree_likelihood(gtr: &GTR, observations: &[usize], t: f64) -> f64 {
     let exp_qt = gtr.expQt(t);
 
@@ -62,9 +62,10 @@ mod tests {
     likelihood
   }
 
-  /// Compute analytical likelihood for three-taxon tree: ((A:t_a,B:t_b)AB:t_ab,C:t_c)root;
+  /// Felsenstein site likelihood for a three-taxon tree: ((A:t_a,B:t_b)AB:t_ab,C:t_c)root;
   ///
-  /// Formula (full Felsenstein pruning):
+  /// Minimal topology with a non-trivial internal node, requiring the full recursive
+  /// Felsenstein pruning (postorder partial likelihood at AB, then combination at root):
   ///   L = sum_{s_root} sum_{s_AB} pi[s_root]
   ///       * P(obs_C | s_root, t_C)
   ///       * P(s_AB | s_root, t_AB)
@@ -106,11 +107,13 @@ mod tests {
     }
   }
 
-  /// Run dense marginal ancestral reconstruction and return only the total log-likelihood.
+  /// Run dense marginal ancestral reconstruction and return the total log-likelihood.
   ///
   /// Convenience wrapper: parses the Newick tree and FASTA alignment from strings,
-  /// constructs a single dense partition with the given GTR model, and runs
-  /// Felsenstein's pruning algorithm via `initialize_marginal`.
+  /// constructs a single dense partition with the given GTR model, and runs both
+  /// passes via `initialize_marginal` (postorder pruning + preorder propagation).
+  /// The log-likelihood is computed at the root after the postorder pass. The preorder
+  /// pass also runs but its results (marginal posteriors) are not checked here.
   fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
     let graph: GraphAncestral = nwk_read_str(newick)?;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
@@ -130,17 +133,17 @@ mod tests {
   }
 
   // ============================================================================
-  // T1: Two-taxon analytical likelihood tests
+  // Two-taxon analytical likelihood tests
   // ============================================================================
 
   /// Two-taxon tree with identical leaf states under JC69 (Jukes-Cantor 1969).
   ///
   /// Tree: (A:0.1, B:0.2)root; both leaves observe state 'A'.
   ///
-  /// Analytical: L = sum_s pi[s] * P(A|s,0.1) * P(A|s,0.2).
-  /// Under JC69, pi = [0.25, 0.25, 0.25, 0.25] and P(i|j,t) = expQt[i,j].
-  /// Matched states yield high likelihood because the diagonal of expQt dominates
-  /// at short branch lengths.
+  /// Analytical: L = sum_s pi[s] * P(A | s, 0.1) * P(A | s, 0.2).
+  /// Under JC69, pi = [1/4; 4] and P(i | j, t) = expQt[i, j].
+  /// Matched states yield high likelihood because the JC69 diagonal
+  /// P_{ii}(t) = 1/4 + 3/4 * exp(-4t/3) dominates at short branch lengths.
   #[test]
   fn test_two_taxon_analytical_jc69_same_state() -> Result<(), Report> {
     // Tree: (A:0.1,B:0.2)root;
@@ -165,9 +168,10 @@ mod tests {
   ///
   /// Tree: (A:0.1, B:0.2)root; leaf A observes 'A', leaf B observes 'T'.
   ///
-  /// Analytical: L = sum_s pi[s] * P(A|s,0.1) * P(T|s,0.2).
-  /// Mismatched states require at least one substitution event, so the likelihood is
-  /// lower than for matched states at these branch lengths.
+  /// Analytical: L = sum_s pi[s] * P(A | s, 0.1) * P(T | s, 0.2).
+  /// The off-diagonal JC69 transition probability P_{ij}(t) = 1/4 - 1/4 * exp(-4t/3)
+  /// is small at short branch lengths, so mismatched leaf states produce lower
+  /// likelihood than matched states.
   #[test]
   fn test_two_taxon_analytical_jc69_different_states() -> Result<(), Report> {
     // Tree: (A:0.1,B:0.2)root;
@@ -190,12 +194,13 @@ mod tests {
   /// Two-taxon tree with non-uniform equilibrium frequencies (GTR model).
   ///
   /// Uses pi = [0.4, 0.1, 0.2, 0.3] instead of JC69's uniform [0.25, 0.25, 0.25, 0.25].
-  /// Non-uniform pi tests that the implementation correctly weights ancestral states by
-  /// their equilibrium probability, which is the root prior in Felsenstein's pruning.
+  /// Non-uniform pi tests that the implementation correctly weights each root state
+  /// by its equilibrium frequency in the Felsenstein likelihood sum.
   ///
-  /// Leaf A observes 'A', leaf B observes 'C'. The A->C transition under non-uniform pi
-  /// has different likelihood than under JC69 because pi[A]=0.4 makes 'A' a more probable
-  /// root state.
+  /// Leaf A observes 'A', leaf B observes 'C'. Under non-uniform pi, the likelihood
+  /// differs from JC69 because pi[A]=0.4 gives root state A higher weight in the sum
+  /// over ancestral states, and the rate matrix Q = pi * W produces asymmetric
+  /// off-diagonal transition rates.
   #[test]
   fn test_two_taxon_analytical_nonuniform_pi() -> Result<(), Report> {
     // Non-uniform equilibrium frequencies reveal bugs in pi weighting
@@ -210,7 +215,7 @@ mod tests {
     let t1 = 0.15;
     let t2 = 0.25;
 
-    // Test A->C transition
+    // Leaf A observes 'A', leaf B observes 'C'
     let expected_lh = analytical_two_taxon_likelihood(&gtr, state_index('A'), state_index('C'), t1, t2);
     let expected_log_lh = expected_lh.ln();
 
@@ -288,17 +293,17 @@ mod tests {
   }
 
   // ============================================================================
-  // T2: Star tree analytical likelihood tests
+  // Star tree analytical likelihood tests
   // ============================================================================
 
   /// Star tree (4 leaves directly from root) with all identical states under JC69.
   ///
   /// Tree: (A:0.1, B:0.1, C:0.1, D:0.1)root; all leaves observe 'A'.
   ///
-  /// Analytical: L = sum_s pi[s] * prod_i P(A|s,0.1).
-  /// The star topology is a polytomy at the root with no internal nodes. This tests
-  /// that Felsenstein's pruning correctly handles more than 2 children at the root.
-  /// With all states identical, the diagonal of expQt dominates the product.
+  /// Analytical: L = sum_s pi[s] * prod_i P(A | s, 0.1).
+  /// The star topology is a polytomy (multifurcation) at the root with no internal
+  /// nodes. This tests that the postorder pass correctly handles more than 2 children
+  /// at the root. With all states identical, the diagonal of expQt dominates the product.
   #[test]
   fn test_star_tree_analytical_jc69_all_same() -> Result<(), Report> {
     // Star tree: (A:0.1,B:0.1,C:0.1,D:0.1)root;
@@ -322,10 +327,11 @@ mod tests {
   ///
   /// Tree: (A:0.2, B:0.2, C:0.2, D:0.2)root; leaves observe A, C, G, T respectively.
   ///
-  /// Analytical: L = sum_s pi[s] * P(A|s,0.2) * P(C|s,0.2) * P(G|s,0.2) * P(T|s,0.2).
-  /// With all four states present, no single ancestral state avoids at least 3 substitutions.
-  /// Under JC69's symmetry, each root state contributes equally, yielding a low total
-  /// likelihood that exercises the off-diagonal elements of expQt.
+  /// Analytical: L = sum_s pi[s] * P(A | s, 0.2) * P(C | s, 0.2) * P(G | s, 0.2) * P(T | s, 0.2).
+  /// Every root state matches exactly 1 of 4 leaves, contributing one diagonal and three
+  /// off-diagonal transition probabilities. Under JC69's symmetry, all four root states
+  /// contribute equally, yielding a low total likelihood that exercises the off-diagonal
+  /// elements of expQt.
   #[test]
   fn test_star_tree_analytical_jc69_mixed_states() -> Result<(), Report> {
     // Star tree with different states at leaves
@@ -348,9 +354,11 @@ mod tests {
   ///
   /// Uses pi = [0.1, 0.2, 0.3, 0.4] with leaves observing T, T, G, C.
   ///
-  /// Analytical: L = sum_s pi[s] * P(T|s,0.15) * P(T|s,0.15) * P(G|s,0.15) * P(C|s,0.15).
-  /// Non-uniform pi breaks JC69's state symmetry: root state T (pi=0.4) contributes more
-  /// than root state A (pi=0.1) to the sum, biasing the likelihood toward T-rich scenarios.
+  /// Analytical: L = sum_s pi[s] * P(T | s, 0.15) * P(T | s, 0.15) * P(G | s, 0.15) * P(C | s, 0.15).
+  /// Non-uniform pi breaks JC69's state symmetry: root state T (pi[T]=0.4) contributes more
+  /// than root state A (pi[A]=0.1) to the sum, biasing the likelihood toward T-rich ancestral
+  /// states. This also produces an asymmetric rate matrix Q, so the transition probability
+  /// P(T | s, t) differs from P(s | T, t).
   #[test]
   fn test_star_tree_analytical_nonuniform_pi() -> Result<(), Report> {
     // Non-uniform equilibrium frequencies with star tree
@@ -377,21 +385,22 @@ mod tests {
   }
 
   // ============================================================================
-  // T3: Single-position exhaustive verification
+  // Three-taxon exhaustive verification
   // ============================================================================
 
-  /// Three-taxon tree with a single position, verified against closed-form Felsenstein pruning.
+  /// Three-taxon tree with a single position, verified against closed-form Felsenstein
+  /// site likelihood with explicit summation over all internal node states.
   ///
   /// Tree: ((A:0.1, B:0.2)AB:0.15, C:0.25)root; leaves observe A, C, G.
   ///
-  /// Analytical (full enumeration over internal node AB):
+  /// Analytical (enumeration over root and internal node AB, 4x4 = 16 terms):
   ///   L = sum_{s_root} sum_{s_AB} pi[s_root]
-  ///       * P(G|s_root, 0.25) * P(s_AB|s_root, 0.15)
-  ///       * P(A|s_AB, 0.1) * P(C|s_AB, 0.2)
+  ///       * P(G | s_root, 0.25) * P(s_AB | s_root, 0.15)
+  ///       * P(A | s_AB, 0.1) * P(C | s_AB, 0.2)
   ///
-  /// This is the simplest tree topology that exercises the recursive message-passing
-  /// structure of Felsenstein's algorithm: the AB subtree produces a partial likelihood
-  /// vector that is combined with the C leaf message at the root.
+  /// This is the minimal topology with a non-trivial internal node, exercising the
+  /// recursive structure of Felsenstein's postorder pass: the AB subtree produces a
+  /// partial likelihood vector that is combined with the C leaf message at the root.
   #[test]
   fn test_three_taxon_single_position_exhaustive() -> Result<(), Report> {
     // Tree: ((A:0.1,B:0.2)AB:0.15,C:0.25)root;
@@ -425,8 +434,8 @@ mod tests {
   /// For each triplet (state_A, state_B, state_C) in {A,C,G,T}^3, the implementation's
   /// log-likelihood is compared against the analytical formula that sums over all possible
   /// root and internal node states. This provides complete coverage of the state-space
-  /// for this topology, catching any bugs in how specific state transitions are handled
-  /// (e.g. transversions vs transitions under symmetric models).
+  /// for this topology, catching indexing bugs or incorrect matrix element access in the
+  /// transition probability lookup (all 4x4 entries of expQt are exercised).
   #[test]
   fn test_three_taxon_all_combinations() -> Result<(), Report> {
     // Verify likelihood computation for all 64 possible single-position triplets

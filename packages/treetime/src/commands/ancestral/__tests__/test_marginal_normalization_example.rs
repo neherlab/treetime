@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::commands::ancestral::__tests__::prop_marginal_support::{run_dense_marginal, run_sparse_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use treetime_io::fasta::FastaRecord;
   use treetime_io::fasta::read_many_fasta_str;
@@ -11,9 +11,10 @@ mod tests {
   /// Build a fixed 4-taxon test input for marginal normalization verification.
   ///
   /// Tree topology: `((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01`
-  /// Alignment: 8-character nucleotide sequences (ACGTACG + varying last position)
-  /// that differ only at position 8, producing one variable site and seven fixed sites.
-  /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies.
+  /// Alignment: 8-character nucleotide sequences with shared prefix ACGTACG and all four
+  /// nucleotides (T, A, G, C) at position 8, producing one variable site with maximum
+  /// state diversity and seven fixed (invariant) sites.
+  /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies (pi = 1/4).
   fn example_input() -> Result<MarginalTestInput, Report> {
     let alignment = read_many_fasta_str(
       "
@@ -62,19 +63,27 @@ ACGTACGC
     Ok(())
   }
 
-  /// Verify that marginal reconstruction produces valid probability distributions at
-  /// every node and edge in the dense representation.
+  /// Verify that Felsenstein's pruning algorithm (two-pass sum-product message passing on
+  /// the tree) produces normalized marginal posterior distributions in the dense
+  /// representation.
   ///
-  /// By Bayes' theorem, the posterior probability of each state given the observed data
-  /// is P(state|data) = P(data|state) * pi(state) / P(data), which must sum to 1 over
-  /// all states at each alignment position.
+  /// The algorithm computes marginal posteriors P(x_k | D) at each node k via two passes:
+  /// 1. Backward (leaves to root): partial likelihoods propagate upward (ingroup messages).
+  /// 2. Forward (root to leaves): outgroup messages propagate downward.
+  ///    The marginal posterior at each node is the product of ingroup and outgroup messages,
+  ///    normalized to sum to 1 over all states at each alignment position.
   ///
   /// Checked invariants:
-  /// - Log-likelihood is finite and non-positive (ln(P) <= 0 since P <= 1).
-  /// - Every row of every node profile matrix sums to 1.0 (valid distribution).
-  /// - Every row of every edge message matrix sums to 1.0 (valid distribution).
-  /// - All probability values are finite and non-negative.
+  /// - Log-likelihood is finite and non-positive (L = sum_s ln P(D_s) <= 0, since each
+  ///   site likelihood P(D_s) <= 1).
+  /// - Every row of every node profile matrix sums to 1.0 within 1e-8 (valid marginal
+  ///   posterior distribution). Nodes without profiles (not yet populated) are skipped.
+  /// - Every row of every edge outgroup message matrix sums to 1.0 within 1e-8
+  ///   (normalized message from the rest of the tree toward the child subtree).
+  /// - All values are finite and non-negative (within -1e-14 tolerance for numerical
+  ///   noise from normalization).
   ///
+  /// Example-based companion to `test_prop_marginal_normalization_dense`.
   /// Uses a fixed 4-taxon tree with JC69 model.
   #[test]
   fn test_marginal_normalization_example_dense() -> Result<(), Report> {
@@ -91,7 +100,7 @@ ACGTACGC
       }
       for row in node_data.profile.dis.rows() {
         let sum: f64 = row.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in row {
           assert!(value.is_finite(), "Non-finite value in dense node profile: {value}");
           assert!(value >= -1e-14, "Negative value in dense node profile: {value}");
@@ -104,7 +113,7 @@ ACGTACGC
       }
       for row in edge_data.msg_to_child.dis.rows() {
         let sum: f64 = row.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in row {
           assert!(value.is_finite(), "Non-finite value in dense edge message: {value}");
           assert!(value >= -1e-14, "Negative value in dense edge message: {value}");
@@ -114,20 +123,26 @@ ACGTACGC
     Ok(())
   }
 
-  /// Verify that marginal reconstruction produces valid probability distributions at
-  /// every node and edge in the sparse representation.
+  /// Verify that Felsenstein's pruning algorithm (two-pass sum-product message passing on
+  /// the tree) produces normalized marginal posterior distributions in the sparse
+  /// representation.
   ///
-  /// The sparse representation stores variable positions individually and groups fixed
-  /// characters by their consensus state. Both variable-position distributions and
-  /// fixed-character distributions must be valid probability distributions.
+  /// The sparse representation uses Fitch parsimony compression to identify variable vs.
+  /// fixed positions before running the marginal algorithm. Variable positions store
+  /// individual probability vectors. Fixed positions are grouped by their conserved
+  /// nucleotide character (the character that is invariant across the subtree at that
+  /// node), each group sharing a single probability vector. Both components must be valid
+  /// probability distributions after the two-pass algorithm (backward + forward).
   ///
   /// Checked invariants:
-  /// - Log-likelihood is finite and non-positive.
+  /// - Log-likelihood is finite and non-positive (L = sum_s ln P(D_s) <= 0).
   /// - Node and edge profile `log_lh` fields are finite.
-  /// - Every variable-position distribution sums to 1.0.
-  /// - Every fixed-character distribution sums to 1.0.
-  /// - All probability values are finite and non-negative.
+  /// - Every variable-position distribution sums to 1.0 within 1e-8.
+  /// - Every fixed-character distribution sums to 1.0 within 1e-8.
+  /// - All values are finite and non-negative (within -1e-14 tolerance for numerical
+  ///   noise from normalization).
   ///
+  /// Example-based companion to `test_prop_marginal_normalization_sparse`.
   /// Uses the same fixed 4-taxon tree and JC69 model as the dense variant.
   #[test]
   fn test_marginal_normalization_example_sparse() -> Result<(), Report> {
@@ -146,7 +161,7 @@ ACGTACGC
       );
       for var_pos in profile.variable.values() {
         let sum: f64 = var_pos.dis.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in &var_pos.dis {
           assert!(
             value.is_finite(),
@@ -157,7 +172,7 @@ ACGTACGC
       }
       for fixed_dis in profile.fixed.values() {
         let sum: f64 = fixed_dis.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in fixed_dis {
           assert!(value.is_finite(), "Non-finite value in sparse fixed profile: {value}");
           assert!(value >= -1e-14, "Negative value in sparse fixed profile: {value}");
@@ -173,7 +188,7 @@ ACGTACGC
       );
       for var_pos in profile.variable.values() {
         let sum: f64 = var_pos.dis.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in &var_pos.dis {
           assert!(
             value.is_finite(),
@@ -187,7 +202,7 @@ ACGTACGC
       }
       for fixed_dis in profile.fixed.values() {
         let sum: f64 = fixed_dis.sum();
-        assert_ulps_eq!(1.0, sum, epsilon = 1e-8);
+        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
         for &value in fixed_dis {
           assert!(
             value.is_finite(),

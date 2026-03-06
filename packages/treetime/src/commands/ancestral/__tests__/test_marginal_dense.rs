@@ -24,11 +24,13 @@ mod tests {
 
   /// Assert that every row of a dense probability matrix is a valid distribution.
   ///
-  /// Checks three conditions per row:
-  /// 1. Row sums to 1.0 within the given ULP tolerance (normalization).
-  /// 2. All values are finite (no NaN or infinity from numerical overflow).
-  /// 3. No significantly negative values (probabilities must be non-negative,
-  ///    with a small tolerance of -1e-15 for floating-point rounding).
+  /// Checks per row:
+  /// - Row sums to 1.0 within the given ULP tolerance (normalization).
+  /// - Row sum is finite (redundant after the ULP check, but provides a clearer
+  ///   diagnostic message if the ULP assertion is ever removed).
+  /// - All values are finite (no NaN or infinity from numerical overflow).
+  /// - No significantly negative values (probabilities must be non-negative,
+  ///   with a small tolerance of -1e-15 for floating-point rounding).
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
@@ -68,9 +70,11 @@ mod tests {
   /// and partition array.
   ///
   /// Initializes a `PartitionMarginalDense` with the given GTR model and
-  /// alignment, then runs `initialize_marginal` which performs Felsenstein's
-  /// pruning (upward pass) and the downward pass to compute marginal posterior
-  /// distributions P(s|data) at every node and position.
+  /// alignment, then runs `initialize_marginal` which performs two-pass
+  /// sum-product message passing (backward pass computes partial likelihoods
+  /// from leaves to root, forward pass propagates outgroup information from
+  /// root to leaves) to compute marginal posterior distributions P(s|data) at
+  /// every node and position.
   fn run_dense_marginal(
     graph: &GraphAncestral,
     aln: &[FastaRecord],
@@ -94,8 +98,8 @@ mod tests {
   /// Parse a Newick tree string and compute the dense marginal log-likelihood.
   ///
   /// Convenience wrapper for root-invariance tests that need to evaluate the
-  /// same alignment under different tree topologies (re-rootings). Returns only
-  /// the scalar log-likelihood, discarding the partition data.
+  /// same alignment under different rootings of the same unrooted topology.
+  /// Returns only the scalar log-likelihood, discarding the partition data.
   fn run_dense_lh_for_newick(
     newick: &str,
     aln: &[FastaRecord],
@@ -112,16 +116,18 @@ mod tests {
   /// Verify that dense marginal ancestral reconstruction infers the expected
   /// ancestral sequences at internal nodes.
   ///
-  /// Uses a 4-taxon tree with known leaf and internal-node sequences (provided
-  /// as alignment input for leaves and as expected output for internal nodes).
-  /// The alignment includes gaps, ambiguity codes (N, R), and all four
-  /// nucleotides to exercise diverse code paths in the marginal reconstruction.
+  /// Uses a 7-node tree ((A,B)AB,(C,D)CD)root where all nodes - both leaves
+  /// and internal - have input sequences in the alignment. The alignment
+  /// includes gaps, ambiguity codes (N, R), and all four nucleotides to
+  /// exercise diverse code paths in the marginal reconstruction. This
+  /// distinguishes the dense test from the sparse variant, which provides
+  /// sequences only for the 4 leaf taxa.
   ///
   /// The JC69 model with `treat_gap_as_unknown=true` treats gaps as fully
-  /// ambiguous (equivalent to N). The test compares inferred ancestral sequences
-  /// at root, AB, and CD against hand-verified expected sequences using
-  /// `ancestral_reconstruction_marginal`, which picks the maximum a posteriori
-  /// state argmax_s P(s|data) at each position.
+  /// ambiguous (equivalent to N). The test compares inferred ancestral
+  /// sequences at root, AB, and CD against expected sequences using
+  /// `ancestral_reconstruction_marginal`, which picks the MAP (maximum a
+  /// posteriori) state argmax_s P(s|data) at each position.
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
@@ -199,13 +205,16 @@ mod tests {
   /// Verify that all marginal posterior distributions are properly normalized
   /// after dense reconstruction.
   ///
-  /// For every node and every edge message, checks that each row of the
-  /// probability matrix sums to 1.0 (within 4 ULPs), contains only finite
-  /// values, and has no significantly negative entries. This validates the
-  /// probability axiom: sum_s P(s|data) = 1 for all positions.
+  /// After two-pass sum-product message passing (Felsenstein's pruning
+  /// algorithm backward, then forward propagation), checks every node
+  /// profile and every edge message-to-child. For each row of the probability
+  /// matrix, asserts sum_s P(s|data) = 1 within 4 ULPs, all values finite,
+  /// and no significantly negative entries. This validates the normalization
+  /// property of marginal posterior distributions at every node and position.
   ///
-  /// Also verifies the total log-likelihood against a known expected value
-  /// for this specific tree/alignment/model combination.
+  /// Also verifies the total log-likelihood against a known-good regression
+  /// value for this specific tree (7 nodes), alignment (16 sites), and JC69
+  /// model combination.
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
     let aln = read_many_fasta_str(
@@ -237,18 +246,20 @@ mod tests {
 
     let (log_lh, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
 
-    // Verify log-likelihood is in expected range (tree with 7 nodes, 16 sites)
+    // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
 
     let partition = partitions[0].read_arc();
     let max_ulps = 4;
 
+    // Node profiles: marginal posterior P(s|data) at each position
     for node_data in partition.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         assert_dense_rows_normalized(&node_data.profile.dis, max_ulps);
       }
     }
 
+    // Edge messages: outgroup message from parent toward child subtree
     for edge_data in partition.edges.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
@@ -261,14 +272,17 @@ mod tests {
   /// Verify that `update_marginal` is idempotent: running it twice produces
   /// the same log-likelihood.
   ///
-  /// Marginal ancestral reconstruction via Felsenstein's algorithm converges in
-  /// a single upward + downward pass on a tree (no iterative refinement needed).
-  /// Calling `update_marginal` a second time must produce identical results
-  /// because the message-passing equations have a unique fixed point on trees.
+  /// Two-pass sum-product message passing (belief propagation) on a tree
+  /// converges exactly in a single backward + forward pass - no iterative
+  /// refinement is needed. Calling `update_marginal` a second time must
+  /// produce identical results because the message-passing equations have a
+  /// unique fixed point on tree-structured factor graphs.
   ///
   /// This test first runs `initialize_marginal` (which includes one
   /// `update_marginal` call), then calls `update_marginal` twice more and
-  /// verifies both calls return the same log-likelihood.
+  /// verifies both calls return the same log-likelihood. Any deviation would
+  /// indicate state corruption, accumulating numerical drift, or incorrect
+  /// in-place mutation of node/edge profiles.
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
     let aln = read_many_fasta_str(
@@ -303,10 +317,10 @@ mod tests {
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
-    // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
+    // Regression check: same tree/alignment/model as normalization test
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh_first, epsilon = 1e-6);
 
-    // Verify idempotency
+    // Idempotency: second pass must produce identical log-likelihood
     assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
@@ -365,22 +379,29 @@ mod tests {
     Ok(())
   }
 
-  /// Verify the probability axiom: the sum of likelihoods over all possible
-  /// leaf state combinations equals 1.0.
+  /// Verify the law of total probability: the total likelihood over all possible
+  /// leaf state combinations sums to 1.0.
   ///
-  /// For a single alignment position on a 3-taxon tree, the total likelihood
-  /// summed over all 4^3 = 64 possible nucleotide triplets (A, B, C) must equal
-  /// 1.0 by the law of total probability:
+  /// For a single alignment position on a 3-taxon tree ((A,B),C)root, the
+  /// likelihood summed over all 4^3 = 64 possible nucleotide triplets must
+  /// equal 1.0:
   ///
-  ///   sum_{s_A, s_B, s_C} L(s_A, s_B, s_C) = 1
+  ///   sum_{s_A, s_B, s_C} P(s_A, s_B, s_C | tree, GTR) = 1
   ///
-  /// where L(s_A, s_B, s_C) = sum_{s_root} pi[s_root] * product over children c
-  /// of (sum_{s_internal} P(s_internal|s_root, t_c) * P(s_leaf|s_internal, t_leaf)).
+  /// where for this topology (root has children: internal node I and leaf C):
   ///
-  /// Uses a skewed GTR model (pi = [0.9, 0.06, 0.02, 0.02]) with relatively
-  /// long branches to stress-test numerical precision. Each of the 64 single-site
-  /// alignments is evaluated independently, and the exponentiated log-likelihoods
-  /// are summed.
+  ///   P(s_A, s_B, s_C | tree, GTR) = sum_{s_root, s_I} pi[s_root]
+  ///     * P(s_I | s_root, t_I) * P(s_A | s_I, t_A) * P(s_B | s_I, t_B)
+  ///     * P(s_C | s_root, t_C)
+  ///
+  /// This is a consequence of the law of total probability applied to the
+  /// joint distribution over observable leaf states, with all internal node
+  /// states marginalized out via Felsenstein's pruning algorithm.
+  ///
+  /// Uses an asymmetric GTR model (pi = [0.9, 0.06, 0.02, 0.02]) with long
+  /// branches (up to 0.6 substitutions/site) to stress numerical precision.
+  /// Each of the 64 single-site alignments is evaluated independently, and the
+  /// exponentiated log-likelihoods are summed.
   #[test]
   fn test_total_likelihood_marginal_dense_all_triplets() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;

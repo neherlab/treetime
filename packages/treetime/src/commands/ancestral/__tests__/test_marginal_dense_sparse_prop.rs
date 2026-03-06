@@ -11,7 +11,8 @@ mod tests {
     // INVESTIGATE(dense-sparse-divergence): Dense and sparse marginal log-likelihoods diverge
     // beyond rounding for ~2.5% of random GTR configurations.
     //
-    // Methodology: 200 proptest cases, 4-10 taxa, gap-free alignments, random GTR parameters.
+    // Methodology: one-off run of 200 proptest cases (current test config uses 30),
+    // 4 taxa, 10-position gap-free alignments, random GTR parameters.
     // Ran both dense and sparse marginal on identical inputs, collected abs_diff, rel_diff, ULPs.
     //
     // Findings - two distinct populations:
@@ -34,22 +35,35 @@ mod tests {
     // tolerance escape hatch in `relative_eq!`, ensuring pure relative comparison.
     //
     // Investigation leads:
-    //   - Identify which parameters trigger population 2 (extreme eigenvalue ratios,
-    //     near-degenerate rate matrices)
-    //   - Compare dense/sparse intermediate results (per-node profiles, branch propagation)
-    //   - Check if sparse compression loses precision for positions variable in the full
-    //     probability vector but compressed away
+    //   - Identify which GTR parameters trigger population 2 (extreme eigenvalue ratios
+    //     in the rate matrix Q, near-degenerate exchangeability matrices)
+    //   - Compare dense/sparse intermediate results (per-node partial likelihoods,
+    //     branch propagation via P(t) = exp(Qt))
+    //   - Check whether Fitch-based invariant/variable classification diverges from
+    //     likelihood-based variability: a position where all tips share one state is
+    //     "invariant" to Fitch parsimony, but its probability vector under the GTR model
+    //     still depends on branch-length-specific transition probabilities
     //   - If correctness bug: fix and tighten to ULPs-level
     //   - If inherent to sparse approximation: document the error bound
 
-    /// Property-based test: dense and sparse marginal log-likelihoods agree on
-    /// randomly generated inputs (4-10 taxa, gap-free alignments, random GTR).
+    /// Oracle comparison test: dense and sparse marginal log-likelihoods agree on
+    /// randomly generated inputs (4 taxa, 10-position gap-free alignments, random GTR).
     ///
-    /// Both representations compute the Felsenstein likelihood but via different
-    /// code paths. Dense operates on full NxK probability matrices at every
-    /// position. Sparse compresses invariant sites via Fitch parsimony and
-    /// operates only on variable positions, accumulating fixed-site contributions
-    /// separately.
+    /// Both representations compute the Felsenstein pruning algorithm likelihood via
+    /// different code paths, then the result is compared.
+    ///
+    /// Dense (reference): stores full L x K probability matrices (L = alignment length,
+    /// K = number of states) at every node. Calls `initialize_marginal`, which attaches
+    /// sequences and runs the backward pass (tips to root, computing partial likelihoods)
+    /// and forward pass (root to tips, computing outgroup profiles).
+    ///
+    /// Sparse (optimized): first runs Fitch parsimony compression (`compress_sequences`)
+    /// to classify positions as invariant or variable, then calls `update_marginal` on
+    /// variable positions only, accumulating fixed-site contributions separately.
+    ///
+    /// Invariant tested: the total log-likelihood
+    ///   L = sum over sites l of log(sum over states s of pi[s] * L_root^(l)(s))
+    /// must agree between dense and sparse code paths.
     ///
     /// Uses relative tolerance (max_relative = 1e-5) rather than ULPs due to a
     /// bimodal error distribution: ~97.5% of cases agree to 0-3 ULPs, while

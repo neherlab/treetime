@@ -9,9 +9,10 @@ mod tests {
   /// Assert that every row of a dense profile matrix is a valid probability distribution.
   ///
   /// Checks three conditions per row:
-  /// - Row sum equals 1.0 within epsilon = 1e-8.
+  /// - Row sum equals 1.0 within epsilon = 1e-8 (abs-diff).
   /// - All values are finite (no NaN or Inf).
-  /// - All values are non-negative (probabilities in [0, 1]).
+  /// - All values >= -1e-14 (allows roundoff-level negative values from
+  ///   element-wise division in the outgroup message computation).
   ///
   /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_dense_rows_normalized(dis: &Array2<f64>) -> Result<(), TestCaseError> {
@@ -32,11 +33,16 @@ mod tests {
 
   /// Assert that a sparse marginal profile is a valid probability distribution.
   ///
-  /// Checks the following for each component of the sparse representation:
+  /// The sparse representation separates positions into two groups:
+  /// - Variable positions: sites that differ across the subtree, stored individually.
+  /// - Fixed-character distributions: conditional posteriors for positions sharing
+  ///   the same consensus state from Fitch compression, stored per character key.
+  ///
+  /// Checks the following for each component:
   /// - `log_lh` is finite.
-  /// - Every variable-position distribution sums to 1.0 within epsilon = 1e-8.
-  /// - Every fixed-character distribution sums to 1.0 within epsilon = 1e-8.
-  /// - All values are finite and non-negative.
+  /// - Every variable-position distribution sums to 1.0 within epsilon = 1e-8 (abs-diff).
+  /// - Every fixed-character distribution sums to 1.0 within epsilon = 1e-8 (abs-diff).
+  /// - All values are finite and >= -1e-14 (allows roundoff-level negative values).
   ///
   /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution) -> Result<(), TestCaseError> {
@@ -77,12 +83,19 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
 
-    /// Property test: every node and edge profile in a dense marginal reconstruction
-    /// is a valid probability distribution, across random trees and GTR models.
+    /// Property test: every node posterior and edge outgroup message in a dense marginal
+    /// reconstruction is a valid probability distribution, across random trees and GTR models.
     ///
-    /// By Bayes' theorem, P(state|data) = P(data|state) * pi(state) / P(data) must
-    /// sum to 1 over all states at each position. Verifies log-likelihood is finite
-    /// and non-positive, and all profile rows are normalized.
+    /// Felsenstein's two-pass pruning algorithm (sum-product belief propagation on trees)
+    /// guarantees that node posteriors and edge messages are normalizable at every step:
+    /// - Backward pass (leaves to root): partial likelihoods are products of non-negative
+    ///   transition-weighted child messages, normalized per row.
+    /// - Forward pass (root to leaves): node posteriors combine ingroup and outgroup
+    ///   information, normalized per row. Edge outgroup messages (`msg_to_child`) are
+    ///   computed as node_posterior / msg_from_child, then normalized.
+    ///
+    /// Verifies that the total log-likelihood L = sum_s ln(P(D_s)) is finite and
+    /// non-positive (each site likelihood P(D_s) is in (0, 1], so ln(P(D_s)) <= 0).
     ///
     /// Uses small random inputs (3-4 taxa, 3-10 positions) for thorough shrinking.
     ///
@@ -107,12 +120,14 @@ mod tests {
       }
     }
 
-    /// Property test: every node and edge profile in a sparse marginal reconstruction
-    /// is a valid probability distribution, across random trees and GTR models.
+    /// Property test: every node posterior and edge outgroup message in a sparse marginal
+    /// reconstruction is a valid probability distribution, across random trees and GTR models.
     ///
-    /// The sparse representation groups fixed characters and stores variable positions
-    /// individually. Both components must produce normalized distributions. Verifies
-    /// log-likelihood is finite and non-positive.
+    /// The sparse representation splits positions into variable (stored individually) and
+    /// fixed (grouped by consensus character from Fitch compression). The forward pass
+    /// explicitly normalizes both variable-position and fixed-character distributions,
+    /// so both must sum to 1. Verifies that the total log-likelihood is finite and
+    /// non-positive (same invariant as the dense variant).
     ///
     /// Uses small random inputs (3-4 taxa, 3-10 positions) for thorough shrinking.
     ///
@@ -136,10 +151,11 @@ mod tests {
     /// Property test: dense marginal log-likelihood is finite and non-positive across
     /// larger random inputs (3-6 taxa, 5-20 positions).
     ///
-    /// The total log-likelihood L = sum over sites of ln(P(data_site)) where each
-    /// site likelihood P(data_site) <= 1, so L <= 0. This test uses larger inputs
-    /// than the full-profile normalization tests to stress numerical accumulation
-    /// over more positions and taxa without the cost of inspecting every profile row.
+    /// The total log-likelihood L = sum_s ln(P(D_s)) is non-positive because each
+    /// site likelihood P(D_s) is a probability in (0, 1]. Larger inputs than the
+    /// full-profile normalization tests stress the logsumexp accumulation path for
+    /// numerical stability (underflow from multiplying many small partial likelihoods,
+    /// cancellation in log-space sums) without the cost of inspecting every profile row.
     ///
     /// Companion example test: `test_marginal_normalization_example_dense`.
     #[test]
@@ -153,8 +169,11 @@ mod tests {
     /// larger random inputs (3-6 taxa, 5-20 positions).
     ///
     /// Same log-likelihood invariant as the dense variant (L <= 0), exercised on the
-    /// sparse representation. Larger inputs stress the compression-aware accumulation
-    /// path over more variable and fixed positions.
+    /// sparse representation. The sparse path accumulates log-likelihood separately
+    /// over variable positions (individual per-site contributions) and fixed positions
+    /// (per-character contributions weighted by Fitch compression counts). Larger
+    /// inputs increase both the number of variable sites and the compression multipliers,
+    /// stressing this split accumulation for numerical stability.
     ///
     /// Companion example test: `test_marginal_normalization_example_sparse`.
     #[test]

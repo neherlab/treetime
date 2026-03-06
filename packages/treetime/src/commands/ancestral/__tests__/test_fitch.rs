@@ -35,7 +35,8 @@ mod tests {
   /// Collect substitution mutations on every edge, keyed by "parent->child" label.
   ///
   /// Each edge's substitutions are formatted as strings (e.g. "A1G" for A->G at position 1).
-  /// Used to verify that Fitch's forward pass correctly placed mutations on branches.
+  /// Used to verify that compression (backward + forward + cleanup) correctly placed
+  /// mutations on branches.
   fn collect_edge_subs(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
@@ -57,8 +58,10 @@ mod tests {
 
   /// Return the sorted list of alignment positions that are variable at the root node.
   ///
-  /// After Fitch's backward pass, variable positions are those where child state sets
-  /// did not all agree, requiring the algorithm to track multiple candidate states.
+  /// After Fitch's backward pass, variable positions are those where the intersection of
+  /// child state sets was either empty (union taken) or contained more than one state
+  /// (ambiguous intersection). Positions where the intersection was a singleton are resolved
+  /// immediately and do not appear as variable.
   fn get_root_variable_positions(graph: &GraphAncestral, partition: &PartitionFitch) -> Vec<usize> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
@@ -74,8 +77,10 @@ mod tests {
   /// Return the Fitch state sets at each variable position of the root node.
   ///
   /// After the backward pass, each variable position holds the set of candidate nucleotide
-  /// states. If all children agreed, the set is a singleton (intersection). If they disagreed,
-  /// it is the union, and the parsimony score was incremented.
+  /// states. The set is either a multi-element intersection (children partially agree) or the
+  /// union of child state sets (children share no common state, implying a state change).
+  /// Singleton intersections (all children agree on one state) are resolved immediately and
+  /// do not appear in this map.
   fn get_root_state_sets(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<usize, String> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
@@ -147,13 +152,16 @@ mod tests {
   ///
   /// Tree topology: ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01
   ///
-  /// Verifies that the full Fitch algorithm (backward + forward passes) reconstructs the
-  /// correct ancestral sequences at internal nodes (root, AB, CD). The alignment contains
-  /// substitutions, ambiguous bases (N, R), and gap patterns to exercise all code paths.
+  /// Verifies that the full Fitch pipeline (backward + forward + cleanup, then reconstruction
+  /// traversal) produces the correct ancestral sequences at internal nodes (root, AB, CD).
+  /// The alignment contains substitutions, ambiguous bases (N, R), and gap patterns to
+  /// exercise all code paths.
   ///
   /// Only internal node sequences are emitted (leaves excluded via `include_leaves=false`).
   /// Expected sequences are hand-derived from the Fitch intersection/union rule applied
-  /// bottom-up, then resolved top-down by preferring the parent state.
+  /// bottom-up, then resolved top-down: at the root, the alphabetically first state from
+  /// the candidate set is chosen (no parent to prefer); at non-root nodes, the parent
+  /// state is preferred when present in the child's state set.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
@@ -292,13 +300,14 @@ mod tests {
   /// Verify substitution and indel mutations placed on individual edges by Fitch's algorithm.
   ///
   /// Uses the same 4-taxon tree and alignment as `test_ancestral_reconstruction_fitch`.
-  /// After running compression (backward + forward), inspects each edge for:
+  /// After running `compress_sequences()` (backward + forward + cleanup), inspects each
+  /// edge for:
   /// - Substitutions: point mutations between parent and child states (e.g. "C6G")
   /// - Indels: gap openings/closings with position ranges (e.g. "12--13: T -> -")
   ///
-  /// This tests the mutation-placement logic that runs after sequence reconstruction,
-  /// verifying that the diff between parent and child sequences is correctly decomposed
-  /// into substitution and indel events.
+  /// This tests the mutation-placement logic in the forward pass, verifying that the diff
+  /// between parent and child sequences is correctly decomposed into substitution and
+  /// indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
     drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
@@ -364,7 +373,10 @@ mod tests {
   ///
   /// Tree: ((A,B)AB,(C,(D,E)DE)CDE)root
   ///
-  /// Tests three challenging indel scenarios:
+  /// Standard Fitch parsimony (Fitch 1971) operates on single characters. This
+  /// implementation extends it with range-based gap tracking for multi-position insertions
+  /// and deletions. Tests three challenging indel scenarios via `compress_sequences()`
+  /// (backward + forward + cleanup):
   /// - Overlapping deletions: leaves A and B have deletions at different but overlapping
   ///   positions, requiring the algorithm to reconstruct which gaps are ancestral vs derived.
   /// - Root-level deletion: the root itself carries a gap that propagates to subtrees.
@@ -446,8 +458,8 @@ mod tests {
   ///
   /// Fitch's algorithm generalizes from binary to n-ary nodes: the backward pass computes
   /// the intersection of all n child state sets. If the intersection is empty, it takes
-  /// the union and increments the parsimony score. The forward pass resolves ambiguities
-  /// using the parent state as tiebreaker.
+  /// the union (implying at least one state change). The forward pass resolves ambiguities
+  /// using the parent state when it is present in the child's state set.
   ///
   /// Uses the same alignment as `test_fitch_complex_gaps` but with a different tree topology
   /// (D and E are direct children of CDE rather than grouped under a DE intermediate node).
@@ -522,16 +534,19 @@ mod tests {
 
   /// Inspect intermediate state of Fitch's algorithm between the backward and forward passes.
   ///
-  /// Fitch's algorithm has two distinct phases:
+  /// Fitch's algorithm (Fitch 1971) has two distinct phases:
   ///
-  /// **Backward pass** (leaves to root): At each internal node, compute the intersection
-  /// of child state sets. If the intersection is empty, take the union and increment the
-  /// parsimony score. Variable positions (where children disagree) are tracked, and the
-  /// root sequence has '~' markers at unresolved positions.
+  /// **Backward pass** (post-order, leaves to root): At each internal node, compute the
+  /// intersection of child state sets. Three outcomes per position:
+  /// - Singleton intersection (all children agree on one state): resolved immediately.
+  /// - Multi-element intersection (children partially agree): stored as variable, marked '~'.
+  /// - Empty intersection (children share no state, implying a state change): the union is
+  ///   stored as variable, marked '~'.
   ///
-  /// **Forward pass** (root to leaves): Resolve ambiguous state sets by choosing the parent
-  /// state when it is a member of the child's state set. After this pass, all '~' markers
-  /// are replaced with concrete nucleotides.
+  /// **Forward pass** (pre-order, root to leaves): Resolve variable state sets to concrete
+  /// nucleotides. At the root (no parent), the alphabetically first state from the candidate
+  /// set is chosen via `StateSet::get_one()`. At non-root nodes, the parent state is chosen
+  /// when present in the child's state set. After this pass, all '~' markers are replaced.
   ///
   /// This test runs each pass separately and verifies:
   /// - After backward: correct variable positions identified, state sets contain the
@@ -585,11 +600,11 @@ mod tests {
       let state_sets = get_root_state_sets(&graph, &partition);
       assert_eq!(
         btreemap! {
-          0 => o!("{A, C, G, T}"),  // union of all: A(leaf A), G(leaf B), C(leaf C), T(leaf D)
-          2 => o!("{A, G}"),        // A from AB subtree; G from CD subtree
-          3 => o!("{G, T}"),        // T from AB subtree; G from CD subtree
-          5 => o!("{C, G}"),        // C from AB subtree; G from CD subtree
-          6 => o!("{A, C, G}"),     // union: C from AB, then A or G from CD
+          0 => o!("{A, C, G, T}"),  // union: AB={A,G}, CD={C,T}, intersection empty
+          2 => o!("{A, G}"),        // union: AB=A (resolved), CD=G (resolved), intersection empty
+          3 => o!("{G, T}"),        // union: AB=T (resolved), CD=G (resolved), intersection empty
+          5 => o!("{C, G}"),        // intersection: AB={C,G}, CD={C,G}, intersection={C,G} (ambiguous)
+          6 => o!("{A, C, G}"),     // union: AB=C (resolved), CD={A,G}, intersection empty
         },
         state_sets
       );

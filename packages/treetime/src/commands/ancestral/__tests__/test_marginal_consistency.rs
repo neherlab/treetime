@@ -49,9 +49,10 @@ mod tests {
   /// Run dense marginal ancestral reconstruction on the given tree and alignment.
   ///
   /// Dense representation stores full N x K probability matrices where N is the
-  /// alignment length and K is the alphabet size (4 for nucleotides). Computes
-  /// Felsenstein's pruning algorithm (upward pass) followed by the downward pass
-  /// to produce marginal posterior probabilities at every node.
+  /// alignment length and K is the alphabet size (4 for nucleotides). Runs
+  /// Felsenstein's pruning algorithm (backward pass, leaves to root) to compute
+  /// partial likelihoods and the total log-likelihood, then the forward pass
+  /// (root to leaves) to produce marginal posterior probabilities at every node.
   ///
   /// Returns the total log-likelihood and the populated partition.
   fn run_dense_marginal(
@@ -78,12 +79,13 @@ mod tests {
   ///
   /// Sparse representation stores only "variable" positions where the marginal
   /// posterior differs from the fixed-character distribution. Positions where all
-  /// descendants agree on a single state are compressed away, storing only the
-  /// Fitch-compressed reference and per-character fixed distributions.
+  /// descendants agree on a single state are compressed away via Fitch parsimony,
+  /// storing only the Fitch-compressed reference and per-character fixed
+  /// distributions.
   ///
-  /// The sparse path first compresses sequences via Fitch parsimony, then runs
-  /// `update_marginal` which performs the upward and downward message-passing
-  /// passes on the compressed representation.
+  /// The sparse path first runs `compress_sequences` (Fitch parsimony), then
+  /// `update_marginal` which performs the backward pass (leaves to root) and
+  /// forward pass (root to leaves) on the compressed representation.
   ///
   /// Returns the total log-likelihood and the populated partition.
   fn run_sparse_marginal(
@@ -110,11 +112,13 @@ mod tests {
   /// Verify that dense and sparse marginal implementations produce the same
   /// total log-likelihood on a gap-free alignment with JC69 model.
   ///
-  /// Both representations compute the same quantity - the Felsenstein likelihood
-  /// L = product over sites of sum over root states of pi[s] * L_root(s) - but via
-  /// different code paths. Dense operates on full NxK matrices; sparse compresses
-  /// invariant sites and operates only on variable positions. The log-likelihoods
-  /// must agree to floating-point precision.
+  /// Both representations compute the same quantity - the Felsenstein tree
+  /// likelihood evaluated at the root after the backward pass:
+  /// log L = sum over sites of log(sum over states s of pi[s] * L_root(s)),
+  /// where L_root(s) is the partial likelihood at the root for state s. Dense
+  /// operates on full NxK matrices; sparse compresses invariant sites and
+  /// operates only on variable positions. The log-likelihoods must agree to
+  /// floating-point precision.
   #[test]
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -140,13 +144,15 @@ mod tests {
   }
 
   /// Verify that sparse variable-position distributions match the corresponding
-  /// rows in the dense marginal probability matrix.
+  /// rows in the dense marginal posterior matrix.
   ///
   /// At internal nodes (root, AB), for each position the sparse representation
   /// marks as "variable", the probability vector must equal the corresponding row
   /// of the dense NxK matrix. This checks profile-level consistency beyond the
-  /// aggregate log-likelihood: the per-position marginal posteriors
-  /// P(s|data) = pi[s] * L_node(s) / Z must agree between representations.
+  /// aggregate log-likelihood: the per-position marginal posteriors must agree
+  /// between representations. At each node, the posterior combines the subtree
+  /// partial likelihood (from the backward pass) with the outgroup message (from
+  /// the forward pass), normalized to sum to 1.
   #[test]
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -199,16 +205,18 @@ mod tests {
   /// presence of IUPAC ambiguity codes (N = any nucleotide, R = A|G).
   ///
   /// Ambiguous characters assign equal probability to the states they represent
-  /// (e.g., N -> uniform over {A,C,G,T}, R -> uniform over {A,G}). This test
-  /// checks three properties:
+  /// (e.g., N -> uniform over {A,C,G,T}, R -> uniform over {A,G}). Both dense
+  /// and sparse use the same tip-state encoding, but differ in how invariant
+  /// vs variable positions are stored and processed. This test checks three
+  /// properties:
   ///
   /// 1. Log-likelihood agreement: dense and sparse produce the same total
-  ///    log-likelihood despite different handling of ambiguous tip states.
-  /// 2. Dense normalization: every row of every node's marginal probability
+  ///    log-likelihood despite different internal representations.
+  /// 2. Dense normalization: every row of every node's marginal posterior
   ///    matrix sums to 1.0 (valid probability distribution).
-  /// 3. Sparse normalization: both variable-position distributions and
-  ///    fixed-character distributions sum to 1.0, and all log-likelihoods
-  ///    are finite.
+  /// 3. Sparse normalization: variable-position distributions, fixed-character
+  ///    distributions, and per-node log-likelihoods are all finite and
+  ///    distributions sum to 1.0.
   #[test]
   fn test_marginal_dense_sparse_ambiguous_character_expectations_documented() -> Result<(), Report> {
     let aln = read_many_fasta_str(
@@ -252,7 +260,6 @@ mod tests {
           let sum: f64 = row.sum();
           assert!(sum.is_finite(), "Dense node profile row sum is not finite: {sum}");
           assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-          assert!(sum.is_finite(), "Dense node profile row not normalized: sum={sum}");
         }
       }
     }
@@ -266,55 +273,43 @@ mod tests {
 
       for (pos, var_pos) in &node_data.profile.variable {
         let sum: f64 = var_pos.dis.sum();
-        assert!(
-          sum.is_finite(),
-          "Sparse variable position {pos} sum is not finite: {sum}"
-        );
+        assert!(sum.is_finite(), "Sparse variable position {pos} sum is not finite: {sum}");
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(
-          sum.is_finite(),
-          "Sparse variable position {pos} not normalized: sum={sum}"
-        );
       }
 
       for (char_key, fixed_dis) in &node_data.profile.fixed {
         let sum: f64 = fixed_dis.sum();
-        assert!(
-          sum.is_finite(),
-          "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}"
-        );
+        assert!(sum.is_finite(), "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}");
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(
-          sum.is_finite(),
-          "Sparse fixed distribution for char {char_key:?} not normalized: sum={sum}"
-        );
       }
     }
 
     Ok(())
   }
 
-  /// Verify marginal probability normalization under a highly skewed GTR model.
+  /// Verify marginal posterior normalization under a highly skewed GTR model.
   ///
-  /// Ported from Python v0 `test_treetime.py:137-155`. Uses equilibrium
-  /// frequencies pi = [0.9, 0.06, 0.02, 0.02] with uniform exchangeability
-  /// (W = ones with zero diagonal), creating extreme asymmetry that stresses
-  /// numerical stability of the Felsenstein pruning algorithm.
+  /// Uses the tree, alignment, and GTR parameters from Python v0
+  /// `test_treetime.py:137-155`, but tests a different invariant. The Python
+  /// test checks that per-site likelihoods summed over all 4^3 = 64 data
+  /// patterns equal 1.0 (likelihood normalization over observable data). This
+  /// test checks that the marginal posterior at every node is a valid
+  /// probability distribution: sum_s P(s|data) = 1 for each position and node.
   ///
-  /// The 3-taxon tree with long branches (up to 0.601 subs/site) and the 64bp
-  /// alignment covering all 4^3 = 64 state combinations ensure every code path
-  /// through the transition probability matrix P(t) = exp(Q*t) is exercised.
-  ///
-  /// Asserts that every row of the marginal posterior matrix at every node sums
-  /// to 1.0: sum_s P(s|data) = 1 for all positions and all nodes.
+  /// The skewed equilibrium frequencies pi = [0.9, 0.06, 0.02, 0.02] with
+  /// uniform exchangeability (W_ij = 1 for i != j) create extreme asymmetry in
+  /// P(t) = exp(Q*t). Combined with long branches (A: 0.601, B: 0.301
+  /// subs/site) and a 64bp alignment covering all 4^3 three-taxon state
+  /// combinations, this stresses numerical stability of the backward and
+  /// forward passes.
   #[test]
-  fn test_marginal_likelihoods_sum_to_one_skewed_gtr() -> Result<(), Report> {
+  fn test_marginal_posteriors_sum_to_one_skewed_gtr() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
 
-    // Highly skewed equilibrium frequencies from Python test
+    // Highly skewed equilibrium frequencies: A dominates at 90%
     let pi = array![0.9, 0.06, 0.02, 0.02];
 
-    // W = ones(4,4) with zero diagonal (symmetric rate matrix)
+    // Uniform exchangeability (W_ij = 1 for i != j, zero diagonal)
     let W = array![
       [0.0, 1.0, 1.0, 1.0],
       [1.0, 0.0, 1.0, 1.0],
@@ -329,11 +324,11 @@ mod tests {
       pi,
     })?;
 
-    // Tree from Python: ((A:0.60100000009,B:0.3010000009):0.1,C:0.2):0.001
+    // 3-taxon tree with long branches (from v0 test, branch lengths rounded)
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
     let graph: GraphAncestral = nwk_read_str(tree_newick)?;
 
-    // Alignment from Python test (64bp each)
+    // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -358,7 +353,7 @@ mod tests {
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
-    // Verify all marginal profile rows sum to 1.0
+    // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();
     for (node_key, node_data) in &partition.nodes {
       if node_data.profile.dis.is_empty() {
@@ -366,11 +361,8 @@ mod tests {
       }
       for (pos, row) in node_data.profile.dis.rows().into_iter().enumerate() {
         let sum: f64 = row.sum();
+        assert!(sum.is_finite(), "Node {node_key:?} position {pos}: posterior sum is not finite: {sum}");
         assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
-        assert!(
-          sum.is_finite(),
-          "Node {node_key:?} position {pos}: marginal likelihood sum {sum} != 1.0"
-        );
       }
     }
 
