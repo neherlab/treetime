@@ -44,6 +44,11 @@ pub fn run_refinement_iteration(
     }
   }
 
+  // Snapshot ancestral states before polytomy resolution and reconstruction.
+  // Capturing before polytomy resolution avoids inflating n_diff with positions
+  // from newly created nodes that have no prior state.
+  let prev_states = capture_ancestral_states(graph, partitions);
+
   let n_resolved = if args.resolve_polytomies {
     let n = resolve_polytomies(graph, partitions).wrap_err("Polytomy resolution failed")?;
     if n > 0 {
@@ -63,9 +68,6 @@ pub fn run_refinement_iteration(
   if n_resolved > 0 {
     is_tree_dirty = true;
   }
-
-  // Snapshot ancestral states before reconstruction for n_diff tracking
-  let prev_states = capture_ancestral_states(graph, partitions);
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
