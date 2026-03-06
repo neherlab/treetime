@@ -39,13 +39,13 @@ mod tests {
     // Verify first data row has non-empty likelihood values
     let data_row = lines[1];
     let fields: Vec<&str> = data_row.split(',').collect();
-    // CSV columns: n_diff, n_resolved, lh_seq, lh_pos, lh_coal, lh_total
+    let columns: Vec<&str> = header.split(',').collect();
     assert!(fields.len() >= 6, "Data row must have at least 6 columns");
 
-    // lh_seq (index 2) and lh_pos (index 3) should be present and negative
-    let lh_seq: f64 = fields[2].parse().expect("lh_seq must be a valid number");
-    let lh_pos: f64 = fields[3].parse().expect("lh_pos must be a valid number");
-    let lh_total: f64 = fields[5].parse().expect("lh_total must be a valid number");
+    let col = |name: &str| columns.iter().position(|c| *c == name).unwrap_or_else(|| panic!("Column '{name}' not found in header"));
+    let lh_seq: f64 = fields[col("lh_seq")].parse().expect("lh_seq must be a valid number");
+    let lh_pos: f64 = fields[col("lh_pos")].parse().expect("lh_pos must be a valid number");
+    let lh_total: f64 = fields[col("lh_total")].parse().expect("lh_total must be a valid number");
     assert!(lh_seq < 0.0, "Sequence log-likelihood must be negative, got {lh_seq}");
     assert!(lh_pos < 0.0, "Positional log-likelihood must be negative, got {lh_pos}");
     assert!(lh_total < 0.0, "Total log-likelihood must be negative, got {lh_total}");
