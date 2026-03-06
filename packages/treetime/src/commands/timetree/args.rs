@@ -46,13 +46,6 @@ pub enum RerootMode {
   Mrca,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-#[value(rename_all = "kebab-case")]
-pub enum CoalescentModel {
-  Opt,
-  Skyline,
-}
-
 #[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
