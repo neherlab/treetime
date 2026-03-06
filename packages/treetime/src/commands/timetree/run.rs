@@ -153,7 +153,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   info!("### TreeTime: Optimisation rounds");
-  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.tracelog.clone())?;
+  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     // Re-optimize constant Tc each iteration (requires at least 2 iterations per v0).
     // In skyline mode, v0 uses constant Tc during loop iterations and defers the full

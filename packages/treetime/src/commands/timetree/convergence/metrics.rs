@@ -17,11 +17,16 @@ pub struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,
   tracelog_writer: Option<TreetimeOptimizerTraceCsvWriter>,
   max_iterations: usize,
+  suppress_convergence: bool,
   i: usize,
 }
 
 impl TimetreeOptimizer {
-  pub fn new(max_iter: usize, tracelog_path: Option<impl Into<PathBuf>>) -> Result<Self, Report> {
+  pub fn new(
+    max_iter: usize,
+    suppress_convergence: bool,
+    tracelog_path: Option<impl Into<PathBuf>>,
+  ) -> Result<Self, Report> {
     let tracelog_writer = tracelog_path
       .map(Into::into)
       .map(TreetimeOptimizerTraceCsvWriter::new)
@@ -31,6 +36,7 @@ impl TimetreeOptimizer {
       trace: vec![],
       tracelog_writer,
       max_iterations: max_iter,
+      suppress_convergence,
       i: 0,
     })
   }
@@ -93,7 +99,7 @@ impl TimetreeOptimizer {
   }
 
   fn has_converged(&self) -> bool {
-    self.trace.last().is_some_and(|m| m.has_converged())
+    !self.suppress_convergence && self.trace.last().is_some_and(|m| m.has_converged())
   }
 
   fn has_reached_max_iterations(&self) -> bool {

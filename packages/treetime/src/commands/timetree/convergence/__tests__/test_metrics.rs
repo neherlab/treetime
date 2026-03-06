@@ -10,7 +10,7 @@ mod tests {
   #[test]
   fn test_metrics_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
     let graph = empty_graph();
-    let mut optimizer = TimetreeOptimizer::new(5, None::<PathBuf>)?;
+    let mut optimizer = TimetreeOptimizer::new(5, false, None::<PathBuf>)?;
 
     assert!(optimizer.next_iter().is_some());
     optimizer.record(0, 0, &graph, &[])?;
@@ -25,7 +25,7 @@ mod tests {
   #[test]
   fn test_metrics_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = empty_graph();
-    let mut optimizer = TimetreeOptimizer::new(5, None::<PathBuf>)?;
+    let mut optimizer = TimetreeOptimizer::new(5, false, None::<PathBuf>)?;
 
     // Iteration 1: sequences still changing
     assert!(optimizer.next_iter().is_some());
@@ -54,7 +54,7 @@ mod tests {
   #[test]
   fn test_metrics_optimizer_stops_at_max_iterations() -> Result<(), Report> {
     let graph = empty_graph();
-    let mut optimizer = TimetreeOptimizer::new(3, None::<PathBuf>)?;
+    let mut optimizer = TimetreeOptimizer::new(3, false, None::<PathBuf>)?;
 
     for _ in 0..3 {
       assert!(optimizer.next_iter().is_some());
@@ -71,7 +71,7 @@ mod tests {
   #[test]
   fn test_metrics_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
     let graph = empty_graph();
-    let mut optimizer = TimetreeOptimizer::new(5, None::<PathBuf>)?;
+    let mut optimizer = TimetreeOptimizer::new(5, false, None::<PathBuf>)?;
 
     // n_diff=0 but polytomies resolved: not converged
     assert!(optimizer.next_iter().is_some());
