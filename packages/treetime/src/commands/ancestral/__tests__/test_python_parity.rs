@@ -21,6 +21,9 @@ mod tests {
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
   use treetime_utils::make_report;
 
+  /// Resolve the workspace root directory by walking up from the crate's manifest directory.
+  ///
+  /// Used to locate test data files (Newick trees, FASTA alignments) under `data/`.
   fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
@@ -87,11 +90,17 @@ mod tests {
   // T12: Comprehensive internal node validation
   // ============================================================================
 
+  /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
+  /// Create the primary GTR model used in Python v0 parity tests, with non-uniform
+  /// equilibrium frequencies pi = [0.2, 0.3, 0.15, 0.35].
+  ///
+  /// Symmetric rate matrix W (default) with these frequencies produces a reversible model
+  /// satisfying detailed balance. The non-uniform pi ensures posteriors are not trivially
+  /// symmetric across states.
+  ///
   /// Python reference: test_scripts/ancestral_sparse.py:241-250
-  /// Tree: ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;
-  /// GTR: pi=[0.2, 0.3, 0.15, 0.35]
   fn make_python_reference_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
     GTR::new(GTRParams {
@@ -102,6 +111,13 @@ mod tests {
     })
   }
 
+  /// Create the secondary GTR model for multi-partition parity tests, with equilibrium
+  /// frequencies pi = [0.4, 0.15, 0.12, 0.33].
+  ///
+  /// Used alongside `make_python_reference_gtr()` to verify that two partitions with
+  /// different GTR parameters on the same tree compute independently. The different pi
+  /// values produce distinct posterior distributions at each node.
+  ///
   /// Python reference: test_scripts/ancestral_sparse.py:255
   fn make_python_reference_gtr2() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
@@ -113,14 +129,25 @@ mod tests {
     })
   }
 
+  /// Newick tree shared across Python parity tests: balanced 4-taxon tree
+  /// ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01.
   const PYTHON_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
+  /// FASTA alignment shared across Python parity tests. Contains ambiguous characters
+  /// (N, R) and gaps (-) to exercise non-trivial likelihood handling at those positions.
   const PYTHON_ALN: &str = ">A\nACATCGCCNNA--GAC\n>B\nGCATCCCTGTA-NG--\n>C\nCCGGCGATGTRTTG--\n>D\nTCGGCCGTGTRTTG--\n";
 
-  /// Test internal node AB profile matches Python v0.
+  /// Verify marginal posterior distribution at internal node AB (position 0) matches
+  /// Python v0 reference values.
   ///
+  /// The marginal posterior P(s|data) at an internal node is computed by combining the
+  /// upward partial likelihood (from leaf data below) with the downward message (from the
+  /// rest of the tree above). At node AB position 0, leaves A and B have characters A and
+  /// G respectively, producing a posterior biased toward A (0.51) due to A's shorter
+  /// branch length (0.1 vs 0.2).
+  ///
+  /// Expected: [0.51275208, 0.09128506, 0.24647255, 0.14949031] (A, C, G, T order).
   /// Python reference: test_scripts/ancestral_sparse.py:249-250
-  /// Expected: node_AB.profile.variable[0].dis = [0.51275208, 0.09128506, 0.24647255, 0.14949031]
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -157,10 +184,16 @@ mod tests {
     Ok(())
   }
 
-  /// Test root profile matches Python v0.
+  /// Verify marginal posterior distribution at the root node (position 0) matches Python
+  /// v0 reference values.
   ///
+  /// The root posterior combines upward partial likelihoods from both subtrees (AB and CD)
+  /// with the equilibrium distribution pi as prior. With pi = [0.2, 0.3, 0.15, 0.35],
+  /// T has the highest prior weight, which shifts the posterior toward T (0.36) despite
+  /// the leaf data favoring other states.
+  ///
+  /// Expected: [0.28212327, 0.21643546, 0.13800802, 0.36343326] (A, C, G, T order).
   /// Python reference: test_scripts/ancestral_sparse.py:245
-  /// Expected: seq_info_root.profile.variable[0].dis = [0.28212327, 0.21643546, 0.13800802, 0.36343326]
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -196,8 +229,15 @@ mod tests {
     Ok(())
   }
 
-  /// Test CD internal node profile is computed correctly.
-  /// Verifies the other branch of the tree computes valid distributions.
+  /// Verify that internal node CD has valid normalized posterior distributions at every
+  /// position.
+  ///
+  /// Complements `test_internal_node_ab_profile_matches_python()` by checking the other
+  /// major subtree (C,D)CD. While AB-side posteriors are checked against exact Python
+  /// reference values, the CD-side is validated structurally: each row of the posterior
+  /// matrix must be a valid probability distribution (non-negative, finite, sums to 1).
+  /// This catches asymmetric bugs where one subtree computes correctly but the other
+  /// does not.
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -236,7 +276,13 @@ mod tests {
     Ok(())
   }
 
-  /// Test all internal nodes have valid normalized profiles.
+  /// Verify that every internal node in the tree has normalized posterior distributions
+  /// at all alignment positions.
+  ///
+  /// Iterates over all node profiles in the partition and checks sum_s P(s|data) = 1 at
+  /// every position. This is a global invariant of Felsenstein's marginal reconstruction:
+  /// the upward-downward message passing with proper normalization must produce valid
+  /// probability distributions everywhere in the tree, not just at spot-checked nodes.
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -275,11 +321,17 @@ mod tests {
   // T13: Multi-partition test
   // ============================================================================
 
-  /// Test dual-partition case: two alignments with different GTRs on same tree.
+  /// Verify that two partitions with different GTR models on the same tree compute
+  /// independently and match their respective Python v0 reference values.
+  ///
+  /// The partition system allows multiple data types (or the same data with different
+  /// models) to share a single tree topology. Each partition maintains its own node/edge
+  /// data and runs Felsenstein's pruning independently. This test uses
+  /// pi1 = [0.2, 0.3, 0.15, 0.35] and pi2 = [0.4, 0.15, 0.12, 0.33] on the same
+  /// alignment and tree, verifying that root posteriors differ according to each model's
+  /// equilibrium frequencies and match their respective Python v0 values.
   ///
   /// Python reference: test_scripts/ancestral_sparse.py:252-274
-  /// Uses same alignment twice but with different GTR parameters.
-  /// Verifies partitions compute independently.
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -343,10 +395,16 @@ mod tests {
     Ok(())
   }
 
-  /// Test multi-partition internal node AB matches Python reference.
+  /// Verify internal node AB posteriors in both partitions match their respective Python
+  /// v0 reference values.
+  ///
+  /// Extends `test_multi_partition_independent_computation()` by checking an internal node
+  /// rather than the root. The two partitions use different equilibrium frequencies, so
+  /// the AB posterior at position 0 differs between them. Partition 1 (pi1) yields
+  /// [0.51275208, 0.09128506, 0.24647255, 0.14949031] and partition 2 (pi2) yields
+  /// [0.52331521, 0.08336271, 0.24488808, 0.148434].
   ///
   /// Python reference: test_scripts/ancestral_sparse.py:273-274
-  /// node_AB partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
@@ -404,10 +462,15 @@ mod tests {
     Ok(())
   }
 
-  /// Test sparse partition multi-partition parity with dense using simple sequences.
+  /// Verify that dense and sparse representations produce identical log-likelihoods on
+  /// clean sequences (no gaps, no ambiguous characters).
   ///
-  /// Uses clean ACGT sequences (no gaps, no ambiguous codes) where dense and
-  /// sparse modes should produce identical results.
+  /// The sparse representation groups invariant positions by observed character and stores
+  /// only variable positions as full probability vectors. The dense representation stores
+  /// full vectors at every position. For unambiguous ACGT-only sequences, both approaches
+  /// must compute the same Felsenstein likelihood because the leaf observations are
+  /// identical delta distributions in both cases. This cross-validates the sparse
+  /// optimization against the simpler dense implementation.
   #[test]
   fn test_multi_partition_sparse_dense_consistency() -> Result<(), Report> {
     // Use simple alignment without gaps or ambiguous characters

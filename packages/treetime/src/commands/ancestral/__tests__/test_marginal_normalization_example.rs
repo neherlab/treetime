@@ -8,6 +8,12 @@ mod tests {
   use treetime_io::fasta::FastaRecord;
   use treetime_io::fasta::read_many_fasta_str;
 
+  /// Build a fixed 4-taxon test input for marginal normalization verification.
+  ///
+  /// Tree topology: `((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01`
+  /// Alignment: 8-character nucleotide sequences (ACGTACG + varying last position)
+  /// that differ only at position 8, producing one variable site and seven fixed sites.
+  /// Model: JC69 (Jukes-Cantor 1969) with equal equilibrium frequencies.
   fn example_input() -> Result<MarginalTestInput, Report> {
     let alignment = read_many_fasta_str(
       "
@@ -32,6 +38,8 @@ ACGTACGC
     })
   }
 
+  /// Validate that the example alignment has the expected shape: 4 sequences named
+  /// A, B, C, D, each of length 8. Guards against accidental corruption of test fixtures.
   fn assert_example_alignment_shape(alignment: &[FastaRecord]) -> Result<(), Report> {
     let expected_names = ["A", "B", "C", "D"];
     for (index, record) in alignment.iter().enumerate() {
@@ -54,6 +62,20 @@ ACGTACGC
     Ok(())
   }
 
+  /// Verify that marginal reconstruction produces valid probability distributions at
+  /// every node and edge in the dense representation.
+  ///
+  /// By Bayes' theorem, the posterior probability of each state given the observed data
+  /// is P(state|data) = P(data|state) * pi(state) / P(data), which must sum to 1 over
+  /// all states at each alignment position.
+  ///
+  /// Checked invariants:
+  /// - Log-likelihood is finite and non-positive (ln(P) <= 0 since P <= 1).
+  /// - Every row of every node profile matrix sums to 1.0 (valid distribution).
+  /// - Every row of every edge message matrix sums to 1.0 (valid distribution).
+  /// - All probability values are finite and non-negative.
+  ///
+  /// Uses a fixed 4-taxon tree with JC69 model.
   #[test]
   fn test_marginal_normalization_example_dense() -> Result<(), Report> {
     let input = example_input()?;
@@ -92,6 +114,21 @@ ACGTACGC
     Ok(())
   }
 
+  /// Verify that marginal reconstruction produces valid probability distributions at
+  /// every node and edge in the sparse representation.
+  ///
+  /// The sparse representation stores variable positions individually and groups fixed
+  /// characters by their consensus state. Both variable-position distributions and
+  /// fixed-character distributions must be valid probability distributions.
+  ///
+  /// Checked invariants:
+  /// - Log-likelihood is finite and non-positive.
+  /// - Node and edge profile `log_lh` fields are finite.
+  /// - Every variable-position distribution sums to 1.0.
+  /// - Every fixed-character distribution sums to 1.0.
+  /// - All probability values are finite and non-negative.
+  ///
+  /// Uses the same fixed 4-taxon tree and JC69 model as the dense variant.
   #[test]
   fn test_marginal_normalization_example_sparse() -> Result<(), Report> {
     let input = example_input()?;

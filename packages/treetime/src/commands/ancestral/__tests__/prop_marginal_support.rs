@@ -13,6 +13,16 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_io::nwk::nwk_read_str;
 
+/// Run Felsenstein's pruning algorithm (marginal likelihood) using dense representation.
+///
+/// Dense representation stores full probability vectors at every alignment position for
+/// every node. This is the reference implementation: straightforward but memory-intensive.
+///
+/// The function constructs a `PartitionMarginalDense` from the test input (tree, alignment,
+/// GTR model), runs `initialize_marginal` (backward pass from leaves to root), and returns
+/// the total log-likelihood along with the populated partition for further inspection.
+///
+/// Used by proptest-based tests to verify invariants of marginal ancestral reconstruction.
 pub fn run_dense_marginal(
   input: &MarginalTestInput,
 ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
@@ -33,6 +43,18 @@ pub fn run_dense_marginal(
   Ok((log_lh, partitions))
 }
 
+/// Run Felsenstein's pruning algorithm (marginal likelihood) using sparse representation.
+///
+/// Sparse representation stores probability vectors only at variable (mutated) positions,
+/// with invariant positions handled via Fitch compression. This is the optimized path
+/// for real datasets where most positions are conserved across the tree.
+///
+/// The function constructs a `PartitionMarginalSparse` from the test input, runs Fitch
+/// compression via `compress_sequences` (to identify variable positions), then runs
+/// `update_marginal` (backward pass) to compute the total log-likelihood.
+///
+/// Returns the log-likelihood and the populated partition. Used by proptest-based tests
+/// to verify that the sparse path produces results consistent with the dense path.
 pub fn run_sparse_marginal(
   input: &MarginalTestInput,
 ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {

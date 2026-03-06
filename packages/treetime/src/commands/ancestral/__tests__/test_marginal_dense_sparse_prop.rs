@@ -41,6 +41,21 @@ mod tests {
     //     probability vector but compressed away
     //   - If correctness bug: fix and tighten to ULPs-level
     //   - If inherent to sparse approximation: document the error bound
+
+    /// Property-based test: dense and sparse marginal log-likelihoods agree on
+    /// randomly generated inputs (4-10 taxa, gap-free alignments, random GTR).
+    ///
+    /// Both representations compute the Felsenstein likelihood but via different
+    /// code paths. Dense operates on full NxK probability matrices at every
+    /// position. Sparse compresses invariant sites via Fitch parsimony and
+    /// operates only on variable positions, accumulating fixed-site contributions
+    /// separately.
+    ///
+    /// Uses relative tolerance (max_relative = 1e-5) rather than ULPs due to a
+    /// bimodal error distribution: ~97.5% of cases agree to 0-3 ULPs, while
+    /// ~2.5% diverge up to 7.6e-6 relative difference for certain GTR
+    /// configurations. See INVESTIGATE comment above for details.
+    ///
     /// Companion example test: `test_marginal_dense_sparse_example_gap_free_consistency`.
     #[test]
     fn test_prop_marginal_dense_sparse_gap_free_consistency(input in arb_marginal_input_no_gaps(4, 10)) {

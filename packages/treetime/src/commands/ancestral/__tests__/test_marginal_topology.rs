@@ -9,6 +9,16 @@ mod tests {
   // T9: Caterpillar tree tests
   // ============================================================================
 
+  /// Verify that dense marginal reconstruction completes on a caterpillar (maximally
+  /// unbalanced) tree topology: ((((A,B),C),D),E).
+  ///
+  /// A caterpillar tree has message-passing depth N-1 for N leaves (here depth 4).
+  /// Felsenstein's pruning algorithm must correctly propagate partial likelihoods through
+  /// a chain of internal nodes, each with one leaf child and one internal child. This
+  /// topology stresses the sequential dependency in the upward pass.
+  ///
+  /// Uses identical leaf sequences (all ACGT) so all sites are invariant, testing the
+  /// base case. Asserts finite, non-positive log-likelihood.
   #[test]
   fn test_caterpillar_tree_dense_completes() -> Result<(), Report> {
     // Maximally unbalanced tree: ((((A:t,B:t):t,C:t):t,D:t):t,E:t)root;
@@ -30,6 +40,12 @@ mod tests {
     Ok(())
   }
 
+  /// Verify that sparse marginal reconstruction completes on a caterpillar tree.
+  ///
+  /// Same topology as `test_caterpillar_tree_dense_completes()` but using the sparse
+  /// partition representation. With identical leaf sequences, all positions are invariant
+  /// and stored as fixed distributions grouped by character. Tests that the sparse
+  /// representation handles deep topologies correctly.
   #[test]
   fn test_caterpillar_tree_sparse_completes() -> Result<(), Report> {
     // Same caterpillar tree with sparse partition
@@ -50,6 +66,14 @@ mod tests {
     Ok(())
   }
 
+  /// Verify that dense and sparse representations produce identical log-likelihoods on a
+  /// caterpillar tree with fully variable sequences.
+  ///
+  /// The dense representation stores full probability vectors at every position, while the
+  /// sparse representation stores only variable positions explicitly and groups invariant
+  /// positions by character. For clean sequences (no gaps or ambiguity), both must compute
+  /// the same Felsenstein likelihood. This cross-validates the two implementations on the
+  /// caterpillar topology.
   #[test]
   fn test_caterpillar_tree_dense_sparse_consistency() -> Result<(), Report> {
     // Dense and sparse should give same results on caterpillar tree
@@ -67,6 +91,12 @@ mod tests {
     Ok(())
   }
 
+  /// Verify that dense marginal reconstruction handles a caterpillar tree where each leaf
+  /// has a distinct homopolymer sequence (AAAA, CCCC, GGGG, TTTT, ACGT).
+  ///
+  /// Maximally divergent leaf sequences force Felsenstein's pruning to compute non-trivial
+  /// partial likelihoods at every internal node, exercising the transition probability
+  /// matrix multiplication P(s'|s,t) at each edge in the deep chain.
   #[test]
   fn test_caterpillar_tree_varied_sequences() -> Result<(), Report> {
     // Caterpillar tree with varied sequences to stress message passing
@@ -87,6 +117,13 @@ mod tests {
     Ok(())
   }
 
+  /// Verify dense marginal reconstruction on a caterpillar tree with varying branch lengths
+  /// spanning three orders of magnitude (0.01 to 0.8).
+  ///
+  /// Asymmetric branch lengths produce transition probability matrices P(t) = exp(Q*t)
+  /// with very different mixing levels: short branches yield near-identity matrices while
+  /// long branches approach the equilibrium distribution. This tests that the matrix
+  /// exponentiation and likelihood computation remain numerically stable across this range.
   #[test]
   fn test_caterpillar_tree_asymmetric_branches() -> Result<(), Report> {
     // Caterpillar tree with varying branch lengths
@@ -110,6 +147,12 @@ mod tests {
   // Deep tree stress tests
   // ============================================================================
 
+  /// Stress test: dense marginal reconstruction on a caterpillar tree with 10 leaves (A-J).
+  ///
+  /// Message-passing depth is 9. Tests numerical stability and stack safety when partial
+  /// likelihoods are multiplied through 9 levels of Felsenstein's pruning. With identical
+  /// leaf sequences, the partial likelihood vectors should remain well-conditioned because
+  /// each level multiplies by a stochastic matrix (eigenvalues in [0,1]).
   #[test]
   fn test_deep_caterpillar_tree_10_leaves() -> Result<(), Report> {
     // Create a caterpillar tree with 10 leaves (A-J)
@@ -133,6 +176,12 @@ mod tests {
     Ok(())
   }
 
+  /// Stress test: sparse marginal reconstruction on a 10-leaf caterpillar tree.
+  ///
+  /// Same deep topology as `test_deep_caterpillar_tree_10_leaves()` but using the sparse
+  /// partition. With identical leaf sequences, all positions are invariant and handled via
+  /// the fixed-distribution code path. Tests that invariant-site optimization does not
+  /// introduce errors through 9 levels of message passing.
   #[test]
   fn test_deep_caterpillar_tree_sparse() -> Result<(), Report> {
     // Same deep caterpillar tree with sparse partition
@@ -156,6 +205,14 @@ mod tests {
     Ok(())
   }
 
+  /// Verify that dense and sparse representations produce identical log-likelihoods on a
+  /// 10-leaf caterpillar tree with fully varied sequences.
+  ///
+  /// Each leaf has a distinct sequence, making every position variable. This exercises
+  /// both the variable-position code path in the sparse representation and the full
+  /// matrix code path in the dense representation through 9 levels of message passing.
+  /// Agreement between the two independent implementations validates that normalization
+  /// is preserved through deep traversal.
   #[test]
   fn test_deep_tree_normalization_preserved() -> Result<(), Report> {
     // Verify that normalization is preserved through deep tree traversal
@@ -178,6 +235,14 @@ mod tests {
     Ok(())
   }
 
+  /// Stress test for numerical stability: deep caterpillar tree with branch lengths spanning
+  /// 8 orders of magnitude (1e-8 to 5.0).
+  ///
+  /// Very short branches (1e-8) produce transition matrices P(t) near the identity,
+  /// while very long branches (5.0) produce matrices near the equilibrium distribution
+  /// pi. The product of such diverse matrices through 9 levels of Felsenstein's pruning
+  /// tests underflow/overflow handling and the accuracy of matrix exponentiation
+  /// P(t) = exp(Q*t) at extreme time scales.
   #[test]
   fn test_deep_tree_extreme_branches() -> Result<(), Report> {
     // Deep tree with extreme branch lengths to test numerical stability
@@ -203,6 +268,14 @@ mod tests {
   // T11: Polytomy tests
   // ============================================================================
 
+  /// Verify Felsenstein's pruning on a star tree (polytomy) with 4 children: (A,B,C,D)root.
+  ///
+  /// A polytomy is a node with more than 2 children. Felsenstein's pruning generalizes
+  /// from binary to arbitrary fan-out by taking the product over all children:
+  ///   L_v(s) = prod_{c in children(v)} sum_{s'} P(s'|s,t_c) * L_c(s')
+  /// This test verifies the product extends correctly to 4 children. All leaves share the
+  /// same sequence, so the likelihood is determined purely by the tree shape and branch
+  /// lengths.
   #[test]
   fn test_polytomy_four_children() -> Result<(), Report> {
     // Tree with polytomy (>2 children): (A:t,B:t,C:t,D:t)root;
@@ -221,6 +294,12 @@ mod tests {
     Ok(())
   }
 
+  /// Verify dense and sparse representations produce identical log-likelihoods on a
+  /// 4-child star tree (polytomy) with maximally divergent sequences.
+  ///
+  /// Each leaf has a different homopolymer (AAAA, CCCC, GGGG, TTTT), making every
+  /// position variable. Cross-validates the two implementations on a topology where the
+  /// root must integrate over 4 children simultaneously.
   #[test]
   fn test_polytomy_dense_sparse_consistency() -> Result<(), Report> {
     // Verify polytomy produces same results in dense and sparse
@@ -238,6 +317,13 @@ mod tests {
     Ok(())
   }
 
+  /// Verify marginal reconstruction on a tree mixing polytomy and binary nodes:
+  /// ((A,B,C)ABC,D,E)root.
+  ///
+  /// Internal node ABC is a 3-child polytomy, while root is also a 3-child polytomy
+  /// containing one internal subtree and two leaves. Tests that Felsenstein's pruning
+  /// correctly handles heterogeneous node degrees within a single tree. Dense and sparse
+  /// log-likelihoods must agree.
   #[test]
   fn test_mixed_polytomy_binary() -> Result<(), Report> {
     // Tree mixing polytomies and binary nodes
@@ -260,6 +346,13 @@ mod tests {
     Ok(())
   }
 
+  /// Verify Felsenstein's pruning on a large polytomy: a single root node with 8 leaf
+  /// children (A through H).
+  ///
+  /// The partial likelihood at the root is the product of 8 independent edge-message
+  /// terms: L_root(s) = prod_{c=A..H} sum_{s'} P(s'|s,t_c) * L_c(s'). Each leaf has a
+  /// distinct sequence, so no simplification via invariant-site grouping applies. Tests
+  /// that the generalized pruning product remains numerically stable with high fan-out.
   #[test]
   fn test_large_polytomy() -> Result<(), Report> {
     // Polytomy with many children (8)

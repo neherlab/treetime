@@ -6,6 +6,14 @@ mod tests {
   use ndarray::Array2;
   use proptest::prelude::*;
 
+  /// Assert that every row of a dense profile matrix is a valid probability distribution.
+  ///
+  /// Checks three conditions per row:
+  /// - Row sum equals 1.0 within epsilon = 1e-8.
+  /// - All values are finite (no NaN or Inf).
+  /// - All values are non-negative (probabilities in [0, 1]).
+  ///
+  /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_dense_rows_normalized(dis: &Array2<f64>) -> Result<(), TestCaseError> {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
@@ -22,6 +30,15 @@ mod tests {
     Ok(())
   }
 
+  /// Assert that a sparse marginal profile is a valid probability distribution.
+  ///
+  /// Checks the following for each component of the sparse representation:
+  /// - `log_lh` is finite.
+  /// - Every variable-position distribution sums to 1.0 within epsilon = 1e-8.
+  /// - Every fixed-character distribution sums to 1.0 within epsilon = 1e-8.
+  /// - All values are finite and non-negative.
+  ///
+  /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution) -> Result<(), TestCaseError> {
     prop_assert!(
       profile.log_lh.is_finite(),
@@ -60,6 +77,15 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
 
+    /// Property test: every node and edge profile in a dense marginal reconstruction
+    /// is a valid probability distribution, across random trees and GTR models.
+    ///
+    /// By Bayes' theorem, P(state|data) = P(data|state) * pi(state) / P(data) must
+    /// sum to 1 over all states at each position. Verifies log-likelihood is finite
+    /// and non-positive, and all profile rows are normalized.
+    ///
+    /// Uses small random inputs (3-4 taxa, 3-10 positions) for thorough shrinking.
+    ///
     /// Companion example test: `test_marginal_normalization_example_dense`.
     #[test]
     fn test_prop_marginal_normalization_dense(input in arb_marginal_input_small()) {
@@ -81,6 +107,15 @@ mod tests {
       }
     }
 
+    /// Property test: every node and edge profile in a sparse marginal reconstruction
+    /// is a valid probability distribution, across random trees and GTR models.
+    ///
+    /// The sparse representation groups fixed characters and stores variable positions
+    /// individually. Both components must produce normalized distributions. Verifies
+    /// log-likelihood is finite and non-positive.
+    ///
+    /// Uses small random inputs (3-4 taxa, 3-10 positions) for thorough shrinking.
+    ///
     /// Companion example test: `test_marginal_normalization_example_sparse`.
     #[test]
     fn test_prop_marginal_normalization_sparse(input in arb_marginal_input_small()) {
@@ -98,6 +133,14 @@ mod tests {
       }
     }
 
+    /// Property test: dense marginal log-likelihood is finite and non-positive across
+    /// larger random inputs (3-6 taxa, 5-20 positions).
+    ///
+    /// The total log-likelihood L = sum over sites of ln(P(data_site)) where each
+    /// site likelihood P(data_site) <= 1, so L <= 0. This test uses larger inputs
+    /// than the full-profile normalization tests to stress numerical accumulation
+    /// over more positions and taxa without the cost of inspecting every profile row.
+    ///
     /// Companion example test: `test_marginal_normalization_example_dense`.
     #[test]
     fn test_prop_marginal_normalization_dense_log_lh_finite(input in arb_marginal_input()) {
@@ -106,6 +149,13 @@ mod tests {
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
     }
 
+    /// Property test: sparse marginal log-likelihood is finite and non-positive across
+    /// larger random inputs (3-6 taxa, 5-20 positions).
+    ///
+    /// Same log-likelihood invariant as the dense variant (L <= 0), exercised on the
+    /// sparse representation. Larger inputs stress the compression-aware accumulation
+    /// path over more variable and fixed positions.
+    ///
     /// Companion example test: `test_marginal_normalization_example_sparse`.
     #[test]
     fn test_prop_marginal_normalization_sparse_log_lh_finite(input in arb_marginal_input()) {

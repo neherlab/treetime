@@ -20,6 +20,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::vec_of_owned;
 
+  /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
   fn get_node_name(graph: &GraphAncestral, key: treetime_graph::node::GraphNodeKey) -> String {
     let node = graph.get_node(key).expect("node exists");
     node
@@ -31,6 +32,10 @@ mod tests {
       .expect("node has name")
   }
 
+  /// Collect substitution mutations on every edge, keyed by "parent->child" label.
+  ///
+  /// Each edge's substitutions are formatted as strings (e.g. "A1G" for A->G at position 1).
+  /// Used to verify that Fitch's forward pass correctly placed mutations on branches.
   fn collect_edge_subs(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
@@ -50,6 +55,10 @@ mod tests {
       .collect()
   }
 
+  /// Return the sorted list of alignment positions that are variable at the root node.
+  ///
+  /// After Fitch's backward pass, variable positions are those where child state sets
+  /// did not all agree, requiring the algorithm to track multiple candidate states.
   fn get_root_variable_positions(graph: &GraphAncestral, partition: &PartitionFitch) -> Vec<usize> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
@@ -62,6 +71,11 @@ mod tests {
       .collect_vec()
   }
 
+  /// Return the Fitch state sets at each variable position of the root node.
+  ///
+  /// After the backward pass, each variable position holds the set of candidate nucleotide
+  /// states. If all children agreed, the set is a singleton (intersection). If they disagreed,
+  /// it is the union, and the parsimony score was incremented.
   fn get_root_state_sets(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<usize, String> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
@@ -74,6 +88,8 @@ mod tests {
       .collect()
   }
 
+  /// Look up a node by name and return its variable positions after the Fitch backward pass.
+  /// Panics if no node with the given name exists.
   fn get_node_variable_positions_by_name(graph: &GraphAncestral, partition: &PartitionFitch, name: &str) -> Vec<usize> {
     for node in graph.get_nodes() {
       let node = node.read_arc();
@@ -91,12 +107,21 @@ mod tests {
     panic!("Node {name} not found");
   }
 
+  /// Return the reconstructed sequence at the root node as a string.
+  ///
+  /// After the backward pass, unresolved variable positions are marked with '~'.
+  /// After the forward pass, all positions are resolved to concrete nucleotides.
   fn get_root_seq(graph: &GraphAncestral, partition: &PartitionFitch) -> String {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
+  /// Collect insertion/deletion (indel) mutations on every edge, keyed by "parent->child" label.
+  ///
+  /// Each indel is formatted as a range with parent and child states (e.g. "12--13: T -> -"
+  /// for a deletion of T at positions 12-13). Used to verify that the Fitch algorithm correctly
+  /// identifies gap openings, extensions, and insertions relative to the ancestral sequence.
   fn collect_edge_indels(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
@@ -118,6 +143,17 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
+  /// Fitch maximum parsimony reconstruction on a balanced 4-taxon binary tree (Fitch 1971).
+  ///
+  /// Tree topology: ((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01
+  ///
+  /// Verifies that the full Fitch algorithm (backward + forward passes) reconstructs the
+  /// correct ancestral sequences at internal nodes (root, AB, CD). The alignment contains
+  /// substitutions, ambiguous bases (N, R), and gap patterns to exercise all code paths.
+  ///
+  /// Only internal node sequences are emitted (leaves excluded via `include_leaves=false`).
+  /// Expected sequences are hand-derived from the Fitch intersection/union rule applied
+  /// bottom-up, then resolved top-down by preferring the parent state.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
@@ -179,6 +215,11 @@ mod tests {
     Ok(())
   }
 
+  /// Same Fitch reconstruction as `test_ancestral_reconstruction_fitch`, but with
+  /// `include_leaves=true` so that both internal and leaf node sequences are emitted.
+  ///
+  /// Verifies that leaf sequences pass through unchanged (the algorithm must not alter
+  /// observed data) and that internal node sequences match the expected reconstruction.
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
@@ -248,6 +289,16 @@ mod tests {
     Ok(())
   }
 
+  /// Verify substitution and indel mutations placed on individual edges by Fitch's algorithm.
+  ///
+  /// Uses the same 4-taxon tree and alignment as `test_ancestral_reconstruction_fitch`.
+  /// After running compression (backward + forward), inspects each edge for:
+  /// - Substitutions: point mutations between parent and child states (e.g. "C6G")
+  /// - Indels: gap openings/closings with position ranges (e.g. "12--13: T -> -")
+  ///
+  /// This tests the mutation-placement logic that runs after sequence reconstruction,
+  /// verifying that the diff between parent and child sequences is correctly decomposed
+  /// into substitution and indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
     drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
@@ -309,6 +360,17 @@ mod tests {
     Ok(())
   }
 
+  /// Fitch algorithm with complex gap (indel) patterns on a 5-taxon asymmetric tree.
+  ///
+  /// Tree: ((A,B)AB,(C,(D,E)DE)CDE)root
+  ///
+  /// Tests three challenging indel scenarios:
+  /// - Overlapping deletions: leaves A and B have deletions at different but overlapping
+  ///   positions, requiring the algorithm to reconstruct which gaps are ancestral vs derived.
+  /// - Root-level deletion: the root itself carries a gap that propagates to subtrees.
+  /// - Variable inserted sequence: positions 2-3 in subtree DE are inserted (absent in
+  ///   the rest of the tree), and the inserted characters differ between D and E,
+  ///   requiring both indel and substitution tracking within the insertion.
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
     drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
@@ -378,6 +440,19 @@ mod tests {
     Ok(())
   }
 
+  /// Fitch algorithm on a tree with a polytomy (multifurcation).
+  ///
+  /// Tree: ((A,B)AB,(C,D,E)CDE)root - node CDE has 3 children instead of 2.
+  ///
+  /// Fitch's algorithm generalizes from binary to n-ary nodes: the backward pass computes
+  /// the intersection of all n child state sets. If the intersection is empty, it takes
+  /// the union and increments the parsimony score. The forward pass resolves ambiguities
+  /// using the parent state as tiebreaker.
+  ///
+  /// Uses the same alignment as `test_fitch_complex_gaps` but with a different tree topology
+  /// (D and E are direct children of CDE rather than grouped under a DE intermediate node).
+  /// This changes which substitutions and indels appear on which edges compared to the
+  /// binary tree version.
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
     drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
@@ -445,6 +520,23 @@ mod tests {
     Ok(())
   }
 
+  /// Inspect intermediate state of Fitch's algorithm between the backward and forward passes.
+  ///
+  /// Fitch's algorithm has two distinct phases:
+  ///
+  /// **Backward pass** (leaves to root): At each internal node, compute the intersection
+  /// of child state sets. If the intersection is empty, take the union and increment the
+  /// parsimony score. Variable positions (where children disagree) are tracked, and the
+  /// root sequence has '~' markers at unresolved positions.
+  ///
+  /// **Forward pass** (root to leaves): Resolve ambiguous state sets by choosing the parent
+  /// state when it is a member of the child's state set. After this pass, all '~' markers
+  /// are replaced with concrete nucleotides.
+  ///
+  /// This test runs each pass separately and verifies:
+  /// - After backward: correct variable positions identified, state sets contain the
+  ///   expected candidate nucleotides, root sequence has '~' at unresolved positions.
+  /// - After forward: same variable positions are tracked, but root sequence is fully resolved.
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
     drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
