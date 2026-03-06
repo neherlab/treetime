@@ -109,19 +109,26 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     ..SkylineParams::default()
   };
 
-  // Create coalescent Tc distribution
+  // Create coalescent Tc distribution.
+  // For skyline mode: use constant Tc during iterations, switch to skyline after convergence.
+  // This matches v0's progressive strategy where skyline optimization uses stabilized node times.
   let mut coalescent_tc: Option<Distribution> = if args.coalescent_skyline {
-    info!(
-      "### Optimizing skyline coalescent model with {} grid points",
-      args.n_skyline
-    );
-    let skyline_result =
-      optimize_skyline(&graph, &skyline_params).wrap_err("Failed to optimize skyline coalescent model")?;
-    info!(
-      "Skyline optimization completed: log_likelihood={:.4}",
-      skyline_result.log_likelihood
-    );
-    Some(skyline_result.tc_distribution)
+    let initial_tc = 1.0;
+    info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
+    match optimize_tc(&graph, initial_tc) {
+      Ok(result) if result.success => {
+        info!("Pre-loop Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+        Some(Distribution::constant(result.tc))
+      }
+      Ok(_) => {
+        warn!("Pre-loop Tc optimization did not converge, using Tc = {initial_tc:.6e}");
+        Some(Distribution::constant(initial_tc))
+      }
+      Err(e) => {
+        warn!("Pre-loop Tc optimization failed: {e}, using Tc = {initial_tc:.6e}");
+        Some(Distribution::constant(initial_tc))
+      }
+    }
   } else {
     args.coalescent.map(Distribution::constant)
   };
