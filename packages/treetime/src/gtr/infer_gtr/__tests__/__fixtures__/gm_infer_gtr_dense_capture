@@ -13,16 +13,22 @@ Usage:
 
 import json
 import lzma
+import random
 import sys
 from io import StringIO
 from pathlib import Path
 
+import numpy as np
 from Bio import AlignIO, Phylo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[6] / "legacy" / "treetime"))
 
-from treetime import TreeAnc
-from treetime.nuc_models import JC69
+from treetime import TreeAnc  # noqa: E402
+from treetime.nuc_models import JC69  # noqa: E402
+
+SEED = 1010336213
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 def parse_alignment(fasta_str: str):
@@ -62,6 +68,7 @@ def capture_infer_gtr(tree_nwk: str, alignment_fasta: str, case_name: str) -> di
         verbose=0,
         compress=False,
         ignore_gaps=True,
+        rng_seed=SEED,
     )
 
     # Call the actual v0 method
@@ -118,6 +125,7 @@ def main():
 
     with open(outputs_path, "w") as f:
         json.dump(outputs, f, indent=2)
+        f.write("\n")
 
     print("=" * 50)
     print(f"Written: {outputs_path}")
