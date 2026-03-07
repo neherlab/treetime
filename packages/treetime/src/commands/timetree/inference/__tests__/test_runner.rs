@@ -117,14 +117,14 @@ mod tests {
           let expected = 3.0;
           let actual = payload.time_length().expect("time_length should be set");
           assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
-        }
+        },
         Some("I") => {
           // branch_length=0.003, gamma=1.0 (default): time = 0.003 / 0.001 = 3.0
           let expected = 3.0;
           let actual = payload.time_length().expect("time_length should be set");
           assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
-        }
-        _ => {}
+        },
+        _ => {},
       }
     }
 

@@ -22,12 +22,16 @@ pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &Ances
     .zip(current.iter())
     .enumerate()
     .map(|(partition_idx, (prev_partition, curr_partition))| {
-      let prev_only = prev_partition.keys().filter(|k| !curr_partition.contains_key(k)).count();
-      let curr_only = curr_partition.keys().filter(|k| !prev_partition.contains_key(k)).count();
+      let prev_only = prev_partition
+        .keys()
+        .filter(|k| !curr_partition.contains_key(k))
+        .count();
+      let curr_only = curr_partition
+        .keys()
+        .filter(|k| !prev_partition.contains_key(k))
+        .count();
       if prev_only > 0 || curr_only > 0 {
-        debug!(
-          "Partition {partition_idx}: {prev_only} nodes removed, {curr_only} nodes added between snapshots"
-        );
+        debug!("Partition {partition_idx}: {prev_only} nodes removed, {curr_only} nodes added between snapshots");
       }
 
       prev_partition

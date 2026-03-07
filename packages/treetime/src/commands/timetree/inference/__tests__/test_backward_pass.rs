@@ -360,7 +360,11 @@ mod tests {
       node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
     }
 
-    pub(super) fn set_edge_branch_dist(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, target_key: GraphNodeKey, bl: f64) {
+    pub(super) fn set_edge_branch_dist(
+      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      target_key: GraphNodeKey,
+      bl: f64,
+    ) {
       for edge in graph.get_edges() {
         let edge_read = edge.read_arc();
         if edge_read.target() == target_key {

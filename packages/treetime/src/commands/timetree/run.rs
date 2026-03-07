@@ -126,17 +126,20 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
     match optimize_tc(&graph, initial_tc) {
       Ok(result) if result.success => {
-        info!("Pre-loop Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+        info!(
+          "Pre-loop Tc = {:.6e} (likelihood = {:.4})",
+          result.tc, result.likelihood
+        );
         Some(Distribution::constant(result.tc))
-      }
+      },
       Ok(_) => {
         warn!("Pre-loop Tc optimization did not converge, using Tc = {initial_tc:.6e}");
         Some(Distribution::constant(initial_tc))
-      }
+      },
       Err(e) => {
         warn!("Pre-loop Tc optimization failed: {e}, using Tc = {initial_tc:.6e}");
         Some(Distribution::constant(initial_tc))
-      }
+      },
     }
   } else {
     args.coalescent.map(Distribution::constant)

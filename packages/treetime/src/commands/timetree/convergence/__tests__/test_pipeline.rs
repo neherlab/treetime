@@ -42,10 +42,17 @@ mod tests {
     let columns: Vec<&str> = header.split(',').collect();
     assert!(fields.len() >= 6, "Data row must have at least 6 columns");
 
-    let col = |name: &str| columns.iter().position(|c| *c == name).unwrap_or_else(|| panic!("Column '{name}' not found in header"));
+    let col = |name: &str| {
+      columns
+        .iter()
+        .position(|c| *c == name)
+        .unwrap_or_else(|| panic!("Column '{name}' not found in header"))
+    };
     let lh_seq: f64 = fields[col("lh_seq")].parse().expect("lh_seq must be a valid number");
     let lh_pos: f64 = fields[col("lh_pos")].parse().expect("lh_pos must be a valid number");
-    let lh_total: f64 = fields[col("lh_total")].parse().expect("lh_total must be a valid number");
+    let lh_total: f64 = fields[col("lh_total")]
+      .parse()
+      .expect("lh_total must be a valid number");
     assert!(lh_seq < 0.0, "Sequence log-likelihood must be negative, got {lh_seq}");
     assert!(lh_pos < 0.0, "Positional log-likelihood must be negative, got {lh_pos}");
     assert!(lh_total < 0.0, "Total log-likelihood must be negative, got {lh_total}");

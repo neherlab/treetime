@@ -3,7 +3,7 @@ use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
 use eyre::Report;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 

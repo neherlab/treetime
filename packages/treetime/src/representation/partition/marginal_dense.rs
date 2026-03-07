@@ -75,7 +75,7 @@ where
 
     // Add missing edges with default partition data
     for &key in &graph_edge_keys {
-      self.edges.entry(key).or_insert_with(DenseEdgePartition::default);
+      self.edges.entry(key).or_default();
     }
 
     // Remove stale entries for nodes/edges no longer in graph
