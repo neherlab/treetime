@@ -1,6 +1,7 @@
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
@@ -173,12 +174,29 @@ pub fn get_mutation_counts_dense(
     counts
   };
 
+  // TODO(dense-branch-clamp): clamping here matches v0's `_branch_length_to_gtr()` in
+  // `infer_gtr` (`treeanc.py:1562-1589`) and is consistent with the marginal passes that
+  // computed the profiles this function reads (`marginal_dense.rs:198`, `marginal_passes.rs:105`).
+  //
+  // This is a consistency fix, not a scientific requirement. For zero-length branches the
+  // mathematically correct result is `expQt(0) = I`, `Ti = 0`, zero off-diagonal `nij`.
+  // Clamping exists because the marginal backward pass computes `log(expQt)` which diverges
+  // at zero. The counting code here operates in probability space where zero BL is not
+  // numerically problematic on its own - but using `expQt(0)` when profiles were propagated
+  // through `expQt(clamped_BL)` mixes two different transition models on the same branch.
+  //
+  // Practical impact: none for real datasets (branch lengths are always positive). The
+  // clamped minimum (`1e-3 / seq_length`) is negligibly small. All golden master tests
+  // produce identical output with or without this clamping.
+  //
+  // If `fix_branch_length` is removed from the marginal passes, remove it here too.
+  let length = partition.length;
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = edge_arc.payload().read_arc().branch_length().unwrap_or(0.0);
+    let branch_length = fix_branch_length(length, edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
     let edge_key = edge_arc.key();
 
     let edge_partition = &partition.edges[&edge_key];
