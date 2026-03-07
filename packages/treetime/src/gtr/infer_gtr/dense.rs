@@ -129,11 +129,39 @@ pub fn get_mutation_counts_dense(
   let alphabet = &partition.alphabet;
   let n_states = alphabet.n_canonical();
 
+  // TODO(dense-root-state): root_state diverges from v0 on alignments with many gap-only positions.
+  //
+  // root_state feeds into pi (equilibrium frequencies) via infer_gtr_impl. Both v0 and v1
+  // use argmax of the marginal profile per site, but at uninformative positions (all leaves
+  // are gap/N), the profile is uniform [1/n, 1/n, ..., 1/n]. Argmax on uniform rows is
+  // arbitrary - tiny floating-point differences between BLAS implementations (NumPy vs
+  // ndarray) cause v0 and v1 to pick different states.
+  //
+  // Impact: lassa_L_50 has 557 gap-only positions out of ~10k. The 557 counts shift
+  // between states (e.g. all to A in v1 vs all to T in v0), causing ~29% error in W.
+  // tb_20 and mpox_clade_ii_20 show the same pattern at smaller scale.
+  //
+  // Possible fixes:
+  //
+  // A. Skip uninformative positions: exclude rows where max(profile) <= 1/n + eps from
+  //    root_state counting. These positions carry no phylogenetic signal and should not
+  //    bias equilibrium frequency estimates. Requires matching change in capture script.
+  //
+  // B. Use expected counts: replace argmax with profile.sum_axis(Axis(0)), accumulating
+  //    fractional posterior mass per state. A uniform row contributes [1/n, ..., 1/n]
+  //    identically in both v0 and v1 (profile sums already match). Changes root_state
+  //    semantics from "most likely state counts" to "posterior probability mass".
+  //
+  // C. Use Fitch consensus sequence counts (like sparse variant does via composition).
+  //    Fitch reconstruction resolves ties deterministically, but dense partition does not
+  //    store Fitch results after marginal initialization.
+  //
+  // Option A is preferred: scientifically correct (uninformative sites should not
+  // influence equilibrium frequencies) and minimal code change.
   let root_state = {
     let root = graph.get_exactly_one_root()?;
     let root_key = root.read_arc().key();
     let root_profile = &partition.nodes[&root_key].profile.dis;
-    // Count occurrences of each state in the argmax sequence (v0 parity: cseq counts)
     let mut counts = Array1::zeros(n_states);
     for row in root_profile.rows() {
       let state = argmax_first(&row).unwrap_or(0);
