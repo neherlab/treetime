@@ -1,5 +1,7 @@
+use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::make_internal_report;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
@@ -7,7 +9,6 @@ use ndarray::{Array1, Array2, Array3};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::edge::HasBranchLength;
-use crate::make_internal_report;
 use treetime_utils::array::ndarray::argmax_first;
 
 /// Infer GTR model from dense partition data.
@@ -184,7 +185,7 @@ pub fn get_mutation_counts_dense(
     let msg_to_child = &edge_partition.msg_to_child.dis;
     let msg_to_parent = &edge_partition.msg_to_parent.dis;
 
-    let exp_qt = partition.gtr.expQt(branch_length);
+    let exp_qt = partition.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
     let mut_stack = get_branch_mutation_matrix(msg_to_child, msg_to_parent, &exp_qt);
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }
