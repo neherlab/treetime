@@ -45,6 +45,7 @@ mod tests {
 
     let actual = infer_gtr_dense(&partition, &graph)?;
 
+    // Short synthetic sequences: limited floating-point accumulation, tight tolerance
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-8);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-8);
     pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-8);
@@ -78,6 +79,8 @@ mod tests {
     let (graph, partition) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
     let actual = infer_gtr_dense(&partition, &graph)?;
 
+    // Real datasets have longer sequences (1k-10k sites), accumulating more floating-point
+    // drift between NumPy and ndarray across the iterative solver. Tightest passing: 1e-7.
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-7);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-7);
     pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-7);
