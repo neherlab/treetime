@@ -7,6 +7,7 @@ use ndarray::{Array1, Array2, Array3};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::edge::HasBranchLength;
+use crate::make_internal_report;
 use treetime_utils::array::ndarray::argmax_first;
 
 /// Infer GTR model from dense partition data.
@@ -164,7 +165,8 @@ pub fn get_mutation_counts_dense(
     let root_profile = &partition.nodes[&root_key].profile.dis;
     let mut counts = Array1::zeros(n_states);
     for row in root_profile.rows() {
-      let state = argmax_first(&row).unwrap_or(0);
+      let state =
+        argmax_first(&row).ok_or_else(|| make_internal_report!("Empty profile row in root marginal distribution"))?;
       counts[state] += 1.0;
     }
     counts
