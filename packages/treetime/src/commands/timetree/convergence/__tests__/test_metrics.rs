@@ -22,6 +22,7 @@ mod tests {
     Ok(())
   }
 
+  #[allow(clippy::missing_asserts_for_indexing)]
   #[test]
   fn test_metrics_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = empty_graph();
