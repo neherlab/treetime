@@ -1,4 +1,5 @@
 mod test_events;
+mod test_gm_coalescent;
 mod test_integration;
 mod test_lineage_dynamics;
 mod test_optimize_tc;

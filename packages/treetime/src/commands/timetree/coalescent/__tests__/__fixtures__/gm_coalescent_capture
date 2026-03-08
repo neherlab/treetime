@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for coalescent contributions.
+
+Reads pre-computed node times from data files, captures coalescent contributions
+from Python v0 reference implementation, writes snapshot files.
+
+The outputs serve as the oracle for validating Rust v1 implementation of
+compute_coalescent_contributions(). Rust tests in test_gm_coalescent.rs load
+these outputs and compare against v1 results.
+
+Data generation steps (reproducible per dataset):
+
+1. Run clock command to get rerooted tree:
+   ./dev/docker/python treetime clock --tree data/$v/tree.nwk \
+       --dates data/$v/metadata.tsv --sequence-length $seq_len \
+       --outdir tmp/coalescent_capture/$slug
+
+2. Run timetree command to get node times:
+   ./dev/docker/python treetime --tree tmp/coalescent_capture/$slug/rerooted.newick \
+       --dates data/$v/metadata.tsv --clock-rate $clock_rate \
+       --sequence-len $seq_len --keep-root --keep-polytomies \
+       --branch-length-mode input --outdir tmp/coalescent_capture/$slug/timetree
+
+3. Copy output files to __fixtures__/:
+   cp tmp/coalescent_capture/$slug/rerooted.newick \
+      packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_tree.nwk
+   cut -f1,3 tmp/coalescent_capture/$slug/timetree/dates.tsv \
+      | sed 's/#node/name/' \
+      > packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_dates.tsv
+
+4. Run this script:
+   ./dev/docker/python python packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_capture
+
+Input data (per dataset):
+    - gm_coalescent_${slug}_tree.nwk: Rerooted tree file
+    - gm_coalescent_${slug}_dates.tsv: Node dates file
+
+Output (per dataset, per Tc):
+    - gm_coalescent_${slug}_tc${tc}.json: Snapshot file
+"""
+
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+from Bio import Phylo
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "legacy" / "treetime"))
+
+from treetime.merger_models import Coalescent  # noqa: E402
+
+FIXTURES_DIR = Path(__file__).parent
+
+
+@dataclass(frozen=True)
+class DatasetConfig:
+    virus_path: str
+    slug: str
+    tc_values: list[float]
+
+
+DATASETS = [
+    DatasetConfig(
+        virus_path="flu/h3n2/20",
+        slug="flu_h3n2_20",
+        tc_values=[0.01, 0.1, 1.0, 10.0],
+    ),
+    DatasetConfig(
+        virus_path="ebola/20",
+        slug="ebola_20",
+        tc_values=[0.1, 1.0, 10.0],
+    ),
+    DatasetConfig(
+        virus_path="dengue/20",
+        slug="dengue_20",
+        tc_values=[1.0, 10.0, 100.0],
+    ),
+    DatasetConfig(
+        virus_path="rsv/a/20",
+        slug="rsv_a_20",
+        tc_values=[1.0, 10.0, 100.0],
+    ),
+    DatasetConfig(
+        virus_path="mpox/clade-ii/20",
+        slug="mpox_clade_ii_20",
+        tc_values=[0.1, 1.0, 10.0],
+    ),
+]
+
+
+def generate_snapshot(
+    dataset: DatasetConfig,
+    tree_path: Path,
+    dates_path: Path,
+    node_times: dict[str, float],
+    tc: float,
+    output_path: Path,
+) -> None:
+    tree, present_time = _load_tree_with_times(tree_path, node_times)
+    coal = Coalescent(tree, Tc=tc)
+
+    max_tbp = max(
+        n.time_before_present
+        for n in tree.find_clades()
+        if n.time_before_present is not None
+    )
+
+    padding = 0.1
+    tbp_grid_start = -max_tbp * padding
+    tbp_grid_end = max_tbp * (1 + padding)
+    tbp_grid_n_points = 101
+    tbp_grid = np.linspace(tbp_grid_start, tbp_grid_end, tbp_grid_n_points)
+    lineage_counts = [float(coal.nbranches(t)) for t in tbp_grid]
+    integral_merger_rate = [float(coal.integral_merger_rate(t)) for t in tbp_grid]
+    total_merger_rate = [float(coal.total_merger_rate(t)) for t in tbp_grid]
+
+    node_contributions: dict[str, list[float]] = {}
+    for node in tree.find_clades():
+        if node.time_before_present is None or node.bad_branch:
+            continue
+        name = node.name
+        if node.is_terminal():
+            i_t = coal.integral_merger_rate(tbp_grid)
+            y_neglog = (-i_t).astype(float).tolist()
+        else:
+            contrib = coal.node_contribution(node, tbp_grid)
+            y_neglog = contrib.y.astype(float).tolist()
+
+        node_contributions[name] = y_neglog
+
+    result = {
+        "description": f"Coalescent contributions for {dataset.virus_path} with Tc={tc}",
+        "virus_path": dataset.virus_path,
+        "inputs": {
+            "tree_path": tree_path.name,
+            "metadata_path": dates_path.name,
+            "tc": tc,
+            "present_time": present_time,
+        },
+        "tbp_grid": {
+            "start": tbp_grid_start,
+            "end": tbp_grid_end,
+            "padding": padding,
+            "n_points": tbp_grid_n_points,
+        },
+        "lineage_counts": lineage_counts,
+        "integral_merger_rate": integral_merger_rate,
+        "total_merger_rate": total_merger_rate,
+        "node_contributions": node_contributions,
+    }
+
+    with open(output_path, "w") as f:
+        json.dump(result, f, indent=2)
+
+    print(f"  Generated: {output_path} ({len(node_contributions)} nodes)")
+
+
+def _load_node_times(dates_path: Path) -> dict[str, float]:
+    node_times: dict[str, float] = {}
+    with open(dates_path) as f:
+        header = f.readline()
+        if not header.startswith("name"):
+            raise ValueError(f"Expected header starting with 'name', got: {header}")
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+            name = parts[0]
+            try:
+                date = float(parts[1])
+            except ValueError:
+                continue
+            node_times[name] = date
+    return node_times
+
+
+def _load_tree_with_times(
+    tree_path: Path, node_times: dict[str, float]
+) -> tuple[object, float]:
+    tree = Phylo.read(tree_path, "newick")
+    present_time = max(node_times.values())
+
+    for node in tree.find_clades():
+        node_name = node.name
+        if node_name and node_name in node_times:
+            node_time = node_times[node_name]
+            node.time_before_present = present_time - node_time
+        else:
+            node.time_before_present = None
+        node.bad_branch = node.time_before_present is None
+
+    return tree, present_time
+
+
+def main() -> None:
+    filter_slug = sys.argv[1] if len(sys.argv) > 1 else None
+
+    datasets = DATASETS
+    if filter_slug:
+        datasets = [d for d in DATASETS if d.slug == filter_slug]
+        if not datasets:
+            valid = ", ".join(d.slug for d in DATASETS)
+            print(f"Error: Unknown slug '{filter_slug}'. Valid: {valid}", file=sys.stderr)
+            sys.exit(1)
+
+    for dataset in datasets:
+        tree_path = FIXTURES_DIR / f"gm_coalescent_{dataset.slug}_tree.nwk"
+        dates_path = FIXTURES_DIR / f"gm_coalescent_{dataset.slug}_dates.tsv"
+
+        if not tree_path.exists() or not dates_path.exists():
+            print(
+                f"Skipping {dataset.slug}: missing {tree_path} or {dates_path}",
+                file=sys.stderr,
+            )
+            continue
+
+        node_times = _load_node_times(dates_path)
+        print(f"{dataset.slug}: {len(node_times)} node times")
+
+        for tc in dataset.tc_values:
+            output_name = f"gm_coalescent_{dataset.slug}_tc{tc}.json"
+            generate_snapshot(
+                dataset, tree_path, dates_path, node_times, tc, FIXTURES_DIR / output_name
+            )
+
+    print("\nDone.")
+
+
+if __name__ == "__main__":
+    main()

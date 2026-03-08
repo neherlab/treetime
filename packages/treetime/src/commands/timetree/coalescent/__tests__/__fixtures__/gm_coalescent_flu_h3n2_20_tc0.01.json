@@ -2,8 +2,8 @@
   "description": "Coalescent contributions for flu/h3n2/20 with Tc=0.01",
   "virus_path": "flu/h3n2/20",
   "inputs": {
-    "tree_path": "test_scripts/data/coalescent_flu_h3n2_20_tree.nwk",
-    "metadata_path": "test_scripts/data/coalescent_flu_h3n2_20_dates.tsv",
+    "tree_path": "gm_coalescent_flu_h3n2_20_tree.nwk",
+    "metadata_path": "gm_coalescent_flu_h3n2_20_dates.tsv",
     "tc": 0.01,
     "present_time": 2013.405202
   },
