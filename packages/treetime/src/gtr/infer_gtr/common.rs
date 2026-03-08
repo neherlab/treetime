@@ -9,15 +9,38 @@ use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MutationCounts {
-  /// NxN matrix where each entry represents the observed number of transitions from state i to state j.
+  /// Expected substitution counts accumulated across all edges and sites.
+  ///
+  /// `nij[i, j]`: expected count of substitutions from parent state `j` to child state `i`.
+  ///
+  /// - Dense: fractional posterior mass from the branch joint distribution
+  ///   `P(child=i, parent=j | site, data)`, summed over sites and edges.
+  /// - Sparse: integer count of observed mutations (from Fitch reconstruction),
+  ///   one per substitution event per edge.
+  ///
+  /// Diagonal is zeroed after accumulation (no-change events excluded).
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub nij: Array2<f64>,
 
-  /// An N-vector representing the total time spent in each character state.
+  /// Total evolutionary time spent in each character state across the tree.
+  ///
+  /// `Ti[k]`: total time in state `k`, summed over all edges and sites.
+  ///
+  /// - Dense: midpoint approximation per edge:
+  ///   `Ti[k] += 0.5 * branch_length * (P(parent=k) + P(child=k))`
+  ///   where marginals come from summing the branch joint distribution.
+  /// - Sparse: `branch_length * child_composition_count(k)`,
+  ///   adjusted by `-0.5*BL` at mutation sites (child state loses half)
+  ///   and `+0.5*BL` (parent state gains half).
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub Ti: Array1<f64>,
 
-  /// An N-vector representing the state counts at the root of the phylogenetic tree.
+  /// State composition at the tree root, used as a prior on equilibrium frequencies.
+  ///
+  /// `root_state[k]`: count of positions in state `k` at the root.
+  ///
+  /// - Dense: argmax of marginal profile per site, counting most-likely states.
+  /// - Sparse: composition counts from Fitch consensus sequence.
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub root_state: Array1<f64>,
 }
