@@ -6,7 +6,10 @@ use crate::distribution_core::range::DistributionRange;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::Array1;
-use std::sync::Arc;
+
+/// Grid size for discretizing Formula distributions that have no natural grid.
+/// Matches BRANCH_GRID_SIZE in the treetime crate.
+const FORMULA_GRID_SIZE: usize = 200;
 
 pub fn distribution_multiplication<Y: YAxisPolicy>(
   a: &Distribution<Y>,
@@ -173,20 +176,18 @@ fn multiply_formula_formula<Y: YAxisPolicy>(
     return Ok(Distribution::empty());
   }
 
-  let a = Arc::new(a.clone());
-  let b = Arc::new(b.clone());
+  let n_points = FORMULA_GRID_SIZE;
+  let values = (0..n_points)
+    .map(|i| {
+      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
+      let va = a.eval_single(t)?;
+      let vb = b.eval_single(t)?;
+      Ok(Y::multiply(va, vb))
+    })
+    .collect::<Result<Vec<f64>, Report>>()?;
 
-  let eval_fn = move |t: f64| -> eyre::Result<f64> {
-    let va = a.eval_single(t)?;
-    let vb = b.eval_single(t)?;
-    Ok(Y::multiply(va, vb))
-  };
-
-  Ok(Distribution::Formula(DistributionFormula::new(
-    eval_fn,
-    overlap_min,
-    overlap_max,
-  )))
+  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
+  Ok(Distribution::Function(distribution_fn))
 }
 
 fn multiply_formula_function<Y: YAxisPolicy>(
@@ -251,17 +252,16 @@ fn multiply_formula_range<Y: YAxisPolicy>(
     return Ok(Distribution::empty());
   }
 
-  let a = Arc::new(a.clone());
   let b_amplitude = b.amplitude();
+  let n_points = FORMULA_GRID_SIZE;
+  let values = (0..n_points)
+    .map(|i| {
+      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
+      let va = a.eval_single(t)?;
+      Ok(Y::multiply(va, b_amplitude))
+    })
+    .collect::<Result<Vec<f64>, Report>>()?;
 
-  let eval_fn = move |t: f64| -> eyre::Result<f64> {
-    let va = a.eval_single(t)?;
-    Ok(Y::multiply(va, b_amplitude))
-  };
-
-  Ok(Distribution::Formula(DistributionFormula::new(
-    eval_fn,
-    overlap_min,
-    overlap_max,
-  )))
+  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
+  Ok(Distribution::Function(distribution_fn))
 }

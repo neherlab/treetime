@@ -14,6 +14,7 @@ use treetime_utils::make_error;
 
 pub const TIME_LIMIT: f64 = 1e10;
 pub const TIME_EPSILON: f64 = 1e-10;
+const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]
 #[allow(variant_size_differences)]
@@ -189,20 +190,13 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
 impl Distribution<Plain> {
   /// Returns the maximum value of the distribution.
-  /// - Empty: returns 0.0
-  /// - Point: returns amplitude
-  /// - Range: returns amplitude
-  /// - Function: returns max of y values
-  /// - Formula: panics (not supported)
   pub fn max_value(&self) -> f64 {
     match self {
       Distribution::Empty => 0.0,
       Distribution::Point(p) => p.amplitude(),
       Distribution::Range(r) => r.amplitude(),
       Distribution::Function(f) => f.y().max().ok().copied().unwrap_or(0.0),
-      Distribution::Formula(_) => {
-        panic!("max_value not supported for Formula distributions")
-      },
+      Distribution::Formula(f) => discretize_formula(f).map_or(0.0, |df| df.y().max().ok().copied().unwrap_or(0.0)),
     }
   }
 
@@ -213,9 +207,9 @@ impl Distribution<Plain> {
       Distribution::Point(p) => Distribution::point(p.t(), p.amplitude() * factor),
       Distribution::Range(r) => Distribution::range((r.start(), r.end()), r.amplitude() * factor),
       Distribution::Function(f) => f.scale_y(factor).map_or(Distribution::Empty, Distribution::Function),
-      Distribution::Formula(_) => {
-        panic!("scale_by not supported for Formula distributions")
-      },
+      Distribution::Formula(f) => discretize_formula(f)
+        .and_then(|df| df.scale_y(factor))
+        .map_or(Distribution::Empty, Distribution::Function),
     }
   }
 
@@ -330,7 +324,16 @@ impl Distribution<Plain> {
             .expect("Grid construction should not fail for valid input"),
         ))
       },
-      Self::Formula(_) => panic!("Conversion to NegLog not implemented for Formula distributions"),
+      Self::Formula(f) => match discretize_formula(f) {
+        Ok(df) => {
+          let y_neglog = df.y().mapv(NegLog::from_plain);
+          Distribution::Function(DistributionFunction::from_grid_fn(
+            treetime_grid::GridFn::from_start_dx_values(df.x_min(), df.dx(), y_neglog)
+              .expect("Grid construction should not fail for valid input"),
+          ))
+        },
+        Err(_) => Distribution::Empty,
+      },
     }
   }
 }
@@ -360,6 +363,15 @@ impl Distribution<NegLog> {
       },
     }
   }
+}
+
+fn discretize_formula(f: &DistributionFormula<Plain>) -> Result<DistributionFunction<f64, Plain>, Report> {
+  let n_points = FORMULA_GRID_SIZE;
+  let t = Array1::from_shape_fn(n_points, |i| {
+    f.t_min() + (f.t_max() - f.t_min()) * (i as f64 / (n_points - 1) as f64)
+  });
+  let values = f.eval_many(&t)?;
+  DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
 }
 
 pub type DistributionPlain = Distribution<Plain>;

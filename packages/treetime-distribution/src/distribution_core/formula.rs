@@ -1,8 +1,11 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use eyre::Result;
 use ndarray::Array1;
+use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+const FORMULA_GRID_SIZE: usize = 200;
 
 /// Distribution that evaluates a formula on-demand.
 ///
@@ -60,11 +63,18 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
   }
 
   pub fn likely_time(&self) -> f64 {
-    unimplemented!(
-      "likely_time() not available for DistributionFormula: \
-       finding the peak requires discretization. \
-       Use discretization (DistributionFunction) if you need likely_time()"
-    )
+    let midpoint = f64::midpoint(self.t_min, self.t_max);
+    let n_points = FORMULA_GRID_SIZE;
+    let t = Array1::from_shape_fn(n_points, |i| {
+      self.t_min + (self.t_max - self.t_min) * (i as f64 / (n_points - 1) as f64)
+    });
+    let Ok(values) = self.eval_many(&t) else {
+      return midpoint;
+    };
+    match values.argmax() {
+      Ok(idx) => t[idx],
+      Err(_) => midpoint,
+    }
   }
 }
 
