@@ -27,7 +27,6 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                               |
 | ---------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Critical   | Timetree     | [Clock filter deadlock blocks all default timetree runs](C-timetree-clock-filter-deadlock.md)                                       |
 | High       | Timetree     | [Clock rate frozen across iterations](H-timetree-clock-rate-frozen.md)                                                              |
 | High       | Timetree     | [Coalescent contributions use TBP coordinates, backward pass uses calendar time](H-timetree-coalescent-coordinate-mismatch.md)      |
 | High       | Timetree     | [Gap character not handled in alphabet](H-timetree-gap-alphabet.md)                                                                 |

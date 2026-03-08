@@ -83,28 +83,14 @@ pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
   }
 
   // Propagate upward in postorder: parent is bad only when all children are bad
-  graph.iter_depth_first_postorder_forward(|node| {
+  graph.iter_depth_first_postorder_forward(|mut node| {
     if node.is_leaf {
       return;
     }
 
-    let all_children_bad = node.child_keys.iter().all(|(child_key, _)| {
-      graph
-        .get_node(*child_key)
-        .expect("child must exist")
-        .read_arc()
-        .payload()
-        .read_arc()
-        .bad_branch
-    });
+    let all_children_bad = node.children.iter().all(|(child, _)| child.read_arc().bad_branch);
 
-    graph
-      .get_node(node.key)
-      .expect("node must exist")
-      .read_arc()
-      .payload()
-      .write_arc()
-      .bad_branch = all_children_bad;
+    node.payload.bad_branch = all_children_bad;
   });
 }
 
