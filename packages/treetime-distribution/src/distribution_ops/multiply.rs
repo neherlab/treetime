@@ -203,20 +203,20 @@ fn multiply_formula_function<Y: YAxisPolicy>(
     return Ok(Distribution::empty());
   }
 
-  let a = Arc::new(a.clone());
-  let b = Arc::new(b.clone());
+  // Evaluate the Formula on the Function's grid (matching multiply_function_function).
+  // The Function provides the grid; the Formula is evaluated at each grid point.
+  let n_points = b.t().len();
+  let values = (0..n_points)
+    .map(|i| {
+      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
+      let va = a.eval_single(t)?;
+      let vb = b.interp(t);
+      Ok(Y::multiply(va, vb))
+    })
+    .collect::<Result<Vec<f64>, Report>>()?;
 
-  let eval_fn = move |t: f64| -> eyre::Result<f64> {
-    let va = a.eval_single(t)?;
-    let vb = b.interp(t);
-    Ok(Y::multiply(va, vb))
-  };
-
-  Ok(Distribution::Formula(DistributionFormula::new(
-    eval_fn,
-    overlap_min,
-    overlap_max,
-  )))
+  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
+  Ok(Distribution::Function(distribution_fn))
 }
 
 fn multiply_formula_point<Y: YAxisPolicy>(
