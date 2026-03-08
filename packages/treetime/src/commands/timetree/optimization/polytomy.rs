@@ -425,12 +425,20 @@ fn remove_obsolete_nodes(graph: &mut GraphTimetree) -> Result<usize, Report> {
 
 /// Reset internal state after tree topology changes.
 ///
-/// Clears cached likelihoods, recalculates divergence from root, and resets
-/// bad_branch flags. Call this after any topology modification.
+/// Clears cached time distributions and bad_branch flags on internal nodes only.
+/// Leaf nodes retain their date constraints (`time_distribution` from `load_date_constraints()`)
+/// and exclusion flags (`bad_branch` from outlier detection or dateless leaves).
+/// Edge distributions and messages are cleared unconditionally.
 pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
-  // Clear cached time distributions and bad_branch flags
+  // Clear cached time distributions and bad_branch flags on internal nodes only.
+  // Leaf nodes must retain their date constraints and exclusion flags because
+  // load_date_constraints() runs once at initialization and is not re-invoked.
   for node in graph.get_nodes() {
-    let mut payload = node.read_arc().payload().write_arc();
+    let node = node.read_arc();
+    if node.is_leaf() {
+      continue;
+    }
+    let mut payload = node.payload().write_arc();
     payload.time_distribution = None;
     payload.bad_branch = false;
   }

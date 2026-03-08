@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::optimization::polytomy::{
-    DEFAULT_RESOLUTION_THRESHOLD, resolve_polytomies_with_options,
+    DEFAULT_RESOLUTION_THRESHOLD, prepare_tree_after_topology_change, resolve_polytomies_with_options,
   };
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
@@ -286,6 +286,79 @@ mod tests {
       .read_arc()
       .degree_out();
     assert_eq!(final_children, 2, "ABCDE should have 2 children after full resolution");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_prepare_tree_after_topology_change_preserves_leaf_state() -> Result<(), Report> {
+    let graph = create_polytomy_tree()?;
+
+    // Set time_distribution on leaves (simulating load_date_constraints)
+    let leaf_a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let leaf_b_key = find_node_key_by_name(&graph, "B").ok_or_else(|| make_report!("B not found"))?;
+    let leaf_c_key = find_node_key_by_name(&graph, "C").ok_or_else(|| make_report!("C not found"))?;
+
+    let date_dist = Arc::new(Distribution::point(2020.0, 1.0));
+    for &key in &[leaf_a_key, leaf_b_key, leaf_c_key] {
+      let node = graph.get_node(key).expect("Node must exist");
+      node.read_arc().payload().write_arc().time_distribution = Some(date_dist.clone());
+    }
+
+    // Mark leaf B as bad_branch (simulating outlier detection)
+    {
+      let node = graph.get_node(leaf_b_key).expect("Node must exist");
+      node.read_arc().payload().write_arc().bad_branch = true;
+    }
+
+    // Set time_distribution on internal node ABC
+    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
+    {
+      let node = graph.get_node(abc_key).expect("Node must exist");
+      node.read_arc().payload().write_arc().time_distribution =
+        Some(Arc::new(Distribution::point(2010.0, 1.0)));
+      node.read_arc().payload().write_arc().bad_branch = true;
+    }
+
+    prepare_tree_after_topology_change(&graph)?;
+
+    // Leaf date constraints must be preserved
+    for &key in &[leaf_a_key, leaf_b_key, leaf_c_key] {
+      let node = graph.get_node(key).expect("Node must exist");
+      let payload = node.read_arc().payload().read_arc();
+      assert!(
+        payload.time_distribution.is_some(),
+        "Leaf time_distribution must survive topology change"
+      );
+    }
+
+    // Leaf B bad_branch flag must be preserved
+    {
+      let node = graph.get_node(leaf_b_key).expect("Node must exist");
+      let payload = node.read_arc().payload().read_arc();
+      assert!(payload.bad_branch, "Leaf bad_branch flag must survive topology change");
+    }
+
+    // Internal node ABC must be cleared
+    {
+      let node = graph.get_node(abc_key).expect("Node must exist");
+      let payload = node.read_arc().payload().read_arc();
+      assert!(
+        payload.time_distribution.is_none(),
+        "Internal node time_distribution must be cleared"
+      );
+      assert!(!payload.bad_branch, "Internal node bad_branch must be cleared");
+    }
+
+    // Edge distributions must be cleared
+    for edge in graph.get_edges() {
+      let payload = edge.read_arc().payload().read_arc();
+      assert!(
+        payload.branch_length_distribution.is_none(),
+        "Edge branch_length_distribution must be cleared"
+      );
+      assert!(payload.msg_to_parent.is_none(), "Edge msg_to_parent must be cleared");
+    }
 
     Ok(())
   }
