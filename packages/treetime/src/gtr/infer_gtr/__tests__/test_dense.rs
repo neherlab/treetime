@@ -5,7 +5,10 @@ mod tests {
   use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
+  use crate::gtr::infer_gtr::dense::{
+    accumulate_mutation_counts, get_branch_mutation_matrix, get_mutation_counts_dense,
+  };
+  use crate::pretty_assert_abs_diff_eq;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -13,7 +16,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use maplit::btreemap;
-  use ndarray::array;
+  use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -144,21 +147,23 @@ mod tests {
     Ok(())
   }
 
-  // TODO(dense-branch-clamp): this test originally verified clean mathematical properties of
-  // zero branch lengths: `Ti == 0` (exact, epsilon 1e-15) and `off_diagonal_nij < 0.1`.
-  // After adding `fix_branch_length` clamping to `get_mutation_counts_dense` (for consistency
-  // with marginal passes and v0), zero-input BLs become `MIN_BRANCH_LENGTH_FRACTION / L`.
-  //
-  // Consequences:
-  //  - Ti is small but non-zero (proportional to clamped BL ~2.5e-4 for L=4)
-  //  - Off-diagonal nij ~2.0: the near-identity `expQt` has small off-diagonal entries, but
-  //    profiles (computed with clamped BL during marginal reconstruction) carry actual mutation
-  //    signal (A-C at position 0), which the joint distribution picks up
-  //  - The `is_finite()` assertion is weaker than the original `< 0.1` bound
-  //
-  // If `fix_branch_length` is removed from `get_mutation_counts_dense`, restore original
-  // assertions: `Ti == 0` (epsilon 1e-15) and `total_off_diagonal < 0.1`.
   /// Verifies that zero-input branch lengths (clamped internally) produce bounded results.
+  ///
+  /// For a zero-length branch, the mathematically correct result is expQt(0) = I, Ti = 0,
+  /// zero off-diagonal nij. But get_mutation_counts_dense applies fix_branch_length clamping
+  /// for consistency with the marginal passes that computed the profiles it reads. Using
+  /// expQt(0) when profiles were propagated through expQt(clamped_BL) would mix two different
+  /// transition models on the same branch.
+  ///
+  /// Clamped BL = MIN_BRANCH_LENGTH_FRACTION / seq_length (here: 1e-3/4 = 2.5e-4).
+  /// Consequences:
+  ///  - Ti is small but non-zero (proportional to clamped BL)
+  ///  - Off-diagonal nij ~2.0: the near-identity expQt has small off-diagonal entries, but
+  ///    profiles (computed with clamped BL during marginal reconstruction) carry actual mutation
+  ///    signal (A<->C at position 0), which the joint distribution picks up
+  ///
+  /// The mathematical invariant (Ti == 0, off-diagonal nij == 0) is tested separately in
+  /// test_zero_branch_lengths_unclamped, which bypasses clamping.
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
     let aln = read_many_fasta_str(
@@ -179,17 +184,60 @@ mod tests {
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
-    // Ti is small (proportional to clamped BL, not zero)
-    for &ti in &counts.Ti {
-      assert!(ti < 0.1, "Ti should be small with zero-input branch lengths, got {ti}");
-    }
+    // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
+    let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    assert!(ti_max < 1e-2, "max(Ti) = {ti_max} should be < 1e-2 for clamped zero-BL");
 
-    // Off-diagonal nij is bounded (not zero due to clamping + profile mutation signal)
-    let total_nij: f64 = counts.nij.sum();
-    assert!(total_nij.is_finite(), "nij should be finite, got {total_nij}");
+    // Off-diagonal nij dominated by A<->C mutation signal from profiles (~2.0 total),
+    // bounded well below 5.0
+    let total_off_diagonal: f64 = counts
+      .nij
+      .indexed_iter()
+      .filter(|&((i, j), _)| i != j)
+      .map(|(_, &v)| v)
+      .sum();
+    assert!(
+      total_off_diagonal < 5.0,
+      "total off-diagonal nij = {total_off_diagonal} should be < 5.0 for clamped zero-BL"
+    );
 
     // Root state should still be computed correctly
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
+
+    Ok(())
+  }
+
+  /// Mathematical invariant: with expQt = I and branch_length = 0, the accumulation
+  /// functions produce exactly zero Ti and zero off-diagonal nij.
+  ///
+  /// Tests the accumulation logic directly, bypassing fix_branch_length clamping.
+  /// When a branch has zero length, the transition matrix is the identity (no evolution),
+  /// so child = parent with certainty. No mutations occur and no evolutionary time elapses.
+  #[test]
+  fn test_zero_branch_lengths_unclamped() -> Result<(), Report> {
+    let n_states = 4;
+
+    // Identity transition matrix: P(child=i | parent=j) = delta(i,j)
+    let exp_qt = Array2::eye(n_states);
+
+    // One-hot profiles: site 0 = A, site 1 = C, site 2 = G, site 3 = T
+    let messages = Array2::eye(n_states);
+
+    let mut_stack = get_branch_mutation_matrix(&messages, &messages, &exp_qt);
+
+    let mut nij = Array2::zeros((n_states, n_states));
+    let mut ti = Array1::zeros(n_states);
+
+    accumulate_mutation_counts(&mut_stack, 0.0, &mut nij, &mut ti);
+
+    // Ti == 0: no evolutionary time at zero branch length
+    let expected_ti = Array1::zeros(n_states);
+    pretty_assert_abs_diff_eq!(expected_ti, ti, epsilon = 1e-15);
+
+    // nij == I: identity expQt means child = parent at every site, so each of the 4
+    // sites contributes P(child=k, parent=k) = 1.0 on the diagonal, zero off-diagonal
+    let expected_nij = Array2::eye(n_states);
+    pretty_assert_abs_diff_eq!(expected_nij, nij, epsilon = 1e-15);
 
     Ok(())
   }

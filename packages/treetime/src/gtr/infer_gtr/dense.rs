@@ -37,7 +37,7 @@ pub fn infer_gtr_dense(partition: &Arc<RwLock<PartitionMarginalDense>>, graph: &
 /// - `exp_qt`: Transition matrix P(child=i | parent=j) (n x n)
 ///
 /// Returns: Array3 of shape (L, n, n) where result[a, i, j] = P(child=i, parent=j | site a)
-fn get_branch_mutation_matrix(
+pub fn get_branch_mutation_matrix(
   msg_to_child: &Array2<f64>,
   msg_to_parent: &Array2<f64>,
   exp_qt: &Array2<f64>,
@@ -78,7 +78,7 @@ fn get_branch_mutation_matrix(
 ///
 /// The midpoint formula: Ti += 0.5 * branch_length * (P(parent=i) + P(child=i))
 /// where marginals are computed by summing mut_stack over child/parent states.
-fn accumulate_mutation_counts(
+pub fn accumulate_mutation_counts(
   mut_stack: &Array3<f64>,
   branch_length: f64,
   nij: &mut Array2<f64>,
