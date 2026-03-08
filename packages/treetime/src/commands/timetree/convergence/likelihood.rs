@@ -28,6 +28,10 @@ pub fn compute_sequence_likelihood(
 ///
 /// For each edge, evaluates the branch length distribution at `child_time - parent_time`
 /// (positive duration in calendar time where parent < child).
+///
+/// This is a v1-specific metric. v0's `positional_LH` sums node-level marginal
+/// log-likelihoods from the forward pass. Both metrics trend in the same direction
+/// during convergence but produce different numerical values.
 pub fn compute_positional_likelihood(graph: &GraphTimetree) -> Option<f64> {
   let mut total = 0.0;
   let mut count = 0_usize;
