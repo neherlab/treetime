@@ -58,32 +58,21 @@ mod tests {
   #[case::ebola_20("ebola_20")]
   #[case::flu_h3n2_20("flu_h3n2_20")]
   #[case::rsv_a_20("rsv_a_20")]
-  // #[case::lassa_L_50("lassa_L_50")]
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")]
-  // #[case::tb_20("tb_20")]
+  #[case::lassa_L_50("lassa_L_50")]
+  #[case::mpox_clade_ii_20("mpox_clade_ii_20")]
+  #[case::tb_20("tb_20")]
   fn test_gm_infer_gtr_dense_real(#[case] case_name: &str) -> Result<(), Report> {
-    // TODO(dense-root-state): some datasets fail due to root_state divergence at gap-only
-    // alignment positions. See the TODO(dense-root-state) in `get_mutation_counts_dense()`.
-    //
-    // Measured errors (W-matrix):
-    //   lassa_L_50:      ~29%  (557 gap-only positions out of ~10k)
-    //   tb_20:           ~1.25e-5
-    //   mpox_clade_ii_20: not measured, same root cause
-    //
-    // Re-enable after fixing root_state to skip uninformative positions (option A in
-    // dense.rs) and regenerating golden master fixtures with seeded capture script.
-
     let case = &INPUTS.real[case_name];
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, partition) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
     let actual = infer_gtr_dense(&partition, &graph)?;
 
-    // Real datasets have longer sequences (1k-10k sites), accumulating more floating-point
-    // drift between NumPy and ndarray across the iterative solver. Tightest passing: 1e-7.
-    pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-7);
+    // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
+    // (~200k positions) shows max diff ~2.3e-7. Tightest passing: 1e-6.
+    pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
 
     Ok(())
   }

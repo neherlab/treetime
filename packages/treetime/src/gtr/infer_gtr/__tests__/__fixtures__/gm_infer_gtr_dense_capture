@@ -2,10 +2,52 @@
 """
 Golden master capture script for infer_gtr_dense.
 
-Reads inputs from gm_infer_gtr_dense_inputs.json, runs Python v0
-TreeAnc.infer_gtr(marginal=True), writes outputs to gm_infer_gtr_dense_outputs.json.
+Reads inputs from gm_infer_gtr_dense_inputs.json, writes outputs to
+gm_infer_gtr_dense_outputs.json. Outputs serve as oracle for Rust v1
+infer_gtr_dense golden master tests.
 
-The outputs serve as oracle for validating Rust v1 infer_gtr_dense implementation.
+Deviation from v0
+-----------------
+This script does NOT call v0's ``TreeAnc.infer_gtr(marginal=True)`` directly.
+Instead it replicates v0's internal computation with one correction to
+root_state, described below.
+
+v0's ``infer_gtr(marginal=True)`` (``treeanc.py:1500-1632``) performs four steps:
+
+  1. Marginal reconstruction: ``_ml_anc_marginal()`` populates per-node
+     marginal profiles (``node.marginal_profile``, shape ``(L, n)``) and
+     consensus sequences (``node._cseq``).
+
+  2. Mutation count accumulation (``treeanc.py:1556-1572``): for each edge,
+     computes the branch joint distribution P(child=i, parent=j | site) via
+     ``get_branch_mutation_matrix()``, then accumulates:
+       - ``n_ija[i, j, pos]``: expected substitution count (child=i, parent=j)
+       - ``T_ia[i, pos]``: time in state i, midpoint approximation
+         ``0.5 * branch_length * (P_parent(i) + P_child(i))``
+
+  3. Root state counting (``treeanc.py:1608-1613``): counts how many alignment
+     positions have each nucleotide state at the root, using the consensus
+     sequence ``cseq`` (argmax of marginal profile per position).
+
+  4. GTR solver (``gtr.py:492-599``): iterative scheme estimating W (exchange
+     rates), pi (equilibrium frequencies), and mu (overall rate) from nij, Ti,
+     and root_state. Root state enters the pi update as an additive prior:
+     ``pi[i] = (sum_j nij[i,j] + pc + root_state[i]) / denominator``.
+
+Steps 1, 2, and 4 are replicated unchanged. Step 3 is corrected:
+
+v0 counts ALL positions, including gap-only columns where the marginal profile
+is uniform ``[1/n, ..., 1/n]``. Argmax on a uniform row picks an arbitrary state
+(index 0 in NumPy), dumping hundreds of uninformative counts into one state.
+For lassa_L_50, 557 gap-only positions out of ~10k bias pi toward state 0.
+
+The corrected root_state skips positions where ``max(profile_row) <= 1/n + 1e-10``.
+These positions carry zero phylogenetic signal and should not influence
+equilibrium frequency estimates. The threshold ``1/n + 1e-10`` distinguishes
+truly uniform rows (gap-only) from rows with a clear peak.
+
+This matches the v1 Rust implementation in ``get_mutation_counts_dense()``
+(``dense.rs``).
 
 Usage:
     ./dev/docker/python python packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture
@@ -24,6 +66,7 @@ from Bio import AlignIO, Phylo
 sys.path.insert(0, str(Path(__file__).resolve().parents[6] / "legacy" / "treetime"))
 
 from treetime import TreeAnc  # noqa: E402
+from treetime.gtr import GTR  # noqa: E402
 from treetime.nuc_models import JC69  # noqa: E402
 
 SEED = 1010336213
@@ -54,11 +97,12 @@ def load_real_alignment(path: Path) -> str:
 
 
 def capture_infer_gtr(tree_nwk: str, alignment_fasta: str, case_name: str) -> dict:
-    """Run TreeAnc.infer_gtr(marginal=True) and return W, pi, mu."""
+    """Replicate v0 infer_gtr(marginal=True) with corrected root_state."""
     tree = Phylo.read(StringIO(tree_nwk), "newick")
     aln = parse_alignment(alignment_fasta)
 
-    # Use JC69 with nuc_nogap (4 states) to match Rust's n_canonical()
+    # nuc_nogap: 4 states (A, C, G, T), gaps treated as unknown.
+    # Matches Rust's Alphabet::n_canonical() with treat_gap_as_unknown=true.
     gtr = JC69(mu=1.0, alphabet="nuc_nogap")
 
     tt = TreeAnc(
@@ -71,8 +115,71 @@ def capture_infer_gtr(tree_nwk: str, alignment_fasta: str, case_name: str) -> di
         rng_seed=SEED,
     )
 
-    # Call the actual v0 method
-    inferred_gtr = tt.infer_gtr(marginal=True, normalized_rate=False, pc=1.0)
+    # Step 1: marginal reconstruction (unchanged from v0).
+    # Populates node.marginal_profile (L x n posterior) and node._cseq (argmax
+    # consensus). Corresponds to treeanc.py:1544-1547.
+    tt._ml_anc_marginal()
+
+    n = tt.gtr.n_states
+    seq_len = len(tt.tree.root._cseq)
+    n_ija = np.zeros((n, n, seq_len))
+    T_ia = np.zeros((n, seq_len))
+
+    # Step 2: mutation count accumulation (unchanged from v0).
+    # Replicates treeanc.py:1556-1572 (marginal branch of infer_gtr).
+    #
+    # For each edge (parent -> child):
+    #   get_branch_mutation_matrix returns (L, child, parent) joint distribution.
+    #   Transposed to (child, parent, L) for broadcasting with multiplicity.
+    #
+    #   n_ija[i, j, pos] += P(child=i, parent=j | pos)  (expected substitutions)
+    #   T_ia[k, pos] += 0.5 * BL * (P_parent(k|pos) + P_child(k|pos))  (midpoint time)
+    #
+    # mut_stack.sum(axis=0): marginal over child states -> parent marginal (n, L)
+    # mut_stack.sum(axis=1): marginal over parent states -> child marginal (n, L)
+    for node in tt.tree.get_nonterminals():
+        for c in node:
+            mut_stack = np.transpose(
+                tt.get_branch_mutation_matrix(c, full_sequence=False), (1, 2, 0)
+            )
+            bl = tt._branch_length_to_gtr(c)
+            mult = tt.data.multiplicity(mask=c.mask)
+            T_ia += 0.5 * bl * mut_stack.sum(axis=0) * mult
+            T_ia += 0.5 * bl * mut_stack.sum(axis=1) * mult
+            n_ija += mut_stack * mult
+
+    # Step 3: root state counting (CORRECTED - differs from v0).
+    #
+    # v0 (treeanc.py:1608-1613) counts all positions unconditionally:
+    #   root_state[k] = sum(cseq == alphabet[k]) * multiplicity
+    #
+    # Here we use marginal_profile directly (equivalent to cseq for informative
+    # positions, since cseq = argmax(marginal_profile)) and skip uninformative
+    # positions where max(profile_row) <= 1/n + 1e-10.
+    #
+    # For n=4 (nucleotides), threshold = 0.25 + 1e-10. A gap-only column has
+    # uniform profile [0.25, 0.25, 0.25, 0.25], max = 0.25 <= threshold, skipped.
+    # An informative column (e.g. [0.95, 0.02, 0.02, 0.01]) has max = 0.95 > threshold.
+    root_profile = tt.tree.root.marginal_profile
+    uniform_threshold = 1.0 / n + 1e-10
+    mult = tt.data.multiplicity(mask=tt.tree.root.mask)
+    root_state = np.zeros(n)
+    for pos in range(seq_len):
+        if root_profile[pos].max() > uniform_threshold:
+            root_state[root_profile[pos].argmax()] += mult[pos]
+
+    # Step 4: GTR solver (unchanged from v0).
+    # Corresponds to gtr.py:492-599 (GTR.infer classmethod).
+    # pc=1.0 matches the capture's original call to infer_gtr(pc=1.0).
+    # normalized_rate=False: mu is the solver's raw estimate, not forced to 1.0.
+    n_ij = n_ija.sum(axis=-1)
+    Ti = T_ia.sum(axis=-1)
+    inferred_gtr = GTR.infer(
+        n_ij, Ti, root_state, pc=1.0,
+        alphabet=tt.gtr.alphabet,
+        logger=tt.logger,
+        prof_map=tt.gtr.profile_map,
+    )
 
     return {
         "case": case_name,
