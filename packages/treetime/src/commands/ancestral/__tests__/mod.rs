@@ -11,6 +11,7 @@ mod test_marginal_idempotency_example;
 mod test_marginal_idempotency_prop;
 mod test_marginal_normalization_example;
 mod test_marginal_normalization_prop;
+mod test_marginal_root_invariance_prop;
 mod test_marginal_sparse;
 mod test_marginal_stability;
 mod test_marginal_topology;
