@@ -1,4 +1,4 @@
-use crate::commands::ancestral::marginal::initialize_marginal;
+use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
@@ -17,6 +17,7 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
+use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
@@ -110,7 +111,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   };
 
   if args.n_branches_posterior.is_some() {
-    todo!("n_branches_posterior: use posterior time distributions for coalescent branch counting");
+    return make_error!("--n-branches-posterior is not yet implemented");
   }
 
   // First pass without coalescent: establish internal node time distributions via
@@ -159,9 +160,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline, args.tracelog.clone())?;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
-    // Re-optimize constant Tc each iteration (requires at least 2 iterations per v0).
-    // In skyline mode, v0 uses constant Tc during loop iterations and defers the full
-    // skyline fit to post-convergence, but still re-optimizes constant Tc each iteration.
+    // Re-optimize constant Tc each iteration. Skip i < 2 because v1 runs a pre-loop
+    // Tc optimization, making the first in-loop re-optimization redundant.
+    // In skyline mode, constant Tc is used during loop iterations; the full skyline
+    // fit is deferred to post-convergence.
     if (args.coalescent_opt || args.coalescent_skyline) && i >= 2 {
       // For constant distributions, max_value() returns the Tc amplitude
       let initial_tc = coalescent_tc.as_ref().map_or(1.0, |d| d.max_value());
@@ -216,6 +218,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     if args.time_marginal != TimeMarginalMode::OnlyFinal {
       run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
         .wrap_err("Final timetree pass with optimized skyline failed")?;
+
+      if !partitions.is_empty() {
+        update_marginal(&graph, &partitions)?;
+      }
     }
   }
 
@@ -228,6 +234,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     info!("### Final round: marginal reconstruction for confidence intervals");
     run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
       .wrap_err("Final timetree inference failed")?;
+
+    if !partitions.is_empty() {
+      update_marginal(&graph, &partitions)?;
+    }
+
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;

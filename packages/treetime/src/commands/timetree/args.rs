@@ -180,7 +180,7 @@ pub struct TreetimeTimetreeArgs {
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent
   /// mergerrate or use inferred time before present (default).
-  #[clap(long)]
+  #[clap(long, hide = true)]
   pub n_branches_posterior: Option<usize>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,

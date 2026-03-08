@@ -302,7 +302,7 @@ mod tests {
     let date_dist = Arc::new(Distribution::point(2020.0, 1.0));
     for &key in &[leaf_a_key, leaf_b_key, leaf_c_key] {
       let node = graph.get_node(key).expect("Node must exist");
-      node.read_arc().payload().write_arc().time_distribution = Some(date_dist.clone());
+      node.read_arc().payload().write_arc().time_distribution = Some(Arc::clone(&date_dist));
     }
 
     // Mark leaf B as bad_branch (simulating outlier detection)
@@ -315,8 +315,7 @@ mod tests {
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     {
       let node = graph.get_node(abc_key).expect("Node must exist");
-      node.read_arc().payload().write_arc().time_distribution =
-        Some(Arc::new(Distribution::point(2010.0, 1.0)));
+      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(2010.0, 1.0)));
       node.read_arc().payload().write_arc().bad_branch = true;
     }
 
