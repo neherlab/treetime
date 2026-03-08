@@ -266,8 +266,11 @@ fn main() -> Result<(), Report> {
 }
 
 fn load_graph(snapshot: &Snapshot) -> Result<GraphTimetree, Report> {
-  let graph = nwk_read_file(&snapshot.inputs.tree_path)?;
-  let dates = read_dates(&snapshot.inputs.metadata_path, &Some(o!("name")), &Some(o!("date")))?;
+  let fixtures_dir = Path::new(SNAPSHOTS_DIR);
+  let tree_path = fixtures_dir.join(&snapshot.inputs.tree_path);
+  let metadata_path = fixtures_dir.join(&snapshot.inputs.metadata_path);
+  let graph = nwk_read_file(&tree_path)?;
+  let dates = read_dates(&metadata_path, &Some(o!("name")), &Some(o!("date")))?;
   load_date_constraints(&dates, &graph)?;
   Ok(graph)
 }
@@ -716,7 +719,10 @@ fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Re
   Ok(())
 }
 
-const SNAPSHOTS_DIR: &str = "test_scripts/snapshots";
+const SNAPSHOTS_DIR: &str = concat!(
+  env!("CARGO_MANIFEST_DIR"),
+  "/src/commands/timetree/coalescent/__tests__/__fixtures__"
+);
 
 static COALESCENT_POSSIBLE_VIRUS_PATHS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
   let snapshots_dir = Path::new(SNAPSHOTS_DIR);
@@ -780,7 +786,7 @@ fn discover_coalescent_snapshots(snapshots_dir: &Path) -> Result<Vec<DiscoveredS
       .and_then(|s| s.to_str())
       .is_some_and(|s| s.eq_ignore_ascii_case("json"));
 
-    if !file_name.starts_with("coalescent") || !is_json {
+    if !file_name.starts_with("gm_coalescent_") || !is_json {
       continue;
     }
     let snapshot =
@@ -791,7 +797,7 @@ fn discover_coalescent_snapshots(snapshots_dir: &Path) -> Result<Vec<DiscoveredS
 
   if out.is_empty() {
     eyre::bail!(
-      "No coalescent snapshots found in {} (expected files like coalescent*.json)",
+      "No coalescent snapshots found in {} (expected files like gm_coalescent_*.json)",
       snapshots_dir.display()
     );
   }
