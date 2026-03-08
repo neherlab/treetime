@@ -185,15 +185,15 @@ pub struct TreetimeTimetreeArgs {
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[clap(long)]
+  #[clap(long, hide = true)]
   #[clap(value_hint = ValueHint::FilePath)]
-  pub plot_tree: Option<usize>,
+  pub plot_tree: Option<PathBuf>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[clap(long)]
+  #[clap(long, hide = true)]
   #[clap(value_hint = ValueHint::FilePath)]
-  pub plot_rtt: Option<usize>,
+  pub plot_rtt: Option<PathBuf>,
 
   /// add tip labels (default for small trees with <30 leaves)
   #[clap(long)]
@@ -237,7 +237,7 @@ pub struct TreetimeTimetreeArgs {
   pub covariation: bool,
 
   /// Estimate timetree with rate variation to assess sensitivity to clock rate uncertainty
-  #[clap(long)]
+  #[clap(long, hide = true)]
   pub vary_rate: bool,
 
   /// GTR model to use

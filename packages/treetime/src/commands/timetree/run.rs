@@ -227,7 +227,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   info!("### TreeTime: postprocessing");
   if args.vary_rate {
-    todo!("calc_rate_susceptibility not yet implemented");
+    return make_error!("--vary-rate is not yet implemented");
   }
 
   if args.time_marginal == TimeMarginalMode::OnlyFinal {
@@ -266,11 +266,11 @@ fn write_outputs(
   write_clock_model(clock_model, &out_base)?;
 
   if args.plot_rtt.is_some() {
-    todo!("plot_root_to_tip not yet implemented");
+    return make_error!("--plot-rtt is not yet implemented");
   }
 
   if args.plot_tree.is_some() {
-    todo!("plot_time_tree not yet implemented");
+    return make_error!("--plot-tree is not yet implemented");
   }
 
   Ok(())
