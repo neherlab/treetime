@@ -1,7 +1,9 @@
 use crate::commands::clock::clock_regression::ClockParams;
+use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::make_error;
 use eyre::Report;
 use log::{debug, info};
 use std::sync::Arc;
@@ -12,7 +14,8 @@ use treetime_utils::collections::container::get_exactly_one;
 
 /// Find the best new root node
 ///
-// Loop over all nodes, pick the one with the lowest chisq, then optimize position along surrounding branches.
+// Loop over all nodes, pick the one with the lowest chisq and positive clock rate,
+// then optimize position along surrounding branches.
 pub fn find_best_root<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
@@ -28,10 +31,18 @@ where
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
-  // Initialize with the current root
+  // Initialize with the current root, only accepting it if it has a positive clock rate
   let root = root.read_arc().payload().read_arc();
-  let mut best_chisq = root.clock_set().chisq();
-  debug!("Initial root chi-squared: {best_chisq:.6e}");
+  let root_positive_rate = has_positive_clock_rate(root.clock_set());
+  let mut best_chisq = if root_positive_rate {
+    root.clock_set().chisq()
+  } else {
+    f64::INFINITY
+  };
+  debug!(
+    "Initial root chi-squared: {:.6e} (positive rate: {root_positive_rate})",
+    root.clock_set().chisq()
+  );
 
   let mut best_res = FindRootResult {
     edge: None,
@@ -40,11 +51,22 @@ where
     clock_set: root.clock_set().clone(),
   };
 
-  // Find best node
+  // Find best node with positive clock rate
   let mut node_count = 0;
   let mut improvements = 0;
+  let mut rejected_negative_rate = 0;
   for n in graph.get_nodes() {
-    let tmp_chisq = n.read_arc().payload().read_arc().clock_set().chisq();
+    let node_guard = n.read_arc();
+    let payload_guard = node_guard.payload().read_arc();
+    let clock_set = payload_guard.clock_set();
+    if !has_positive_clock_rate(clock_set) {
+      rejected_negative_rate += 1;
+      node_count += 1;
+      continue;
+    }
+    let tmp_chisq = clock_set.chisq();
+    drop(payload_guard);
+    drop(node_guard);
     if tmp_chisq < best_chisq {
       improvements += 1;
       debug!("Found better node {improvements}: chi-squared improved from {best_chisq:.6e} to {tmp_chisq:.6e}");
@@ -53,7 +75,10 @@ where
     }
     node_count += 1;
   }
-  debug!("Evaluated {node_count} nodes, found {improvements} improvements, best chi-squared: {best_chisq:.6e}");
+  debug!(
+    "Evaluated {node_count} nodes, found {improvements} improvements, \
+     rejected {rejected_negative_rate} with negative rate, best chi-squared: {best_chisq:.6e}"
+  );
   let best_root_node = best_root_node.read_arc();
 
   // Check if some intermediate place on the parent branch is better
@@ -66,7 +91,7 @@ where
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
     );
-    if res.chisq < best_chisq {
+    if res.chisq < best_chisq && has_positive_clock_rate(&res.clock_set) {
       debug!(
         "Parent branch optimization improved chi-squared from {:.6e} to {:.6e}",
         best_chisq, res.chisq
@@ -84,7 +109,7 @@ where
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split
     );
-    if res.chisq < best_chisq {
+    if res.chisq < best_chisq && has_positive_clock_rate(&res.clock_set) {
       debug!(
         "Child branch {} optimization improved chi-squared from {:.6e} to {:.6e}",
         child_branch_count, best_chisq, res.chisq
@@ -94,10 +119,22 @@ where
     }
   }
 
+  if !has_positive_clock_rate(&best_res.clock_set) {
+    return make_error!(
+      "Clock rate is negative for all root positions. \
+       The data may lack temporal signal. Please specify --clock-rate explicitly."
+    );
+  }
+
   info!(
     "Root optimization completed. Final chi-squared: {:.6e}, split: {:.6}",
     best_res.chisq, best_res.split
   );
 
   Ok(best_res)
+}
+
+fn has_positive_clock_rate(clock_set: &ClockSet) -> bool {
+  let det = clock_set.determinant();
+  det > 0.0 && clock_set.clock_rate(det) > 0.0
 }

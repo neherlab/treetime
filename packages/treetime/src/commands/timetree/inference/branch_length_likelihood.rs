@@ -1,4 +1,5 @@
 use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
+use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
@@ -35,7 +36,13 @@ pub fn compute_branch_length_distribution(
   clock_rate: f64,
   gamma: f64,
 ) -> Result<Arc<Distribution>, Report> {
-  debug_assert!(clock_rate >= 0.0);
+  if clock_rate <= 0.0 {
+    return make_error!(
+      "Clock rate estimate is negative ({clock_rate:.6e}). \
+       The data may lack sufficient temporal signal for automatic rate estimation. \
+       Please specify --clock-rate explicitly."
+    );
+  }
   debug_assert!(gamma > 0.0);
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);

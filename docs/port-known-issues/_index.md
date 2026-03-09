@@ -30,7 +30,6 @@ exactly.
 | High       | Timetree     | [Coalescent contributions use TBP coordinates, backward pass uses calendar time](H-timetree-coalescent-coordinate-mismatch.md)      |
 | High       | Timetree     | [Gap character not handled in alphabet](H-timetree-gap-alphabet.md)                                                                 |
 | High       | Timetree     | [Marginal dense backward pass crash on ebola](H-timetree-marginal-dense-backward-crash.md)                                          |
-| High       | Timetree     | [Negative clock rate causes assertion failure](H-timetree-negative-clock-rate-assertion.md)                                         |
 | High       | Timetree     | [--vary-rate panics with todo!()](H-timetree-vary-rate-unimplemented.md)                                                            |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                    |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                   |
@@ -48,7 +47,6 @@ exactly.
 | Medium     | Timetree     | [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)                                                  |
 | Medium     | Timetree     | [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)                                |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                |
-| Medium     | Timetree     | [Negative clock rate silently stored in input-BL mode](M-timetree-negative-rate-input-bl.md)                                        |
 | Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                                  |
 | Medium     | Timetree     | [Polytomy zero-branch penalty differs from v0](M-timetree-polytomy-zero-branch-penalty.md)                                          |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                          |

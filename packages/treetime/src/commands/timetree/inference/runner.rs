@@ -8,6 +8,7 @@ use crate::commands::timetree::inference::forward_pass::propagate_distributions_
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
+use crate::make_error;
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
@@ -38,6 +39,14 @@ where
   info!("## Using clock model");
   let clock_rate = clock_model.clock_rate();
   info!("**Clock rate:** {clock_rate:.6e}");
+
+  if clock_rate <= 0.0 {
+    return make_error!(
+      "Clock rate estimate is negative ({clock_rate:.6e}). \
+       The data may lack sufficient temporal signal for automatic rate estimation. \
+       Please specify --clock-rate explicitly."
+    );
+  }
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
