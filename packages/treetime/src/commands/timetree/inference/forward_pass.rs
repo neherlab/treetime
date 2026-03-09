@@ -44,7 +44,9 @@ where
     .as_ref()
     .and_then(|time_dist| time_dist.likely_time());
 
-  node.payload.set_time(time);
+  if let Some(time) = time {
+    node.payload.set_time(Some(time));
+  }
 }
 
 fn refine_distribution_from_parent<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>

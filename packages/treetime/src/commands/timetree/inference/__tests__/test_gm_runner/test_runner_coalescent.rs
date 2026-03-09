@@ -44,7 +44,14 @@ mod tests {
     run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc))?;
 
     let times = extract_node_times(&graph);
-    assert!(!times.is_empty(), "Pipeline produced no node times");
+    let expected_count = graph.num_nodes();
+    assert_eq!(
+      expected_count,
+      times.len(),
+      "All nodes (tips + internal) must have time values, but only {actual} of {expected} do",
+      actual = times.len(),
+      expected = expected_count,
+    );
 
     for (name, time) in &times {
       assert!(time.is_finite(), "Node {name} has non-finite time {time}");
