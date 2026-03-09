@@ -1,4 +1,5 @@
 use crate::Distribution;
+use crate::distribution_core::function::DistributionFunction;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 
@@ -13,7 +14,7 @@ pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
   match dist {
     Distribution::Function(f) => {
       let new_y = f.y().mapv(|y| Y::multiply(y, Y::from_plain(scalar)));
-      Distribution::function(f.t(), new_y) //
+      DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), new_y).map(Distribution::Function)
     },
     Distribution::Point(p) => {
       let amplitude = Y::multiply(p.amplitude(), Y::from_plain(scalar));

@@ -32,7 +32,6 @@ exactly.
 | High       | Timetree     | [Marginal dense backward pass crash on ebola](H-timetree-marginal-dense-backward-crash.md)                                          |
 | High       | Timetree     | [Negative clock rate causes assertion failure](H-timetree-negative-clock-rate-assertion.md)                                         |
 | High       | Timetree     | [--vary-rate panics with todo!()](H-timetree-vary-rate-unimplemented.md)                                                            |
-| High       | Timetree     | [Zero-length branches cause panic](H-timetree-zero-length-panic.md)                                                                 |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                    |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                   |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                           |

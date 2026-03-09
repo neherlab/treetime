@@ -120,7 +120,6 @@ fn convolution_range_function<Y: SupportsConvolution>(
   let shifted_function = convolution_point_function::<Y>(&point_distr, f)?;
 
   // Convolution with a range centered on zero and of given width
-  let t_out = shifted_function.t();
   let mut y_out = Array1::zeros(shifted_function.y().len());
 
   // TODO: optimize by using cumulative sums
@@ -130,7 +129,8 @@ fn convolution_range_function<Y: SupportsConvolution>(
     y_out[i] = filtered_y.sum() * dx;
   }
 
-  Distribution::function(t_out, y_out)
+  DistributionFunction::from_start_dx_values(shifted_function.x_min(), shifted_function.dx(), y_out)
+    .map(Distribution::Function)
 }
 
 fn convolution_function_function<Y: SupportsConvolution>(

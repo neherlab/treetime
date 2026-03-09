@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionPlain as Distribution;
+  use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution;
+  use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
 
   #[test]
@@ -254,5 +256,56 @@ mod tests {
     let expected = Distribution::function(expected_x, expected_y).unwrap();
 
     assert_eq!(expected, actual);
+  }
+
+  /// Regression: small dx values caused "x array must be uniformly spaced" when grid
+  /// x-arrays accumulated floating-point rounding errors over many points. The fix
+  /// avoids the roundtrip through explicit x-arrays by using from_start_dx_values.
+  #[test]
+  fn test_convolution_convolve_small_dx_function_function() -> Result<(), Report> {
+    let dx = 1e-7;
+    let num_points = 500;
+    // Constant distributions: convolution output length = n_a + n_b - 1 = 999
+    let values = Array1::from_elem(num_points, 1.0);
+    let dist_a: Distribution =
+      Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values.clone())?);
+    let dist_b: Distribution = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, values)?);
+
+    let actual = distribution_convolution(&dist_a, &dist_b)?;
+    assert!(matches!(actual, Distribution::Function(_)));
+
+    // Verify structural properties derived from convolution theory:
+    // output length = n_a + n_b - 1, output dx preserved, output x_min = x_min_a + x_min_b
+    let Distribution::Function(result_fn) = actual else {
+      return Err(eyre::eyre!("expected Function variant"));
+    };
+    let expected_len = 2 * num_points - 1;
+    assert_eq!(expected_len, result_fn.len());
+    assert_abs_diff_eq!(0.0, result_fn.x_min(), epsilon = 1e-15);
+    assert_abs_diff_eq!(dx, result_fn.dx(), epsilon = 1e-15);
+    Ok(())
+  }
+
+  /// Regression: convolution_range_function built its result via Distribution::function(t_out, y_out)
+  /// where t_out was generated from grid parameters and then validated back through Grid::from_array.
+  #[test]
+  fn test_convolution_convolve_small_dx_range_function() -> Result<(), Report> {
+    let dx = 1e-7;
+    let n = 500;
+    let y = Array1::from_elem(n, 1.0);
+    let func: Distribution = Distribution::Function(DistributionFunction::from_start_dx_values(0.0, dx, y)?);
+
+    let range = Distribution::range((0.0, 2e-7), 1.0);
+
+    let actual = distribution_convolution(&range, &func)?;
+    assert!(matches!(actual, Distribution::Function(_)));
+
+    // Range+function preserves the function's grid spacing and point count
+    let Distribution::Function(f) = actual else {
+      return Err(eyre::eyre!("expected Function variant"));
+    };
+    assert_eq!(n, f.len());
+    assert_abs_diff_eq!(dx, f.dx(), epsilon = 1e-15);
+    Ok(())
   }
 }
