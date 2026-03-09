@@ -102,8 +102,8 @@ mod tests {
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params);
-    clock_regression_forward(&graph, &clock_params);
+    clock_regression_backward(&graph, &clock_params, None);
+    clock_regression_forward(&graph, &clock_params, None);
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];
@@ -378,8 +378,8 @@ mod tests {
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params);
-    clock_regression_forward(&graph, &clock_params);
+    clock_regression_backward(&graph, &clock_params, None);
+    clock_regression_forward(&graph, &clock_params, None);
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];

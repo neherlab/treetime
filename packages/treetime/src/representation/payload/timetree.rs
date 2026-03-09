@@ -182,7 +182,11 @@ impl HasBranchLength for EdgeTimetree {
   }
 }
 
-impl ClockEdge for EdgeTimetree {}
+impl ClockEdge for EdgeTimetree {
+  fn gamma(&self) -> f64 {
+    self.gamma
+  }
+}
 
 impl ClockMessages<ClockSet> for EdgeTimetree {
   fn to_parent(&self) -> &ClockSet {
@@ -266,10 +270,6 @@ impl EdgeToGraphviz for EdgeTimetree {
 }
 
 impl TimetreeEdge for EdgeTimetree {
-  fn gamma(&self) -> f64 {
-    self.gamma
-  }
-
   fn set_gamma(&mut self, gamma: f64) {
     self.gamma = gamma;
   }

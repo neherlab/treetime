@@ -320,6 +320,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
     Some(config.clock_rate),
     true,
     &BranchPointOptimizationParams::default(),
+    None,
   )?;
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
 
@@ -374,6 +375,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
     Some(config.clock_rate),
     true,
     &BranchPointOptimizationParams::default(),
+    None,
   )?;
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
 

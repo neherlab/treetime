@@ -27,7 +27,6 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                               |
 | ---------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| High       | Timetree     | [Clock rate frozen across iterations](H-timetree-clock-rate-frozen.md)                                                              |
 | High       | Timetree     | [Coalescent contributions use TBP coordinates, backward pass uses calendar time](H-timetree-coalescent-coordinate-mismatch.md)      |
 | High       | Timetree     | [Gap character not handled in alphabet](H-timetree-gap-alphabet.md)                                                                 |
 | High       | Timetree     | [Marginal dense backward pass crash on ebola](H-timetree-marginal-dense-backward-crash.md)                                          |

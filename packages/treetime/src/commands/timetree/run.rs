@@ -57,6 +57,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     args.clock_rate,
     args.keep_root,
     &branch_params,
+    None,
   )
   .wrap_err("Failed to infer clock model")?;
 

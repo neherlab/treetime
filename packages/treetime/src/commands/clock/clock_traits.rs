@@ -1,5 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
-use treetime_graph::edge::{ClockMessages, HasBranchLength};
+use treetime_graph::edge::{ClockMessages, HasBranchLength, TimeLength};
 use treetime_graph::node::Outlier;
 
 pub trait ClockNode: Outlier + Send + Sync {
@@ -13,4 +13,9 @@ pub trait ClockNode: Outlier + Send + Sync {
   }
 }
 
-pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + Send + Sync {}
+pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + TimeLength + Send + Sync {
+  /// Per-branch relaxed clock rate multiplier. Default 1.0 (strict clock).
+  fn gamma(&self) -> f64 {
+    1.0
+  }
+}

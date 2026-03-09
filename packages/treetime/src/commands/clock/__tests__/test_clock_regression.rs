@@ -39,7 +39,7 @@ mod tests {
       n.write_arc().payload().write_arc().time = Some(dates[&name]);
     }
 
-    clock_regression_backward(&graph, &ClockParams::default());
+    clock_regression_backward(&graph, &ClockParams::default(), None);
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();
@@ -53,7 +53,7 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, options);
+    clock_regression_backward(&graph, options, None);
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();

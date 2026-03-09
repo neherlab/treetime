@@ -4,7 +4,7 @@ use crate::o;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength};
+use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named, Outlier};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
@@ -163,6 +163,14 @@ impl ClockMessages<ClockSet> for EdgeClock {
   fn from_child_mut(&mut self) -> &mut ClockSet {
     &mut self.clock_from_child
   }
+}
+
+impl TimeLength for EdgeClock {
+  fn time_length(&self) -> Option<f64> {
+    None
+  }
+
+  fn set_time_length(&mut self, _length: Option<f64>) {}
 }
 
 impl ClockEdge for EdgeClock {}

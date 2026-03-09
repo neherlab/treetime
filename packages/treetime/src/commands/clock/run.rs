@@ -24,7 +24,7 @@ pub fn get_clock_model(
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
 ) -> Result<ClockModel, Report> {
-  estimate_clock_model_with_reroot(graph, options, None, keep_root, optimization_params)
+  estimate_clock_model_with_reroot(graph, options, None, keep_root, optimization_params, None)
 }
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {

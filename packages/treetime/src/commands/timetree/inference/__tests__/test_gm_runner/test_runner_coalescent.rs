@@ -88,6 +88,7 @@ mod tests {
       Some(case.clock_rate()),
       true,
       &BranchPointOptimizationParams::default(),
+      None,
     )?;
 
     initialize_clock_totals_from_time_distributions(&graph)?;

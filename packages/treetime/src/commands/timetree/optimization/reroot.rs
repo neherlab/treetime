@@ -35,9 +35,16 @@ pub fn reroot_tree(
   );
 
   // Perform clock-based rerooting
-  let clock_reroot_result =
-    estimate_clock_model_with_reroot_policy(graph, clock_params, clock_rate, false, branch_params, &reroot_params)
-      .wrap_err("Failed to estimate clock model with reroot")?;
+  let clock_reroot_result = estimate_clock_model_with_reroot_policy(
+    graph,
+    clock_params,
+    clock_rate,
+    false,
+    branch_params,
+    &reroot_params,
+    None,
+  )
+  .wrap_err("Failed to estimate clock model with reroot")?;
 
   let new_root_key = graph.get_exactly_one_root()?.read_arc().key();
 

@@ -90,9 +90,17 @@ pub fn run_refinement_iteration(
   let curr_states = capture_ancestral_states(graph, partitions);
   let n_diff = count_sequence_changes(&prev_states, &curr_states);
 
-  // Re-estimate clock model without rerooting (v0 does not reroot inside the loop)
-  *clock_model = estimate_clock_model_with_reroot(graph, clock_params, args.clock_rate, true, branch_params)
-    .wrap_err("Failed to update clock model")?;
+  // Re-estimate clock model without rerooting (v0 does not reroot inside the loop).
+  // Pass previous clock rate so regression uses solver-updated time lengths.
+  *clock_model = estimate_clock_model_with_reroot(
+    graph,
+    clock_params,
+    args.clock_rate,
+    true,
+    branch_params,
+    Some(clock_model.clock_rate()),
+  )
+  .wrap_err("Failed to update clock model")?;
 
   Ok((n_diff, n_resolved))
 }
