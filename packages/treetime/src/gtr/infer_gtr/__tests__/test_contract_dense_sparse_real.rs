@@ -96,7 +96,8 @@ mod tests {
   }
 
   lazy_static! {
-    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
+    static ref DENSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
+    static ref SPARSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
@@ -113,7 +114,7 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
+    let aln = read_many_fasta(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
@@ -124,7 +125,7 @@ mod tests {
           treat_gap_as_unknown: true,
           ..JC69Params::default()
         })?,
-        alphabet: NUC_ALPHABET.clone(),
+        alphabet: DENSE_NUC_ALPHABET.clone(),
         length: get_common_length(&aln)?,
         nodes: btreemap! {},
         edges: btreemap! {},
@@ -137,8 +138,12 @@ mod tests {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
       let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
         index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet: NUC_ALPHABET.clone(),
+        gtr: jc69(JC69Params {
+          alphabet: AlphabetName::Nuc,
+          treat_gap_as_unknown: false,
+          ..JC69Params::default()
+        })?,
+        alphabet: SPARSE_NUC_ALPHABET.clone(),
         length: get_common_length(&aln)?,
         nodes: btreemap! {},
         edges: btreemap! {},
