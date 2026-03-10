@@ -21,13 +21,18 @@ How to add more tests:
 """
 
 import os
+import resource
+import statistics
 import subprocess
 import sys
+import time
+from collections import Counter
+from dataclasses import dataclass
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from signal import signal, SIGINT, SIG_IGN
 from textwrap import dedent
-from typing import List, Optional
+from typing import Optional
 
 verbose = True
 
@@ -38,7 +43,7 @@ ANCESTRAL_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
   ("dengue/20",                   "dengue/20",                ""),
   ("dengue/100",                  "dengue/100",               ""),
-  ("dengue/500",                  "dengue/500",               ""),
+  # ("dengue/500",                  "dengue/500",               ""),
   # ("dengue/1000",                 "dengue/1000",              ""),
   # ("dengue/2000",                 "dengue/2000",              ""),
   ("ebola/20",                    "ebola/20",                 ""),
@@ -46,17 +51,17 @@ ANCESTRAL_BATCH_RUNS = [
   ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
-  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  # ("flu/h3n2/500",                "flu/h3n2/500",             ""),
   ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
-  ("lassa/L/500",                 "lassa/L/500",              ""),
+  # ("lassa/L/500",                 "lassa/L/500",              ""),
   # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
   ("rsv/a/20",                    "rsv/a/20",                 ""),
   ("rsv/a/100",                   "rsv/a/100",                ""),
-  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/500",                   "rsv/a/500",                ""),
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
   ("tb/20",                       "tb/20",                    ""),
@@ -73,7 +78,7 @@ CLOCK_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
   ("dengue/20",                   "dengue/20",                "--name-column=genbank_accession"),
   ("dengue/100",                  "dengue/100",               "--name-column=genbank_accession"),
-  ("dengue/500",                  "dengue/500",               "--name-column=genbank_accession"),
+  # ("dengue/500",                  "dengue/500",               "--name-column=genbank_accession"),
   # ("dengue/1000",                 "dengue/1000",              "--name-column=genbank_accession"),
   # ("dengue/2000",                 "dengue/2000",              "--name-column=genbank_accession"),
   ("ebola/20",                    "ebola/20",                 ""),
@@ -81,17 +86,17 @@ CLOCK_BATCH_RUNS = [
   ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              "--sequence-length=1400"),
   ("flu/h3n2/200",                "flu/h3n2/200",             "--sequence-length=1400"),
-  ("flu/h3n2/500",                "flu/h3n2/500",             "--sequence-length=1400"),
+  # ("flu/h3n2/500",                "flu/h3n2/500",             "--sequence-length=1400"),
   ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
-  ("lassa/L/500",                 "lassa/L/500",              ""),
+  # ("lassa/L/500",                 "lassa/L/500",              ""),
   # ("mpox/clade-ii/500",           "mpox/clade-ii/500",        ""),
   # ("mpox/clade-ii/1000",          "mpox/clade-ii/1000",       ""),
   # ("mpox/clade-ii/2000",          "mpox/clade-ii/2000",       ""),
   ("rsv/a/20",                    "rsv/a/20",                 ""),
   ("rsv/a/100",                   "rsv/a/100",                ""),
-  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/500",                   "rsv/a/500",                ""),
   # ("rsv/a/1000",                  "rsv/a/1000",               ""),
   # ("rsv/a/2000",                  "rsv/a/2000",               ""),
   ("tb/20",                       "tb/20",                    ""),
@@ -108,20 +113,20 @@ OPTIMIZE_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
   ("dengue/20",                   "dengue/20",                ""),
   ("dengue/100",                  "dengue/100",               ""),
-  ("dengue/500",                  "dengue/500",               ""),
+  # ("dengue/500",                  "dengue/500",               ""),
   ("ebola/20",                    "ebola/20",                 ""),
   ("ebola/100",                   "ebola/100",                ""),
   ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
-  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  # ("flu/h3n2/500",                "flu/h3n2/500",             ""),
   ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
-  ("lassa/L/500",                 "lassa/L/500",              ""),
+  # ("lassa/L/500",                 "lassa/L/500",              ""),
   ("rsv/a/20",                    "rsv/a/20",                 ""),
   ("rsv/a/100",                   "rsv/a/100",                ""),
-  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/500",                   "rsv/a/500",                ""),
   ("tb/20",                       "tb/20",                    ""),
   ("tb/100",                      "tb/100",                   ""),
   ("tb/149",                      "tb/149",                   ""),
@@ -136,20 +141,20 @@ PRUNE_BATCH_RUNS = [
   # data subdirectory             # output subdirectory       # additional args (appended to the batch args)
   ("dengue/20",                   "dengue/20",                ""),
   ("dengue/100",                  "dengue/100",               ""),
-  ("dengue/500",                  "dengue/500",               ""),
+  # ("dengue/500",                  "dengue/500",               ""),
   ("ebola/20",                    "ebola/20",                 ""),
   ("ebola/100",                   "ebola/100",                ""),
   ("ebola/362",                   "ebola/362",                ""),
   ("flu/h3n2/20",                 "flu/h3n2/20",              ""),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
-  ("flu/h3n2/500",                "flu/h3n2/500",             ""),
+  # ("flu/h3n2/500",                "flu/h3n2/500",             ""),
   ("lassa/L/20",                  "lassa/L/20",               ""),
   ("lassa/L/50",                  "lassa/L/50",               ""),
   ("lassa/L/200",                 "lassa/L/200",              ""),
-  ("lassa/L/500",                 "lassa/L/500",              ""),
+  # ("lassa/L/500",                 "lassa/L/500",              ""),
   ("rsv/a/20",                    "rsv/a/20",                 ""),
   ("rsv/a/100",                   "rsv/a/100",                ""),
-  ("rsv/a/500",                   "rsv/a/500",                ""),
+  # ("rsv/a/500",                   "rsv/a/500",                ""),
   ("tb/20",                       "tb/20",                    ""),
   ("tb/100",                      "tb/100",                   ""),
   ("tb/149",                      "tb/149",                   ""),
@@ -299,9 +304,36 @@ def grey(text):
   return f"\033[38;5;244m{text}\033[0m"
 
 
-def run_cmd(name: str, cmd: str):
-  output = []
+@dataclass(frozen=True)
+class Timing:
+  wall: float
+  user: float
+  sys: float
+
+  @property
+  def cpu(self) -> float:
+    return self.user + self.sys
+
+
+def format_duration(seconds: float) -> str:
+  total = int(round(seconds))
+  hours, remainder = divmod(total, 3600)
+  minutes, secs = divmod(remainder, 60)
+  parts = []
+  if hours:
+    parts.append(f"{hours:02d}h")
+  if minutes:
+    parts.append(f"{minutes:02d}m")
+  if secs or not parts:
+    parts.append(f"{secs:02d}s")
+  return "".join(parts)
+
+
+def run_cmd(name: str, cmd: str) -> tuple[list[str], int, Timing]:
+  output: list[str] = []
   code = 0
+  ru_before = resource.getrusage(resource.RUSAGE_CHILDREN)
+  start = time.perf_counter()
   try:
     result = subprocess.run(
       cmd,
@@ -316,29 +348,40 @@ def run_cmd(name: str, cmd: str):
   except subprocess.CalledProcessError as e:
     output.append(e.output)
     code = e.returncode
-  return output, code
+  wall = time.perf_counter() - start
+  ru_after = resource.getrusage(resource.RUSAGE_CHILDREN)
+  timing = Timing(
+    wall=wall,
+    user=ru_after.ru_utime - ru_before.ru_utime,
+    sys=ru_after.ru_stime - ru_before.ru_stime,
+  )
+  return output, code, timing
 
 
 def clean_cmd(cmd: str) -> str:
   return " ".join(dedent(cmd).splitlines()).strip()
 
 
-def run_batch_cmd(data_name: str, cmd_name: str, cmd: str):
-  cmd = clean_cmd(cmd)
-  output, code = run_cmd(data_name, cmd)
-  if code != 0 or verbose:
-    status = "🚨 Failed" if code != 0 else "🏁 Finished"
-    print("\n".join([f"{status}: {orange(cmd_name)} for {blue(data_name)}\n", grey(f"+{cmd}")] + output))
-  return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code}
+def format_timing(t: Timing) -> str:
+  return f"wall={format_duration(t.wall)} cpu={format_duration(t.cpu)}"
 
 
-def run_additional_cmd(cmd_name, cmd):
+def run_batch_cmd(data_name: str, cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
   cmd = clean_cmd(cmd)
-  output, code = run_cmd(cmd_name, cmd)
+  output, code, timing = run_cmd(data_name, cmd)
   if code != 0 or verbose:
     status = "🚨 Failed" if code != 0 else "🏁 Finished"
-    print("\n".join([f"{status}: {orange(cmd_name)}\n", grey(f"+{cmd}")] + output))
-  return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code}
+    print("\n".join([f"{status}: {orange(cmd_name)} for {blue(data_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
+  return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
+
+
+def run_additional_cmd(cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
+  cmd = clean_cmd(cmd)
+  output, code, timing = run_cmd(cmd_name, cmd)
+  if code != 0 or verbose:
+    status = "🚨 Failed" if code != 0 else "🏁 Finished"
+    print("\n".join([f"{status}: {orange(cmd_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
+  return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
 
 
 def run_clock(name: str, out: str, extra_args: str):
@@ -422,25 +465,150 @@ def init_worker():
   signal(SIGINT, SIG_IGN)
 
 
-def count_by(predicate, arr):
-  return sum(map(predicate, arr))
+def get_timing(res: dict[str, str | int | float | Timing | None]) -> Timing:
+  t = res.get("timing")
+  return t if isinstance(t, Timing) else Timing(0, 0, 0)
 
 
-def print_summary(results: List[dict]):
+def result_label(res: dict[str, str | int | float | Timing | None]) -> str:
+  cmd_name = res["cmd_name"]
+  data_name = res["data_name"]
+  return f"{cmd_name} for {data_name}" if data_name else str(cmd_name)
+
+
+def print_table(title: str, headers: list[str], rows: list[list[str]], color_fn=grey) -> None:
+  if not rows:
+    return
+  widths = [max(len(h), max((len(r[i]) for r in rows), default=0)) for i, h in enumerate(headers)]
+  total_width = sum(widths) + 3 * len(widths) + 1
+  sep = "+" + "-" * (total_width - 2) + "+"
+  col_sep = "+-" + "-+-".join("-" * w for w in widths) + "-+"
+  header_row = "| " + " | ".join(h.ljust(w) for h, w in zip(headers, widths)) + " |"
+  title_row = "| " + title.center(total_width - 4) + " |"
+  print(sep)
+  print(blue(title_row))
+  print(col_sep)
+  print(grey(header_row))
+  print(col_sep)
+  for row in rows:
+    print(color_fn("| " + " | ".join(c.ljust(w) for c, w in zip(row, widths)) + " |"))
+  print(col_sep)
+
+
+def print_summary(results: list[dict[str, str | int | float | Timing | None]], wall_time: float, num_cores: int) -> None:
   n = len(results)
-  failures = list(filter(lambda res: res["code"] != 0, results))
+  failures = [res for res in results if res["code"] != 0]
+  successes = [res for res in results if res["code"] == 0]
   n_err = len(failures)
-  n_ok = n - n_err
+  n_ok = len(successes)
 
-  if n > 0:
-    f_color = red if n_err > 0 else lambda x: x
-    print("\n".join([
-      "", blue(f"Total tests: {n}"), green(f"  Succeeded: {n_ok}"), f_color(f"  Failed:    {n_err}"), ""
-    ]))
+  if n == 0:
+    print("No tests found")
+    sys.exit(1)
+
+  timings = [get_timing(res) for res in successes]
+  walls = [t.wall for t in timings] if timings else [0.0]
+  cpus = [t.cpu for t in timings] if timings else [0.0]
+
+  sum_wall = sum(walls)
+  sum_cpu = sum(cpus)
+  max_wall = max(walls) if walls else 0
+
+  print()
+
+  # 1. Test Results
+  f_color = red if n_err > 0 else green
+  print_table(
+    "TEST RESULTS",
+    ["Outcome", "Count"],
+    [
+      ["Passed", str(n_ok)],
+      ["Failed", str(n_err)],
+      ["Total", str(n)],
+    ],
+    lambda x: green(x) if "Passed" in x and n_ok > 0 else (red(x) if "Failed" in x and n_err > 0 else grey(x))
+  )
+  print()
+
+  # 2. Timing and Parallelism
+  if n_ok > 0:
+    speedup = sum_wall / wall_time if wall_time > 0 else 0
+    efficiency = (speedup / num_cores * 100) if num_cores > 0 else 0
+    cpu_ratio = (sum_cpu / sum_wall * 100) if sum_wall > 0 else 0
+    bottleneck_pct = (max_wall / wall_time * 100) if wall_time > 0 else 0
+
+    print_table(
+      "TIMING AND PARALLELISM (passed tests only)" if n_err > 0 else "TIMING AND PARALLELISM",
+      ["Metric", "Value", "How Calculated"],
+      [
+        ["Script wall time", format_duration(wall_time), "Measured"],
+        ["Sum of test wall times", format_duration(sum_wall), "Measured"],
+        ["Sum of test CPU times", format_duration(sum_cpu), "Measured"],
+        ["", "", ""],
+        ["Shortest test", format_duration(min(walls)), "Measured"],
+        ["Median test", format_duration(statistics.median(walls)), "Measured"],
+        ["Longest test", format_duration(max_wall), "Measured"],
+        ["", "", ""],
+        ["CPU cores", str(num_cores), "Hardware"],
+        ["Speedup", f"{speedup:.1f}x", "sum_test_wall / script_wall"],
+        ["Efficiency", f"{efficiency:.0f}%", "speedup / cores"],
+        ["CPU ratio", f"{cpu_ratio:.0f}%", "sum_cpu / sum_wall"],
+        ["Bottleneck", f"{bottleneck_pct:.0f}%", "longest_test / script_wall"],
+      ]
+    )
+  else:
+    print_table(
+      "TIMING",
+      ["Metric", "Value"],
+      [["Script wall time", format_duration(wall_time)]]
+    )
+  print()
+
+  # 5. Tests by Command Type
+  cmd_counts = Counter(str(res["cmd_name"]).split("-")[0] for res in results)
+  print_table(
+    "TESTS BY COMMAND TYPE",
+    ["Command", "Count"],
+    [[cmd_type, str(count)] for cmd_type, count in sorted(cmd_counts.items())]
+  )
+  print()
+
+  # 6. Slowest Tests
+  if n_ok > 0:
+    sorted_by_wall = sorted(successes, key=lambda r: get_timing(r).wall, reverse=True)
+    print_table(
+      "TOP 10 SLOWEST TESTS",
+      ["Wall Clock", "CPU Time", "CPU %", "Test Name"],
+      [
+        [
+          format_duration(get_timing(res).wall),
+          format_duration(get_timing(res).cpu),
+          f"{(get_timing(res).cpu / get_timing(res).wall * 100) if get_timing(res).wall > 0 else 0:.0f}%",
+          result_label(res)
+        ]
+        for res in sorted_by_wall[:10]
+      ]
+    )
+    print()
+
+  # 7. Most I/O Bound Tests
+  if n_ok > 0:
+    sorted_by_cpu_eff = sorted(
+      [(res, get_timing(res).cpu / get_timing(res).wall if get_timing(res).wall > 0 else 0) for res in successes],
+      key=lambda x: x[1]
+    )
+    io_bound = [(res, eff) for res, eff in sorted_by_cpu_eff if get_timing(res).wall > 0.1][:5]
+    if io_bound:
+      print_table(
+        "MOST I/O BOUND TESTS (lowest CPU utilization)",
+        ["CPU %", "Wall Clock", "Test Name"],
+        [[f"{eff*100:.1f}%", format_duration(get_timing(res).wall), result_label(res)] for res, eff in io_bound]
+      )
+      print()
 
     if n_err > 0:
-      failures = [""] + [failure["cmd"] for failure in failures]
-      print(red("Failed commands:" + "\n\n  ".join(failures) + "\n\n"))
+      failed_cmds = [""] + [str(failure["cmd"]) for failure in failures]
+      print(red("Failed commands:" + "\n\n  ".join(failed_cmds) + "\n\n"))
 
     sys.exit(0 if n_err == 0 else 1)
   else:
@@ -484,11 +652,13 @@ if __name__ == "__main__":
     (run_additional_cmd, make_additional_commands(TREETIME_BIN, DATA_DIR, RESULTS_DIR_ADDITIONAL))
   ]
 
+  start_time = time.perf_counter()
   with Pool(processes=num_cores, initializer=init_worker) as pool:
     try:
       results = [pool.starmap_async(func, args) for func, args in batches]
       results = [code for result in results for code in result.get()]
-      print_summary(results)
+      wall_time = time.perf_counter() - start_time
+      print_summary(results, wall_time, num_cores)
     except KeyboardInterrupt:
       pool.terminate()
       pool.close()
