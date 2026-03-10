@@ -62,19 +62,6 @@ Full unimplemented algorithm details: [unimplemented.md](unimplemented.md)
 
 ---
 
-## Known Issues
-
-1. **Joint ML not implemented** ([`packages/treetime/src/commands/ancestral/run.rs#L194`](../../packages/treetime/src/commands/ancestral/run.rs#L194))
-2. **Non-randomized Fitch root selection** - deterministic bias
-3. **Stochastic polytomy resolution not ported**
-4. **No FFT convolution in distribution ops** - v0 uses FFT, v1 uses direct
-5. **Skyline uses Nelder-Mead** vs v0's SLSQP
-6. **n_branches_posterior not implemented** ([`packages/treetime/src/commands/timetree/run.rs#L114-L116`](../../packages/treetime/src/commands/timetree/run.rs#L114-L116))
-7. **Rate susceptibility stub** ([`packages/treetime/src/commands/timetree/output/confidence.rs#L39`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L39))
-8. **Coalescent likelihood tracking stub** ([`packages/treetime/src/commands/timetree/convergence/likelihood.rs#L81`](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L81))
-
----
-
 ## References
 
 ### Primary

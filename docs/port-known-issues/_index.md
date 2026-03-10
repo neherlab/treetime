@@ -81,4 +81,5 @@ exactly.
 | Negligible | Timetree     | [--plot-rtt and --plot-tree typed as Option\<usize\>](N-timetree-plot-arg-type.md)                                             |
 | Negligible | Timetree     | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                              |
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)           |
+| Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                              |
 | Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                 |
