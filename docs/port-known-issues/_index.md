@@ -5,6 +5,16 @@ Bugs, limitations, scientific and numerical issues in v1.
 Known issues are distinct from deviations (intentional behavioral differences
 from v0) and unimplemented features (v0 capability not yet ported).
 
+## Test matrix
+
+[`_test-matrix.md`](_test-matrix.md) tracks systematic v0/v1 comparison testing:
+
+- Rows: exact CLI args (e.g., `--coalescent=10 --time-marginal`)
+- Columns: datasets
+- Cells: test results (`OK`, `CRASH-<id>`, `HANG`, `-` for untested)
+
+Issues discovered during testing are documented here and linked from the matrix.
+
 ## Filename convention
 
 Files are prefixed with a severity letter so that `ls` sorts high-severity first:
