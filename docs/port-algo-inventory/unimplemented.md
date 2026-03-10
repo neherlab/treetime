@@ -11,9 +11,9 @@ Algorithms present in v0 Python that have not been ported to v1 Rust. Full detai
 | Property    | Value                                                                                                                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Well-known (Viterbi-like)                                                                                                                                                                                             |
-| v0 Location | [`packages/legacy/treetime/treetime/treeanc.py#L934-L1080`](../../../packages/legacy/treetime/treetime/treeanc.py#L934-L1080)                                                                                         |
+| v0 Location | [`packages/legacy/treetime/treetime/treeanc.py#L934-L1084`](../../../packages/legacy/treetime/treetime/treeanc.py#L934-L1084)                                                                                         |
 | Functions   | `_ml_anc_joint()` (`#_ml_anc_joint`)                                                                                                                                                                                  |
-| v1 Status   | Declared in `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L184`](../../../packages/treetime/src/commands/ancestral/run.rs#L184) |
+| v1 Status   | Declared in `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L194`](../../../packages/treetime/src/commands/ancestral/run.rs#L194) |
 | Reference   | Pupko et al. (2000). "A fast algorithm for joint reconstruction." Mol Biol Evol, 17(6):890-896                                                                                                                        |
 
 **Algorithm**:
@@ -49,22 +49,22 @@ Forward pass (lines 1043-1063):
 
 **Algorithm**:
 
-1. `calculate_node_timings()` (lines 71-143): Estimates internal node times using a Bayesian-like scheme:
-   - Prior from parent: `t_parent + branch_length / clock_rate`
-   - Likelihood from children: weighted average of child-implied times
-   - Posterior: precision-weighted combination
-
-2. `collect_node_info()` (lines 145-180): For each leaf, computes:
+1. `collect_node_info()` (lines 159-219): For each leaf, computes:
    - Expected time from tree structure
    - Actual sampling date
    - Z-score of deviation
 
-3. `flag_outliers()` (lines 182-219): Categorizes outliers:
+2. `calculate_node_timings()` (lines 108-156): Estimates internal node times using a Bayesian-like scheme:
+   - Prior from parent: `t_parent + branch_length / clock_rate`
+   - Likelihood from children: weighted average of child-implied times
+   - Posterior: precision-weighted combination
+
+3. `flag_outliers()` (lines 71-105): Categorizes outliers:
    - `date_too_early`: sampling date before expected time
    - `excess_mutations`: too many mutations for the time interval
    - `date_too_late`: sampling date after expected time
 
-**v0 vs v1**: v1 only has global IQD-based filter; v0 additionally uses local parent-child timing relationships for more sensitive outlier detection.
+**v0 vs v1**: v1 only has global IQD-based filter; v0 also uses local parent-child timing relationships for more sensitive outlier detection.
 
 ---
 
@@ -92,12 +92,12 @@ Forward pass (lines 1043-1063):
 
 ## Rate Susceptibility Analysis
 
-| Property    | Value                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Sensitivity analysis                                                                                                                  |
-| v0 Location | [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066`](../../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066) |
-| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`)                                                                            |
-| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/run.rs#L173`](../../../packages/treetime/src/commands/timetree/run.rs#L173)    |
+| Property    | Value                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Type        | Sensitivity analysis                                                                                                                                         |
+| v0 Location | [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066`](../../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066)                        |
+| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`)                                                                                                   |
+| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/output/confidence.rs#L39`](../../../packages/treetime/src/commands/timetree/output/confidence.rs#L39) |
 
 **Algorithm**:
 
@@ -139,7 +139,7 @@ After finding optimal root position `x*`:
 | Property    | Value                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Extension of GTR                                                                                                                            |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L350`](../../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L350) |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495) |
 | Class       | `GTR_site_specific(GTR)` (`#GTR_site_specific`)                                                                                             |
 | v1 Status   | `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation                                                 |
 
@@ -158,15 +158,9 @@ Site-specific GTR extends to:
 
 Key methods:
 
-`_make_expQt_interpolator()` (`#_make_expQt_interpolator`) (lines 92-130): Pre-computes exp(Qt) on a grid of t values, then uses linear interpolation. Avoids repeated eigendecomposition during tree traversal.
+`_make_expQt_interpolator()` (`#_make_expQt_interpolator`) (lines 331-348): Pre-computes exp(Qt) on a grid of t values, then uses linear interpolation. Avoids repeated eigendecomposition during tree traversal.
 
-`prob_t_profiles()` (`#prob_t_profiles`) (lines 180-250): Computes P(child|parent) for profile pairs using einsum over sites:
-
-```python
-einsum('ij,sij,sj->s', parent_prof, expQt_site, child_prof)
-```
-
-`infer()` (`#infer`) (lines 280-340): Site-specific inference accumulates:
+`infer()` (`#infer`) (lines 208-311): Site-specific inference accumulates:
 
 - `n_ija[site, state_i, state_j]`: transition counts per site
 - `T_ia[site, state_i]`: total time in state i per site
@@ -175,12 +169,12 @@ einsum('ij,sij,sj->s', parent_prof, expQt_site, child_prof)
 
 ## Stochastic Polytomy Resolution
 
-| Property    | Value                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Monte Carlo / coalescent simulation                                                                                           |
-| v0 Location | [`packages/legacy/treetime/treetime/treetime.py#L872-L950`](../../../packages/legacy/treetime/treetime/treetime.py#L872-L950) |
-| Functions   | `generate_subtree()` (`#generate_subtree`)                                                                                    |
-| v1 Status   | Not ported - v1 only has greedy deterministic approach                                                                        |
+| Property    | Value                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Monte Carlo / coalescent simulation                                                                                             |
+| v0 Location | [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../../packages/legacy/treetime/treetime/treetime.py#L872-L1011) |
+| Functions   | `generate_subtree()` (`#generate_subtree`)                                                                                      |
+| v1 Status   | Not ported - v1 only has greedy deterministic approach                                                                          |
 
 **Algorithm**:
 
@@ -194,7 +188,7 @@ Given a polytomy (node with k > 2 children):
 3. Repeat until binary tree structure achieved
 4. Optionally: run multiple samples, select one with best likelihood
 
-**v1 vs v0**: v1 uses greedy pairwise merging with Brent optimization (deterministic). v0 additionally supports stochastic resolution via coalescent simulation for uncertainty quantification.
+**v1 vs v0**: v1 uses greedy pairwise merging with Brent optimization (deterministic). v0 also supports stochastic resolution via coalescent simulation for uncertainty quantification.
 
 ---
 
@@ -203,7 +197,7 @@ Given a polytomy (node with k > 2 children):
 | Property    | Value                                                                                                                                           |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Well-known (FFT) + domain heuristic                                                                                                             |
-| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L161-L265`](../../../packages/legacy/treetime/treetime/node_interpolator.py#L161-L265) |
+| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L161-L267`](../../../packages/legacy/treetime/treetime/node_interpolator.py#L161-L267) |
 | Functions   | `NodeInterpolator.convolve_fft()` (`#NodeInterpolator`, `#convolve_fft`)                                                                        |
 | v1 Status   | v1 has FFT in treetime-ops but not the delta approximation or tail extrapolation                                                                |
 
@@ -260,7 +254,7 @@ Given a polytomy (node with k > 2 children):
 | Property    | Value                                                                                                                             |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Standard statistics                                                                                                               |
-| v0 Location | [`packages/legacy/treetime/treetime/distribution.py#L24-L65`](../../../packages/legacy/treetime/treetime/distribution.py#L24-L65) |
+| v0 Location | [`packages/legacy/treetime/treetime/distribution.py#L24-L67`](../../../packages/legacy/treetime/treetime/distribution.py#L24-L67) |
 | Functions   | `Distribution.calc_fwhm()` (`#Distribution`, `#calc_fwhm`)                                                                        |
 | v1 Status   | Not implemented                                                                                                                   |
 
@@ -282,25 +276,25 @@ In neg-log probability space, FWHM corresponds to region where `-log(P) < -log(P
 | Property    | Value                                                                                                                                                                                                                         |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Poisson/Gaussian approximation                                                                                                                                                                                                |
-| v0 Location | [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L100`](../../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L100)                                                                     |
+| v0 Location | [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102)                                                                     |
 | Functions   | `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode                                                                                                                                                      |
 | v1 Status   | Partially in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching |
 
 **Algorithm**:
 
-Short branches (Poisson regime, line 70-82):
+Short branches (Poisson regime, lines 78-86):
 
 - `log_prob = -k*L + l*L*log(k)` where k = branch_length, l = mutation count, L = seq_length
 - Valid when expected mutations << sequence length
 
-Long branches (Gaussian regime, line 84-98):
+Long branches (Gaussian regime, lines 87-102):
 
 - Mean: `mu = mutation_count / clock_rate`
 - Variance: `sigma^2 = mutation_count * (1 + overdispersion) / clock_rate^2`
 - `log_prob = -0.5 * ((t - mu) / sigma)^2`
 - Accounts for substitution saturation
 
-Transition: Switches from Poisson to Gaussian when `mutation_count > threshold` (typically 10-20).
+Transition: Switches from Poisson to Gaussian at `mutation_length > 0.05`.
 
 ---
 
@@ -309,7 +303,7 @@ Transition: Switches from Poisson to Gaussian when `mutation_count > threshold` 
 | Property    | Value                                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------------- |
 | Type        | Testing utility                                                                                                     |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L550-L580`](../../../packages/legacy/treetime/treetime/gtr.py#L550-L580) |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L464-L489`](../../../packages/legacy/treetime/treetime/gtr.py#L464-L489) |
 | Functions   | `GTR.random()` (`#GTR`, `#random`)                                                                                  |
 | v1 Status   | Not ported                                                                                                          |
 
@@ -329,7 +323,7 @@ Transition: Switches from Poisson to Gaussian when `mutation_count > threshold` 
 | Property    | Value                                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------------- |
 | Type        | I/O utility                                                                                                         |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L480-L520`](../../../packages/legacy/treetime/treetime/gtr.py#L480-L520) |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L175-L233`](../../../packages/legacy/treetime/treetime/gtr.py#L175-L233) |
 | Functions   | `GTR.from_file()` (`#GTR`, `#from_file`)                                                                            |
 | v1 Status   | Not ported                                                                                                          |
 
@@ -360,7 +354,7 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 | Property    | Value                                                                                                               |
 | ----------- | ------------------------------------------------------------------------------------------------------------------- |
 | Type        | Optimization                                                                                                        |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L350-L400`](../../../packages/legacy/treetime/treetime/gtr.py#L350-L400) |
+| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L788-L921`](../../../packages/legacy/treetime/treetime/gtr.py#L788-L921) |
 | Functions   | `GTR.optimal_t()` (`#GTR`, `#optimal_t`), `GTR.optimal_t_compressed()` (`#optimal_t_compressed`)                    |
 | v1 Status   | Functionality exists in `optimize` command but not as GTR method                                                    |
 
@@ -377,3 +371,92 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 - Same but uses compressed representation of aligned sequence pairs
 - `state_pairs[k] = (parent_state, child_state)`
 - `multiplicities[k]` = count of this pair in alignment
+
+---
+
+## Homoplasy Scanner
+
+| Property    | Value                                                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Analysis pipeline                                                                                                                         |
+| v0 Location | [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../../packages/legacy/treetime/treetime/wrappers.py#L82-L139)               |
+| Functions   | `scan_homoplasies()` (`#scan_homoplasies`)                                                                                                |
+| v1 Status   | `unimplemented!()` at [`packages/treetime/src/commands/homoplasy/run.rs#L5`](../../../packages/treetime/src/commands/homoplasy/run.rs#L5) |
+
+**Algorithm**:
+
+1. Run ancestral reconstruction (marginal or joint)
+2. Collect mutations per site across all branches
+3. Identify homoplasies: sites where the same mutation occurred independently on multiple branches
+4. Compute statistics: mutation count per site, consistency index, retention index
+5. Output per-site mutation table with branch annotations
+
+**Purpose**: Identifies recurrent mutations that arose independently on separate lineages, indicating convergent evolution, recombination, or sequencing artifacts.
+
+---
+
+## N-Branches Posterior
+
+| Property    | Value                                                                                                                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Enhancement to coalescent model                                                                                                                                                                                                                                                              |
+| v0 Location | v0 `--n-branches-posterior` flag uses posterior distributions of divergence times for estimating number of branches in coalescent merger rate                                                                                                                                                |
+| v1 Status   | CLI arg declared (hidden) at [`packages/treetime/src/commands/timetree/args.rs#L184`](../../../packages/treetime/src/commands/timetree/args.rs#L184), returns error at [`packages/treetime/src/commands/timetree/run.rs#L115`](../../../packages/treetime/src/commands/timetree/run.rs#L115) |
+
+**Purpose**: Uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
+
+---
+
+## Tree Inference from Alignment
+
+| Property    | Value                                                                                                                                                                                                                                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | Tree building                                                                                                                                                                                                                                                                                  |
+| v0 Location | v0 delegates to external tools (IQ-TREE, FastTree) or uses Bio.Phylo                                                                                                                                                                                                                           |
+| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/initialization.rs#L34`](../../../packages/treetime/src/commands/timetree/initialization.rs#L34) and `unimplemented!()` at [`packages/treetime/src/commands/clock/run.rs#L60`](../../../packages/treetime/src/commands/clock/run.rs#L60) |
+
+**Purpose**: When no input tree is provided, infer a phylogenetic tree from the alignment. Both the `timetree` and `clock` commands require a tree; these stubs guard the code path where the user omits `--tree`.
+
+---
+
+## Timetree Output: Node Dates TSV
+
+| Property  | Value                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type      | I/O utility                                                                                                                                        |
+| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../../packages/treetime/src/commands/timetree/output/dates.rs#L20) |
+
+**Purpose**: Write inferred node dates (calendar date, numeric date, time before present) to TSV file for downstream analysis.
+
+---
+
+## Timetree Output: Plots
+
+| Property  | Value                                                                                                                                                                                                                                                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type      | Visualization                                                                                                                                                                                                                                                                                                          |
+| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`](../../../packages/treetime/src/commands/timetree/output/plots.rs#L11) (root-to-tip) and [`packages/treetime/src/commands/timetree/output/plots.rs#L20`](../../../packages/treetime/src/commands/timetree/output/plots.rs#L20) (time tree) |
+
+**Purpose**: Generate diagnostic visualizations - root-to-tip regression scatter plot and time-scaled phylogenetic tree. CLI flags `--plot-rtt` and `--plot-tree` are hidden pending implementation.
+
+---
+
+## Branch Distribution Builder
+
+| Property  | Value                                                                                                                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type      | Distribution construction                                                                                                                                                                                        |
+| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39`](../../../packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39) - function body is a stub |
+
+**Purpose**: Build per-edge time prior distributions from branch lengths or marginal reconstruction messages. The function signature and types exist; the implementation body is a stub.
+
+---
+
+## Nexus File Reading
+
+| Property  | Value                                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Type      | I/O utility                                                                                                                           |
+| v1 Status | `unimplemented!()` at [`packages/treetime-cli/src/convert/convert.rs#L90`](../../../packages/treetime-cli/src/convert/convert.rs#L90) |
+
+**Purpose**: Parse Nexus tree format. The `convert` CLI command supports multiple tree formats but Nexus reading is not yet implemented.
