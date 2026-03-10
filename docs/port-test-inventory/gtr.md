@@ -4,25 +4,27 @@
 
 ## Summary
 
-| Category                           | Files  | Tests     | Type          |
-| ---------------------------------- | ------ | --------- | ------------- |
-| Model construction (golden-master) | 1      | 33        | Golden-master |
-| Matrix exponentiation properties   | 1      | 8 x 256   | Property      |
-| Eigendecomposition properties      | 1      | 3 x 256   | Property      |
-| Q matrix properties                | 1      | 8 x 256   | Property      |
-| Numerical stability                | 1      | 4 x 256   | Property      |
-| Branch length edge cases           | 1      | 5         | Unit          |
-| Extreme parameter edge cases       | 1      | 7         | Unit          |
-| Parameterized edge cases           | 1      | 3         | Unit + rstest |
-| Model hierarchy                    | 2      | 9         | Unit          |
-| Generator validation               | 1      | 7 x 64    | Property      |
-| GTR inference (dense golden)       | 1      | 13        | Golden-master |
-| GTR inference (dense unit)         | 1      | 5         | Unit          |
-| GTR inference (sparse)             | 1      | 2         | Unit          |
-| Inference contracts                | 1      | 15        | Unit + rstest |
-| Dense-sparse cross-validation      | 1      | 7         | Integration   |
-| Common functions                   | 1      | 6         | Unit          |
-| **Total**                          | **16** | **~6400** | Mixed         |
+| Category                           | Files  | Tests   | Type          |
+| ---------------------------------- | ------ | ------- | ------------- |
+| Model construction (golden-master) | 1      | 33      | Golden-master |
+| Matrix exponentiation properties   | 1      | 8       | Property      |
+| Eigendecomposition properties      | 1      | 3       | Property      |
+| Q matrix properties                | 1      | 8       | Property      |
+| Numerical stability                | 1      | 4       | Property      |
+| Branch length edge cases           | 1      | 5       | Unit          |
+| Extreme parameter edge cases       | 1      | 7       | Unit          |
+| Parameterized edge cases           | 1      | 3       | Parameterized |
+| Model hierarchy                    | 2      | 9       | Unit          |
+| Generator validation               | 1      | 7       | Property      |
+| GTR inference (dense golden)       | 1      | 13      | Golden-master |
+| GTR inference (dense unit)         | 1      | 5       | Unit          |
+| GTR inference (sparse)             | 1      | 2       | Unit          |
+| Inference contracts                | 1      | 15      | Parameterized |
+| Dense-sparse cross-validation      | 1      | 7       | Integration   |
+| Common functions                   | 1      | 6       | Unit          |
+| **Total**                          | **16** | **127** | Mixed         |
+
+Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
 ---
 

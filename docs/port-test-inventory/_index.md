@@ -6,19 +6,19 @@
 
 ## Summary
 
-| Domain                                     | Files   | Tests     |
-| ------------------------------------------ | ------- | --------- |
-| [Ancestral Reconstruction](ancestral.md)   | 28      | 123       |
-| [Timetree Inference](timetree.md)          | 20      | 110       |
-| [GTR Models](gtr.md)                       | 16      | ~6400     |
-| [Branch Optimization](optimization.md)     | 26      | 81        |
-| [Clock Inference](clock.md)                | 4       | 26        |
-| [Distribution Operations](distribution.md) | 20      | 197       |
-| [Supporting Crates](supporting.md)         | 35      | 495       |
-| [Validation & Smoke](validation.md)        | -       | 185       |
-| **Total**                                  | **149** | **~7600** |
+| Domain                                     | Files   | Tests    |
+| ------------------------------------------ | ------- | -------- |
+| [Ancestral Reconstruction](ancestral.md)   | 28      | 123      |
+| [Timetree Inference](timetree.md)          | 20      | 110      |
+| [GTR Models](gtr.md)                       | 16      | 127      |
+| [Branch Optimization](optimization.md)     | 26      | 81       |
+| [Clock Inference](clock.md)                | 4       | 26       |
+| [Distribution Operations](distribution.md) | 20      | 197      |
+| [Supporting Crates](supporting.md)         | 35      | 495      |
+| [Validation & Smoke](validation.md)        | -       | 185      |
+| **Total**                                  | **149** | **1344** |
 
-Test type breakdown: ~900 unit, ~6400 property-based (proptest, 256 cases each), ~70 golden-master, 175 integration (smoke tests).
+Counts are test functions. Property tests (proptest) run 256 random cases each; GTR property tests alone produce ~6000 executions.
 
 ---
 
