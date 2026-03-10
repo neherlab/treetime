@@ -1,59 +1,55 @@
-# Uninformative root_state filtering
+# Uninformative root_state filtering in GTR inference
 
-| Property      | Value                                                                                                                                                                                    |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type          | Intentional deviation from v0                                                                                                                                                            |
-| v1 Location   | `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) in [`packages/treetime/src/gtr/infer_gtr/dense.rs#L135-L149`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L135-L149) |
-| v0 Location   | [`packages/legacy/treetime/treetime/treeanc.py#L1608-L1613`](../../packages/legacy/treetime/treetime/treeanc.py#L1608-L1613)                                                             |
-| Affects       | `root_state` vector, and downstream `pi` (equilibrium frequencies), `W` (exchangeability), `mu` (rate)                                                                                   |
-| Datasets      | Any alignment with gap-only columns. Measured: lassa_L_50 (~29% W shift), tb_20 (~1e-5), mpox_clade_ii_20                                                                                |
-| Golden master | Capture script updated to match v1. Fixtures regenerated. All 7 real datasets enabled.                                                                                                   |
+This document describes an intentional deviation from v0 in the dense GTR inference path. v1 filters out alignment positions with uninformative marginal profiles when computing `root_state`, while v0 includes all positions regardless of signal content.
 
-## What root_state does
+The change affects `root_state` computation in `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at `packages/treetime/src/gtr/infer_gtr/dense.rs:139-154:`. v0's equivalent code is at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`. Downstream, this affects equilibrium frequencies (pi), exchangeability matrix (W), and rate scalar (mu) in the GTR model.
 
-Dense GTR inference computes `root_state[k]`: the number of alignment positions
-in state k at the tree root. This vector enters the iterative GTR solver
-(`infer_gtr_impl()` (`#infer_gtr_impl`) in
-[`packages/treetime/src/gtr/infer_gtr/common.rs#L120-L121`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L120-L121),
-v0 equivalent at
-[`packages/legacy/treetime/treetime/gtr.py#L571-L574`](../../packages/legacy/treetime/treetime/gtr.py#L571-L574))
-as a prior on equilibrium frequencies:
+Datasets with gap-only columns are affected. Measured impact: lassa_L_50 showed ~29% shift in W matrix elements before the golden master capture script was updated to match v1's filtering. After updating the capture script, all seven real datasets pass at 1e-6 tolerance.
+
+## Background: GTR model and equilibrium frequencies
+
+The General Time Reversible (GTR) model, introduced by Tavaré (1986), describes nucleotide substitution as a continuous-time Markov chain. It is the most general neutral, independent, finite-sites, time-reversible model for DNA sequence evolution. The model has two core components:
+
+- **Equilibrium frequencies (pi)**: A vector where `pi[k]` is the stationary probability of state k. At equilibrium, the fraction of positions in state k converges to `pi[k]`. For DNA, this is a 4-element vector (pi_A, pi_G, pi_C, pi_T) summing to 1.
+- **Exchangeability matrix (W)**: A symmetric matrix where `W[i,j]` describes the relative rate of exchange between states i and j. For DNA, this has 6 independent parameters representing rates between each nucleotide pair.
+
+The instantaneous rate matrix Q combines these: `Q[i,j] = W[i,j] * pi[j]` for i != j, with diagonal elements set so rows sum to zero. The time-reversibility condition requires `pi[i] * Q[i,j] = pi[j] * Q[j,i]` (detailed balance), which allows likelihood calculations without knowing the root position (Tavaré, 1986).
+
+Phylogenetic inference estimates these parameters from observed substitution patterns. The standard approach:
+
+1. Count observed substitutions between states (nij matrix)
+2. Estimate time spent in each state (Ti vector)
+3. Use the root sequence composition as a prior on pi
+
+The iterative solver in both v0 (`packages/legacy/treetime/treetime/gtr.py:492-599:`) and v1 (`packages/treetime/src/gtr/infer_gtr/common.rs:97-158:`) updates pi according to this maximum-likelihood estimation formula:
 
 ```
-pi[i] = (sum_j nij[i,j] + pc + root_state[i]) / (TINY + mu * sum_j W[i,j]*Ti[j] + sum(root_state) + pc)
+pi[i] = (sum_j(nij[i,j]) + pc + root_state[i]) / (TINY + mu * sum_j(W[i,j]*Ti[j]) + sum(root_state) + pc)
 ```
 
-Both v0 and v1 compute `root_state` by taking `argmax` of the root's marginal
-profile at each alignment position, then counting how many positions map to each
-state.
+The `root_state` vector appears in both numerator and denominator. It biases pi toward the composition observed at the tree root, providing a reasonable prior when substitution counts are sparse.
 
-## The deviation
+## How root_state is computed
 
-Gap-only alignment columns (all leaves are gap or N) produce a uniform marginal
-profile `[1/n, 1/n, ..., 1/n]` at the root. `argmax` on a uniform row returns
-an arbitrary state index. The specific index depends on BLAS implementation:
-NumPy (v0) and ndarray (v1) break ties differently due to floating-point
-differences in matrix exponentiation.
+Both v0 and v1 derive `root_state` from the root's marginal profile. The marginal profile is a 2D array of shape (L, n) where L is the alignment length and n is the number of states (4 for nucleotides). Each row is a probability distribution: `profile[pos, k]` is `P(state=k at position pos | all data)`.
 
-For datasets with few gap-only columns, the effect is negligible. For lassa_L_50
-(557 gap-only columns out of ~10k), hundreds of counts shift to one arbitrary
-state, causing ~29% shift in `W`.
+These profiles come from Felsenstein's pruning algorithm (Felsenstein, 1981): a postorder traversal accumulates subtree likelihoods, then a preorder traversal combines them with outgroup information to produce the full marginal posterior.
 
-Whether including uninformative positions is correct is debatable. v0 includes
-them, treating every position equally regardless of signal content. v1 excludes
-them, on the basis that gap-only positions carry zero phylogenetic signal and
-their contribution to `root_state` is determined entirely by tie-breaking
-behavior rather than data.
+To get `root_state`, the code takes the argmax of each row (most probable state) and counts how many positions map to each state.
 
-Both approaches produce valid GTR models. The scientific argument for exclusion:
-uninformative positions add an arbitrary prior to `pi` proportional to the number
-of gap-only columns, which varies across datasets and depends on alignment
-quality rather than evolutionary signal.
+## The problem: gap-only columns
+
+An alignment column where all leaf sequences have gaps or ambiguous characters (N) carries no phylogenetic signal. No leaf constrains the ancestral state. The marginal profile at the root becomes uniform: `[1/n, 1/n, ..., 1/n]`.
+
+For n=4 nucleotides, a gap-only column produces `profile[pos] = [0.25, 0.25, 0.25, 0.25]`.
+
+The `argmax` of a uniform distribution is undefined mathematically. NumPy returns the lowest index (state 0). ndarray may return a different index due to floating-point differences in profile computation. Both are deterministic but implementation-dependent.
+
+When v0 counts gap-only columns, it assigns them all to state 0 (or whichever state argmax selects). This adds an arbitrary bias to `root_state[0]` proportional to the number of gap-only columns in the alignment.
 
 ## v0: counts all positions
 
-v0 counts all positions unconditionally via the consensus sequence `cseq`
-([`packages/legacy/treetime/treetime/treeanc.py#L1608-L1613`](../../packages/legacy/treetime/treetime/treeanc.py#L1608-L1613)):
+v0 counts every position unconditionally at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`:
 
 ```python
 root_state = np.array([
@@ -62,15 +58,18 @@ root_state = np.array([
 ])
 ```
 
-`cseq` is derived from `argmax(marginal_profile, axis=1)` via `prof2seq()`
-([`packages/legacy/treetime/treetime/seq_utils.py#L271`](../../packages/legacy/treetime/treetime/seq_utils.py#L271)),
-so uniform rows produce `cseq[pos] = alphabet[0]` (NumPy argmax returns first
-maximum).
+The `cseq` property returns the argmax sequence computed by `prof2seq()` at `packages/legacy/treetime/treetime/seq_utils.py:271:`:
+
+```python
+idx = tmp_profile.argmax(axis=1)
+seq = gtr.alphabet[idx]
+```
+
+NumPy's `argmax` returns the first index among ties, so gap-only columns contribute to `root_state[0]` (state A for nucleotides).
 
 ## v1: skips uninformative positions
 
-v1 skips positions where `max(profile_row) <= 1/n + 1e-10`
-([`packages/treetime/src/gtr/infer_gtr/dense.rs#L139-L147`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L139-L147)):
+v1 checks whether each profile row has a dominant state before counting, at `packages/treetime/src/gtr/infer_gtr/dense.rs:144-152:`:
 
 ```rust
 let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
@@ -83,36 +82,29 @@ for row in root_profile.rows() {
 }
 ```
 
-For n=4 (nucleotides), threshold = 0.25 + 1e-10. A gap-only column with profile
-`[0.25, 0.25, 0.25, 0.25]` has max = 0.25, not above threshold, excluded. An
-informative column (e.g. `[0.95, 0.02, 0.02, 0.01]`) has max = 0.95, included.
+For n=4, the threshold is `0.25 + 1e-10`. A gap-only column with `max = 0.25` fails the test and is excluded. An informative column (e.g., `[0.95, 0.02, 0.02, 0.01]`) has `max = 0.95 > 0.25 + 1e-10` and is included.
+
+The `1e-10` epsilon accounts for floating-point roundoff. Profiles are computed through matrix exponentiations and normalizations that may not produce exactly `1/n`.
+
+## Scientific rationale
+
+Gap-only columns contain no evolutionary information. Their presence depends on alignment quality and sequencing coverage, not on the substitution process. Including them in `root_state` adds a prior that:
+
+1. Varies unpredictably across datasets based on alignment gaps
+2. Is assigned to an arbitrary state based on argmax tie-breaking
+3. Has no biological interpretation
+
+v1 excludes these positions because they should not influence equilibrium frequency estimation. The remaining informative positions provide a biologically meaningful prior.
+
+Both approaches produce valid GTR models. The difference is whether alignment artifacts (gap columns) influence the prior on pi.
 
 ## Golden master tests
 
-The capture script
-([`packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture`](../../packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture))
-replicates v0's internal nij/Ti accumulation
-([`packages/legacy/treetime/treetime/treeanc.py#L1556-L1572`](../../packages/legacy/treetime/treetime/treeanc.py#L1556-L1572))
-with the same uninformative-position filter applied to root_state, then calls
-`GTR.infer()`
-([`packages/legacy/treetime/treetime/gtr.py#L492-L599`](../../packages/legacy/treetime/treetime/gtr.py#L492-L599))
-directly. It does not call `tt.infer_gtr()` because v0's `infer_gtr()` includes
-the unfiltered root_state computation.
+The capture script at `packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture:` replicates v0's nij/Ti accumulation from `packages/legacy/treetime/treetime/treeanc.py:1556-1572:` but applies the same uninformative-position filter to root_state. It calls `GTR.infer()` at `packages/legacy/treetime/treetime/gtr.py:492-599:` directly rather than `tt.infer_gtr()`, which would include v0's unfiltered root_state computation.
 
-Test cases
-([`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs))
-re-enabled after the fix:
+Test cases in `packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs:` compare v1 output against the modified capture. All seven real datasets pass at 1e-6 tolerance. The tolerance was widened from 1e-7 to accommodate BLAS drift on mpox_clade_ii_20 (~200k positions).
 
-- `lassa_L_50`: was ~29% W shift, now passes at 1e-6
-- `mpox_clade_ii_20`: now passes at 1e-6
-- `tb_20`: now passes at 1e-6
+## References
 
-Real-dataset tolerance widened from 1e-7 to 1e-6 to accommodate mpox_clade_ii_20
-(~200k positions), where BLAS drift between NumPy and ndarray accumulates to
-~2.3e-7.
-
-## v0 status
-
-Fixing or modifying v0 is out of scope for this project. The golden master
-capture script applies the same filter so that oracle outputs and v1 outputs
-agree on the filtered algorithm.
+- Tavaré, S. (1986). Some probabilistic and statistical problems in the analysis of DNA sequences. _Lectures on Mathematics in the Life Sciences_, 17, 57-86.
+- Felsenstein, J. (1981). Evolutionary trees from DNA sequences: A maximum likelihood approach. _Journal of Molecular Evolution_, 17(6), 368-376.

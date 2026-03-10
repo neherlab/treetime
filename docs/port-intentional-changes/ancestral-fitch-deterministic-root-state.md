@@ -1,30 +1,34 @@
-# Fitch root ambiguity: deterministic selection
+# Fitch Root Ambiguity: Deterministic Selection
 
-| Property    | Value                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Intentional deviation from v0                                                                                                                                    |
-| v1 Location | `fitch_forward()` (`#fitch_forward`) at [`packages/treetime/src/commands/ancestral/fitch.rs#L316`](../../packages/treetime/src/commands/ancestral/fitch.rs#L316) |
-| v0 Location | [`packages/legacy/treetime/treetime/treeanc.py#L606-L616`](../../packages/legacy/treetime/treetime/treeanc.py#L606-L616)                                         |
-| Affects     | Root sequence at positions with tied Fitch state sets                                                                                                            |
-| Datasets    | Any tree where Fitch backward pass leaves root positions ambiguous (multiple equally parsimonious states)                                                        |
+This document describes an intentional deviation from v0 behavior in the v1 Rust implementation. The change affects root sequence reconstruction at positions where Fitch parsimony produces multiple equally optimal states. v1 resolves this in `fitch_forward()` at `packages/treetime/src/commands/ancestral/fitch.rs:320-322:`, while v0 handles it in `_fitch_reconstruction()` at `packages/legacy/treetime/treetime/treeanc.py:615-617:`. The change applies to any phylogenetic tree where the backward pass leaves root positions ambiguous.
 
-## Background
+## Fitch Parsimony Algorithm
 
-Fitch parsimony (Fitch 1971) is a two-pass algorithm on phylogenetic trees.
-The backward pass (leaves to root) computes the set of equally parsimonious
-states at each node: intersection of children's sets if non-empty, union
-otherwise. The forward pass (root to leaves) resolves ambiguity by picking the
-parent's state if it is in the child's set.
+Walter M. Fitch introduced the maximum parsimony algorithm in 1971 (Fitch, W. M. "Toward defining the course of evolution: minimum change for a specific tree topology." _Systematic Zoology_ 20(4):406-416, 1971). The algorithm finds ancestral character states that minimize the total number of state changes across a phylogenetic tree.
 
-At the root, there is no parent to constrain the choice. When the backward pass
-leaves multiple states in the root's set (e.g. `{A, T}` are equally
-parsimonious), the algorithm must pick one. This choice does not affect the
-parsimony score but determines the reconstructed root sequence, which propagates
-through the forward pass to all descendants.
+### The Two-Pass Algorithm
 
-## v0: random selection
+Fitch parsimony operates in two passes over the tree:
 
-v0 resolves root ambiguity via the per-instance RNG seeded by `rng_seed`:
+**Backward pass (leaves to root)**: At each internal node, compute the set of states that could be ancestral without requiring an extra mutation. For a node with children having state sets S1 and S2:
+
+- If S1 and S2 overlap, the node's state set is their intersection (S1 ∩ S2)
+- If S1 and S2 are disjoint, the node's state set is their union (S1 ∪ S2), and the parsimony score increases by 1
+
+**Forward pass (root to leaves)**: Assign concrete states to each node. For non-root nodes:
+
+- If the parent's assigned state is in this node's state set, use the parent's state (no mutation)
+- Otherwise, pick any state from this node's state set (one mutation)
+
+### Root Ambiguity
+
+At the root, there is no parent to constrain the choice. When the backward pass produces a state set with multiple elements (e.g., {A, T}), any choice is equally parsimonious. Mathematically, if the root state set R has |R| > 1 elements, all states in R produce the same minimum parsimony score. The algorithm must select one state to proceed with the forward pass.
+
+This selection does not affect the parsimony score, but it determines the reconstructed root sequence. Since the forward pass propagates the root's state downward (preferring parent states when possible), the root choice can affect ancestral sequences at all internal nodes.
+
+## v0 Implementation: Random Selection
+
+v0 resolves root ambiguity using a random number generator in `packages/legacy/treetime/treetime/treeanc.py:615-617:`:
 
 ```python
 self.tree.root._cseq = np.array(
@@ -32,14 +36,15 @@ self.tree.root._cseq = np.array(
 )
 ```
 
-For each ambiguous root position, `self.rng.integers(len(k))` picks a uniformly
-random index from the Fitch state set. Different seeds produce different root
-sequences.
+For each position, `self.tree.root.state[i]` contains a list of equally parsimonious states. When this list has more than one element, `self.rng.integers(len(k))` selects a uniformly random index. The RNG is initialized at construction time in `packages/legacy/treetime/treetime/treeanc.py:163:` with `np.random.default_rng(seed=rng_seed)`.
 
-## v1: deterministic first-element
+Different seeds produce different root sequences, and thus different ancestral reconstructions at internal nodes.
 
-v1 uses `BitSet128::get_one()` (`#get_one`), which returns the lowest-index
-set bit:
+Note: The v0 logging code at `packages/legacy/treetime/treetime/treeanc.py:612:` claims to choose `state[amb][0]` but the actual selection at line 616 uses the RNG. This is a logging inconsistency in v0.
+
+## v1 Implementation: Deterministic Selection
+
+v1 resolves root ambiguity deterministically in `packages/treetime/src/commands/ancestral/fitch.rs:320-322:`:
 
 ```rust
 for (pos, states) in variable {
@@ -47,26 +52,34 @@ for (pos, states) in variable {
 }
 ```
 
-For nucleotide alphabets, this produces a systematic bias toward
-alphabetically earlier states. Given tied states `{A, T}`, v1 always picks `A`
-(index 0). v0 picks `A` or `T` with equal probability per the RNG seed.
+The `states` variable is a `BitSet128`, which stores character states as bits in a 128-bit integer where bit position equals the ASCII code of the character. The `get_one()` method at `packages/treetime-primitives/src/bitset128.rs:165-167:` returns the first set bit:
+
+```rust
+pub fn get_one(&self) -> AsciiChar {
+    self.get_one_maybe().expect("BitSet128 is empty")
+}
+```
+
+This calls `first()` at `packages/treetime-primitives/src/bitset128.rs:153-155:`:
+
+```rust
+pub fn first(&self) -> Option<AsciiChar> {
+    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
+}
+```
+
+The `trailing_zeros()` operation returns the index of the lowest set bit, which corresponds to the character with the smallest ASCII code. For DNA nucleotides, the ASCII codes are: A=65, C=67, G=71, T=84. Given an ambiguous state set {A, T}, v1 always selects A (lowest ASCII code). Given {C, G}, v1 always selects C.
 
 ## Rationale
 
-v1 prioritizes reproducibility: identical input always produces identical output,
-independent of any seed parameter. The bias toward lower-index states is
-acceptable because:
+v1 prioritizes reproducibility: identical input always produces identical output, independent of any seed parameter. The systematic preference for lower ASCII codes is acceptable because:
 
-- Fitch parsimony is a compression step. The marginal ML pass (which follows
-  Fitch in the standard pipeline) recomputes proper posterior probabilities,
-  overriding the Fitch root sequence.
-- The parsimony score is unaffected by the root choice.
-- For standalone Fitch usage (`--method-anc parsimony`), deterministic output
-  is easier to validate and debug than seed-dependent output.
+1. **Fitch is a preprocessing step**: In the standard TreeTime pipeline, Fitch parsimony provides initial ancestral estimates that the marginal maximum likelihood pass subsequently refines. The ML pass computes posterior probabilities from the GTR substitution model independently of Fitch assignments.
 
-## Numerical impact
+2. **Parsimony score is unaffected**: All states in an ambiguous set are equally parsimonious by definition. The choice affects only which equally-optimal reconstruction is returned.
 
-The root sequence differs at ambiguous positions. All downstream Fitch-assigned
-sequences at internal nodes can differ where their state sets included the
-root's chosen state. The marginal ML pass is unaffected because it computes
-profiles from the GTR model independently of Fitch assignments.
+3. **Determinism aids validation**: For standalone parsimony usage (`--method-anc parsimony`), deterministic output simplifies testing and debugging. Comparing outputs across runs or implementations does not require controlling for random seed effects.
+
+## Numerical Impact
+
+The root sequence differs from v0 at ambiguous positions. All downstream Fitch-assigned sequences at internal nodes can differ where their state sets included the root's chosen state. The marginal ML pass remains unaffected because it computes profiles from the GTR model independently of Fitch assignments.
