@@ -8,7 +8,7 @@
 | Affects     | Grid points used for coalescent evaluation, interpolation path                                                                                                                                                                                         |
 | Datasets    | All datasets with `coalescent_tc` enabled                                                                                                                                                                                                              |
 
-##Multiplication ordering
+## Multiplication ordering
 
 v0 multiplies all child messages first, then multiplies the coalescent
 contribution into the product:
@@ -28,14 +28,14 @@ result  = result * child2                    (Function * Function)
 result  = result * childN                    (Function * Function)
 ```
 
-##Why the difference exists
+## Why the difference exists
 
 v1's backward pass processes children in a single loop, interleaving edge message
 storage (`set_msg_to_parent`) with accumulation into `result`. Separating these
 into two passes (collect all messages, then reduce) would match v0's ordering but
 adds complexity with no measurable benefit.
 
-##Numerical impact
+## Numerical impact
 
 Multiplication is commutative and associative. Both orderings compute the same
 mathematical product `coalescent(t) * child1(t) * ... * childN(t)`.
@@ -54,7 +54,7 @@ contribution is a smooth function (integral and log of piecewise-linear merger
 rates), making it insensitive to grid density. The accumulated interpolation
 error on 200+ point grids is negligible.
 
-##Coalescent representation
+## Coalescent representation
 
 v0 uses eager evaluation: `Coalescent.node_contribution(node, time_points)`
 evaluates the coalescent formula on a passed grid and returns a `NodeInterpolator`
