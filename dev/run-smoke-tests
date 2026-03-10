@@ -7,7 +7,10 @@ https://en.wikipedia.org/wiki/Smoke_testing_(software)
 
 Usage:
 
-    ./tests/run-smoke-tests 'target/release/treetime'
+    ./dev/run-smoke-tests <path_to_treetime_executable> [--only-failures]
+
+Options:
+    --only-failures    Show only failed tests, omit performance stats
 
 NOTE: you must build and re-build the tested executable yourself, this script does not do that
 
@@ -34,7 +37,7 @@ from signal import signal, SIGINT, SIG_IGN
 from textwrap import dedent
 from typing import Optional
 
-verbose = True
+only_failures = False
 
 # Add ancestral command runs here.
 # Each entry corresponds to 2 ancestral command runs - one with parsimony and one with marginal method.
@@ -369,7 +372,8 @@ def format_timing(t: Timing) -> str:
 def run_batch_cmd(data_name: str, cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
   cmd = clean_cmd(cmd)
   output, code, timing = run_cmd(data_name, cmd)
-  if code != 0 or verbose:
+  show_output = code != 0 or not only_failures
+  if show_output:
     status = "🚨 Failed" if code != 0 else "🏁 Finished"
     print("\n".join([f"{status}: {orange(cmd_name)} for {blue(data_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
   return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
@@ -378,7 +382,8 @@ def run_batch_cmd(data_name: str, cmd_name: str, cmd: str) -> dict[str, str | in
 def run_additional_cmd(cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
   cmd = clean_cmd(cmd)
   output, code, timing = run_cmd(cmd_name, cmd)
-  if code != 0 or verbose:
+  show_output = code != 0 or not only_failures
+  if show_output:
     status = "🚨 Failed" if code != 0 else "🏁 Finished"
     print("\n".join([f"{status}: {orange(cmd_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
   return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
@@ -495,7 +500,7 @@ def print_table(title: str, headers: list[str], rows: list[list[str]], color_fn=
   print(col_sep)
 
 
-def print_summary(results: list[dict[str, str | int | float | Timing | None]], wall_time: float, num_cores: int) -> None:
+def print_summary(results: list[dict[str, str | int | float | Timing | None]], wall_time: float, num_cores: int, skip_perf: bool = False) -> None:
   n = len(results)
   failures = [res for res in results if res["code"] != 0]
   successes = [res for res in results if res["code"] == 0]
@@ -530,51 +535,59 @@ def print_summary(results: list[dict[str, str | int | float | Timing | None]], w
   )
   print()
 
-  # 2. Timing and Parallelism
-  if n_ok > 0:
-    speedup = sum_wall / wall_time if wall_time > 0 else 0
-    efficiency = (speedup / num_cores * 100) if num_cores > 0 else 0
-    cpu_ratio = (sum_cpu / sum_wall * 100) if sum_wall > 0 else 0
-    bottleneck_pct = (max_wall / wall_time * 100) if wall_time > 0 else 0
+  # 2. Timing and Parallelism (skip if only_failures mode)
+  if not skip_perf:
+    if n_ok > 0:
+      speedup = sum_wall / wall_time if wall_time > 0 else 0
+      efficiency = (speedup / num_cores * 100) if num_cores > 0 else 0
+      cpu_ratio = (sum_cpu / sum_wall * 100) if sum_wall > 0 else 0
+      bottleneck_pct = (max_wall / wall_time * 100) if wall_time > 0 else 0
 
-    print_table(
-      "TIMING AND PARALLELISM (passed tests only)" if n_err > 0 else "TIMING AND PARALLELISM",
-      ["Metric", "Value", "How Calculated"],
-      [
-        ["Script wall time", format_duration(wall_time), "Measured"],
-        ["Sum of test wall times", format_duration(sum_wall), "Measured"],
-        ["Sum of test CPU times", format_duration(sum_cpu), "Measured"],
-        ["", "", ""],
-        ["Shortest test", format_duration(min(walls)), "Measured"],
-        ["Median test", format_duration(statistics.median(walls)), "Measured"],
-        ["Longest test", format_duration(max_wall), "Measured"],
-        ["", "", ""],
-        ["CPU cores", str(num_cores), "Hardware"],
-        ["Speedup", f"{speedup:.1f}x", "sum_test_wall / script_wall"],
-        ["Efficiency", f"{efficiency:.0f}%", "speedup / cores"],
-        ["CPU ratio", f"{cpu_ratio:.0f}%", "sum_cpu / sum_wall"],
-        ["Bottleneck", f"{bottleneck_pct:.0f}%", "longest_test / script_wall"],
-      ]
-    )
-  else:
-    print_table(
-      "TIMING",
-      ["Metric", "Value"],
-      [["Script wall time", format_duration(wall_time)]]
-    )
-  print()
+      print_table(
+        "TIMING AND PARALLELISM (passed tests only)" if n_err > 0 else "TIMING AND PARALLELISM",
+        ["Metric", "Value", "How Calculated"],
+        [
+          ["Script wall time", format_duration(wall_time), "Measured"],
+          ["Sum of test wall times", format_duration(sum_wall), "Measured"],
+          ["Sum of test CPU times", format_duration(sum_cpu), "Measured"],
+          ["", "", ""],
+          ["Shortest test", format_duration(min(walls)), "Measured"],
+          ["Median test", format_duration(statistics.median(walls)), "Measured"],
+          ["Longest test", format_duration(max_wall), "Measured"],
+          ["", "", ""],
+          ["CPU cores", str(num_cores), "Hardware"],
+          ["Speedup", f"{speedup:.1f}x", "sum_test_wall / script_wall"],
+          ["Efficiency", f"{efficiency:.0f}%", "speedup / cores"],
+          ["CPU ratio", f"{cpu_ratio:.0f}%", "sum_cpu / sum_wall"],
+          ["Bottleneck", f"{bottleneck_pct:.0f}%", "longest_test / script_wall"],
+        ]
+      )
+    else:
+      print_table(
+        "TIMING",
+        ["Metric", "Value"],
+        [["Script wall time", format_duration(wall_time)]]
+      )
+    print()
 
-  # 5. Tests by Command Type
-  cmd_counts = Counter(str(res["cmd_name"]).split("-")[0] for res in results)
+  # 5. Results by Command Type
+  def get_cmd_type(res: dict[str, str | int | float | Timing | None]) -> str:
+    return str(res["cmd_name"]).split("-")[0]
+
+  cmd_types = sorted(set(get_cmd_type(res) for res in results))
+  cmd_passed = Counter(get_cmd_type(res) for res in successes)
+  cmd_failed = Counter(get_cmd_type(res) for res in failures)
+  cmd_total = Counter(get_cmd_type(res) for res in results)
+
   print_table(
-    "TESTS BY COMMAND TYPE",
-    ["Command", "Count"],
-    [[cmd_type, str(count)] for cmd_type, count in sorted(cmd_counts.items())]
+    "RESULTS BY COMMAND TYPE",
+    ["Command", "Passed", "Failed", "Total"],
+    [[cmd, str(cmd_passed[cmd]), str(cmd_failed[cmd]), str(cmd_total[cmd])] for cmd in cmd_types]
   )
   print()
 
-  # 6. Slowest Tests
-  if n_ok > 0:
+  # 6. Slowest Tests (skip if only_failures mode)
+  if not skip_perf and n_ok > 0:
     sorted_by_wall = sorted(successes, key=lambda r: get_timing(r).wall, reverse=True)
     print_table(
       "TOP 10 SLOWEST TESTS",
@@ -591,8 +604,8 @@ def print_summary(results: list[dict[str, str | int | float | Timing | None]], w
     )
     print()
 
-  # 7. Most I/O Bound Tests
-  if n_ok > 0:
+  # 7. Most I/O Bound Tests (skip if only_failures mode)
+  if not skip_perf and n_ok > 0:
     sorted_by_cpu_eff = sorted(
       [(res, get_timing(res).cpu / get_timing(res).wall if get_timing(res).wall > 0 else 0) for res in successes],
       key=lambda x: x[1]
@@ -606,19 +619,27 @@ def print_summary(results: list[dict[str, str | int | float | Timing | None]], w
       )
       print()
 
-    if n_err > 0:
-      failed_cmds = [""] + [str(failure["cmd"]) for failure in failures]
-      print(red("Failed commands:" + "\n\n  ".join(failed_cmds) + "\n\n"))
+  if n_err > 0:
+    failed_cmds = [""] + [str(failure["cmd"]) for failure in failures]
+    print(red("Failed commands:" + "\n\n  ".join(failed_cmds) + "\n\n"))
 
-    sys.exit(0 if n_err == 0 else 1)
-  else:
-    print("No tests found")
-    sys.exit(1)
+  sys.exit(0 if n_err == 0 else 1)
 
 
 if __name__ == "__main__":
-  if len(sys.argv) < 2:
-    sys.exit(f"Usage: {sys.argv[0]} <path_to_treetime_executable>")
+  # Parse arguments (order-independent)
+  flags = {a for a in sys.argv[1:] if a.startswith("--")}
+  positional_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+
+  known_flags = {"--only-failures"}
+  unknown_flags = flags - known_flags
+  if unknown_flags:
+    sys.exit(f"Unknown flag(s): {', '.join(sorted(unknown_flags))}\nUsage: {sys.argv[0]} <path_to_treetime_executable> [--only-failures]")
+
+  if len(positional_args) != 1:
+    sys.exit(f"Usage: {sys.argv[0]} <path_to_treetime_executable> [--only-failures]")
+
+  only_failures = "--only-failures" in flags
 
 
   def normpath(path: Path) -> str:
@@ -633,7 +654,7 @@ if __name__ == "__main__":
     return os.path.relpath(normpath(path), PROJECT_ROOT)
 
 
-  TREETIME_BIN = normpath(Path(sys.argv[1]))
+  TREETIME_BIN = normpath(Path(positional_args[0]))
   DATA_DIR = relpath(Path(PROJECT_ROOT) / 'data')
   RESULTS_DIR = relpath(Path(PROJECT_ROOT) / 'tmp/smoke-tests')
   RESULTS_DIR_ADDITIONAL = Path(RESULTS_DIR) / 'additional'
@@ -658,7 +679,7 @@ if __name__ == "__main__":
       results = [pool.starmap_async(func, args) for func, args in batches]
       results = [code for result in results for code in result.get()]
       wall_time = time.perf_counter() - start_time
-      print_summary(results, wall_time, num_cores)
+      print_summary(results, wall_time, num_cores, skip_perf=only_failures)
     except KeyboardInterrupt:
       pool.terminate()
       pool.close()
