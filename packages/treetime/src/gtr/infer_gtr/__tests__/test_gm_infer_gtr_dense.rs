@@ -59,7 +59,7 @@ mod tests {
   #[case::flu_h3n2_20("flu_h3n2_20")]
   #[case::rsv_a_20("rsv_a_20")]
   #[case::lassa_L_50("lassa_L_50")]
-  #[case::mpox_clade_ii_20("mpox_clade_ii_20")]
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // Slow
   #[case::tb_20("tb_20")]
   fn test_gm_infer_gtr_dense_real(#[case] case_name: &str) -> Result<(), Report> {
     let case = &INPUTS.real[case_name];

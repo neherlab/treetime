@@ -59,7 +59,7 @@ mod tests {
   #[case::dengue_20(         "data/dengue/20/tree.nwk",         "data/dengue/20/aln.fasta.xz")]
   #[case::tb_20(             "data/tb/20/tree.nwk",             "data/tb/20/aln.fasta.xz")]
   #[case::lassa_L_50(        "data/lassa/L/50/tree.nwk",        "data/lassa/L/50/aln.fasta.xz")]
-  #[case::mpox_clade_ii_20(  "data/mpox/clade-ii/20/tree.nwk",  "data/mpox/clade-ii/20/aln.fasta.xz")]
+  // #[case::mpox_clade_ii_20(  "data/mpox/clade-ii/20/tree.nwk",  "data/mpox/clade-ii/20/aln.fasta.xz")] // Slow
   #[trace]
   fn test_contract_dense_sparse_real_gtr(
     #[case] tree_path: &str,

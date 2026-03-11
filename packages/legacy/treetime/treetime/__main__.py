@@ -8,9 +8,12 @@ from treetime import make_parser
 import random
 import numpy as np
 
-np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ',
-                    floatmode='maxprec_equal')
+# These settings are not part of upstream TreeTime v0.
+# Added only in this copy to make printouts more informative.
+np.set_printoptions(precision=60, threshold=20, edgeitems=8, suppress=True, linewidth=999, sign=' ', floatmode='maxprec_equal')
 
+# These settings are not part of upstream TreeTime v0.
+# Added only in this copy to ensure reproducible results.
 SEED=1010336213
 random.seed(SEED)
 np.random.seed(SEED)
