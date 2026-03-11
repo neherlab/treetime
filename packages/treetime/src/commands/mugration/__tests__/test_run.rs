@@ -1,10 +1,160 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::mugration::run::run_mugration;
+  use crate::commands::mugration::run::{
+    apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, run_mugration, validate_weight_coverage,
+  };
+  use crate::representation::discrete_states::DiscreteStates;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use indexmap::IndexSet;
+  use maplit::btreemap;
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::fs;
+  use treetime_utils::o;
+
+  // ==========================================================================
+  // Tests for extracted pure helpers (T11b-T11d)
+  // ==========================================================================
+
+  #[test]
+  fn test_run_validate_weight_coverage_rejects_above_threshold() {
+    let unique_values: IndexSet<String> = [o!("usa"), o!("germany"), o!("france"), o!("italy")]
+      .into_iter()
+      .collect();
+    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let missing_data = "?";
+    let threshold = 0.5;
+
+    let result = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold);
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("too many discrete attributes missing"));
+    assert!(err_msg.contains("0.75"));
+  }
+
+  #[test]
+  fn test_run_validate_weight_coverage_accepts_at_threshold() {
+    let unique_values: IndexSet<String> = [o!("usa"), o!("germany")].into_iter().collect();
+    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let missing_data = "?";
+    let threshold = 0.5;
+
+    let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
+    let expected_missing: IndexSet<String> = std::iter::once(o!("germany")).collect();
+    assert_eq!(expected_missing, coverage.missing_values);
+    assert_abs_diff_eq!(0.5, coverage.missing_ratio, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_validate_weight_coverage_excludes_missing_data_marker() {
+    let unique_values: IndexSet<String> = [o!("usa"), o!("?")].into_iter().collect();
+    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let missing_data = "?";
+    let threshold = 0.5;
+
+    let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
+    assert!(coverage.missing_values.is_empty());
+    assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_validate_weight_coverage_full_coverage() {
+    let unique_values: IndexSet<String> = [o!("usa"), o!("germany")].into_iter().collect();
+    let weights_keys: IndexSet<String> = [o!("usa"), o!("germany")].into_iter().collect();
+    let missing_data = "?";
+    let threshold = 0.5;
+
+    let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
+    assert!(coverage.missing_values.is_empty());
+    assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_compute_pi_from_weights_normalizes() {
+    let states = DiscreteStates::from_values(["usa", "germany"].into_iter(), "?");
+    let weights = btreemap! {
+      o!("usa") => 3.0,
+      o!("germany") => 1.0,
+    };
+
+    let pi = compute_pi_from_weights(&states, &weights);
+
+    assert_eq!(2, pi.len());
+    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.75, pi[1], epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_compute_pi_from_weights_uses_mean_for_missing() {
+    // DiscreteStates sorts alphabetically: france, germany, usa
+    let states = DiscreteStates::from_values(["usa", "germany", "france"].into_iter(), "?");
+    let weights = btreemap! {
+      o!("usa") => 2.0,
+      o!("germany") => 4.0,
+    };
+
+    let pi = compute_pi_from_weights(&states, &weights);
+
+    assert_eq!(3, pi.len());
+    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    // mean_weight = (2.0 + 4.0) / 2 = 3.0
+    // total = france(3.0) + germany(4.0) + usa(2.0) = 9.0
+    let total = 9.0;
+    assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10); // france (mean)
+    assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10); // germany
+    assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10); // usa
+  }
+
+  #[test]
+  fn test_run_compute_pi_uniform() {
+    let pi = compute_pi_uniform(4);
+
+    assert_eq!(4, pi.len());
+    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.25, pi[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.25, pi[2], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.25, pi[3], epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_apply_pseudo_counts_with_value() {
+    let pi = array![0.25, 0.75];
+    let pc = Some(0.5);
+
+    let result = apply_pseudo_counts(pi, pc);
+
+    assert_eq!(2, result.len());
+    assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.375, result[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.625, result[1], epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_apply_pseudo_counts_without_value() {
+    let pi = array![0.25, 0.75];
+    let pc = None;
+
+    let result = apply_pseudo_counts(pi.clone(), pc);
+
+    assert_abs_diff_eq!(pi, result, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_run_apply_pseudo_counts_preserves_normalization() {
+    let pi = array![0.1, 0.2, 0.3, 0.4];
+    let pc = Some(1.0);
+
+    let result = apply_pseudo_counts(pi, pc);
+
+    assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
+  }
+
+  // ==========================================================================
+  // End-to-end file-based smoke tests (existing)
+  // ==========================================================================
 
   #[test]
   fn test_run_writes_expected_outputs_with_confidence() -> Result<(), Report> {

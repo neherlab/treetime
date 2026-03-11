@@ -22,6 +22,80 @@ use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, format_weight};
 
+/// Result of validating weight coverage against unique values.
+#[derive(Debug)]
+pub struct WeightCoverageResult {
+  /// Values present in unique_values but missing from weights.
+  pub missing_values: IndexSet<String>,
+  /// Ratio of missing values to total unique values.
+  pub missing_ratio: f64,
+}
+
+/// Validate that weights cover enough of the unique values.
+///
+/// Returns the set of missing values and the missing ratio.
+/// Returns an error if the missing ratio exceeds the threshold.
+pub fn validate_weight_coverage(
+  unique_values: &IndexSet<String>,
+  weights_keys: &IndexSet<String>,
+  missing_data: &str,
+  threshold: f64,
+) -> Result<WeightCoverageResult, Report> {
+  let missing_values: IndexSet<String> = unique_values
+    .difference(weights_keys)
+    .filter(|&value| value != missing_data)
+    .cloned()
+    .collect();
+
+  let missing_ratio = missing_values.len() as f64 / unique_values.len().max(1) as f64;
+
+  if missing_ratio > threshold {
+    return make_error!(
+      "Mugration: too many discrete attributes missing from the weights file. \
+       The ratio of missing values {missing_ratio} is greater than the threshold {threshold}."
+    );
+  }
+
+  Ok(WeightCoverageResult {
+    missing_values,
+    missing_ratio,
+  })
+}
+
+/// Compute equilibrium frequencies (pi) from a weights map.
+///
+/// For states not present in the weights map, uses the mean weight as fallback.
+pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {
+  let mean_weight = weights.values().mean();
+
+  let weights_arr: Array1<f64> = states
+    .iter()
+    .map(|state| *weights.get(state).unwrap_or(&mean_weight))
+    .collect();
+
+  let sum = weights_arr.sum();
+  weights_arr / sum
+}
+
+/// Compute uniform equilibrium frequencies (pi) for n states.
+pub fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
+  Array1::from_elem(n_states, 1.0 / n_states as f64)
+}
+
+/// Apply pseudo-counts to equilibrium frequencies and re-normalize.
+///
+/// If `pc` is None, returns the input unchanged.
+pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
+  match pc {
+    Some(pc_val) => {
+      let pi = &pi + pc_val;
+      let sum = pi.sum();
+      pi / sum
+    },
+    None => pi,
+  }
+}
+
 pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
   let TreetimeMugrationArgs {
     tree,
@@ -74,51 +148,25 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
     )?
     .0;
 
-    let unique_values_in_weights: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
+    let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
 
-    let missing_values_in_weights: IndexSet<String> = unique_values
-      .difference(&unique_values_in_weights)
-      .filter(|&value| value != missing_data)
-      .cloned()
-      .collect();
+    let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, *missing_weights_threshold)?;
 
-    let missing_weights_ratio = missing_values_in_weights.len() as f64 / unique_values.len().max(1) as f64;
-
-    if !missing_values_in_weights.is_empty() {
+    if !coverage.missing_values.is_empty() {
       warn!(
-        "Mugration: discrete attributes missing from weights file: {} (ratio: {missing_weights_ratio:.3})",
-        missing_values_in_weights.iter().join(", ")
+        "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
+        coverage.missing_values.iter().join(", "),
+        coverage.missing_ratio
       );
     }
 
-    if missing_weights_ratio > *missing_weights_threshold {
-      return make_error!(
-        "Mugration: too many discrete attributes missing from the weights file. The ratio of missing values {missing_weights_ratio} is greater than the threshold {missing_weights_threshold}. Weights were read from file {weights_filepath:?}"
-      );
-    }
-
-    let mean_weight = weights_map.values().mean();
-
-    let weights_arr: Array1<f64> = discrete_states
-      .iter()
-      .map(|state| *weights_map.get(state).unwrap_or(&mean_weight))
-      .collect();
-
-    let sum = weights_arr.sum();
-    weights_arr / sum
+    compute_pi_from_weights(&discrete_states, &weights_map)
   } else {
-    // Uniform weights
-    Array1::from_elem(n_states, 1.0 / n_states as f64)
+    compute_pi_uniform(n_states)
   };
 
   // Add pseudo-counts if specified
-  let pi = if let Some(pc_val) = pc {
-    let pi_with_pc = &pi + *pc_val;
-    let sum = pi_with_pc.sum();
-    pi_with_pc / sum
-  } else {
-    pi
-  };
+  let pi = apply_pseudo_counts(pi, *pc);
 
   // Create GTR model
   let gtr = GTR::new(GTRParams {
