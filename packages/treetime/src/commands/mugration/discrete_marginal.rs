@@ -4,10 +4,14 @@ use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
 use itertools::Itertools;
+use parking_lot::Mutex;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub fn run_discrete_marginal<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionDiscrete) -> Result<f64, Report>
 where
@@ -26,16 +30,10 @@ where
   }
 
   // Backward pass: postorder traversal (leaves to root)
-  graph.iter_breadth_first_reverse(|node| {
-    partition.process_node_backward(&node).expect("Backward pass failed");
-  });
+  discrete_marginal_backward(graph, partition)?;
 
   // Forward pass: preorder traversal (root to leaves)
-  graph.iter_breadth_first_forward(|node| {
-    partition
-      .process_node_forward(graph, &node)
-      .expect("Forward pass failed");
-  });
+  discrete_marginal_forward(graph, partition)?;
 
   // Return total log likelihood from root
   let root = graph.get_exactly_one_root()?;
@@ -43,6 +41,52 @@ where
   let log_lh = partition.get_log_lh(root_key);
 
   Ok(log_lh)
+}
+
+fn discrete_marginal_backward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionDiscrete) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
+  let partition = Arc::new(Mutex::new(partition));
+
+  graph.par_iter_breadth_first_backward(|node| {
+    let mut partition = partition.lock();
+    if let Err(e) = partition.process_node_backward(&node) {
+      let mut guard = error.lock();
+      if guard.is_none() {
+        *guard = Some(e);
+      }
+      return GraphTraversalContinuation::Stop;
+    }
+    GraphTraversalContinuation::Continue
+  });
+
+  extract_parallel_error(error)
+}
+
+fn discrete_marginal_forward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionDiscrete) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
+  let partition = Arc::new(Mutex::new(partition));
+
+  graph.par_iter_breadth_first_forward(|node| {
+    let mut partition = partition.lock();
+    if let Err(e) = partition.process_node_forward(graph, &node) {
+      let mut guard = error.lock();
+      if guard.is_none() {
+        *guard = Some(e);
+      }
+      return GraphTraversalContinuation::Stop;
+    }
+    GraphTraversalContinuation::Continue
+  });
+
+  extract_parallel_error(error)
 }
 
 pub fn attach_traits<N, E>(

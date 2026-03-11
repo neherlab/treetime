@@ -1,4 +1,6 @@
 use crate::gtr::gtr::GTR;
+use crate::make_internal_error;
+use crate::make_internal_report;
 use crate::representation::discrete_states::DiscreteStates;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
@@ -67,7 +69,7 @@ impl PartitionDiscrete {
       }
 
       // Normalize from log space
-      let (profile, delta_ll) = normalize_from_log_1d(&log_profile);
+      let (profile, delta_ll) = normalize_from_log_1d(&log_profile)?;
 
       let log_lh: f64 = node
         .child_keys
@@ -91,9 +93,12 @@ impl PartitionDiscrete {
     if node.is_root {
       // Root: weight by equilibrium frequencies
       let mut profile = &msg_to_parent * &self.gtr.pi;
-      let delta_ll = normalize_inplace_1d(&mut profile);
+      let delta_ll = normalize_inplace_1d(&mut profile)?;
 
-      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      let node_data = self
+        .nodes
+        .get_mut(&node.key)
+        .ok_or_else(|| make_internal_report!("Root node {key:?} must exist in partition", key = node.key))?;
       node_data.profile = profile;
       node_data.log_lh += delta_ll;
     } else {
@@ -138,7 +143,10 @@ impl PartitionDiscrete {
 
       for (_, edge_key) in &node.parent_keys {
         let edge = &self.edges[edge_key];
-        let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
+        let graph_edge = graph
+          .get_edge(*edge_key)
+          .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist in graph"))?;
+        let edge_payload = graph_edge.read_arc().payload().read_arc();
         let branch_length = edge_payload.branch_length().unwrap_or(0.0);
         let exp_qt = self.gtr.expQt(branch_length);
 
@@ -155,10 +163,13 @@ impl PartitionDiscrete {
       for msg in &msgs_to_combine[1..] {
         profile *= msg;
       }
-      let delta_ll = normalize_inplace_1d(&mut profile);
+      let delta_ll = normalize_inplace_1d(&mut profile)?;
       log_lh += delta_ll;
 
-      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      let node_data = self
+        .nodes
+        .get_mut(&node.key)
+        .ok_or_else(|| make_internal_report!("Node {key:?} must exist in partition", key = node.key))?;
       node_data.profile = profile;
       node_data.log_lh = log_lh;
     }
@@ -166,11 +177,16 @@ impl PartitionDiscrete {
     // Compute msg_to_child for each child edge
     for child_edge_key in &node.child_edge_keys {
       let node_data = &self.nodes[&node.key];
-      let edge_data = self.edges.get_mut(child_edge_key).unwrap();
+      let edge_data = self
+        .edges
+        .get_mut(child_edge_key)
+        .ok_or_else(|| make_internal_report!("Edge {child_edge_key:?} must exist in partition"))?;
 
       // msg_to_child = node_profile / msg_from_child (element-wise)
-      let mut msg_to_child = &node_data.profile / &edge_data.msg_from_child;
-      normalize_inplace_1d(&mut msg_to_child);
+      // Guard against division by zero by clamping divisor to minimum positive value
+      let safe_divisor = edge_data.msg_from_child.mapv(|v| v.max(f64::MIN_POSITIVE));
+      let mut msg_to_child = &node_data.profile / &safe_divisor;
+      normalize_inplace_1d(&mut msg_to_child)?;
       edge_data.msg_to_child = msg_to_child;
     }
 
@@ -199,25 +215,28 @@ fn argmax_first_1d(arr: &Array1<f64>) -> Option<usize> {
   Some(max_idx)
 }
 
-fn normalize_inplace_1d(arr: &mut Array1<f64>) -> f64 {
+fn normalize_inplace_1d(arr: &mut Array1<f64>) -> Result<f64, Report> {
   let sum = arr.sum();
-  if sum > 0.0 {
-    *arr /= sum;
+  if sum.is_nan() || sum <= 0.0 {
+    return make_internal_error!("Cannot normalize invalid profile: sum={sum}, profile={arr:?}");
   }
-  sum.ln()
+  *arr /= sum;
+  Ok(sum.ln())
 }
 
-fn normalize_from_log_1d(log_arr: &Array1<f64>) -> (Array1<f64>, f64) {
+fn normalize_from_log_1d(log_arr: &Array1<f64>) -> Result<(Array1<f64>, f64), Report> {
   let max_val = log_arr.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
   let mut arr = log_arr.mapv(|v| (v - max_val).exp());
   let sum = arr.sum();
-  if sum > 0.0 {
-    arr /= sum;
+  if sum.is_nan() || sum <= 0.0 {
+    return make_internal_error!(
+      "Cannot normalize invalid log profile: sum={sum}, max={max_val}, log_profile={log_arr:?}"
+    );
   }
-
+  arr /= sum;
   let log_lh = max_val + sum.ln();
-  (arr, log_lh)
+  Ok((arr, log_lh))
 }
 
 #[cfg(test)]
@@ -309,5 +328,45 @@ mod tests {
     assert_eq!(argmax_first_1d(&array![0.1, 0.5, 0.4]), Some(1));
     assert_eq!(argmax_first_1d(&array![0.5, 0.5, 0.0]), Some(0)); // tie: first wins
     assert_eq!(argmax_first_1d(&Array1::zeros(0)), None);
+  }
+
+  #[test]
+  fn test_normalize_inplace_1d_zero_sum_returns_error() {
+    let mut arr = array![0.0, 0.0, 0.0];
+    let result = normalize_inplace_1d(&mut arr);
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+      err_msg.contains("invalid profile"),
+      "expected invalid profile error, got: {err_msg}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_from_log_1d_all_neg_inf_returns_error() {
+    let log_arr = array![f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY];
+    let result = normalize_from_log_1d(&log_arr);
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+      err_msg.contains("invalid log profile"),
+      "expected invalid log profile error, got: {err_msg}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_inplace_1d_valid_input() {
+    let mut arr = array![1.0, 2.0, 3.0];
+    let log_lh = normalize_inplace_1d(&mut arr).unwrap();
+    assert_abs_diff_eq!(arr.sum(), 1.0, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_lh, 6.0_f64.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_normalize_from_log_1d_valid_input() {
+    let log_arr = array![0.0, 1.0, 2.0];
+    let (arr, log_lh) = normalize_from_log_1d(&log_arr).unwrap();
+    assert_abs_diff_eq!(arr.sum(), 1.0, epsilon = 1e-10);
+    assert!(log_lh.is_finite());
   }
 }
