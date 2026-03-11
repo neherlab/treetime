@@ -3,27 +3,23 @@ use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::path::Path;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
-pub fn read_discrete_attrs<T>(
-  filepath: impl AsRef<Path>,
+pub fn read_discrete_attrs_from_reader<T>(
+  reader: impl Read,
+  delimiter: u8,
   name_column: &Option<String>,
   value_column: &Option<String>,
   parser: impl Fn(&str) -> Result<T, Report>,
 ) -> Result<(BTreeMap<String, T>, String), Report> {
-  let filepath = filepath.as_ref();
-  let file =
-    open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  let delimiter = guess_csv_delimiter(filepath)
-    .wrap_err_with(|| format!("When guessing CSV delimiter for '{}'", filepath.display()))?;
-
   let mut reader = CsvReaderBuilder::new()
     .trim(Trim::All)
     .delimiter(delimiter)
     .comment(None)
-    .from_reader(file);
+    .from_reader(reader);
 
   let headers = reader
     .headers()
@@ -33,11 +29,8 @@ pub fn read_discrete_attrs<T>(
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').to_owned())
     .collect_vec();
 
-  let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)
-    .wrap_err_with(|| format!("When detecting name column in '{}'", filepath.display()))?;
-
-  let value_column_idx = get_col_name(&headers, &[], value_column)
-    .wrap_err_with(|| format!("When detecting attribute column in '{}'", filepath.display()))?;
+  let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)?;
+  let value_column_idx = get_col_name(&headers, &[], value_column)?;
 
   let value_name = headers[value_column_idx].clone();
 
@@ -51,6 +44,31 @@ pub fn read_discrete_attrs<T>(
     .collect::<Result<BTreeMap<String, T>, Report>>()?;
 
   Ok((values, value_name))
+}
+
+pub fn read_discrete_attrs_from_str<T>(
+  content: &str,
+  delimiter: u8,
+  name_column: &Option<String>,
+  value_column: &Option<String>,
+  parser: impl Fn(&str) -> Result<T, Report>,
+) -> Result<(BTreeMap<String, T>, String), Report> {
+  read_discrete_attrs_from_reader(content.as_bytes(), delimiter, name_column, value_column, parser)
+}
+
+pub fn read_discrete_attrs<T>(
+  filepath: impl AsRef<Path>,
+  name_column: &Option<String>,
+  value_column: &Option<String>,
+  parser: impl Fn(&str) -> Result<T, Report>,
+) -> Result<(BTreeMap<String, T>, String), Report> {
+  let filepath = filepath.as_ref();
+  let file =
+    open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
+  let delimiter = guess_csv_delimiter(filepath)
+    .wrap_err_with(|| format!("When guessing CSV delimiter for '{}'", filepath.display()))?;
+  read_discrete_attrs_from_reader(file, delimiter, name_column, value_column, parser)
+    .wrap_err_with(|| format!("When reading discrete attributes from file: '{}'", filepath.display()))
 }
 
 pub fn convert_record<T>(
