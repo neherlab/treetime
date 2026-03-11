@@ -14,15 +14,15 @@
 
 ## Command Map
 
-| Command     | Status | Notes                                 |
-| ----------- | ------ | ------------------------------------- |
-| `ancestral` | [x]    | Parsimony and marginal reconstruction |
-| `clock`     | [x]    | Regression and rerooting              |
-| `timetree`  | [x]    | Full inference pipeline               |
-| `optimize`  | [x]    | v1-only branch-length optimization    |
-| `prune`     | [x]    | v1-only tree pruning                  |
-| `mugration` | [~]    | Preprocessing only, no reconstruction |
-| `homoplasy` | [ ]    | Unimplemented                         |
+| Command     | Status | Notes                                           |
+| ----------- | ------ | ----------------------------------------------- |
+| `ancestral` | [x]    | Parsimony and marginal reconstruction           |
+| `clock`     | [x]    | Regression and rerooting                        |
+| `timetree`  | [x]    | Full inference pipeline                         |
+| `optimize`  | [x]    | v1-only branch-length optimization              |
+| `prune`     | [x]    | v1-only tree pruning                            |
+| `mugration` | [x]    | Marginal reconstruction (missing iterative GTR) |
+| `homoplasy` | [ ]    | Unimplemented                                   |
 
 ## 1. Ancestral Reconstruction
 
@@ -327,10 +327,11 @@
 
 ## 5. Mugration (Discrete Trait Reconstruction)
 
-- [~] **Partially implemented** (preprocessing only, ~30%)
+- [x] **Implemented** (marginal reconstruction complete, ~80%)
 
-### Implemented
+### Input Processing
 
+- [x] Tree loading from `--tree`
 - [x] Discrete state table from `--states`
 - [x] Attribute column selection with `--attribute`
 - [x] Custom taxon-name column with `--name-column`
@@ -345,23 +346,28 @@
 - [x] Add synthetic missing-data symbol after alphabet build
 - [x] Reject datasets with fewer than two non-missing states
 
+### Reconstruction
+
+- [x] GTR model construction (uniform rates, optional weight-based equilibrium frequencies)
+- [x] Discrete marginal reconstruction (backward pass, forward pass)
+- [x] Missing data handling (uniform prior for tips with `"?"` traits)
+- [x] Trait assignment from argmax of posterior profiles
+- [x] Confidence profile extraction (`get_confidence()`)
+
+### Output
+
+- [x] `traits.csv` (per-node trait assignments, all nodes)
+- [x] `annotated_tree.nexus` (Newick with trait annotations)
+- [x] `annotated_tree.nwk` (Newick with NHX-style annotations)
+- [x] `gtr.json` (GTR model parameters)
+
 ### Not Implemented
 
-- [ ] Tree loading or reconstruction work
-- [ ] GTR model construction from discrete traits (commented out)
-- [ ] Ancestral state reconstruction on discrete traits
+- [ ] Iterative GTR inference ([known issue](../port-known-issues/M-mugration-iterative-gtr.md))
 - [ ] Sampling bias correction (`--sampling-bias-correction`)
-- [ ] Confidence output (`--confidence`)
-- [ ] Output files (GTR.txt, annotated_tree.nexus, confidence.csv)
-
-### CLI Options (Parsed but Not Wired)
-
-- [ ] `--tree`
-- [ ] `--confidence`
-- [ ] `--pc`
-- [ ] `--sampling-bias-correction`
-- [ ] `--outdir`
-- [ ] `--seed`
+- [ ] Confidence CSV output (`--confidence`)
+- [ ] `--pc` pseudo-counts (parsed but not wired)
+- [ ] `--seed` reproducibility (parsed but not wired)
 
 ## 6. ARG Inference
 
@@ -601,7 +607,7 @@
 | clock          | 17          | 14             | 3          | 0       |
 | timetree       | 30          | 20             | 10         | 0       |
 | homoplasy      | 9           | 0              | 9          | 0       |
-| mugration      | 10          | 4              | 6          | 0       |
+| mugration      | 10          | 8              | 2          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
 | optimize       | 0           | 0              | 0          | 8       |
 | prune          | 0           | 0              | 0          | 7       |

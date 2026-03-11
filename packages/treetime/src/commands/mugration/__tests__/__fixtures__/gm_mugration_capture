@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for mugration discrete trait reconstruction.
+
+Reads inputs from gm_mugration_inputs.json, captures outputs from Python v0
+reference implementation, writes to gm_mugration_outputs.json.
+
+The outputs serve as the oracle for validating Rust v1 mugration reconstruction.
+Rust tests in test_gm_mugration.rs load these outputs and compare against
+v1 results to ensure agreement on reconstructed trait assignments.
+
+For each dataset:
+1. Read tree and metadata to build a trait mapping
+2. Run v0 reconstruct_discrete_traits() with default parameters
+3. Extract per-node trait assignments and confidence profiles
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/commands/mugration/__tests__/__fixtures__/gm_mugration_capture
+"""
+
+import json
+import random
+import sys
+import traceback
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "packages" / "legacy" / "treetime"))
+
+from treetime.wrappers import reconstruct_discrete_traits  # noqa: E402
+
+SEED = 1010336213
+random.seed(SEED)
+np.random.seed(SEED)
+
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[7]
+FIXTURES_DIR: Path = Path(__file__).parent
+
+
+def read_traits(
+    metadata_path: Path,
+    attribute: str,
+    name_column: str | None,
+    missing_data: str = "?",
+) -> dict[str, str]:
+    """Read trait mapping from metadata file, matching v0 mugration() logic."""
+    sep = "\t" if str(metadata_path).endswith("tsv") else ","
+    states = pd.read_csv(metadata_path, sep=sep, skipinitialspace=True)
+
+    if name_column and name_column in states.columns:
+        taxon_name = name_column
+    elif "name" in states.columns:
+        taxon_name = "name"
+    elif "strain" in states.columns:
+        taxon_name = "strain"
+    elif "accession" in states.columns:
+        taxon_name = "accession"
+    else:
+        taxon_name = states.columns[0]
+
+    return {
+        x[taxon_name]: str(x[attribute])
+        for _, x in states.iterrows()
+        if x[attribute] != missing_data and x[attribute]
+    }
+
+
+def capture_dataset(name: str, config: dict) -> dict:
+    """Capture golden master outputs for one dataset."""
+    print(f"\n  {name}:")
+
+    tree_path = str(PROJECT_ROOT / config["tree_path"])
+    metadata_path = PROJECT_ROOT / config["metadata_path"]
+    attribute = config["attribute"]
+    name_column = config.get("name_column")
+
+    traits = read_traits(metadata_path, attribute, name_column)
+    print(f"    {len(traits)} taxa with trait values")
+
+    unique_states = sorted(set(traits.values()))
+    print(f"    {len(unique_states)} unique states: {', '.join(unique_states)}")
+
+    if len(unique_states) < 2:
+        print("    SKIPPED: fewer than 2 states")
+        return {}
+
+    random.seed(SEED)
+    np.random.seed(SEED)
+
+    treeanc, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(
+        tree_path,
+        traits,
+        missing_data="?",
+        pc=1.0,
+        verbose=0,
+        rng_seed=SEED,
+    )
+
+    if treeanc is None:
+        print("    FAILED: reconstruction returned None")
+        return {}
+
+    # Build state list in sorted order (matching v1 DiscreteStates::from_values)
+    states = sorted(unique_states)
+
+    # Extract per-node trait assignments and confidence profiles
+    trait_assignments: dict[str, str] = {}
+    confidence: dict[str, list[float]] = {}
+
+    for node in treeanc.tree.find_clades():
+        seq_char = treeanc.sequence(node, as_string=True, reconstructed=True)[0]
+        state = letter_to_state.get(seq_char, "?")
+        trait_assignments[node.name] = state
+
+        if hasattr(node, "marginal_profile") and node.marginal_profile is not None:
+            profile = node.marginal_profile[0]
+            # Map v0 alphabet-ordered profile to sorted-state order
+            # v0 alphabet: sorted unique states mapped to A, B, C, ...
+            # Since we sorted unique_states, the alphabet order matches sorted state order
+            confidence[node.name] = [round(float(p), 10) for p in profile]
+
+    n_internal = sum(1 for n in treeanc.tree.find_clades() if not n.is_terminal())
+    print(f"    {len(trait_assignments)} nodes total, {n_internal} internal")
+
+    return {
+        "states": states,
+        "trait_assignments": trait_assignments,
+        "confidence": confidence,
+    }
+
+
+def main() -> None:
+    inputs_path = FIXTURES_DIR / "gm_mugration_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_mugration_outputs.json"
+
+    with open(inputs_path) as f:
+        inputs: dict = json.load(f)
+
+    print("Mugration Golden Master Capture")
+    print("=" * 50)
+
+    outputs: dict = {}
+    for name, config in inputs.items():
+        try:
+            result = capture_dataset(name, config)
+            if result:
+                outputs[name] = result
+        except Exception as e:
+            print(f"    FAILED: {e}")
+            traceback.print_exc()
+            continue
+
+    with open(outputs_path, "w") as f:
+        json.dump(outputs, f, indent=2)
+
+    print(f"\nWritten: {outputs_path}")
+    print(f"Captured: {len(outputs)}/{len(inputs)}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,37 @@
+{
+  "zika_20_country": {
+    "tree_path": "data/zika/20/tree.nwk",
+    "metadata_path": "data/zika/20/metadata.tsv",
+    "attribute": "country"
+  },
+  "dengue_20_country": {
+    "tree_path": "data/dengue/20/tree.nwk",
+    "metadata_path": "data/dengue/20/metadata.tsv",
+    "attribute": "country",
+    "name_column": "genbank_accession"
+  },
+  "tb_20_cluster": {
+    "tree_path": "data/tb/20/tree.nwk",
+    "metadata_path": "data/tb/20/metadata.tsv",
+    "attribute": "cluster",
+    "name_column": "strain"
+  },
+  "lassa_L_20_country": {
+    "tree_path": "data/lassa/L/20/tree.nwk",
+    "metadata_path": "data/lassa/L/20/metadata.tsv",
+    "attribute": "country",
+    "name_column": "accession"
+  },
+  "rsv_a_20_country": {
+    "tree_path": "data/rsv/a/20/tree.nwk",
+    "metadata_path": "data/rsv/a/20/metadata.tsv",
+    "attribute": "country",
+    "name_column": "accession"
+  },
+  "mpox_clade_ii_20_country": {
+    "tree_path": "data/mpox/clade-ii/20/tree.nwk",
+    "metadata_path": "data/mpox/clade-ii/20/metadata.tsv",
+    "attribute": "country",
+    "name_column": "accession"
+  }
+}
