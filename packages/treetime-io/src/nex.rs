@@ -1,4 +1,4 @@
-use crate::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_str};
+use crate::nwk::{CommentProviders, EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_with};
 use eyre::Report;
 use itertools::Itertools;
 use smart_default::SmartDefault;
@@ -40,12 +40,43 @@ where
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
 {
+  let providers = CommentProviders::new();
+  nex_write_str_with(graph, options, &providers)
+}
+
+/// Return the Nexus representation of a graph, augmented by external node comment providers.
+pub fn nex_write_str_with<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &NexWriteOptions,
+  providers: &CommentProviders,
+) -> Result<String, Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
   let mut buf = Vec::new();
-  nex_write(&mut buf, graph, options)?;
+  nex_write_with(&mut buf, graph, options, providers)?;
   Ok(String::from_utf8(buf)?)
 }
 
 pub fn nex_write<N, E, D>(w: &mut impl Write, graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<(), Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
+  let providers = CommentProviders::new();
+  nex_write_with(w, graph, options, &providers)
+}
+
+/// Write a graph in Nexus format, passing comment providers through to the embedded Newick tree.
+pub fn nex_write_with<N, E, D>(
+  w: &mut impl Write,
+  graph: &Graph<N, E, D>,
+  options: &NexWriteOptions,
+  providers: &CommentProviders,
+) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
@@ -60,13 +91,17 @@ where
       n.nwk_name().map(|s| s.as_ref().to_owned())
     })
     .join(" ");
-  let nwk = nwk_write_str(
+  let mut nwk = Vec::new();
+  nwk_write_with(
+    &mut nwk,
     graph,
     &NwkWriteOptions {
       weight_significant_digits: options.weight_significant_digits,
       weight_decimal_digits: options.weight_decimal_digits,
     },
+    providers,
   )?;
+  let nwk = String::from_utf8(nwk)?;
 
   writeln!(
     w,

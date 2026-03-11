@@ -133,8 +133,23 @@ where
   E: GraphEdge + EdgeToNwk,
   D: Sync + Send + Default,
 {
+  let providers = CommentProviders::new();
+  nwk_write_str_with(graph, options, &providers)
+}
+
+/// Return the Newick representation of a graph, augmented by external node comment providers.
+pub fn nwk_write_str_with<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
+  providers: &CommentProviders,
+) -> Result<String, Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
   let mut buf = Vec::new();
-  nwk_write(&mut buf, graph, options)?;
+  nwk_write_with(&mut buf, graph, options, providers)?;
   Ok(String::from_utf8(buf)?)
 }
 
@@ -142,6 +157,24 @@ pub fn nwk_write<N, E, D>(
   writer: &mut impl Write,
   graph: &Graph<N, E, D>,
   options: &NwkWriteOptions,
+) -> Result<(), Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
+  let providers = CommentProviders::new();
+  nwk_write_with(writer, graph, options, &providers)
+}
+
+/// Write a graph in Newick format, merging payload comments with external provider comments.
+///
+/// Provider comments override payload comments with the same key.
+pub fn nwk_write_with<N, E, D>(
+  writer: &mut impl Write,
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
+  providers: &CommentProviders,
 ) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk,
@@ -181,11 +214,12 @@ where
       }
 
       let (name, comments) = {
-        let node_payload = node.read_arc().payload().read_arc();
-        (
-          node_payload.nwk_name().map(|n| n.as_ref().to_owned()),
-          node_payload.nwk_comments(),
-        )
+        let node = node.read_arc();
+        let node_key = node.key();
+        let node_payload = node.payload().read_arc();
+        let mut comments = node_payload.nwk_comments();
+        comments.extend(providers.merged_comments(node_key));
+        (node_payload.nwk_name().map(|n| n.as_ref().to_owned()), comments)
       };
 
       let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
@@ -238,6 +272,38 @@ pub trait NodeToNwk {
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     BTreeMap::<String, String>::new()
+  }
+}
+
+/// Return extra node comments for a graph node during Newick or Nexus serialization.
+pub trait NodeCommentProvider {
+  fn node_comments(&self, key: GraphNodeKey) -> BTreeMap<String, String>;
+}
+
+/// Compose multiple node comment providers.
+///
+/// Providers are queried in insertion order. Later providers override earlier providers on key conflicts.
+#[derive(Default)]
+pub struct CommentProviders<'a> {
+  providers: Vec<&'a dyn NodeCommentProvider>,
+}
+
+impl<'a> CommentProviders<'a> {
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  pub fn with(mut self, provider: &'a dyn NodeCommentProvider) -> Self {
+    self.providers.push(provider);
+    self
+  }
+
+  pub fn merged_comments(&self, key: GraphNodeKey) -> BTreeMap<String, String> {
+    let mut comments = BTreeMap::new();
+    for provider in &self.providers {
+      comments.extend(provider.node_comments(key));
+    }
+    comments
   }
 }
 

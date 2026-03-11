@@ -1,4 +1,5 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
+use crate::commands::mugration::comment_provider::PartitionCommentProvider;
 use crate::commands::mugration::discrete_marginal::{attach_traits, run_discrete_marginal};
 use crate::commands::mugration::input::MugrationInput;
 use crate::commands::mugration::output::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
@@ -14,14 +15,12 @@ use log::{info, warn};
 use ndarray::Array1;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::fs;
-use std::sync::Arc;
-use treetime_graph::node::Named;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
+use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, format_weight};
 
 /// Result of validating weight coverage against unique values.
 #[derive(Debug)]
@@ -162,10 +161,34 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     missing_weights_threshold,
   } = input;
 
-  let unique_values: IndexSet<String> = traits.values().sorted().cloned().collect();
+  let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
+
+  let model_values: IndexSet<String> = match &weights {
+    Some(weights_map) => {
+      let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
+
+      let coverage = validate_weight_coverage(
+        &observed_values,
+        &weights_keys,
+        &missing_data,
+        missing_weights_threshold,
+      )?;
+
+      if !coverage.missing_values.is_empty() {
+        warn!(
+          "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
+          coverage.missing_values.iter().join(", "),
+          coverage.missing_ratio
+        );
+      }
+
+      observed_values.union(&weights_keys).cloned().collect()
+    },
+    None => observed_values,
+  };
 
   // Build DiscreteStates
-  let discrete_states = DiscreteStates::from_values(unique_values.iter().map(String::as_str), &missing_data);
+  let discrete_states = DiscreteStates::from_values(model_values.iter().map(String::as_str), &missing_data);
   let n_states = discrete_states.len();
 
   if n_states < 2 {
@@ -181,21 +204,7 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
 
   // Compute equilibrium frequencies (pi)
   let pi = match &weights {
-    Some(weights_map) => {
-      let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
-
-      let coverage = validate_weight_coverage(&unique_values, &weights_keys, &missing_data, missing_weights_threshold)?;
-
-      if !coverage.missing_values.is_empty() {
-        warn!(
-          "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
-          coverage.missing_values.iter().join(", "),
-          coverage.missing_ratio
-        );
-      }
-
-      compute_pi_from_weights(&discrete_states, weights_map)
-    },
+    Some(weights_map) => compute_pi_from_weights(&discrete_states, weights_map),
     None => compute_pi_uniform(n_states),
   };
 
@@ -247,112 +256,15 @@ fn write_annotated_tree(
   traits: &MugrationTraitsOutput,
   outdir: &std::path::Path,
 ) -> Result<(), Report> {
-  let leaf_names = graph
-    .get_leaves()
-    .iter()
-    .filter_map(|node| {
-      let node = node.read_arc();
-      let payload = node.payload().read_arc();
-      payload.name().map(|name| name.as_ref().to_owned())
-    })
-    .join(" ");
-  let nwk = write_annotated_tree_nwk(graph, partition, &traits.attribute)?;
-  let nexus = format!(
-    r#"#NEXUS
-Begin Taxa;
-  Dimensions NTax={};
-  TaxLabels {};
-End;
-Begin Trees;
-  Tree tree1={nwk};
-End;
-"#,
-    graph.num_leaves(),
-    leaf_names
-  );
+  let provider = PartitionCommentProvider::new(partition, &traits.attribute);
+  let providers = CommentProviders::new().with(&provider);
+  let nexus = nex_write_str_with(graph, &NexWriteOptions::default(), &providers)?;
   fs::write(outdir.join("annotated_tree.nexus"), format!("{nexus}\n"))?;
 
   // Write trait assignments as separate CSV
   fs::write(outdir.join("traits.csv"), traits.render_csv())?;
 
   Ok(())
-}
-
-fn write_annotated_tree_nwk(
-  graph: &GraphAncestral,
-  partition: &PartitionDiscrete,
-  attribute: &str,
-) -> Result<String, Report> {
-  let roots = graph.get_roots();
-  let root = if roots.len() == 1 {
-    &roots[0]
-  } else if roots.is_empty() {
-    return make_error!("When converting graph to mugration-annotated Newick format: No roots found.");
-  } else {
-    return make_error!(
-      "When converting graph to mugration-annotated Newick format: Multiple roots are not supported."
-    );
-  };
-
-  let mut nwk = String::new();
-  let mut stack = vec![(Arc::clone(root), None, 0_usize)];
-  while let Some((node, edge, child_visit)) = stack.pop() {
-    let children = graph.children_of(&node.read_arc()).into_iter().collect_vec();
-
-    if child_visit < children.len() {
-      stack.push((node, edge, child_visit + 1));
-
-      if child_visit == 0 {
-        write!(&mut nwk, "(")?;
-      } else {
-        write!(&mut nwk, ",")?;
-      }
-
-      let (child, child_edge) = &children[child_visit];
-      stack.push((Arc::clone(child), Some(Arc::clone(child_edge)), 0));
-      continue;
-    }
-
-    if child_visit > 0 {
-      write!(&mut nwk, ")")?;
-    }
-
-    let node_key = node.read_arc().key();
-    let (name, mut comments) = {
-      let node_payload = node.read_arc().payload().read_arc();
-      (
-        node_payload.nwk_name().map(|node_name| node_name.as_ref().to_owned()),
-        node_payload.nwk_comments(),
-      )
-    };
-    if let Some(trait_value) = partition.get_reconstructed_trait(node_key) {
-      comments.insert(attribute.to_owned(), trait_value);
-    }
-
-    let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
-
-    if let Some(name) = name {
-      write!(&mut nwk, "{name}")?;
-    }
-
-    if let Some(weight) = weight {
-      write!(&mut nwk, ":{}", format_weight(weight, &NwkWriteOptions::default()))?;
-    }
-
-    if !comments.is_empty() {
-      let comments = comments
-        .iter()
-        .filter(|(_, value)| !value.is_empty())
-        .map(|(key, value)| format!("[&{key}=\"{value}\"]"))
-        .join("");
-      if !comments.is_empty() {
-        write!(&mut nwk, "{comments}")?;
-      }
-    }
-  }
-
-  write!(&mut nwk, ";")?;
-  Ok(nwk)
 }
 
 fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &std::path::Path) -> Result<(), Report> {
