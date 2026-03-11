@@ -1,7 +1,9 @@
+use crate::make_error;
 use crate::representation::partition::discrete::PartitionDiscrete;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
@@ -53,6 +55,7 @@ where
   E: EdgeOptimizeOps,
 {
   let n_states = partition.n_states();
+  validate_trait_names(graph, traits)?;
 
   for leaf in graph.get_leaves() {
     let leaf_guard = leaf.read_arc();
@@ -78,6 +81,48 @@ where
   for edge in graph.get_edges() {
     let edge_key = edge.read_arc().key();
     partition.edges.insert(edge_key, DiscreteEdgeData::default());
+  }
+
+  Ok(())
+}
+
+fn validate_trait_names<N, E>(graph: &Graph<N, E, ()>, traits: &BTreeMap<String, String>) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let leaf_names = graph
+    .get_leaves()
+    .iter()
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      let payload = leaf.payload().read_arc();
+      payload.name().map(|name| name.as_ref().to_owned()).unwrap_or_default()
+    })
+    .collect_vec();
+
+  let missing_in_metadata = leaf_names
+    .iter()
+    .filter(|leaf_name| !traits.contains_key(*leaf_name))
+    .cloned()
+    .collect_vec();
+  if !missing_in_metadata.is_empty() {
+    return make_error!(
+      "Mugration: tree leaves missing from metadata: {}",
+      missing_in_metadata.iter().join(", ")
+    );
+  }
+
+  let missing_in_tree = traits
+    .keys()
+    .filter(|trait_name| !leaf_names.iter().any(|leaf_name| leaf_name == *trait_name))
+    .cloned()
+    .collect_vec();
+  if !missing_in_tree.is_empty() {
+    return make_error!(
+      "Mugration: metadata names missing from tree leaves: {}",
+      missing_in_tree.iter().join(", ")
+    );
   }
 
   Ok(())
