@@ -1,3 +1,4 @@
+pub mod discrete;
 pub mod fitch;
 pub mod fitch_config;
 pub mod likelihood;
