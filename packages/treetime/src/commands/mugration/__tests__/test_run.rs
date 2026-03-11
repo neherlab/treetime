@@ -1,15 +1,19 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::mugration::input::MugrationInput;
   use crate::commands::mugration::run::{
-    apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, run_mugration, validate_weight_coverage,
+    apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, execute_mugration, validate_weight_coverage,
   };
   use crate::representation::discrete_states::DiscreteStates;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::IndexSet;
+  use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::array;
-  use treetime_utils::o;
+  use pretty_assertions::assert_eq;
+  use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::{o, vec_of_owned};
 
   #[test]
   fn test_run_validate_weight_coverage_rejects_above_threshold() {
@@ -147,108 +151,182 @@ mod tests {
   }
 
   #[test]
-  fn test_run_creates_all_artifacts_with_confidence() -> Result<(), Report> {
-    let test_case = helpers::create_test_case("with-confidence")?;
-    let args = helpers::make_args(&test_case, true);
+  fn test_execute_mugration_simple_tree() -> Result<(), Report> {
+    let graph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+    };
 
-    run_mugration(&args)?;
+    let input = MugrationInput {
+      graph,
+      traits,
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+    };
 
-    helpers::assert_non_empty_file(&test_case.annotated_tree_path)?;
-    helpers::assert_non_empty_file(&test_case.gtr_path)?;
-    helpers::assert_non_empty_file(&test_case.traits_path)?;
-    helpers::assert_non_empty_file(&test_case.confidence_path)?;
+    let result = execute_mugration(input)?;
+
+    assert_eq!(o!("country"), result.gtr.attribute);
+    assert_eq!(2, result.gtr.n_states);
+    assert_eq!(vec_of_owned!["germany", "usa"], result.gtr.states);
+    assert_eq!(2, result.gtr.pi.len());
+    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(0.5, result.gtr.pi[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(0.5, result.gtr.pi[1], epsilon = 1e-12);
+    assert_abs_diff_eq!(0.5, result.gtr.mu, epsilon = 1e-12);
+
+    assert_eq!(3, result.traits.assignments.len());
+    assert_eq!(Some(&o!("usa")), result.traits.assignments.get("root"));
+    assert_eq!(Some(&o!("usa")), result.traits.assignments.get("A"));
+    assert_eq!(Some(&o!("germany")), result.traits.assignments.get("B"));
+
+    assert_eq!(vec_of_owned!["germany", "usa"], result.confidence.states);
+    assert_eq!(3, result.confidence.rows.len());
+
+    let root_confidence = result.confidence.rows.iter().find(|r| r.node == "root").unwrap();
+    assert_abs_diff_eq!(1.0, root_confidence.profile.sum(), epsilon = 1e-12);
 
     Ok(())
   }
 
   #[test]
-  fn test_run_skips_confidence_file_when_not_requested() -> Result<(), Report> {
-    let test_case = helpers::create_test_case("without-confidence")?;
-    let args = helpers::make_args(&test_case, false);
+  fn test_execute_mugration_with_weights() -> Result<(), Report> {
+    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+      o!("C") => o!("france"),
+    };
+    let weights = btreemap! {
+      o!("usa") => 2.0,
+      o!("germany") => 4.0,
+      o!("france") => 1.0,
+    };
 
-    run_mugration(&args)?;
+    let input = MugrationInput {
+      graph,
+      traits,
+      attribute: o!("country"),
+      weights: Some(weights),
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+    };
 
-    helpers::assert_non_empty_file(&test_case.annotated_tree_path)?;
-    helpers::assert_non_empty_file(&test_case.gtr_path)?;
-    helpers::assert_non_empty_file(&test_case.traits_path)?;
-    assert!(!test_case.confidence_path.exists());
+    let result = execute_mugration(input)?;
+
+    assert_eq!(3, result.gtr.n_states);
+    assert_eq!(vec_of_owned!["france", "germany", "usa"], result.gtr.states);
+    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
+
+    let total = 7.0;
+    assert_abs_diff_eq!(1.0 / total, result.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, result.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, result.gtr.pi[2], epsilon = 1e-12); // usa
 
     Ok(())
   }
 
-  mod helpers {
-    use crate::commands::mugration::args::TreetimeMugrationArgs;
-    use eyre::Report;
-    use std::fs;
-    use std::path::{Path, PathBuf};
-    use treetime_utils::make_report;
+  #[test]
+  fn test_execute_mugration_with_weights_includes_unobserved_weight_states() -> Result<(), Report> {
+    let graph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+    };
+    let weights = btreemap! {
+      o!("usa") => 2.0,
+      o!("germany") => 4.0,
+      o!("france") => 1.0,
+    };
 
-    pub(super) fn create_test_case(test_name: &str) -> Result<TestCasePaths, Report> {
-      let workspace_tmp_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").join("tmp");
-      let base_dir = workspace_tmp_dir.join(format!("test-run-mugration-{test_name}-{}", std::process::id()));
-      if base_dir.exists() {
-        fs::remove_dir_all(&base_dir)?;
-      }
-      let input_dir = base_dir.join("input");
-      let output_dir = base_dir.join("output");
-      fs::create_dir_all(&input_dir)?;
-      fs::create_dir_all(&output_dir)?;
+    let input = MugrationInput {
+      graph,
+      traits,
+      attribute: o!("country"),
+      weights: Some(weights),
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+    };
 
-      let tree_path = input_dir.join("tree.nwk");
-      let states_path = input_dir.join("states.tsv");
-      fs::write(&tree_path, "(A:0.1,B:0.2)root;\n")?;
-      fs::write(&states_path, "#name\tcountry\nA\tusa\nB\tgermany\n")?;
+    let result = execute_mugration(input)?;
 
-      Ok(TestCasePaths {
-        tree_path,
-        states_path,
-        annotated_tree_path: output_dir.join("annotated_tree.nexus"),
-        gtr_path: output_dir.join("gtr.json"),
-        traits_path: output_dir.join("traits.csv"),
-        confidence_path: output_dir.join("confidence.csv"),
-        output_dir,
-      })
-    }
+    assert_eq!(3, result.gtr.n_states);
+    assert_eq!(vec_of_owned!["france", "germany", "usa"], result.gtr.states);
+    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
 
-    pub(super) fn make_args(test_case: &TestCasePaths, with_confidence: bool) -> TreetimeMugrationArgs {
-      TreetimeMugrationArgs {
-        tree: Some(test_case.tree_path.clone()),
-        attribute: "country".to_owned(),
-        states: test_case.states_path.clone(),
-        weights: None,
-        name_column: None,
-        confidence: with_confidence.then_some(test_case.confidence_path.clone()),
-        pc: None,
-        missing_data: "?".to_owned(),
-        missing_weights_threshold: 0.5,
-        sampling_bias_correction: None,
-        outdir: test_case.output_dir.clone(),
-      }
-    }
+    let total = 7.0;
+    assert_abs_diff_eq!(1.0 / total, result.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, result.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, result.gtr.pi[2], epsilon = 1e-12); // usa
 
-    pub(super) fn assert_non_empty_file(path: &Path) -> Result<(), Report> {
-      if !path.exists() {
-        return Err(make_report!("Expected file '{path}' to exist", path = path.display()));
-      }
-      let contents = fs::read(path)?;
-      if contents.is_empty() {
-        return Err(make_report!(
-          "Expected file '{path}' to be non-empty",
-          path = path.display()
-        ));
-      }
-      Ok(())
-    }
+    Ok(())
+  }
 
-    #[derive(Debug)]
-    pub(super) struct TestCasePaths {
-      pub tree_path: PathBuf,
-      pub states_path: PathBuf,
-      pub annotated_tree_path: PathBuf,
-      pub gtr_path: PathBuf,
-      pub traits_path: PathBuf,
-      pub confidence_path: PathBuf,
-      pub output_dir: PathBuf,
-    }
+  #[test]
+  fn test_execute_mugration_with_pseudo_counts() -> Result<(), Report> {
+    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+      o!("C") => o!("france"),
+    };
+    let weights = btreemap! {
+      o!("usa") => 3.0,
+      o!("germany") => 1.0,
+      o!("france") => 1.0,
+    };
+
+    let input = MugrationInput {
+      graph,
+      traits,
+      attribute: o!("country"),
+      weights: Some(weights),
+      missing_data: o!("?"),
+      pc: Some(1.0),
+      missing_weights_threshold: 0.5,
+    };
+
+    let result = execute_mugration(input)?;
+
+    // Without pseudo counts: pi = [1/5, 1/5, 3/5] = [0.2, 0.2, 0.6]
+    // With pc=1.0: pi = [0.2+1, 0.2+1, 0.6+1] = [1.2, 1.2, 1.6]
+    // Normalize: sum = 4.0, pi = [1.2/4, 1.2/4, 1.6/4] = [0.3, 0.3, 0.4]
+    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(0.3, result.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(0.3, result.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(0.4, result.gtr.pi[2], epsilon = 1e-12); // usa
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_execute_mugration_rejects_single_state() {
+    let graph = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("usa"),
+    };
+
+    let input = MugrationInput {
+      graph,
+      traits,
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+    };
+
+    let result = execute_mugration(input);
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("only 1 discrete attributes"));
+    assert!(err_msg.contains("At least 2 are required"));
   }
 }

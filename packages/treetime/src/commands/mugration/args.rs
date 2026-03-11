@@ -48,16 +48,11 @@ pub struct TreetimeMugrationArgs {
   pub missing_weights_threshold: f64,
 
   /// Rough estimate of how many more events would have been observed if sequences represented an
-  /// even sample. This should be roughly the (1-sum_i p_i^2)/(1-sum_i t_i^2), where p_i are the
-  /// equilibrium frequencies and t_i are apparent ones.(or rather the time spent in a particular
+  /// even sample.
   #[clap(long)]
-  pub sampling_bias_correction: Option<String>,
+  pub sampling_bias_correction: Option<f64>,
 
   /// Directory to write the output to
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,
-
-  /// Random seed
-  #[clap(long)]
-  pub seed: Option<u64>,
 }

@@ -10,9 +10,12 @@ Rust tests in test_gm_mugration.rs load these outputs and compare against
 v1 results to ensure agreement on reconstructed trait assignments.
 
 For each dataset:
-1. Read tree and metadata to build a trait mapping
-2. Run v0 reconstruct_discrete_traits() with default parameters
-3. Extract per-node trait assignments and confidence profiles
+1. Read tree and metadata using canonical v0 metadata parsing from wrappers.py
+2. Run v0 reconstruct_discrete_traits() with exact parameters from inputs
+3. Extract per-node trait assignments and confidence profiles at full precision
+
+This capture script matches the canonical v0 mugration behavior from wrappers.py.
+It does not reimplement metadata parsing or taxon-name resolution locally.
 
 Usage:
     ./dev/docker/python python packages/treetime/src/commands/mugration/__tests__/__fixtures__/gm_mugration_capture
@@ -21,7 +24,6 @@ Usage:
 import json
 import random
 import sys
-import traceback
 from pathlib import Path
 
 import numpy as np
@@ -34,37 +36,86 @@ from treetime.wrappers import reconstruct_discrete_traits  # noqa: E402
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[7]
 FIXTURES_DIR: Path = Path(__file__).parent
 
+SEED = 1010336213
 
-def read_traits(
-    metadata_path: Path,
-    attribute: str,
+
+class CaptureError(Exception):
+    """Raised when capture fails for a case."""
+
+
+def resolve_taxon_column(
+    states: pd.DataFrame,
     name_column: str | None,
-    missing_data: str = "?",
-) -> dict[str, str]:
-    """Read trait mapping from metadata file, matching v0 mugration() logic."""
+) -> str:
+    """Resolve taxon name column using canonical v0 behavior from wrappers.mugration.
+
+    This matches the exact logic in packages/legacy/treetime/treetime/wrappers.py
+    lines 830-847 of the mugration function:
+    - If name_column is specified and exists: use it
+    - If name_column is specified but NOT exists: raise error (v0 returns 1)
+    - If name_column is not specified: fall back to 'name', 'strain', 'accession', or first column
+    """
+    if name_column:
+        if name_column in states.columns:
+            return name_column
+        raise CaptureError(
+            f"specified column '{name_column}' for taxon name not found in meta data file with columns: "
+            + " ".join(states.columns)
+        )
+
+    if "name" in states.columns:
+        return "name"
+    if "strain" in states.columns:
+        return "strain"
+    if "accession" in states.columns:
+        return "accession"
+    return states.columns[0]
+
+
+def read_metadata(metadata_path: Path) -> pd.DataFrame:
+    """Read metadata file using canonical v0 CSV/TSV parsing."""
     sep = "\t" if str(metadata_path).endswith("tsv") else ","
-    states = pd.read_csv(metadata_path, sep=sep, skipinitialspace=True)
+    return pd.read_csv(metadata_path, sep=sep, skipinitialspace=True)
 
-    if name_column and name_column in states.columns:
-        taxon_name = name_column
-    elif "name" in states.columns:
-        taxon_name = "name"
-    elif "strain" in states.columns:
-        taxon_name = "strain"
-    elif "accession" in states.columns:
-        taxon_name = "accession"
-    else:
-        taxon_name = states.columns[0]
 
+def build_leaf_to_attr(
+    states: pd.DataFrame,
+    taxon_column: str,
+    attribute: str,
+    missing_data: str,
+) -> dict[str, str]:
+    """Build trait mapping using canonical v0 behavior from wrappers.mugration.
+
+    This matches wrappers.py lines 861-863.
+    """
     return {
-        x[taxon_name]: str(x[attribute])
+        x[taxon_column]: str(x[attribute])
         for _, x in states.iterrows()
         if x[attribute] != missing_data and x[attribute]
     }
 
 
+def read_weights(weights_path: Path) -> dict[str, float]:
+    """Read weights as a state-to-weight mapping."""
+    weights = pd.read_csv(weights_path, sep="\t" if str(weights_path).endswith("tsv") else ",", skipinitialspace=True)
+    columns = [str(column).strip().strip("#") for column in weights.columns]
+    weights.columns = columns
+
+    state_column = columns[0]
+    value_column = columns[1]
+
+    return {
+        str(row[state_column]): float(row[value_column])
+        for _, row in weights.iterrows()
+        if not pd.isna(row[value_column])
+    }
+
+
 def capture_dataset(name: str, config: dict) -> dict:
-    """Capture golden master outputs for one dataset."""
+    """Capture golden master outputs for one dataset.
+
+    Raises CaptureError on any failure - never skips or returns partial results.
+    """
     print(f"\n  {name}:")
 
     tree_path = str(PROJECT_ROOT / config["tree_path"])
@@ -79,17 +130,21 @@ def capture_dataset(name: str, config: dict) -> dict:
     verbose = params["verbose"]
     iterations = params["iterations"]
     rng_seed = params["rng_seed"]
-    weights = str(PROJECT_ROOT / weights_path) if weights_path else None
+    weights = read_weights(PROJECT_ROOT / weights_path) if weights_path else None
 
-    traits = read_traits(metadata_path, attribute, name_column, missing_data)
+    states = read_metadata(metadata_path)
+
+    taxon_column = resolve_taxon_column(states, name_column)
+    print(f"    Using column '{taxon_column}' as taxon name")
+
+    traits = build_leaf_to_attr(states, taxon_column, attribute, missing_data)
     print(f"    {len(traits)} taxa with trait values")
 
     unique_states = sorted(set(traits.values()))
     print(f"    {len(unique_states)} unique states: {', '.join(unique_states)}")
 
     if len(unique_states) < 2:
-        print("    SKIPPED: fewer than 2 states")
-        return {}
+        raise CaptureError(f"fewer than 2 unique states ({len(unique_states)})")
 
     random.seed(rng_seed)
     np.random.seed(rng_seed)
@@ -107,39 +162,41 @@ def capture_dataset(name: str, config: dict) -> dict:
     )
 
     if treeanc is None:
-        print("    FAILED: reconstruction returned None")
-        return {}
+        raise CaptureError("reconstruction returned None")
 
-    # Build state list in sorted order (matching v1 DiscreteStates::from_values)
-    states = sorted(unique_states)
+    sorted_states = sorted(letter_to_state[c] for c in treeanc.gtr.alphabet)
 
-    # Extract per-node trait assignments and confidence profiles
     trait_assignments: dict[str, str] = {}
     confidence: dict[str, list[float]] = {}
 
     for node in treeanc.tree.find_clades():
         seq_char = treeanc.sequence(node, as_string=True, reconstructed=True)[0]
-        state = letter_to_state.get(seq_char, "?")
+        if seq_char not in letter_to_state:
+            raise CaptureError(
+                f"unknown state letter '{seq_char}' for node '{node.name}' not in alphabet: "
+                + ", ".join(letter_to_state.keys())
+            )
+        state = letter_to_state[seq_char]
         trait_assignments[node.name] = state
 
         if hasattr(node, "marginal_profile") and node.marginal_profile is not None:
             profile = node.marginal_profile[0]
-            # Map v0 alphabet-ordered profile to sorted-state order
-            # v0 alphabet: sorted unique states mapped to A, B, C, ...
-            # Since we sorted unique_states, the alphabet order matches sorted state order
-            confidence[node.name] = [round(float(p), 10) for p in profile]
+            confidence[node.name] = [float(p) for p in profile]
 
     n_internal = sum(1 for n in treeanc.tree.find_clades() if not n.is_terminal())
     print(f"    {len(trait_assignments)} nodes total, {n_internal} internal")
 
     return {
-        "states": states,
+        "states": sorted_states,
         "trait_assignments": trait_assignments,
         "confidence": confidence,
     }
 
 
-def main() -> None:
+def main() -> int:
+    random.seed(SEED)
+    np.random.seed(SEED)
+
     inputs_path = FIXTURES_DIR / "gm_mugration_inputs.json"
     outputs_path = FIXTURES_DIR / "gm_mugration_outputs.json"
 
@@ -151,21 +208,16 @@ def main() -> None:
 
     outputs: dict = {}
     for name, config in inputs.items():
-        try:
-            result = capture_dataset(name, config)
-            if result:
-                outputs[name] = result
-        except Exception as e:
-            print(f"    FAILED: {e}")
-            traceback.print_exc()
-            continue
+        result = capture_dataset(name, config)
+        outputs[name] = result
 
     with open(outputs_path, "w") as f:
         json.dump(outputs, f, indent=2)
 
     print(f"\nWritten: {outputs_path}")
     print(f"Captured: {len(outputs)}/{len(inputs)}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
