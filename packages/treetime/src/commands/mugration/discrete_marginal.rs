@@ -3,6 +3,7 @@ use crate::representation::partition::discrete::PartitionDiscrete;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
+use indexmap::IndexSet;
 use itertools::Itertools;
 use parking_lot::Mutex;
 use std::collections::BTreeMap;
@@ -135,7 +136,7 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let leaf_names = graph
+  let leaf_names: IndexSet<String> = graph
     .get_leaves()
     .iter()
     .map(|leaf| {
@@ -143,13 +144,10 @@ where
       let payload = leaf.payload().read_arc();
       payload.name().map(|name| name.as_ref().to_owned()).unwrap_or_default()
     })
-    .collect_vec();
+    .collect();
+  let trait_names: IndexSet<String> = traits.keys().cloned().collect();
 
-  let missing_in_metadata = leaf_names
-    .iter()
-    .filter(|leaf_name| !traits.contains_key(*leaf_name))
-    .cloned()
-    .collect_vec();
+  let missing_in_metadata: IndexSet<String> = leaf_names.difference(&trait_names).cloned().collect();
   if !missing_in_metadata.is_empty() {
     return make_error!(
       "Mugration: tree leaves missing from metadata: {}",
@@ -157,11 +155,7 @@ where
     );
   }
 
-  let missing_in_tree = traits
-    .keys()
-    .filter(|trait_name| !leaf_names.iter().any(|leaf_name| leaf_name == *trait_name))
-    .cloned()
-    .collect_vec();
+  let missing_in_tree: IndexSet<String> = trait_names.difference(&leaf_names).cloned().collect();
   if !missing_in_tree.is_empty() {
     return make_error!(
       "Mugration: metadata names missing from tree leaves: {}",

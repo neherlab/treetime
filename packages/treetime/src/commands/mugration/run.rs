@@ -1,5 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::discrete_marginal::{attach_traits, run_discrete_marginal};
+use crate::commands::mugration::input::MugrationInput;
+use crate::commands::mugration::output::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::make_error;
 use crate::representation::discrete_states::DiscreteStates;
@@ -10,15 +12,14 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use log::{info, warn};
 use ndarray::Array1;
-use serde::Serialize;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
-use std::fmt::Write as FmtWrite;
+use std::fmt::Write;
 use std::fs;
-use std::io::Write;
 use std::sync::Arc;
 use treetime_graph::node::Named;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
+use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, format_weight};
 
@@ -96,22 +97,22 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
   }
 }
 
-pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
+/// Parse CLI arguments into a MugrationInput struct.
+///
+/// Reads tree, trait values, and optional weights from files and assembles
+/// them into an in-memory input suitable for the execution layer.
+pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationInput, Report> {
   let TreetimeMugrationArgs {
     tree,
     attribute,
     states,
     weights,
     name_column,
-    confidence,
     pc,
     missing_data,
     missing_weights_threshold,
-    outdir,
     ..
-  } = mugration_args;
-
-  fs::create_dir_all(outdir)?;
+  } = args;
 
   // Read tree
   let tree_path = tree.as_ref().ok_or_else(|| eyre::eyre!("Tree file is required"))?;
@@ -120,11 +121,51 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   // Read trait values
   let (attr_values, _attr_name) =
     read_discrete_attrs::<String>(states, name_column, &Some(attribute.clone()), |s| Ok(s.to_owned()))?;
+  let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
 
-  let unique_values: IndexSet<String> = attr_values.values().sorted().cloned().collect();
+  // Read weights if provided
+  let weights_map = if let Some(weights_filepath) = weights {
+    let (map, _) = read_discrete_attrs::<f64>(
+      weights_filepath,
+      &Some(attribute.clone()),
+      &Some("weight".to_owned()),
+      |s| Ok(s.parse::<f64>()?),
+    )?;
+    Some(map.into_iter().collect())
+  } else {
+    None
+  };
+
+  Ok(MugrationInput {
+    graph,
+    traits,
+    attribute: attribute.clone(),
+    weights: weights_map,
+    missing_data: missing_data.clone(),
+    pc: *pc,
+    missing_weights_threshold: *missing_weights_threshold,
+  })
+}
+
+/// Execute mugration from parsed input and return structured results.
+///
+/// This is the reusable execution core that can be called by tests directly
+/// without file I/O. The command wrapper handles parsing and output writing.
+pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Report> {
+  let MugrationInput {
+    graph,
+    traits,
+    attribute,
+    weights,
+    missing_data,
+    pc,
+    missing_weights_threshold,
+  } = input;
+
+  let unique_values: IndexSet<String> = traits.values().sorted().cloned().collect();
 
   // Build DiscreteStates
-  let discrete_states = DiscreteStates::from_values(unique_values.iter().map(String::as_str), missing_data);
+  let discrete_states = DiscreteStates::from_values(unique_values.iter().map(String::as_str), &missing_data);
   let n_states = discrete_states.len();
 
   if n_states < 2 {
@@ -139,34 +180,27 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   );
 
   // Compute equilibrium frequencies (pi)
-  let pi = if let Some(weights_filepath) = weights {
-    let weights_map = read_discrete_attrs::<f64>(
-      weights_filepath,
-      &Some(attribute.clone()),
-      &Some("weight".to_owned()),
-      |s| Ok(s.parse::<f64>()?),
-    )?
-    .0;
+  let pi = match &weights {
+    Some(weights_map) => {
+      let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
 
-    let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
+      let coverage = validate_weight_coverage(&unique_values, &weights_keys, &missing_data, missing_weights_threshold)?;
 
-    let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, *missing_weights_threshold)?;
+      if !coverage.missing_values.is_empty() {
+        warn!(
+          "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
+          coverage.missing_values.iter().join(", "),
+          coverage.missing_ratio
+        );
+      }
 
-    if !coverage.missing_values.is_empty() {
-      warn!(
-        "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
-        coverage.missing_values.iter().join(", "),
-        coverage.missing_ratio
-      );
-    }
-
-    compute_pi_from_weights(&discrete_states, &weights_map)
-  } else {
-    compute_pi_uniform(n_states)
+      compute_pi_from_weights(&discrete_states, weights_map)
+    },
+    None => compute_pi_uniform(n_states),
   };
 
   // Add pseudo-counts if specified
-  let pi = apply_pseudo_counts(pi, *pc);
+  let pi = apply_pseudo_counts(pi, pc);
 
   // Create GTR model
   let gtr = GTR::new(GTRParams {
@@ -178,21 +212,29 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
 
   // Create partition and attach traits
   let mut partition = PartitionDiscrete::new(0, gtr, discrete_states);
-
-  // Convert attr_values to BTreeMap<String, String>
-  let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
   attach_traits(&mut partition, &graph, &traits)?;
 
   // Run discrete marginal reconstruction
   let log_lh = run_discrete_marginal(&graph, &mut partition)?;
   info!("Mugration: total log likelihood = {log_lh:.4}");
 
-  // Write output files
-  write_annotated_tree(&graph, &partition, attribute, outdir)?;
-  write_gtr_json(&partition, attribute, outdir)?;
+  Ok(MugrationResult::new(graph, partition, &attribute, log_lh))
+}
 
-  if let Some(confidence_path) = confidence {
-    write_confidence_csv(&graph, &partition, confidence_path)?;
+pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
+  let outdir = &mugration_args.outdir;
+  fs::create_dir_all(outdir)?;
+
+  // Parse input and execute
+  let input = parse_mugration_input(mugration_args)?;
+  let result = execute_mugration(input)?;
+
+  // Write output files
+  write_annotated_tree(&result.graph, &result.partition, &result.traits, outdir)?;
+  write_gtr_json_file(&result.gtr, outdir)?;
+
+  if let Some(confidence_path) = &mugration_args.confidence {
+    write_confidence_csv(&result, confidence_path)?;
   }
 
   info!("Mugration: wrote output to {}", outdir.display());
@@ -202,7 +244,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
 fn write_annotated_tree(
   graph: &GraphAncestral,
   partition: &PartitionDiscrete,
-  attribute: &str,
+  traits: &MugrationTraitsOutput,
   outdir: &std::path::Path,
 ) -> Result<(), Report> {
   let leaf_names = graph
@@ -214,7 +256,7 @@ fn write_annotated_tree(
       payload.name().map(|name| name.as_ref().to_owned())
     })
     .join(" ");
-  let nwk = write_annotated_tree_nwk(graph, partition, attribute)?;
+  let nwk = write_annotated_tree_nwk(graph, partition, &traits.attribute)?;
   let nexus = format!(
     r#"#NEXUS
 Begin Taxa;
@@ -231,21 +273,7 @@ End;
   fs::write(outdir.join("annotated_tree.nexus"), format!("{nexus}\n"))?;
 
   // Write trait assignments as separate CSV
-  let mut file = fs::File::create(outdir.join("traits.csv"))?;
-  writeln!(file, "node,{attribute}")?;
-
-  for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
-    let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
-
-    if let Some(trait_value) = partition.get_reconstructed_trait(node_key) {
-      writeln!(file, "{node_name},{trait_value}")?;
-    }
-  }
+  fs::write(outdir.join("traits.csv"), traits.render_csv())?;
 
   Ok(())
 }
@@ -327,56 +355,11 @@ fn write_annotated_tree_nwk(
   Ok(nwk)
 }
 
-#[derive(Serialize)]
-struct GTROutput {
-  attribute: String,
-  n_states: usize,
-  states: Vec<String>,
-  pi: Vec<f64>,
-  mu: f64,
+fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &std::path::Path) -> Result<(), Report> {
+  json_write_file(outdir.join("gtr.json"), gtr, JsonPretty(true))
 }
 
-fn write_gtr_json(partition: &PartitionDiscrete, attribute: &str, outdir: &std::path::Path) -> Result<(), Report> {
-  let output = GTROutput {
-    attribute: attribute.to_owned(),
-    n_states: partition.n_states(),
-    states: partition.states.iter().map(|s| s.to_owned()).collect(),
-    pi: partition.gtr.pi.to_vec(),
-    mu: partition.gtr.mu,
-  };
-
-  let json = serde_json::to_string_pretty(&output)?;
-  let mut file = fs::File::create(outdir.join("gtr.json"))?;
-  file.write_all(json.as_bytes())?;
-
-  Ok(())
-}
-
-fn write_confidence_csv(
-  graph: &GraphAncestral,
-  partition: &PartitionDiscrete,
-  output_path: &std::path::Path,
-) -> Result<(), Report> {
-  let mut file = fs::File::create(output_path)?;
-
-  // Header
-  let state_names: Vec<&str> = partition.states.iter().collect();
-  writeln!(file, "node,{}", state_names.join(","))?;
-
-  // Data rows
-  for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
-    let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
-
-    if let Some(confidence) = partition.get_confidence(node_key) {
-      let probs: Vec<String> = confidence.iter().map(|p| format!("{p:.6}")).collect();
-      writeln!(file, "{node_name},{}", probs.join(","))?;
-    }
-  }
-
+fn write_confidence_csv(result: &MugrationResult, output_path: &std::path::Path) -> Result<(), Report> {
+  fs::write(output_path, result.confidence.render_csv())?;
   Ok(())
 }

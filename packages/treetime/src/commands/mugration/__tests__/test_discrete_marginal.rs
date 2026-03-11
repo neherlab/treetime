@@ -1,29 +1,49 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::discrete_marginal::attach_traits;
+  use crate::o;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use ndarray::Array1;
+  use indoc::indoc;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
-    let traits = BTreeMap::from([("A".to_owned(), "usa".to_owned()), ("B".to_owned(), "?".to_owned())]);
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("?"),
+    };
 
     attach_traits(&mut partition, &graph, &traits)?;
 
     let node_a = helpers::get_node_data(&graph, &partition, "A");
-    assert_eq!(Some(1), node_a.observed);
-    assert_abs_diff_eq!(Array1::from_vec(vec![0.0, 1.0]), node_a.profile, epsilon = 1e-12);
+    let actual_node_a = json_write_str(node_a, JsonPretty(true))?;
+    let expected_node_a = o!(indoc! {r#"{
+      "observed": 1,
+      "profile": [
+        0.0,
+        1.0
+      ],
+      "log_lh": 0.0
+    }"#});
+    assert_eq!(expected_node_a, actual_node_a);
 
     let node_b = helpers::get_node_data(&graph, &partition, "B");
-    assert_eq!(None, node_b.observed);
-    assert_abs_diff_eq!(Array1::from_vec(vec![0.5, 0.5]), node_b.profile, epsilon = 1e-12);
+    let actual_node_b = json_write_str(node_b, JsonPretty(true))?;
+    let expected_node_b = o!(indoc! {r#"{
+      "observed": null,
+      "profile": [
+        0.5,
+        0.5
+      ],
+      "log_lh": 0.0
+    }"#});
+    assert_eq!(expected_node_b, actual_node_b);
 
     assert_eq!(graph.get_edges().len(), partition.edges.len());
 
@@ -34,7 +54,9 @@ mod tests {
   fn test_discrete_marginal_attach_traits_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
-    let traits = BTreeMap::from([("A".to_owned(), "usa".to_owned())]);
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+    };
 
     let error = attach_traits(&mut partition, &graph, &traits).unwrap_err().to_string();
 
@@ -48,11 +70,11 @@ mod tests {
   fn test_discrete_marginal_attach_traits_rejects_metadata_name_missing_from_tree() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
-    let traits = BTreeMap::from([
-      ("A".to_owned(), "usa".to_owned()),
-      ("B".to_owned(), "germany".to_owned()),
-      ("C".to_owned(), "usa".to_owned()),
-    ]);
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+      o!("C") => o!("usa"),
+    };
 
     let error = attach_traits(&mut partition, &graph, &traits).unwrap_err().to_string();
 
