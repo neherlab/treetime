@@ -12,7 +12,6 @@ pub mod tests {
     //! - <https://en.wikipedia.org/wiki/QuickCheck>
     //! - <https://docs.rs/proptest>
 
-    use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::gtr::gtr::{GTR, GTRParams};
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
@@ -103,9 +102,8 @@ pub mod tests {
     /// Generate a valid nucleotide GTR model.
     pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
       (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
-        let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("Nuc alphabet should be valid");
         GTR::new(GTRParams {
-          alphabet,
+          n_states: 4,
           mu,
           W: Some(w),
           pi,

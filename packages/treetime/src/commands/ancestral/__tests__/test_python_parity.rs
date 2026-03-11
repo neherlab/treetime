@@ -112,8 +112,9 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:235
   fn make_python_reference_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.2, 0.3, 0.15, 0.35],
@@ -131,8 +132,9 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:255
   fn make_python_reference_gtr2() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.4, 0.15, 0.12, 0.33],

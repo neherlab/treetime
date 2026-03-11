@@ -50,8 +50,9 @@ mod tests {
   #[test]
   fn test_star_tree_analytical_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.1, 0.2, 0.3, 0.4],

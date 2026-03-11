@@ -21,9 +21,9 @@ use treetime_utils::array::ndarray::argmax_first;
 pub fn infer_gtr_dense(partition: &Arc<RwLock<PartitionMarginalDense>>, graph: &GraphAncestral) -> Result<GTR, Report> {
   let counts = get_mutation_counts_dense(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
-  let alphabet = partition.read_arc().alphabet.clone();
+  let n_states = partition.read_arc().alphabet.n_canonical();
   let W = Some(W);
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 /// Compute branch joint distribution for GTR inference.

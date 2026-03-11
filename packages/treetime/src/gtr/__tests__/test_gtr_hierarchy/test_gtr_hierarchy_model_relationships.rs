@@ -262,9 +262,10 @@ mod tests {
     ];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("Nuc alphabet should be valid");
+    let n_states = alphabet.n_canonical();
 
     let g = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: Some(w),
       pi,

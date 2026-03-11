@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
@@ -105,8 +104,8 @@ pub(super) fn eig_single_site(
 /// Parameters for constructing a GTR model.
 #[derive(Clone, Debug)]
 pub struct GTRParams {
-  /// Character alphabet (nucleotides, amino acids, etc.).
-  pub alphabet: Alphabet,
+  /// Number of states (e.g., 4 for nucleotides, 20 for amino acids).
+  pub n_states: usize,
   /// Base substitution rate (will be scaled by average transition rate).
   pub mu: f64,
   /// Exchangeability matrix. If None, defaults to all-ones (equal rates).
@@ -203,21 +202,21 @@ impl GTR {
   ///
   /// # Panics
   ///
-  /// Panics if dimensions of W or pi don't match the alphabet size.
-  pub fn new(GTRParams { alphabet, mu, W, pi }: GTRParams) -> Result<Self, Report> {
-    let n = alphabet.n_canonical();
+  /// Panics if dimensions of W or pi don't match n_states.
+  pub fn new(GTRParams { n_states, mu, W, pi }: GTRParams) -> Result<Self, Report> {
+    let n = n_states;
 
     assert_eq!(
       pi.shape().to_vec(),
       [n],
-      "Length of equilibrium frequency vector (`pi`) does not match the alphabet length"
+      "Length of equilibrium frequency vector (`pi`) does not match n_states"
     );
 
     if let Some(W) = &W {
       assert_eq!(
         W.shape().to_vec(),
         [n, n],
-        "Dimensions of substitution matrix (`W`) don't match the alphabet size"
+        "Dimensions of substitution matrix (`W`) don't match n_states"
       );
     }
 

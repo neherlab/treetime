@@ -160,8 +160,9 @@ mod tests {
     let input = &inputs.custom[case];
     let expected = &outputs.custom[case];
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: input.mu,
       W: Some(input.w.clone()),
       pi: input.pi.clone(),

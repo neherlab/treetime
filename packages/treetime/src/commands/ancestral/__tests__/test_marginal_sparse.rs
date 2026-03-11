@@ -91,8 +91,9 @@ mod tests {
   /// detailed balance: pi_i * Q_ij = pi_j * Q_ji.
   fn make_nonuniform_gtr() -> Result<GTR, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.2, 0.3, 0.15, 0.35],
@@ -446,7 +447,7 @@ mod tests {
     let mu = 1.0;
     let pi = array![0.9, 0.06, 0.02, 0.02];
     let gtr = GTR::new(GTRParams {
-      alphabet: alphabet.clone(),
+      n_states: alphabet.n_canonical(),
       W: None,
       pi,
       mu,

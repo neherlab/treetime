@@ -12,8 +12,9 @@ mod tests {
   #[test]
   fn test_near_zero_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.97, 0.01, 0.01, 0.01],
@@ -41,8 +42,9 @@ mod tests {
   #[test]
   fn test_near_zero_pi_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.97, 0.01, 0.01, 0.01],
@@ -70,8 +72,9 @@ mod tests {
   #[test]
   fn test_near_zero_pi_with_dominant_state_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.97, 0.01, 0.01, 0.01],
@@ -95,8 +98,9 @@ mod tests {
   #[test]
   fn test_extremely_skewed_pi_dense() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.9997, 0.0001, 0.0001, 0.0001],

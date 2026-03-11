@@ -43,8 +43,9 @@ fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
 pub fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
   (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("Nuc alphabet should be valid");
+    let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu,
       W: Some(w),
       pi,

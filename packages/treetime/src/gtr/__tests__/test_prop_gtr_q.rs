@@ -132,10 +132,11 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_mu_scaling((pi, w) in (arb_pi_nuc(), arb_w_nuc()), t in 0.01_f64..1.0) {
       let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("alphabet");
+      let n_states = alphabet.n_canonical();
 
       // Create model with mu=1
       let gtr1 = GTR::new(GTRParams {
-        alphabet: alphabet.clone(),
+        n_states,
         mu: 1.0,
         W: Some(w.clone()),
         pi: pi.clone(),
@@ -143,7 +144,7 @@ mod tests {
 
       // Create model with mu=2
       let gtr2 = GTR::new(GTRParams {
-        alphabet,
+        n_states,
         mu: 2.0,
         W: Some(w),
         pi,

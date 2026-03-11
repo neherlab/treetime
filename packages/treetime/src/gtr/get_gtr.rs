@@ -166,10 +166,10 @@ pub fn jc69(
   }: JC69Params,
 ) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
-  let num_chars = alphabet.n_canonical();
-  let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
-  let pi = Array1::<f64>::ones(num_chars);
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  let n_states = alphabet.n_canonical();
+  let W = Some(Array2::<f64>::ones((n_states, n_states)));
+  let pi = Array1::<f64>::ones(n_states);
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -206,10 +206,10 @@ pub fn k80(
   }: K80Params,
 ) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
-  let num_chars = alphabet.n_canonical();
+  let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
-  let pi = Array1::<f64>::ones(num_chars) / (num_chars as f64);
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  let pi = Array1::<f64>::ones(n_states) / (n_states as f64);
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 #[derive(Clone, Debug, SmartDefault)]
@@ -243,10 +243,10 @@ pub fn f81(
   }: F81Params,
 ) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
-  let num_chars = alphabet.n_canonical();
-  let W = Some(Array2::<f64>::ones((num_chars, num_chars)));
-  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(num_chars) / (num_chars as f64));
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  let n_states = alphabet.n_canonical();
+  let W = Some(Array2::<f64>::ones((n_states, n_states)));
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 #[derive(Clone, Debug, SmartDefault)]
@@ -287,10 +287,10 @@ pub fn hky85(
   }: HKY85Params,
 ) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
-  let num_chars = alphabet.n_canonical();
+  let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
-  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(num_chars) / (num_chars as f64));
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -334,9 +334,10 @@ pub fn t92(
   }
 
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+  let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -414,8 +415,9 @@ pub fn jtt92(
     }
   }
 
+  let n_states = alphabet.n_canonical();
   GTR::new(GTRParams {
-    alphabet,
+    n_states,
     mu,
     W: Some(w),
     pi,
@@ -474,7 +476,7 @@ pub fn tn93(
   }: TN93Params,
 ) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
-  let num_chars = alphabet.n_canonical();
+  let n_states = alphabet.n_canonical();
 
   // W matrix for alphabet [A, C, G, T]:
   // - A<->G (purine transition): rate = 1 (reference)
@@ -488,8 +490,8 @@ pub fn tn93(
     [kappa1, kappa2, kappa1, 1.0   ]   // T
   ]);
 
-  let pi = pi.unwrap_or_else(|| Array1::ones(num_chars) / (num_chars as f64));
+  let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / (n_states as f64));
   let pi = &pi / pi.sum();
 
-  GTR::new(GTRParams { alphabet, mu, W, pi })
+  GTR::new(GTRParams { n_states, mu, W, pi })
 }

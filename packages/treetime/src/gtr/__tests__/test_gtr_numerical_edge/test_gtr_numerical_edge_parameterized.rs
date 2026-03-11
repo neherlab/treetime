@@ -67,6 +67,7 @@ mod tests {
   #[test]
   fn test_gtr_extreme_w_values() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let n_states = alphabet.n_canonical();
 
     // W with very different magnitudes
     #[rustfmt::skip]
@@ -79,7 +80,7 @@ mod tests {
 
     let pi = array![0.25, 0.25, 0.25, 0.25];
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: Some(w),
       pi,

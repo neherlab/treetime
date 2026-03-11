@@ -324,7 +324,7 @@ mod tests {
     ];
 
     let gtr = GTR::new(GTRParams {
-      alphabet: alphabet.clone(),
+      n_states: alphabet.n_canonical(),
       mu: 1.0,
       W: Some(W),
       pi,

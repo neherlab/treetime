@@ -42,8 +42,9 @@ mod tests {
   #[test]
   fn test_equilibrium_convergence_nonuniform_pi() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
-      alphabet,
+      n_states,
       mu: 1.0,
       W: None,
       pi: array![0.4, 0.1, 0.2, 0.3],
