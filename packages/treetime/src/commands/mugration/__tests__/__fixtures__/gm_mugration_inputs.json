@@ -2,36 +2,90 @@
   "zika_20_country": {
     "tree_path": "data/zika/20/tree.nwk",
     "metadata_path": "data/zika/20/metadata.tsv",
-    "attribute": "country"
+    "attribute": "country",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   },
   "dengue_20_country": {
     "tree_path": "data/dengue/20/tree.nwk",
     "metadata_path": "data/dengue/20/metadata.tsv",
     "attribute": "country",
-    "name_column": "genbank_accession"
+    "name_column": "genbank_accession",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   },
   "tb_20_cluster": {
     "tree_path": "data/tb/20/tree.nwk",
     "metadata_path": "data/tb/20/metadata.tsv",
     "attribute": "cluster",
-    "name_column": "strain"
+    "name_column": "strain",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   },
   "lassa_L_20_country": {
     "tree_path": "data/lassa/L/20/tree.nwk",
     "metadata_path": "data/lassa/L/20/metadata.tsv",
     "attribute": "country",
-    "name_column": "accession"
+    "name_column": "accession",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   },
   "rsv_a_20_country": {
     "tree_path": "data/rsv/a/20/tree.nwk",
     "metadata_path": "data/rsv/a/20/metadata.tsv",
     "attribute": "country",
-    "name_column": "accession"
+    "name_column": "accession",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   },
   "mpox_clade_ii_20_country": {
     "tree_path": "data/mpox/clade-ii/20/tree.nwk",
     "metadata_path": "data/mpox/clade-ii/20/metadata.tsv",
     "attribute": "country",
-    "name_column": "accession"
+    "name_column": "accession",
+    "parameters": {
+      "missing_data": "?",
+      "pc": 1.0,
+      "sampling_bias_correction": null,
+      "weights_path": null,
+      "verbose": 0,
+      "iterations": 5,
+      "rng_seed": 1010336213
+    }
   }
 }

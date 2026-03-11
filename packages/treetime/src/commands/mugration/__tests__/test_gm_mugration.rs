@@ -9,7 +9,8 @@ mod tests {
   // Golden master tests for mugration discrete trait reconstruction.
   //
   // Validates Rust v1 implementation against Python v0 reference outputs.
-  // Inputs (gm_mugration_inputs.json) define dataset/attribute combinations.
+  // Inputs (gm_mugration_inputs.json) define dataset/attribute combinations and
+  // the exact capture parameters shared by the Python oracle and Rust replay.
   // Outputs (gm_mugration_outputs.json) were captured from v0 using gm_mugration_capture.
   //
   // v0 uses iterative GTR inference (5 iterations of rate matrix re-estimation) while
@@ -34,7 +35,7 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let actual = run_gm_mugration_case(case, input)?;
+    let actual = run_gm_mugration_case(input)?;
 
     let expected_states = expected.states.clone();
     let actual_states = actual.gtr.states.clone();
@@ -45,7 +46,8 @@ mod tests {
     assert_eq!(expected_n_states, actual_n_states);
 
     let expected_trait_assignments = expected.trait_assignments.clone();
-    let actual_trait_assignments = actual.trait_assignments;
+    let actual_trait_assignments: std::collections::BTreeMap<String, String> =
+      actual.trait_assignments().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
 
     Ok(())
@@ -62,14 +64,14 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let actual = run_gm_mugration_case(case, input)?;
+    let actual = run_gm_mugration_case(input)?;
 
     let expected_confidence_states = expected.states.clone();
     let actual_confidence_states = actual.confidence.states.clone();
     assert_eq!(expected_confidence_states, actual_confidence_states);
 
     let expected_confidence = helpers::format_confidence_output(&expected.confidence);
-    let actual_confidence = actual.confidence.rows;
+    let actual_confidence = actual.confidence.to_map();
     assert_eq!(expected_confidence, actual_confidence);
 
     Ok(())
@@ -92,106 +94,111 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::mugration::args::TreetimeMugrationArgs;
-    use crate::commands::mugration::run::run_mugration;
+    use crate::commands::mugration::input::MugrationInput;
+    use crate::commands::mugration::output::MugrationResult;
+    use crate::commands::mugration::run::execute_mugration;
     use eyre::Report;
     use indexmap::IndexMap;
     use itertools::Itertools;
     use serde::Deserialize;
     use std::collections::BTreeMap;
-    use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
+    use treetime_io::discrete_states_csv::read_discrete_attrs;
     use treetime_io::json::json_read_file;
-    use treetime_utils::make_report;
+    use treetime_io::nwk::nwk_read_file;
 
     #[derive(Debug, Deserialize)]
-    pub struct MugrationInput {
+    pub struct GmMugrationInput {
       pub tree_path: String,
       pub metadata_path: String,
       pub attribute: String,
       pub name_column: Option<String>,
+      pub parameters: GmMugrationParameters,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub struct GmMugrationParameters {
+      pub missing_data: String,
+      pub pc: Option<f64>,
+      #[allow(dead_code)]
+      pub sampling_bias_correction: Option<f64>,
+      pub weights_path: Option<String>,
+      #[allow(dead_code)]
+      pub verbose: usize,
+      #[allow(dead_code)]
+      pub iterations: usize,
+      #[allow(dead_code)]
+      pub rng_seed: u64,
     }
 
     #[derive(Debug, Deserialize)]
     #[allow(dead_code)]
-    pub struct MugrationOutput {
+    pub struct GmMugrationOutput {
       pub states: Vec<String>,
       pub trait_assignments: BTreeMap<String, String>,
       pub confidence: BTreeMap<String, Vec<f64>>,
     }
 
-    #[derive(Debug)]
-    pub struct ActualMugrationOutput {
-      pub gtr: GtrOutput,
-      pub trait_assignments: BTreeMap<String, String>,
-      pub confidence: ConfidenceOutput,
-    }
-
-    #[derive(Debug, Deserialize)]
-    pub struct GtrOutput {
-      pub n_states: usize,
-      pub states: Vec<String>,
-    }
-
-    #[derive(Debug)]
-    pub struct ConfidenceOutput {
-      pub states: Vec<String>,
-      pub rows: BTreeMap<String, Vec<String>>,
-    }
-
-    pub fn load_gm_mugration_inputs() -> IndexMap<String, MugrationInput> {
+    pub fn load_gm_mugration_inputs() -> IndexMap<String, GmMugrationInput> {
       let path = format!(
         "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
-      serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
+      json_read_file(&path).unwrap()
     }
 
-    pub fn load_gm_mugration_outputs() -> IndexMap<String, MugrationOutput> {
+    pub fn load_gm_mugration_outputs() -> IndexMap<String, GmMugrationOutput> {
       let path = format!(
         "{}/src/commands/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
-      serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
+      json_read_file(&path).unwrap()
     }
 
-    pub fn run_gm_mugration_case(case: &str, input: &MugrationInput) -> Result<ActualMugrationOutput, Report> {
+    pub fn run_gm_mugration_case(fixture: &GmMugrationInput) -> Result<MugrationResult, Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-      let outdir = project_root
-        .join("tmp")
-        .join(format!("test-gm-mugration-{case}-{}", std::process::id()));
-      if outdir.exists() {
-        fs::remove_dir_all(&outdir)?;
-      }
 
-      let confidence_path = outdir.join("confidence.csv");
-      let args = TreetimeMugrationArgs {
-        tree: Some(project_root.join(&input.tree_path)),
-        attribute: input.attribute.clone(),
-        states: project_root.join(&input.metadata_path),
-        weights: None,
-        name_column: input.name_column.clone(),
-        confidence: Some(confidence_path.clone()),
-        pc: Some(1.0),
-        missing_data: "?".to_owned(),
-        missing_weights_threshold: 0.5,
-        sampling_bias_correction: None,
-        outdir: outdir.clone(),
+      // Read tree directly
+      let tree_path = project_root.join(&fixture.tree_path);
+      let graph = nwk_read_file(&tree_path)?;
+
+      // Read trait values using in-memory parsing
+      let metadata_path = project_root.join(&fixture.metadata_path);
+      let (attr_values, _attr_name) = read_discrete_attrs::<String>(
+        &metadata_path,
+        &fixture.name_column,
+        &Some(fixture.attribute.clone()),
+        |s| Ok(s.to_owned()),
+      )?;
+      let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
+
+      // Read weights if provided
+      let weights = match &fixture.parameters.weights_path {
+        Some(weights_path) => {
+          let weights_filepath = project_root.join(weights_path);
+          let (map, _) = read_discrete_attrs::<f64>(
+            &weights_filepath,
+            &Some(fixture.attribute.clone()),
+            &Some("weight".to_owned()),
+            |s| Ok(s.parse::<f64>()?),
+          )?;
+          Some(map.into_iter().collect())
+        },
+        None => None,
       };
 
-      run_mugration(&args)?;
+      // Build MugrationInput and execute
+      let input = MugrationInput {
+        graph,
+        traits,
+        attribute: fixture.attribute.clone(),
+        weights,
+        missing_data: fixture.parameters.missing_data.clone(),
+        pc: fixture.parameters.pc,
+        missing_weights_threshold: 0.5,
+      };
 
-      let gtr = json_read_file(outdir.join("gtr.json"))?;
-      let trait_assignments = read_traits_csv(&outdir.join("traits.csv"), &input.attribute)?;
-      let confidence = read_confidence_csv(&confidence_path)?;
-
-      Ok(ActualMugrationOutput {
-        gtr,
-        trait_assignments,
-        confidence,
-      })
+      execute_mugration(input)
     }
 
     pub fn format_confidence_output(confidence: &BTreeMap<String, Vec<f64>>) -> BTreeMap<String, Vec<String>> {
@@ -202,69 +209,6 @@ mod tests {
           (name.clone(), formatted_profile)
         })
         .collect()
-    }
-
-    pub fn read_traits_csv(path: &Path, attribute: &str) -> Result<BTreeMap<String, String>, Report> {
-      let content =
-        fs::read_to_string(path).map_err(|e| make_report!("Failed to read traits CSV '{}': {e}", path.display()))?;
-      let expected_header = format!("node,{attribute}");
-      let mut result = BTreeMap::new();
-      for (i, line) in content.lines().enumerate() {
-        if i == 0 {
-          if line != expected_header {
-            return Err(make_report!(
-              "Unexpected header in traits CSV: '{line}', expected '{expected_header}'"
-            ));
-          }
-          continue;
-        }
-        let parts: Vec<&str> = line.splitn(2, ',').collect();
-        if parts.len() == 2 {
-          result.insert(parts[0].to_owned(), parts[1].to_owned());
-        }
-      }
-      Ok(result)
-    }
-
-    pub fn read_confidence_csv(path: &Path) -> Result<ConfidenceOutput, Report> {
-      let content = fs::read_to_string(path)
-        .map_err(|e| make_report!("Failed to read confidence CSV '{}': {e}", path.display()))?;
-
-      let mut lines = content.lines();
-      let header = lines
-        .next()
-        .ok_or_else(|| make_report!("Confidence CSV '{}' is empty", path.display()))?;
-
-      let mut header_parts = header.split(',');
-      let first_column = header_parts
-        .next()
-        .ok_or_else(|| make_report!("Confidence CSV '{}' has no header columns", path.display()))?;
-      if first_column != "node" {
-        return Err(make_report!(
-          "Unexpected header in confidence CSV '{}': first column was '{first_column}'",
-          path.display()
-        ));
-      }
-
-      let states = header_parts.map(str::to_owned).collect_vec();
-      let expected_columns = states.len() + 1;
-      let rows = lines
-        .map(|line| {
-          let parts = line.split(',').map(str::to_owned).collect_vec();
-          if parts.len() != expected_columns {
-            return Err(make_report!(
-              "Unexpected confidence row in '{}': expected {expected_columns} columns, got {} in '{line}'",
-              path.display(),
-              parts.len()
-            ));
-          }
-          let node_name = parts[0].clone();
-          let profile = parts[1..].to_vec();
-          Ok((node_name, profile))
-        })
-        .collect::<Result<BTreeMap<_, _>, Report>>()?;
-
-      Ok(ConfidenceOutput { states, rows })
     }
   }
 }

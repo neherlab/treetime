@@ -9,6 +9,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
@@ -58,10 +59,8 @@ mod tests {
       o!("A") => o!("usa"),
     };
 
-    let error = attach_traits(&mut partition, &graph, &traits).unwrap_err().to_string();
-
-    assert!(error.contains("tree leaves missing from metadata"), "{error}");
-    assert!(error.contains('B'), "{error}");
+    let result = attach_traits(&mut partition, &graph, &traits);
+    assert_error!(result, "Mugration: tree leaves missing from metadata: B");
 
     Ok(())
   }
@@ -76,10 +75,8 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let error = attach_traits(&mut partition, &graph, &traits).unwrap_err().to_string();
-
-    assert!(error.contains("metadata names missing from tree leaves"), "{error}");
-    assert!(error.contains('C'), "{error}");
+    let result = attach_traits(&mut partition, &graph, &traits);
+    assert_error!(result, "Mugration: metadata names missing from tree leaves: C");
 
     Ok(())
   }

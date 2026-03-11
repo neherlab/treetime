@@ -31,10 +31,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[7] / "packages" / "legac
 
 from treetime.wrappers import reconstruct_discrete_traits  # noqa: E402
 
-SEED = 1010336213
-random.seed(SEED)
-np.random.seed(SEED)
-
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[7]
 FIXTURES_DIR: Path = Path(__file__).parent
 
@@ -75,8 +71,17 @@ def capture_dataset(name: str, config: dict) -> dict:
     metadata_path = PROJECT_ROOT / config["metadata_path"]
     attribute = config["attribute"]
     name_column = config.get("name_column")
+    params = config["parameters"]
+    missing_data = params["missing_data"]
+    pc = params["pc"]
+    sampling_bias_correction = params["sampling_bias_correction"]
+    weights_path = params["weights_path"]
+    verbose = params["verbose"]
+    iterations = params["iterations"]
+    rng_seed = params["rng_seed"]
+    weights = str(PROJECT_ROOT / weights_path) if weights_path else None
 
-    traits = read_traits(metadata_path, attribute, name_column)
+    traits = read_traits(metadata_path, attribute, name_column, missing_data)
     print(f"    {len(traits)} taxa with trait values")
 
     unique_states = sorted(set(traits.values()))
@@ -86,16 +91,19 @@ def capture_dataset(name: str, config: dict) -> dict:
         print("    SKIPPED: fewer than 2 states")
         return {}
 
-    random.seed(SEED)
-    np.random.seed(SEED)
+    random.seed(rng_seed)
+    np.random.seed(rng_seed)
 
     treeanc, letter_to_state, reverse_alphabet = reconstruct_discrete_traits(
         tree_path,
         traits,
-        missing_data="?",
-        pc=1.0,
-        verbose=0,
-        rng_seed=SEED,
+        missing_data=missing_data,
+        pc=pc,
+        sampling_bias_correction=sampling_bias_correction,
+        weights=weights,
+        verbose=verbose,
+        iterations=iterations,
+        rng_seed=rng_seed,
     )
 
     if treeanc is None:
