@@ -8,6 +8,7 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
+use itertools::{chain, izip};
 use ndarray::Axis;
 use ndarray_stats::QuantileExt;
 use num::clamp;
@@ -182,15 +183,15 @@ pub fn run_optimize_mixed(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> Result<(), Report> {
-  let total_length: usize = dense_partitions
-    .iter()
-    .map(|part| part.read_arc().get_sequence_length())
-    .chain(
-      sparse_partitions
-        .iter()
-        .map(|part| part.read_arc().get_sequence_length()),
-    )
-    .sum();
+  let total_length: usize = chain!(
+    dense_partitions
+      .iter()
+      .map(|part| part.read_arc().get_sequence_length()),
+    sparse_partitions
+      .iter()
+      .map(|part| part.read_arc().get_sequence_length())
+  )
+  .sum();
 
   let one_mutation = 1.0 / total_length as f64;
 
@@ -288,13 +289,10 @@ pub fn initial_guess_mixed(
     for partition in dense_partitions {
       let partition = partition.read_arc();
       let edge_partition = &partition.edges[&edge_key];
-      for (row1, row2) in edge_partition
-        .msg_to_parent
-        .dis
-        .rows()
-        .into_iter()
-        .zip(edge_partition.msg_to_child.dis.rows())
-      {
+      for (row1, row2) in izip!(
+        edge_partition.msg_to_parent.dis.rows(),
+        edge_partition.msg_to_child.dis.rows()
+      ) {
         if row1[row2.argmax().unwrap()] < 0.5 {
           differences += 1;
         }
@@ -308,15 +306,15 @@ pub fn initial_guess_mixed(
       differences += edge_partition.subs.len();
     }
 
-    let total_length: usize = dense_partitions
-      .iter()
-      .map(|part| part.read_arc().get_sequence_length())
-      .chain(
-        sparse_partitions
-          .iter()
-          .map(|part| part.read_arc().get_sequence_length()),
-      )
-      .sum();
+    let total_length: usize = chain!(
+      dense_partitions
+        .iter()
+        .map(|part| part.read_arc().get_sequence_length()),
+      sparse_partitions
+        .iter()
+        .map(|part| part.read_arc().get_sequence_length())
+    )
+    .sum();
 
     let branch_length = (differences as f64) / (total_length as f64);
 
