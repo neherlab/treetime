@@ -283,6 +283,7 @@ pub trait NodeCommentProvider {
 /// Compose multiple node comment providers.
 ///
 /// Providers are queried in insertion order. Later providers override earlier providers on key conflicts.
+#[must_use]
 #[derive(Default)]
 pub struct CommentProviders<'a> {
   providers: Vec<&'a dyn NodeCommentProvider>,

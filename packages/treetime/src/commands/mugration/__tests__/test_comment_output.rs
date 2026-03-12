@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::mugration::input::MugrationInput;
   use crate::commands::mugration::run::execute_mugration;
   use eyre::Report;
+  use indoc::indoc;
   use maplit::btreemap;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, nwk_read_str};
@@ -30,13 +31,18 @@ mod tests {
     let providers = CommentProviders::new().with(&provider);
 
     let actual = nex_write_str_with(&result.graph, &NexWriteOptions::default(), &providers)?;
-    assert!(actual.starts_with("#NEXUS\nBegin Taxa;\n"));
-    assert!(actual.contains("  Dimensions NTax=2;\n"));
-    assert!(actual.contains("  TaxLabels A B;\n"));
-    assert!(actual.contains(
-      "  Tree tree1=(A:0.1[&country=\"usa\"],B:0.2[&country=\"germany\"])root[&country=\"usa\"];;\n"
-    ));
-    assert!(actual.ends_with("End;\n\n"));
+    let expected = indoc! {r#"
+      #NEXUS
+      Begin Taxa;
+        Dimensions NTax=2;
+        TaxLabels A B;
+      End;
+      Begin Trees;
+        Tree tree1=(A:0.1[&country="usa"],B:0.2[&country="germany"])root[&country="usa"];;
+      End;
+
+    "#};
+    assert_eq!(expected, actual);
 
     Ok(())
   }

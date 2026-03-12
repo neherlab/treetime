@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -24,6 +25,14 @@ mod tests {
   // Cases that are ignored: datasets where iterative GTR re-estimation changes
   // the argmax at multiple internal nodes (dengue, tb, rsv, mpox). These will
   // pass once v1 implements iterative GTR optimization.
+  //
+  // Floating-point coverage:
+  // - trait_assignments: discrete labels, exact match required
+  // - confidence profiles: full-precision floats in oracle, compared with tight tolerance
+  //   Blocked by missing iterative GTR; explicit ignored test preserves oracle contract.
+  // - GTR equilibrium frequencies: not captured in oracle; v1 uses uniform frequencies
+  //   while v0 iteratively refines from data. Adding coverage requires iterative GTR first.
+  // - GTR rate parameters: not captured; same iterative GTR dependency.
 
   #[rustfmt::skip]
   #[rstest]
@@ -53,12 +62,17 @@ mod tests {
     Ok(())
   }
 
+  // Confidence profile comparison using full-precision floats.
+  // The oracle stores floats at full precision; the test parses the CLI CSV output
+  // back to floats for scientific comparison. This avoids double-rounding through
+  // presentation formatting.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country(          "zika_20_country")]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
   #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[trace]
-  #[ignore = "confidence parity still depends on iterative GTR refinement"]
+  #[ignore = "confidence parity depends on iterative GTR refinement: v0 re-estimates rates"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -70,19 +84,33 @@ mod tests {
     let actual_confidence_states = actual.confidence.states.clone();
     assert_eq!(expected_confidence_states, actual_confidence_states);
 
-    let expected_confidence = helpers::format_confidence_output(&expected.confidence);
-    let actual_confidence = actual.confidence.to_map();
-    assert_eq!(expected_confidence, actual_confidence);
+    for (node_name, expected_profile) in &expected.confidence {
+      let actual_profile = actual
+        .confidence
+        .rows
+        .iter()
+        .find(|row| row.node == *node_name)
+        .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
+      assert_eq!(
+        expected_profile.len(),
+        actual_profile.profile.len(),
+        "profile length mismatch for node '{node_name}'"
+      );
+      for (expected_val, actual_val) in expected_profile.iter().zip(actual_profile.profile.iter()) {
+        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 1e-10);
+      }
+    }
 
     Ok(())
   }
 
   // Ignored: v1 lacks iterative GTR optimization. v0 re-estimates the rate matrix
-  // and equilibrium frequencies from the data (5 iterations), which shifts the argmax
-  // at ambiguous internal nodes. These tests will pass once v1 implements iterative
-  // GTR. The captured v0 outputs remain valid oracles.
+  // even when equilibrium frequencies are fixed from `--weights`, which still shifts
+  // the argmax at ambiguous internal nodes. These tests will pass once v1 implements
+  // iterative GTR. The captured v0 outputs remain valid oracles.
   #[rustfmt::skip]
   #[rstest]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
   #[case::dengue_20_country(        "dengue_20_country")]
   #[case::tb_20_cluster(            "tb_20_cluster")]
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
@@ -99,7 +127,6 @@ mod tests {
     use crate::commands::mugration::run::execute_mugration;
     use eyre::Report;
     use indexmap::IndexMap;
-    use itertools::Itertools;
     use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
@@ -199,16 +226,6 @@ mod tests {
       };
 
       execute_mugration(input)
-    }
-
-    pub fn format_confidence_output(confidence: &BTreeMap<String, Vec<f64>>) -> BTreeMap<String, Vec<String>> {
-      confidence
-        .iter()
-        .map(|(name, profile)| {
-          let formatted_profile = profile.iter().map(|value| format!("{value:.6}")).collect_vec();
-          (name.clone(), formatted_profile)
-        })
-        .collect()
     }
   }
 }

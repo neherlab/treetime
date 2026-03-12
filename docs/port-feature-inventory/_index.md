@@ -365,9 +365,8 @@
 
 - [ ] Iterative GTR inference ([known issue](../port-known-issues/M-mugration-iterative-gtr.md))
 - [ ] Sampling bias correction (`--sampling-bias-correction`)
-- [ ] Confidence CSV output (`--confidence`)
-- [ ] `--pc` pseudo-counts (parsed but not wired)
-- [ ] `--seed` reproducibility (parsed but not wired)
+- [x] Confidence CSV output (`--confidence`)
+- [x] `--pc` pseudo-counts
 
 ## 6. ARG Inference
 
