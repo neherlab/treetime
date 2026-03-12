@@ -183,15 +183,9 @@ pub fn run_optimize_mixed(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> Result<(), Report> {
-  let total_length: usize = chain!(
-    dense_partitions
-      .iter()
-      .map(|part| part.read_arc().get_sequence_length()),
-    sparse_partitions
-      .iter()
-      .map(|part| part.read_arc().get_sequence_length())
-  )
-  .sum();
+  let dense_lengths = dense_partitions.iter().map(|p| p.read_arc().get_sequence_length());
+  let sparse_lengths = sparse_partitions.iter().map(|p| p.read_arc().get_sequence_length());
+  let total_length: usize = chain!(dense_lengths, sparse_lengths).sum();
 
   let one_mutation = 1.0 / total_length as f64;
 
@@ -288,12 +282,11 @@ pub fn initial_guess_mixed(
     // Count differences from dense partitions
     for partition in dense_partitions {
       let partition = partition.read_arc();
-      let edge_partition = &partition.edges[&edge_key];
-      for (row1, row2) in izip!(
-        edge_partition.msg_to_parent.dis.rows(),
-        edge_partition.msg_to_child.dis.rows()
-      ) {
-        if row1[row2.argmax().unwrap()] < 0.5 {
+      let edge = &partition.edges[&edge_key];
+      let rows_parent = edge.msg_to_parent.dis.rows();
+      let rows_child = edge.msg_to_child.dis.rows();
+      for (prof_parent, prof_child) in izip!(rows_parent, rows_child) {
+        if prof_parent[prof_child.argmax().unwrap()] < 0.5 {
           differences += 1;
         }
       }
@@ -306,15 +299,9 @@ pub fn initial_guess_mixed(
       differences += edge_partition.subs.len();
     }
 
-    let total_length: usize = chain!(
-      dense_partitions
-        .iter()
-        .map(|part| part.read_arc().get_sequence_length()),
-      sparse_partitions
-        .iter()
-        .map(|part| part.read_arc().get_sequence_length())
-    )
-    .sum();
+    let dense_lengths = dense_partitions.iter().map(|p| p.read_arc().get_sequence_length());
+    let sparse_lengths = sparse_partitions.iter().map(|p| p.read_arc().get_sequence_length());
+    let total_length: usize = chain!(dense_lengths, sparse_lengths).sum();
 
     let branch_length = (differences as f64) / (total_length as f64);
 
