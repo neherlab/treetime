@@ -20,7 +20,8 @@ How to add more tests:
 
 1. Add ancestral commands by adding entries to `ANCESTRAL_BATCH_RUNS`
 2. Add clock commands by adding entries to `CLOCK_BATCH_RUNS`
-3. Add arbitrary commands to `make_additional_commands()`
+3. Add mugration commands by adding entries to `MUGRATION_BATCH_RUNS`
+4. Add arbitrary commands to `make_additional_commands()`
 
 """
 
@@ -109,6 +110,22 @@ CLOCK_BATCH_RUNS = [
   ("tb/149",                      "tb/149",                   ""),
   ("zika/20",                     "zika/20",                  ""),
   ("zika/86",                     "zika/86",                  ""),
+]
+# fmt: on @formatter:on
+
+# Add mugration command runs here. Each entry corresponds to 1 mugration command run.
+# Some combinations currently expose known defects and are kept to surface regressions.
+# fmt: off @formatter:off
+MUGRATION_BATCH_RUNS = [
+  # data subdirectory             # output subdirectory                # attribute   # additional args (appended to the batch args)
+  ("zika/20",                     "zika/20/country",                  "country",    "--pc=1.0"),
+  ("zika/20",                     "zika/20/country-weights",          "country",    "--pc=1.0 --weights={data_dir}/zika/country_weights.csv"),
+  ("zika/20",                     "zika/20/country-confidence",       "country",    "--pc=1.0 --confidence={outdir}/confidence.csv"),
+  ("dengue/20",                   "dengue/20/country",                "country",    "--name-column=genbank_accession --pc=1.0"),
+  ("tb/20",                       "tb/20/cluster",                    "cluster",    "--name-column=strain --pc=1.0"),
+  ("lassa/L/20",                  "lassa/L/20/country",               "country",    "--name-column=accession --pc=1.0"),
+  ("rsv/a/20",                    "rsv/a/20/country",                 "country",    "--name-column=accession --pc=1.0"),
+  ("mpox/clade-ii/20",            "mpox/clade-ii/20/country",         "country",    "--name-column=accession --pc=1.0"),
 ]
 # fmt: on @formatter:on
 
@@ -317,6 +334,7 @@ def make_additional_commands(exe, data_dir, out_dir):
     ("help: global",               f"""{exe} --help"""                          ),
     ("help: ancestral",            f"""{exe} ancestral --help"""                ),
     ("help: clock",                f"""{exe} clock --help"""                    ),
+    ("help: mugration",            f"""{exe} mugration --help"""                ),
     ("help: optimize",             f"""{exe} optimize --help"""                 ),
     ("help: prune",                f"""{exe} prune --help"""                    ),
     ("help: timetree",             f"""{exe} timetree --help"""                 ),
@@ -463,6 +481,20 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
     method_str = f"{method_str}-{seq_mode}"
 
   return run_batch_cmd(name, method_str, cmd)
+
+
+def run_mugration(name: str, out: str, attribute: str, extra_args: str):
+  outdir = f"{RESULTS_DIR}/mugration/{out}"
+  extra_args = extra_args.format(data_dir=DATA_DIR, outdir=outdir)
+  cmd = f"""
+  {TREETIME_BIN} mugration
+  --tree={DATA_DIR}/{name}/tree.nwk
+  --states={DATA_DIR}/{name}/metadata.tsv
+  --attribute={attribute}
+  --outdir={outdir}
+  {extra_args}
+  """
+  return run_batch_cmd(name, "mugration", cmd)
 
 
 def run_optimize(dense: str, name: str, out: str, extra_args: str):
@@ -704,6 +736,7 @@ if __name__ == "__main__":
     (run_ancestral, [("parsimony", None, *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_ancestral, [("marginal", "sparse", *args) for args in ANCESTRAL_BATCH_RUNS]),
     (run_ancestral, [("marginal", "dense", *args) for args in ANCESTRAL_BATCH_RUNS]),
+    (run_mugration, MUGRATION_BATCH_RUNS),
     (run_optimize, [("false", *args) for args in OPTIMIZE_BATCH_RUNS]),
     # (run_optimize, [("true", *args) for args in OPTIMIZE_BATCH_RUNS]), # TODO: enable optimize dense tests
     (run_prune, PRUNE_BATCH_RUNS),
