@@ -3,12 +3,14 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
+  use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;
@@ -22,6 +24,7 @@ mod tests {
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::Seq;
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -482,5 +485,131 @@ mod tests {
     // since we test all possible triplets, the total likelihood should be 1
     pretty_assert_ulps_eq!(1.0, total_lh, epsilon = 1e-6);
     Ok(())
+  }
+
+  /// Verify that sparse `edge_subs()` reports current reconstructed branch
+  /// substitutions rather than raw Fitch substitutions.
+  ///
+  /// After marginal inference, the branch result should match the difference
+  /// between the reconstructed parent sequence and child sequence. Stored
+  /// `edge.subs` is only the initial sparse encoding. This test checks:
+  /// - `edge_subs()` matches the reconstructed parent-child diff on every edge
+  /// - the result differs from stored `edge.subs` on at least one edge
+  #[test]
+  fn test_sparse_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+    "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: make_nonuniform_gtr()?,
+      alphabet: Alphabet::default(),
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &partitions, &aln)?;
+    update_marginal(&graph, &partitions)?;
+
+    let actual_by_edge = {
+      let partition = partitions[0].read_arc();
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge_key = edge.read_arc().key();
+          let actual = partition.edge_subs(&graph, edge_key)?;
+          Ok((edge_key, actual))
+        })
+        .collect::<Result<BTreeMap<_, _>, Report>>()?
+    };
+
+    // Reconstruct node sequences, then turn parent-child sequence differences
+    // into the expected branch changes.
+    let mut seqs_by_name = BTreeMap::new();
+    ancestral_reconstruction_marginal(&graph, true, &partitions, |node, seq| {
+      seqs_by_name.insert(
+        node.name.clone().expect("all test nodes should have names"),
+        seq.clone(),
+      );
+      Ok(())
+    })?;
+
+    let partition = partitions[0].read_arc();
+    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &partition, &seqs_by_name)?;
+
+    assert_eq!(expected_by_edge, actual_by_edge);
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    /// Convert reconstructed parent and child sequences into canonical substitutions.
+    ///
+    /// This stays simple on purpose: compare the two sequences site by site and
+    /// keep only nucleotide changes.
+    pub fn diff_canonical_subs(alphabet: &Alphabet, parent_seq: &Seq, child_seq: &Seq) -> Result<Vec<Sub>, Report> {
+      parent_seq
+        .iter()
+        .zip(child_seq.iter())
+        .enumerate()
+        .filter(|(_, (parent, child))| parent != child)
+        .filter(|(_, (parent, child))| alphabet.is_canonical(**parent) && alphabet.is_canonical(**child))
+        .map(|(pos, (parent, child))| Sub::new(*parent, pos, *child))
+        .collect()
+    }
+
+    /// Build the expected branch-mutation map from reconstructed node sequences.
+    ///
+    /// This keeps the expected result separate from the sparse edge logic under
+    /// test. First reconstruct node sequences, then compare parent and child for
+    /// each edge.
+    pub fn expected_edge_subs_by_edge(
+      graph: &GraphAncestral,
+      partition: &PartitionMarginalSparse,
+      seqs_by_name: &BTreeMap<String, Seq>,
+    ) -> Result<BTreeMap<treetime_graph::edge::GraphEdgeKey, Vec<Sub>>, Report> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          let edge_key = edge.key();
+          let expected = diff_canonical_subs(
+            &partition.alphabet,
+            get_reconstructed_seq(graph, seqs_by_name, edge.source()),
+            get_reconstructed_seq(graph, seqs_by_name, edge.target()),
+          )?;
+          Ok((edge_key, expected))
+        })
+        .collect()
+    }
+
+    /// Retrieve one reconstructed node sequence by graph node.
+    fn get_reconstructed_seq<'a>(
+      graph: &GraphAncestral,
+      seqs_by_name: &'a BTreeMap<String, Seq>,
+      node_key: treetime_graph::node::GraphNodeKey,
+    ) -> &'a Seq {
+      let node = graph.get_node(node_key).expect("node should exist");
+      let node = node.read_arc();
+      let payload = node.payload().read_arc();
+      let name = payload.name.as_ref().expect("all test nodes should have names");
+      &seqs_by_name[name]
+    }
   }
 }

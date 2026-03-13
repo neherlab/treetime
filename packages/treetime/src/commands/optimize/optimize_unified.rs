@@ -268,7 +268,7 @@ where
     let mut edge = edge_ref.write_arc().payload().write_arc();
     let differences: usize = partitions
       .iter()
-      .map(|partition| partition.read_arc().edge_subs(edge_key).map(|subs| subs.len()))
+      .map(|partition| partition.read_arc().edge_subs(graph, edge_key).map(|subs| subs.len()))
       .sum::<Result<_, _>>()?;
 
     let branch_length = (differences as f64) / (total_length as f64);

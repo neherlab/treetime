@@ -6,6 +6,7 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -61,10 +62,12 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
-  fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, _graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     let edge = &self.edges[&edge_key];
     let mut subs = Vec::new();
 
+    // Dense already has enough per-site edge data, so we can read the current
+    // parent state and child state for each site directly from this edge.
     for (pos, parent, child) in izip!(
       0..edge.msg_to_parent.dis.nrows(),
       edge.msg_to_parent.dis.rows(),

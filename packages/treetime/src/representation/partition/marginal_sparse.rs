@@ -8,9 +8,11 @@ use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::mem;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
@@ -18,9 +20,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{AsciiChar, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
+use treetime_utils::interval::range::range_contains;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalSparse {
@@ -66,6 +69,101 @@ impl PartitionMarginalSparse {
   #[allow(clippy::same_name_method)]
   pub fn get_sequence_length(&self) -> usize {
     self.length
+  }
+
+  /// Return positions that can change the reconstructed mutation set for one edge.
+  ///
+  /// In sparse mode, only a small set of sites can change the branch result:
+  /// sites changed on this edge, or sites where the parent or child has a
+  /// non-default marginal state. Everything else stays the same on both ends.
+  fn edge_candidate_positions(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<usize>, Report> {
+    let edge = &self.edges[&edge_key];
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let parent = &self.nodes[&parent_key];
+    let child = &self.nodes[&child_key];
+
+    Ok(
+      edge
+        .subs
+        .iter()
+        .map(Sub::pos)
+        .chain(parent.profile.variable.keys().copied())
+        .chain(child.profile.variable.keys().copied())
+        // Stable ordering keeps `Vec<Sub>` equality meaningful in tests and
+        // callers that compare branch mutation lists directly.
+        .sorted()
+        .dedup()
+        .collect_vec(),
+    )
+  }
+
+  /// Reconstruct one node state at one site from sparse data.
+  ///
+  /// This is the single-site version of `reconstruct_node_sequence()`: start
+  /// from the parent state, apply edge changes, mask unknowns, then apply the
+  /// node's current best state for variable sites.
+  ///
+  /// After marginal inference, `edge.subs` alone is not enough. The final state
+  /// also depends on the node's current marginal result.
+  fn node_state_at(
+    &self,
+    graph: &GraphAncestral,
+    node_key: GraphNodeKey,
+    pos: usize,
+    cache: &mut BTreeMap<(GraphNodeKey, usize), AsciiChar>,
+  ) -> Result<AsciiChar, Report> {
+    if let Some(state) = cache.get(&(node_key, pos)) {
+      return Ok(*state);
+    }
+
+    let node = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
+    let node = node.read_arc();
+    let node_data = &self.nodes[&node_key];
+
+    let mut state = if node.is_root() {
+      node_data.seq.sequence[pos]
+    } else {
+      let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
+      let parent_key = parent_node.read_arc().key();
+      let edge_key = edge.read_arc().key();
+      let edge_data = &self.edges[&edge_key];
+      let mut state = self.node_state_at(graph, parent_key, pos, cache)?;
+
+      // Apply the stored edge change before looking at node-specific overrides.
+      if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
+        state = sub.qry();
+      }
+
+      // Apply indels in the same order as full-sequence reconstruction.
+      if let Some(indel) = edge_data
+        .indels
+        .iter()
+        .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
+      {
+        state = if indel.deletion {
+          self.alphabet.gap()
+        } else {
+          indel.seq[pos - indel.range.0]
+        };
+      }
+
+      state
+    };
+
+    if range_contains(&node_data.seq.unknown, pos) {
+      state = self.alphabet.unknown();
+    }
+
+    // For variable sites, use the node's current best state.
+    if let Some(states) = node_data.profile.variable.get(&pos) {
+      state = self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
+    }
+
+    cache.insert((node_key, pos), state);
+    Ok(state)
   }
 }
 
@@ -168,8 +266,33 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
     crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
   }
 
-  fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    Ok(self.edges[&edge_key].subs.clone())
+  /// Return the current nucleotide changes for one sparse edge.
+  ///
+  /// This compares the current parent state and child state on the edge.
+  /// It skips gaps and unknowns because optimize counts nucleotide changes only.
+  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let mut cache = BTreeMap::new();
+    let mut subs = Vec::new();
+
+    for pos in self.edge_candidate_positions(graph, edge_key)? {
+      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
+      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
+
+      if parent_state == child_state {
+        continue;
+      }
+
+      // Gaps and unknowns are not nucleotide substitutions.
+      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
+        continue;
+      }
+
+      subs.push(Sub::new(parent_state, pos, child_state)?);
+    }
+
+    Ok(subs)
   }
 }
 
