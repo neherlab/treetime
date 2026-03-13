@@ -123,44 +123,42 @@ impl PartitionMarginalSparse {
     let node = node.read_arc();
     let node_data = &self.nodes[&node_key];
 
-    let mut state = if node.is_root() {
+    // Compute base state from tree structure
+    let base_state = if node.is_root() {
       node_data.seq.sequence[pos]
     } else {
       let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
       let parent_key = parent_node.read_arc().key();
       let edge_key = edge.read_arc().key();
       let edge_data = &self.edges[&edge_key];
-      let mut state = self.node_state_at(graph, parent_key, pos, cache)?;
+      let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
 
-      // Apply the stored edge change before looking at node-specific overrides.
-      if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
-        state = sub.qry();
-      }
-
-      // Apply indels in the same order as full-sequence reconstruction.
+      // Indels have highest precedence, then substitutions, then parent state
       if let Some(indel) = edge_data
         .indels
         .iter()
         .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
       {
-        state = if indel.deletion {
+        if indel.deletion {
           self.alphabet.gap()
         } else {
           indel.seq[pos - indel.range.0]
-        };
+        }
+      } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
+        sub.qry()
+      } else {
+        parent_state
       }
-
-      state
     };
 
-    if range_contains(&node_data.seq.unknown, pos) {
-      state = self.alphabet.unknown();
-    }
-
-    // For variable sites, use the node's current best state.
-    if let Some(states) = node_data.profile.variable.get(&pos) {
-      state = self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
-    }
+    // Variable sites have highest precedence, then unknown, then base state
+    let state = if let Some(states) = node_data.profile.variable.get(&pos) {
+      self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0))
+    } else if range_contains(&node_data.seq.unknown, pos) {
+      self.alphabet.unknown()
+    } else {
+      base_state
+    };
 
     cache.insert((node_key, pos), state);
     Ok(state)
