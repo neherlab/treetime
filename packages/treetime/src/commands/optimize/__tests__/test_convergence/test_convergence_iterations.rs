@@ -16,7 +16,7 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     let max_iter = 50;
@@ -25,7 +25,7 @@ mod tests {
     lh_history.push(initial_lh);
 
     for _ in 0..max_iter {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
       let lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
       lh_history.push(lh);
     }
@@ -56,7 +56,7 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     // Initial log-lh should be negative (log of probability < 1)
@@ -64,7 +64,7 @@ mod tests {
 
     // Run several optimization steps
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
     }
 
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
@@ -88,7 +88,7 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     // Collect initial branch lengths
     let initial_total: f64 = graph
@@ -99,7 +99,7 @@ mod tests {
 
     // Run several optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
       update_marginal(&graph, &dense_partitions)?;
       update_marginal(&graph, &sparse_partitions)?;
     }

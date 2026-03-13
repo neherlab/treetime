@@ -4,13 +4,12 @@ use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
+use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
-use itertools::{chain, izip};
 use ndarray::Axis;
-use ndarray_stats::QuantileExt;
 use num::clamp;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -178,14 +177,14 @@ pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> boo
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
 /// For each edge, it collects contributions from all partitions and optimizes the branch
 /// length using either Newton's method or grid search.
-pub fn run_optimize_mixed(
-  graph: &GraphAncestral,
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-) -> Result<(), Report> {
-  let dense_lengths = dense_partitions.iter().map(|p| p.read_arc().get_sequence_length());
-  let sparse_lengths = sparse_partitions.iter().map(|p| p.read_arc().get_sequence_length());
-  let total_length: usize = chain!(dense_lengths, sparse_lengths).sum();
+pub fn run_optimize_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  let total_length: usize = partitions
+    .iter()
+    .map(|partition| partition.read_arc().sequence_length())
+    .sum();
 
   let one_mutation = 1.0 / total_length as f64;
 
@@ -194,24 +193,10 @@ pub fn run_optimize_mixed(
     let mut edge = edge_ref.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length().unwrap_or(0.0);
 
-    // Collect contributions from all partitions
-    let contributions = {
-      let mut contributions = Vec::with_capacity(dense_partitions.len() + sparse_partitions.len());
-
-      // Add dense partition contributions
-      for partition in dense_partitions {
-        let partition = partition.read_arc();
-        contributions.push(OptimizationContribution::from_dense(edge_key, &partition));
-      }
-
-      // Add sparse partition contributions
-      for partition in sparse_partitions {
-        let partition = partition.read_arc();
-        contributions.push(OptimizationContribution::from_sparse(edge_key, &partition)?);
-      }
-
-      contributions
-    };
+    let contributions: Vec<OptimizationContribution> = partitions
+      .iter()
+      .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
+      .collect::<Result<_, _>>()?;
 
     // Check if zero branch length is optimal
     if is_zero_branch_optimal(&contributions) {
@@ -269,42 +254,27 @@ pub fn run_optimize_mixed(
 /// Provides an initial estimate of branch lengths based on the number of observed
 /// differences across all partitions. This gives the optimization a reasonable
 /// starting point.
-pub fn initial_guess_mixed(
-  graph: &GraphAncestral,
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-) {
+pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  let total_length: usize = partitions
+    .iter()
+    .map(|partition| partition.read_arc().sequence_length())
+    .sum();
+
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
-    let mut differences: usize = 0;
-
-    // Count differences from dense partitions
-    for partition in dense_partitions {
-      let partition = partition.read_arc();
-      let edge = &partition.edges[&edge_key];
-      let rows_parent = edge.msg_to_parent.dis.rows();
-      let rows_child = edge.msg_to_child.dis.rows();
-      for (prof_parent, prof_child) in izip!(rows_parent, rows_child) {
-        if prof_parent[prof_child.argmax().unwrap()] < 0.5 {
-          differences += 1;
-        }
-      }
-    }
-
-    // Count differences from sparse partitions
-    for partition in sparse_partitions {
-      let partition = partition.read_arc();
-      let edge_partition = &partition.edges[&edge_key];
-      differences += edge_partition.subs.len();
-    }
-
-    let dense_lengths = dense_partitions.iter().map(|p| p.read_arc().get_sequence_length());
-    let sparse_lengths = sparse_partitions.iter().map(|p| p.read_arc().get_sequence_length());
-    let total_length: usize = chain!(dense_lengths, sparse_lengths).sum();
+    let differences: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_subs(edge_key).map(|subs| subs.len()))
+      .sum::<Result<_, _>>()?;
 
     let branch_length = (differences as f64) / (total_length as f64);
 
     edge.set_branch_length(Some(branch_length));
   }
+
+  Ok(())
 }

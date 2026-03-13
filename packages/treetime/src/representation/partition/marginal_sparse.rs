@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::RerootChanges;
+use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
@@ -155,11 +156,11 @@ impl PartitionRerootOps for PartitionMarginalSparse {
   }
 }
 
-impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-{
+impl PartitionOptimizeOps for PartitionMarginalSparse {
+  fn sequence_length(&self) -> usize {
+    self.length
+  }
+
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,
@@ -167,6 +168,16 @@ where
     crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
   }
 
+  fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    Ok(self.edges[&edge_key].subs.clone())
+  }
+}
+
+impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
     let graph_node_keys: std::collections::BTreeSet<GraphNodeKey> =
       graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();

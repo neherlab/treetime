@@ -1,9 +1,9 @@
 use crate::commands::clock::reroot::RerootChanges;
-use crate::commands::optimize::optimize_unified::OptimizationContribution;
+use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
 use eyre::Report;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
@@ -26,14 +26,11 @@ pub trait PartitionRerootOps: Send + Sync {
 /// Trait for timetree-specific partition operations.
 ///
 /// Separate from PartitionMarginalOps to avoid polluting the ancestral command.
-pub trait PartitionTimetreeOps<N, E>: Send + Sync
+pub trait PartitionTimetreeOps<N, E>: PartitionOptimizeOps + Send + Sync
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  /// Create optimization contribution for branch length likelihood computation.
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
-
   /// Ensure partition has entries for all nodes and edges in the graph.
   ///
   /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.

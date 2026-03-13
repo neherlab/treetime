@@ -17,13 +17,13 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let mut lh_history = Vec::with_capacity(20);
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
       let lh = update_marginal(&graph, &dense_partitions)? + update_marginal(&graph, &sparse_partitions)?;
 
       lh_history.push(lh);
@@ -61,10 +61,10 @@ mod tests {
 
     // Run optimization on first graph
     let graph1: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions1, sparse_partitions1) = setup_partitions(&graph1, &aln)?;
+    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &dense_partitions1, &sparse_partitions1)?;
+      run_optimize_mixed(&graph1, &mixed_partitions1)?;
       update_marginal(&graph1, &dense_partitions1)?;
       update_marginal(&graph1, &sparse_partitions1)?;
     }
@@ -73,10 +73,10 @@ mod tests {
 
     // Run optimization on second independent graph
     let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions2, sparse_partitions2) = setup_partitions(&graph2, &aln)?;
+    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &dense_partitions2, &sparse_partitions2)?;
+      run_optimize_mixed(&graph2, &mixed_partitions2)?;
       update_marginal(&graph2, &dense_partitions2)?;
       update_marginal(&graph2, &sparse_partitions2)?;
     }

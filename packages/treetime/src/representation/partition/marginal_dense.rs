@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -6,8 +7,9 @@ use crate::make_report;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use ndarray::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
@@ -47,11 +49,11 @@ impl PartitionMarginal for PartitionMarginalDense {}
 
 impl PartitionRerootOps for PartitionMarginalDense {}
 
-impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-{
+impl PartitionOptimizeOps for PartitionMarginalDense {
+  fn sequence_length(&self) -> usize {
+    self.length
+  }
+
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,
@@ -59,6 +61,31 @@ where
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
+  fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    let edge = &self.edges[&edge_key];
+    let mut subs = Vec::new();
+
+    for (pos, parent, child) in izip!(
+      0..edge.msg_to_parent.dis.nrows(),
+      edge.msg_to_parent.dis.rows(),
+      edge.msg_to_child.dis.rows()
+    ) {
+      let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
+      let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
+      if parent_state != child_state {
+        subs.push(Sub::new(parent_state, pos, child_state)?);
+      }
+    }
+
+    Ok(subs)
+  }
+}
+
+impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
     let graph_node_keys: std::collections::BTreeSet<GraphNodeKey> =
       graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();

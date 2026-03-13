@@ -15,11 +15,11 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(tree_newick)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     // Run multiple optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
     }
 
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
@@ -47,11 +47,11 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(tree_newick)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     // Run optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
     }
 
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
@@ -79,11 +79,11 @@ mod tests {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(tree_newick)?;
 
-    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     // Run optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions)?;
     }
 
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;

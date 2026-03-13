@@ -3,6 +3,7 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
+use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, log_gtr, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -10,6 +11,7 @@ use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::Itertools;
+use itertools::chain;
 use log::debug;
 use maplit::btreemap;
 use parking_lot::RwLock;
@@ -112,7 +114,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   update_marginal(&graph, &sparse_partitions)?;
   initialize_marginal(&graph, &dense_partitions, &aln)?;
 
-  initial_guess_mixed(&graph, &dense_partitions, &sparse_partitions);
+  let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+
+  initial_guess_mixed(&graph, &mixed_partitions)?;
 
   let mut lh_prev = f64::MIN;
   for i in 0..*max_iter {
@@ -132,12 +136,29 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       break;
     }
 
-    run_optimize_mixed(&graph, &dense_partitions, &sparse_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions)?;
     lh_prev = total_lh;
   }
 
   write_graph(outdir, &graph)?;
   Ok(())
+}
+
+fn collect_optimize_partitions(
+  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+) -> PartitionOptimizeVec {
+  chain!(
+    dense_partitions
+      .iter()
+      .cloned()
+      .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition }),
+    sparse_partitions
+      .iter()
+      .cloned()
+      .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition })
+  )
+  .collect_vec()
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &treetime_graph::graph::Graph<N, E, D>) -> Result<(), Report>
