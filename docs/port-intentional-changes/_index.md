@@ -1,8 +1,8 @@
 # v0/v1 Deviations
 
-Intentional behavioral differences between v1 (Rust) and v0 (Python).
+Deliberate behavioral differences between v1 (Rust) and v0 (Python), with rationale. One file per deviation.
 
-Deviations are distinct from known issues (unintentional differences to be addressed) and unimplemented features (capability not yet ported).
+Distinct from [known issues](../port-known-issues/_index.md) (unintentional differences, not-yet-ported features) and [proposals](../port-proposals/_index.md) (new v1 features not in v0, pre-implementation).
 
 ## Summary
 

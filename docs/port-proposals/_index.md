@@ -1,8 +1,8 @@
 # Port Proposals
 
-Candidate behavioral changes or algorithmic extensions for v1 that are grounded in the current codebase but are not yet accepted or implemented.
+New v1 features that v0 does not have. Each proposal records scientific motivation, expected impact, related code, and a validation plan before implementation. Once implemented, the deviation from v0 moves to [`docs/port-intentional-changes/`](../port-intentional-changes/_index.md).
 
-These documents are the proposal-stage analogue of [`docs/port-intentional-changes/`](../port-intentional-changes/_index.md). They record scientific motivation, current behavior, related code, expected impact, and validation ideas before any decision is made.
+v0 features not yet ported belong in [`docs/port-known-issues/`](../port-known-issues/_index.md) (all types) and [`docs/port-algo-inventory/unimplemented.md`](../port-algo-inventory/unimplemented.md) (algorithms only), not here.
 
 ## Summary
 

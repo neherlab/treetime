@@ -1,9 +1,8 @@
 # Known Issues
 
-Bugs, limitations, scientific and numerical issues in v1.
+Bugs, missing features, dead CLI flags, stubs, and unintentional differences from v0. Covers all v0 features not yet ported to v1.
 
-Known issues are distinct from deviations (intentional behavioral differences
-from v0) and unimplemented features (v0 capability not yet ported).
+Distinct from [intentional changes](../port-intentional-changes/_index.md) (deliberate deviations) and [proposals](../port-proposals/_index.md) (new v1 features not in v0).
 
 ## Test matrix
 

@@ -4,7 +4,7 @@
 
 > **Note**: This document was AI-generated via parallel agent analysis of the codebase. Verify critical details against source code.
 
-Accepted-scope rule: this inventory documents algorithms and algorithmic workflows that are implemented in v1 or explicitly tracked as unimplemented port targets. Candidate extensions, disputed classifications, and not-yet-accepted behavioral changes belong in [`docs/port-proposals/`](../port-proposals/_index.md), not here.
+Scope: algorithms implemented in v1 (domain files) and v0 algorithms not yet ported ([unimplemented.md](unimplemented.md)). New v1 features not in v0 belong in [`docs/port-proposals/`](../port-proposals/_index.md).
 
 ## Summary
 
