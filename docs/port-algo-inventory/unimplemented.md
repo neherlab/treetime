@@ -96,18 +96,48 @@ Forward pass (lines 1043-1063):
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Sensitivity analysis                                                                                                                                      |
 | v0 Location | [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066)                        |
-| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`)                                                                                                |
+| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`)                            |
 | v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/output/confidence.rs#L39`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L39) |
+| Known Issue | [--vary-rate panics with todo!()](../port-known-issues/H-timetree-vary-rate-unimplemented.md)                                                             |
+| Reference   | Sagulenko et al. (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.5                                                                            |
 
-**Algorithm**:
+**Background**: Node date uncertainty has two independent sources (Sagulenko et al. 2018). The marginal posterior from the backward/forward pass captures mutation stochasticity (source 1, implemented in v1). Clock rate uncertainty (source 2) propagates to all node dates because times scale inversely with rate. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth, while recent tips barely move. v0 combines both sources via quadrature sum, treating them as independent Gaussian-like contributions.
 
-1. Store current clock rate estimate and its standard deviation
-2. Re-run timetree inference at `rate + sigma_rate` -> get node times `t_plus`
-3. Re-run timetree inference at `rate - sigma_rate` -> get node times `t_minus`
-4. For each node: `rate_susceptibility = (t_plus - t_minus) / (2 * sigma_rate)`
-5. Confidence interval: `t +/- rate_susceptibility * sigma_rate`
+**Algorithm** (`calc_rate_susceptibility()`, [packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066)):
 
-**Purpose**: Quantifies how much uncertainty in clock rate propagates to uncertainty in node dates. Nodes near the root have higher susceptibility than recent nodes.
+1. Extract `rate_std = sqrt(clock_model.cov[0,0])`. Requires either `--clock-std-dev` from the user or `valid_confidence=True` from covariation-aware regression (`--covariation` flag). Rejects negative clock rate.
+2. Compute `upper = rate + rate_std`, `lower = max(0.1 * rate, rate - rate_std)`
+3. Scale all edge gamma values: `gamma = gamma_orig * upper_rate / current_rate`
+4. Run `make_time_tree()` with upper rate, store per-node `(upper_rate, numdate)`
+5. Scale gammas for lower rate, run again, store `(lower_rate, numdate)`
+6. Restore original gammas, run at central rate, store `(current_rate, numdate)`
+7. Sort per-node triples by date: `[lower_date, central_date, upper_date]`
+
+**Algorithm** (`date_uncertainty_due_to_rate()`, [packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088](../../packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088)):
+
+Converts per-node `[lower, central, upper]` date triples into a Gaussian CI using `scipy.special.erfinv`:
+
+```
+nsig = [sqrt(2) * erfinv(-1 + 2*p) for p in interval]
+rate_ci = [central + nsig[i] * |boundary[i] - central|]
+```
+
+**Algorithm** (`combine_confidence()`, [packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101](../../packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101)):
+
+Quadrature sum of independent CI contributions:
+
+```
+lower = center - sqrt((c1_lower - center)^2 + (c2_lower - center)^2)
+upper = center + sqrt((c1_upper - center)^2 + (c2_upper - center)^2)
+```
+
+Clipped to physical limits `[min_date, max_date]`.
+
+**v0 gating**: `--confidence` alone is not sufficient. The full confidence pipeline requires EITHER `--confidence --covariation` (regression with phylogenetic covariance, auto-derives rate_std) OR `--confidence --clock-std-dev <value>` (user-specified). Without either, v0 prints a warning and disables confidence. See [--confidence flag ignored](../port-known-issues/M-timetree-confidence-flag-ignored.md).
+
+**v0 CI method**: v0's `dates.tsv` uses `get_max_posterior_region()` (`#get_max_posterior_region`) ([packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230](../../packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230)), which finds the narrowest 90% highest posterior density (HPD) region around the posterior peak. v1's existing `extract_confidence_intervals()` uses `quantile(0.025, 0.975)` for an equal-tailed 95% CI. HPD regions are narrower for skewed distributions. The porting decision should clarify which approach to use.
+
+**v1 existing infrastructure**: `combine_confidence()` (ported, unused), `Distribution::quantile()` (implemented), `ClockModel::cov()` (implemented), `EdgeTimetree.gamma` (implemented). Missing: `compute_rate_susceptibility()` body, `date_uncertainty_due_to_rate()`, per-node storage for rate-variation dates (`NodeTimetree` has no `rate_variation_dates` field).
 
 ---
 
@@ -173,22 +203,34 @@ Key methods:
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Type        | Monte Carlo / coalescent simulation                                                                                          |
 | v0 Location | [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011) |
-| Functions   | `generate_subtree()` (`#generate_subtree`)                                                                                   |
+| Functions   | `generate_subtree()` (`#generate_subtree`), `resolve_polytomies()` (`#resolve_polytomies`)                                   |
 | v1 Status   | Not ported - v1 only has greedy deterministic approach                                                                       |
+| Known Issue | [Stochastic polytomy resolution not implemented](../port-known-issues/N-timetree-stochastic-polytomy-unimplemented.md)       |
+| CLI         | `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints deprecation warning for greedy mode.                 |
+| Reference   | Kingman (1982). "The coalescent." Stochastic Processes and Applications, 13(3):235-248                                       |
 
-**Algorithm**:
+**Background**: The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (Sagulenko et al. 2018, Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
-Given a polytomy (node with k > 2 children):
+**Algorithm** (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011)):
 
-1. Sort children by estimated time
-2. Sample coalescent events using Kingman coalescent:
-   - At each step, pick two lineages uniformly at random
-   - Sample coalescent time from exponential distribution with rate `k*(k-1)/(2*Tc)`
-   - Create internal node at sampled time, merge two lineages
-3. Repeat until binary tree structure achieved
-4. Optionally: run multiple samples, select one with best likelihood
+The function models polytomy resolution as a joint mutation-coalescence process within the time window between the polytomy node and its children:
 
-**v1 vs v0**: v1 uses greedy pairwise merging with Brent optimization (deterministic). v0 also supports stochastic resolution via coalescent simulation for uncertainty quantification.
+1. Sort children by `time_before_present` (most recent first)
+2. Initialize `branches_alive` with the most recent child. Remaining children wait in `branches_to_come`.
+3. Compute pending mutations per branch: `round(mutation_length * L)` where L = sequence length
+4. Loop until two or fewer branches remain or time reaches the parent:
+   - Identify branches "ready to coalesce" (zero pending mutations)
+   - Compute rates: mutation rate = `gtr.mu * L * total_mutations`, coalescent rate from `merger_model.branch_merger_rate(t)` if available or dummy `2/(tmax-t)` otherwise
+   - Sample waiting time: `dt = Exp(1/total_rate)` using `self.rng.exponential`
+   - If a `branches_to_come` child appears in the interval, add it and restart
+   - Sample event type proportional to rates (`self.rng.random`)
+   - **Mutation event**: pick branch proportional to mutation count, decrement by one
+   - **Coalescent event**: pick two ready branches uniformly (`self.rng.choice`), create new internal node at current time, reparent them, build `BranchLenInterpolator` for the new node
+5. Remaining branches become direct children of the parent
+
+**RNG**: Uses `self.rng` (`numpy.random.default_rng(seed=rng_seed)`) from `TreeAnc.__init__()` ([packages/legacy/treetime/treetime/treeanc.py#L163](../../packages/legacy/treetime/treetime/treeanc.py#L163)). CLI flag is `--rng-seed` (v0), `--seed` (v1). Without a seed, results are non-deterministic.
+
+**Dispatch**: `resolve_polytomies(stochastic_resolve=True)` ([packages/legacy/treetime/treetime/treetime.py#L694](../../packages/legacy/treetime/treetime/treetime.py#L694)) calls `generate_subtree(n)` for each polytomy. `resolve_polytomies(stochastic_resolve=False)` calls `_poly(n)` (greedy).
 
 ---
 
@@ -421,12 +463,18 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 
 ## Timetree Output: Node Dates TSV
 
-| Property  | Value                                                                                                                                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type      | I/O utility                                                                                                                                     |
-| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../packages/treetime/src/commands/timetree/output/dates.rs#L20) |
+| Property    | Value                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type        | I/O utility                                                                                                                                     |
+| v0 Location | [`packages/legacy/treetime/treetime/CLI_io.py#L136-L158`](../../packages/legacy/treetime/treetime/CLI_io.py#L136-L158)                          |
+| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../packages/treetime/src/commands/timetree/output/dates.rs#L20) |
+| Known Issue | [write_node_dates() is a todo!() stub](../port-known-issues/N-timetree-node-dates-output-unimplemented.md)                                      |
 
-**Purpose**: Write inferred node dates (calendar date, numeric date, time before present) to TSV file for downstream analysis.
+**Purpose**: Write inferred node dates to TSV for downstream analysis.
+
+**v0 format** (with confidence): `#node\tdate\tnumeric date\tlower bound\tupper bound`. Bounds from `get_max_posterior_region(n, fraction=0.9)`. Bad branches get `--` placeholders.
+
+**v0 format** (without confidence): `#node\tdate\tnumeric date`.
 
 ---
 

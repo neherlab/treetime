@@ -49,8 +49,8 @@ unresolved lineages relate, given the time constraint from parent to children.
 
 ## v0 implementation
 
-`generate_subtree()` in
-[`treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011):
+`generate_subtree()` (`#generate_subtree`) in
+[`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011):
 
 1. Sort polytomy children by `time_before_present`
 2. Initialize coalescent rate from `merger_model` (if available) or dummy rate
@@ -71,7 +71,7 @@ Key parameters:
 
 v1 uses greedy pairwise merging with Brent optimization:
 
-- [`resolve_polytomies.rs`](../../packages/treetime/src/commands/timetree/resolve_polytomies.rs)
+- [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs)
 - Deterministic output
 - No stochastic sampling
 - No topology uncertainty quantification
@@ -81,6 +81,10 @@ v1 uses greedy pairwise merging with Brent optimization:
 - Users needing topology uncertainty from polytomy resolution must use v0
 - Greedy resolution produces a single "best" topology without confidence measure
 - For trees with many polytomies, the deterministic choice may bias downstream analysis
+
+## Algorithm detail
+
+See [Stochastic Polytomy Resolution](../port-algo-inventory/unimplemented.md#stochastic-polytomy-resolution) for the full v0 algorithm walkthrough.
 
 ## References
 

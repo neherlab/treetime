@@ -239,7 +239,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Per-pair Brent optimization for merge time
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
-- [x] `--keep-polytomies` (disable resolution)
+- [/] `--keep-polytomies` (parsed but never read - [known issue](../port-known-issues/N-timetree-dead-cli-flags.md))
 - [ ] Stochastic resolution (`--stochastic-resolve` in v0 - [known issue](../port-known-issues/N-timetree-stochastic-polytomy-unimplemented.md))
 
 ### Relaxed Clock
@@ -250,6 +250,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Slack parameter (rate deviation penalty)
 - [x] Skip relaxed clock when total partition length is zero
 - [x] Use first two values as slack and coupling, with defaults when omitted
+- [/] `--relax` argument parsing broken ([known issue](../port-known-issues/M-timetree-relax-arg-parsing.md))
 - [ ] Substitution rates output (`substitution_rates.tsv` in v0)
 
 ### Refinement Iteration Loop
@@ -277,8 +278,12 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 ### Confidence Intervals
 
 - [x] 95% from marginal posteriors
-- [ ] Rate susceptibility analysis (TODO in code)
+- [x] `combine_confidence()` quadrature sum (implemented but unused, pending rate susceptibility)
+- [x] `Distribution::quantile()` inverse CDF
+- [ ] Rate susceptibility analysis (`compute_rate_susceptibility()` is `todo!()` - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
+- [ ] `date_uncertainty_due_to_rate()` (not ported)
 - [ ] `--vary-rate` sensitivity (parsed, returns explicit error - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
+- [ ] `--confidence` promotion of `time_marginal` ([known issue](../port-known-issues/M-timetree-confidence-flag-ignored.md))
 
 ### Output
 
@@ -286,6 +291,8 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Timetree Nexus
 - [x] Clock model JSON with `timetree.*` basename
 - [x] Confidence TSV
+- [ ] Node dates TSV (`write_node_dates()` is `todo!()` - [known issue](../port-known-issues/N-timetree-node-dates-output-unimplemented.md))
+- [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
 - [ ] Auspice JSON (v0 writes `auspice_tree.json`)
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)

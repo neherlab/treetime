@@ -90,3 +90,9 @@ exactly.
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)           |
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                              |
 | Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                 |
+
+## Cross-references
+
+- [Unimplemented algorithms](../port-algo-inventory/unimplemented.md) - v0 algorithm details for unported features
+- [Feature inventory](../port-feature-inventory/_index.md) - v0/v1 feature parity tracking
+- [Proposals](../port-proposals/_index.md) - new v1 features (not v0 ports)

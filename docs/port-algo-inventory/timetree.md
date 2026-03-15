@@ -169,14 +169,20 @@ Alternates sequence reconstruction (E-step) and time inference (M-step).
 
 | Property    | Value                                                                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Well-known (quantile-based)                                                                                                          |
+| Type        | Well-known (quantile-based + sensitivity analysis)                                                                                   |
 | v1 Location | [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs) |
+| Reference   | Sagulenko et al. (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.5                                                       |
 
-Extracts 95% confidence intervals from marginal posterior time distributions.
+Node date uncertainty has two independent sources (Sagulenko et al. 2018):
+
+1. **Mutation stochasticity**: Poisson substitution accumulation creates branch length uncertainty. The marginal posterior from the backward/forward belief propagation pass captures this. Nodes constrained by many descendant dates have narrow posteriors.
+2. **Clock rate uncertainty**: The clock rate slope estimate has a standard error from the regression Hessian inverse. All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity.
+
+v1 implements source (1) completely. Source (2) is a stub. The combination formula uses quadrature sum (independence assumption): `lower = d - hypot(d - l_mut, d - l_rate)`.
 
 - `extract_confidence_intervals()` (`#extract_confidence_intervals`) [packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71](../../packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71): computes 95% CI for each node using quantiles at 0.025 and 0.975. Delta distributions yield identity interval `[date, date]`.
-- `combine_confidence()` (`#combine_confidence`) [packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105](../../packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105): combines independent CI contributions via quadrature sum
-- `compute_rate_susceptibility()` (`#compute_rate_susceptibility`) [packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40](../../packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40): stub for clock rate uncertainty propagation
+- `combine_confidence()` (`#combine_confidence`) [packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105](../../packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105): combines independent CI contributions via quadrature sum. Implemented but unused (pending rate susceptibility).
+- `compute_rate_susceptibility()` (`#compute_rate_susceptibility`) [packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40](../../packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40): `todo!()` stub. See [unimplemented algorithm](unimplemented.md#rate-susceptibility-analysis) and [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md).
 
 ---
 

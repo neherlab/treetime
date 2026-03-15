@@ -91,7 +91,14 @@ Sagulenko, P., Puller, V., & Neher, R.A. (2018). "TreeTime: Maximum-likelihood p
 
 - Kingman (1982). "The coalescent." Stochastic Processes and Applications, 13(3):235-248
 - Strimmer & Pybus (2001). Mol Biol Evol 18(12):2298-2305
+- Drummond et al. (2005). "Bayesian coalescent inference." Mol Biol Evol 22(5):1185-1192
 - Minin et al. (2008). Mol Biol Evol 25(7):1459-1471
+
+### Relaxed Clock
+
+- Thorne, Kishino & Painter (1998). "Estimating the rate of evolution of the rate of molecular evolution." Mol Biol Evol 15(12):1647-1657
+- Drummond et al. (2006). "Relaxed phylogenetics and dating with confidence." PLOS Biology 4(5):e88
+- Lepage et al. (2007). "A general comparison of relaxed molecular clock models." Mol Biol Evol 24(12):2669-2680
 
 ### Numerical Methods
 

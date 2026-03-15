@@ -7,7 +7,7 @@ is gated solely on `time_marginal == OnlyFinal`.
 ## Root cause
 
 `args.confidence` is declared in
-[`args.rs`](../../packages/treetime/src/commands/timetree/args.rs) but never
+[`packages/treetime/src/commands/timetree/args.rs`](../../packages/treetime/src/commands/timetree/args.rs) but never
 read anywhere in the timetree pipeline. The CI output is gated on:
 
 ```rust
@@ -16,11 +16,11 @@ if args.time_marginal == TimeMarginalMode::OnlyFinal {
 }
 ```
 
-at [`run.rs#L227`](../../packages/treetime/src/commands/timetree/run.rs#L227).
+at [`packages/treetime/src/commands/timetree/run.rs#L227`](../../packages/treetime/src/commands/timetree/run.rs#L227).
 
 v0 promotes `time_marginal='never'` to `'confidence-only'` (equivalent to
 `only-final`) when `--confidence` is set, at
-[`wrappers.py#L492`](../../packages/legacy/treetime/treetime/wrappers.py#L492):
+[`packages/legacy/treetime/treetime/wrappers.py#L492`](../../packages/legacy/treetime/treetime/wrappers.py#L492):
 
 ```python
 time_marginal='confidence-only' if (calc_confidence and time_marginal == 'never') else time_marginal,
@@ -43,6 +43,15 @@ this validation rather than silently ignoring both flags.
 ls tmp/repro-confidence/confidence_intervals.tsv
 # Not found (should exist)
 ```
+
+## v0 gating detail
+
+In v0, `--confidence` alone is necessary but not sufficient. The full pipeline
+requires EITHER `--confidence --covariation` (auto-derives `rate_std` from
+phylogenetic regression) OR `--confidence --clock-std-dev <value>` (user-specified).
+Without either, v0 sets `calc_confidence=False` and prints a warning
+([`packages/legacy/treetime/treetime/wrappers.py#L456-L467`](../../packages/legacy/treetime/treetime/wrappers.py#L456-L467)).
+v1 should replicate this validation.
 
 ## Related issues
 

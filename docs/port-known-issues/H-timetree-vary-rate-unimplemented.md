@@ -7,10 +7,9 @@ yet implemented".
 ## Location
 
 - Panic:
-  [`run.rs#L224`](../../packages/treetime/src/commands/timetree/run.rs#L224)
-- Dead stub:
-  [`confidence.rs#L34`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L34)
-  `compute_rate_susceptibility()`
+  [`packages/treetime/src/commands/timetree/run.rs#L224`](../../packages/treetime/src/commands/timetree/run.rs#L224)
+- Dead stub: `compute_rate_susceptibility()` (`#compute_rate_susceptibility`)
+  [`packages/treetime/src/commands/timetree/output/confidence.rs#L34`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L34)
 
 ## Implementation pieces
 
@@ -22,7 +21,7 @@ Existing infrastructure that a future implementation can use:
 
 Missing: `compute_rate_susceptibility()` which requires running `run_timetree()`
 three times with upper/lower/central rates, and storing per-node date samples for
-CI calculation.
+CI calculation. See [Rate Susceptibility Analysis](../port-algo-inventory/unimplemented.md#rate-susceptibility-analysis) for the full v0 algorithm.
 
 ## Repro
 
