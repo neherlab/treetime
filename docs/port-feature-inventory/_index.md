@@ -8,8 +8,10 @@
 
 ## Legend
 
+Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Started/Statuses):
+
 - `[x]` implemented in v1 with v0 parity (or v1-only feature)
-- `[~]` partial implementation, stubbed, or only partly wired
+- `[/]` partial implementation, stubbed, or only partly wired
 - `[ ]` missing, parsed but not wired, or documented but unimplemented
 
 ## Command Map
@@ -68,7 +70,7 @@
 
 - [x] GTR inference from data (sparse and dense paths)
 - [x] Uninformative root state filtering in dense path ([intentional change](../port-intentional-changes/gtr-uninformative-root-state-filtering.md))
-- [~] GTR bootstrapped through temporary JC69 model before replacement
+- [/] GTR bootstrapped through temporary JC69 model before replacement
 - [ ] Iterative GTR inference (`infer_gtr_iterative()` in v0)
 
 ### CLI Options
@@ -100,7 +102,7 @@
   - [x] Uses `--sequence-length`
   - [x] Uses `--tip-slack` or default `3.0`
   - [x] Builds custom variance parameters
-  - [~] Missing `--sequence-length` does not raise explicit error
+  - [/] Missing `--sequence-length` does not raise explicit error
 
 ### Rerooting
 
@@ -195,7 +197,7 @@
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
   - [x] Sparse marginal partition branch (compresses sequences first)
-  - [~] GTR hardcoded to JC69 for timetree command
+  - [/] GTR hardcoded to JC69 for timetree command
 - [ ] `joint` (v0 supports joint optimization)
 
 ### Time Marginal Modes
@@ -207,7 +209,7 @@
   - [x] Final marginal update when partitions exist
   - [x] Confidence interval extraction from node time distributions
   - [x] Confidence TSV output
-- [~] `never` and `always` parsed as separate enum values but only `only-final` has distinct behavior
+- [/] `never` and `always` parsed as separate enum values but only `only-final` has distinct behavior
 - [ ] `confidence-only` (v0 variant)
 
 ### Coalescent Models
@@ -215,7 +217,7 @@
 - [x] Constant Tc (fixed from CLI `--coalescent`)
 - [x] Optimized Tc (`--coalescent-opt`, Brent's method, log-space bracket [-20, 2])
   - [x] Re-optimizes constant Tc inside loop for iterations i >= 2
-  - [~] No special pre-loop setup unless skyline also active
+  - [/] No special pre-loop setup unless skyline also active
 - [x] Skyline (`--coalescent-skyline`, Nelder-Mead, piecewise linear Tc(t))
   - [x] Pre-loop constant Tc optimization
   - [x] Warning fallback to Tc = 1.0 on failure or non-convergence
@@ -405,8 +407,8 @@
 
 ### Current Limitations
 
-- [~] Command always builds one sparse and one dense partition from the same full alignment
-- [~] GTR hardcoded to JC69
+- [/] Command always builds one sparse and one dense partition from the same full alignment
+- [/] GTR hardcoded to JC69
 - [ ] Separate dense-only and sparse-only command modes not exposed
 - [ ] `--model` (parsed but not wired)
 - [ ] `--dense` (parsed but not wired)
