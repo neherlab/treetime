@@ -597,8 +597,8 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] ISO format (YYYY-MM-DD)
 - [x] Date ranges ([2013.2:2013.7])
 - [x] Custom name/date column selection
-- [ ] Imprecise dates (YYYY-XX-XX)
-- [ ] Auto-detect column names (v0 tries `name`, `strain`, `accession`)
+- [x] Imprecise dates (YYYY-XX-XX) ([known issue: upper bound not capped](../port-known-issues/N-dates-imprecise-upper-bound-not-capped.md))
+- [/] Auto-detect column names ([known issue: detection gaps](../port-known-issues/M-dates-column-auto-detection-gaps.md))
 
 ## Statistics
 
@@ -619,7 +619,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 | primitives     | 7           | 7              | 0          | 0       |
 | io-input       | 11          | 9              | 2          | 0       |
 | io-output      | 13          | 6              | 7          | 4       |
-| dates          | 5           | 3              | 2          | 0       |
+| dates          | 5           | 4              | 1          | 0       |
 
 ## Cross-Command Notes
 
