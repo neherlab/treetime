@@ -381,37 +381,83 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [ ] Per-tree timetree inference
 - [ ] Combined ARG output
 
-## 7. Branch Length Optimization (v1-Only Command)
+## 7. Branch Length Optimization
 
-- [x] **Optimize command** (no v0 standalone equivalent)
-- [x] Tree input from `--tree`
-- [x] Alignment input from `--aln`
-- [x] Mixed dense and sparse partition setup
-- [x] Initial branch-length guess from observed differences
+v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and
+`optimize_tree_marginal()` perform branch length optimization inline during
+timetree and ancestral workflows. v1 extracts this into a standalone `optimize`
+command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
+
+### Standalone Command (v1-only)
+
+- [x] `optimize` command with `--tree`, `--aln`, `--outdir`
+- [x] Mixed dense and sparse partition setup (one of each, from same alignment)
+- [/] Initial branch-length guess from observed mutation counts (does not exclude gaps, see [known issue](../port-known-issues/M-optimize-initial-guess-ignores-gaps.md))
 - [x] Output annotated Newick and Nexus trees
+- [x] GTR parameters written to JSON
 
-### Per-Edge Optimization
+### Per-Edge Likelihood (v0 parity via different method)
 
-- [x] Collect dense contribution
-- [x] Collect sparse contribution
-- [x] Newton's method (when second derivative < 0)
-- [x] Grid search fallback (when Newton unavailable)
-- [x] Zero branch length optimum short-circuit
-- [x] Clamp Newton step to avoid overshoot
-- [x] Coefficient extraction (dense: eigenvector products, sparse: variable position collection)
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with
+Hamming distance bracket. v1 uses Newton's method with analytical derivatives
+in t-space, falling back to grid search. Both use eigendecomposition-based
+likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
-### Convergence
+- [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
+- [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
+- [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`)
+- [x] Grid search fallback when second derivative >= 0 (100 points, linear grid)
+- [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
+- [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
+- [x] Collect dense contribution (`PartitionMarginalDense`)
+- [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
+- [x] Unified mixed-partition evaluation (`evaluate_mixed()` sums metrics across partition types)
+- [ ] sqrt(t) reparameterization (v0 optimizes in s=sqrt(t) space for better conditioning near zero)
+- [ ] Regularization penalty for profile-based optimization (v0: `exp(t^4/10000)` prevents unbounded growth)
+- [ ] Hamming distance fallback when optimization fails (v0 falls back to observed distance)
 
-- [x] Iterative likelihood loop bounded by `--max-iter`
+### Convergence Loop
+
+- [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
+- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75, see [known issue](../port-known-issues/M-optimize-oscillation-no-damping.md))
+- [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
+- [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
+- [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)
+
+### GTR Integration
+
+- [/] GTR hardcoded to JC69 (see [known issue](../port-known-issues/M-optimize-gtr-hardcoded-jc69.md))
+- [ ] `--model` (parsed but not wired, model dispatch infrastructure exists in `get_gtr_by_name()`)
+- [ ] GTR inference integrated into optimization loop (v0: `infer_gtr` parameter re-estimates model per iteration)
+- [ ] GTR rate optimization (v0: `optimize_gtr_rate()` optimizes overall substitution rate mu)
+
+### Reuse by Timetree
+
+- [x] `PartitionOptimizeOps` trait implemented by both dense and sparse partitions
+- [x] `collect_edge_contributions()` gathers contributions for one edge across partition types
+- [x] `compute_branch_length_distribution()` evaluates log-likelihood on grid, converts to time-domain distribution
+- [x] `evaluate_mixed_log_lh_only()` for grid evaluation without derivatives
+
+### Branch Length Modes (v0 has 3 modes, v1 implements marginal only)
+
+- [x] Marginal mode (profile-based optimization with full probability vectors)
+- [ ] Joint mode (removed in v1, see [intentional change](../port-intentional-changes/ancestral-joint-reconstruction-removed.md))
+- [ ] Input mode (no optimization, Poisson/Gaussian approximation for short/long branches)
+- [ ] Auto-detection of branch length mode (v0: defaults to `input` if max branch > 0.1, else `joint`)
+
+### Short Branch Handling
+
+- [x] Zero-branch-length derivative check before optimization
+- [ ] Short branch pruning after optimization (v0 joint mode: inside loop; v0 marginal mode: after loop; prunes when `bl < 0.1 * one_mutation` and P(zero) > 0.1)
+- [ ] MIN_BRANCH_LENGTH floor for GTR calculations (v0: `1e-3 * one_mutation`)
 
 ### Current Limitations
 
 - [/] Command always builds one sparse and one dense partition from the same full alignment
-- [/] GTR hardcoded to JC69
+- [ ] `--dense` (parsed but not wired, `infer_dense()` is a stub returning false)
 - [ ] Separate dense-only and sparse-only command modes not exposed
-- [ ] `--model` (parsed but not wired)
-- [ ] `--dense` (parsed but not wired)
+- [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency (see [known issue](../port-known-issues/N-optimize-sparse-zero-branch-no-derivative.md))
 
 ## 8. Pruning (v1-Only Command)
 

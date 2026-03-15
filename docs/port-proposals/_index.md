@@ -6,6 +6,7 @@ These documents are the proposal-stage analogue of [`docs/port-intentional-chang
 
 ## Summary
 
-| Domain    | Proposal                                                                                                                     | Motivation                                                |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Domain    | Proposal                                                                                                                                                         | Motivation                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Ancestral | [Iterative outer GTR refinement for ancestral reconstruction](ancestral-iterative-gtr-refinement.md#iterative-outer-gtr-refinement-for-ancestral-reconstruction) | Improve latent-state and model co-estimation when `--model infer` |
+| Optimize  | [Reliable convergence and method choice](optimize-convergence-and-method-choice.md#reliable-convergence-and-method-choice-for-branch-length-optimization)        | Damping, GTR wiring, gap-aware init, Brent alternative            |
