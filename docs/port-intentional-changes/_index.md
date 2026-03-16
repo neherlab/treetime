@@ -16,3 +16,5 @@ Distinct from [known issues](../port-known-issues/_index.md) (unintentional diff
 | Structure  | [Graph-based tree structure](tree-structure-graph-based.md#graph-based-tree-structure)                                                                   | Tree storage, traversal, data access |
 | Optimize   | [Newton-Raphson per-edge instead of Brent](optimize-newton-raphson-per-edge.md#per-edge-branch-length-optimization-uses-newton-raphson-instead-of-brent) | Per-branch convergence speed         |
 | Structure  | [Partition system architecture](partition-system-architecture.md#partition-system-architecture)                                                          | Code organization, extensibility     |
+| Commands   | [Standalone branch length optimization command](command-optimize-standalone.md#standalone-branch-length-optimization-command)                            | New `optimize` subcommand            |
+| Commands   | [Standalone tree pruning command](command-prune-standalone.md#standalone-tree-pruning-command)                                                           | New `prune` subcommand               |
