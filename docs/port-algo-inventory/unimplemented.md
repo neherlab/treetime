@@ -8,15 +8,12 @@ Algorithms present in v0 Python that have not been ported to v1 Rust. Full detai
 
 ## Joint ML
 
-| Property    | Value                                                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Well-known (Viterbi-like)                                                                                                                                                                                          |
-| v0 Location | [`packages/legacy/treetime/treetime/treeanc.py#L934-L1084`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1084)                                                                                         |
-| Functions   | `_ml_anc_joint()` (`#_ml_anc_joint`)                                                                                                                                                                               |
-| v1 Status   | Declared in `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L194`](../../packages/treetime/src/commands/ancestral/run.rs#L194) |
-| Reference   | Pupko et al. (2000). "A fast algorithm for joint reconstruction." Mol Biol Evol, 17(6):890-896                                                                                                                     |
+Joint maximum likelihood reconstruction finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently (Pupko, Pe'er, Shamir & Graur 2000). Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
 
-**Algorithm**:
+v0: `_ml_anc_joint()` (`#_ml_anc_joint`) in [`packages/legacy/treetime/treetime/treeanc.py#L934-L1084`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1084).
+v1: declared as `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L194`](../../packages/treetime/src/commands/ancestral/run.rs#L194). Intentionally removed - see [intentional change](../port-intentional-changes/ancestral-joint-reconstruction-removed.md).
+
+### Algorithm
 
 Backward pass (lines 960-1014):
 
@@ -34,59 +31,39 @@ Forward pass (lines 1043-1063):
 
 - `node.seq_idx = choose(parent.seq_idx, node.joint_Cx.T)` - traceback via argmax pointers
 
-**Difference from marginal**: Uses argmax (traceback pointers) instead of sum (marginalization). Produces single most likely reconstruction rather than posterior distribution.
+Reference: Pupko, Pe'er, Shamir & Graur (2000). "A fast algorithm for joint reconstruction of ancestral amino acid sequences." Mol Biol Evol, 17(6):890-896. doi:10.1093/oxfordjournals.molbev.a026369
 
 ---
 
 ## Local Outlier Filter
 
-| Property    | Value                                                                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Custom (TreeTime-specific)                                                                                                                                                     |
-| v0 Location | [`packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219`](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219)                               |
-| Functions   | `local_filter()` (`#local_filter`), `calculate_node_timings()` (`#calculate_node_timings`), `collect_node_info()` (`#collect_node_info`), `flag_outliers()` (`#flag_outliers`) |
-| v1 Status   | Not ported                                                                                                                                                                     |
+A TreeTime-specific outlier detection method that uses local parent-child timing relationships rather than global IQD-based detection. Identifies outliers by comparing each leaf's sampling date against the time implied by its local tree neighborhood, providing more sensitive detection than the global IQD method when only a few branches are anomalous.
 
-**Algorithm**:
+v0: `local_filter()` (`#local_filter`), `calculate_node_timings()` (`#calculate_node_timings`), `collect_node_info()` (`#collect_node_info`), `flag_outliers()` (`#flag_outliers`) in [`packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219`](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L43-L219).
+v1: not ported. v1 only has the global IQD-based filter.
 
-1. `collect_node_info()` (lines 159-219): For each leaf, computes:
-   - Expected time from tree structure
-   - Actual sampling date
-   - Z-score of deviation
+### Algorithm
 
-2. `calculate_node_timings()` (lines 108-156): Estimates internal node times using a Bayesian-like scheme:
-   - Prior from parent: `t_parent + branch_length / clock_rate`
-   - Likelihood from children: weighted average of child-implied times
-   - Posterior: precision-weighted combination
+1. `collect_node_info()` (lines 159-219): For each leaf, computes expected time from tree structure, actual sampling date, and z-score of deviation.
 
-3. `flag_outliers()` (lines 71-105): Categorizes outliers:
-   - `date_too_early`: sampling date before expected time
-   - `excess_mutations`: too many mutations for the time interval
-   - `date_too_late`: sampling date after expected time
+2. `calculate_node_timings()` (lines 108-156): Estimates internal node times using a Bayesian-like scheme: prior from parent (`t_parent + branch_length / clock_rate`), likelihood from children (weighted average of child-implied times), posterior as precision-weighted combination.
 
-**v0 vs v1**: v1 only has global IQD-based filter; v0 also uses local parent-child timing relationships for more sensitive outlier detection.
+3. `flag_outliers()` (lines 71-105): Categorizes outliers by type: `date_too_early` (sampling date before expected time), `excess_mutations` (too many mutations for the time interval), `date_too_late` (sampling date after expected time).
 
 ---
 
 ## Full Covariance Matrix
 
-| Property    | Value                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Standard linear algebra                                                                                                                |
-| v0 Location | [`packages/legacy/treetime/treetime/treeregression.py#L125-L155`](../../packages/legacy/treetime/treetime/treeregression.py#L125-L155) |
-| Functions   | `Cov()` (`#Cov`), `CovInv()` (`#CovInv`), `recurse()` (`#recurse`)                                                                     |
-| v1 Status   | Not needed - sufficient statistics approach avoids materializing full matrix                                                           |
+Computes the N x N tip covariance matrix for phylogenetic GLS regression, where `M[i,j]` equals the sum of shared branch variances for tips i and j. v1's `ClockSet` achieves equivalent regression results via sufficient statistics propagation in O(N) without materializing the O(N^2) matrix. The full matrix computation exists in v0 for the `--covariation` mode and for producing `valid_confidence=True` (required by rate susceptibility analysis).
 
-**Algorithm**:
+v0: `Cov()` (`#Cov`), `CovInv()` (`#CovInv`), `recurse()` (`#recurse`) in [`packages/legacy/treetime/treetime/treeregression.py#L125-L155`](../../packages/legacy/treetime/treetime/treeregression.py#L125-L155).
+v1: not needed for basic regression (sufficient statistics approach), but missing for covariation-aware confidence estimation.
 
-`Cov()`: Computes N x N tip covariance matrix where `M[i,j]` = sum of shared branch variances for tips i and j. Uses recursive tree traversal to accumulate shared ancestry.
+### Algorithm
 
-`CovInv()`: Computes inverse via Schur complement recursion:
+`Cov()`: Recursive tree traversal accumulating shared ancestry to build the N x N matrix.
 
-- For a 2x2 block `[[A, B], [C, D]]`, inverse is computed from `A^{-1}` and Schur complement `D - C*A^{-1}*B`
-- Recursively applied down the tree
-
-**Note**: v1's `ClockSet` achieves equivalent results via sufficient statistics propagation in O(N) without materializing the O(N^2) covariance matrix.
+`CovInv()`: Computes inverse via Schur complement recursion. For a 2x2 block `[[A, B], [C, D]]`, the inverse uses `A^{-1}` and the Schur complement `D - C*A^{-1}*B`. Applied recursively down the tree for O(N) computation rather than O(N^3) dense inversion.
 
 ---
 
@@ -100,7 +77,7 @@ Known issue: [--vary-rate panics with todo!()](../port-known-issues/H-timetree-v
 
 **Background**: Node date uncertainty has two independent sources (Sagulenko et al. 2018). The marginal posterior from the backward/forward pass captures mutation stochasticity (source 1, implemented in v1). Clock rate uncertainty (source 2) propagates to all node dates because times scale inversely with rate. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth, while recent tips barely move. v0 combines both sources via quadrature sum, treating them as independent Gaussian-like contributions.
 
-**Algorithm** (`calc_rate_susceptibility()`, [packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066)):
+### `calc_rate_susceptibility()` ([packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066))
 
 1. Extract `rate_std = sqrt(clock_model.cov[0,0])`. Requires either `--clock-std-dev` from the user or `valid_confidence=True` from covariation-aware regression (`--covariation` flag). Rejects negative clock rate.
 2. Compute `upper = rate + rate_std`, `lower = max(0.1 * rate, rate - rate_std)`
@@ -110,7 +87,7 @@ Known issue: [--vary-rate panics with todo!()](../port-known-issues/H-timetree-v
 6. Restore original gammas, run at central rate, store `(current_rate, numdate)`
 7. Sort per-node triples by date: `[lower_date, central_date, upper_date]`
 
-**Algorithm** (`date_uncertainty_due_to_rate()`, [packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088](../../packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088)):
+### `date_uncertainty_due_to_rate()` ([packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088](../../packages/legacy/treetime/treetime/clock_tree.py#L1068-L1088))
 
 Converts per-node `[lower, central, upper]` date triples into a Gaussian CI using `scipy.special.erfinv`:
 
@@ -119,7 +96,7 @@ nsig = [sqrt(2) * erfinv(-1 + 2*p) for p in interval]
 rate_ci = [central + nsig[i] * |boundary[i] - central|]
 ```
 
-**Algorithm** (`combine_confidence()`, [packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101](../../packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101)):
+### `combine_confidence()` ([packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101](../../packages/legacy/treetime/treetime/clock_tree.py#L1090-L1101))
 
 Quadrature sum of independent CI contributions:
 
@@ -130,24 +107,28 @@ upper = center + sqrt((c1_upper - center)^2 + (c2_upper - center)^2)
 
 Clipped to physical limits `[min_date, max_date]`.
 
-**v0 gating**: `--confidence` alone is not sufficient. The full confidence pipeline requires EITHER `--confidence --covariation` (regression with phylogenetic covariance, auto-derives rate_std) OR `--confidence --clock-std-dev <value>` (user-specified). Without either, v0 prints a warning and disables confidence. See [--confidence flag ignored](../port-known-issues/M-timetree-confidence-flag-ignored.md).
+### v0 gating
 
-**v0 CI method**: v0's `dates.tsv` uses `get_max_posterior_region()` (`#get_max_posterior_region`) ([packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230](../../packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230)), which finds the narrowest 90% highest posterior density (HPD) region around the posterior peak. v1's existing `extract_confidence_intervals()` uses `quantile(0.025, 0.975)` for an equal-tailed 95% CI. HPD regions are narrower for skewed distributions. The porting decision should clarify which approach to use.
+`--confidence` alone is not sufficient. The full confidence pipeline requires EITHER `--confidence --covariation` (regression with phylogenetic covariance, auto-derives rate_std) OR `--confidence --clock-std-dev <value>` (user-specified). Without either, v0 prints a warning and disables confidence. See [--confidence flag ignored](../port-known-issues/M-timetree-confidence-flag-ignored.md).
 
-**v1 existing infrastructure**: `combine_confidence()` (ported, unused), `Distribution::quantile()` (implemented), `ClockModel::cov()` (implemented), `EdgeTimetree.gamma` (implemented). Missing: `compute_rate_susceptibility()` body, `date_uncertainty_due_to_rate()`, per-node storage for rate-variation dates (`NodeTimetree` has no `rate_variation_dates` field).
+### v0 CI method
+
+v0's `dates.tsv` uses `get_max_posterior_region()` (`#get_max_posterior_region`) ([packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230](../../packages/legacy/treetime/treetime/clock_tree.py#L1146-L1230)), which finds the narrowest 90% highest posterior density (HPD) region around the posterior peak. v1's existing `extract_confidence_intervals()` uses `quantile(0.025, 0.975)` for an equal-tailed 95% CI. HPD regions are narrower for skewed distributions. The porting decision should clarify which approach to use.
+
+### v1 existing infrastructure
+
+`combine_confidence()` (ported, unused), `Distribution::quantile()` (implemented), `ClockModel::cov()` (implemented), `EdgeTimetree.gamma` (implemented). Missing: `compute_rate_susceptibility()` body, `date_uncertainty_due_to_rate()`, per-node storage for rate-variation dates (`NodeTimetree` has no `rate_variation_dates` field).
 
 ---
 
 ## Numerical Hessian for Root Position
 
-| Property    | Value                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Numerical differentiation                                                                                                              |
-| v0 Location | [`packages/legacy/treetime/treetime/treeregression.py#L355-L382`](../../packages/legacy/treetime/treetime/treeregression.py#L355-L382) |
-| Functions   | Within `find_best_root()` (`#find_best_root`)                                                                                          |
-| v1 Status   | Not ported - v1 Hessian is 2x2 (rate, intercept) only                                                                                  |
+Augments the 2x2 Hessian (rate, intercept) with a third parameter (root position) via finite differences, enabling root position uncertainty quantification.
 
-**Algorithm**:
+v0: within `find_best_root()` (`#find_best_root`) in [`packages/legacy/treetime/treetime/treeregression.py#L355-L382`](../../packages/legacy/treetime/treetime/treeregression.py#L355-L382).
+v1: not ported. v1 Hessian is 2x2 (rate, intercept) only.
+
+### Algorithm
 
 After finding optimal root position `x*`:
 
@@ -163,31 +144,16 @@ After finding optimal root position `x*`:
 
 ## Site-Specific GTR
 
-| Property    | Value                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Extension of GTR                                                                                                                         |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495) |
-| Class       | `GTR_site_specific(GTR)` (`#GTR_site_specific`)                                                                                          |
-| v1 Status   | `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation                                              |
+Extension of GTR where equilibrium frequencies and rates vary per alignment site. Standard GTR uses a single `Pi[n_states]` vector and scalar `mu`; site-specific GTR extends to `Pi[n_states, seq_len]` and `mu[seq_len]`.
 
-**Algorithm**:
+v0: `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495).
+v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation.
 
-Standard GTR has:
-
-- `Pi[n_states]`: equilibrium frequencies (single vector)
-- `W[n_states, n_states]`: exchangeability matrix
-- `mu`: scalar rate
-
-Site-specific GTR extends to:
-
-- `Pi[n_states, seq_len]`: per-site equilibrium frequencies
-- `mu[seq_len]`: per-site rates
-
-Key methods:
+### Key methods
 
 `_make_expQt_interpolator()` (`#_make_expQt_interpolator`) (lines 331-348): Pre-computes exp(Qt) on a grid of t values, then uses linear interpolation. Avoids repeated eigendecomposition during tree traversal.
 
-`infer()` (`#infer`) (lines 208-311): Site-specific inference accumulates:
+`infer()` (`#infer`) (lines 208-311): Site-specific inference accumulates per-site statistics:
 
 - `n_ija[site, state_i, state_j]`: transition counts per site
 - `T_ia[site, state_i]`: total time in state i per site
@@ -203,9 +169,11 @@ v1: not ported - v1 has greedy deterministic approach only.
 Known issue: [Stochastic polytomy resolution not implemented](../port-known-issues/N-timetree-stochastic-polytomy-unimplemented.md).
 CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
-**Background**: The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (Sagulenko et al. 2018, Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+### Background
 
-**Algorithm** (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011)):
+The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (Sagulenko et al. 2018, Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+
+### Algorithm (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011))
 
 The function models polytomy resolution as a joint mutation-coalescence process within the time window between the polytomy node and its children:
 
@@ -222,150 +190,106 @@ The function models polytomy resolution as a joint mutation-coalescence process 
    - **Coalescent event**: pick two ready branches uniformly (`self.rng.choice`), create new internal node at current time, reparent them, build `BranchLenInterpolator` for the new node
 5. Remaining branches become direct children of the parent
 
-**RNG**: Uses `self.rng` (`numpy.random.default_rng(seed=rng_seed)`) from `TreeAnc.__init__()` ([packages/legacy/treetime/treetime/treeanc.py#L163](../../packages/legacy/treetime/treetime/treeanc.py#L163)). CLI flag is `--rng-seed` (v0), `--seed` (v1). Without a seed, results are non-deterministic.
+### RNG
 
-**Dispatch**: `resolve_polytomies(stochastic_resolve=True)` ([packages/legacy/treetime/treetime/treetime.py#L694](../../packages/legacy/treetime/treetime/treetime.py#L694)) calls `generate_subtree(n)` for each polytomy. `resolve_polytomies(stochastic_resolve=False)` calls `_poly(n)` (greedy).
+Uses `self.rng` (`numpy.random.default_rng(seed=rng_seed)`) from `TreeAnc.__init__()` ([packages/legacy/treetime/treetime/treeanc.py#L163](../../packages/legacy/treetime/treetime/treeanc.py#L163)). CLI flag is `--rng-seed` (v0), `--seed` (v1). Without a seed, results are non-deterministic.
+
+### Dispatch
+
+`resolve_polytomies(stochastic_resolve=True)` ([packages/legacy/treetime/treetime/treetime.py#L694](../../packages/legacy/treetime/treetime/treetime.py#L694)) calls `generate_subtree(n)` for each polytomy. `resolve_polytomies(stochastic_resolve=False)` calls `_poly(n)` (greedy).
 
 ---
 
 ## FFT Convolution with Delta Approximation
 
-| Property    | Value                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Well-known (FFT) + domain heuristic                                                                                                          |
-| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L161-L267`](../../packages/legacy/treetime/treetime/node_interpolator.py#L161-L267) |
-| Functions   | `NodeInterpolator.convolve_fft()` (`#NodeInterpolator`, `#convolve_fft`)                                                                     |
-| v1 Status   | v1 has FFT in treetime-ops but not the delta approximation or tail extrapolation                                                             |
+v0's FFT convolution with two domain-specific optimizations: delta function approximation for narrow distributions (skips FFT entirely) and linear tail extrapolation beyond the FFT valid region.
 
-**Algorithm**:
+v0: `NodeInterpolator.convolve_fft()` (`#NodeInterpolator`, `#convolve_fft`) in [`packages/legacy/treetime/treetime/node_interpolator.py#L161-L267`](../../packages/legacy/treetime/treetime/node_interpolator.py#L161-L267).
+v1: has FFT in treetime-ops but not the delta approximation or tail extrapolation.
+
+### Algorithm
 
 1. Determine grid spacing from `min(FWHM_node, FWHM_branch) / FFT_FWHM_GRID_SIZE`
-
-2. Delta approximation (lines 185-200): If node distribution is much narrower than branch distribution (ratio < 1/fft_grid_size), treat node as delta function:
-   - Skip FFT entirely
-   - Just shift branch distribution by node peak location
-
-3. FFT path (lines 202-240):
-   - Evaluate both distributions in plain probability space
-   - Zero-pad to `2 * raw_len` to prevent circular convolution
-   - `fft_result = IFFT(FFT(branch) * FFT(node))`
-   - Convert to neg-log: `res = -ln(fft_result) + peak_branch + peak_node - ln(dt)`
-
-4. Tail extrapolation (lines 242-260): Linearly extrapolate distribution tails beyond FFT valid region to maintain proper asymptotic behavior
+2. **Delta approximation** (lines 185-200): If node distribution is much narrower than branch distribution (ratio < 1/fft_grid_size), skip FFT and shift branch distribution by node peak location.
+3. **FFT path** (lines 202-240): Evaluate both distributions in plain probability space, zero-pad to `2 * raw_len` to prevent circular convolution, compute `IFFT(FFT(branch) * FFT(node))`, convert to neg-log: `res = -ln(fft_result) + peak_branch + peak_node - ln(dt)`.
+4. **Tail extrapolation** (lines 242-260): Linearly extrapolate distribution tails beyond FFT valid region to maintain proper asymptotic behavior.
 
 ---
 
 ## Adaptive Simpson's Rule Convolution
 
-| Property    | Value                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Well-known (adaptive quadrature)                                                                                                             |
-| v0 Location | [`packages/legacy/treetime/treetime/node_interpolator.py#L268-L409`](../../packages/legacy/treetime/treetime/node_interpolator.py#L268-L409) |
-| Functions   | `NodeInterpolator.convolve()` (`#NodeInterpolator`, `#convolve`), `_evaluate_convolution()` (`#_evaluate_convolution`)                       |
-| v1 Status   | Not ported - v1 uses grid-based Riemann sum                                                                                                  |
+Non-uniform-grid convolution using adaptive quadrature. More accurate than FFT for irregular distributions (long tails, multiple modes) but slower.
 
-**Algorithm**:
+v0: `NodeInterpolator.convolve()` (`#NodeInterpolator`, `#convolve`), `_evaluate_convolution()` (`#_evaluate_convolution`) in [`packages/legacy/treetime/treetime/node_interpolator.py#L268-L409`](../../packages/legacy/treetime/treetime/node_interpolator.py#L268-L409).
+v1: not ported. v1 uses grid-based Riemann sum for all convolutions.
 
-1. Construct non-uniform grid (lines 280-310):
-   - Linear spacing near distribution peaks
-   - Quadratic spacing in tails
-   - Adaptive refinement based on local curvature
+### Algorithm
 
-2. At each output grid point t, evaluate convolution integral (lines 320-360):
-   - Construct integrand `f(tau) * g(t - tau)`
-   - Apply Simpson's rule: `integral ≈ (h/3) * [f(a) + 4*f(m) + f(b)]`
-   - Subdivide if error estimate exceeds tolerance
-
-3. Refinement (lines 370-400):
-   - Compare interpolated vs computed values
-   - Add grid points where interpolation error is large
-   - Iterate until convergence
-
-**Purpose**: More accurate than FFT for irregular distributions; slower but handles edge cases better.
+1. Construct non-uniform grid (lines 280-310): linear spacing near distribution peaks, quadratic spacing in tails, adaptive refinement based on local curvature.
+2. At each output grid point t, evaluate the convolution integral `integral f(tau) * g(t - tau) d_tau` via Simpson's rule: `integral = (h/3) * [f(a) + 4*f(m) + f(b)]`. Subdivide if error estimate exceeds tolerance.
+3. Compare interpolated vs computed values. Add grid points where interpolation error is large. Iterate until convergence.
 
 ---
 
 ## FWHM Computation
 
-| Property    | Value                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Standard statistics                                                                                                            |
-| v0 Location | [`packages/legacy/treetime/treetime/distribution.py#L24-L67`](../../packages/legacy/treetime/treetime/distribution.py#L24-L67) |
-| Functions   | `Distribution.calc_fwhm()` (`#Distribution`, `#calc_fwhm`)                                                                     |
-| v1 Status   | Not implemented                                                                                                                |
+Full Width at Half Maximum for discretized probability distributions. In neg-log probability space, FWHM corresponds to the region where `-log(P) < -log(P_max) + ln(2)`.
 
-**Algorithm**:
+v0: `Distribution.calc_fwhm()` (`#Distribution`, `#calc_fwhm`) in [`packages/legacy/treetime/treetime/distribution.py#L24-L67`](../../packages/legacy/treetime/treetime/distribution.py#L24-L67).
+v1: not implemented.
 
-In neg-log probability space, FWHM corresponds to region where `-log(P) < -log(P_max) + ln(2)`:
+### Algorithm
 
 1. Find peak location `x_peak` where neg-log probability is minimum
 2. Find left boundary: largest x < x_peak where `-log(P(x)) = -log(P_max) + ln(2)`
 3. Find right boundary: smallest x > x_peak where `-log(P(x)) = -log(P_max) + ln(2)`
 4. FWHM = right_boundary - left_boundary
 
-**Purpose**: Used to determine appropriate grid resolution for FFT convolution and adaptive grid refinement.
+Used to determine appropriate grid resolution for FFT convolution and adaptive grid refinement.
 
 ---
 
 ## Branch Length Interpolator (Input Mode)
 
-| Property    | Value                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Poisson/Gaussian approximation                                                                                                                                                                                             |
-| v0 Location | [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102)                                                                     |
-| Functions   | `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode                                                                                                                                                   |
-| v1 Status   | Partially in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching |
+Constructs per-branch time prior distributions from branch lengths using Poisson or Gaussian approximation, depending on the branch length regime. This is the `branch_length_mode=input` path, which avoids sequence-based optimization and instead derives time distributions directly from the tree's input branch lengths.
 
-**Algorithm**:
+v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
+v1: partially in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching.
 
-Short branches (Poisson regime, lines 78-86):
+### Algorithm
 
-- `log_prob = -k*L + l*L*log(k)` where k = branch_length, l = mutation count, L = seq_length
-- Valid when expected mutations << sequence length
+**Short branches** (Poisson regime, lines 78-86): `log_prob = -k*L + l*L*log(k)` where k = branch_length, l = mutation count, L = seq_length. Valid when expected mutations are much less than sequence length.
 
-Long branches (Gaussian regime, lines 87-102):
+**Long branches** (Gaussian regime, lines 87-102): mean `mu = mutation_count / clock_rate`, variance `sigma^2 = mutation_count * (1 + overdispersion) / clock_rate^2`, `log_prob = -0.5 * ((t - mu) / sigma)^2`. Accounts for substitution saturation.
 
-- Mean: `mu = mutation_count / clock_rate`
-- Variance: `sigma^2 = mutation_count * (1 + overdispersion) / clock_rate^2`
-- `log_prob = -0.5 * ((t - mu) / sigma)^2`
-- Accounts for substitution saturation
-
-Transition: Switches from Poisson to Gaussian at `mutation_length > 0.05`.
+Transition: switches from Poisson to Gaussian at `mutation_length > 0.05`.
 
 ---
 
 ## Random GTR Generation
 
-| Property    | Value                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| Type        | Testing utility                                                                                                  |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L464-L489`](../../packages/legacy/treetime/treetime/gtr.py#L464-L489) |
-| Functions   | `GTR.random()` (`#GTR`, `#random`)                                                                               |
-| v1 Status   | Not ported                                                                                                       |
+Testing utility that generates random GTR models from prior distributions. Useful for verifying GTR algorithms work for arbitrary (not just named) models.
 
-**Algorithm**:
+v0: `GTR.random()` (`#GTR`, `#random`) in [`packages/legacy/treetime/treetime/gtr.py#L464-L489`](../../packages/legacy/treetime/treetime/gtr.py#L464-L489).
+v1: not ported.
+
+### Algorithm
 
 1. Sample equilibrium frequencies: `pi = Dirichlet(alpha=1)` (uniform on simplex)
 2. Sample symmetric exchangeability matrix: `W[i,j] = W[j,i] = Exponential(1)`
 3. Normalize: `mu = 1 / sum(pi_i * sum_j(W[i,j] * pi_j))`
 4. Build rate matrix Q and compute eigendecomposition
 
-**Purpose**: Used in unit tests to verify GTR algorithms work for arbitrary (not just named) models.
-
 ---
 
 ## File-Based GTR Loading
 
-| Property    | Value                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| Type        | I/O utility                                                                                                      |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L175-L233`](../../packages/legacy/treetime/treetime/gtr.py#L175-L233) |
-| Functions   | `GTR.from_file()` (`#GTR`, `#from_file`)                                                                         |
-| v1 Status   | Not ported                                                                                                       |
+Parses a text file containing equilibrium frequencies (single-letter lines) and exchangeability parameters (letter-pair lines) to construct a custom GTR model.
 
-**Algorithm**:
+v0: `GTR.from_file()` (`#GTR`, `#from_file`) in [`packages/legacy/treetime/treetime/gtr.py#L175-L233`](../../packages/legacy/treetime/treetime/gtr.py#L175-L233).
+v1: not ported.
 
-Parses text file with format:
+### File format
 
 ```
 # Comment lines starting with #
@@ -381,45 +305,31 @@ CT 2.0
 GT 1.0
 ```
 
-Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and used to construct GTR model.
-
 ---
 
 ## GTR Optimal Branch Length
 
-| Property    | Value                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| Type        | Optimization                                                                                                     |
-| v0 Location | [`packages/legacy/treetime/treetime/gtr.py#L788-L921`](../../packages/legacy/treetime/treetime/gtr.py#L788-L921) |
-| Functions   | `GTR.optimal_t()` (`#GTR`, `#optimal_t`), `GTR.optimal_t_compressed()` (`#optimal_t_compressed`)                 |
-| v1 Status   | Functionality exists in `optimize` command but not as GTR method                                                 |
+Per-branch length optimization at the GTR level. In v1, this functionality exists in the `optimize` command via `PartitionOptimizeOps` rather than as a GTR method.
 
-**Algorithm**:
+v0: `GTR.optimal_t()` (`#GTR`, `#optimal_t`), `GTR.optimal_t_compressed()` (`#optimal_t_compressed`) in [`packages/legacy/treetime/treetime/gtr.py#L788-L921`](../../packages/legacy/treetime/treetime/gtr.py#L788-L921).
+v1: functionality exists in the optimize command but not as a GTR method.
 
-`optimal_t(parent_seq, child_seq)`:
+### Algorithm
 
-1. Compute profile from sequences
-2. Evaluate log-likelihood on grid of t values
-3. Find argmax via golden section or Brent
+`optimal_t(parent_seq, child_seq)`: compute profile from sequences, evaluate log-likelihood on grid of t values, find argmax via golden section or Brent.
 
-`optimal_t_compressed(state_pairs, multiplicities)`:
-
-- Same but uses compressed representation of aligned sequence pairs
-- `state_pairs[k] = (parent_state, child_state)`
-- `multiplicities[k]` = count of this pair in alignment
+`optimal_t_compressed(state_pairs, multiplicities)`: same algorithm using compressed representation where `state_pairs[k] = (parent_state, child_state)` and `multiplicities[k]` = count of this pair in alignment.
 
 ---
 
 ## Homoplasy Scanner
 
-| Property    | Value                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Analysis pipeline                                                                                                                      |
-| v0 Location | [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../packages/legacy/treetime/treetime/wrappers.py#L82-L139)               |
-| Functions   | `scan_homoplasies()` (`#scan_homoplasies`)                                                                                             |
-| v1 Status   | `unimplemented!()` at [`packages/treetime/src/commands/homoplasy/run.rs#L5`](../../packages/treetime/src/commands/homoplasy/run.rs#L5) |
+Analysis pipeline that identifies recurrent mutations - sites where the same mutation occurred independently on multiple branches, indicating convergent evolution, recombination, or sequencing artifacts.
 
-**Algorithm**:
+v0: `scan_homoplasies()` (`#scan_homoplasies`) in [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../packages/legacy/treetime/treetime/wrappers.py#L82-L139).
+v1: `unimplemented!()` at [`packages/treetime/src/commands/homoplasy/run.rs#L5`](../../packages/treetime/src/commands/homoplasy/run.rs#L5).
+
+### Algorithm
 
 1. Run ancestral reconstruction (marginal or joint)
 2. Collect mutations per site across all branches
@@ -427,31 +337,22 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 4. Compute statistics: mutation count per site, consistency index, retention index
 5. Output per-site mutation table with branch annotations
 
-**Purpose**: Identifies recurrent mutations that arose independently on separate lineages, indicating convergent evolution, recombination, or sequencing artifacts.
-
 ---
 
 ## N-Branches Posterior
 
-| Property    | Value                                                                                                                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Enhancement to coalescent model                                                                                                                                                                                                                                                        |
-| v0 Location | v0 `--n-branches-posterior` flag uses posterior distributions of divergence times for estimating number of branches in coalescent merger rate                                                                                                                                          |
-| v1 Status   | CLI arg declared (hidden) at [`packages/treetime/src/commands/timetree/args.rs#L184`](../../packages/treetime/src/commands/timetree/args.rs#L184), returns error at [`packages/treetime/src/commands/timetree/run.rs#L115`](../../packages/treetime/src/commands/timetree/run.rs#L115) |
+Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
 
-**Purpose**: Uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
+v0: `--n-branches-posterior` flag uses posterior distributions for branch counting in merger rate computation.
+v1: CLI arg declared (hidden) at [`packages/treetime/src/commands/timetree/args.rs#L184`](../../packages/treetime/src/commands/timetree/args.rs#L184), returns error at [`packages/treetime/src/commands/timetree/run.rs#L115`](../../packages/treetime/src/commands/timetree/run.rs#L115).
 
 ---
 
 ## Tree Inference from Alignment
 
-| Property    | Value                                                                                                                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Tree building                                                                                                                                                                                                                                                                            |
-| v0 Location | v0 delegates to external tools (IQ-TREE, FastTree) or uses Bio.Phylo                                                                                                                                                                                                                     |
-| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/initialization.rs#L34`](../../packages/treetime/src/commands/timetree/initialization.rs#L34) and `unimplemented!()` at [`packages/treetime/src/commands/clock/run.rs#L60`](../../packages/treetime/src/commands/clock/run.rs#L60) |
+When no input tree is provided, infer a phylogenetic tree from the alignment. v0 delegates to external tools (IQ-TREE, FastTree) or uses Bio.Phylo. Both the `timetree` and `clock` commands require a tree; these stubs guard the code path where the user omits `--tree`.
 
-**Purpose**: When no input tree is provided, infer a phylogenetic tree from the alignment. Both the `timetree` and `clock` commands require a tree; these stubs guard the code path where the user omits `--tree`.
+v1: `todo!()` at [`packages/treetime/src/commands/timetree/initialization.rs#L34`](../../packages/treetime/src/commands/timetree/initialization.rs#L34) and `unimplemented!()` at [`packages/treetime/src/commands/clock/run.rs#L60`](../../packages/treetime/src/commands/clock/run.rs#L60).
 
 ---
 
@@ -471,47 +372,36 @@ v0 format without confidence (`#node\tdate\tnumeric date`): no bounds columns.
 
 ## Timetree Output: Plots
 
-| Property  | Value                                                                                                                                                                                                                                                                                                            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type      | Visualization                                                                                                                                                                                                                                                                                                    |
-| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`](../../packages/treetime/src/commands/timetree/output/plots.rs#L11) (root-to-tip) and [`packages/treetime/src/commands/timetree/output/plots.rs#L20`](../../packages/treetime/src/commands/timetree/output/plots.rs#L20) (time tree) |
+Diagnostic visualizations: root-to-tip regression scatter plot and time-scaled phylogenetic tree. CLI flags `--plot-rtt` and `--plot-tree` are hidden pending implementation.
 
-**Purpose**: Generate diagnostic visualizations - root-to-tip regression scatter plot and time-scaled phylogenetic tree. CLI flags `--plot-rtt` and `--plot-tree` are hidden pending implementation.
+v1: `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`](../../packages/treetime/src/commands/timetree/output/plots.rs#L11) (root-to-tip) and [`packages/treetime/src/commands/timetree/output/plots.rs#L20`](../../packages/treetime/src/commands/timetree/output/plots.rs#L20) (time tree).
 
 ---
 
 ## Branch Distribution Builder
 
-| Property  | Value                                                                                                                                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type      | Distribution construction                                                                                                                                                                                     |
-| v1 Status | `todo!()` at [`packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39`](../../packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39) - function body is a stub |
+Build per-edge time prior distributions from branch lengths or marginal reconstruction messages. The function signature and types exist; the implementation body is a stub.
 
-**Purpose**: Build per-edge time prior distributions from branch lengths or marginal reconstruction messages. The function signature and types exist; the implementation body is a stub.
+v1: `todo!()` at [`packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39`](../../packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39).
 
 ---
 
 ## Nexus File Reading
 
-| Property  | Value                                                                                                                              |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Type      | I/O utility                                                                                                                        |
-| v1 Status | `unimplemented!()` at [`packages/treetime-cli/src/convert/convert.rs#L90`](../../packages/treetime-cli/src/convert/convert.rs#L90) |
+Parse Nexus tree format. The `convert` CLI command supports multiple tree formats but Nexus reading is not yet implemented.
 
-**Purpose**: Parse Nexus tree format. The `convert` CLI command supports multiple tree formats but Nexus reading is not yet implemented.
+v1: `unimplemented!()` at [`packages/treetime-cli/src/convert/convert.rs#L90`](../../packages/treetime-cli/src/convert/convert.rs#L90).
 
 ---
 
 ## Iterative GTR for Discrete Traits
 
-| Property    | Value                                                                                                                                                                                                                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Iterative parameter estimation                                                                                                                                                                                                                                                                                                                           |
-| v0 Location | [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809)                                                                                                                                                                                                                               |
-| Functions   | `reconstruct_discrete_traits()` (`#reconstruct_discrete_traits`), `TreeAnc.infer_gtr()` (`#infer_gtr`) at [`treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632), `TreeAnc.optimize_gtr_rate()` (`#optimize_gtr_rate`) at [`treeanc.py#L1679-L1708`](../../packages/legacy/treetime/treetime/treeanc.py#L1679-L1708) |
-| v1 Status   | Not ported. Mugration uses uniform GTR at [`packages/treetime/src/commands/mugration/run.rs#L124-L129`](../../packages/treetime/src/commands/mugration/run.rs#L124-L129)                                                                                                                                                                                 |
+Iterative parameter estimation for discrete trait (mugration) reconstruction. v0 refines the GTR model over 5 iterations, shifting equilibrium frequencies to reflect actual trait prevalence. Without this, v1 assigns uniform prior weight to all states.
 
-**Algorithm**:
+v0: `reconstruct_discrete_traits()` (`#reconstruct_discrete_traits`) in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` (`#infer_gtr`) at [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632), `TreeAnc.optimize_gtr_rate()` (`#optimize_gtr_rate`) at [`packages/legacy/treetime/treetime/treeanc.py#L1679-L1708`](../../packages/legacy/treetime/treetime/treeanc.py#L1679-L1708).
+v1: not ported. Mugration uses uniform GTR at [`packages/treetime/src/commands/mugration/run.rs#L124-L129`](../../packages/treetime/src/commands/mugration/run.rs#L124-L129).
+
+### Algorithm
 
 After initial marginal ancestral reconstruction with `infer_gtr=True`:
 
@@ -520,7 +410,7 @@ After initial marginal ancestral reconstruction with `infer_gtr=True`:
 3. Steps 1-2 repeat for 5 iterations (default `iterations` parameter in `reconstruct_discrete_traits()`).
 4. Final `infer_ancestral_sequences(infer_gtr=False)` reconstructs with the refined model.
 
-The iterative refinement produces non-uniform equilibrium frequencies that reflect actual trait prevalence in the data. For mugration (geographic traits), this means common locations receive higher prior weight. Without iterative GTR, v1 assigns uniform prior weight to all locations, causing the argmax to differ at ambiguous internal nodes where the phylogeographic signal is weak.
+The iterative refinement produces non-uniform equilibrium frequencies that reflect actual trait prevalence in the data. For mugration (geographic traits), common locations receive higher prior weight. Without iterative GTR, v1 assigns uniform prior weight to all locations, causing the argmax to differ at ambiguous internal nodes where the phylogeographic signal is weak.
 
 **Impact**: Golden master tests show 4/6 datasets diverge from v0 at internal nodes (dengue, tb, rsv, mpox). 2/6 datasets agree despite uniform rates (zika, lassa) because their phylogeographic signal is strong enough to overwhelm the prior difference.
 

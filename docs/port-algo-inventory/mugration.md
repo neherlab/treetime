@@ -8,17 +8,16 @@ Discrete trait ancestral reconstruction treats categorical metadata (locations, 
 
 ## Discrete Marginal Reconstruction
 
-| Property    | Value                                                                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Well-known (Felsenstein pruning)                                                                                                                                |
-| v1 Location | [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs)                          |
-| Functions   | `run_discrete_marginal()`, `attach_traits()`                                                                                                                    |
-| v0 Location | [`packages/legacy/treetime/treetime/wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811)                                      |
-| Reference   | Felsenstein (1981). "Evolutionary trees from DNA sequences." J Mol Evol, 17(6):368-376; Felsenstein (2004). "Inferring Phylogenies." Sinauer Associates, p. 255 |
+Felsenstein pruning (Felsenstein 1981) applied to discrete categorical traits rather than nucleotide sequences. The algorithm is identical to marginal ML ancestral reconstruction but operates on a discrete state alphabet (e.g., country names) with a GTR-like transition matrix.
+
+v1: [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs).
+v0: [`packages/legacy/treetime/treetime/wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811).
+
+Key functions: `run_discrete_marginal()`, `attach_traits()`.
 
 ### Algorithm
 
-**Initialization** ([`discrete_marginal.rs#L46-L84`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs#L46-L84)):
+**Initialization** ([`packages/treetime/src/commands/mugration/discrete_marginal.rs#L46-L84`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs#L46-L84)):
 
 For each leaf node:
 
@@ -27,7 +26,7 @@ For each leaf node:
 
 This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
 
-**Backward pass** (postorder, leaves to root) ([`partition/discrete.rs#L47-L122`](../../packages/treetime/src/representation/partition/discrete.rs#L47-L122)):
+**Backward pass** (postorder, leaves to root) ([`packages/treetime/src/representation/partition/discrete.rs#L47-L122`](../../packages/treetime/src/representation/partition/discrete.rs#L47-L122)):
 
 For each node in postorder:
 
@@ -47,7 +46,7 @@ For each node in postorder:
    ```
    where `P = exp(Q*t)` is the transition probability matrix for branch length `t`.
 
-**Forward pass** (preorder, root to leaves) ([`partition/discrete.rs#L125-L178`](../../packages/treetime/src/representation/partition/discrete.rs#L125-L178)):
+**Forward pass** (preorder, root to leaves) ([`packages/treetime/src/representation/partition/discrete.rs#L125-L178`](../../packages/treetime/src/representation/partition/discrete.rs#L125-L178)):
 
 For each node in preorder:
 
@@ -62,13 +61,13 @@ For each node in preorder:
    msg_to_child = normalize(profile / msg_from_child)
    ```
 
-**Trait assignment** ([`partition/discrete.rs#L37-L41`](../../packages/treetime/src/representation/partition/discrete.rs#L37-L41)):
+**Trait assignment** ([`packages/treetime/src/representation/partition/discrete.rs#L37-L41`](../../packages/treetime/src/representation/partition/discrete.rs#L37-L41)):
 
 After forward-backward passes, each node has a posterior probability distribution over states. The assigned trait is `argmax(profile)`.
 
 ### Missing Data Handling
 
-Leaves with missing traits (`"?"` in metadata) are scientifically valid reconstruction targets:
+Leaves with missing traits (`"?"` in metadata) are valid reconstruction targets:
 
 - Uniform prior allows tree context to inform inference
 - After forward-backward, the posterior reflects phylogenetic signal from neighboring nodes
@@ -76,7 +75,7 @@ Leaves with missing traits (`"?"` in metadata) are scientifically valid reconstr
 
 This is analogous to `--reconstruct-tip-states` in the ancestral command but applied to discrete traits rather than nucleotide ambiguities.
 
-**References**:
+Supporting references for missing data treatment:
 
 - Felsenstein (2004), p. 255: ambiguous states receive likelihood 1.0 for all possibilities
 - PastML (Ishikawa et al. 2019, Mol Biol Evol): "unknown states can be omitted and will be estimated during analysis"
@@ -86,11 +85,9 @@ This is analogous to `--reconstruct-tip-states` in the ancestral command but app
 
 ## GTR Model Construction
 
-| Property    | Value                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Standard GTR parameterization                                                                                                  |
-| v1 Location | [`packages/treetime/src/commands/mugration/run.rs#L120-L131`](../../packages/treetime/src/commands/mugration/run.rs#L120-L131) |
-| v1 Status   | Uniform rates (no inference)                                                                                                   |
+Constructs a GTR-like transition model for discrete traits.
+
+v1: [`packages/treetime/src/commands/mugration/run.rs#L120-L131`](../../packages/treetime/src/commands/mugration/run.rs#L120-L131).
 
 **v1 implementation**:
 
@@ -110,17 +107,7 @@ The iterative refinement shifts equilibrium frequencies to reflect actual trait 
 
 ## Confidence Profiles
 
-| Property    | Value                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Type        | Posterior probability extraction                                                                                                                 |
-| v1 Location | [`packages/treetime/src/representation/partition/discrete.rs#L43-L45`](../../packages/treetime/src/representation/partition/discrete.rs#L43-L45) |
-| v1 Status   | Complete                                                                                                                                         |
-
-After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]`. This enables:
-
-- Uncertainty quantification for trait assignments
-- Identification of ambiguous nodes (flat profiles)
-- Downstream statistical analysis
+After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/representation/partition/discrete.rs#L43-L45`](../../packages/treetime/src/representation/partition/discrete.rs#L43-L45). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
 
 ---
 
@@ -163,15 +150,19 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 
 ### Primary
 
-Sagulenko, P., Puller, V., & Neher, R.A. (2018). "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution, 4(1):vex042. https://doi.org/10.1093/ve/vex042
+Sagulenko, Puller & Neher (2018). "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution, 4(1):vex042. doi:10.1093/ve/vex042
+
+### Ancestral Reconstruction
+
+- Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
+- Felsenstein (2004). "Inferring Phylogenies." Sinauer Associates, p. 255.
 
 ### Phylogeography
 
-- Lemey, P., Rambaut, A., Drummond, A.J., & Suchard, M.A. (2009). "Bayesian phylogeography finds its roots." PLoS Computational Biology, 5(9):e1000520
-- Edwards, C.J., et al. (2011). "Ancient hybridization and an Irish origin for the modern polar bear matriline." Current Biology, 21(15):1251-1258
+- Lemey, Rambaut, Drummond & Suchard (2009). "Bayesian phylogeography finds its roots." PLoS Computational Biology, 5(9):e1000520.
+- Edwards et al. (2011). "Ancient hybridization and an Irish origin for the modern polar bear matriline." Current Biology, 21(15):1251-1258.
 
 ### Missing Data
 
-- Felsenstein, J. (2004). "Inferring Phylogenies." Sinauer Associates
-- Ishikawa, S.A., et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085
-- Scotch, M., et al. (2019). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." bioRxiv/Virus Evol
+- Ishikawa et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085.
+- Scotch et al. (2019). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." Virus Evol.
