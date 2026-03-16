@@ -92,14 +92,11 @@ Forward pass (lines 1043-1063):
 
 ## Rate Susceptibility Analysis
 
-| Property    | Value                                                                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Sensitivity analysis                                                                                                                                      |
-| v0 Location | [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066)                        |
-| Functions   | `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`)                            |
-| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/output/confidence.rs#L39`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L39) |
-| Known Issue | [--vary-rate panics with todo!()](../port-known-issues/H-timetree-vary-rate-unimplemented.md)                                                             |
-| Reference   | Sagulenko et al. (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.5                                                                            |
+Quantifies how clock rate uncertainty propagates to node date uncertainty (Sagulenko, Puller & Neher 2018, Section 2.5). This is the second of two independent uncertainty sources in timetree confidence intervals - the first (mutation stochasticity) is captured by the marginal posterior from belief propagation.
+
+v0: `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`), `combine_confidence()` (`#combine_confidence`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1101`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1101).
+v1: `todo!()` stub at [`packages/treetime/src/commands/timetree/output/confidence.rs#L39`](../../packages/treetime/src/commands/timetree/output/confidence.rs#L39).
+Known issue: [--vary-rate panics with todo!()](../port-known-issues/H-timetree-vary-rate-unimplemented.md).
 
 **Background**: Node date uncertainty has two independent sources (Sagulenko et al. 2018). The marginal posterior from the backward/forward pass captures mutation stochasticity (source 1, implemented in v1). Clock rate uncertainty (source 2) propagates to all node dates because times scale inversely with rate. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth, while recent tips barely move. v0 combines both sources via quadrature sum, treating them as independent Gaussian-like contributions.
 
@@ -199,15 +196,12 @@ Key methods:
 
 ## Stochastic Polytomy Resolution
 
-| Property    | Value                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Type        | Monte Carlo / coalescent simulation                                                                                          |
-| v0 Location | [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011) |
-| Functions   | `generate_subtree()` (`#generate_subtree`), `resolve_polytomies()` (`#resolve_polytomies`)                                   |
-| v1 Status   | Not ported - v1 only has greedy deterministic approach                                                                       |
-| Known Issue | [Stochastic polytomy resolution not implemented](../port-known-issues/N-timetree-stochastic-polytomy-unimplemented.md)       |
-| CLI         | `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints deprecation warning for greedy mode.                 |
-| Reference   | Kingman (1982). "The coalescent." Stochastic Processes and Applications, 13(3):235-248                                       |
+Coalescent-based stochastic resolution of polytomies as an alternative to the greedy deterministic method. Produces more realistic tree topologies by sampling from the Kingman coalescent process (Kingman 1982) rather than always merging the highest-gain pair.
+
+v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
+v1: not ported - v1 has greedy deterministic approach only.
+Known issue: [Stochastic polytomy resolution not implemented](../port-known-issues/N-timetree-stochastic-polytomy-unimplemented.md).
+CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 **Background**: The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (Sagulenko et al. 2018, Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
@@ -463,18 +457,15 @@ Frequencies (single letter) and exchangeabilities (letter pairs) are parsed and 
 
 ## Timetree Output: Node Dates TSV
 
-| Property    | Value                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type        | I/O utility                                                                                                                                     |
-| v0 Location | [`packages/legacy/treetime/treetime/CLI_io.py#L136-L158`](../../packages/legacy/treetime/treetime/CLI_io.py#L136-L158)                          |
-| v1 Status   | `todo!()` at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../packages/treetime/src/commands/timetree/output/dates.rs#L20) |
-| Known Issue | [write_node_dates() is a todo!() stub](../port-known-issues/N-timetree-node-dates-output-unimplemented.md)                                      |
+Writes inferred node dates to TSV for downstream analysis. The output includes all tree nodes (leaves and internal).
 
-**Purpose**: Write inferred node dates to TSV for downstream analysis.
+v0: [`packages/legacy/treetime/treetime/CLI_io.py#L136-L158`](../../packages/legacy/treetime/treetime/CLI_io.py#L136-L158).
+v1: `todo!()` stub at [`packages/treetime/src/commands/timetree/output/dates.rs#L20`](../../packages/treetime/src/commands/timetree/output/dates.rs#L20).
+Known issue: [write_node_dates() is a todo!() stub](../port-known-issues/N-timetree-node-dates-output-unimplemented.md).
 
-**v0 format** (with confidence): `#node\tdate\tnumeric date\tlower bound\tupper bound`. Bounds from `get_max_posterior_region(n, fraction=0.9)`. Bad branches get `--` placeholders.
+v0 format with confidence (`#node\tdate\tnumeric date\tlower bound\tupper bound`): bounds come from `get_max_posterior_region(n, fraction=0.9)`. Bad branches get `--` placeholders.
 
-**v0 format** (without confidence): `#node\tdate\tnumeric date`.
+v0 format without confidence (`#node\tdate\tnumeric date`): no bounds columns.
 
 ---
 
