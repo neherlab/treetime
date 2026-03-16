@@ -589,7 +589,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Dense/sparse architecture ([intentional change](../port-intentional-changes/sequence-representation-dense-sparse.md))
 - [x] Partition system ([intentional change](../port-intentional-changes/partition-system-architecture.md))
-- [x] Graph-based tree structure ([intentional change](../port-intentional-changes/tree-structure-graph-based.md))
+- [x] Graph-based phylogenetic representation ([intentional change](../port-intentional-changes/graph-based-phylogenetic-representation.md))
 
 ## 13. Sequence Primitives
 
