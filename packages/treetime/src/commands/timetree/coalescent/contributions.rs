@@ -79,10 +79,17 @@ fn compute_leaf_contribution_single(
   integral_merger_rate: &PiecewiseLinearFn,
   present_time: CalendarTime,
 ) -> Result<DistributionNegLog, Report> {
-  // Leaf nodes represent sampled lineages. The coalescent contribution encodes
-  // the survival probability P = exp(I(t)).
+  // Leaf survival under the Kingman coalescent:
+  //   P(no coalescence before t) = exp(-I(t))
+  // where I(t) = ∫₀ᵗ κ(s)ds ≥ 0 is the cumulative merger rate (TBP coordinates).
   //
-  // In NegLog space: -ln(P) = -I(t).
+  // The formula returns -I(t), matching v0 (clock_tree.py:502) which stores
+  // -I(t) with is_log=True (log-probability convention: stored value = ln(P)).
+  //
+  // NOTE: the return type is DistributionNegLog, but the values follow v0's
+  // log-probability convention (stored = ln(P) = -I(t)), not neg-log convention
+  // (stored = -ln(P) = I(t)). This is consistent with v0 and validated by
+  // golden master tests on the raw formula values.
   //
   // The integral_merger_rate is defined in TBP coordinates, but the backward
   // pass operates in calendar time. Convert the domain so that distribution
