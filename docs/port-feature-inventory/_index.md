@@ -210,7 +210,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
   - [x] Confidence interval extraction from node time distributions
   - [x] Confidence TSV output
 - [/] `never` and `always` parsed as separate enum values but only `only-final` has distinct behavior
-- [ ] `confidence-only` (v0 variant)
+- [x] `confidence-only` (v0 variant, implemented as `--confidence` promoting `Never` to `OnlyFinal`)
 
 ### Coalescent Models
 
@@ -277,13 +277,14 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 ### Confidence Intervals
 
-- [x] 95% from marginal posteriors
-- [x] `combine_confidence()` quadrature sum (implemented but unused, pending rate susceptibility)
+- [x] 90% HPD from marginal posteriors
+- [x] `combine_confidence()` quadrature sum
 - [x] `Distribution::quantile()` inverse CDF
-- [ ] Rate susceptibility analysis (`compute_rate_susceptibility()` is `todo!()` - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
-- [ ] `date_uncertainty_due_to_rate()` (not ported)
-- [ ] `--vary-rate` sensitivity (parsed, returns explicit error - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
-- [ ] `--confidence` promotion of `time_marginal` ([known issue](../port-known-issues/M-timetree-confidence-flag-ignored.md))
+- [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
+- [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)
+- [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`
+- [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
+- [x] `--covariation` wired into timetree clock regression
 
 ### Output
 
@@ -300,8 +301,10 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 ### CLI Options (Parsed but Not Wired)
 
-- [ ] `--clock-std-dev`
-- [ ] `--confidence`
+- [x] `--clock-std-dev` (rate susceptibility)
+- [x] `--confidence` (time_marginal promotion, rate susceptibility)
+- [x] `--covariation` (GLS clock regression, rate susceptibility)
+- [x] `--tip-slack` (covariation variance computation)
 - [ ] `--n-iqd`
 - [ ] `--reroot`
 - [ ] `--tip-labels` / `--no-tip-labels`

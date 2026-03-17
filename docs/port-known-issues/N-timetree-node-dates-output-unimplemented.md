@@ -8,5 +8,3 @@ v0 writes `dates.tsv` with columns including node name, date estimate, and
 
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   umbrella issue for all missing outputs
-- [--confidence flag ignored](M-timetree-confidence-flag-ignored.md) the
-  `dates.tsv` confidence columns depend on `--confidence` working

@@ -30,7 +30,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | `--keep-polytomies`                           | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--resolve-polytomies`                        | OK          | -            | -            | OK       | -       | -          | -          | -          | -          | -                |
 | `--method-anc=parsimony`                      | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
-| `--vary-rate`                                 | CRASH-vary  | -            | -            | -        | -       | -          | -          | -          | -          | -                |
+| `--confidence --clock-std-dev=0.0005`         | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--tip-slack=0.1`                             | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--relax=...`                                 | CRASH-relax | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--time-marginal=only-final`                  | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
@@ -50,9 +50,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | ID      | Issue file                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- |
 | grid    | Grid interpolation crash on zero-length branches ("x array must be uniformly spaced")       |
-| vary    | [H-timetree-vary-rate-unimplemented](H-timetree-vary-rate-unimplemented.md)                 |
 | coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
-| conf    | [M-timetree-confidence-flag-ignored](M-timetree-confidence-flag-ignored.md)                 |
 | neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
 
 ## Base Command

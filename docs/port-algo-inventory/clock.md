@@ -123,7 +123,6 @@ See [unimplemented](unimplemented.md) for full details:
 
 - Local outlier filter (z-score based)
 - Full covariance matrix computation (TreeRegression)
-- Rate susceptibility analysis
 - Numerical Hessian for root position uncertainty
 
 ---

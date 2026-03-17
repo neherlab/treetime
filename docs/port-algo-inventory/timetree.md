@@ -218,20 +218,26 @@ v0: `get_confidence_interval()` (`#get_confidence_interval`), `get_max_posterior
 
 v0 uses a different method: `get_max_posterior_region(n, fraction=0.9)` finds the narrowest 90% highest posterior density (HPD) region around the peak via `scipy.optimize.minimize_scalar`. HPD regions are narrower than equal-tailed quantile intervals for skewed distributions. The porting decision should clarify which approach to match.
 
-### CI combination (implemented, unused)
+### CI combination
 
-`combine_confidence()` (`#combine_confidence`) [packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105](../../packages/treetime/src/commands/timetree/output/confidence.rs#L88-L105) combines independent CI contributions via quadrature sum:
+`combine_confidence()` (`#combine_confidence`) in [packages/treetime/src/commands/timetree/output/confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs) combines independent CI contributions via quadrature sum:
 
 ```
 lower = center - hypot(c1_lower - center, c2_lower - center)
 upper = center + hypot(c1_upper - center, c2_upper - center)
 ```
 
-Clipped to physical limits. Implemented but unused pending rate susceptibility.
+Clipped to physical limits. Called by `extract_confidence_intervals()` when rate variation data is present.
 
-### Rate susceptibility (stub)
+### Rate susceptibility (implemented)
 
-`compute_rate_susceptibility()` (`#compute_rate_susceptibility`) [packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40](../../packages/treetime/src/commands/timetree/output/confidence.rs#L34-L40) is a `todo!()` stub.
+`compute_rate_susceptibility()` (`#compute_rate_susceptibility`) in [packages/treetime/src/commands/timetree/output/confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs). Scales per-edge gamma values at rate +/- 1 sigma (matching v0 gamma scaling approach), runs timetree 3 times, stores per-node date triples sorted by date. `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`) converts triples to CI via probit function (erfinv).
+
+v0 reference: `calc_rate_susceptibility()` (`#calc_rate_susceptibility`) in [packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066).
+
+#### CI method
+
+Both v1 and v0 use 90% HPD (highest posterior density) regions for the mutation contribution. HPD finds the narrowest interval containing 90% of the probability mass, which is tighter than equal-tailed quantile intervals for skewed distributions. v1 falls back to one-sided quantile CI when the peak is at a boundary, matching v0's `get_max_posterior_region` boundary handling (`clock_tree.py:1175-1178`).
 
 ### References
 
