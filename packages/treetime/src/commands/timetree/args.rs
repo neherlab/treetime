@@ -106,7 +106,7 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub clock_std_dev: Option<f64>,
 
-  /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
+  /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
   #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
   pub branch_length_mode: BranchLengthMode,
 
@@ -135,10 +135,10 @@ pub struct TreetimeTimetreeArgs {
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
   /// strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
-  #[clap(long)]
+  #[clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"])]
   pub relax: Vec<f64>,
 
-  /// maximal number of iterations the inference cycle is run. Note that for polytomy resolution and
+  /// maximal number of iterations the inference cycle is run. For polytomy resolution and
   /// coalescence models max_iter should be at least 2
   #[default = 2]
   #[clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter)]
