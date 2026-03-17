@@ -434,8 +434,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 ### GTR Integration
 
-- [/] GTR hardcoded to JC69 (see [known issue](../port-known-issues/M-optimize-gtr-hardcoded-jc69.md))
-- [ ] `--model` (parsed but not wired, model dispatch infrastructure exists in `get_gtr_by_name()`)
+- [x] `--model` flag wired through `get_gtr_sparse()`/`get_gtr_dense()` for all named models and inference
 - [ ] GTR inference integrated into optimization loop (v0: `infer_gtr` parameter re-estimates model per iteration)
 - [ ] GTR rate optimization (v0: `optimize_gtr_rate()` optimizes overall substitution rate mu)
 

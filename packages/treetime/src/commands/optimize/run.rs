@@ -4,7 +4,7 @@ use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal}
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, log_gtr, write_gtr_json};
+use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -74,11 +74,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
     // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-    // For now, use JC69 for both partitions to avoid GTR inference issues with dense partitions
     for partition in &sparse_partitions {
-      let gtr = jc69(JC69Params::default())?; // FIXME: allow other models and model inference
-      log_gtr(&gtr, GtrModelName::JC69);
-      write_gtr_json(&gtr, GtrModelName::JC69, outdir)?;
+      let gtr = get_gtr_sparse(model_name, partition, &graph)?;
+      write_gtr_json(&gtr, *model_name, outdir)?;
       partition.write_arc().gtr = gtr;
     }
 
@@ -99,18 +97,23 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     .map(|p| Arc::new(RwLock::new(p)))
     .collect_vec();
 
-    for partition in &dense_partitions {
-      let gtr = jc69(JC69Params::default())?; // FIXME: allow other models and model inference
-      log_gtr(&gtr, GtrModelName::JC69);
-      partition.write_arc().gtr = gtr;
-    }
-
     dense_partitions
   };
 
-  // Run marginal reconstruction once to initialize edge data before optimization
+  // Run marginal reconstruction to initialize edge data before optimization
   update_marginal(&graph, &sparse_partitions)?;
   initialize_marginal(&graph, &dense_partitions, &aln)?;
+
+  // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+  // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
+  // Dense GTR requires profiles populated via initialize_marginal + update_marginal.
+  // Run first marginal pass with dummy GTR, then replace with real model.
+  update_marginal(&graph, &dense_partitions)?;
+  for partition in &dense_partitions {
+    let gtr = get_gtr_dense(model_name, partition, &graph)?;
+    write_gtr_json(&gtr, *model_name, outdir)?;
+    partition.write_arc().gtr = gtr;
+  }
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 

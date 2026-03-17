@@ -12,7 +12,7 @@ The `optimize` command has three documented convergence and robustness problems:
 
 2. **Initial guess inflated by gaps** (fixed). `initial_guess_mixed()` now filters gap positions from both the substitution count and the effective alignment length denominator.
 
-3. **GTR hardcoded to JC69** ([M-optimize-gtr-hardcoded-jc69](../port-known-issues/M-optimize-gtr-hardcoded-jc69.md)). The `--model` flag is parsed but ignored. The ancestral command wires model selection correctly; the optimize command does not.
+3. ~~**GTR hardcoded to JC69**~~ (fixed). The `--model` flag is now wired through `get_gtr_sparse()`/`get_gtr_dense()`, matching the ancestral command's dispatch pattern.
 
 Beyond these bugs, the optimize command offers no user control over the per-edge optimization method. The `clock` command exposes Grid, Brent, and Golden Section via `--branch-split-method`. The `optimize` command uses Newton-Raphson with a hardcoded grid search fallback and no way to select alternatives.
 
