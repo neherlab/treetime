@@ -4,15 +4,14 @@ pub mod tests {
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
-  use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
+  use crate::commands::optimize::partition_ops::PartitionOptimizeVec;
+  use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
-  use itertools::Itertools;
-  use itertools::chain;
   use maplit::btreemap;
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
@@ -89,22 +88,5 @@ pub mod tests {
     let dense_lh = update_marginal(graph, dense_partitions)?;
     let sparse_lh = update_marginal(graph, sparse_partitions)?;
     Ok(dense_lh + sparse_lh)
-  }
-
-  pub fn collect_optimize_partitions(
-    dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-    sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  ) -> PartitionOptimizeVec {
-    chain!(
-      dense_partitions
-        .iter()
-        .cloned()
-        .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition }),
-      sparse_partitions
-        .iter()
-        .cloned()
-        .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition })
-    )
-    .collect_vec()
   }
 }

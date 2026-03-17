@@ -145,7 +145,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn collect_optimize_partitions(
+pub(crate) fn collect_optimize_partitions(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> PartitionOptimizeVec {
