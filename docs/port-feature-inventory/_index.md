@@ -70,7 +70,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 - [x] GTR inference from data (sparse and dense paths)
 - [x] Uninformative root state filtering in dense path ([intentional change](../port-intentional-changes/gtr-uninformative-root-state-filtering.md))
-- [x] GTR bootstrapped through temporary JC69 model before replacement
+- [/] GTR bootstrapped through temporary JC69 model before replacement
 - [ ] Iterative GTR inference (`infer_gtr_iterative()` in v0)
 
 ### CLI Options
@@ -177,7 +177,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
 - [x] Optional alignment when `--branch-length-mode=marginal`
-- [x] Alphabet always maps gap to unknown profile (matching v0 `nuc_nogap` behavior)
+- [x] Alphabet setup changes `treat_gap_as_unknown` based on alignment presence and dense mode
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
 - [ ] Tree inference from alignment path is `todo!`
@@ -197,7 +197,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
   - [x] Sparse marginal partition branch (compresses sequences first)
-  - [x] GTR model selection from `--gtr` flag (named models and inference)
+  - [/] GTR hardcoded to JC69 for timetree command
 - [ ] `joint` (v0 supports joint optimization)
 
 ### Time Marginal Modes
@@ -210,7 +210,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
   - [x] Confidence interval extraction from node time distributions
   - [x] Confidence TSV output
 - [/] `never` and `always` parsed as separate enum values but only `only-final` has distinct behavior
-- [ ] `confidence-only` (v0 variant)
+- [x] `confidence-only` (v0 variant, implemented as `--confidence` promoting `Never` to `OnlyFinal`)
 
 ### Coalescent Models
 
@@ -250,7 +250,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Slack parameter (rate deviation penalty)
 - [x] Skip relaxed clock when total partition length is zero
 - [x] Use first two values as slack and coupling, with defaults when omitted
-- [x] `--relax` argument parsing (`num_args = 2` for slack and coupling)
+- [/] `--relax` argument parsing broken ([known issue](../port-known-issues/M-timetree-relax-arg-parsing.md))
 - [ ] Substitution rates output (`substitution_rates.tsv` in v0)
 
 ### Refinement Iteration Loop
@@ -277,13 +277,14 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 ### Confidence Intervals
 
-- [x] 95% from marginal posteriors
-- [x] `combine_confidence()` quadrature sum (implemented but unused, pending rate susceptibility)
+- [x] 90% HPD from marginal posteriors
+- [x] `combine_confidence()` quadrature sum
 - [x] `Distribution::quantile()` inverse CDF
-- [ ] Rate susceptibility analysis (`compute_rate_susceptibility()` is `todo!()` - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
-- [ ] `date_uncertainty_due_to_rate()` (not ported)
-- [ ] `--vary-rate` sensitivity (parsed, returns explicit error - [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md))
-- [ ] `--confidence` promotion of `time_marginal` ([known issue](../port-known-issues/M-timetree-confidence-flag-ignored.md))
+- [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
+- [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)
+- [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`
+- [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
+- [x] `--covariation` wired into timetree clock regression
 
 ### Output
 
@@ -300,14 +301,14 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 ### CLI Options (Parsed but Not Wired)
 
-- [ ] `--clock-std-dev`
-- [ ] `--confidence`
+- [x] `--clock-std-dev` (rate susceptibility)
+- [x] `--confidence` (time_marginal promotion, rate susceptibility)
+- [x] `--covariation` (GLS clock regression, rate susceptibility)
+- [x] `--tip-slack` (covariation variance computation)
 - [ ] `--n-iqd`
 - [ ] `--reroot`
 - [ ] `--tip-labels` / `--no-tip-labels`
-- [ ] `--covariation`
-- [x] `--gtr` (model selection: named models and inference)
-- [ ] `--gtr-params` (parsed but not wired)
+- [ ] `--gtr` / `--gtr-params`
 - [ ] `--method-anc`
 - [ ] `--aa`
 - [ ] `--keep-overhangs`
@@ -400,7 +401,7 @@ command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 
 - [x] `optimize` command with `--tree`, `--aln`, `--outdir`
 - [x] Mixed dense and sparse partition setup (one of each, from same alignment)
-- [x] Initial branch-length guess from observed mutation counts (excludes gap and ambiguous positions)
+- [/] Initial branch-length guess from observed mutation counts (does not exclude gaps, see [known issue](../port-known-issues/M-optimize-initial-guess-ignores-gaps.md))
 - [x] Output annotated Newick and Nexus trees
 - [x] GTR parameters written to JSON
 
@@ -435,7 +436,8 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 ### GTR Integration
 
-- [x] `--model` flag wired through `get_gtr_sparse()`/`get_gtr_dense()` for all named models and inference
+- [/] GTR hardcoded to JC69 (see [known issue](../port-known-issues/M-optimize-gtr-hardcoded-jc69.md))
+- [ ] `--model` (parsed but not wired, model dispatch infrastructure exists in `get_gtr_by_name()`)
 - [ ] GTR inference integrated into optimization loop (v0: `infer_gtr` parameter re-estimates model per iteration)
 - [ ] GTR rate optimization (v0: `optimize_gtr_rate()` optimizes overall substitution rate mu)
 
@@ -529,7 +531,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Nucleotide alphabet (A, C, G, T with gap handling)
 - [x] Amino acid alphabet (20 AAs, with/without stop codon)
-- [x] Gap always mapped to unknown profile (no toggle needed for nogap alphabets)
+- [x] Gap-as-unknown toggle (`treat_gap_as_unknown` per partition)
 - [x] IUPAC ambiguity codes (nucleotide: R, Y, S, W, K, M, D, H, B, V, N, X)
 - [x] Amino acid ambiguity (X, B, Z)
 - [x] Profile maps (ambiguity code to probability vector, in primitives layer)
@@ -659,7 +661,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 | -------------- | ----------- | -------------- | ---------- | ------- |
 | ancestral      | 16          | 10             | 6          | 0       |
 | clock          | 17          | 14             | 3          | 0       |
-| timetree       | 30          | 21             | 9          | 0       |
+| timetree       | 30          | 20             | 10         | 0       |
 | homoplasy      | 9           | 0              | 9          | 0       |
 | mugration      | 10          | 8              | 2          | 0       |
 | arg            | 4           | 0              | 4          | 0       |

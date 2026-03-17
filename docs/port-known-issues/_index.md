@@ -38,7 +38,6 @@ exactly.
 | ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | High       | Timetree     | [Gap character not handled in alphabet](H-timetree-gap-alphabet.md)                                                    |
 | High       | Timetree     | [Marginal dense backward pass crash on ebola](H-timetree-marginal-dense-backward-crash.md)                             |
-| High       | Timetree     | [--vary-rate panics with todo!()](H-timetree-vary-rate-unimplemented.md)                                               |
 | High       | Clock        | [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)                     |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                       |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                      |
@@ -53,7 +52,6 @@ exactly.
 | Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                     |
 | Medium     | Timetree     | [Coalescent likelihood always returns None](M-timetree-coalescent-likelihood-stub.md)                                  |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                             |
-| Medium     | Timetree     | [--confidence flag ignored](M-timetree-confidence-flag-ignored.md)                                                     |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                           |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)     |
 | Medium     | Timetree     | [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)                                     |
