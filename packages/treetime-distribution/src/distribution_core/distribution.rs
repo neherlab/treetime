@@ -305,11 +305,53 @@ impl Distribution<Plain> {
   /// Compute confidence interval bounds at given probabilities.
   ///
   /// Returns (lower, upper) where lower = quantile(p_lower) and upper = quantile(p_upper).
-  /// Default interval is 95% CI: (0.025, 0.975).
   pub fn confidence_interval(&self, p_lower: f64, p_upper: f64) -> Option<(f64, f64)> {
     let lower = self.quantile(p_lower)?;
     let upper = self.quantile(p_upper)?;
     Some((lower, upper))
+  }
+
+  /// Compute the highest posterior density (HPD) region containing `fraction`
+  /// of the probability mass.
+  ///
+  /// The HPD region is the shortest interval containing the specified fraction
+  /// of probability mass. For unimodal distributions, this is the interval
+  /// where the PDF exceeds a threshold, found by bisection over thresholds.
+  ///
+  /// v0: `get_max_posterior_region(node, fraction=0.9)` in
+  /// `clock_tree.py:1146-1230`.
+  ///
+  /// Boundary handling (v0 `clock_tree.py:1175-1178`):
+  /// - Peak at left boundary: `[t_min, quantile(fraction)]`
+  /// - Peak at right boundary: `[quantile(1-fraction), t_max]`
+  /// - Interior peak: bisection to find probability threshold where the
+  ///   level-set interval contains exactly `fraction` of the mass.
+  ///
+  /// For symmetric distributions, HPD equals equal-tailed CI. For skewed
+  /// distributions (nodes near tree boundaries), HPD is narrower and
+  /// centered on the peak.
+  pub fn hpd_region(&self, fraction: f64) -> Option<(f64, f64)> {
+    if !(0.0..=1.0).contains(&fraction) {
+      return None;
+    }
+
+    match self {
+      Distribution::Empty => None,
+      Distribution::Point(p) => Some((p.t(), p.t())),
+      Distribution::Range(r) => {
+        // Uniform: any sub-interval of correct length has equal density.
+        // Use centered interval (same as equal-tailed).
+        let width = r.end() - r.start();
+        let margin = (1.0 - fraction) * 0.5 * width;
+        Some((r.start() + margin, r.end() - margin))
+      },
+      Distribution::Function(f) => hpd_region_function(f, fraction),
+      Distribution::Formula(_) => {
+        // Fall back to equal-tailed for Formula distributions
+        let p_lo = (1.0 - fraction) * 0.5;
+        self.confidence_interval(p_lo, 1.0 - p_lo)
+      },
+    }
   }
 
   pub fn to_neglog(&self) -> Distribution<NegLog> {
@@ -372,6 +414,170 @@ fn discretize_formula(f: &DistributionFormula<Plain>) -> Result<DistributionFunc
   });
   let values = f.eval_many(&t)?;
   DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
+}
+
+/// HPD region for a discretized distribution on a uniform grid.
+///
+/// Finds the shortest interval containing `fraction` of the probability mass
+/// by bisecting on a probability threshold. All points where the PDF exceeds
+/// the threshold form the HPD region (assumed unimodal).
+///
+/// v0 equivalent: the optimization loop in `get_max_posterior_region`
+/// (`clock_tree.py:1184-1226`), adapted from neg-log space to plain
+/// probability space.
+fn hpd_region_function(f: &DistributionFunction<f64, Plain>, fraction: f64) -> Option<(f64, f64)> {
+  let t = f.t();
+  let y = f.y();
+  let n = t.len();
+  let dx = f.dx();
+  let x_min = f.x_min();
+
+  if n == 0 {
+    return None;
+  }
+  if n == 1 {
+    return Some((t[0], t[0]));
+  }
+
+  // CDF via trapezoidal rule (same method as quantile())
+  let mut cdf = Array1::<f64>::zeros(n);
+  for i in 1..n {
+    cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
+  }
+  let total = cdf[n - 1];
+  if total <= 0.0 || !total.is_finite() {
+    return None;
+  }
+  cdf.mapv_inplace(|v| v / total);
+
+  // Peak = argmax of probability density
+  let pidx = y.argmax().ok()?;
+
+  // Boundary cases (v0 clock_tree.py:1175-1178, 1194):
+  // Peak on boundary or array too short for interior interpolation.
+  // HPD for a boundary peak is a one-sided interval from the peak boundary
+  // to the quantile capturing `fraction` of the mass.
+  if n < 3 || pidx == 0 {
+    let upper = interp_cdf_inverse(&t, &cdf, fraction);
+    return Some((t[0], upper));
+  }
+  if pidx == n - 1 {
+    let lower = interp_cdf_inverse(&t, &cdf, 1.0 - fraction);
+    return Some((lower, t[n - 1]));
+  }
+
+  // Interior peak: bisect on probability threshold p_thresh in [0, peak_val].
+  //
+  // For each threshold, the HPD region is [left(p_thresh), right(p_thresh)]
+  // where left/right are where the PDF crosses the threshold on each side
+  // of the peak. As p_thresh decreases from peak_val toward 0, the interval
+  // widens and captures more mass.
+  //
+  // Find p_thresh where CDF(right) - CDF(left) = fraction.
+  let peak_val = y[pidx];
+  let mut lo = 0.0_f64; // wide interval, mass ~ 1
+  let mut hi = peak_val; // narrow interval, mass ~ 0
+
+  // ~50 iterations gives ~15 decimal digits; 64 is comfortable
+  for _ in 0..64 {
+    let mid = 0.5 * (lo + hi);
+    let left_pos = interp_crossing_left(&t, y, pidx, mid);
+    let right_pos = interp_crossing_right(&t, y, pidx, mid);
+    let mass = interp_cdf_at_uniform(&cdf, x_min, dx, right_pos) - interp_cdf_at_uniform(&cdf, x_min, dx, left_pos);
+
+    if mass > fraction {
+      lo = mid; // raise threshold to narrow interval
+    } else {
+      hi = mid; // lower threshold to widen interval
+    }
+
+    if (hi - lo) < 1e-14 * peak_val.max(1e-30) {
+      break;
+    }
+  }
+
+  let p_thresh = 0.5 * (lo + hi);
+  let left_pos = interp_crossing_left(&t, y, pidx, p_thresh);
+  let right_pos = interp_crossing_right(&t, y, pidx, p_thresh);
+  Some((left_pos, right_pos))
+}
+
+/// Find position left of peak where y crosses `threshold` (linear interpolation).
+///
+/// Searches from peak toward the left boundary. Returns `t[0]` if the
+/// threshold is never reached (PDF stays above threshold across the full
+/// left side).
+fn interp_crossing_left(t: &Array1<f64>, y: &Array1<f64>, pidx: usize, threshold: f64) -> f64 {
+  // Search from peak leftward: find first interval where y drops below threshold
+  for i in (1..=pidx).rev() {
+    if y[i - 1] <= threshold && y[i] > threshold {
+      let frac = (threshold - y[i - 1]) / (y[i] - y[i - 1]);
+      return t[i - 1] + frac * (t[i] - t[i - 1]);
+    }
+  }
+  t[0]
+}
+
+/// Find position right of peak where y crosses `threshold` (linear interpolation).
+///
+/// Searches from peak toward the right boundary. Returns `t[n-1]` if the
+/// threshold is never reached.
+fn interp_crossing_right(t: &Array1<f64>, y: &Array1<f64>, pidx: usize, threshold: f64) -> f64 {
+  let n = t.len();
+  // Search from peak rightward: find first interval where y drops below threshold
+  for i in pidx..n - 1 {
+    if y[i] > threshold && y[i + 1] <= threshold {
+      // y[i] > threshold > y[i+1], both diffs negative, frac in [0,1]
+      let frac = (threshold - y[i]) / (y[i + 1] - y[i]);
+      return t[i] + frac * (t[i + 1] - t[i]);
+    }
+  }
+  t[n - 1]
+}
+
+/// Interpolate CDF value at an arbitrary position on a uniform grid.
+///
+/// O(1) via direct index computation from uniform grid spacing.
+fn interp_cdf_at_uniform(cdf: &Array1<f64>, x_min: f64, dx: f64, pos: f64) -> f64 {
+  let n = cdf.len();
+  if n == 0 {
+    return 0.0;
+  }
+  let idx_f = (pos - x_min) / dx;
+  if idx_f <= 0.0 {
+    return cdf[0];
+  }
+  let last = (n - 1) as f64;
+  if idx_f >= last {
+    return cdf[n - 1];
+  }
+  let idx = (idx_f.floor() as usize).min(n - 2);
+  let frac = idx_f - idx as f64;
+  cdf[idx] + frac * (cdf[idx + 1] - cdf[idx])
+}
+
+/// Inverse CDF: find position where CDF = p (linear interpolation).
+fn interp_cdf_inverse(t: &Array1<f64>, cdf: &Array1<f64>, p: f64) -> f64 {
+  let n = t.len();
+  if p <= 0.0 {
+    return t[0];
+  }
+  if p >= 1.0 {
+    return t[n - 1];
+  }
+
+  for i in 1..n {
+    if cdf[i] >= p {
+      let c0 = cdf[i - 1];
+      let c1 = cdf[i];
+      if (c1 - c0).abs() < 1e-30 {
+        return t[i - 1];
+      }
+      let frac = (p - c0) / (c1 - c0);
+      return t[i - 1] + frac * (t[i] - t[i - 1]);
+    }
+  }
+  t[n - 1]
 }
 
 pub type DistributionPlain = Distribution<Plain>;
