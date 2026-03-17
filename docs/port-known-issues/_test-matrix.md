@@ -51,7 +51,6 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | ------- | ------------------------------------------------------------------------------------------- |
 | grid    | [H-timetree-marginal-dense-backward-crash](H-timetree-marginal-dense-backward-crash.md)     |
 | vary    | [H-timetree-vary-rate-unimplemented](H-timetree-vary-rate-unimplemented.md)                 |
-| relax   | [M-timetree-relax-arg-parsing](M-timetree-relax-arg-parsing.md)                             |
 | coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
 | conf    | [M-timetree-confidence-flag-ignored](M-timetree-confidence-flag-ignored.md)                 |
 | neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
