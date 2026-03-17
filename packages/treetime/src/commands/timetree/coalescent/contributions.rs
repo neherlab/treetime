@@ -95,10 +95,7 @@ fn compute_leaf_contribution_single(
   // pass operates in calendar time. Convert the domain so that distribution
   // multiplication finds overlapping supports.
 
-  let tbp_min = Tbp::new(integral_merger_rate.breakpoints()[0]);
-  let tbp_max = Tbp::new(integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1]);
-  let t_min = tbp_max.to_calendar(present_time);
-  let t_max = tbp_min.to_calendar(present_time);
+  let (t_min, t_max) = tbp_domain_to_calendar(integral_merger_rate.breakpoints(), present_time);
 
   let integral_merger_rate = Arc::new(integral_merger_rate.clone());
 
@@ -151,10 +148,7 @@ fn compute_internal_contribution_single(
   let n_children = n_children as f64;
   let multiplicity = n_children - 1.0;
 
-  let tbp_min = Tbp::new(integral_merger_rate.breakpoints()[0]);
-  let tbp_max = Tbp::new(integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1]);
-  let t_min = tbp_max.to_calendar(present_time);
-  let t_max = tbp_min.to_calendar(present_time);
+  let (t_min, t_max) = tbp_domain_to_calendar(integral_merger_rate.breakpoints(), present_time);
 
   // Clone Arc-wrapped data for use in closure
   let integral_merger_rate = Arc::new(integral_merger_rate.clone());
@@ -181,4 +175,17 @@ fn compute_internal_contribution_single(
     t_min.value(),
     t_max.value(),
   )))
+}
+
+/// Convert TBP breakpoint domain boundaries to calendar time bounds.
+///
+/// TBP (time before present) runs in the opposite direction from calendar time:
+/// the largest TBP value maps to the earliest calendar time, and vice versa.
+fn tbp_domain_to_calendar(breakpoints: &Array1<f64>, present_time: CalendarTime) -> (CalendarTime, CalendarTime) {
+  let n = breakpoints.len();
+  let tbp_min = Tbp::new(breakpoints[0]);
+  let tbp_max = Tbp::new(breakpoints[n - 1]);
+  let t_min = tbp_max.to_calendar(present_time);
+  let t_max = tbp_min.to_calendar(present_time);
+  (t_min, t_max)
 }
