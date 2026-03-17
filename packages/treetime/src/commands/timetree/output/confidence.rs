@@ -145,7 +145,7 @@ pub fn compute_rate_susceptibility(
 /// This assumes the rate-to-date mapping is approximately linear (valid
 /// when rate_std << rate) and that the rate estimate is approximately
 /// Gaussian (from the regression CLT).
-pub fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {
+pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {
   let [lower, central, upper] = dates;
   let z_lower = quantile_to_zscore(interval.0);
   let z_upper = quantile_to_zscore(interval.1);
@@ -245,7 +245,7 @@ pub fn write_confidence_intervals(intervals: &[NodeConfidenceInterval], filepath
 /// Formula:
 /// - `lower = center - sqrt((c1_lo - center)^2 + (c2_lo - center)^2)`
 /// - `upper = center + sqrt((c1_hi - center)^2 + (c2_hi - center)^2)`
-pub fn combine_confidence(
+pub(crate) fn combine_confidence(
   center: f64,
   limits: (f64, f64),
   c1: Option<(f64, f64)>,
@@ -274,7 +274,7 @@ pub fn combine_confidence(
 /// - Without either, v0 disables confidence estimation entirely
 ///
 /// Returns `None` when rate susceptibility should not run.
-pub fn determine_rate_std(
+pub(crate) fn determine_rate_std(
   clock_std_dev: Option<f64>,
   covariation: bool,
   clock_model: &ClockModel,
@@ -317,7 +317,7 @@ pub fn determine_rate_std(
 ///
 /// Returns 0.0 for boundary values p=0 or p=1, matching v0's guard:
 /// `if x * (1.0 - x) else 0` (clock_tree.py:1083).
-pub fn quantile_to_zscore(p: f64) -> f64 {
+pub(crate) fn quantile_to_zscore(p: f64) -> f64 {
   // v0 guard: if x * (1.0 - x) is falsy (i.e. x=0 or x=1), return 0
   if p * (1.0 - p) == 0.0 {
     return 0.0;
