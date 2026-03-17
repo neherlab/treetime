@@ -110,7 +110,7 @@ When coupling > 0, closely related branches have similar rates (autocorrelated c
 
 v1: [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs).
 v0: `TreeTime.relaxed_clock()` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py).
-CLI: `--relax <slack> <coupling>` (defaults 1.0, 1.0). Argument parsing is broken in v1 - see [known issue](../port-known-issues/M-timetree-relax-arg-parsing.md).
+CLI: `--relax <SLACK> <COUPLING>` (defaults 1.0, 1.0).
 
 ### Algorithm
 

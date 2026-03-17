@@ -250,7 +250,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Slack parameter (rate deviation penalty)
 - [x] Skip relaxed clock when total partition length is zero
 - [x] Use first two values as slack and coupling, with defaults when omitted
-- [/] `--relax` argument parsing broken ([known issue](../port-known-issues/M-timetree-relax-arg-parsing.md))
+- [x] `--relax` argument parsing (`num_args = 2` for slack and coupling)
 - [ ] Substitution rates output (`substitution_rates.tsv` in v0)
 
 ### Refinement Iteration Loop

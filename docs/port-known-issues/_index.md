@@ -64,7 +64,6 @@ exactly.
 | Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                     |
 | Medium     | Timetree     | [Polytomy zero-branch penalty differs from v0](M-timetree-polytomy-zero-branch-penalty.md)                             |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                             |
-| Medium     | Timetree     | [--relax argument parsing broken](M-timetree-relax-arg-parsing.md)                                                     |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                    |
 | Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                     |
 | Negligible | Ancestral    | [Dense backward pass produces NaN for all-zero probability rows](N-ancestral-dense-normalize-log-nan.md)               |
