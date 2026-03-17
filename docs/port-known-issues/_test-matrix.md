@@ -49,7 +49,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 
 | ID      | Issue file                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- |
-| grid    | [H-timetree-marginal-dense-backward-crash](H-timetree-marginal-dense-backward-crash.md)     |
+| grid    | Grid interpolation crash on zero-length branches ("x array must be uniformly spaced")       |
 | vary    | [H-timetree-vary-rate-unimplemented](H-timetree-vary-rate-unimplemented.md)                 |
 | coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
 | conf    | [M-timetree-confidence-flag-ignored](M-timetree-confidence-flag-ignored.md)                 |
