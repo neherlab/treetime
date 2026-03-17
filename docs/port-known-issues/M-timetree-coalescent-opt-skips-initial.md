@@ -16,4 +16,4 @@ start from a different initial state.
 
 ## Related issues
 
-The TBP/calendar coordinate mismatch (formerly H-timetree-coalescent-coordinate-mismatch) has been fixed. Coalescent contributions now operate in calendar time and have a real effect on node times, making this skipped-initial-Tc issue observable.
+The TBP/calendar coordinate mismatch has been fixed. Coalescent contributions now operate in calendar time and have a real effect on node times, making this skipped-initial-Tc issue observable.
