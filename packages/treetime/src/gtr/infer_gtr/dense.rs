@@ -4,12 +4,13 @@ use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCou
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use ndarray::{Array1, Array2, Array3};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::edge::HasBranchLength;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use treetime_utils::array::ndarray::argmax_first;
 
 /// Infer GTR model from dense partition data.
@@ -18,7 +19,15 @@ use treetime_utils::array::ndarray::argmax_first;
 /// When `--model=infer --dense=true`, marginal reconstruction runs twice: once to populate profiles
 /// for GTR inference, and again after inferring the GTR. Sparse inference avoids this by tracking
 /// mutations incrementally during Fitch compression.
-pub fn infer_gtr_dense(partition: &Arc<RwLock<PartitionMarginalDense>>, graph: &GraphAncestral) -> Result<GTR, Report> {
+pub fn infer_gtr_dense<N, E, D>(
+  partition: &Arc<RwLock<PartitionMarginalDense>>,
+  graph: &Graph<N, E, D>,
+) -> Result<GTR, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let counts = get_mutation_counts_dense(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let n_states = partition.read_arc().alphabet.n_canonical();
@@ -124,10 +133,15 @@ pub fn accumulate_mutation_counts(
 /// - `nij`: expected substitutions weighted by posterior P(child=i, parent=j | site)
 /// - `Ti`: time in state using midpoint approximation
 /// - `root_state`: state counts from argmax sequence (matching v0 `cseq` counts)
-pub fn get_mutation_counts_dense(
-  graph: &GraphAncestral,
+pub fn get_mutation_counts_dense<N, E, D>(
+  graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalDense>>,
-) -> Result<MutationCounts, Report> {
+) -> Result<MutationCounts, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let partition = partition.read_arc();
   let alphabet = &partition.alphabet;
   let n_states = alphabet.n_canonical();

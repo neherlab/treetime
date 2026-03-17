@@ -13,5 +13,4 @@ The iterative refinement shifts equilibrium frequencies away from uniform, chang
 
 ## Related issues
 
-- [GTR model selection not implemented](M-timetree-gtr-selection.md) same gap for timetree command
 - [Iterative GTR for discrete traits](../port-algo-inventory/unimplemented.md#iterative-gtr-for-discrete-traits) algorithm description in unimplemented inventory
