@@ -18,7 +18,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(0.0);
@@ -42,7 +41,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 1e-10;
@@ -74,7 +72,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.2, 0.3, 0.2, 0.3]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 1e-6;
@@ -111,7 +108,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 100.0;
@@ -138,7 +134,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 1000.0;

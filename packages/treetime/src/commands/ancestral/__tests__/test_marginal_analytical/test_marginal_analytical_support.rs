@@ -99,7 +99,7 @@ pub mod tests {
   pub fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
     let graph: GraphAncestral = nwk_read_str(newick)?;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,

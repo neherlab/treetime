@@ -56,8 +56,8 @@ mod tests {
   /// the rate matrix Q = S * diag(pi) is not proportional to JC69, exercising
   /// the full GTR eigendecomposition. Uses default exchangeability (W = None),
   /// which produces equal off-diagonal rates before weighting by pi.
-  fn make_nonuniform_gtr(treat_gap_as_unknown: bool) -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+  fn make_nonuniform_gtr() -> Result<GTR, Report> {
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
       n_states,
@@ -80,9 +80,8 @@ mod tests {
     graph: &GraphAncestral,
     aln: &[FastaRecord],
     gtr: GTR,
-    treat_gap_as_unknown: bool,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr,
@@ -101,14 +100,9 @@ mod tests {
   /// Convenience wrapper for root-invariance tests that need to evaluate the
   /// same alignment under different rootings of the same unrooted topology.
   /// Returns only the scalar log-likelihood, discarding the partition data.
-  fn run_dense_lh_for_newick(
-    newick: &str,
-    aln: &[FastaRecord],
-    gtr: GTR,
-    treat_gap_as_unknown: bool,
-  ) -> Result<f64, Report> {
+  fn run_dense_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
     let graph: GraphAncestral = nwk_read_str(newick)?;
-    let (log_lh, _) = run_dense_marginal(&graph, aln, gtr, treat_gap_as_unknown)?;
+    let (log_lh, _) = run_dense_marginal(&graph, aln, gtr)?;
     Ok(log_lh)
   }
 
@@ -124,8 +118,8 @@ mod tests {
   /// distinguishes the dense test from the sparse variant, which provides
   /// sequences only for the 4 leaf taxa.
   ///
-  /// The JC69 model with `treat_gap_as_unknown=true` treats gaps as fully
-  /// ambiguous (equivalent to N). The test compares inferred ancestral
+  /// Gaps are treated as fully ambiguous (equivalent to N). The test
+  /// compares inferred ancestral
   /// sequences at root, AB, and CD against expected sequences using
   /// `ancestral_reconstruction_marginal`, which picks the MAP (maximum a
   /// posteriori) state argmax_s P(s|data) at each position.
@@ -170,11 +164,9 @@ mod tests {
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let treat_gap_as_unknown = true;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
 
@@ -241,11 +233,10 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
 
-    let (log_lh, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
+    let (log_lh, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
 
     // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
@@ -309,11 +300,10 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
 
-    let (_, partitions) = run_dense_marginal(&graph, &aln, gtr, true)?;
+    let (_, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
@@ -359,18 +349,17 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let treat_gap_as_unknown = true;
-    let gtr1 = make_nonuniform_gtr(treat_gap_as_unknown)?;
-    let gtr2 = make_nonuniform_gtr(treat_gap_as_unknown)?;
-    let gtr3 = make_nonuniform_gtr(treat_gap_as_unknown)?;
+    let gtr1 = make_nonuniform_gtr()?;
+    let gtr2 = make_nonuniform_gtr()?;
+    let gtr3 = make_nonuniform_gtr()?;
 
     let tree1 = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let tree2 = "(A:0.1,B:0.2,(C:0.2,D:0.12)CD:0.15)AB:0.01;";
     let tree3 = "((A:0.1,B:0.2)AB:0.15,C:0.2,D:0.12)CD:0.01;";
 
-    let log_lh1 = run_dense_lh_for_newick(tree1, &aln, gtr1, treat_gap_as_unknown)?;
-    let log_lh2 = run_dense_lh_for_newick(tree2, &aln, gtr2, treat_gap_as_unknown)?;
-    let log_lh3 = run_dense_lh_for_newick(tree3, &aln, gtr3, treat_gap_as_unknown)?;
+    let log_lh1 = run_dense_lh_for_newick(tree1, &aln, gtr1)?;
+    let log_lh2 = run_dense_lh_for_newick(tree2, &aln, gtr2)?;
+    let log_lh3 = run_dense_lh_for_newick(tree3, &aln, gtr3)?;
 
     let epsilon = 1e-6;
     assert_ulps_eq!(log_lh1, log_lh2, epsilon = epsilon);

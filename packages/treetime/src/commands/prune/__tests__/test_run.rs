@@ -38,7 +38,7 @@ mod tests {
       let mut partition = PartitionMarginalSparse {
         index: 0,
         gtr: jc69(JC69Params::default())?,
-        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
         length: 100, // dummy length
         nodes: btreemap! {},
         edges: btreemap! {},
@@ -81,7 +81,7 @@ mod tests {
       let mut partition = PartitionMarginalSparse {
         index: 0,
         gtr: jc69(JC69Params::default())?,
-        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
         length: 100,
         nodes: btreemap! {},
         edges: btreemap! {},
@@ -600,7 +600,7 @@ mod tests {
     let mut partition = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -687,7 +687,7 @@ mod tests {
     let mut partition = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -756,7 +756,7 @@ mod tests {
     let mut partition = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -825,7 +825,7 @@ mod tests {
     let mut partition1 = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -851,7 +851,7 @@ mod tests {
     let mut partition2 = PartitionMarginalSparse {
       index: 1,
       gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc, false)?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},

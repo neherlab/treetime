@@ -14,7 +14,6 @@ mod tests {
     let jc = jc69(JC69Params {
       mu: 1.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let q = jc.Q();
@@ -30,7 +29,6 @@ mod tests {
       mu: 1.0,
       kappa: 1.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let q = k.Q();
@@ -48,7 +46,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let h2 = hky85(HKY85Params {
@@ -56,7 +53,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Q matrices should be identical (mu only affects eigenvalues)

@@ -41,7 +41,7 @@ mod tests {
 
   #[test]
   fn test_composition_with_sequence_and_alphabet() {
-    let alpha_chars = Alphabet::new(AlphabetName::Nuc, false).unwrap().chars().collect_vec();
+    let alpha_chars = Alphabet::new(AlphabetName::Nuc).unwrap().chars().collect_vec();
     let actual = Composition::with_sequence(chars("ACATCGCCNNA--GAC"), alpha_chars, c(b'-'));
     let expected = Composition::from_counts(
       btreemap! {

@@ -33,7 +33,6 @@ mod tests {
     let gtr = jc69(JC69Params {
       mu: input.mu,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -55,7 +54,6 @@ mod tests {
       mu: input.mu,
       kappa: input.kappa,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -75,7 +73,6 @@ mod tests {
       mu: input.mu,
       pi: input.pi.clone(),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -96,7 +93,6 @@ mod tests {
       kappa: input.kappa,
       pi: input.pi.clone(),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -118,7 +114,6 @@ mod tests {
       kappa: input.kappa,
       pi_GC: input.pi_gc,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -142,7 +137,6 @@ mod tests {
       kappa2: input.kappa2,
       pi: input.pi.clone(),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     compare_gtr(&gtr, expected);
     Ok(())
@@ -159,7 +153,7 @@ mod tests {
     let outputs = load_gm_gtr_outputs();
     let input = &inputs.custom[case];
     let expected = &outputs.custom[case];
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,

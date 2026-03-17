@@ -96,8 +96,8 @@ mod tests {
   }
 
   lazy_static! {
-    static ref DENSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
-    static ref SPARSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    static ref DENSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    static ref SPARSE_NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
@@ -122,7 +122,6 @@ mod tests {
         index: 0,
         gtr: jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
-          treat_gap_as_unknown: true,
           ..JC69Params::default()
         })?,
         alphabet: DENSE_NUC_ALPHABET.clone(),
@@ -140,7 +139,6 @@ mod tests {
         index: 0,
         gtr: jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
-          treat_gap_as_unknown: false,
           ..JC69Params::default()
         })?,
         alphabet: SPARSE_NUC_ALPHABET.clone(),

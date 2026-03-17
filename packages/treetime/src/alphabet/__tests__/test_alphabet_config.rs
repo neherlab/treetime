@@ -21,7 +21,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     }
   }
 
@@ -39,7 +38,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -56,7 +54,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -71,7 +68,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -86,7 +82,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -103,7 +98,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -120,7 +114,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -139,7 +132,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -160,7 +152,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -181,7 +172,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -214,14 +204,8 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_config_create_profile_map_treat_gap_as_unknown() {
-    let config = AlphabetConfig {
-      canonical: vec_u8!['A', 'C', 'G', 'T'],
-      ambiguous: indexmap! {},
-      unknown: b'N',
-      gap: b'-',
-      treat_gap_as_unknown: true,
-    };
+  fn test_alphabet_config_create_profile_map_gap_matches_unknown() {
+    let config = make_valid_config();
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_gap = &profile_map[&AsciiChar::from_byte_unchecked(b'-')];
@@ -232,20 +216,12 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_config_create_profile_map_no_gap_when_not_treat_as_unknown() {
-    let config = make_valid_config();
-    let profile_map = config.create_profile_map().unwrap();
-    assert!(!profile_map.contains_key(&AsciiChar::from_byte_unchecked(b'-')));
-  }
-
-  #[test]
   fn test_alphabet_config_create_profile_map_identity_matrix_for_canonical() {
     let config = AlphabetConfig {
       canonical: vec_u8!['X', 'Y', 'Z'],
       ambiguous: indexmap! {},
       unknown: b'?',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let profile_map = config.create_profile_map().unwrap();
 
@@ -288,7 +264,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: reserved,
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -307,7 +282,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: reserved,
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     assert!(result.is_err());
@@ -324,7 +298,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     result.unwrap();
@@ -337,7 +310,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     result.unwrap();
@@ -355,7 +327,6 @@ mod tests {
       },
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let profile_map = config.create_profile_map().unwrap();
 
@@ -383,7 +354,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     assert_ne!(config1, config3);
   }
@@ -402,7 +372,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'-',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = config.validate();
     result.unwrap();

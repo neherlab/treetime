@@ -19,7 +19,6 @@ mod tests {
       mu: 1.0,
       kappa: 0.01, // transitions 100x less likely than transversions
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(1.0);
@@ -38,7 +37,6 @@ mod tests {
       mu: 1.0,
       kappa: 100.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(1.0);
@@ -72,7 +70,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(pi),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(1.0);
@@ -111,7 +108,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(pi),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(1.0);
@@ -122,7 +118,6 @@ mod tests {
       mu: 1.0,
       kappa: 2.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     let p_k = k.expQt(1.0);
 
@@ -153,13 +148,11 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.25, 0.25, 0.25, 0.25]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
     let k = k80(K80Params {
       mu: 1.0,
       kappa: 2.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     assert_abs_diff_eq!(h.Q(), k.Q(), epsilon = 1e-14);
@@ -179,7 +172,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.25, 0.25, 0.25, 0.25]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 1.0;
@@ -213,7 +205,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let t = 1.0;

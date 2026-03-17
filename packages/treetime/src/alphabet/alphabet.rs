@@ -43,7 +43,6 @@ pub struct Alphabet {
   undetermined: StateSet,
   unknown: AsciiChar,
   gap: AsciiChar,
-  treat_gap_as_unknown: bool,
   profile_map: ProfileMap,
 
   #[serde(skip)]
@@ -59,13 +58,13 @@ pub struct Alphabet {
 
 impl Default for Alphabet {
   fn default() -> Self {
-    Self::new(AlphabetName::Nuc, false).expect("Failed to create default alphabet")
+    Self::new(AlphabetName::Nuc).expect("Failed to create default alphabet")
   }
 }
 
 impl Alphabet {
   /// Create one of the pre-defined alphabets
-  pub fn new(name: AlphabetName, treat_gap_as_unknown: bool) -> Result<Self, Report> {
+  pub fn new(name: AlphabetName) -> Result<Self, Report> {
     match name {
       AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
         canonical: vec_u8!['A', 'C', 'G', 'T'],
@@ -83,7 +82,6 @@ impl Alphabet {
         },
         unknown: b'N',
         gap: b'-',
-        treat_gap_as_unknown,
       }),
       AlphabetName::Aa => Self::with_config(&AlphabetConfig {
         canonical: vec_u8![
@@ -96,7 +94,6 @@ impl Alphabet {
         },
         unknown: b'X',
         gap: b'-',
-        treat_gap_as_unknown,
       }),
       AlphabetName::AaNoStop => Self::with_config(&AlphabetConfig {
         canonical: vec_u8![
@@ -109,7 +106,6 @@ impl Alphabet {
         },
         unknown: b'X',
         gap: b'-',
-        treat_gap_as_unknown,
       }),
     }
   }
@@ -121,7 +117,6 @@ impl Alphabet {
       ambiguous,
       unknown,
       gap,
-      treat_gap_as_unknown,
     } = config;
 
     let gap = AsciiChar::try_new(*gap)?;
@@ -173,8 +168,6 @@ impl Alphabet {
 
     Ok(Self {
       all,
-      char_to_index,
-      index_to_char,
       canonical,
       ambiguous,
       ambiguous_keys,
@@ -182,10 +175,11 @@ impl Alphabet {
       undetermined,
       unknown,
       gap,
-      treat_gap_as_unknown: *treat_gap_as_unknown,
       profile_map,
       char_to_set,
       set_to_char,
+      char_to_index,
+      index_to_char,
     })
   }
 

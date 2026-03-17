@@ -32,14 +32,12 @@ mod tests {
     let jc = jc69(JC69Params {
       mu: 1.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let k = k80(K80Params {
       mu: 1.0,
       kappa: 1.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Compare normalized Q matrices
@@ -61,14 +59,12 @@ mod tests {
     let jc = jc69(JC69Params {
       mu: 1.0,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let f = f81(F81Params {
       mu: 1.0,
       pi: Some(array![0.25, 0.25, 0.25, 0.25]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Compare normalized Q matrices
@@ -94,7 +90,6 @@ mod tests {
       mu: 1.0,
       kappa,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let h = hky85(HKY85Params {
@@ -102,7 +97,6 @@ mod tests {
       kappa,
       pi: Some(array![0.25, 0.25, 0.25, 0.25]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Compare normalized Q matrices
@@ -127,7 +121,6 @@ mod tests {
       mu: 1.0,
       pi: Some(pi.clone()),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let h = hky85(HKY85Params {
@@ -135,7 +128,6 @@ mod tests {
       kappa: 1.0,
       pi: Some(pi),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Compare normalized Q matrices
@@ -203,7 +195,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(pi.clone()),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // TN93 with equal transition rates and ts/tv ratio = 2
@@ -214,7 +205,6 @@ mod tests {
       kappa2: 1.0, // C<->T same as A<->G
       pi: Some(pi),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // Compare normalized Q matrices
@@ -246,7 +236,6 @@ mod tests {
       kappa2,
       pi: Some(pi.clone()),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     // GTR W matrix matching TN93 structure:
@@ -261,7 +250,7 @@ mod tests {
       [kappa1, kappa2, kappa1, 0.0   ]   // T row: T-A=tv, T-C=ts, T-G=tv
     ];
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("Nuc alphabet should be valid");
+    let alphabet = Alphabet::new(AlphabetName::Nuc).expect("Nuc alphabet should be valid");
     let n_states = alphabet.n_canonical();
 
     let g = GTR::new(GTRParams {

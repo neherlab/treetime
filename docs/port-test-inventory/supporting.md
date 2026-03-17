@@ -484,8 +484,8 @@
 | `test_alphabet_nuc_set_to_char`                  | Set-to-char reverse lookup                   |
 | `test_alphabet_nuc_construct_profile`            | Profile from A,G pair                        |
 | `test_alphabet_nuc_seq2prof`                     | Sequence to profile matrix                   |
-| `test_alphabet_treat_gap_as_unknown_false`       | Gap distinct from unknown                    |
-| `test_alphabet_treat_gap_as_unknown_true`        | Gap profile matches unknown profile          |
+| `test_alphabet_gap_is_not_unknown`               | Gap distinct from unknown                    |
+| `test_alphabet_gap_profile_matches_unknown`      | Gap profile matches unknown profile          |
 | `test_alphabet_reserved_constants`               | NON_CHAR, VARIABLE_CHAR, FILL_CHAR values    |
 | `test_alphabet_aa_ambiguous`                     | Aa ambiguous chars are B,J,Z                 |
 | `test_alphabet_aa_b_maps_to_nd`                  | Aa B maps to N,D set                         |
@@ -507,31 +507,30 @@
 
 **File:** [`test_alphabet_config.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs) - 34 test executions (plain + rstest cases)
 
-| Test                                                                       | Purpose                                           |
-| -------------------------------------------------------------------------- | ------------------------------------------------- |
-| `test_alphabet_config_validate_valid`                                      | Valid config passes validation                    |
-| `test_alphabet_config_validate_duplicate_canonical`                        | Duplicate canonical chars rejected                |
-| `test_alphabet_config_validate_canonical_ambiguous_overlap`                | Canonical-ambiguous overlap rejected              |
-| `test_alphabet_config_validate_canonical_contains_gap`                     | Gap in canonical rejected                         |
-| `test_alphabet_config_validate_canonical_contains_unknown`                 | Unknown in canonical rejected                     |
-| `test_alphabet_config_validate_ambiguous_contains_gap`                     | Gap as ambiguous key rejected                     |
-| `test_alphabet_config_validate_ambiguous_maps_to_noncanonical`             | Ambiguous mapping to non-canonical rejected       |
-| `test_alphabet_config_validate_reserved_in_canonical` (3 cases)            | Reserved chars in canonical rejected              |
-| `test_alphabet_config_validate_reserved_in_ambiguous_key` (3 cases)        | Reserved chars as ambiguous key rejected          |
-| `test_alphabet_config_validate_reserved_in_ambiguous_value` (3 cases)      | Reserved chars in ambiguous value rejected        |
-| `test_alphabet_config_create_profile_map`                                  | Profile map for canonical and ambiguous           |
-| `test_alphabet_config_create_profile_map_treat_gap_as_unknown`             | Gap profile matches unknown when enabled          |
-| `test_alphabet_config_create_profile_map_no_gap_when_not_treat_as_unknown` | Gap absent from profile map by default            |
-| `test_alphabet_config_create_profile_map_identity_matrix_for_canonical`    | Canonical chars produce identity matrix           |
-| `test_alphabet_config_serde_roundtrip`                                     | JSON serialize-deserialize roundtrip              |
-| `test_alphabet_config_validate_reserved_as_unknown` (3 cases)              | Reserved chars as unknown rejected                |
-| `test_alphabet_config_validate_reserved_as_gap` (3 cases)                  | Reserved chars as gap rejected                    |
-| `test_alphabet_config_validate_ambiguous_empty_values`                     | Empty ambiguous values pass validation            |
-| `test_alphabet_config_validate_empty_canonical`                            | Empty canonical passes config validation          |
-| `test_alphabet_config_create_profile_map_all_ambiguous`                    | Multiple ambiguous codes produce correct profiles |
-| `test_alphabet_config_equality`                                            | Config equality and inequality                    |
-| `test_alphabet_config_clone`                                               | Config clone matches original                     |
-| `test_alphabet_config_validate_gap_equals_unknown`                         | Gap equal to unknown passes validation            |
+| Test                                                                    | Purpose                                           |
+| ----------------------------------------------------------------------- | ------------------------------------------------- |
+| `test_alphabet_config_validate_valid`                                   | Valid config passes validation                    |
+| `test_alphabet_config_validate_duplicate_canonical`                     | Duplicate canonical chars rejected                |
+| `test_alphabet_config_validate_canonical_ambiguous_overlap`             | Canonical-ambiguous overlap rejected              |
+| `test_alphabet_config_validate_canonical_contains_gap`                  | Gap in canonical rejected                         |
+| `test_alphabet_config_validate_canonical_contains_unknown`              | Unknown in canonical rejected                     |
+| `test_alphabet_config_validate_ambiguous_contains_gap`                  | Gap as ambiguous key rejected                     |
+| `test_alphabet_config_validate_ambiguous_maps_to_noncanonical`          | Ambiguous mapping to non-canonical rejected       |
+| `test_alphabet_config_validate_reserved_in_canonical` (3 cases)         | Reserved chars in canonical rejected              |
+| `test_alphabet_config_validate_reserved_in_ambiguous_key` (3 cases)     | Reserved chars as ambiguous key rejected          |
+| `test_alphabet_config_validate_reserved_in_ambiguous_value` (3 cases)   | Reserved chars in ambiguous value rejected        |
+| `test_alphabet_config_create_profile_map`                               | Profile map for canonical and ambiguous           |
+| `test_alphabet_config_create_profile_map_gap_matches_unknown`           | Gap profile matches unknown profile               |
+| `test_alphabet_config_create_profile_map_identity_matrix_for_canonical` | Canonical chars produce identity matrix           |
+| `test_alphabet_config_serde_roundtrip`                                  | JSON serialize-deserialize roundtrip              |
+| `test_alphabet_config_validate_reserved_as_unknown` (3 cases)           | Reserved chars as unknown rejected                |
+| `test_alphabet_config_validate_reserved_as_gap` (3 cases)               | Reserved chars as gap rejected                    |
+| `test_alphabet_config_validate_ambiguous_empty_values`                  | Empty ambiguous values pass validation            |
+| `test_alphabet_config_validate_empty_canonical`                         | Empty canonical passes config validation          |
+| `test_alphabet_config_create_profile_map_all_ambiguous`                 | Multiple ambiguous codes produce correct profiles |
+| `test_alphabet_config_equality`                                         | Config equality and inequality                    |
+| `test_alphabet_config_clone`                                            | Config clone matches original                     |
+| `test_alphabet_config_validate_gap_equals_unknown`                      | Gap equal to unknown passes validation            |
 
 ### I/O
 

@@ -55,7 +55,7 @@ mod tests {
   /// Two-taxon tree with non-uniform equilibrium frequencies (GTR model).
   #[test]
   fn test_two_taxon_analytical_nonuniform_pi() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,

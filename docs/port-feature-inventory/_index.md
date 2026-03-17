@@ -177,7 +177,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
 - [x] Optional alignment when `--branch-length-mode=marginal`
-- [x] Alphabet setup changes `treat_gap_as_unknown` based on alignment presence and dense mode
+- [x] Alphabet always maps gap to unknown profile (matching v0 `nuc_nogap` behavior)
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
 - [ ] Tree inference from alignment path is `todo!`
@@ -529,7 +529,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Nucleotide alphabet (A, C, G, T with gap handling)
 - [x] Amino acid alphabet (20 AAs, with/without stop codon)
-- [x] Gap-as-unknown toggle (`treat_gap_as_unknown` per partition)
+- [x] Gap always mapped to unknown profile (no toggle needed for nogap alphabets)
 - [x] IUPAC ambiguity codes (nucleotide: R, Y, S, W, K, M, D, H, B, V, N, X)
 - [x] Amino acid ambiguity (X, B, Z)
 - [x] Profile maps (ambiguity code to probability vector, in primitives layer)
