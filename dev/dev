@@ -126,7 +126,11 @@ function main() {
     nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "lint-fix")
-    nicely cargo -q clippy -q --all-targets --all --fix --allow-staged ${ci_flag} --target-dir="${target_dir}" "$@"
+    local vcs_flag="--allow-staged"
+    if [[ -f "$(project_root)/.git" ]]; then
+      vcs_flag="--allow-no-vcs"
+    fi
+    nicely cargo -q clippy -q --all-targets --all --fix ${vcs_flag} ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "lint-ci")
     nicely cargo -q clippy --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
