@@ -21,7 +21,9 @@ use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
+use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_intersection::range_intersection;
+use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDense {
@@ -62,17 +64,27 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
-  fn edge_subs(&self, _graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let parent_gaps = &self.nodes[&parent_key].seq.gaps;
+    let child_gaps = &self.nodes[&child_key].seq.gaps;
+
     let edge = &self.edges[&edge_key];
     let mut subs = Vec::new();
 
-    // Dense already has enough per-site edge data, so we can read the current
-    // parent state and child state for each site directly from this edge.
     for (pos, parent, child) in izip!(
       0..edge.msg_to_parent.dis.nrows(),
       edge.msg_to_parent.dis.rows(),
       edge.msg_to_child.dis.rows()
     ) {
+      // With treat_gap_as_unknown=true, gap positions get uniform profiles and
+      // argmax returns an arbitrary canonical state. Check the original gap
+      // ranges rather than is_canonical on the argmax character.
+      if range_contains(parent_gaps, pos) || range_contains(child_gaps, pos) {
+        continue;
+      }
+
       let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
       let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
       if parent_state != child_state {
@@ -81,6 +93,23 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     }
 
     Ok(subs)
+  }
+
+  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let parent_gaps = &self.nodes[&parent_key].seq.gaps;
+    let child_gaps = &self.nodes[&child_key].seq.gaps;
+
+    // Use DenseSeqInfo.gaps (propagated as intersection during Fitch backward
+    // pass) because profile-based detection is unreliable: treat_gap_as_unknown
+    // makes gap profiles indistinguishable from genuinely uncertain positions.
+    let gap_positions: usize = range_union(&[parent_gaps.clone(), child_gaps.clone()])
+      .iter()
+      .map(|(start, end)| end - start)
+      .sum();
+
+    Ok(self.length.saturating_sub(gap_positions))
   }
 }
 

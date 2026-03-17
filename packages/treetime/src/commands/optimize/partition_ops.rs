@@ -20,10 +20,13 @@ pub trait PartitionOptimizeOps: Send + Sync {
 
   /// Return the current nucleotide changes for one edge.
   ///
-  /// Sparse needs `graph` to find the edge endpoints and walk back to the
-  /// parent state when needed. Dense ignores `graph` because it already has
-  /// enough per-edge data.
+  /// Both sparse and dense use `graph` to find the edge endpoints. Dense
+  /// also uses it to look up parent/child gap ranges.
   fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
+
+  /// Return the number of alignment positions where both parent and child
+  /// have canonical (non-gap, non-ambiguous) states for one edge.
+  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
 }
 
 pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;
