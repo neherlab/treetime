@@ -7,6 +7,7 @@ mod tests {
   use approx::assert_relative_eq;
   use ndarray::array;
   use rstest::rstest;
+  use treetime_utils::assert_error;
 
   // Probit function: z = sqrt(2) * erf_inv(2p - 1)
   // Standard values: p=0.025 -> z=-1.959964, p=0.5 -> z=0, p=0.975 -> z=1.959964
@@ -59,14 +60,14 @@ mod tests {
   fn test_determine_rate_std_rejects_negative() {
     let clock_model = ClockModel::for_testing(0.003, 0.0);
     let result = determine_rate_std(Some(-0.001), false, &clock_model);
-    let _unused = result.unwrap_err();
+    assert_error!(result, "--clock-std-dev must be positive, got -0.001");
   }
 
   #[test]
   fn test_determine_rate_std_rejects_zero() {
     let clock_model = ClockModel::for_testing(0.003, 0.0);
     let result = determine_rate_std(Some(0.0), false, &clock_model);
-    let _unused = result.unwrap_err();
+    assert_error!(result, "--clock-std-dev must be positive, got 0");
   }
 
   #[test]
