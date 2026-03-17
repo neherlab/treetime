@@ -70,7 +70,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 - [x] GTR inference from data (sparse and dense paths)
 - [x] Uninformative root state filtering in dense path ([intentional change](../port-intentional-changes/gtr-uninformative-root-state-filtering.md))
-- [/] GTR bootstrapped through temporary JC69 model before replacement
+- [x] GTR bootstrapped through temporary JC69 model before replacement
 - [ ] Iterative GTR inference (`infer_gtr_iterative()` in v0)
 
 ### CLI Options
@@ -197,7 +197,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
   - [x] Sparse marginal partition branch (compresses sequences first)
-  - [/] GTR hardcoded to JC69 for timetree command
+  - [x] GTR model selection from `--gtr` flag (named models and inference)
 - [ ] `joint` (v0 supports joint optimization)
 
 ### Time Marginal Modes
@@ -306,7 +306,8 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [ ] `--reroot`
 - [ ] `--tip-labels` / `--no-tip-labels`
 - [ ] `--covariation`
-- [ ] `--gtr` / `--gtr-params`
+- [x] `--gtr` (model selection: named models and inference)
+- [ ] `--gtr-params` (parsed but not wired)
 - [ ] `--method-anc`
 - [ ] `--aa`
 - [ ] `--keep-overhangs`
@@ -658,7 +659,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 | -------------- | ----------- | -------------- | ---------- | ------- |
 | ancestral      | 16          | 10             | 6          | 0       |
 | clock          | 17          | 14             | 3          | 0       |
-| timetree       | 30          | 20             | 10         | 0       |
+| timetree       | 30          | 21             | 9          | 0       |
 | homoplasy      | 9           | 0              | 9          | 0       |
 | mugration      | 10          | 8              | 2          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
