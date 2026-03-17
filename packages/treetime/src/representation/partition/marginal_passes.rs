@@ -22,18 +22,18 @@ where
   E: EdgeOptimizeOps,
 {
   let length = partition.length;
-  let mut seq_info = partition.nodes.remove(&node.key).unwrap();
 
   let msg_to_parent = if node.is_leaf {
-    // this is mostly a copy (or ref here) of the fitch state.
     let alphabet = &partition.alphabet;
     let fixed = alphabet
       .determined()
       .map(|state| Ok((state, alphabet.get_profile(state)?.clone())))
       .collect::<Result<_, Report>>()?;
 
+    let node_data = &partition.nodes[&node.key];
+
     // convert the parsimony variable states to sparseSeqDis format
-    let variable = seq_info
+    let variable = node_data
       .seq
       .fitch
       .variable
@@ -46,7 +46,7 @@ where
       .collect();
 
     MarginalSparseSeqDistribution {
-      fixed_counts: seq_info.seq.composition.clone(),
+      fixed_counts: node_data.seq.composition.clone(),
       variable,
       variable_indel: btreemap! {},
       fixed,
@@ -85,8 +85,9 @@ where
       }
     }
 
+    let composition = partition.nodes[&node.key].seq.composition.clone();
     combine_messages(
-      &seq_info.seq.composition,
+      &composition,
       &child_messages,
       &variable_pos,
       &child_states,
@@ -97,7 +98,7 @@ where
 
   if node.is_root {
     // data from children * gtr.pi as calculated above is the root profile.
-    seq_info.profile = msg_to_parent;
+    partition.nodes.get_mut(&node.key).unwrap().profile = msg_to_parent;
   } else {
     // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
     let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
@@ -112,7 +113,6 @@ where
     edge_data.msg_to_parent = msg_to_parent;
     partition.edges.insert(*edge_key, edge_data);
   }
-  partition.nodes.insert(node.key, seq_info);
   Ok(())
 }
 
@@ -126,7 +126,6 @@ where
   E: EdgeOptimizeOps,
 {
   if !node.is_root {
-    let mut seq_info = partition.nodes.remove(&node.key).unwrap();
     let mut variable_pos = btreemap! {};
     let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
     let mut msgs_to_combine: Vec<MarginalSparseSeqDistribution> = vec![];
@@ -137,8 +136,9 @@ where
       let edge_data = partition.edges.remove(edge_key).unwrap();
       removed_edges.push((*edge_key, edge_data.clone()));
 
+      let node_data = &partition.nodes[&node.key];
       for (pos, p) in &edge_data.msg_to_child.variable {
-        if !range_contains(&seq_info.seq.gaps, *pos) {
+        if !range_contains(&node_data.seq.gaps, *pos) {
           variable_pos.entry(*pos).or_insert(p.state);
           parent_state.insert(*pos, p.state);
         }
@@ -171,8 +171,9 @@ where
       partition.edges.insert(edge_key, edge_data);
     }
 
-    seq_info.profile = combine_messages(
-      &seq_info.seq.composition,
+    let composition = partition.nodes[&node.key].seq.composition.clone();
+    let profile = combine_messages(
+      &composition,
       &msgs_to_combine,
       &variable_pos,
       &ref_states,
@@ -180,7 +181,7 @@ where
       None,
     )?;
 
-    partition.nodes.insert(node.key, seq_info);
+    partition.nodes.get_mut(&node.key).unwrap().profile = profile;
   }
 
   // precalculate messages to children that summarize info from their siblings and the parent
