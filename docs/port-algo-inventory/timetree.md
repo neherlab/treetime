@@ -207,7 +207,7 @@ Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 201
 1. **Mutation stochasticity.** The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. **Clock rate uncertainty.** The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
 
-v1 implements source (1). Source (2) is a `todo!()` stub. See [unimplemented algorithm](unimplemented.md#rate-susceptibility-analysis) and [known issue](../port-known-issues/H-timetree-vary-rate-unimplemented.md).
+v1 implements both sources. See [confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs) for the combined implementation.
 
 v1: [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs).
 v0: `get_confidence_interval()` (`#get_confidence_interval`), `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
@@ -216,7 +216,7 @@ v0: `get_confidence_interval()` (`#get_confidence_interval`), `get_max_posterior
 
 `extract_confidence_intervals()` (`#extract_confidence_intervals`) [packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71](../../packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71) computes 95% CI for each node using `Distribution::quantile()` at 0.025 and 0.975. Delta distributions yield identity interval `[date, date]`.
 
-v0 uses a different method: `get_max_posterior_region(n, fraction=0.9)` finds the narrowest 90% highest posterior density (HPD) region around the peak via `scipy.optimize.minimize_scalar`. HPD regions are narrower than equal-tailed quantile intervals for skewed distributions. The porting decision should clarify which approach to match.
+v1 matches v0's method: `hpd_region()` finds the narrowest 90% HPD region around the peak via bisection on probability threshold, equivalent to v0's `get_max_posterior_region(n, fraction=0.9)` which uses `scipy.optimize.minimize_scalar`. HPD regions are narrower than equal-tailed quantile intervals for skewed distributions.
 
 ### CI combination
 

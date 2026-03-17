@@ -2,7 +2,7 @@
 
 This document proposes improvements to the `optimize` command's convergence behavior and introduces user-selectable optimization methods. The goal is to match v0's convergence reliability, provide the same systematic method choice already available in the `clock` command, and address three documented known issues.
 
-The proposal is **not accepted** and **not implemented**.
+The proposal is **not accepted**. P3 and P4 are implemented independently; P1, P2, P5, P6 remain unimplemented.
 
 ## Problem statement
 
@@ -86,26 +86,13 @@ Early iterations use a loose tolerance (profiles are rough, no point in precise 
 
 **Implementation location:** `packages/treetime/src/commands/optimize/optimize_unified.rs`, pass tolerance as a parameter to `run_optimize_mixed()`.
 
-### P3: Wire `--model` flag
+### ~~P3: Wire `--model` flag~~ (implemented)
 
-Follow the ancestral command's pattern ([packages/treetime/src/commands/ancestral/run.rs#L128-L178](../../packages/treetime/src/commands/ancestral/run.rs#L128-L178)):
+Implemented in [packages/treetime/src/commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs). Sparse GTR dispatch after `compress_sequences`, dense GTR dispatch after `initialize_marginal` + `update_marginal`, matching the ancestral command's pattern via `get_gtr_sparse()`/`get_gtr_dense()`.
 
-1. Create partitions with dummy JC69 (existing code, no change)
-2. Run Fitch compression / `initialize_marginal()` (existing code, no change)
-3. Replace dummy GTR with `get_gtr_sparse(model_name, partition, &graph)` or `get_gtr_dense(model_name, partition, &graph)` (new: wire `model_name` arg)
-4. For `--model=infer` on dense: run preliminary marginal pass with dummy GTR to populate profiles, infer real GTR, then re-run (matching ancestral command's two-pass approach)
+### ~~P4: Fix initial guess gap handling~~ (implemented)
 
-All infrastructure exists: `get_gtr_by_name()`, `get_gtr_sparse()`, `get_gtr_dense()`, `infer_gtr_sparse()`, `infer_gtr_dense()` in `packages/treetime/src/gtr/get_gtr.rs`.
-
-**Implementation location:** `packages/treetime/src/commands/optimize/run.rs`, replace the four `jc69(JC69Params::default())?` calls at lines 65, 81, 94, 105 with model dispatch calls.
-
-### P4: Fix initial guess gap handling
-
-In `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L257-L280](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L257-L280)), compute per-edge effective alignment length excluding positions where either parent or child has a gap or ambiguous state. Use this as the denominator instead of the full partition length.
-
-For sparse partitions, filter `edge_subs()` to exclude substitutions where either the reference or query state maps to a gap character. For dense partitions, compute effective length from the per-edge message intersection.
-
-v0's `state_pair()` ([packages/legacy/treetime/treetime/gtr.py#L631-L712](../../packages/legacy/treetime/treetime/gtr.py#L631-L712)) accepts `ignore_gaps=True` (the default), which excludes gap positions from both the substitution count and the total pair count.
+Implemented in `edge_subs()` and `edge_effective_length()` on `PartitionOptimizeOps` ([packages/treetime/src/commands/optimize/partition_ops.rs](../../packages/treetime/src/commands/optimize/partition_ops.rs)). Both sparse and dense implementations filter gap positions. `initial_guess_mixed()` uses per-edge effective alignment length as the denominator.
 
 ### P5: Brent as alternative per-edge optimizer
 
@@ -167,12 +154,12 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 
 ### GTR Integration
 
-- [ ] `--model` wired (P3)
+- [x] `--model` wired (P3, implemented)
 - [ ] GTR inference in optimization loop (future, not in this proposal)
 
 ### Initial Guess
 
-- [ ] Gap-aware effective alignment length (P4)
+- [x] Gap-aware effective alignment length (P4, implemented)
 
 ## Priority ordering
 
