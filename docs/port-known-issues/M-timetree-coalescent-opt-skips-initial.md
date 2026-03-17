@@ -16,5 +16,4 @@ start from a different initial state.
 
 ## Related issues
 
-- [Coalescent contributions use TBP coordinates, backward pass uses calendar time](H-timetree-coalescent-coordinate-mismatch.md)
-  coalescent contributions have no effect regardless, making this issue latent
+The TBP/calendar coordinate mismatch (formerly H-timetree-coalescent-coordinate-mismatch) has been fixed. Coalescent contributions now operate in calendar time and have a real effect on node times, making this skipped-initial-Tc issue observable.

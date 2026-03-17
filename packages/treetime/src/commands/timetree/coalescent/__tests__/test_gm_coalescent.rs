@@ -54,13 +54,15 @@ mod tests {
       snapshot.tbp_grid.end,
       snapshot.tbp_grid.n_points,
     )?;
-    let t_grid_tbp = t_grid.to_array();
+    // Contributions are in calendar time; convert TBP grid to calendar for evaluation
+    let present_time = snapshot.inputs.present_time;
+    let t_grid_calendar = t_grid.to_array().mapv(|t_tbp| present_time - t_tbp);
 
     let actuals: IndexMap<String, Array1<f64>> = actuals
       .iter()
       .map(|(name, dist)| {
         let y_resampled = dist
-          .eval_many(&t_grid_tbp)
+          .eval_many(&t_grid_calendar)
           .wrap_err_with(|| format!("When evaluating contribution distribution for node '{name}'"))?;
         Ok((name.clone(), y_resampled))
       })
@@ -142,8 +144,6 @@ mod tests {
     tree_path: String,
     metadata_path: String,
     tc: f64,
-    /// Used only in v0 capture; v1 derives present_time from date constraints
-    #[allow(dead_code)]
     present_time: f64,
   }
 
