@@ -49,7 +49,6 @@ exactly.
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                  |
 | Medium     | Optimize     | [Optimize command hardcodes GTR to JC69](M-optimize-gtr-hardcoded-jc69.md)                                             |
-| Medium     | Optimize     | [Initial branch length guess ignores gaps and unknowns](M-optimize-initial-guess-ignores-gaps.md)                      |
 | Medium     | Optimize     | [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md)                          |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                          |
 | Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                     |
