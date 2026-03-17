@@ -236,10 +236,6 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub covariation: bool,
 
-  /// Estimate timetree with rate variation to assess sensitivity to clock rate uncertainty
-  #[clap(long, hide = true)]
-  pub vary_rate: bool,
-
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.

@@ -134,4 +134,14 @@ impl ClockModel {
       stats: ClockModelStats::Fixed,
     }
   }
+
+  /// Create a clock model with specified rate, intercept, and stats (for testing)
+  #[cfg(test)]
+  pub fn for_testing_with_stats(clock_rate: f64, intercept: f64, stats: ClockModelStats) -> Self {
+    Self {
+      clock_rate,
+      intercept,
+      stats,
+    }
+  }
 }
