@@ -65,13 +65,13 @@ v0: [`packages/legacy/treetime/treetime/treeanc.py#L762-L927`](../../packages/le
 
 ### v0 differences
 
-v1 uses plain probability space; v0 uses neg-log space. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
+v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `normalize_from_log()`, sparse `logsumexp_normalize()` in `combine_messages()`). v1 forward pass uses plain probability space (division). v0 uses neg-log space throughout. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
 
 ### Key functions
 
 - `process_node_backward()` (`#process_node_backward`): computes partial likelihoods via GTR matrix multiplication
 - `process_node_forward()` (`#process_node_forward`): computes outgroup messages via cavity/division
-- `combine_messages()` (`#combine_messages`): element-wise multiplication of messages from multiple children
+- `combine_messages()` (`#combine_messages`): combines child messages in log-space via logsumexp normalization
 - `propagate_raw()` (`#propagate_raw`): GTR matrix-vector product `P(t) * profile`
 
 ### Complexity
