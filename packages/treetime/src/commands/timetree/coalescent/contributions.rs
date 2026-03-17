@@ -1,6 +1,7 @@
 use crate::commands::timetree::coalescent::integration::compute_merger_rates;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
+use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use eyre::{Context, Report};
 use indexmap::IndexMap;
@@ -28,7 +29,7 @@ pub fn compute_node_contributions<N, E, D>(
   integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
-  present_time: f64,
+  present_time: CalendarTime,
 ) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report>
 where
   N: GraphNode + TimetreeNode + Named,
@@ -72,31 +73,35 @@ where
 
 fn compute_leaf_contribution_single(
   integral_merger_rate: &PiecewiseLinearFn,
-  present_time: f64,
+  present_time: CalendarTime,
 ) -> Result<DistributionNegLog, Report> {
   // Leaf nodes represent sampled lineages. The coalescent contribution encodes
   // the survival probability P = exp(I(t)).
   //
   // In NegLog space: -ln(P) = -I(t).
   //
-  // The integral_merger_rate is defined in TBP (time-before-present) coordinates,
-  // but the backward pass operates in calendar time. Convert the domain so that
-  // distribution multiplication finds overlapping supports.
+  // The integral_merger_rate is defined in TBP coordinates, but the backward
+  // pass operates in calendar time. Convert the domain so that distribution
+  // multiplication finds overlapping supports.
 
-  let tbp_min = integral_merger_rate.breakpoints()[0];
-  let tbp_max = integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1];
-  let t_min = present_time - tbp_max;
-  let t_max = present_time - tbp_min;
+  let tbp_min = Tbp::new(integral_merger_rate.breakpoints()[0]);
+  let tbp_max = Tbp::new(integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1]);
+  let t_min = tbp_max.to_calendar(present_time);
+  let t_max = tbp_min.to_calendar(present_time);
 
   let integral_merger_rate = Arc::new(integral_merger_rate.clone());
 
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
-    let t_tbp = present_time - t;
-    let i_t = integral_merger_rate.eval(t_tbp);
+    let t_tbp = CalendarTime::new(t).to_tbp(present_time);
+    let i_t = integral_merger_rate.eval(t_tbp.value());
     Ok(-i_t)
   };
 
-  Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    t_min.value(),
+    t_max.value(),
+  )))
 }
 
 fn compute_internal_contribution_single(
@@ -104,7 +109,7 @@ fn compute_internal_contribution_single(
   integral_merger_rate: &PiecewiseLinearFn,
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
-  present_time: f64,
+  present_time: CalendarTime,
 ) -> Result<DistributionNegLog, Report> {
   // Compute coalescent contribution for internal node using exact formula evaluation.
   // An internal node with k children represents a merger event.
@@ -133,23 +138,22 @@ fn compute_internal_contribution_single(
   let n_children = n_children as f64;
   let multiplicity = n_children - 1.0;
 
-  let tbp_min = integral_merger_rate.breakpoints()[0];
-  let tbp_max = integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1];
-  let t_min = present_time - tbp_max;
-  let t_max = present_time - tbp_min;
+  let tbp_min = Tbp::new(integral_merger_rate.breakpoints()[0]);
+  let tbp_max = Tbp::new(integral_merger_rate.breakpoints()[integral_merger_rate.breakpoints().len() - 1]);
+  let t_min = tbp_max.to_calendar(present_time);
+  let t_max = tbp_min.to_calendar(present_time);
 
   // Clone Arc-wrapped data for use in closure
   let integral_merger_rate = Arc::new(integral_merger_rate.clone());
   let lineage_counts = Arc::new(lineage_counts.clone());
   let tc_dist = Arc::new(tc_dist.clone());
 
-  // Create closure that evaluates coalescent contribution at any time point.
-  // Converts calendar time to TBP before evaluating the merger rate functions.
+  // Closure converts calendar time to TBP before evaluating the merger rate functions.
   let eval_fn = move |t: f64| -> eyre::Result<f64> {
-    let t_tbp = present_time - t;
-    let i_t = integral_merger_rate.eval(t_tbp);
-    let k_t = lineage_counts.eval(t_tbp);
-    let tc_t = tc_dist.eval(t_tbp)?;
+    let t_tbp = CalendarTime::new(t).to_tbp(present_time);
+    let i_t = integral_merger_rate.eval(t_tbp.value());
+    let k_t = lineage_counts.eval(t_tbp.value());
+    let tc_t = tc_dist.eval(t_tbp.value())?;
 
     let (_, lambda_t) = compute_merger_rates(&Array1::from_vec(vec![k_t]), &Array1::from_vec(vec![tc_t]));
     let log_lambda_t = lambda_t[0].ln();
@@ -159,5 +163,9 @@ fn compute_internal_contribution_single(
     Ok(neg_log_contrib)
   };
 
-  Ok(Distribution::Formula(DistributionFormula::new(eval_fn, t_min, t_max)))
+  Ok(Distribution::Formula(DistributionFormula::new(
+    eval_fn,
+    t_min.value(),
+    t_max.value(),
+  )))
 }

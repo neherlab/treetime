@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::events::collect_tree_events;
+  use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
   use crate::representation::partition::timetree::GraphTimetree;
   use approx::assert_ulps_eq;
   use eyre::Report;
@@ -14,6 +15,10 @@ mod tests {
     let graph = nwk_read_str(tree_nwk)?;
     load_date_constraints(dates, &graph)?;
     Ok(graph)
+  }
+
+  fn cal(t: f64) -> CalendarTime {
+    CalendarTime::new(t)
   }
 
   #[test]
@@ -29,8 +34,11 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time, 2015.0, max_ulps = 4);
-    assert_eq!(events, vec![(2000.0, -2), (2005.0, 1), (2010.0, 1), (2015.0, 1)]);
+    assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
+    assert_eq!(
+      events,
+      vec![(cal(2000.0), -2), (cal(2005.0), 1), (cal(2010.0), 1), (cal(2015.0), 1)]
+    );
 
     Ok(())
   }
@@ -49,10 +57,16 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time, 2012.0, max_ulps = 4);
+    assert_ulps_eq!(present_time.value(), 2012.0, max_ulps = 4);
     assert_eq!(
       events,
-      vec![(2000.0, -1), (2005.0, -1), (2010.0, 1), (2010.0, 1), (2012.0, 1)]
+      vec![
+        (cal(2000.0), -1),
+        (cal(2005.0), -1),
+        (cal(2010.0), 1),
+        (cal(2010.0), 1),
+        (cal(2012.0), 1)
+      ]
     );
 
     Ok(())
@@ -92,8 +106,11 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time, 2010.0, max_ulps = 4);
-    assert_eq!(events, vec![(2000.0, -2), (2010.0, 1), (2010.0, 1), (2010.0, 1)]);
+    assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
+    assert_eq!(
+      events,
+      vec![(cal(2000.0), -2), (cal(2010.0), 1), (cal(2010.0), 1), (cal(2010.0), 1)]
+    );
 
     Ok(())
   }

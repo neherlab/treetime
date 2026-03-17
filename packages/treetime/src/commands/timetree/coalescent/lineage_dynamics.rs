@@ -1,4 +1,5 @@
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::commands::timetree::coalescent::time_coordinate::Tbp;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;
@@ -6,12 +7,12 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_utils::make_error;
 
-/// Computes k(t) distribution from tree events.
+/// Computes k(t) distribution from tree events in TBP coordinates.
 ///
 /// k(t) is the number of concurrent lineages at time t.
 /// The function is piecewise constant, stepping at each merger event.
 /// Events must be sorted by increasing time (past to present).
-pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<PiecewiseConstantFn, Report> {
+pub fn compute_lineage_count_distribution(events: &[(Tbp, i32)]) -> Result<PiecewiseConstantFn, Report> {
   if events.is_empty() {
     return make_error!("Cannot build lineage count from empty events");
   }
@@ -19,7 +20,7 @@ pub fn compute_lineage_count_distribution(events: &[(f64, i32)]) -> Result<Piece
   // Aggregate events at same time
   let mut aggregated = BTreeMap::new();
   for &(time, delta) in events {
-    *aggregated.entry(OrderedFloat(time)).or_insert(0) += delta;
+    *aggregated.entry(OrderedFloat(time.value())).or_insert(0) += delta;
   }
 
   // Build breakpoints and values
