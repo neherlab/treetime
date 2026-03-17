@@ -24,6 +24,10 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 /// - For internal nodes with k children: multiplicity · (I(t) - log(λ(t)))
 ///   where λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
 ///   and m = k - 1 is multiplicity.
+///
+/// `tc_dist` must be defined in TBP (time-before-present) coordinates or be
+/// coordinate-agnostic (e.g. `Distribution::constant`). Internal nodes
+/// evaluate `tc_dist` in TBP via `CalendarTime::to_tbp()`.
 pub fn compute_node_contributions<N, E, D>(
   graph: &Graph<N, E, D>,
   integral_merger_rate: &PiecewiseLinearFn,
@@ -104,6 +108,8 @@ fn compute_leaf_contribution_single(
   )))
 }
 
+/// `tc_dist`: TBP-coordinate distribution or coordinate-agnostic (e.g. constant).
+/// Evaluated at `t_tbp` via `tc_dist.eval(t_tbp.value())`.
 fn compute_internal_contribution_single(
   n_children: usize,
   integral_merger_rate: &PiecewiseLinearFn,
