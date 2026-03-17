@@ -300,6 +300,28 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 ---
 
+## Logsumexp Normalize Tests
+
+**File:** [`marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
+
+| Test                                                  | Purpose                                                  |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| `test_logsumexp_normalize_equal_log_probs`            | Equal log-probs produce uniform distribution, log_norm=0 |
+| `test_logsumexp_normalize_descending`                 | Unequal log-probs: analytically verified output and norm |
+| `test_logsumexp_normalize_single_dominant_state`      | One high state concentrates all probability mass         |
+| `test_logsumexp_normalize_all_neg_inf`                | All-NEG_INFINITY fallback: uniform 1/4, log_norm=-inf    |
+| `test_logsumexp_normalize_all_neg_inf_three_states`   | All-NEG_INFINITY fallback with 3 states: uniform 1/3     |
+| `test_logsumexp_normalize_mixed_finite_neg_inf`       | Mixed finite/-inf: only finite states get probability    |
+| `test_logsumexp_normalize_single_finite_rest_neg_inf` | One finite state among -inf: gets all mass               |
+| `test_logsumexp_normalize_large_negative_values`      | Numerical stability: offset -1000 matches reference      |
+| `test_logsumexp_normalize_large_positive_values`      | Numerical stability: offset +1003 matches reference      |
+| `test_logsumexp_normalize_single_state`               | Single element: probability 1.0, log_norm=input value    |
+| `test_logsumexp_normalize_two_equal_states`           | Two equal values: [0.5, 0.5], log_norm=ln(2)             |
+
+**Algorithm:** Logsumexp trick for numerically stable softmax normalization. Subtracts max before exponentiation to prevent overflow/underflow.
+
+---
+
 ## Sparse Substitution Composition Tests
 
 **File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
