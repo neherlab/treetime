@@ -2,6 +2,7 @@ use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::make_report;
 use argmin::core::observers::{Observe, ObserverMode};
@@ -89,14 +90,13 @@ where
 struct TcCostFunction {
   /// Lineage count distribution k(t), precomputed from tree events.
   lineage_counts: PiecewiseConstantFn,
-  /// Node branch data: (time_before_present, branch_length, multiplicity).
-  /// For each node with a parent edge.
+  /// Node branch data for likelihood computation.
   node_branches: Vec<NodeBranchData>,
 }
 
 struct NodeBranchData {
   /// Time before present of the node.
-  t_node: f64,
+  t_node: Tbp,
   /// Branch length to parent.
   branch_length: f64,
   /// Number of children (2 for binary, higher for polytomies).
@@ -111,11 +111,9 @@ impl TcCostFunction {
     D: Sync + Send,
   {
     let (present_time, events_calendar) = collect_tree_events(graph)?;
-
-    // Convert from calendar time to time before present
     let events_tbp: Vec<_> = events_calendar
       .iter()
-      .map(|(t, delta)| (present_time - *t, *delta))
+      .map(|(t, delta)| (t.to_tbp(present_time), *delta))
       .collect();
 
     // Precompute lineage count distribution - depends only on tree structure, not Tc
@@ -138,7 +136,7 @@ impl TcCostFunction {
         return;
       };
 
-      let t_node = present_time - t_calendar;
+      let t_node = CalendarTime::new(t_calendar).to_tbp(present_time);
 
       // Get branch length from parent edge
       // parent_keys is Vec<(GraphNodeKey, GraphEdgeKey)>
@@ -159,7 +157,7 @@ impl TcCostFunction {
               .as_ref()
               .and_then(|d| d.likely_time())
               .map(|parent_t| {
-                let parent_tbp = present_time - parent_t;
+                let parent_tbp = CalendarTime::new(parent_t).to_tbp(present_time);
                 parent_tbp - t_node
               })
           })
@@ -214,11 +212,11 @@ impl TcCostFunction {
       let t_merger = t_node + branch_length.max(0.0);
 
       // Compute cost following Python v0's cost() method
-      let i_merger = integral_merger_rate.eval(t_merger);
-      let i_node = integral_merger_rate.eval(t_node);
+      let i_merger = integral_merger_rate.eval(t_merger.value());
+      let i_node = integral_merger_rate.eval(t_node.value());
 
       // Total merger rate λ(t) = k(k-1)/(2*Tc)
-      let k = self.lineage_counts.eval(t_merger);
+      let k = self.lineage_counts.eval(t_merger.value());
       let k_clamped = f64::max(0.5, k - 1.0);
       let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc;
 

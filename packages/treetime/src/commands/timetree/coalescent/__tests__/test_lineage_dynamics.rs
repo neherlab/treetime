@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
   use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+  use crate::commands::timetree::coalescent::time_coordinate::Tbp;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
@@ -38,6 +39,10 @@ mod tests {
     pretty_assert_ulps_eq!(result[4], 2.0, max_ulps = 4);
   }
 
+  fn tbp(t: f64) -> Tbp {
+    Tbp::new(t)
+  }
+
   #[test]
   fn test_lineage_count_simple_tree() -> Result<(), Report> {
     // Simple tree: 2 tips at 0, root at 10.
@@ -45,7 +50,7 @@ mod tests {
     // 0.0: Tip 1 (+1)
     // 0.0: Tip 2 (+1)
     // 10.0: Root (-1) (merger of 2 -> 1)
-    let events = vec![(0.0, 1), (0.0, 1), (10.0, -1)];
+    let events = vec![(tbp(0.0), 1), (tbp(0.0), 1), (tbp(10.0), -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -62,7 +67,7 @@ mod tests {
 
   #[test]
   fn test_lineage_count_single_event() -> Result<(), Report> {
-    let events = vec![(5.0, 2)];
+    let events = vec![(tbp(5.0), 2)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -76,13 +81,13 @@ mod tests {
 
   #[test]
   fn test_lineage_count_empty_events() {
-    let events: Vec<(f64, i32)> = vec![];
+    let events: Vec<(Tbp, i32)> = vec![];
     drop(compute_lineage_count_distribution(&events).unwrap_err());
   }
 
   #[test]
   fn test_lineage_count_aggregation() -> Result<(), Report> {
-    let events = vec![(5.0, 1), (5.0, 1), (5.0, -1)];
+    let events = vec![(tbp(5.0), 1), (tbp(5.0), 1), (tbp(5.0), -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -97,7 +102,7 @@ mod tests {
 
   #[test]
   fn test_lineage_count_decreasing_then_increasing() -> Result<(), Report> {
-    let events = vec![(0.0, 3), (5.0, -1), (10.0, 1)];
+    let events = vec![(tbp(0.0), 3), (tbp(5.0), -1), (tbp(10.0), 1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -118,7 +123,7 @@ mod tests {
 
   #[test]
   fn test_lineage_count_breakpoints() -> Result<(), Report> {
-    let events = vec![(10.0, 1), (20.0, -1)];
+    let events = vec![(tbp(10.0), 1), (tbp(20.0), -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 
@@ -132,7 +137,7 @@ mod tests {
 
   #[test]
   fn test_lineage_count_negative_deltas() -> Result<(), Report> {
-    let events = vec![(0.0, 5), (5.0, -1), (10.0, -1)];
+    let events = vec![(tbp(0.0), 5), (tbp(5.0), -1), (tbp(10.0), -1)];
 
     let lineage_counts = compute_lineage_count_distribution(&events)?;
 

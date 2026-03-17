@@ -70,7 +70,7 @@ where
   let (present_time, events_calendar) = collect_tree_events(graph)?;
   let events_tbp: Vec<_> = events_calendar
     .iter()
-    .map(|(t, delta)| (present_time - *t, *delta))
+    .map(|(t, delta)| (t.to_tbp(present_time), *delta))
     .collect();
 
   let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;

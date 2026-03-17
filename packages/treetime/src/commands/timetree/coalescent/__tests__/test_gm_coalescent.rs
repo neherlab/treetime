@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
+  use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
   use crate::o;
   use crate::representation::partition::timetree::GraphTimetree;
   use eyre::{Report, WrapErr};
@@ -55,8 +56,8 @@ mod tests {
       snapshot.tbp_grid.n_points,
     )?;
     // Contributions are in calendar time; convert TBP grid to calendar for evaluation
-    let present_time = snapshot.inputs.present_time;
-    let t_grid_calendar = t_grid.to_array().mapv(|t_tbp| present_time - t_tbp);
+    let present_time = CalendarTime::new(snapshot.inputs.present_time);
+    let t_grid_calendar = t_grid.to_array().mapv(|t| Tbp::new(t).to_calendar(present_time).value());
 
     let actuals: IndexMap<String, Array1<f64>> = actuals
       .iter()

@@ -1,3 +1,4 @@
+use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use eyre::Report;
 use ordered_float::OrderedFloat;
@@ -10,7 +11,7 @@ use treetime_utils::make_error;
 ///
 /// Returns present time and events sorted by increasing time (past to present).
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
-pub fn collect_tree_events<N, E, D>(graph: &Graph<N, E, D>) -> Result<(f64, Vec<(f64, i32)>), Report>
+pub fn collect_tree_events<N, E, D>(graph: &Graph<N, E, D>) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge,
@@ -20,12 +21,13 @@ where
     return make_error!("Graph must have exactly one root, found {}", graph.num_roots());
   }
 
-  let mut max_time = f64::NEG_INFINITY;
+  let mut max_time = CalendarTime::new(f64::NEG_INFINITY);
   let mut events = Vec::new();
 
   graph.iter_breadth_first_forward(|node| {
     if let Some(time_dist) = node.payload.time_distribution() {
       if let Some(t) = time_dist.likely_time() {
+        let t = CalendarTime::new(t);
         max_time = max_time.max(t);
 
         let num_children = node.child_edges.len();
@@ -47,7 +49,7 @@ where
     return make_error!("Cannot determine present time for coalescent events");
   }
 
-  events.sort_by_key(|x| OrderedFloat(x.0));
+  events.sort_by_key(|(t, _)| OrderedFloat(t.value()));
 
   Ok((max_time, events))
 }

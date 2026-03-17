@@ -18,7 +18,6 @@ use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteO
 pub struct NodeTimetree {
   pub base: NodeAncestral,
   pub time: Option<f64>,
-  pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<Distribution>>,
   pub bad_branch: bool,
   pub div: f64,
