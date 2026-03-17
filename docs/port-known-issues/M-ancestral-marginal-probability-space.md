@@ -5,7 +5,7 @@ probabilities, normalize by sum). v0 preorder operates in neg-log space (add/sub
 neg-log probabilities). Both compute mathematically equivalent operations, but the
 floating-point paths differ.
 
-The backward pass was converted to log space and matches v0.
+The backward pass uses log-space arithmetic in both dense (`normalize_from_log()`) and sparse (`logsumexp_normalize()` in `combine_messages()`) modes.
 
 - v1 dense forward pass: divides child message in probability space
   in [`packages/treetime/src/representation/partition/marginal_dense.rs#L213-L253`](../../packages/treetime/src/representation/partition/marginal_dense.rs#L213-L253)
