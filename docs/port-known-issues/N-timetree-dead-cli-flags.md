@@ -35,5 +35,4 @@ always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`,
 - [--confidence flag ignored](M-timetree-confidence-flag-ignored.md) `--confidence` also dead
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
 - [--aln flag silently ignored](M-timetree-aln-flag-ignored.md) `--aln` also dead, causes confusing error
-- [GTR model selection not implemented](M-timetree-gtr-selection.md) `--gtr`/`--model` also dead
 - [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md) variant exists but unchecked

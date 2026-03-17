@@ -55,7 +55,6 @@ exactly.
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                             |
 | Medium     | Timetree     | [--confidence flag ignored](M-timetree-confidence-flag-ignored.md)                                                     |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                           |
-| Medium     | Timetree     | [GTR model selection not implemented](M-timetree-gtr-selection.md)                                                     |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)     |
 | Medium     | Timetree     | [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)                                     |
 | Medium     | Timetree     | [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)                   |

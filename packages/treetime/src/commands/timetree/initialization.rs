@@ -1,19 +1,24 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
+use crate::commands::ancestral::marginal::update_marginal;
 use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, log_gtr};
+use crate::gtr::get_gtr::{
+  GtrModelName, JC69Params, get_gtr_by_name, get_gtr_dense, get_gtr_sparse, jc69, log_gtr, write_gtr_json,
+};
 use crate::make_error;
 use crate::make_report;
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
+use crate::representation::partition::traits::PartitionMarginalOps;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use eyre::{Report, WrapErr};
+use log::info;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -66,6 +71,7 @@ pub fn initialize_partitions(
   aln: Option<&[FastaRecord]>,
 ) -> Result<PartitionTimetreeAllVec, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
+  let model_name = args.gtr;
   let length = if let Some(aln_data) = aln {
     get_common_length(aln_data)?
   } else {
@@ -74,15 +80,29 @@ pub fn initialize_partitions(
       .ok_or_else(|| make_report!("sequence_length required when no alignment provided"))?
   };
 
+  // For named models, construct the specified GTR directly.
+  // For Infer, start with JC69 placeholder, then infer the real model from
+  // reconstructed sequences (sparse: after Fitch compression, dense: after
+  // an initial marginal pass). Matches v0 behavior where GTR inference
+  // happens before rerooting.
+  let initial_gtr = if model_name == GtrModelName::Infer {
+    info!("GTR model: infer (starting with JC69 placeholder)");
+    let gtr = jc69(JC69Params::default())?;
+    log_gtr(&gtr, GtrModelName::JC69);
+    gtr
+  } else {
+    info!("GTR model: {model_name}");
+    let gtr = get_gtr_by_name(model_name).wrap_err_with(|| format!("When creating GTR model '{model_name}'"))?;
+    log_gtr(&gtr, model_name);
+    gtr
+  };
+
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
-    let gtr = jc69(JC69Params::default())?;
-    log_gtr(&gtr, GtrModelName::JC69);
-
     let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
       index: 0,
-      gtr,
+      gtr: initial_gtr,
       alphabet,
       length,
       nodes: btreemap! {},
@@ -91,21 +111,42 @@ pub fn initialize_partitions(
 
     crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
 
+    // For Infer: Fitch compression populated mutation counts, infer real GTR
+    if model_name == GtrModelName::Infer {
+      let gtr = get_gtr_sparse(&model_name, &sparse_partition, graph)
+        .wrap_err("When inferring GTR model from sparse partition")?;
+      sparse_partition.write_arc().gtr = gtr;
+    }
+
+    write_gtr_json(&sparse_partition.read_arc().gtr, model_name, &args.outdir)?;
+
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     Ok(vec![partition])
   } else {
-    let gtr = jc69(JC69Params::default())?;
-    log_gtr(&gtr, GtrModelName::JC69);
+    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: initial_gtr,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
 
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-      Arc::new(RwLock::new(PartitionMarginalDense {
-        index: 0,
-        gtr,
-        alphabet,
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }));
+    // For Infer: run an initial marginal pass to populate profiles, then
+    // infer the real GTR from the branch joint distributions. The profiles
+    // will be recomputed later by initialize_marginal with the inferred GTR.
+    if model_name == GtrModelName::Infer {
+      let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
+      dense_partition.write_arc().attach_sequences(graph, aln_data)?;
+      update_marginal(graph, std::slice::from_ref(&dense_partition))?;
+      let gtr = get_gtr_dense(&model_name, &dense_partition, graph)
+        .wrap_err("When inferring GTR model from dense partition")?;
+      dense_partition.write_arc().gtr = gtr;
+    }
+
+    write_gtr_json(&dense_partition.read_arc().gtr, model_name, &args.outdir)?;
+
+    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = dense_partition;
     Ok(vec![partition])
   }
 }

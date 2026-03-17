@@ -4,7 +4,6 @@ use crate::gtr::infer_gtr::dense::infer_gtr_dense;
 use crate::gtr::infer_gtr::sparse::infer_gtr_sparse;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
@@ -16,6 +15,9 @@ use smart_default::SmartDefault;
 use std::path::Path;
 use std::sync::Arc;
 use strum_macros::Display;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 use treetime_io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 
@@ -98,11 +100,16 @@ pub enum GtrModelName {
   Jtt92,
 }
 
-pub fn get_gtr_sparse(
+pub fn get_gtr_sparse<N, E, D>(
   name: &GtrModelName,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
-  graph: &GraphAncestral,
-) -> Result<GTR, Report> {
+  graph: &Graph<N, E, D>,
+) -> Result<GTR, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let gtr = match name {
     GtrModelName::Infer => infer_gtr_sparse(partition, graph),
     _ => get_gtr_by_name(*name),
@@ -113,11 +120,16 @@ pub fn get_gtr_sparse(
 }
 
 /// Get GTR model for dense representation.
-pub fn get_gtr_dense(
+pub fn get_gtr_dense<N, E, D>(
   name: &GtrModelName,
   partition: &Arc<RwLock<PartitionMarginalDense>>,
-  graph: &GraphAncestral,
-) -> Result<GTR, Report> {
+  graph: &Graph<N, E, D>,
+) -> Result<GTR, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let gtr = match name {
     GtrModelName::Infer => infer_gtr_dense(partition, graph),
     _ => get_gtr_by_name(*name),
@@ -127,7 +139,7 @@ pub fn get_gtr_dense(
   Ok(gtr)
 }
 
-fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
+pub fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
   match name {
     GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
     GtrModelName::JC69 => jc69(JC69Params::default()),

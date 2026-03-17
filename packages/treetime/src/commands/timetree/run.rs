@@ -16,7 +16,6 @@ use crate::commands::timetree::output::confidence::{extract_confidence_intervals
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
@@ -68,12 +67,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     },
     BranchLengthMode::Marginal => {
       info!("Branch length mode: Marginal - initializing partitions from alignment");
-      let partitions = initialize_partitions(args, &graph, alphabet, aln.as_deref())?;
-      // Write GTR model used for marginal reconstruction
-      // FIXME: currently hardcoded to JC69, should use args.gtr when model selection is implemented
-      let gtr = jc69(JC69Params::default())?;
-      write_gtr_json(&gtr, GtrModelName::JC69, &args.outdir)?;
-      partitions
+      initialize_partitions(args, &graph, alphabet, aln.as_deref())?
     },
   };
 

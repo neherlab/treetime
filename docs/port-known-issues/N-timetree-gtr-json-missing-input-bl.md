@@ -10,7 +10,5 @@ mode.
 
 ## Related issues
 
-- [GTR model selection not implemented](M-timetree-gtr-selection.md) GTR model
-  is hardcoded to JC69 in all modes
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   umbrella issue

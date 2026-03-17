@@ -1,18 +1,24 @@
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::edge::HasBranchLength;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
 /// Infer GTR model from sparse partition data.
-pub fn infer_gtr_sparse(
+pub fn infer_gtr_sparse<N, E, D>(
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
-  graph: &GraphAncestral,
-) -> Result<GTR, Report> {
+  graph: &Graph<N, E, D>,
+) -> Result<GTR, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let counts = get_mutation_counts_sparse(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let n_states = partition.read_arc().alphabet.n_canonical();
@@ -20,10 +26,15 @@ pub fn infer_gtr_sparse(
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
-pub fn get_mutation_counts_sparse(
-  graph: &GraphAncestral,
+pub fn get_mutation_counts_sparse<N, E, D>(
+  graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
-) -> Result<MutationCounts, Report> {
+) -> Result<MutationCounts, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
   let partition = partition.read_arc();
   let alphabet = &partition.alphabet;
 
