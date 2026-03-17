@@ -249,29 +249,35 @@ where
   })
 }
 
-/// Initial estimation of branch lengths for mixed partitions
+/// Initial estimation of branch lengths for mixed partitions.
 ///
-/// Provides an initial estimate of branch lengths based on the number of observed
-/// differences across all partitions. This gives the optimization a reasonable
-/// starting point.
+/// Computes per-edge Hamming distance over canonical (non-gap, non-ambiguous)
+/// positions, matching v0's `state_pair(ignore_gaps=True)` semantics. The
+/// denominator is the per-edge effective alignment length rather than the raw
+/// sequence length, so gap-heavy edges get correctly scaled rates.
 pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
 {
-  let total_length: usize = partitions
-    .iter()
-    .map(|partition| partition.read_arc().sequence_length())
-    .sum();
-
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
+
     let differences: usize = partitions
       .iter()
       .map(|partition| partition.read_arc().edge_subs(graph, edge_key).map(|subs| subs.len()))
       .sum::<Result<_, _>>()?;
 
-    let branch_length = (differences as f64) / (total_length as f64);
+    let effective_length: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_effective_length(graph, edge_key))
+      .sum::<Result<_, _>>()?;
+
+    let branch_length = if effective_length > 0 {
+      (differences as f64) / (effective_length as f64)
+    } else {
+      0.0
+    };
 
     edge.set_branch_length(Some(branch_length));
   }

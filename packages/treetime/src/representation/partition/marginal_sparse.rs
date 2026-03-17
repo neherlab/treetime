@@ -24,6 +24,7 @@ use treetime_primitives::{AsciiChar, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalSparse {
@@ -291,6 +292,24 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
     }
 
     Ok(subs)
+  }
+
+  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let parent_non_char = &self.nodes[&parent_key].seq.non_char;
+    let child_non_char = &self.nodes[&child_key].seq.non_char;
+
+    // non_char covers both gaps and unknowns (positions that do not evolve
+    // under the substitution model). For internal nodes, non_char is the
+    // intersection of children's non_char (Fitch backward pass), so a
+    // position is excluded only when all descendants lack data there.
+    let non_char_positions: usize = range_union(&[parent_non_char.clone(), child_non_char.clone()])
+      .iter()
+      .map(|(start, end)| end - start)
+      .sum();
+
+    Ok(self.length.saturating_sub(non_char_positions))
   }
 }
 
