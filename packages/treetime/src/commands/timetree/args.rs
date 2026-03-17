@@ -135,7 +135,7 @@ pub struct TreetimeTimetreeArgs {
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
   /// strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
-  #[clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"])]
+  #[clap(long)]
   pub relax: Vec<f64>,
 
   /// maximal number of iterations the inference cycle is run. For polytomy resolution and
@@ -235,10 +235,6 @@ pub struct TreetimeTimetreeArgs {
   /// Account for covariation when estimating rates or rerooting using root-to-tip regression
   #[clap(long)]
   pub covariation: bool,
-
-  /// Estimate timetree with rate variation to assess sensitivity to clock rate uncertainty
-  #[clap(long, hide = true)]
-  pub vary_rate: bool,
 
   /// GTR model to use
   ///

@@ -18,11 +18,16 @@ use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteO
 pub struct NodeTimetree {
   pub base: NodeAncestral,
   pub time: Option<f64>,
+  pub time_before_present: Option<f64>,
   pub time_distribution: Option<Arc<Distribution>>,
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
   pub clock_set: ClockSet,
+  /// Node dates inferred at three clock rates [lower, central, upper], sorted by date.
+  /// Populated by rate susceptibility analysis (--vary-rate).
+  /// See Sagulenko, Puller & Neher 2018, Section 2.5.
+  pub rate_susceptibility_dates: Option<[f64; 3]>,
 }
 
 impl GraphNode for NodeTimetree {}

@@ -1,3 +1,4 @@
+use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
@@ -12,10 +13,13 @@ use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::commands::timetree::optimization::reroot::reroot_tree;
-use crate::commands::timetree::output::confidence::{extract_confidence_intervals, write_confidence_intervals};
+use crate::commands::timetree::output::confidence::{
+  compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals, write_confidence_intervals,
+};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69, write_gtr_json};
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
@@ -25,6 +29,7 @@ use log::{debug, info, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_io::fasta::FastaRecord;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_write_file};
 
@@ -34,6 +39,15 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     "Branch length mode: {:?}, Keep root: {}",
     args.branch_length_mode, args.keep_root
   );
+
+  // Compute effective time_marginal, accounting for --confidence flag.
+  //
+  // v0 (wrappers.py:453-469):
+  //   - --confidence with --covariation or --clock-std-dev: set time_marginal='confidence-only'
+  //     (equivalent to v1's OnlyFinal -- runs a final marginal pass for CI estimation)
+  //   - --confidence without prerequisites: warn and disable confidence
+  //   - --vary-rate: standalone flag that also triggers rate susceptibility
+  let time_marginal = compute_effective_time_marginal(args);
 
   info!("## Loading input data");
   let InputData {
@@ -47,12 +61,28 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     graph.get_edges().len()
   );
 
-  let clock_params = ClockParams::default();
+  // Covariation-aware clock regression: weighted least squares with phylogenetic
+  // variance structure (Neher 2018, "Efficient estimation of evolutionary rates
+  // by covariance aware regression").
+  //
+  // v0 (clock_tree.py:277-285):
+  //   branch_variance = (max(0, clock_length) + tip_slack^2 * om) * om  [leaves]
+  //   branch_variance = max(0, clock_length) * om                       [internal]
+  // where om = one_mutation = 1/seq_len, tip_slack = OVER_DISPERSION = 10
+  //
+  // Without covariation (default): OLS with unit variance for leaves, zero for internal.
+  // This ignores phylogenetic correlation between tips, producing unreliable CIs.
+  //
+  // v0 uses default (non-covariation) params for the initial regression and clock
+  // filter, switching to covariation params only during iteration-loop reroots
+  // (treetime.py:488,491 vs 643-644). We follow the same pattern.
+  let covariation_clock_params = build_covariation_clock_params(args, aln.as_deref())?;
   let branch_params = BranchPointOptimizationParams::default();
 
+  // Initial regression: always non-covariation (matching v0 treetime.py:488-491)
   let mut clock_model = estimate_clock_model_with_reroot(
     &mut graph,
-    &clock_params,
+    &ClockParams::default(),
     args.clock_rate,
     args.keep_root,
     &branch_params,
@@ -67,14 +97,26 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     },
     BranchLengthMode::Marginal => {
       info!("Branch length mode: Marginal - initializing partitions from alignment");
-      initialize_partitions(args, &graph, alphabet, aln.as_deref())?
+      let partitions = initialize_partitions(args, &graph, alphabet, aln.as_deref())?;
+      // Write GTR model used for marginal reconstruction
+      // FIXME: currently hardcoded to JC69, should use args.gtr when model selection is implemented
+      let gtr = jc69(JC69Params::default())?;
+      write_gtr_json(&gtr, GtrModelName::JC69, &args.outdir)?;
+      partitions
     },
   };
 
+  // First reroot: use non-covariation params (pre-filter, matching v0)
   if !args.keep_root {
     info!("First reroot (pre-ancestral)");
-    clock_model = reroot_tree(&mut graph, &partitions, &clock_params, args.clock_rate, &branch_params)
-      .wrap_err("Failed to reroot tree (pre-ancestral)")?;
+    clock_model = reroot_tree(
+      &mut graph,
+      &partitions,
+      &ClockParams::default(),
+      args.clock_rate,
+      &branch_params,
+    )
+    .wrap_err("Failed to reroot tree (pre-ancestral)")?;
   }
 
   if args.clock_filter > 0.0 {
@@ -146,10 +188,22 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())?;
   }
 
+  // Post-filter reroots: use covariation params when --covariation is enabled,
+  // matching v0's pattern where covariation kicks in from the iteration loop onward
+  // (treetime.py:643-644).
+  let default_clock_params = ClockParams::default();
+  let reroot_clock_params = covariation_clock_params.as_ref().unwrap_or(&default_clock_params);
+
   if !args.keep_root {
     info!("Reroot (post-ancestral)");
-    clock_model = reroot_tree(&mut graph, &partitions, &clock_params, args.clock_rate, &branch_params)
-      .wrap_err("Failed to reroot tree (post-ancestral)")?;
+    clock_model = reroot_tree(
+      &mut graph,
+      &partitions,
+      reroot_clock_params,
+      args.clock_rate,
+      &branch_params,
+    )
+    .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
   info!("### TreeTime: Optimisation rounds");
@@ -185,7 +239,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       &mut graph,
       &partitions,
       &mut clock_model,
-      &clock_params,
+      reroot_clock_params,
       &branch_params,
       coalescent_tc.as_ref(),
     )
@@ -210,7 +264,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     coalescent_tc = Some(skyline_result.tc_distribution);
 
     // Run final timetree pass with optimized skyline, unless OnlyFinal mode will run it below
-    if args.time_marginal != TimeMarginalMode::OnlyFinal {
+    if time_marginal != TimeMarginalMode::OnlyFinal {
       run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
         .wrap_err("Final timetree pass with optimized skyline failed")?;
 
@@ -220,12 +274,39 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     }
   }
 
+  // --- Postprocessing ---
+
   info!("### TreeTime: postprocessing");
-  if args.vary_rate {
-    return make_error!("--vary-rate is not yet implemented");
+
+  // Rate susceptibility analysis: re-run timetree at rate +/- rate_std.
+  // Runs BEFORE the final marginal pass (matching v0 treetime.py:380-388).
+  //
+  // v0 gating (wrappers.py:453-469): rate susceptibility requires --confidence
+  // AND either --clock-std-dev or --covariation. Without --confidence, rate
+  // susceptibility never runs even if rate_std is available.
+  //
+  // v0 rate susceptibility uses time_marginal=False (joint mode), so it does not
+  // produce marginal distributions. v1's run_timetree always produces distributions,
+  // but the third run (central rate) restores graph to the correct state.
+  let rate_std = if args.confidence {
+    determine_rate_std(args.clock_std_dev, args.covariation, &clock_model)?
+  } else {
+    None
+  };
+
+  if let Some(rate_std) = rate_std {
+    let current_rate = clock_model.clock_rate();
+    if current_rate <= 0.0 {
+      warn!("Clock rate is non-positive ({current_rate:.6e}), skipping rate susceptibility");
+    } else {
+      info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
+      compute_rate_susceptibility(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), rate_std)
+        .wrap_err("Rate susceptibility analysis failed")?;
+    }
   }
 
-  if args.time_marginal == TimeMarginalMode::OnlyFinal {
+  // Final marginal pass for confidence interval estimation
+  if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
     run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
       .wrap_err("Final timetree inference failed")?;
@@ -233,7 +314,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     if !partitions.is_empty() {
       update_marginal(&graph, &partitions)?;
     }
+  }
 
+  // Write CI file when any CI data is available
+  if time_marginal == TimeMarginalMode::OnlyFinal || rate_std.is_some() {
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
@@ -244,6 +328,72 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   write_outputs(args, &graph, &partitions, &clock_model)?;
 
   Ok(())
+}
+
+/// Compute effective time_marginal mode, promoting Never to OnlyFinal when
+/// --confidence is set with rate uncertainty prerequisites.
+///
+/// v0 (wrappers.py:478):
+///   time_marginal = 'confidence-only' if (calc_confidence and time_marginal == 'never') else time_marginal
+fn compute_effective_time_marginal(args: &TreetimeTimetreeArgs) -> TimeMarginalMode {
+  if args.confidence && args.time_marginal == TimeMarginalMode::Never {
+    if args.clock_std_dev.is_some() || args.covariation {
+      info!("--confidence: promoting time-marginal from never to only-final for CI estimation");
+      TimeMarginalMode::OnlyFinal
+    } else {
+      warn!(
+        "Cannot estimate confidence intervals without clock rate uncertainty. \
+         Specify --clock-std-dev or rerun with --covariation. \
+         Proceeding without confidence estimation."
+      );
+      TimeMarginalMode::Never
+    }
+  } else {
+    args.time_marginal
+  }
+}
+
+/// Build covariation-aware ClockParams when --covariation is enabled.
+///
+/// v0 (clock_tree.py:277-285):
+///   branch_variance = (max(0, clock_length) + tip_slack^2 * om) * om   [leaves]
+///   branch_variance = max(0, clock_length) * om                         [internal]
+/// where om = 1/seq_len, tip_slack = OVER_DISPERSION = 10 (config.py:8)
+///
+/// In v1's ClockParams model:
+///   branch_variance = variance_factor * edge_len + variance_offset        [all]
+///   branch_variance += variance_offset_leaf                               [leaves only]
+///
+/// Mapping:
+///   variance_factor = 1.0 / seq_len   (= om, the one_mutation value)
+///   variance_offset = 0.0
+///   variance_offset_leaf = tip_slack^2 / seq_len^2   (= tip_slack^2 * om^2)
+fn build_covariation_clock_params(
+  args: &TreetimeTimetreeArgs,
+  aln: Option<&[FastaRecord]>,
+) -> Result<Option<ClockParams>, Report> {
+  if !args.covariation {
+    return Ok(None);
+  }
+
+  let seq_len = if let Some(aln_data) = aln {
+    get_common_length(aln_data)? as f64
+  } else {
+    args
+      .sequence_length
+      .ok_or_else(|| eyre::eyre!("--sequence-length required for --covariation without alignment"))? as f64
+  };
+
+  // v0 default: OVER_DISPERSION = 10 (config.py:8), overridable via --tip-slack
+  let tip_slack = args.tip_slack.unwrap_or(10.0);
+
+  info!("Covariation-aware clock regression: seq_len={seq_len}, tip_slack={tip_slack}");
+
+  Ok(Some(ClockParams {
+    variance_factor: 1.0 / seq_len,
+    variance_offset: 0.0,
+    variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),
+  }))
 }
 
 fn write_outputs(
