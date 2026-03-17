@@ -66,6 +66,7 @@ exactly.
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                             |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                    |
 | Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                     |
+| Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                  |
 | Negligible | Ancestral    | [Dense backward pass produces NaN for all-zero probability rows](N-ancestral-dense-normalize-log-nan.md)               |
 | Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                           |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                        |
