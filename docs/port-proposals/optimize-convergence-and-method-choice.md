@@ -10,7 +10,7 @@ The `optimize` command has three documented convergence and robustness problems:
 
 1. **Oscillation without damping** ([M-optimize-oscillation-no-damping](../port-known-issues/M-optimize-oscillation-no-damping.md)). The outer loop alternates between marginal reconstruction and per-edge optimization without blending new and old branch lengths. v0 applies exponential damping (`damping=0.75`); v1 does not.
 
-2. **Initial guess inflated by gaps** ([M-optimize-initial-guess-ignores-gaps](../port-known-issues/M-optimize-initial-guess-ignores-gaps.md)). `initial_guess_mixed()` counts gap-to-nucleotide pairs as substitutions, inflating starting branch lengths for gappy alignments.
+2. **Initial guess inflated by gaps** (fixed). `initial_guess_mixed()` now filters gap positions from both the substitution count and the effective alignment length denominator.
 
 3. **GTR hardcoded to JC69** ([M-optimize-gtr-hardcoded-jc69](../port-known-issues/M-optimize-gtr-hardcoded-jc69.md)). The `--model` flag is parsed but ignored. The ancestral command wires model selection correctly; the optimize command does not.
 
