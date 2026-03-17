@@ -30,7 +30,15 @@ v1: [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood
 
 The Kingman coalescent (Kingman 1982) provides a prior on internal node times based on population genetics. Under neutral evolution, k lineages in a population of effective size N_e merge backward in time at a pairwise rate, producing a total coalescence rate `lambda(t) = k(k-1) / (2*Tc(t))` where Tc is the coalescence time scale (proportional to N_e). The per-lineage merger rate is `kappa(t) = (k(t)-1) / (2*Tc(t))`, and the integral merger rate `I(t) = integral kappa(t') dt'` accumulates the probability of no coalescence up to time t.
 
-At an internal node with m children, the coalescent contribution to the node's time distribution has two parts: a survival factor `exp(-I(t))` for leaves (probability of no coalescence), and a merger density `lambda(t)^(m-1) * exp(-I(t)*(m-1))` for internal nodes. In neg-log space: leaf contribution = `-I(t)`, internal = `multiplicity * (I(t) - log(lambda(t)))`.
+The full coalescent neg-log-likelihood decomposes into per-node contributions via algebraic telescoping of the branch survival integrals. Each branch from parent p to child c contributes survival factor `I(t_p) - I(t_c)`. Summing over all branches and grouping by node, the terms telescope into three pieces:
+
+| Piece                           | Neg-log value           | Purpose                                                                        |
+| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| Internal node (all, incl. root) | `m * (I(t) - ln(λ(t)))` | Merger density (m factors of λ) + parent-side survival for m arriving branches |
+| Leaf                            | `-I(t_leaf)`            | Child-side survival credit: removes overcounting from parent's `m*I(t)`        |
+| Root correction                 | `+I(t_root)`            | Root has no parent to provide its child-side subtraction                       |
+
+These three pieces sum to the exact Kingman neg-log-likelihood. This is not an approximation.
 
 v1: [`packages/treetime/src/commands/timetree/coalescent/`](../../packages/treetime/src/commands/timetree/coalescent/) (9 files).
 v0: [`packages/legacy/treetime/treetime/merger_models.py`](../../packages/legacy/treetime/treetime/merger_models.py).
@@ -40,11 +48,15 @@ The coalescent contribution pipeline chains four steps:
 - `collect_tree_events()` (`#collect_tree_events`) [packages/treetime/src/commands/timetree/coalescent/events.rs#L13-L53](../../packages/treetime/src/commands/timetree/coalescent/events.rs#L13-L53): traverses the graph breadth-first, collecting `(time, delta_branches)` tuples. Leaves get +1, internal nodes with k children get -(k-1).
 - `compute_lineage_count_distribution()` (`#compute_lineage_count_distribution`) [packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs#L14-L41](../../packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs#L14-L41): aggregates events into a `PiecewiseConstantFn` representing k(t).
 - `compute_integral_merger_rate()` (`#compute_integral_merger_rate`) [packages/treetime/src/commands/timetree/coalescent/integration.rs#L44-L94](../../packages/treetime/src/commands/timetree/coalescent/integration.rs#L44-L94): computes I(t) = integral of kappa(t). Clamping `k_clamped = max(0.5, k-1)` matches v0.
-- `compute_node_contributions()` (`#compute_node_contributions`) [packages/treetime/src/commands/timetree/coalescent/contributions.rs#L26-L71](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L26-L71): leaf contribution = -I(t), internal = multiplicity \* (I(t) - log(lambda(t))).
+- `compute_node_contributions()` (`#compute_node_contributions`) [packages/treetime/src/commands/timetree/coalescent/contributions.rs#L31-L76](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L31-L76): computes all three pieces (leaf, internal, but not root correction).
 
 `compute_coalescent_contributions()` (`#compute_coalescent_contributions`) [packages/treetime/src/commands/timetree/coalescent/coalescent.rs#L61-L79](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs#L61-L79) orchestrates the full pipeline.
 
 The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass.
+
+**v1 applies only internal node contributions.** Leaf contributions are computed but not consumed by the backward pass (`backward_pass.rs:45` returns `None` for leaves). The root correction is not computed. See [known issue](../port-known-issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md).
+
+v0 applies all three pieces: leaf contributions at `clock_tree.py:499-503` (uncertain dates) and `clock_tree.py:474-480` (precise dates), internal node contributions at `clock_tree.py:505-506`, root correction at `clock_tree.py:518-530`.
 
 References:
 
