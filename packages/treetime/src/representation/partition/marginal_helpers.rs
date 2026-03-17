@@ -145,3 +145,177 @@ pub fn propagate_raw(
 
   message
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use approx::assert_abs_diff_eq;
+  use ndarray::array;
+
+  #[test]
+  fn test_logsumexp_normalize_equal_log_probs() {
+    // ln(0.25) for each of 4 states: already-normalized probabilities in log space.
+    // sum(exp(log_vec)) = 4 * 0.25 = 1.0, so log_norm = ln(1.0) = 0.0.
+    let log_vec = Array1::from_elem(4, 0.25_f64.ln());
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, 0.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_descending() {
+    // Unnormalized log-values [0, -1, -2, -3]. The logsumexp trick subtracts max=0,
+    // exponentiates to [1, e^-1, e^-2, e^-3], and divides by the sum S.
+    let log_vec = array![0.0, -1.0, -2.0, -3.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    let sum = 1.0 + (-1.0_f64).exp() + (-2.0_f64).exp() + (-3.0_f64).exp();
+    let expected = array![
+      1.0 / sum,
+      (-1.0_f64).exp() / sum,
+      (-2.0_f64).exp() / sum,
+      (-3.0_f64).exp() / sum
+    ];
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, expected, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, sum.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_single_dominant_state() {
+    // One state at 0.0, others at -100.0. exp(-100) ~ 3.7e-44, so the dominant
+    // state concentrates nearly all probability mass.
+    let log_vec = array![0.0, -100.0, -100.0, -100.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, array![1.0, 0.0, 0.0, 0.0], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, 0.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_all_neg_inf() {
+    // All states have zero probability (log = -inf). The function falls back
+    // to a uniform distribution with log_norm = -inf.
+    let log_vec = Array1::from_elem(4, f64::NEG_INFINITY);
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    assert_abs_diff_eq!(normalized, array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    assert!(
+      log_norm == f64::NEG_INFINITY,
+      "log_norm should be NEG_INFINITY, got {log_norm}"
+    );
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_all_neg_inf_three_states() {
+    // All-inf fallback with 3 states: uniform = 1/3 each.
+    let log_vec = Array1::from_elem(3, f64::NEG_INFINITY);
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    assert_abs_diff_eq!(normalized, Array1::from_elem(3, 1.0 / 3.0), epsilon = 1e-10);
+    assert!(
+      log_norm == f64::NEG_INFINITY,
+      "log_norm should be NEG_INFINITY, got {log_norm}"
+    );
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_mixed_finite_neg_inf() {
+    // States 0 and 2 have finite log-probs, states 1 and 3 are -inf.
+    // exp(-inf) = 0, so only states 0 and 2 contribute.
+    // Equivalent to softmax([0, -1]) distributed across 4 positions.
+    let log_vec = array![0.0, f64::NEG_INFINITY, -1.0, f64::NEG_INFINITY];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    let sum = 1.0 + (-1.0_f64).exp();
+    let expected = array![1.0 / sum, 0.0, (-1.0_f64).exp() / sum, 0.0];
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, expected, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, sum.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_single_finite_rest_neg_inf() {
+    // Only one finite state: gets all probability mass.
+    let log_vec = array![f64::NEG_INFINITY, -3.0, f64::NEG_INFINITY, f64::NEG_INFINITY];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, array![0.0, 1.0, 0.0, 0.0], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, -3.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_large_negative_values() {
+    // All values around -1000. Without the logsumexp trick, exp(-1000) underflows
+    // to 0. The trick subtracts max=-1000, leaving [0, -1, -2, -3], producing
+    // the same relative probabilities as the descending case.
+    let log_vec = array![-1000.0, -1001.0, -1002.0, -1003.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    let reference = array![0.0, -1.0, -2.0, -3.0];
+    let (reference_normalized, reference_log_norm) = logsumexp_normalize(&reference);
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, reference_normalized, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, reference_log_norm - 1000.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_large_positive_values() {
+    // Large positive values: exp(1000) overflows without the logsumexp trick.
+    // Same relative ratios as [0, -1, -2, -3] shifted by +1003.
+    let log_vec = array![1003.0, 1002.0, 1001.0, 1000.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    let reference = array![0.0, -1.0, -2.0, -3.0];
+    let (reference_normalized, reference_log_norm) = logsumexp_normalize(&reference);
+
+    helpers::assert_valid_distribution(&normalized);
+    assert_abs_diff_eq!(normalized, reference_normalized, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, reference_log_norm + 1003.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_single_state() {
+    // Single-element vector: the only state gets probability 1.0,
+    // log_norm equals the input value.
+    let log_vec = array![5.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    assert_abs_diff_eq!(normalized, array![1.0], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, 5.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_logsumexp_normalize_two_equal_states() {
+    // Two equal log-values: each state gets 0.5, log_norm = value + ln(2).
+    let log_vec = array![0.0, 0.0];
+    let (normalized, log_norm) = logsumexp_normalize(&log_vec);
+
+    assert_abs_diff_eq!(normalized, array![0.5, 0.5], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_norm, 2.0_f64.ln(), epsilon = 1e-10);
+  }
+
+  mod helpers {
+    use approx::assert_abs_diff_eq;
+    use ndarray::Array1;
+
+    pub fn assert_valid_distribution(normalized: &Array1<f64>) {
+      assert!(
+        normalized.iter().all(|&v| v >= 0.0),
+        "all probabilities must be non-negative: {normalized}"
+      );
+      assert!(
+        normalized.iter().all(|&v| v.is_finite()),
+        "all probabilities must be finite: {normalized}"
+      );
+      assert_abs_diff_eq!(normalized.sum(), 1.0, epsilon = 1e-10);
+    }
+  }
+}
