@@ -257,19 +257,9 @@ impl Distribution<Plain> {
           return Some(t[0]);
         }
 
-        // Compute CDF using trapezoidal rule
-        let dx = f.dx();
-        let mut cdf = Array1::<f64>::zeros(n);
-        for i in 1..n {
-          cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
-        }
-
-        // Normalize
-        let total = cdf[n - 1];
-        if total <= 0.0 || !total.is_finite() {
+        let Some(cdf) = compute_normalized_cdf(y, f.dx()) else {
           return self.likely_time();
-        }
-        cdf.mapv_inplace(|v| v / total);
+        };
 
         // Find where CDF crosses p using linear interpolation
         if p <= 0.0 {
@@ -439,16 +429,7 @@ fn hpd_region_function(f: &DistributionFunction<f64, Plain>, fraction: f64) -> O
     return Some((t[0], t[0]));
   }
 
-  // CDF via trapezoidal rule (same method as quantile())
-  let mut cdf = Array1::<f64>::zeros(n);
-  for i in 1..n {
-    cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
-  }
-  let total = cdf[n - 1];
-  if total <= 0.0 || !total.is_finite() {
-    return None;
-  }
-  cdf.mapv_inplace(|v| v / total);
+  let cdf = compute_normalized_cdf(y, dx)?;
 
   // Peak = argmax of probability density
   let pidx = y.argmax().ok()?;
@@ -500,6 +481,25 @@ fn hpd_region_function(f: &DistributionFunction<f64, Plain>, fraction: f64) -> O
   let left_pos = interp_crossing_left(&t, y, pidx, p_thresh);
   let right_pos = interp_crossing_right(&t, y, pidx, p_thresh);
   Some((left_pos, right_pos))
+}
+
+/// Compute normalized CDF from probability density values on a uniform grid.
+///
+/// Uses the trapezoidal rule for integration and normalizes to [0, 1].
+/// Returns `None` if the total integral is non-positive or non-finite.
+fn compute_normalized_cdf(y: &Array1<f64>, dx: f64) -> Option<Array1<f64>> {
+  let n = y.len();
+  debug_assert!(n >= 2, "CDF requires at least 2 points, got {n}");
+  let mut cdf = Array1::<f64>::zeros(n);
+  for i in 1..n {
+    cdf[i] = cdf[i - 1] + 0.5 * (y[i - 1] + y[i]) * dx;
+  }
+  let total = cdf[n - 1];
+  if total <= 0.0 || !total.is_finite() {
+    return None;
+  }
+  cdf.mapv_inplace(|v| v / total);
+  Some(cdf)
 }
 
 /// Find position left of peak where y crosses `threshold` (linear interpolation).
