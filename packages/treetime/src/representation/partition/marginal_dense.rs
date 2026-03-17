@@ -65,6 +65,11 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
   }
 
   fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    // Dense substitutions are MAP estimates: argmax of per-edge message profiles.
+    // msg_to_parent = subtree likelihood propagated to parent end of the edge.
+    // msg_to_child = outgroup likelihood propagated to child end of the edge.
+    // These are partial messages (not full posteriors), so the MAP state can
+    // differ from the full posterior argmax at the corresponding node.
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
     let parent_gaps = &self.nodes[&parent_key].seq.gaps;
