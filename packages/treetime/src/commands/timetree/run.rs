@@ -45,7 +45,6 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   //   - --confidence with --covariation or --clock-std-dev: set time_marginal='confidence-only'
   //     (equivalent to v1's OnlyFinal -- runs a final marginal pass for CI estimation)
   //   - --confidence without prerequisites: warn and disable confidence
-  //   - --vary-rate: standalone flag that also triggers rate susceptibility
   let time_marginal = compute_effective_time_marginal(args);
 
   info!("## Loading input data");
