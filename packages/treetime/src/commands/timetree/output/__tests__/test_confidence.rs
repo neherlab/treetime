@@ -8,7 +8,7 @@ mod tests {
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::timetree::NodeTimetree;
   use approx::assert_relative_eq;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -288,5 +288,53 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.003, 0.0);
     let result = determine_rate_std(None, true, &clock_model).unwrap();
     assert!(result.is_none());
+  }
+
+  // --- HPD region ---
+  // v0 uses get_max_posterior_region(fraction=0.9): highest posterior density region,
+  // the NARROWEST interval containing 90% probability mass.
+  // For symmetric distributions, HPD equals equal-tailed CI.
+  // For skewed distributions (nodes near tree boundaries), HPD is narrower and
+  // centered on the peak.
+
+  #[test]
+  fn test_extract_confidence_intervals_skewed_distribution_hpd() {
+    // Discretized exponential distribution: P(t) = exp(-t) on [0, 10].
+    // Peak at t=0, long right tail.
+    //
+    // Analytical CDF: F(t) = 1 - exp(-t)
+    // Equal-tailed 90% CI: [quantile(0.05), quantile(0.95)]
+    //   = [-ln(0.95), -ln(0.05)] = [0.0513, 2.9957]
+    //   width = 2.9444
+    //
+    // HPD 90% region: the shortest interval [0, h] such that F(h) - F(0) = 0.9
+    //   F(h) = 0.9 => h = -ln(0.1) = 2.3026
+    //   HPD = [0, 2.3026], width = 2.3026 (22% narrower)
+    let n_points = 500;
+    let x_min = 0.0;
+    let dx = 10.0 / (n_points as f64 - 1.0);
+    let y = Array1::from_shape_fn(n_points, |i| (-(x_min + i as f64 * dx)).exp());
+
+    let dist_fn = treetime_distribution::DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
+    let dist = Distribution::Function(dist_fn);
+    let peak_time = dist.likely_time().unwrap();
+
+    let mut graph = GraphTimetree::new();
+    let mut node = NodeTimetree::default();
+    node.base.set_name(Some("skewed"));
+    node.time = Some(peak_time);
+    node.time_distribution = Some(Arc::new(dist));
+    graph.add_node(node);
+    graph.build().unwrap();
+
+    let intervals = extract_confidence_intervals(&graph);
+    assert_eq!(intervals.len(), 1);
+
+    // v0 HPD bounds: [0, 2.3026] (narrowest 90% interval around peak)
+    // Allow tolerance for grid discretization (dt ~ 0.02)
+    let hpd_lower = 0.0;
+    let hpd_upper = (0.1_f64).ln().abs(); // -ln(0.1) = 2.3026
+    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = dx);
+    assert_relative_eq!(intervals[0].upper, hpd_upper, epsilon = dx);
   }
 }

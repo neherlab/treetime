@@ -21,12 +21,16 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
 use treetime_io::csv::CsvStructFileWriter;
 
-/// Lower quantile for 90% confidence interval (5th percentile).
-/// Matches v0's `get_confidence_interval(node, interval=(0.05, 0.95))` and
-/// `get_max_posterior_region(n, fraction=0.9)`.
-const CI_LOWER_QUANTILE: f64 = 0.05;
-/// Upper quantile for 90% confidence interval (95th percentile).
-const CI_UPPER_QUANTILE: f64 = 0.95;
+/// Fraction of probability mass for the 90% confidence region.
+/// Matches v0's `get_max_posterior_region(n, fraction=0.9)`.
+const CI_FRACTION: f64 = 0.9;
+
+/// Symmetric quantile bounds derived from CI_FRACTION, for equal-tailed CI.
+/// Used by the rate contribution (which assumes Gaussian rate uncertainty)
+/// and as fallback when HPD is unavailable.
+/// v0 (clock_tree.py:1181): `((1-fraction)*0.5, 1.0-(1-fraction)*0.5)`
+const CI_LOWER_QUANTILE: f64 = (1.0 - CI_FRACTION) * 0.5; // 0.05
+const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 
 /// Quantify how clock rate uncertainty propagates to node date uncertainty.
 ///
@@ -175,11 +179,16 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       let name = payload.name().map(|n| n.as_ref().to_owned())?;
       let date = payload.time?;
 
-      // Source 1: mutation stochasticity from marginal posterior quantiles
+      // Source 1: mutation stochasticity from marginal posterior HPD region.
+      // v0 uses get_max_posterior_region(fraction=0.9): highest posterior density
+      // region, the narrowest interval containing 90% of the probability mass.
+      // For symmetric distributions this equals equal-tailed CI; for skewed
+      // distributions (nodes near tree boundaries) HPD is narrower and
+      // centered on the peak.
       let mutation_contribution = payload
         .time_distribution()
         .as_ref()
-        .and_then(|dist| dist.confidence_interval(CI_LOWER_QUANTILE, CI_UPPER_QUANTILE));
+        .and_then(|dist| dist.hpd_region(CI_FRACTION));
 
       // Source 2: clock rate uncertainty from rate susceptibility analysis
       let rate_contribution = payload
