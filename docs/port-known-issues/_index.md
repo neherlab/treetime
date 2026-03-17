@@ -36,8 +36,7 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                  |
 | ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| High       | Timetree     | [Gap character not handled in alphabet](H-timetree-gap-alphabet.md)                                                    |
-| High       | Timetree     | [Marginal dense backward pass crash on ebola](H-timetree-marginal-dense-backward-crash.md)                             |
+| High       | Timetree     | [Timetree crashes on zero-length branches with grid spacing error](H-timetree-crash-grid-zero-branch.md)               |
 | High       | Clock        | [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)                     |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                       |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                      |
@@ -62,7 +61,7 @@ exactly.
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                             |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                    |
 | Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                     |
-| Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                  |
+| Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)          |
 | Negligible | Ancestral    | [Dense backward pass produces NaN for all-zero probability rows](N-ancestral-dense-normalize-log-nan.md)               |
 | Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                           |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                        |

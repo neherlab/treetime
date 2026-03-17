@@ -49,7 +49,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 
 | ID      | Issue file                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- |
-| grid    | Grid interpolation crash on zero-length branches ("x array must be uniformly spaced")       |
+| grid    | [H-timetree-crash-grid-zero-branch](H-timetree-crash-grid-zero-branch.md)                   |
 | coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
 | neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
 
