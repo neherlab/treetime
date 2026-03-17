@@ -45,8 +45,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let dense = dense.unwrap_or_else(infer_dense);
 
-  let treat_gap_as_unknown = dense;
-  let alphabet = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown)?;
+  let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
 
   // TODO: avoid reading all sequences into memory somehow?
   let aln = if input_fastas.is_empty() {

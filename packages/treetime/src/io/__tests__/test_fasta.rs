@@ -13,7 +13,7 @@ mod tests {
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
-    static ref AA_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    static ref AA_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
   }
 
   fn seq(s: &str) -> Seq {

@@ -82,10 +82,9 @@ mod tests {
     let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
     setup_dates(&graph);
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
 
@@ -174,7 +173,7 @@ mod tests {
       }
     }
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
@@ -276,7 +275,7 @@ mod tests {
       }
     }
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
@@ -358,10 +357,9 @@ mod tests {
     let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
     setup_dates(&graph);
 
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
 

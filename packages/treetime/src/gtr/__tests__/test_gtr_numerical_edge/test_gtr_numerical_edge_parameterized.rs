@@ -25,7 +25,6 @@ mod tests {
       kappa: 2.0,
       pi: Some(array![0.1, 0.2, 0.3, 0.4]),
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(t);
@@ -53,7 +52,6 @@ mod tests {
       mu: 1.0,
       kappa,
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
     })?;
 
     let p = gtr.expQt(1.0);
@@ -66,7 +64,7 @@ mod tests {
   /// Test custom GTR with extreme but valid W values.
   #[test]
   fn test_gtr_extreme_w_values() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
 
     // W with very different magnitudes

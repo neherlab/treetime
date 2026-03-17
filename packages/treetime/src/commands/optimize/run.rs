@@ -49,10 +49,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   // TODO: currently unused, but we could implement automatic suggestion of dense/sparse mode for individual partitions
   let _dense = dense.unwrap_or_else(infer_dense);
 
-  let treat_gap_as_unknown_sparse = false;
-  let treat_gap_as_unknown_dense = true;
-  let alphabet_sparse = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown_sparse)?;
-  let alphabet_dense = Alphabet::new(alphabet.unwrap_or_default(), treat_gap_as_unknown_dense)?;
+  let alphabet_sparse = Alphabet::new(alphabet.unwrap_or_default())?;
+  let alphabet_dense = Alphabet::new(alphabet.unwrap_or_default())?;
 
   let aln = read_many_fasta(input_fastas, &alphabet_sparse)?;
 

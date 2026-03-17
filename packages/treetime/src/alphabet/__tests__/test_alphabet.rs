@@ -23,7 +23,7 @@ mod tests {
   #[case::aa(AlphabetName::Aa, 21)]
   #[trace]
   fn test_alphabet_new_n_canonical(#[case] name: AlphabetName, #[case] expected: usize) {
-    let alphabet = Alphabet::new(name, false).unwrap();
+    let alphabet = Alphabet::new(name).unwrap();
     assert_eq!(expected, alphabet.n_canonical());
   }
 
@@ -32,7 +32,7 @@ mod tests {
   #[case::aa(AlphabetName::Aa, 3)]
   #[trace]
   fn test_alphabet_new_n_ambiguous(#[case] name: AlphabetName, #[case] expected: usize) {
-    let alphabet = Alphabet::new(name, false).unwrap();
+    let alphabet = Alphabet::new(name).unwrap();
     assert_eq!(expected, alphabet.n_ambiguous());
   }
 
@@ -41,7 +41,7 @@ mod tests {
   #[case::aa(AlphabetName::Aa, 2)]
   #[trace]
   fn test_alphabet_new_n_undetermined(#[case] name: AlphabetName, #[case] expected: usize) {
-    let alphabet = Alphabet::new(name, false).unwrap();
+    let alphabet = Alphabet::new(name).unwrap();
     assert_eq!(expected, alphabet.n_undetermined());
   }
 
@@ -50,7 +50,7 @@ mod tests {
   #[case::aa(AlphabetName::Aa, b'X')]
   #[trace]
   fn test_alphabet_unknown(#[case] name: AlphabetName, #[case] expected: u8) {
-    let alphabet = Alphabet::new(name, false).unwrap();
+    let alphabet = Alphabet::new(name).unwrap();
     assert_eq!(AsciiChar::from_byte_unchecked(expected), alphabet.unknown());
   }
 
@@ -59,14 +59,14 @@ mod tests {
   #[case::aa(AlphabetName::Aa)]
   #[trace]
   fn test_alphabet_gap(#[case] name: AlphabetName) {
-    let alphabet = Alphabet::new(name, false).unwrap();
+    let alphabet = Alphabet::new(name).unwrap();
     let expected = AsciiChar::from_byte_unchecked(b'-');
     assert_eq!(expected, alphabet.gap());
   }
 
   #[test]
   fn test_alphabet_nuc_canonical_chars() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let actual = alphabet.canonical().collect_vec();
     let expected = vec![
       AsciiChar::from_byte_unchecked(b'A'),
@@ -79,7 +79,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_aa_canonical_chars() {
-    let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
     let actual = alphabet.canonical().collect_vec();
     let expected = vec![
       AsciiChar::from_byte_unchecked(b'*'),
@@ -117,7 +117,7 @@ mod tests {
   #[case::r(b'R', false)]
   #[trace]
   fn test_alphabet_nuc_is_canonical(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_canonical(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -131,7 +131,7 @@ mod tests {
   #[case::gap(b'-', false)]
   #[trace]
   fn test_alphabet_nuc_is_ambiguous(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_ambiguous(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -142,7 +142,7 @@ mod tests {
   #[case::gap(b'-', false)]
   #[trace]
   fn test_alphabet_nuc_is_determined(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_determined(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -153,7 +153,7 @@ mod tests {
   #[case::r(b'R', false)]
   #[trace]
   fn test_alphabet_nuc_is_undetermined(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_undetermined(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -163,7 +163,7 @@ mod tests {
   #[case::a(b'A', false)]
   #[trace]
   fn test_alphabet_nuc_is_unknown(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_unknown(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -173,7 +173,7 @@ mod tests {
   #[case::a(b'A', false)]
   #[trace]
   fn test_alphabet_nuc_is_gap(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.is_gap(AsciiChar::from_byte_unchecked(c)));
   }
 
@@ -186,20 +186,20 @@ mod tests {
   #[case::z(b'Z', false)]
   #[trace]
   fn test_alphabet_nuc_contains(#[case] c: u8, #[case] expected: bool) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.contains(AsciiChar::from_byte_unchecked(c)));
   }
 
   #[test]
   fn test_alphabet_nuc_n_chars() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let expected = 16;
     assert_eq!(expected, alphabet.n_chars());
   }
 
   #[test]
   fn test_alphabet_nuc_n_determined() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let expected = 14;
     assert_eq!(expected, alphabet.n_determined());
   }
@@ -211,7 +211,7 @@ mod tests {
   #[case::t(b'T', 3)]
   #[trace]
   fn test_alphabet_nuc_index(#[case] c: u8, #[case] expected: usize) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(expected, alphabet.index(c as usize).unwrap());
   }
 
@@ -222,13 +222,13 @@ mod tests {
   #[case::idx3(3, b'T')]
   #[trace]
   fn test_alphabet_nuc_char(#[case] index: usize, #[case] expected: u8) {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert_eq!(AsciiChar::from_byte_unchecked(expected), alphabet.char(index));
   }
 
   #[test]
   fn test_alphabet_nuc_get_profile_canonical() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let profile_a = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'A')).unwrap();
     let expected_a = array![1.0, 0.0, 0.0, 0.0];
@@ -257,7 +257,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_get_profile_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let profile_r = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'R')).unwrap();
     let expected_r = array![1.0, 0.0, 1.0, 0.0];
@@ -274,7 +274,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_get_profile_unknown() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let profile_n = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
     let expected_n = array![1.0, 1.0, 1.0, 1.0];
     for (actual, expected) in profile_n.iter().zip(expected_n.iter()) {
@@ -284,7 +284,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_get_code() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let actual = alphabet.get_code(&array![1.0, 0.0, 0.0, 0.0]).unwrap();
     let expected = AsciiChar::from_byte_unchecked(b'A');
@@ -301,7 +301,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_char_to_set_canonical() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'A'));
     let expected_len = 1;
     assert_eq!(expected_len, set.len());
@@ -310,7 +310,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_char_to_set_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'R'));
     let expected_len = 2;
     assert_eq!(expected_len, set.len());
@@ -320,7 +320,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_set_to_char() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'R'));
     let actual = alphabet.set_to_char(set);
     let expected = AsciiChar::from_byte_unchecked(b'R');
@@ -329,7 +329,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_construct_profile() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let actual = alphabet
       .construct_profile([
         AsciiChar::from_byte_unchecked(b'A'),
@@ -344,7 +344,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_seq2prof() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let seq = [
       AsciiChar::from_byte_unchecked(b'A'),
       AsciiChar::from_byte_unchecked(b'C'),
@@ -361,15 +361,15 @@ mod tests {
   }
 
   #[test]
-  fn test_alphabet_treat_gap_as_unknown_false() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+  fn test_alphabet_gap_is_not_unknown() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     assert!(!alphabet.is_unknown(AsciiChar::from_byte_unchecked(b'-')));
     assert!(alphabet.is_gap(AsciiChar::from_byte_unchecked(b'-')));
   }
 
   #[test]
-  fn test_alphabet_treat_gap_as_unknown_true() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
+  fn test_alphabet_gap_profile_matches_unknown() {
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let profile_gap = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'-')).unwrap();
     let profile_unknown = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
     for (gap, unk) in profile_gap.iter().zip(profile_unknown.iter()) {
@@ -389,7 +389,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_aa_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
     let ambiguous = alphabet.ambiguous().collect_vec();
     let expected = vec![
       AsciiChar::from_byte_unchecked(b'B'),
@@ -401,7 +401,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_aa_b_maps_to_nd() {
-    let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
     let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(b'B'));
     assert!(set.contains(AsciiChar::from_byte_unchecked(b'N')));
     assert!(set.contains(AsciiChar::from_byte_unchecked(b'D')));
@@ -416,7 +416,6 @@ mod tests {
       ambiguous: indexmap! {},
       unknown: b'N',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let result = Alphabet::with_config(&config);
     assert!(result.is_err());
@@ -426,7 +425,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_chars_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let chars = alphabet.chars().collect_vec();
     let expected_len = 16;
     assert_eq!(expected_len, chars.len());
@@ -441,7 +440,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_determined_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let determined = alphabet.determined().collect_vec();
     let expected_len = 14;
     assert_eq!(expected_len, determined.len());
@@ -453,7 +452,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_undetermined_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let undetermined = alphabet.undetermined().collect_vec();
     let expected_len = 2;
     assert_eq!(expected_len, undetermined.len());
@@ -463,7 +462,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_ambiguous_iterator() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let ambiguous = alphabet.ambiguous().collect_vec();
     let expected_len = 10;
     assert_eq!(expected_len, ambiguous.len());
@@ -481,7 +480,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_construct_profile_with_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let actual = alphabet
       .construct_profile([AsciiChar::from_byte_unchecked(b'R')])
       .unwrap();
@@ -493,7 +492,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_construct_profile_empty() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let actual = alphabet.construct_profile::<[AsciiChar; 0], _>([]).unwrap();
     let expected = array![0.0, 0.0, 0.0, 0.0];
     for (actual, expected) in actual.iter().zip(expected.iter()) {
@@ -503,7 +502,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_seq2prof_with_ambiguous() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let seq = [
       AsciiChar::from_byte_unchecked(b'R'),
       AsciiChar::from_byte_unchecked(b'Y'),
@@ -548,7 +547,6 @@ mod tests {
       },
       unknown: b'?',
       gap: b'-',
-      treat_gap_as_unknown: false,
     };
     let alphabet = Alphabet::with_config(&config).unwrap();
 
@@ -573,7 +571,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_nuc_all_ambiguous_mappings() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let cases = [
       (b'R', vec![b'A', b'G']),
@@ -604,7 +602,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_aa_all_ambiguous_mappings() {
-    let alphabet = Alphabet::new(AlphabetName::Aa, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
 
     let cases = [
       (b'B', vec![b'N', b'D']),
@@ -628,7 +626,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_char_index_roundtrip() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     for i in 0..alphabet.n_canonical() {
       let c = alphabet.char(i);
       let idx = alphabet.index(c).unwrap();
@@ -638,7 +636,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_set_to_char_canonical_roundtrip() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false).unwrap();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     for c in alphabet.canonical() {
       let set = alphabet.char_to_set(c);
       let back = alphabet.set_to_char(set);

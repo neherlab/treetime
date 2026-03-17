@@ -93,7 +93,7 @@ mod tests {
   /// remains reversible with default symmetric exchangeabilities (W = None), satisfying
   /// detailed balance: pi_i * Q_ij = pi_j * Q_ji.
   fn make_nonuniform_gtr() -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
       n_states,

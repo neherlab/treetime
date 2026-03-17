@@ -49,7 +49,7 @@ pub mod tests {
     graph: &GraphAncestral,
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr: jc69(JC69Params::default())?,
@@ -68,7 +68,7 @@ pub mod tests {
     graph: &GraphAncestral,
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,

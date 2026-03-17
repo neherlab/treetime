@@ -39,7 +39,7 @@ pub mod tests {
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
     let graph: GraphAncestral = nwk_read_str(&input.newick)?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {

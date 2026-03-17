@@ -11,7 +11,7 @@ mod tests {
 
   #[test]
   fn test_high_mutation_rate_dense() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,
@@ -37,7 +37,7 @@ mod tests {
 
   #[test]
   fn test_high_mutation_rate_sparse() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,
@@ -63,7 +63,7 @@ mod tests {
 
   #[test]
   fn test_very_high_mutation_rate_dense() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,
@@ -89,7 +89,7 @@ mod tests {
 
   #[test]
   fn test_high_mutation_nonuniform_pi_dense() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,
@@ -115,7 +115,7 @@ mod tests {
 
   #[test]
   fn test_combined_extreme_parameters_dense() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,
@@ -141,7 +141,7 @@ mod tests {
 
   #[test]
   fn test_combined_extreme_parameters_sparse() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,

@@ -50,8 +50,8 @@ pub mod tests {
     ),
     Report,
   > {
-    let alphabet_dense = Alphabet::new(AlphabetName::Nuc, true)?;
-    let alphabet_sparse = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
+    let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
     let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,

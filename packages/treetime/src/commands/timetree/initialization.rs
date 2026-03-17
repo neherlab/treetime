@@ -34,14 +34,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     todo!("Tree inference from alignment not yet implemented")
   };
 
-  // Create alphabet for both alignment loading and timetree inference.
-  // treat_gap_as_unknown behavior:
-  // - With alignment: uses dense setting (true for dense mode, false for sparse)
-  // - Without alignment: uses false (gaps as distinct characters for branch length mode)
-  let alphabet = {
-    let treat_gap_as_unknown = !args.input_fastas.is_empty() && args.dense.unwrap_or_else(infer_dense);
-    Alphabet::new(args.alphabet, treat_gap_as_unknown)?
-  };
+  let alphabet = Alphabet::new(args.alphabet)?;
 
   // Load alignment sequences (optional if using input branch lengths only)
   let aln = if !args.input_fastas.is_empty() {

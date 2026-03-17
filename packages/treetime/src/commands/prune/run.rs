@@ -56,7 +56,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
       !input_fastas.is_empty(),
       "Input FASTA files are required for pruning empty branches."
     );
-    let alphabet = Alphabet::new(alphabet.unwrap_or_default(), false)?;
+    let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
     let aln = read_many_fasta(input_fastas, &alphabet)?;
 
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {

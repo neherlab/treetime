@@ -60,7 +60,7 @@ mod tests {
     aln: &[FastaRecord],
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr,
@@ -93,7 +93,7 @@ mod tests {
     aln: &[FastaRecord],
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalSparse>>), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
       index: 0,
       gtr,
@@ -126,12 +126,10 @@ mod tests {
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
     let gtr_sparse = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
 
@@ -160,12 +158,10 @@ mod tests {
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
     let gtr_sparse = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
 
@@ -237,12 +233,10 @@ mod tests {
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
     let gtr_sparse = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: false,
       ..JC69Params::default()
     })?;
 
@@ -310,7 +304,7 @@ mod tests {
   /// forward passes.
   #[test]
   fn test_marginal_posteriors_sum_to_one_skewed_gtr() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, false)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     // Highly skewed equilibrium frequencies: A dominates at 90%
     let pi = array![0.9, 0.06, 0.02, 0.02];

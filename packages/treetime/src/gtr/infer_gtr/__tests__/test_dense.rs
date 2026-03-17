@@ -30,13 +30,11 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-    treat_gap_as_unknown: bool,
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown,
       ..JC69Params::default()
     })?;
 
@@ -75,8 +73,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition) =
-      setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln, true)?;
+    let (graph, partition) = setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
@@ -116,7 +113,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln, true)?;
+    let (graph, partition) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
@@ -180,7 +177,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition) = setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln, true)?;
+    let (graph, partition) = setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
@@ -261,7 +258,7 @@ mod tests {
     )?;
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
-    let (graph, partition) = setup_dense_partition(tree_nwk, &aln, true)?;
+    let (graph, partition) = setup_dense_partition(tree_nwk, &aln)?;
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;

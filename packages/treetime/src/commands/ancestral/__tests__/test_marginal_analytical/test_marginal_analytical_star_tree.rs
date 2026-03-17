@@ -49,7 +49,7 @@ mod tests {
   /// Star tree with non-uniform equilibrium frequencies (GTR model).
   #[test]
   fn test_star_tree_analytical_nonuniform_pi() -> Result<(), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     let gtr = GTR::new(GTRParams {
       n_states,

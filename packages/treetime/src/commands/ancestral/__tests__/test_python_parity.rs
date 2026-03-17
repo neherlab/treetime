@@ -57,15 +57,13 @@ mod tests {
     let tree_path = root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = root.join("data/flu/h3n2/20/aln.fasta.xz");
 
-    let treat_gap_as_unknown = true;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, treat_gap_as_unknown)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta(&[aln_path], &alphabet)?;
 
     let graph: GraphAncestral = nwk_read_file(&tree_path)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown,
       ..JC69Params::default()
     })?;
 
@@ -111,7 +109,7 @@ mod tests {
   ///
   /// Python reference: test_scripts/ancestral_sparse.py:235
   fn make_python_reference_gtr() -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
       n_states,
@@ -131,7 +129,7 @@ mod tests {
   ///
   /// Python reference: test_scripts/ancestral_sparse.py:255
   fn make_python_reference_gtr2() -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let n_states = alphabet.n_canonical();
     GTR::new(GTRParams {
       n_states,
@@ -174,7 +172,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
@@ -222,7 +220,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
@@ -266,7 +264,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
@@ -311,7 +309,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
@@ -358,7 +356,7 @@ mod tests {
 
     let gtr1 = make_python_reference_gtr()?;
     let gtr2 = make_python_reference_gtr2()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
     // Create two partitions with different F81 models
@@ -432,7 +430,7 @@ mod tests {
 
     let gtr1 = make_python_reference_gtr()?;
     let gtr2 = make_python_reference_gtr2()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
     let partition1 = Arc::new(RwLock::new(PartitionMarginalDense {
@@ -501,7 +499,7 @@ mod tests {
     let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;
 
     let gtr = make_python_reference_gtr()?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
     // Dense partition

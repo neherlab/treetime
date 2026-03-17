@@ -230,7 +230,6 @@ fn load_dataset_configs(datasets: &[String]) -> Result<Vec<DatasetConfig>, Repor
 
 fn skip_reason(dataset: &str, test: &str) -> Option<&'static str> {
   match (dataset, test) {
-    ("ebola_20", "marginal_dense") => Some("crashes in process_node_backward"),
     ("rsv_a_20" | "tb_20", _) => Some("crashes in distribution functions (zero-length branches)"),
     _ => None,
   }

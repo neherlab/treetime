@@ -102,7 +102,7 @@ def capture_infer_gtr(tree_nwk: str, alignment_fasta: str, case_name: str) -> di
     aln = parse_alignment(alignment_fasta)
 
     # nuc_nogap: 4 states (A, C, G, T), gaps treated as unknown.
-    # Matches Rust's Alphabet::n_canonical() with treat_gap_as_unknown=true.
+    # Matches Rust's Alphabet::n_canonical().
     gtr = JC69(mu=1.0, alphabet="nuc_nogap")
 
     tt = TreeAnc(

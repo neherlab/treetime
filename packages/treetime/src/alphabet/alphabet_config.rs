@@ -17,7 +17,6 @@ pub struct AlphabetConfig {
   pub ambiguous: IndexMap<u8, Vec<u8>>,
   pub unknown: u8,
   pub gap: u8,
-  pub treat_gap_as_unknown: bool,
 }
 
 impl AlphabetConfig {
@@ -27,7 +26,6 @@ impl AlphabetConfig {
       ambiguous,
       unknown,
       gap,
-      treat_gap_as_unknown,
     } = self;
 
     let gap = AsciiChar::try_new(*gap)?;
@@ -64,10 +62,9 @@ impl AlphabetConfig {
       profile_map.insert(AsciiChar::try_new(key)?, profile);
     }
 
-    if *treat_gap_as_unknown {
-      // Add gap to profile map
-      profile_map.insert(gap, profile_map[&unknown].clone());
-    }
+    // Gap carries no nucleotide information in a nogap alphabet (A/C/G/T).
+    // Map it to the same uniform profile as unknown, matching v0's nuc_nogap behavior.
+    profile_map.insert(gap, profile_map[&unknown].clone());
 
     Ok(profile_map)
   }
@@ -78,7 +75,6 @@ impl AlphabetConfig {
       ambiguous,
       unknown,
       gap,
-      ..
     } = self;
 
     {

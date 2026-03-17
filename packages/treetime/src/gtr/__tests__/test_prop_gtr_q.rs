@@ -131,7 +131,7 @@ mod tests {
     /// produces the same transition matrix, within numerical tolerance.
     #[test]
     fn test_prop_gtr_q_mu_scaling((pi, w) in (arb_pi_nuc(), arb_w_nuc()), t in 0.01_f64..1.0) {
-      let alphabet = Alphabet::new(AlphabetName::Nuc, false).expect("alphabet");
+      let alphabet = Alphabet::new(AlphabetName::Nuc).expect("alphabet");
       let n_states = alphabet.n_canonical();
 
       // Create model with mu=1

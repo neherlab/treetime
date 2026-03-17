@@ -29,7 +29,7 @@ mod tests {
   #[rustfmt::skip]
 #[rstest]
   // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
-  // #[case::ebola_20("ebola_20")]         // TODO: alphabet doesn't handle gap character '-'
+  // #[case::ebola_20("ebola_20")]         // TODO: golden master node key mismatch (v0 captures 11 internal nodes, v1 rerooting produces 19)
   #[case::flu_h3n2_20("flu_h3n2_20")]
   // #[case::lassa_l_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")

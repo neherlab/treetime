@@ -148,8 +148,6 @@ pub struct JC69Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Jukes-Cantor 1969 model.
@@ -158,14 +156,8 @@ pub struct JC69Params {
 /// between nucleotide states.
 ///
 /// See: Jukes and Cantor (1969). Evolution of Protein Molecules. New York: Academic Press. pp. 21-132
-pub fn jc69(
-  JC69Params {
-    mu,
-    alphabet,
-    treat_gap_as_unknown,
-  }: JC69Params,
-) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
@@ -184,8 +176,6 @@ pub struct K80Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Kimura 1980 model.
@@ -197,15 +187,8 @@ pub struct K80Params {
 /// NOTE: Current implementation of the model does not account for the gaps.
 ///
 /// See: Kimura (1980),  J. Mol. Evol. 16 (2): 111-120. doi:10.1007/BF01731581.
-pub fn k80(
-  K80Params {
-    mu,
-    kappa,
-    alphabet,
-    treat_gap_as_unknown,
-  }: K80Params,
-) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = Array1::<f64>::ones(n_states) / (n_states as f64);
@@ -224,8 +207,6 @@ pub struct F81Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Felsenstein 1981 model.
@@ -234,15 +215,8 @@ pub struct F81Params {
 /// but the transition rate between all states is assumed to be equal.
 ///
 /// See: Felsenstein (1981), J. Mol. Evol. 17  (6): 368-376. doi:10.1007/BF01734359
-pub fn f81(
-  F81Params {
-    mu,
-    pi,
-    alphabet,
-    treat_gap_as_unknown,
-  }: F81Params,
-) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
@@ -265,8 +239,6 @@ pub struct HKY85Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Hasegawa, Kishino and Yano 1985 model.
@@ -283,10 +255,9 @@ pub fn hky85(
     kappa,
     pi,
     alphabet,
-    treat_gap_as_unknown,
   }: HKY85Params,
 ) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
@@ -309,8 +280,6 @@ pub struct T92Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Tamura 1992 model.
@@ -326,14 +295,13 @@ pub fn t92(
     kappa,
     pi_GC,
     alphabet,
-    treat_gap_as_unknown,
   }: T92Params,
 ) -> Result<GTR, Report> {
   if !(0.0..=1.0).contains(&pi_GC) {
     return make_error!("The relative GC should be between 0 and 1, but found pi_GC={pi_GC}");
   }
 
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
@@ -347,8 +315,6 @@ pub struct Jtt92Params {
 
   #[default(AlphabetName::AaNoStop)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Jones-Taylor-Thornton 1992 amino acid substitution model.
@@ -358,14 +324,8 @@ pub struct Jtt92Params {
 ///
 /// See: Jones, Taylor, Thornton (1992). CABIOS 8(3):275-282
 #[allow(clippy::excessive_precision)]
-pub fn jtt92(
-  Jtt92Params {
-    mu,
-    alphabet,
-    treat_gap_as_unknown,
-  }: Jtt92Params,
-) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
+  let alphabet = Alphabet::new(alphabet)?;
 
   // Stationary frequencies (pi) from JTT92 model
   // Order: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
@@ -454,8 +414,6 @@ pub struct TN93Params {
 
   #[default(AlphabetName::Nuc)]
   pub alphabet: AlphabetName,
-
-  pub treat_gap_as_unknown: bool,
 }
 
 /// Tamura-Nei 1993 model.
@@ -472,10 +430,9 @@ pub fn tn93(
     kappa2,
     pi,
     alphabet,
-    treat_gap_as_unknown,
   }: TN93Params,
 ) -> Result<GTR, Report> {
-  let alphabet = Alphabet::new(alphabet, treat_gap_as_unknown)?;
+  let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
 
   // W matrix for alphabet [A, C, G, T]:

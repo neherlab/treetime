@@ -114,7 +114,7 @@ mod tests {
       let content = fs::read_to_string(&path).expect("Failed to read outputs JSON");
       serde_json::from_str(&content).expect("Failed to parse outputs JSON")
     };
-    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc, true).unwrap();
+    static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
@@ -127,10 +127,9 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
-    let alphabet = Alphabet::new(AlphabetName::Nuc, true)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
 
@@ -159,7 +158,6 @@ mod tests {
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
-      treat_gap_as_unknown: true,
       ..JC69Params::default()
     })?;
 
