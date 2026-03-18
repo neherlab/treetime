@@ -202,7 +202,7 @@ where
 
       leaf.set_desc(leaf_fasta.desc.clone());
 
-      let alphabet = &self.alphabet.clone(); // TODO: avoid clone
+      let alphabet = &self.alphabet;
       self
         .nodes
         .insert(leaf_key, DenseNodePartition::new(&leaf_fasta.seq, alphabet)?);
@@ -217,7 +217,7 @@ where
   }
 
   fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
-    let alphabet = &self.alphabet.clone(); // TODO: avoid clone
+    let alphabet = &self.alphabet;
     let length = self.length;
 
     let msg_to_parent = if node.is_leaf {
