@@ -412,6 +412,18 @@ fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
     // Step 1: Find row max (logsumexp trick)
     let max_val = log_row.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
+    // All states have zero probability (all log-probs are -inf).
+    // IEEE 754: -inf - (-inf) = NaN, so skip the exponentiation.
+    // Fall back to uniform distribution, matching the sparse path (logsumexp_normalize).
+    if !max_val.is_finite() {
+      let uniform = 1.0 / ncols as f64;
+      for ci in 0..ncols {
+        dis[[ri, ci]] = uniform;
+      }
+      total_log_lh = f64::NEG_INFINITY;
+      continue;
+    }
+
     // Step 2: Exponentiate (relative to max)
     let mut row_sum = 0.0;
     for (ci, &log_val) in log_row.iter().enumerate() {
@@ -430,4 +442,150 @@ fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   }
 
   (dis, total_log_lh)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use approx::assert_abs_diff_eq;
+  use ndarray::array;
+
+  fn assert_valid_rows(dis: &Array2<f64>) {
+    for row in dis.rows() {
+      assert!(
+        row.iter().all(|&v| v >= 0.0 && v.is_finite()),
+        "all probabilities must be non-negative and finite: {row}"
+      );
+      assert_abs_diff_eq!(row.sum(), 1.0, epsilon = 1e-10);
+    }
+  }
+
+  #[test]
+  fn test_normalize_from_log_equal_probs() {
+    let log_dis = Array2::from_elem((2, 4), 0.25_f64.ln());
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, Array2::from_elem((2, 4), 0.25), epsilon = 1e-10);
+    assert!(log_lh.is_finite());
+  }
+
+  #[test]
+  fn test_normalize_from_log_descending() {
+    let log_dis = array![[0.0, -1.0, -2.0, -3.0]];
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    let sum = 1.0 + (-1.0_f64).exp() + (-2.0_f64).exp() + (-3.0_f64).exp();
+    let expected = array![[
+      1.0 / sum,
+      (-1.0_f64).exp() / sum,
+      (-2.0_f64).exp() / sum,
+      (-3.0_f64).exp() / sum
+    ]];
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_normalize_from_log_all_neg_inf_single_row() {
+    let log_dis = Array2::from_elem((1, 4), f64::NEG_INFINITY);
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, Array2::from_elem((1, 4), 0.25), epsilon = 1e-10);
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_from_log_all_neg_inf_multiple_rows() {
+    let log_dis = Array2::from_elem((3, 4), f64::NEG_INFINITY);
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, Array2::from_elem((3, 4), 0.25), epsilon = 1e-10);
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_from_log_mixed_neg_inf_and_finite_rows() {
+    // Row 0: all -inf (degenerate), Row 1: normal values
+    let mut log_dis = Array2::from_elem((2, 4), f64::NEG_INFINITY);
+    log_dis[[1, 0]] = 0.0;
+    log_dis[[1, 1]] = -1.0;
+    log_dis[[1, 2]] = -2.0;
+    log_dis[[1, 3]] = -3.0;
+
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    assert_valid_rows(&dis);
+    // Row 0: uniform fallback
+    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    // Row 1: normal normalization
+    let sum = 1.0 + (-1.0_f64).exp() + (-2.0_f64).exp() + (-3.0_f64).exp();
+    let expected_row1 = array![
+      1.0 / sum,
+      (-1.0_f64).exp() / sum,
+      (-2.0_f64).exp() / sum,
+      (-3.0_f64).exp() / sum
+    ];
+    assert_abs_diff_eq!(dis.row(1), expected_row1, epsilon = 1e-10);
+    // total_log_lh is -inf because one row was degenerate
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_from_log_mixed_finite_neg_inf_within_row() {
+    // Some states finite, others -inf within a row
+    let log_dis = array![[0.0, f64::NEG_INFINITY, -1.0, f64::NEG_INFINITY]];
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    let sum = 1.0 + (-1.0_f64).exp();
+    let expected = array![[1.0 / sum, 0.0, (-1.0_f64).exp() / sum, 0.0]];
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_normalize_from_log_large_negative_values() {
+    // Without logsumexp trick, exp(-1000) underflows to 0
+    let log_dis = array![[-1000.0, -1001.0, -1002.0, -1003.0]];
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    let reference = array![[0.0, -1.0, -2.0, -3.0]];
+    let (ref_dis, ref_log_lh) = normalize_from_log(&reference);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis, ref_dis, epsilon = 1e-10);
+    assert_abs_diff_eq!(log_lh, ref_log_lh - 1000.0, epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_normalize_from_log_three_states() {
+    let log_dis = Array2::from_elem((1, 3), f64::NEG_INFINITY);
+    let (dis, log_lh) = normalize_from_log(&log_dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(
+      dis,
+      Array2::from_elem((1, 3), 1.0 / 3.0),
+      epsilon = 1e-10
+    );
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY, got {log_lh}"
+    );
+  }
 }
