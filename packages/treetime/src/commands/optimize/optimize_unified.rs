@@ -252,8 +252,12 @@ where
 /// Initial estimation of branch lengths for mixed partitions.
 ///
 /// Computes per-edge Hamming distance over canonical (non-gap, non-ambiguous)
-/// positions, matching v0's `state_pair(ignore_gaps=True)` semantics. The
-/// denominator is the per-edge effective alignment length rather than the raw
+/// positions. For sparse partitions, this is the hard Hamming distance (integer
+/// count of differing positions). For dense partitions, this is a soft Hamming
+/// distance where each position contributes `1 - dot(pp, pc)`, the complement
+/// of the profile overlap between the two ends of the edge.
+///
+/// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
 pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
@@ -263,9 +267,9 @@ where
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    let differences: usize = partitions
+    let differences: f64 = partitions
       .iter()
-      .map(|partition| partition.read_arc().edge_subs(graph, edge_key).map(|subs| subs.len()))
+      .map(|partition| partition.read_arc().edge_initial_differences(graph, edge_key))
       .sum::<Result<_, _>>()?;
 
     let effective_length: usize = partitions
@@ -274,7 +278,7 @@ where
       .sum::<Result<_, _>>()?;
 
     let branch_length = if effective_length > 0 {
-      (differences as f64) / (effective_length as f64)
+      differences / (effective_length as f64)
     } else {
       0.0
     };

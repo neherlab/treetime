@@ -33,6 +33,16 @@ pub trait PartitionOptimizeOps: Send + Sync {
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
+
+  /// Return the sum of per-position differences for initial branch length estimation.
+  ///
+  /// For sparse partitions (default): integer count of discrete substitutions, equivalent
+  /// to `edge_subs().len()`. For dense partitions: soft Hamming distance, where each
+  /// position contributes `1 - dot(pp, pc)` (the complement of the profile overlap).
+  /// Uncertain positions contribute fractionally rather than as 0 or 1.
+  fn edge_initial_differences(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<f64, Report> {
+    Ok(self.edge_subs(graph, edge_key)?.len() as f64)
+  }
 }
 
 pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;

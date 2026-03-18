@@ -100,6 +100,36 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     Ok(subs)
   }
 
+  /// Soft Hamming distance: sum of (1 - dot(pp[i], pc[i])) over non-gap positions.
+  ///
+  /// Each position contributes the complement of the probability overlap between the
+  /// subtree message (msg_to_parent, at child end) and the outgroup message (msg_to_child,
+  /// at parent end). Sharp profiles yield 0 (agree) or 1 (disagree), matching hard Hamming.
+  /// Uncertain (near-uniform) profiles yield fractional values reflecting the information
+  /// that phylogenetic signal is weak at that position.
+  fn edge_initial_differences(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<f64, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let parent_gaps = &self.nodes[&parent_key].seq.gaps;
+    let child_gaps = &self.nodes[&child_key].seq.gaps;
+
+    let edge = &self.edges[&edge_key];
+    let mut total = 0.0;
+
+    for (pos, parent_row, child_row) in izip!(
+      0..edge.msg_to_parent.dis.nrows(),
+      edge.msg_to_parent.dis.rows(),
+      edge.msg_to_child.dis.rows()
+    ) {
+      if range_contains(parent_gaps, pos) || range_contains(child_gaps, pos) {
+        continue;
+      }
+      total += 1.0 - parent_row.dot(&child_row);
+    }
+
+    Ok(total)
+  }
+
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
