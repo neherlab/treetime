@@ -90,9 +90,30 @@ After finding optimal root position `x*`:
 
 ---
 
-## Site-Specific GTR
+## Per-Site Rate Variation
 
-Extension of GTR where equilibrium frequencies and rates vary per alignment site. Standard GTR uses a single `Pi[n_states]` vector and scalar `mu`; site-specific GTR extends to `Pi[n_states, seq_len]` and `mu[seq_len]`.
+Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site, making this cheap to implement.
+
+This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`docs/algorithms/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
+
+v0: per-site `mu` is part of `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py).
+v1: `GTR.mu` (`#mu`) is scalar `f64` at [`packages/treetime/src/gtr/gtr.rs#L173`](../../packages/treetime/src/gtr/gtr.rs#L173). No per-site rate support.
+
+Known issue: [Per-site rate variation not implemented](../port-known-issues/M-gtr-per-site-rate-variation.md).
+
+### Algorithm
+
+For each site `a`, the matrix exponential becomes `exp(Q * mu_a * t)`. With eigendecomposition `Q = V * diag(lambda) * V_inv`, this is `V * diag(exp(lambda * mu_a * t)) * V_inv`. The eigenvectors `V`, `V_inv` are computed once; only the `exp(lambda_k * mu_a * t)` terms change per site.
+
+### Reference
+
+Yang Z (1994). "Maximum likelihood phylogenetic estimation from DNA sequences with variable rates over sites: approximate methods." J Mol Evol 39:306-314.
+
+---
+
+## Site-Specific GTR (Full)
+
+Extension of GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. Standard GTR uses `Pi[n_states]`; full site-specific GTR extends to `Pi[n_states, seq_len]`. More expensive than per-site rate variation because the eigenvectors change per site.
 
 v0: `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495).
 v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no implementation.

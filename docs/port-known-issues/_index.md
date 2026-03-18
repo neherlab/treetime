@@ -3,8 +3,9 @@
 All unfinished v1 work items: bugs, missing features, missing output formats, dead CLI flags, stubs, unimplemented algorithms, and unintentional behavioral differences from v0.
 
 Distinct from:
- - [intentional changes](../port-intentional-changes/_index.md) - deliberate deviations from v0
- - [proposals](../port-proposals/_index.md) - newly proposed features, not v0 portsP
+
+- [intentional changes](../port-intentional-changes/_index.md) - deliberate deviations from v0
+- [proposals](../port-proposals/_index.md) - newly proposed features, not v0 portsP
 
 ## Scope
 
@@ -62,6 +63,7 @@ exactly.
 | Medium     | Core         | [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md)                     |
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                          |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                           |
+| Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                  |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                        |
 | Medium     | Optimize     | [Dense initial branch length guess diverges from v0](M-optimize-dense-initial-guess-diverges-from-v0.md)                     |
 | Medium     | Optimize     | [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md)                                |
@@ -87,6 +89,9 @@ exactly.
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                              |
 | Negligible | Optimize     | [Standalone sparse optimizer skips derivative check for zero branches](N-optimize-sparse-zero-branch-no-derivative.md)       |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                          |
+| Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                   |
+| Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                      |
+| Negligible | Optimize     | [Merge branches in polytomies sharing mutations not implemented](N-optimize-polytomy-branch-merging.md)                      |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                      |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                   |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                   |
@@ -100,6 +105,7 @@ exactly.
 | Negligible | Timetree     | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                            |
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)         |
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                            |
+| Negligible | Timetree     | [Timetree does not write auspice JSON output](N-timetree-auspice-json-unimplemented.md)                                      |
 | Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                               |
 
 ## Cross-references
