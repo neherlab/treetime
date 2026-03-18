@@ -118,7 +118,7 @@ pub fn initialize_partitions(
       sparse_partition.write_arc().gtr = gtr;
     }
 
-    write_gtr_json(&sparse_partition.read_arc().gtr, model_name, &args.outdir)?;
+    write_gtr_json(&sparse_partition.read_arc().gtr, model_name, &args.outdir, None)?;
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     Ok(vec![partition])
@@ -144,7 +144,7 @@ pub fn initialize_partitions(
       dense_partition.write_arc().gtr = gtr;
     }
 
-    write_gtr_json(&dense_partition.read_arc().gtr, model_name, &args.outdir)?;
+    write_gtr_json(&dense_partition.read_arc().gtr, model_name, &args.outdir, None)?;
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = dense_partition;
     Ok(vec![partition])

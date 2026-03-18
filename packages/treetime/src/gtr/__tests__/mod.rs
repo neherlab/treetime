@@ -8,3 +8,4 @@ mod test_prop_gtr_eigen;
 mod test_prop_gtr_expqt;
 mod test_prop_gtr_numerical;
 mod test_prop_gtr_q;
+mod test_write_gtr_json;

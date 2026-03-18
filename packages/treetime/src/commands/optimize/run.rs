@@ -76,7 +76,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
     for partition in &sparse_partitions {
       let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-      write_gtr_json(&gtr, *model_name, outdir)?;
+      write_gtr_json(&gtr, *model_name, outdir, Some("sparse"))?;
       partition.write_arc().gtr = gtr;
     }
 
@@ -111,7 +111,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   update_marginal(&graph, &dense_partitions)?;
   for partition in &dense_partitions {
     let gtr = get_gtr_dense(model_name, partition, &graph)?;
-    write_gtr_json(&gtr, *model_name, outdir)?;
+    write_gtr_json(&gtr, *model_name, outdir, Some("dense"))?;
     partition.write_arc().gtr = gtr;
   }
 
@@ -145,7 +145,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   Ok(())
 }
 
-pub(crate) fn collect_optimize_partitions(
+fn collect_optimize_partitions(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> PartitionOptimizeVec {

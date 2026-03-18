@@ -74,7 +74,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
     for partition in &partitions {
       let gtr = get_gtr_sparse(&GtrModelName::JC69, partition, &graph)?;
-      write_gtr_json(&gtr, GtrModelName::JC69, outdir)?;
+      write_gtr_json(&gtr, GtrModelName::JC69, outdir, None)?;
       partition.write_arc().gtr = gtr;
     }
 

@@ -127,7 +127,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
           for partition in &partitions_marginal_sparse {
             let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-            write_gtr_json(&gtr, *model_name, outdir)?;
+            write_gtr_json(&gtr, *model_name, outdir, None)?;
             partition.write_arc().gtr = gtr;
           }
 
@@ -169,7 +169,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           // Triggers second marginal pass internally when model=infer
           for partition in &partitions_marginal_dense {
             let gtr = get_gtr_dense(model_name, partition, &graph)?;
-            write_gtr_json(&gtr, *model_name, outdir)?;
+            write_gtr_json(&gtr, *model_name, outdir, None)?;
             partition.write_arc().gtr = gtr;
           }
 
