@@ -34,9 +34,5 @@ runs.
 
 ## Related issues
 
-- [Clock rate frozen across iterations](H-timetree-clock-rate-frozen.md) makes
-  the rate less accurate at scale, worsening distribution degeneration
-- [Internal node dates missing for coalescent modes](M-timetree-internal-dates-missing-coalescent.md)
-  similar symptom from a different cause (coalescent distributions)
 - [Internal dates missing with bad fixed rate](M-timetree-internal-dates-bad-fixed-rate.md)
   similar mechanism triggered by mismatched clock rate

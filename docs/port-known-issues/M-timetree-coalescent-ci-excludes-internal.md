@@ -14,7 +14,7 @@ flu/h3n2/20 with `--coalescent-skyline --time-marginal=only-final`: 19 entries
 
 Compound of two issues:
 
-1. [Internal node dates missing for coalescent modes](M-timetree-internal-dates-missing-coalescent.md)
+1. [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)
    drops internal node times to `None`
 2. The marginal reconstruction at `only-final` cannot recover these nodes because
    the time distributions are already `None`
@@ -24,7 +24,7 @@ or skyline models.
 
 ## Related issues
 
-- [Internal node dates missing for coalescent modes](M-timetree-internal-dates-missing-coalescent.md)
+- [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)
   primary cause
 - [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)
   same compound pattern with scale-dependent date loss

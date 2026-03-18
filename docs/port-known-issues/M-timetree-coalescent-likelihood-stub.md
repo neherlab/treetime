@@ -18,5 +18,5 @@ when using coalescent models.
 
 - [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)
   another convergence metric gap
-- [Internal node dates missing for coalescent modes](M-timetree-internal-dates-missing-coalescent.md)
+- [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)
   tracelog shows `lh_pos=NaN` for coalescent runs

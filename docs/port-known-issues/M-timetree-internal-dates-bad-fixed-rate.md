@@ -31,5 +31,5 @@ grep -oP '\[&[^\]]*\]' tmp/repro-bad-rate/timetree.nexus | wc -l
 
 ## Related issues
 
-- [Negative clock rate causes assertion failure](H-timetree-negative-clock-rate-assertion.md)
+- [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)
   extreme case where the rate is not just wrong but negative
