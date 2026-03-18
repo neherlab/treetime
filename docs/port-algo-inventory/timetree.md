@@ -207,37 +207,66 @@ Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 201
 1. **Mutation stochasticity.** The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. **Clock rate uncertainty.** The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
 
-v1 implements both sources. See [confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs) for the combined implementation.
-
 v1: [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs).
-v0: `get_confidence_interval()` (`#get_confidence_interval`), `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
+v0: `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`), `combine_confidence()` (`#combine_confidence`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
 
-### Mutation-derived CI (implemented)
+Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `fraction=0.9` in v0's `get_max_posterior_region`. The derived quantile bounds are `(0.05, 0.95)` (5% in each tail). The two sources use different statistical operations to produce "90% CI":
 
-`extract_confidence_intervals()` (`#extract_confidence_intervals`) [packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71](../../packages/treetime/src/commands/timetree/output/confidence.rs#L46-L71) computes 95% CI for each node using `Distribution::quantile()` at 0.025 and 0.975. Delta distributions yield identity interval `[date, date]`.
+- **Mutation**: 90% HPD (highest posterior density) - the shortest interval containing 90% of the probability mass. Tighter than equal-tailed CI for skewed distributions.
+- **Rate**: 90% equal-tailed interval via probit scaling - maps ±1 sigma rate sensitivity dates to the 5th/95th percentile using standard normal z-scores (z=±1.645).
+- **Combined**: quadrature sum of deviations - a Gaussian-approximation heuristic, not a formal CI of the joint distribution.
 
-v1 matches v0's method: `hpd_region()` finds the narrowest 90% HPD region around the peak via bisection on probability threshold, equivalent to v0's `get_max_posterior_region(n, fraction=0.9)` which uses `scipy.optimize.minimize_scalar`. HPD regions are narrower than equal-tailed quantile intervals for skewed distributions.
+### Orchestrator
 
-### CI combination
+`extract_confidence_intervals()` (`#extract_confidence_intervals`) computes per-node CI:
 
-`combine_confidence()` (`#combine_confidence`) in [packages/treetime/src/commands/timetree/output/confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs) combines independent CI contributions via quadrature sum:
+1. Mutation contribution from `Distribution::hpd_region(0.9)` on the marginal posterior
+2. Rate contribution from `date_uncertainty_due_to_rate(dates, (0.05, 0.95))` on rate susceptibility triples
+3. Combination via `combine_confidence()` quadrature sum, clipped to distribution domain
+4. Delta distributions and nodes without data yield identity interval `[date, date]`
+
+### Mutation contribution: HPD region
+
+`Distribution::hpd_region(fraction)` in [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs) finds the narrowest interval containing `fraction` of the probability mass:
+
+- **Interior peak**: bisection on probability threshold. For each candidate threshold, the interval between left and right crossings of the PDF captures a certain probability mass. Bisection finds the threshold where the mass equals `fraction`. Assumes unimodality (returns a single contiguous interval).
+- **Boundary peak**: one-sided quantile fallback. Left boundary: `[t_min, quantile(fraction)]`. Right boundary: `[quantile(1-fraction), t_max]`.
+- **Uniform/Range**: centered interval of width `fraction * range`.
+- **Formula**: equal-tailed fallback `confidence_interval(p_lo, 1-p_lo)`.
+
+v0: `get_max_posterior_region(node, fraction=0.9)` (`clock_tree.py:1146-1230`) uses `scipy.optimize.minimize_scalar` (Brent) for the threshold search. v1 uses bisection, which is simpler and sufficient since the target function (CDF mass vs threshold) is monotonic.
+
+### Rate contribution: susceptibility analysis
+
+`compute_rate_susceptibility()` (`#compute_rate_susceptibility`) scales per-edge gamma values at `rate ± rate_std`, runs timetree inference three times, stores per-node date triples `[lower_date, central_date, upper_date]` sorted by date value.
+
+v0: `calc_rate_susceptibility()` (`#calc_rate_susceptibility`) in [`clock_tree.py#L1010-L1066`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066). Same gamma scaling approach: `gamma_new = gamma_orig * new_rate / current_rate`.
+
+`date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`) converts the date triple to CI bounds via the probit function (inverse normal CDF):
 
 ```
-lower = center - hypot(c1_lower - center, c2_lower - center)
-upper = center + hypot(c1_upper - center, c2_upper - center)
+z_lower = probit(0.05) = -1.645
+z_upper = probit(0.95) = +1.645
+ci_lower = central + z_lower * |lower - central|
+ci_upper = central + z_upper * |upper - central|
 ```
 
-Clipped to physical limits. Called by `extract_confidence_intervals()` when rate variation data is present.
+This is a split-normal (two-piece normal) approximation: lower and upper deviations are scaled independently as one-sided standard deviations. The standard normal probit is used for both sides. This matches v0 (`clock_tree.py:1083-1085`) and is valid when `rate_std << rate` (the rate-to-date mapping is approximately linear and the rate estimate is approximately Gaussian from regression CLT). For extreme asymmetry (rate_std approaching rate, triggering the `0.1 * rate` floor on the lower rate), the approximation is biased because the proper split-normal quantile function includes a normalization factor `A = sqrt(2/pi) / (sigma_l + sigma_u)` that the probit mapping omits.
 
-### Rate susceptibility (implemented)
+v0 note: `date_uncertainty_due_to_rate` has default parameter `interval=(0.05, 0.095)` (`clock_tree.py:1068`), where `0.095` is a typo for `0.95`. The default is never reached because all callers pass explicit intervals.
 
-`compute_rate_susceptibility()` (`#compute_rate_susceptibility`) in [packages/treetime/src/commands/timetree/output/confidence.rs](../../packages/treetime/src/commands/timetree/output/confidence.rs). Scales per-edge gamma values at rate +/- 1 sigma (matching v0 gamma scaling approach), runs timetree 3 times, stores per-node date triples sorted by date. `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`) converts triples to CI via probit function (erfinv).
+### Combination
 
-v0 reference: `calc_rate_susceptibility()` (`#calc_rate_susceptibility`) in [packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1066).
+`combine_confidence()` (`#combine_confidence`) combines independent CI contributions via quadrature sum, treating the two deviations as independent Gaussian-like errors:
 
-#### CI method
+```
+lower = center - sqrt((rate_lo - center)^2 + (mutation_lo - center)^2)
+upper = center + sqrt((rate_hi - center)^2 + (mutation_hi - center)^2)
+```
 
-Both v1 and v0 use 90% HPD (highest posterior density) regions for the mutation contribution. HPD finds the narrowest interval containing 90% of the probability mass, which is tighter than equal-tailed quantile intervals for skewed distributions. v1 falls back to one-sided quantile CI when the peak is at a boundary, matching v0's `get_max_posterior_region` boundary handling (`clock_tree.py:1175-1178`).
+Clipped to distribution domain (physical limits). This is a first-order Gaussian approximation (Sagulenko et al. 2018, Section 2.5). The combined interval is wider than either source alone but narrower than the sum of deviations.
+
+v0: `combine_confidence()` (`clock_tree.py:1090-1101`). Same formula.
 
 ### References
 

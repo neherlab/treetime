@@ -251,7 +251,7 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_extract_confidence_intervals_skips_unnamed_nodes`      | Unnamed nodes excluded         |
 | `test_extract_confidence_intervals_skips_nodes_without_time` | Nodes without time excluded    |
 | `test_extract_confidence_intervals_uses_date_as_fallback`    | Date used when no distribution |
-| `test_extract_confidence_intervals_with_distribution`        | 95% CI from distribution       |
+| `test_extract_confidence_intervals_with_distribution`        | 90% HPD from distribution      |
 | `test_extract_confidence_intervals_sorted_by_name`           | Alphabetical ordering          |
 | `test_combine_confidence_no_contributions`                   | Baseline only                  |
 | `test_combine_confidence_single_contribution`                | One contribution               |
