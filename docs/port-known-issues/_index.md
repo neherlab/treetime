@@ -1,8 +1,23 @@
 # Known Issues
 
-Bugs, missing features, dead CLI flags, stubs, and unintentional differences from v0. Covers all v0 features not yet ported to v1.
+All unfinished v1 work items: bugs, missing features, missing output formats, dead CLI flags, stubs, unimplemented algorithms, and unintentional behavioral differences from v0.
 
-Distinct from [intentional changes](../port-intentional-changes/_index.md) (deliberate deviations) and [proposals](../port-proposals/_index.md) (new v1 features not in v0).
+Distinct from:
+ - [intentional changes](../port-intentional-changes/_index.md) - deliberate deviations from v0
+ - [proposals](../port-proposals/_index.md) - newly proposed features, not v0 portsP
+
+## Scope
+
+Known issues track everything that prevents v1 from being a complete, correct implementation. This includes:
+
+- **Bugs** - crashes, wrong results, numerical instability
+- **Missing v0 features** - v0 capabilities not yet ported (algorithms, CLI flags, output formats)
+- **Missing design features** - capabilities specified in `docs/algorithms/` design documents but not yet implemented in v0 or v1 (e.g., per-site rate variation)
+- **Dead CLI flags** - flags parsed by clap but not wired to any runtime behavior
+- **Stubs** - `todo!()`, `unimplemented!()`, functions that return placeholder values
+- **Behavioral differences** - unintentional divergences from v0 results (distinct from `port-intentional-changes/`)
+
+When a feature appears in `docs/algorithms/` design documents, it is a work item even if v0 does not implement it. Design documents are specifications, not just v0 descriptions.
 
 ## Test matrix
 
@@ -18,16 +33,18 @@ Issues discovered during testing are documented here and linked from the matrix.
 
 Files are prefixed with a severity letter so that `ls` sorts high-severity first:
 
-| Prefix | Severity   | Criteria                                    |
-| ------ | ---------- | ------------------------------------------- |
-| `C-`   | Critical   | Data corruption, security, blocks all usage |
-| `H-`   | High       | Blocks correct results or causes panics     |
-| `M-`   | Medium     | Wrong results under specific conditions     |
-| `N-`   | Negligible | Edge cases, missing guards, weak assertions |
+| Prefix | Severity   | Criteria                                                                        |
+| ------ | ---------- | ------------------------------------------------------------------------------- |
+| `C-`   | Critical   | Data corruption, security, blocks all usage                                     |
+| `H-`   | High       | Crashes, panics, blocks correct results, or missing standard expected feature   |
+| `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
+| `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic gaps              |
 
 The letters C < H < M < N sort alphabetically in severity order. Domain prefix
 (`ancestral-`, `clock-`, `timetree-`, etc.) follows the severity letter, grouping
 related issues within each tier.
+
+Severity for missing features: a missing feature that most users expect (e.g., a standard phylogenetic capability) is High. A missing feature that affects specific workflows is Medium. A niche or rarely used missing feature is Negligible.
 
 Issue name in the summary table must match the H1 heading in the linked file
 exactly.
@@ -87,6 +104,7 @@ exactly.
 
 ## Cross-references
 
+- [Design documents](../algorithms/) - v1 design specifications (work items come from here too, not just v0)
 - [Unimplemented algorithms](../port-algo-inventory/unimplemented.md) - v0 algorithm details for unported features
 - [Feature inventory](../port-feature-inventory/_index.md) - v0/v1 feature parity tracking
-- [Proposals](../port-proposals/_index.md) - new v1 features (not v0 ports)
+- [Proposals](../port-proposals/_index.md) - new v1 features (not v0 ports, not design-doc features)
