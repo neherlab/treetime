@@ -27,8 +27,14 @@ mod tests {
     write_gtr_json(&gtr, GtrModelName::JC69, dir.path(), Some("sparse")).unwrap();
     write_gtr_json(&gtr, GtrModelName::JC69, dir.path(), Some("dense")).unwrap();
 
-    assert!(dir.path().join("gtr_sparse.json").exists(), "gtr_sparse.json should exist");
-    assert!(dir.path().join("gtr_dense.json").exists(), "gtr_dense.json should exist");
+    assert!(
+      dir.path().join("gtr_sparse.json").exists(),
+      "gtr_sparse.json should exist"
+    );
+    assert!(
+      dir.path().join("gtr_dense.json").exists(),
+      "gtr_dense.json should exist"
+    );
     assert!(
       !dir.path().join("gtr.json").exists(),
       "gtr.json should not exist when qualifiers are used"
