@@ -32,8 +32,6 @@ impl DenseNodePartition {
   }
 }
 
-///////////////////////////////////
-
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseEdgePartition {
   pub indels: Vec<InDel>,
