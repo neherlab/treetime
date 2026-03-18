@@ -249,18 +249,12 @@ where
       // Combine child messages in log-space to match v0's numerical behavior.
       // v0 uses: tmp_log_subtree_LH += ch.marginal_log_Lx (treeanc.py:874)
       // where marginal_log_Lx = np.log(profile.dot(Qt))
-      let msgs = node
-        .child_keys
-        .iter()
-        .map(|(_, edge_key)| {
-          self.edges[edge_key].msg_from_child.dis.view().to_owned() //FIXME: avoid copy
-        })
-        .collect_vec();
-
       // Convert to log and sum (equivalent to multiply in prob space)
-      let mut log_dis = msgs[0].mapv(f64::ln);
-      for msg in &msgs[1..] {
-        log_dis += &msg.mapv(f64::ln);
+      let mut child_iter = node.child_keys.iter();
+      let (_, first_edge_key) = child_iter.next().expect("Internal node must have children");
+      let mut log_dis = self.edges[first_edge_key].msg_from_child.dis.mapv(f64::ln);
+      for (_, edge_key) in child_iter {
+        log_dis += &self.edges[edge_key].msg_from_child.dis.mapv(f64::ln);
       }
 
       // Normalize using v0's normalize_profile(log=True) algorithm:
@@ -306,7 +300,7 @@ where
 
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
     if !node.is_root {
-      let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
+      let mut dis: Option<Array2<f64>> = None;
       let mut log_lh = 0.0;
       for (_, edge_key) in &node.parent_keys {
         let edge = &self.edges[edge_key];
@@ -314,15 +308,18 @@ where
         let branch_length = edge_payload.branch_length().unwrap_or(0.0);
         let exp_qt_matrix = self.gtr.expQt(branch_length);
         let exp_qt = exp_qt_matrix.t();
-        msgs_to_combine.push(edge.msg_to_parent.dis.view().to_owned()); // FIXME: avoid copy
-        log_lh += edge.msg_to_parent.log_lh;
-        msgs_to_combine.push(edge.msg_to_child.dis.dot(&exp_qt));
-        log_lh += edge.msg_to_child.log_lh;
+        let msg_child = edge.msg_to_child.dis.dot(&exp_qt);
+        log_lh += edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh;
+        dis = Some(match dis {
+          None => &edge.msg_to_parent.dis * &msg_child,
+          Some(mut dis) => {
+            dis *= &edge.msg_to_parent.dis;
+            dis *= &msg_child;
+            dis
+          }
+        });
       }
-      let mut dis = msgs_to_combine[0].clone();
-      for msg in &msgs_to_combine[1..] {
-        dis *= msg;
-      }
+      let mut dis = dis.expect("Non-root node must have at least one parent");
       let delta_ll = normalize_inplace(&mut dis);
       log_lh += delta_ll;
       self.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDis { dis, log_lh };
