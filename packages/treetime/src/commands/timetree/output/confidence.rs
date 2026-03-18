@@ -208,6 +208,15 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
         combine_confidence(date, limits, rate_contribution, mutation_contribution)
       };
 
+      // Postcondition: point estimate must lie within confidence interval.
+      // When only one contribution is present, combine_confidence returns its
+      // raw bounds, which are centered on that contribution's own reference
+      // point (rate susceptibility central date or HPD peak), not on `date`.
+      // If those differ after the final marginal pass, the raw CI may not
+      // bracket the point estimate. Clamp to ensure validity.
+      let lower = lower.min(date);
+      let upper = upper.max(date);
+
       Some(NodeConfidenceInterval {
         name,
         date,

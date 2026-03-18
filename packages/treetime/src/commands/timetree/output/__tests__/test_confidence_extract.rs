@@ -128,6 +128,60 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_extract_confidence_intervals_clamps_when_date_outside_rate_ci() {
+    // When the final marginal pass date differs from the rate susceptibility
+    // central date, the raw rate CI may not bracket the point estimate.
+    // The postcondition clamp ensures lower <= date <= upper.
+    let mut graph = GraphTimetree::new();
+    // date = 2020.5 (final pass), rate susceptibility centered on 2020.0
+    // with small variation [2019.9, 2020.0, 2020.1].
+    // Rate CI at 90%: 2020.0 +/- 1.645 * 0.1 = [2019.836, 2020.164]
+    // date = 2020.5 > 2020.164, so upper must be clamped to date.
+    graph.add_node(make_node_with_rate_dates(
+      "node_a",
+      2020.5,
+      None,
+      [2019.9, 2020.0, 2020.1],
+    ));
+    graph.build().unwrap();
+
+    let intervals = extract_confidence_intervals(&graph);
+    assert_eq!(intervals.len(), 1);
+    // Postcondition holds: lower <= date <= upper
+    assert!(intervals[0].lower <= intervals[0].date);
+    assert!(intervals[0].date <= intervals[0].upper);
+    // Upper was clamped to date since raw rate CI upper (2020.164) < date (2020.5)
+    assert_relative_eq!(intervals[0].upper, 2020.5);
+    // Lower stays at raw rate CI lower (unclamped, already below date)
+    assert_relative_eq!(intervals[0].lower, 2019.8355, epsilon = 1e-3);
+  }
+
+  #[test]
+  fn test_extract_confidence_intervals_clamps_when_date_below_rate_ci() {
+    // Mirror case: date below the raw rate CI lower bound.
+    let mut graph = GraphTimetree::new();
+    // date = 2019.5 (final pass), rate susceptibility centered on 2020.0
+    // Rate CI at 90%: [2019.836, 2020.164]
+    // date = 2019.5 < 2019.836, so lower must be clamped to date.
+    graph.add_node(make_node_with_rate_dates(
+      "node_a",
+      2019.5,
+      None,
+      [2019.9, 2020.0, 2020.1],
+    ));
+    graph.build().unwrap();
+
+    let intervals = extract_confidence_intervals(&graph);
+    assert_eq!(intervals.len(), 1);
+    assert!(intervals[0].lower <= intervals[0].date);
+    assert!(intervals[0].date <= intervals[0].upper);
+    // Lower was clamped to date since raw rate CI lower (2019.836) > date (2019.5)
+    assert_relative_eq!(intervals[0].lower, 2019.5);
+    // Upper stays at raw rate CI upper (unclamped, already above date)
+    assert_relative_eq!(intervals[0].upper, 2020.1645, epsilon = 1e-3);
+  }
+
   // v0 uses get_max_posterior_region(fraction=0.9): highest posterior density region,
   // the NARROWEST interval containing 90% probability mass.
   // For symmetric distributions, HPD equals equal-tailed CI.
