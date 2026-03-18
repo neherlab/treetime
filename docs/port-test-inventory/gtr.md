@@ -15,6 +15,7 @@
 | Extreme parameter edge cases       | 1      | 7       | Unit          |
 | Parameterized edge cases           | 1      | 3       | Parameterized |
 | Model hierarchy                    | 2      | 9       | Unit          |
+| GTR output (write_gtr_json)        | 1      | 4       | Unit          |
 | Generator validation               | 1      | 7       | Property      |
 | GTR inference (dense golden)       | 1      | 13      | Golden-master |
 | GTR inference (dense unit)         | 1      | 5       | Unit          |
@@ -22,7 +23,7 @@
 | Inference contracts                | 1      | 15      | Parameterized |
 | Dense-sparse cross-validation      | 1      | 7       | Integration   |
 | Common functions                   | 1      | 6       | Unit          |
-| **Total**                          | **16** | **127** | Mixed         |
+| **Total**                          | **17** | **131** | Mixed         |
 
 Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
@@ -312,6 +313,17 @@ Verifies mutation count invariants across dense and sparse paths.
 | `test_distance_small_difference`  | Distance: small perturbations            |
 | `test_distance_tiny_difference`   | Distance: tiny perturbations             |
 | `test_distance_identical`         | Distance: identity = 0                   |
+
+---
+
+## GTR Output Tests
+
+**File:** [`test_write_gtr_json.rs`](../../packages/treetime/src/gtr/__tests__/test_write_gtr_json.rs)
+
+| Test                                               | Purpose                                                                                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `test_write_gtr_json_filename` (3 cases)           | Qualifier produces correct filename: `None` -> `gtr.json`, `Some("sparse")` -> `gtr_sparse.json`, `Some("dense")` -> `gtr_dense.json` |
+| `test_write_gtr_json_both_partitions_no_overwrite` | Both sparse and dense qualifiers produce separate files without overwriting                                                           |
 
 ---
 
