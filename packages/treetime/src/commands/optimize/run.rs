@@ -115,6 +115,10 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     partition.write_arc().gtr = gtr;
   }
 
+  // Re-run marginal with inferred GTR so edge messages used by
+  // initial_guess_mixed reflect the real model, not the dummy JC69.
+  update_marginal(&graph, &dense_partitions)?;
+
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
   initial_guess_mixed(&graph, &mixed_partitions)?;
