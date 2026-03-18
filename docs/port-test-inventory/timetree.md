@@ -9,7 +9,7 @@
 | Coalescent model    | 8      | 52      | Unit + Golden-master |
 | Belief propagation  | 4 + 1  | 17      | Unit + Golden-master |
 | Convergence         | 2      | 5       | Unit + Integration   |
-| Output (confidence) | 1      | 9       | Unit                 |
+| Output (confidence) | 1      | 11      | Unit                 |
 | Clock filter        | 1      | 4       | Unit                 |
 | Relaxed clock       | 1      | 11      | Unit                 |
 | Polytomy resolution | 1      | 8       | Unit                 |
@@ -246,17 +246,19 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 **File:** [`test_confidence.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence.rs)
 
-| Test                                                         | Purpose                        |
-| ------------------------------------------------------------ | ------------------------------ |
-| `test_extract_confidence_intervals_skips_unnamed_nodes`      | Unnamed nodes excluded         |
-| `test_extract_confidence_intervals_skips_nodes_without_time` | Nodes without time excluded    |
-| `test_extract_confidence_intervals_uses_date_as_fallback`    | Date used when no distribution |
-| `test_extract_confidence_intervals_with_distribution`        | 90% HPD from distribution      |
-| `test_extract_confidence_intervals_sorted_by_name`           | Alphabetical ordering          |
-| `test_combine_confidence_no_contributions`                   | Baseline only                  |
-| `test_combine_confidence_single_contribution`                | One contribution               |
-| `test_combine_confidence_quadrature`                         | Quadrature sum of deviations   |
-| `test_combine_confidence_clipped_to_limits`                  | Clipping to baseline limits    |
+| Test                                                                 | Purpose                                 |
+| -------------------------------------------------------------------- | --------------------------------------- |
+| `test_extract_confidence_intervals_skips_unnamed_nodes`              | Unnamed nodes excluded                  |
+| `test_extract_confidence_intervals_skips_nodes_without_time`         | Nodes without time excluded             |
+| `test_extract_confidence_intervals_uses_date_as_fallback`            | Date used when no distribution          |
+| `test_extract_confidence_intervals_with_distribution`                | 90% HPD from distribution               |
+| `test_extract_confidence_intervals_sorted_by_name`                   | Alphabetical ordering                   |
+| `test_combine_confidence_no_contributions`                           | Baseline only                           |
+| `test_combine_confidence_single_contribution`                        | One contribution                        |
+| `test_combine_confidence_quadrature`                                 | Quadrature sum of deviations            |
+| `test_extract_confidence_intervals_clamps_when_date_outside_rate_ci` | Postcondition clamp: date above rate CI |
+| `test_extract_confidence_intervals_clamps_when_date_below_rate_ci`   | Postcondition clamp: date below rate CI |
+| `test_combine_confidence_clipped_to_limits`                          | Clipping to baseline limits             |
 
 ---
 
