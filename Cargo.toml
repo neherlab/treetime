@@ -130,6 +130,7 @@ smart-default = "=0.7.1"
 statrs = "=0.18.0"
 strum = "=0.27.2"
 strum_macros = "=0.27.2"
+tempfile = "=3.27.0"
 textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
