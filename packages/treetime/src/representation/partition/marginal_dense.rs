@@ -306,7 +306,6 @@ where
 
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
     if !node.is_root {
-      let mut seq_info = self.nodes.remove(&node.key).unwrap();
       let mut msgs_to_combine: Vec<Array2<f64>> = vec![];
       let mut log_lh = 0.0;
       for (_, edge_key) in &node.parent_keys {
@@ -326,13 +325,12 @@ where
       }
       let delta_ll = normalize_inplace(&mut dis);
       log_lh += delta_ll;
-      seq_info.profile = DenseSeqDis { dis, log_lh };
-      self.nodes.insert(node.key, seq_info);
+      self.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDis { dis, log_lh };
     }
 
+    let node_data = &self.nodes[&node.key];
     for child_edge_key in &node.child_edge_keys {
-      let mut child_edge_data = self.edges.remove(child_edge_key).unwrap();
-      let node_data = &self.nodes[&node.key];
+      let child_edge_data = self.edges.get_mut(child_edge_key).unwrap();
 
       // this normalization isn't strictly necessary
       let mut dis = &node_data.profile.dis / &child_edge_data.msg_from_child.dis;
@@ -341,7 +339,6 @@ where
         dis,
         log_lh: node_data.profile.log_lh - child_edge_data.msg_from_child.log_lh + delta_ll,
       };
-      self.edges.insert(*child_edge_key, child_edge_data);
     }
     Ok(())
   }
