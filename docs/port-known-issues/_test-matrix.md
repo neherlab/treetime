@@ -32,7 +32,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | `--method-anc=parsimony`                      | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--confidence --clock-std-dev=0.0005`         | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--tip-slack=0.1`                             | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
-| `--relax=...`                                 | CRASH-relax | -            | -            | -        | -       | -          | -          | -          | -          | -                |
+| `--relax=...`                                 | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 | `--time-marginal=only-final`                  | OK          | -            | -            | -        | -       | -          | -          | -          | -          | -                |
 
 ## Legend
