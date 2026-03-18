@@ -5,7 +5,7 @@ All unfinished v1 work items: bugs, missing features, missing output formats, de
 Distinct from:
 
 - [intentional changes](../port-intentional-changes/_index.md) - deliberate deviations from v0
-- [proposals](../port-proposals/_index.md) - newly proposed features, not v0 portsP
+- [proposals](../port-proposals/_index.md) - newly proposed features, not v0 ports
 
 ## Scope
 

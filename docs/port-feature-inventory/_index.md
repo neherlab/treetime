@@ -203,13 +203,12 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 ### Time Marginal Modes
 
 - [x] `never` (joint most-likely times)
-- [x] `always` (marginal every round)
+- [ ] `always` (marginal every round - parsed but not wired, [known issue](../port-known-issues/M-timetree-time-marginal-always-ignored.md))
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
   - [x] Confidence interval extraction from node time distributions
   - [x] Confidence TSV output
-- [/] `never` and `always` parsed as separate enum values but only `only-final` has distinct behavior
 - [x] `confidence-only` (v0 variant, implemented as `--confidence` promoting `Never` to `OnlyFinal`)
 
 ### Coalescent Models
@@ -308,7 +307,6 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [ ] `--n-iqd`
 - [ ] `--reroot`
 - [ ] `--tip-labels` / `--no-tip-labels`
-- [ ] `--covariation`
 - [x] `--gtr` (model selection: named models and inference)
 - [ ] `--gtr-params` (parsed but not wired)
 - [ ] `--method-anc`
