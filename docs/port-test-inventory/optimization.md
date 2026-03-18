@@ -14,7 +14,8 @@
 | Convergence control             | 3      | 8      | 1             | Unit |
 | Optimization metrics            | 1      | 7      | 0             | Unit |
 | Zero branch optimal             | 1      | 13     | 0             | Unit |
-| **Total**                       | **26** | **81** | **5**         | Unit |
+| Initial guess GTR messages      | 1      | 2      | 0             | Unit |
+| **Total**                       | **27** | **83** | **5**         | Unit |
 
 ---
 
@@ -348,3 +349,16 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 | `test_is_zero_branch_optimal_sparse_multiplicity_effect`                | Multiplicity affects result      |
 | `test_is_zero_branch_optimal_boundary_lh_just_above_threshold`          | LH just above 0.01 threshold     |
 | `test_is_zero_branch_optimal_boundary_lh_at_threshold`                  | LH at exact threshold boundary   |
+
+---
+
+## Initial Guess GTR Messages
+
+**File:** [`test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
+
+Regression tests verifying that `initial_guess_mixed()` reads edge messages computed with the real GTR model, not stale JC69 messages from the dummy initialization pass.
+
+| Test                                             | Purpose                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| `test_stale_jc69_messages_bias_initial_guess`    | Stale JC69 messages produce different branch lengths than F81 |
+| `test_initial_guess_idempotent_after_gtr_update` | Identical initialization sequences produce identical results  |

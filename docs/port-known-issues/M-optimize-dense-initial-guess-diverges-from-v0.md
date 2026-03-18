@@ -274,3 +274,4 @@ For any pair of normalized probability profiles `pp` and `pc` over `n` states:
 
 - [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md) - the initial guess quality interacts with oscillation; a poor initial guess combined with no damping amplifies convergence problems
 - [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md) - the `PartitionOptimizeOps` trait introduced in PR #470 that changed the dense counting criterion
+- Stale JC69 edge messages (fixed) - `update_marginal` was not re-run after replacing the dummy JC69 with the real GTR, so `initial_guess_mixed` read edge messages computed with the wrong model. Fixed by adding `update_marginal` after GTR replacement, matching the ancestral command pattern.

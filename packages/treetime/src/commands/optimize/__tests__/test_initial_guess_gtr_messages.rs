@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
@@ -47,7 +48,7 @@ mod tests {
       index: 0,
       gtr: jc69(JC69Params::default())?,
       alphabet,
-      length: aln[0].seq.len(),
+      length: get_common_length(aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     }))];

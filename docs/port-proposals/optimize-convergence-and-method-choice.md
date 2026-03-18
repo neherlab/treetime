@@ -88,7 +88,7 @@ Early iterations use a loose tolerance (profiles are rough, no point in precise 
 
 ### ~~P3: Wire `--model` flag~~ (implemented)
 
-Implemented in [packages/treetime/src/commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs). Sparse GTR dispatch after `compress_sequences`, dense GTR dispatch after `initialize_marginal` + `update_marginal`, matching the ancestral command's pattern via `get_gtr_sparse()`/`get_gtr_dense()`.
+Implemented in [packages/treetime/src/commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs). Sparse GTR dispatch after `compress_sequences`, dense GTR dispatch after `initialize_marginal` + `update_marginal`, matching the ancestral command's pattern via `get_gtr_sparse()`/`get_gtr_dense()`. A missing `update_marginal` call after dense GTR replacement was added to ensure `initial_guess_mixed` reads fresh edge messages from the real model.
 
 ### ~~P4: Fix initial guess gap handling~~ (implemented)
 
