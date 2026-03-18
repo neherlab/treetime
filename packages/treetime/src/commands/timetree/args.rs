@@ -222,7 +222,7 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, value_enum, default_value_t = RerootMode::default())]
   pub reroot: RerootMode,
 
-  /// don't reroot the tree. Otherwise, reroot to minimize the the residual of the regression of
+  /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
   /// root-to-tip distance and sampling time
   #[clap(long)]
   pub keep_root: bool,
