@@ -296,14 +296,14 @@ TIMETREE_BATCH_RUNS = [
   # Parsimony + fast (minimal iterations)
   ("flu/h3n2/200",                "flu/h3n2/200/fast",                 "--method-anc=parsimony --max-iter=1 --keep-polytomies"),
 
+  # Relaxed molecular clock
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-corr",         "--relax 1.0 0.5 --max-iter=3"),
+  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-uncorr",       "--relax 1.0 0.0 --max-iter=3"),
+
   # === Known failures ===
 
   # CRASH-vary: --vary-rate panics with todo!()
   ("flu/h3n2/20",                 "flu/h3n2/20/vary-rate",             "--vary-rate"),
-
-  # CRASH-relax: --relax argument parsing broken
-  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-corr",         "--relax 1.0 0.5 --max-iter=3"),
-  ("flu/h3n2/200",                "flu/h3n2/200/relaxed-uncorr",       "--relax 1.0 0.0 --max-iter=3"),
 
   # CRASH-grid: marginal dense backward pass crash
   ("flu/h3n2/20",                 "flu/h3n2/20/dense",                 "--dense=true --gtr=jc69"),
