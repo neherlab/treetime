@@ -138,12 +138,13 @@ pub fn compute_rate_susceptibility(
 /// ci_upper = central + z(p_hi) * |upper - central|
 /// ```
 ///
-/// For p_lo=0.025, z=-1.960; for p_hi=0.975, z=+1.960. The +-1 sigma date
-/// variation (from rate +/- 1 std) is thus scaled to the 95% CI level: the
-/// date deviation at +/-1 sigma is multiplied by 1.960 to get the 2.5/97.5
-/// percentile bounds. This assumes the rate-to-date mapping is approximately
-/// linear (valid when rate_std << rate) and that the rate estimate is
-/// approximately Gaussian (from the regression CLT).
+/// With CI_LOWER_QUANTILE=0.05 and CI_UPPER_QUANTILE=0.95 (90% CI):
+/// z(0.05)=-1.645, z(0.95)=+1.645. The +-1 sigma date variation (from
+/// rate +/- 1 std) is scaled to the 90% CI level: the date deviation at
+/// +/-1 sigma is multiplied by 1.645 to get the 5/95 percentile bounds.
+/// This assumes the rate-to-date mapping is approximately linear (valid
+/// when rate_std << rate) and that the rate estimate is approximately
+/// Gaussian (from the regression CLT).
 pub fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {
   let [lower, central, upper] = dates;
   let z_lower = quantile_to_zscore(interval.0);
