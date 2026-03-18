@@ -198,7 +198,10 @@ mod tests {
       let hard = p.edge_subs(&graph, edge_key)?.len() as f64;
       assert_abs_diff_eq!(0.0, hard, epsilon = 1e-10);
       assert!(soft >= 0.0, "soft Hamming must be non-negative");
-      assert!(soft < 4.0, "soft Hamming should be small for identical sequences, got {soft}");
+      assert!(
+        soft < 4.0,
+        "soft Hamming should be small for identical sequences, got {soft}"
+      );
     }
     Ok(())
   }
@@ -240,7 +243,10 @@ mod tests {
       let edge_key = edge_ref.read_arc().key();
       let differences = p.edge_initial_differences(&graph, edge_key)?;
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
-      assert!(differences >= 0.0, "differences must be non-negative, got {differences}");
+      assert!(
+        differences >= 0.0,
+        "differences must be non-negative, got {differences}"
+      );
       assert!(
         differences <= effective_length as f64,
         "differences ({differences}) must not exceed effective length ({effective_length})"
