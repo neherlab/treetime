@@ -322,6 +322,25 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 ---
 
+## Dense Normalize-from-Log Tests
+
+**File:** [`marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
+
+| Test                                                      | Purpose                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------------------ |
+| `test_normalize_from_log_equal_probs`                     | Equal log-probs produce uniform distribution, finite log_lh        |
+| `test_normalize_from_log_descending`                      | Unequal log-probs: analytically verified output and norm           |
+| `test_normalize_from_log_all_neg_inf_single_row`          | All-NEG_INFINITY single row: uniform 1/4, log_lh=-inf              |
+| `test_normalize_from_log_all_neg_inf_multiple_rows`       | All-NEG_INFINITY across 3 rows: uniform fallback each              |
+| `test_normalize_from_log_mixed_neg_inf_and_finite_rows`   | Degenerate row 0 + normal row 1: row-level fallback, log_lh=-inf   |
+| `test_normalize_from_log_mixed_finite_neg_inf_within_row` | Mixed finite/-inf within a row: only finite states get probability |
+| `test_normalize_from_log_large_negative_values`           | Numerical stability: offset -1000 matches reference                |
+| `test_normalize_from_log_three_states`                    | All-NEG_INFINITY fallback with 3 states: uniform 1/3               |
+
+**Algorithm:** 2D logsumexp normalization matching v0's `normalize_profile(log=True)`. Guards all-`-inf` rows with uniform fallback, consistent with sparse path's `logsumexp_normalize`.
+
+---
+
 ## Sparse Substitution Composition Tests
 
 **File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)

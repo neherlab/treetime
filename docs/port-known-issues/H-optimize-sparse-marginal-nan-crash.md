@@ -2,7 +2,7 @@
 
 RESOLVED. The crash is fixed. The sparse `combine_messages()` (`#combine_messages`) now uses log-space arithmetic with logsumexp normalization, matching the dense mode approach. The unnecessary node removal from partition maps in backward and forward passes is eliminated.
 
-Remaining: the optimize command still produces `-inf`/NaN log likelihood from iteration 3 onward on larger datasets (ebola/100, flu/h3n2/200). This affects both sparse and dense modes equally and is caused by degenerate distributions from the forward pass division operation, not by the `combine_messages` underflow that caused the crash. See [N-ancestral-dense-normalize-log-nan](N-ancestral-dense-normalize-log-nan.md).
+Remaining: the optimize command still produces `-inf`/NaN log likelihood from iteration 3 onward on larger datasets (ebola/100, flu/h3n2/200). This affects both sparse and dense modes equally and is caused by degenerate distributions from the forward pass division operation, not by the `combine_messages` underflow that caused the crash.
 
 ## Original Repro
 
@@ -26,4 +26,4 @@ One change in [packages/treetime/src/representation/partition/marginal_passes.rs
 
 ## Related Issues
 
-- [N-ancestral-dense-normalize-log-nan](N-ancestral-dense-normalize-log-nan.md) - similar numerical stability issue in dense mode, plus the shared forward-pass division problem that causes `-inf`/NaN on larger datasets
+- Dense `normalize_from_log` all-`-inf` guard (fixed): the dense backward pass now handles all-`-inf` rows the same way as the sparse path's `logsumexp_normalize` - uniform fallback with `NEG_INFINITY` log-likelihood.
