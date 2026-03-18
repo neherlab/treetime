@@ -316,7 +316,7 @@ where
             dis *= &edge.msg_to_parent.dis;
             dis *= &msg_child;
             dis
-          }
+          },
         });
       }
       let mut dis = dis.expect("Non-root node must have at least one parent");
