@@ -410,7 +410,14 @@ fn discretize_formula(f: &DistributionFormula<Plain>) -> Result<DistributionFunc
 ///
 /// Finds the shortest interval containing `fraction` of the probability mass
 /// by bisecting on a probability threshold. All points where the PDF exceeds
-/// the threshold form the HPD region (assumed unimodal).
+/// the threshold form the HPD region.
+///
+/// Assumes unimodality: the crossing search radiates outward from a single
+/// argmax peak, so the result is always one contiguous interval. For a
+/// multimodal distribution the interval spans the valley between modes,
+/// producing a conservative (wider than true HPD) estimate. Typical
+/// phylogenetic posteriors are approximately Gaussian, so this is not
+/// a practical concern. Matches v0 (`clock_tree.py:1185`).
 ///
 /// v0 equivalent: the optimization loop in `get_max_posterior_region`
 /// (`clock_tree.py:1184-1226`), adapted from neg-log space to plain
