@@ -578,11 +578,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(&log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(
-      dis,
-      Array2::from_elem((1, 3), 1.0 / 3.0),
-      epsilon = 1e-10
-    );
+    assert_abs_diff_eq!(dis, Array2::from_elem((1, 3), 1.0 / 3.0), epsilon = 1e-10);
     assert!(
       log_lh == f64::NEG_INFINITY,
       "log_lh should be NEG_INFINITY, got {log_lh}"
