@@ -2,6 +2,7 @@ use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::representation::discrete_states::DiscreteStates;
+use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
@@ -225,17 +226,12 @@ fn normalize_inplace_1d(arr: &mut Array1<f64>) -> Result<f64, Report> {
 }
 
 fn normalize_from_log_1d(log_arr: &Array1<f64>) -> Result<(Array1<f64>, f64), Report> {
-  let max_val = log_arr.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-  let mut arr = log_arr.mapv(|v| (v - max_val).exp());
-  let sum = arr.sum();
-  if sum.is_nan() || sum <= 0.0 {
+  let (arr, log_lh) = logsumexp_normalize(log_arr);
+  if !log_lh.is_finite() {
     return make_internal_error!(
-      "Cannot normalize invalid log profile: sum={sum}, max={max_val}, log_profile={log_arr:?}"
+      "Cannot normalize invalid log profile: all states have zero probability, log_profile={log_arr:?}"
     );
   }
-  arr /= sum;
-  let log_lh = max_val + sum.ln();
   Ok((arr, log_lh))
 }
 

@@ -4,6 +4,7 @@ use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
+use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
@@ -399,46 +400,16 @@ fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
 
 /// Normalize a log-probability matrix to probability matrix.
 ///
-/// Matches v0's normalize_profile(in_profile, log=True) algorithm (seq_utils.py:296-307):
-/// 1. Subtract row max (logsumexp trick for numerical stability)
-/// 2. Exponentiate
-/// 3. Normalize by row sum
+/// Applies per-row logsumexp normalization and accumulates the total
+/// log-likelihood across all rows.
 fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
-  let (nrows, ncols) = log_dis.dim();
-  let mut dis = Array2::zeros((nrows, ncols));
+  let mut dis = Array2::zeros(log_dis.raw_dim());
   let mut total_log_lh = 0.0;
 
-  for (ri, log_row) in log_dis.outer_iter().enumerate() {
-    // Step 1: Find row max (logsumexp trick)
-    let max_val = log_row.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-    // All states have zero probability (all log-probs are -inf).
-    // IEEE 754: -inf - (-inf) = NaN, so skip the exponentiation.
-    // Fall back to uniform distribution, matching the sparse path (logsumexp_normalize).
-    if !max_val.is_finite() {
-      let uniform = 1.0 / ncols as f64;
-      for ci in 0..ncols {
-        dis[[ri, ci]] = uniform;
-      }
-      total_log_lh = f64::NEG_INFINITY;
-      continue;
-    }
-
-    // Step 2: Exponentiate (relative to max)
-    let mut row_sum = 0.0;
-    for (ci, &log_val) in log_row.iter().enumerate() {
-      let val = (log_val - max_val).exp();
-      dis[[ri, ci]] = val;
-      row_sum += val;
-    }
-
-    // Step 3: Normalize by row sum
-    for ci in 0..ncols {
-      dis[[ri, ci]] /= row_sum;
-    }
-
-    // Accumulate log-likelihood: log(sum(exp(log_vals))) = max_val + log(row_sum)
-    total_log_lh += max_val + row_sum.ln();
+  for (mut out_row, log_row) in izip!(dis.rows_mut(), log_dis.rows()) {
+    let (normalized, log_norm) = logsumexp_normalize(&log_row.to_owned());
+    out_row.assign(&normalized);
+    total_log_lh += log_norm;
   }
 
   (dis, total_log_lh)

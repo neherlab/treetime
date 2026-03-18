@@ -93,7 +93,7 @@ pub fn combine_messages(
 ///
 /// When all entries are -inf (all states have zero probability), returns a
 /// uniform distribution with log_norm = NEG_INFINITY.
-fn logsumexp_normalize(log_vec: &Array1<f64>) -> (Array1<f64>, f64) {
+pub fn logsumexp_normalize(log_vec: &Array1<f64>) -> (Array1<f64>, f64) {
   let max_val = log_vec.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
   if !max_val.is_finite() {
