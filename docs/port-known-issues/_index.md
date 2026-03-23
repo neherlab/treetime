@@ -52,62 +52,65 @@ exactly.
 
 ## Summary
 
-| Severity   | Scope        | Issue                                                                                                                        |
-| ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| High       | Timetree     | [Timetree crashes on zero-length branches with grid spacing error](H-timetree-crash-grid-zero-branch.md)                     |
-| High       | Clock        | [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)                           |
-| Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                             |
-| Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                            |
-| Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                    |
-| Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                            |
-| Medium     | Core         | [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md)                     |
-| Medium     | Core         | [Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)                                       |
-| Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                          |
-| Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                           |
-| Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                  |
-| Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                        |
-| Medium     | Optimize     | [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md)                                |
-| Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                |
-| Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md) |
-| Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                           |
-| Medium     | Timetree     | [Coalescent likelihood always returns None](M-timetree-coalescent-likelihood-stub.md)                                        |
-| Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                   |
-| Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                 |
-| Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)           |
-| Medium     | Timetree     | [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)                                           |
-| Medium     | Timetree     | [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)                         |
-| Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                         |
-| Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                           |
-| Medium     | Timetree     | [Polytomy zero-branch penalty differs from v0](M-timetree-polytomy-zero-branch-penalty.md)                                   |
-| Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                   |
-| Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                          |
-| Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                           |
-| Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                |
-| Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                        |
-| Negligible | Ancestral    | [Dense normalize_inplace produces NaN for all-zero probability rows](N-dense-normalize-inplace-zero-row.md)                  |
-| Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                                 |
-| Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                              |
-| Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                              |
-| Negligible | Optimize     | [Standalone sparse optimizer skips derivative check for zero branches](N-optimize-sparse-zero-branch-no-derivative.md)       |
-| Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                          |
-| Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                   |
-| Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                      |
-| Negligible | Optimize     | [Merge branches in polytomies sharing mutations not implemented](N-optimize-polytomy-branch-merging.md)                      |
-| Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                      |
-| Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                   |
-| Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                   |
-| Negligible | Timetree     | [timetree.json missing coalescent and skyline parameters](N-timetree-json-missing-coalescent.md)                             |
-| Negligible | Timetree     | [Missing output files compared to v0](N-timetree-missing-output-files.md)                                                    |
-| Negligible | Timetree     | [Missing skyline output files](N-timetree-missing-skyline-output.md)                                                         |
-| Negligible | Timetree     | [--n-branches-posterior panics with todo!()](N-timetree-n-branches-posterior-unimplemented.md)                               |
-| Negligible | Timetree     | [Negative coalescent Tc accepted without validation](N-timetree-negative-coalescent-tc.md)                                   |
-| Negligible | Timetree     | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                        |
-| Negligible | Timetree     | [--plot-rtt and --plot-tree typed as Option\<usize\>](N-timetree-plot-arg-type.md)                                           |
-| Negligible | Timetree     | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                            |
-| Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)         |
-| Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                            |
-| Negligible | Timetree     | [Timetree does not write auspice JSON output](N-timetree-auspice-json-unimplemented.md)                                      |
-| Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                               |
+| Severity   | Scope        | Issue                                                                                                                                                            |
+| ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| High       | Timetree     | [Timetree crashes on zero-length branches with grid spacing error](H-timetree-crash-grid-zero-branch.md)                                                         |
+| High       | Clock        | [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)                                                               |
+| Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                                 |
+| Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                                |
+| Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                                        |
+| Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                                                                |
+| Medium     | Core         | [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md)                                                         |
+| Medium     | Core         | [Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)                                                                           |
+| Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                                                              |
+| Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                               |
+| Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                                      |
+| Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                                                            |
+| Medium     | Optimize     | [Dense edge substitution counting uses edge messages instead of node posteriors](M-optimize-dense-edge-subs-use-edge-messages.md)                                |
+| Medium     | Optimize     | [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md)                                                                    |
+| Medium     | Optimize     | [Zero-branch shortcut underflows and depends on a fixed likelihood threshold](M-optimize-zero-branch-shortcut-raw-likelihood-threshold.md)                       |
+| Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                                    |
+| Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                                     |
+| Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                                                               |
+| Medium     | Timetree     | [Coalescent likelihood always returns None](M-timetree-coalescent-likelihood-stub.md)                                                                            |
+| Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                                                       |
+| Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                                     |
+| Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)                                               |
+| Medium     | Timetree     | [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)                                                                               |
+| Medium     | Timetree     | [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)                                                             |
+| Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                                             |
+| Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                                                               |
+| Medium     | Timetree     | [Polytomy zero-branch penalty differs from v0](M-timetree-polytomy-zero-branch-penalty.md)                                                                       |
+| Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                                                       |
+| Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                                                              |
+| Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                                                               |
+| Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                                                    |
+| Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                                            |
+| Negligible | Ancestral    | [Dense normalize_inplace produces NaN for all-zero probability rows](N-dense-normalize-inplace-zero-row.md)                                                      |
+| Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                                                                     |
+| Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                                  |
+| Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                                  |
+| Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                              |
+| Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                                       |
+| Negligible | Optimize     | [Merge branches in polytomies sharing mutations not implemented](N-optimize-polytomy-branch-merging.md)                                                          |
+| Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                                                          |
+| Negligible | Optimize     | [Standalone helper optimizers duplicate production logic and drift from unified behavior](N-optimize-standalone-helper-optimizers-duplicate-production-logic.md) |
+| Negligible | Optimize     | [Standalone sparse optimizer skips derivative check for zero branches](N-optimize-sparse-zero-branch-no-derivative.md)                                           |
+| Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                                                          |
+| Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                                                       |
+| Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                                                       |
+| Negligible | Timetree     | [timetree.json missing coalescent and skyline parameters](N-timetree-json-missing-coalescent.md)                                                                 |
+| Negligible | Timetree     | [Missing output files compared to v0](N-timetree-missing-output-files.md)                                                                                        |
+| Negligible | Timetree     | [Missing skyline output files](N-timetree-missing-skyline-output.md)                                                                                             |
+| Negligible | Timetree     | [--n-branches-posterior panics with todo!()](N-timetree-n-branches-posterior-unimplemented.md)                                                                   |
+| Negligible | Timetree     | [Negative coalescent Tc accepted without validation](N-timetree-negative-coalescent-tc.md)                                                                       |
+| Negligible | Timetree     | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                                                            |
+| Negligible | Timetree     | [--plot-rtt and --plot-tree typed as Option\<usize\>](N-timetree-plot-arg-type.md)                                                                               |
+| Negligible | Timetree     | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                                                                |
+| Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                             |
+| Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                                |
+| Negligible | Timetree     | [Timetree does not write auspice JSON output](N-timetree-auspice-json-unimplemented.md)                                                                          |
+| Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                                                   |
 
 ## Cross-references
 

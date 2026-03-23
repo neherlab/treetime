@@ -6,6 +6,8 @@ The unified path in `is_zero_branch_optimal()` ([packages/treetime/src/commands/
 
 `run_optimize_sparse()` and its dense counterpart `run_optimize_dense()` are not called by the main `optimize` command. They serve as test-only helpers (called from `__tests__/test_dense_sparse_equivalence/`). The inconsistency is low-risk but makes equivalence tests unreliable as a correctness check for the unified path.
 
+This sparse helper issue is one symptom of a broader duplication problem tracked in [Standalone helper optimizers duplicate production logic and drift from unified behavior](N-optimize-standalone-helper-optimizers-duplicate-production-logic.md).
+
 ## Proposed solution
 
 Either align `run_optimize_sparse()` with the unified path (add derivative check, raise threshold to 0.01) or mark both standalone functions as `#[cfg(test)]` since they only serve tests.
