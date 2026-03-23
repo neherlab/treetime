@@ -15,9 +15,6 @@ use treetime_graph::edge::GraphEdgeKey;
 ///   node posteriors. After marginal inference, each node's `profile.dis`
 ///   contains the full posterior distribution over states. `edge_subs()`
 ///   compares the argmax state at the parent and child nodes.
-///   `edge_initial_differences()` uses a different data source: per-edge
-///   partial messages for soft Hamming distance (see
-///   `optimize-dense-initial-guess-soft-hamming` intentional change doc).
 pub trait PartitionOptimizeOps: Send + Sync {
   /// Return the sequence length represented by this partition.
   fn sequence_length(&self) -> usize;
@@ -38,12 +35,9 @@ pub trait PartitionOptimizeOps: Send + Sync {
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
 
-  /// Return the sum of per-position differences for initial branch length estimation.
+  /// Return the number of substitutions for initial branch length estimation.
   ///
-  /// For sparse partitions (default): integer count of discrete substitutions, equivalent
-  /// to `edge_subs().len()`. For dense partitions: soft Hamming distance, where each
-  /// position contributes `1 - dot(pp, pc)` (the complement of the profile overlap).
-  /// Uncertain positions contribute fractionally rather than as 0 or 1.
+  /// Delegates to `edge_subs().len()` for both sparse and dense partitions.
   fn edge_initial_differences(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<f64, Report> {
     Ok(self.edge_subs(graph, edge_key)?.len() as f64)
   }

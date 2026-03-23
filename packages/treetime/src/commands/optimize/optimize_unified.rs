@@ -292,11 +292,9 @@ where
 
 /// Initial estimation of branch lengths for mixed partitions.
 ///
-/// Computes per-edge Hamming distance over canonical (non-gap, non-ambiguous)
-/// positions. For sparse partitions, this is the hard Hamming distance (integer
-/// count of differing positions). For dense partitions, this is a soft Hamming
-/// distance where each position contributes `1 - dot(pp, pc)`, the complement
-/// of the profile overlap between the two ends of the edge.
+/// Computes per-edge substitution count over canonical (non-gap, non-ambiguous)
+/// positions via `edge_initial_differences()` (delegates to `edge_subs().len()`
+/// for both sparse and dense partitions).
 ///
 /// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
