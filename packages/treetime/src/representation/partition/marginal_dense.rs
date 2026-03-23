@@ -65,37 +65,57 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
+  /// Count branch mutations by comparing the MAP (argmax) states of the full
+  /// marginal posteriors at the parent and child nodes.
+  ///
+  /// In dense marginal inference, each node's `profile.dis` is the full posterior
+  /// distribution over states at each position, obtained by combining all incoming
+  /// messages during the forward pass (backward: subtree evidence, forward: outgroup
+  /// evidence). The MAP state at each position is the single most probable state
+  /// given all available data.
+  ///
+  /// This function compares endpoint node posteriors, not per-edge partial messages.
+  /// Per-edge messages (`msg_to_parent`, `msg_to_child`) represent one-sided evidence
+  /// and their argmax can disagree with the full posterior argmax. For example, a
+  /// uniform `msg_to_child` (uninformative outgroup) has argmax at index 0 by tie-
+  /// breaking, but the child node posterior incorporates subtree evidence and may
+  /// peak at a different state. Comparing partial-message argmax would report false
+  /// mutations at such positions.
+  ///
+  /// Contrast with `edge_initial_differences()`, which intentionally uses per-edge
+  /// messages for a soft (fractional) Hamming distance. That function computes a
+  /// continuous overlap measure where partial-message uncertainty contributes
+  /// fractionally, which is appropriate for initial branch length estimation but
+  /// not for discrete mutation counting.
   fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    // Dense substitutions are MAP estimates: argmax of per-edge message profiles.
-    // msg_to_parent = subtree likelihood propagated to parent end of the edge.
-    // msg_to_child = outgroup likelihood propagated to child end of the edge.
-    // These are partial messages (not full posteriors), so the MAP state can
-    // differ from the full posterior argmax at the corresponding node.
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
     let parent_gaps = &self.nodes[&parent_key].seq.gaps;
     let child_gaps = &self.nodes[&child_key].seq.gaps;
 
-    let edge = &self.edges[&edge_key];
+    let parent_profile = &self.nodes[&parent_key].profile.dis;
+    let child_profile = &self.nodes[&child_key].profile.dis;
     let mut subs = Vec::new();
 
-    for (pos, parent, child) in izip!(
-      0..edge.msg_to_parent.dis.nrows(),
-      edge.msg_to_parent.dis.rows(),
-      edge.msg_to_child.dis.rows()
-    ) {
-      // With treat_gap_as_unknown=true, gap positions get uniform profiles and
-      // argmax returns an arbitrary canonical state. Check the original gap
-      // ranges rather than is_canonical on the argmax character.
+    for (pos, parent, child) in izip!(0..parent_profile.nrows(), parent_profile.rows(), child_profile.rows()) {
+      // Gap positions get uniform profiles under treat_gap_as_unknown, so argmax
+      // returns an arbitrary canonical state. Check original gap ranges instead.
       if range_contains(parent_gaps, pos) || range_contains(child_gaps, pos) {
         continue;
       }
 
       let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
       let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
-      if parent_state != child_state {
-        subs.push(Sub::new(parent_state, pos, child_state)?);
+      if parent_state == child_state {
+        continue;
       }
+      // Non-canonical states (ambiguity codes, unknowns) are not nucleotide
+      // substitutions. This matches the sparse edge_subs() filter at
+      // marginal_sparse.rs which skips non-canonical parent or child states.
+      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
+        continue;
+      }
+      subs.push(Sub::new(parent_state, pos, child_state)?);
     }
 
     Ok(subs)

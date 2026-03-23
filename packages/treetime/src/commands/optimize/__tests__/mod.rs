@@ -1,6 +1,7 @@
 mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;
 mod test_convergence;
+mod test_dense_edge_subs;
 mod test_dense_sparse_equivalence;
 mod test_grid_search;
 mod test_initial_guess_gaps;
