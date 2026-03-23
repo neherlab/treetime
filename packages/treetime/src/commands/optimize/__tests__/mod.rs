@@ -4,6 +4,7 @@ mod test_convergence;
 mod test_dense_edge_subs;
 mod test_dense_sparse_equivalence;
 mod test_grid_search;
+mod test_initial_guess_formula;
 mod test_initial_guess_gaps;
 mod test_initial_guess_gtr_messages;
 mod test_is_zero_branch_optimal;

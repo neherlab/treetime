@@ -16,8 +16,9 @@
 | Zero branch optimal             | 1      | 22      | 0             | Unit |
 | Dense edge_subs                 | 1      | 5       | 0             | Unit |
 | Initial guess gap handling      | 1      | 7       | 0             | Unit |
+| Initial guess formula           | 1      | 2       | 0             | Unit |
 | Initial guess GTR messages      | 1      | 2       | 0             | Unit |
-| **Total**                       | **29** | **104** | **5**         | Unit |
+| **Total**                       | **30** | **106** | **5**         | Unit |
 
 ---
 
@@ -403,3 +404,16 @@ Regression tests verifying that `initial_guess_mixed()` reads edge messages comp
 | ------------------------------------------------ | ------------------------------------------------------------- |
 | `test_stale_jc69_messages_bias_initial_guess`    | Stale JC69 messages produce different branch lengths than F81 |
 | `test_initial_guess_idempotent_after_gtr_update` | Identical initialization sequences produce identical results  |
+
+---
+
+## Initial Guess Formula
+
+**File:** [`test_initial_guess_formula.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs)
+
+Regression tests verifying that `initial_guess_mixed()` sets `branch_length = edge_subs().len() / edge_effective_length()` per edge for both sparse and dense partitions.
+
+| Test                                | Purpose                                         |
+| ----------------------------------- | ----------------------------------------------- |
+| `test_initial_guess_formula_sparse` | Formula holds for sparse partitions             |
+| `test_initial_guess_formula_dense`  | Formula holds for dense partitions (regression) |
