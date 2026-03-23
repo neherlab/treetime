@@ -36,7 +36,6 @@ mod tests {
     })
   }
 
-
   /// Empty contributions: no sites, derivative sum is 0.0 (not < 0).
   #[test]
   fn test_is_zero_branch_optimal_empty_contributions() {
@@ -59,7 +58,6 @@ mod tests {
     let contribution = make_dense_contribution(array![[0.0, 0.0, 0.0, 1.0]]);
     assert!(!is_zero_branch_optimal(&[contribution]));
   }
-
 
   /// The decision must be the same for one site vs many identical sites.
   /// The old raw-product approach would underflow to 0.0 for many sites,
@@ -98,7 +96,6 @@ mod tests {
     );
   }
 
-
   /// Many ambiguous sites with L_i(0) = 0.25 each. The old implementation
   /// would compute 0.25^N which underflows to 0.0 for large N, preventing
   /// the derivative check. The new implementation checks each site
@@ -116,7 +113,6 @@ mod tests {
     // Old code: 0.25^1000 = 0.0, would return false. New code: derivative = -1000 < 0.
     assert!(is_zero_branch_optimal(&[contribution]));
   }
-
 
   /// A site with all-zero coefficients has L_i(0) = 0. The derivative
   /// formula would divide by zero. The shortcut must decline to decide.
@@ -147,7 +143,6 @@ mod tests {
     assert!(!is_zero_branch_optimal(&[contribution]));
   }
 
-
   /// Two contributions both with negative derivatives combine additively.
   #[test]
   fn test_is_zero_branch_optimal_multiple_partitions_negative_derivative() {
@@ -177,7 +172,6 @@ mod tests {
     assert!(is_zero_branch_optimal(&[dense, sparse]));
   }
 
-
   /// Multiple positions in one dense contribution. Derivative sums over
   /// all positions: -4/3 + -4/3 = -8/3 < 0.
   #[test]
@@ -190,7 +184,6 @@ mod tests {
     let contribution = make_dense_contribution(coefficients);
     assert!(is_zero_branch_optimal(&[contribution]));
   }
-
 
   /// Sparse site with negative derivative.
   #[test]
@@ -212,7 +205,6 @@ mod tests {
     let contribution = make_sparse_contribution(vec![(50.0, vec![0.0, 0.5, 0.0, 0.0])]);
     assert!(is_zero_branch_optimal(&[contribution]));
   }
-
 
   /// Coefficients that produce a positive finite L_i(0) but overflow in the
   /// derivative ratio. This exercises the `derivative.is_finite()` guard at
@@ -241,7 +233,6 @@ mod tests {
     // So is_zero_branch_optimal declines to decide
     assert!(!is_zero_branch_optimal(&[contribution]));
   }
-
 
   /// Verify the exact numerical value of the derivative, not just its sign.
   ///
@@ -278,7 +269,6 @@ mod tests {
     let derivative = contribution.zero_branch_length_derivative();
     assert_abs_diff_eq!(-8.0 / 3.0, derivative, epsilon = 1e-10);
   }
-
 
   /// Dense and sparse representations of the same single-site coefficients
   /// must produce identical derivative values and validity results.
