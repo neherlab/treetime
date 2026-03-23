@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
-  use crate::commands::optimize::optimize_dense::run_optimize_dense;
-  use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
+  use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use treetime_io::nwk::nwk_read_str;
@@ -21,7 +20,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_dense(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }
@@ -65,7 +64,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_sparse(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }

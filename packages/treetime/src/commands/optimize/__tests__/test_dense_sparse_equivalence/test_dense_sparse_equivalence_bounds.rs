@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
-  use crate::commands::optimize::optimize_dense::run_optimize_dense;
-  use crate::commands::optimize::optimize_sparse::run_optimize_sparse;
+  use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use treetime_io::nwk::nwk_read_str;
@@ -20,7 +19,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_dense(&graph_dense, &dense_partitions)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -31,7 +30,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_sparse(&graph_sparse, &sparse_partitions)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 
@@ -47,9 +46,9 @@ mod tests {
       "Sparse log-LH {log_lh_sparse} should be in range [-100, -10]"
     );
 
-    // Dense and sparse should converge to similar values
-    // Differences arise from zero-branch thresholds (0.01 dense vs 0.0001 sparse)
-    // and different optimization paths, but should be bounded
+    // Dense and sparse should converge to similar values.
+    // Both use the unified optimizer; differences arise from coefficient
+    // representation (per-position dense vs multiplicity-weighted sparse)
     let diff = (log_lh_dense - log_lh_sparse).abs();
     assert!(
       diff < 0.5,
@@ -68,7 +67,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_dense(&graph_dense, &dense_partitions)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -79,7 +78,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_sparse(&graph_sparse, &sparse_partitions)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 

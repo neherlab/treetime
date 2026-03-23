@@ -2,9 +2,12 @@
 pub mod tests {
   //! Tests for dense vs sparse optimization equivalence.
   //!
-  //! These tests verify that dense and sparse optimization modes produce consistent
-  //! results. Due to implementation differences (different zero-branch thresholds,
-  //! optimization paths), the modes may not produce identical results but should:
+  //! Both dense and sparse partitions route through the unified optimizer
+  //! (`run_optimize_mixed`), so the optimization loop (zero-branch shortcut,
+  //! Newton iteration, grid search fallback) is identical. Differences in
+  //! converged branch lengths arise from the coefficient representations:
+  //! dense uses per-position probability vectors, sparse uses per-site
+  //! multiplicity-weighted contributions. The tests verify:
   //! 1. Both produce finite, valid log-LH values
   //! 2. Both converge to stable values
   //! 3. Initial log-LH (before optimization) should be identical
