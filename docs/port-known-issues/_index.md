@@ -66,7 +66,6 @@ exactly.
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                               |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                                      |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                                                            |
-| Medium     | Optimize     | [Dense edge substitution counting uses edge messages instead of node posteriors](M-optimize-dense-edge-subs-use-edge-messages.md)                                |
 | Medium     | Optimize     | [Branch length optimization oscillates without damping](M-optimize-oscillation-no-damping.md)                                                                    |
 | Medium     | Optimize     | [Zero-branch shortcut underflows and depends on a fixed likelihood threshold](M-optimize-zero-branch-shortcut-raw-likelihood-threshold.md)                       |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                                    |

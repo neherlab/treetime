@@ -14,7 +14,7 @@ This distance is the bracket midpoint for Brent's method. Both profiles represen
 
 ## What v1 does
 
-v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L258-L293](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L258-L293)) calls `PartitionMarginalDense::edge_initial_differences()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L68-L95](../../packages/treetime/src/representation/partition/marginal_dense.rs#L68-L95)), which computes:
+v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L299-L327](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L299-L327)) calls `PartitionMarginalDense::edge_initial_differences()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L124-L145](../../packages/treetime/src/representation/partition/marginal_dense.rs#L124-L145)), which computes:
 
 ```
 differences = sum(1 - dot(msg_to_parent[i], msg_to_child[i]))  over non-gap positions
@@ -43,6 +43,15 @@ For uncertain profiles, the v1 dot product at different ends of the edge and the
 **Lost:** exact numerical parity with v0's initial guess at uncertain positions.
 
 **Gained:** the soft Hamming formula correctly handles uncertain positions, which was the main deficiency of the previous hard argmax approach. The remaining numerical difference between per-edge and per-node dot products is second-order compared to the hard-vs-soft distinction.
+
+## Relationship to edge_subs()
+
+`edge_initial_differences()` and `edge_subs()` serve different purposes and correctly use different data sources:
+
+- `edge_initial_differences()` computes a continuous overlap measure (`1 - dot(pp, pc)`) for initial branch length estimation. It uses per-edge messages because the soft Hamming formula produces meaningful fractional contributions from partial-message uncertainty. This is a starting point for Newton optimization, not a final result.
+- `edge_subs()` counts discrete branch mutations by comparing argmax states at parent and child nodes. It uses full node posteriors (`self.nodes[&key].profile.dis`) because discrete state assignment requires the complete marginal distribution, not a partial message whose argmax can disagree with the posterior.
+
+The two functions must not be unified. They answer different questions with different mathematical requirements.
 
 ## Affected commands
 

@@ -6,7 +6,7 @@
 
 Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. The update rule is `t_new = t - clamp(f'/f'', -1.0, t)`, clamping the step to prevent negative branch lengths. When the second derivative is non-negative (likelihood surface is convex at the current point), the method falls back to a 100-point linear grid search over the branch length domain.
 
-v1: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L231-L251`](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L231-L251).
+v1: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L249-L268`](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L249-L268).
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket instead of Newton's method. v1's analytical derivatives avoid the derivative-free overhead of Brent but require correct second-derivative computation. See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details.
 
