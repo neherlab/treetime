@@ -398,7 +398,7 @@ Tests for gap-position exclusion and rate adjustment in the initial branch-lengt
 
 **File:** [`test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
 
-Regression tests verifying that `initial_guess_mixed()` reads edge messages computed with the real GTR model, not stale JC69 messages from the dummy initialization pass.
+Regression tests verifying that `initial_guess_mixed()` reads node posteriors computed with the real GTR model, not stale posteriors from the dummy JC69 initialization pass.
 
 | Test                                             | Purpose                                                       |
 | ------------------------------------------------ | ------------------------------------------------------------- |

@@ -66,8 +66,8 @@ mod tests {
 
   /// Regression: after replacing the dummy JC69 with a non-uniform GTR,
   /// update_marginal must be re-run before initial_guess_mixed. Stale JC69
-  /// edge messages produce a different (biased) initial branch length guess
-  /// than fresh messages computed with the real model.
+  /// node posteriors produce a different (biased) initial branch length guess
+  /// than fresh posteriors computed with the real model.
   #[test]
   fn test_stale_jc69_messages_bias_initial_guess() -> Result<(), Report> {
     let aln = biased_alignment()?;

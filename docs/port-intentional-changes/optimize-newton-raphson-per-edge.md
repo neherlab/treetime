@@ -52,6 +52,35 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 **Gained: cheaper per-evaluation cost.** Each Newton iteration gets likelihood AND derivatives from the same eigenvalue exponentials. Brent needs one full likelihood evaluation per bracket refinement step with no derivative reuse.
 
+## Initial guess formula
+
+v0 and v1 also differ in how the initial branch length estimate is computed before per-edge optimization.
+
+v0's `optimal_t_compressed(..., profiles=True)` ([packages/legacy/treetime/treetime/gtr.py#L871-L876](../../packages/legacy/treetime/treetime/gtr.py#L871-L876)) computes a soft Hamming distance as the bracket midpoint for Brent's method:
+
+```python
+hamming_distance = 1 - sum(multiplicity * sum(pp * pc, axis=1)) / sum(multiplicity)
+bracket = [-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]
+```
+
+Both `pp` and `pc` are marginal profiles evaluated at the child node (outgroup and subtree evidence respectively). The dot product gives a continuous overlap measure where uncertain positions contribute fractionally.
+
+v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L293-L325](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L293-L325)) counts discrete MAP substitutions and sets the branch length directly:
+
+```
+branch_length = edge_subs().len() / edge_effective_length()
+```
+
+`edge_subs()` compares the argmax of full node posteriors at the parent and child endpoints. Each position contributes 0 or 1.
+
+The differences are:
+
+- **Formula**: continuous profile overlap (v0) vs discrete MAP mismatch count (v1)
+- **Role**: Brent bracket midpoint (v0) vs Newton-Raphson starting point (v1)
+- **Data source**: child-end profile pair (v0) vs endpoint node posteriors (v1)
+
+For sharp posteriors (one state dominates), both approaches produce equivalent results. For uncertain posteriors (near-uniform), v0 yields fractional contributions while v1 yields 0 (argmax agrees). This makes v1's initial guess systematically lower at uncertain edges. Newton-Raphson corrects from there during optimization.
+
 ## Practical impact
 
 For end-users, the per-edge optimization method is invisible. Branch lengths converge to the same ML estimates (within numerical tolerance) regardless of whether Newton or Brent finds them, given the same GTR model and marginal profiles.

@@ -115,7 +115,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     partition.write_arc().gtr = gtr;
   }
 
-  // Re-run marginal with inferred GTR so edge messages used by
+  // Re-run marginal with inferred GTR so node posteriors used by
   // initial_guess_mixed reflect the real model, not the dummy JC69.
   update_marginal(&graph, &dense_partitions)?;
 

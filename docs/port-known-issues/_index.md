@@ -91,6 +91,7 @@ exactly.
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                 |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                             |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                      |
+| Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                           |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                              |
 | Negligible | Optimize     | [Merge branches in polytomies sharing mutations not implemented](N-optimize-polytomy-branch-merging.md)                         |
 | Negligible | Optimize     | [Optimizer evaluation functions omit mu scaling factor](N-optimize-mu-scaling-omitted-in-evaluation.md)                         |
