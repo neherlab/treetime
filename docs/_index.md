@@ -9,6 +9,7 @@
 - [`docs/port-known-issues/`](port-known-issues/_index.md) - All unfinished work items by severity (C/H/M/N prefix): bugs, missing v0 features, missing design-doc features, stubs, dead flags. Includes [`docs/port-known-issues/_test-matrix.md`](port-known-issues/_test-matrix.md) for systematic v0/v1 comparison.
 - [`docs/port-proposals/`](port-proposals/_index.md) - New v1 features that neither v0 nor the design docs specify, pre-implementation.
 - [`docs/port-test-inventory/`](port-test-inventory/_index.md) - Test coverage by domain.
+- [`docs/port-v0-errata/`](port-v0-errata/_index.md) - Defects and oversights in v0 that v1 does not reproduce. ALWAYS check before matching v0 behavior.
 - [`docs/dev/`](dev/) - Development infrastructure documentation.
 - [`docs/cli_overview.md`](cli_overview.md) - CLI command overview.
 
@@ -26,6 +27,7 @@ Every work item falls into exactly one category:
 | Implemented, different behavior | [`docs/port-intentional-changes/`](port-intentional-changes/_index.md)                                                                        | v0 feature ported with deliberate divergence, or intentionally removed (one file per deviation)                                                                                                                                                     |
 | Not yet done                    | [`docs/port-known-issues/`](port-known-issues/_index.md), [`docs/port-algo-inventory/unimplemented.md`](port-algo-inventory/unimplemented.md) | Bugs, missing v0 features, missing design-doc features, stubs, dead flags. Known issues cover all types; [`docs/port-algo-inventory/unimplemented.md`](port-algo-inventory/unimplemented.md) adds algorithm-specific detail for unported algorithms |
 | New in v1                       | [`docs/port-proposals/`](port-proposals/_index.md)                                                                                            | Feature that neither v0 nor the design docs specify. Moves to [`docs/port-intentional-changes/`](port-intentional-changes/_index.md) after implementation                                                                                           |
+| v0 defective, v1 correct        | [`docs/port-v0-errata/`](port-v0-errata/_index.md)                                                                                            | Defect or oversight in v0 that v1 does not reproduce (one file per erratum with evidence)                                                                                                                                                           |
 
 ### Decision rules
 
@@ -35,4 +37,5 @@ Every work item falls into exactly one category:
 - v0 feature missing, stubbed, or broken in v1 -> [`docs/port-known-issues/`](port-known-issues/_index.md) (severity-prefixed file). If algorithmic, also in [`docs/port-algo-inventory/unimplemented.md`](port-algo-inventory/unimplemented.md)
 - Design-doc feature not yet implemented -> [`docs/port-known-issues/`](port-known-issues/_index.md) (severity-prefixed file). If algorithmic, also in [`docs/port-algo-inventory/unimplemented.md`](port-algo-inventory/unimplemented.md)
 - v1 feature that neither v0 nor design docs specify -> [`docs/port-proposals/`](port-proposals/_index.md) (pre-implementation), then [`docs/port-intentional-changes/`](port-intentional-changes/_index.md) (post-implementation)
+- v0 behavior appears wrong, v1 does the correct thing -> [`docs/port-v0-errata/`](port-v0-errata/_index.md) (one file with evidence). Distinct from intentional changes (v1 design choices) and known issues (v1 defects)
 - NEVER put v0 port targets or design-doc features in [`docs/port-proposals/`](port-proposals/_index.md)
