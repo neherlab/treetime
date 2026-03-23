@@ -4,20 +4,20 @@ mod tests {
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, is_zero_branch_optimal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
 
   /// Create a dense contribution with specified coefficients and JC69 GTR model.
   ///
-  /// For JC69 on nucleotides:
-  /// - eigvals = [0, -4/3, -4/3, -4/3] (first eigenvalue is always 0)
-  /// - At branch_length=0, likelihood = product of coefficient row sums
-  /// - Derivative at zero = sum over positions of (eigval-weighted coeff sum / coeff sum)
+  /// JC69 nucleotide eigenvalues (sorted ascending): [-4/3, -4/3, -4/3, 0].
+  /// At t=0, per-site likelihood L_i(0) = row sum of coefficients.
+  /// Per-site derivative ratio = (eigval-weighted row sum) / (row sum).
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
     OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
   }
 
-  /// Create a sparse contribution with specified site contributions and JC69 eigenvalues.
+  /// Create a sparse contribution with specified (multiplicity, coefficients) pairs.
   fn make_sparse_contribution(sites: Vec<(f64, Vec<f64>)>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
     let eigenvalues = gtr.eigvals;
@@ -36,184 +36,286 @@ mod tests {
     })
   }
 
+
+  /// Empty contributions: no sites, derivative sum is 0.0 (not < 0).
   #[test]
   fn test_is_zero_branch_optimal_empty_contributions() {
-    let contributions: Vec<OptimizationContribution> = vec![];
-
-    let result = is_zero_branch_optimal(&contributions);
-
-    // Empty product is 1.0 (>0.01), empty sum is 0.0 (not <0.0), so false
-    assert!(!result);
+    assert!(!is_zero_branch_optimal(&[]));
   }
 
+  /// Negative derivative at t=0 means zero is optimal.
+  /// Coefficients [0, 1, 0, 0]: L_i(0) = 1, derivative = -4/3 < 0.
   #[test]
-  fn test_is_zero_branch_optimal_high_lh_negative_derivative_returns_true() {
-    // Coefficients where:
-    // - Zero LH is high (row sums product > 0.01)
-    // - Derivative at zero is negative
-    //
-    // For a single position with coefficients [1, 0, 0, 0]:
-    // - LH at zero = sum = 1.0
-    // - Derivative = (eigval[0]*1 + eigval[1]*0 + ...) / 1.0 = 0 (since eigval[0]=0)
-    //
-    // To get negative derivative, we need non-zero coefficients on negative eigenvalues.
-    // JC69 eigvals: [0, -4/3, -4/3, -4/3]
-    // Coefficients [0, 1, 0, 0] gives derivative = -4/3 / 1 = -4/3 < 0
-    let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = make_dense_contribution(coefficients);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    assert!(result);
+  fn test_is_zero_branch_optimal_negative_derivative_returns_true() {
+    let contribution = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    assert!(is_zero_branch_optimal(&[contribution]));
   }
 
+  /// Zero derivative at t=0 means zero is not a local maximum.
+  /// Coefficients [0, 0, 0, 1]: all weight on the zero eigenvalue.
+  /// L_i(0) = 1, derivative = 0 * 1 / 1 = 0 (not < 0).
   #[test]
-  fn test_is_zero_branch_optimal_high_lh_positive_derivative_returns_false() {
-    // Coefficients where derivative is non-negative.
-    // JC69 eigenvalues are sorted ascending, with the zero eigenvalue last.
-    // Putting weight only on the last eigenvalue (index 3, closest to 0) gives derivative ~0.
-    // For JC69: eigvals ~ [-4/3, -4/3, -4/3, 0] (ascending order)
-    let coefficients = array![[0.0, 0.0, 0.0, 1.0]];
-    let contribution = make_dense_contribution(coefficients);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    assert!(!result);
+  fn test_is_zero_branch_optimal_zero_derivative_returns_false() {
+    let contribution = make_dense_contribution(array![[0.0, 0.0, 0.0, 1.0]]);
+    assert!(!is_zero_branch_optimal(&[contribution]));
   }
 
+
+  /// The decision must be the same for one site vs many identical sites.
+  /// The old raw-product approach would underflow to 0.0 for many sites,
+  /// flipping the decision. The derivative-sign approach is additive over
+  /// sites, so the sign is preserved.
   #[test]
-  fn test_is_zero_branch_optimal_low_lh_skips_derivative() {
-    // Even if derivative would be negative, low LH means we skip the check.
-    // Very small coefficients give LH < 0.01
-    let coefficients = array![[0.0, 0.001, 0.0, 0.0]];
-    let contribution = make_dense_contribution(coefficients);
+  fn test_is_zero_branch_optimal_scale_invariant_dense() {
+    let one_site = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    let result_one = is_zero_branch_optimal(&[one_site]);
 
-    // LH = 0.001 < 0.01, so derivative check is skipped
-    let result = is_zero_branch_optimal(&[contribution]);
+    // 100 identical sites: same derivative sign, just larger magnitude
+    let many_rows: Vec<[f64; 4]> = vec![[0.0, 1.0, 0.0, 0.0]; 100];
+    let arr = Array2::from(many_rows);
+    let many_sites = make_dense_contribution(arr);
+    let result_many = is_zero_branch_optimal(&[many_sites]);
 
-    assert!(!result);
+    assert_eq!(
+      result_one, result_many,
+      "decision must not depend on number of identical sites"
+    );
   }
 
+  /// Scale invariance for sparse: same single-site pattern repeated via
+  /// multiplicity vs duplicated as separate sites.
   #[test]
-  fn test_is_zero_branch_optimal_multiple_partitions_product_lh() {
-    // Two contributions with LH=0.5 each, combined LH = 0.25 > 0.01
-    // Both with negative derivatives
-    let coeff1 = array![[0.0, 0.5, 0.0, 0.0]];
-    let coeff2 = array![[0.0, 0.5, 0.0, 0.0]];
-    let contrib1 = make_dense_contribution(coeff1);
-    let contrib2 = make_dense_contribution(coeff2);
+  fn test_is_zero_branch_optimal_scale_invariant_sparse() {
+    let single = make_sparse_contribution(vec![(1.0, vec![0.0, 1.0, 0.0, 0.0])]);
+    let result_single = is_zero_branch_optimal(&[single]);
 
-    let result = is_zero_branch_optimal(&[contrib1, contrib2]);
+    let high_mult = make_sparse_contribution(vec![(100.0, vec![0.0, 1.0, 0.0, 0.0])]);
+    let result_mult = is_zero_branch_optimal(&[high_mult]);
 
-    // LH = 0.5 * 0.5 = 0.25 > 0.01
-    // Derivative = -4/3 + -4/3 = -8/3 < 0
-    assert!(result);
+    assert_eq!(
+      result_single, result_mult,
+      "decision must not depend on multiplicity scaling"
+    );
   }
 
+
+  /// Many ambiguous sites with L_i(0) = 0.25 each. The old implementation
+  /// would compute 0.25^N which underflows to 0.0 for large N, preventing
+  /// the derivative check. The new implementation checks each site
+  /// independently and evaluates the derivative sign.
+  ///
+  /// JC69 eigvals [-4/3, -4/3, -4/3, 0]. For uniform coefficients
+  /// [0.0625, 0.0625, 0.0625, 0.0625], derivative ratio per site =
+  /// (-4/3 * 3 * 0.0625) / (4 * 0.0625) = -1.0. Negative, so zero is optimal.
   #[test]
-  fn test_is_zero_branch_optimal_multiple_partitions_low_combined_lh() {
-    // Two contributions that individually have ok LH but product is low
-    let coeff1 = array![[0.0, 0.05, 0.0, 0.0]];
-    let coeff2 = array![[0.0, 0.05, 0.0, 0.0]];
-    let contrib1 = make_dense_contribution(coeff1);
-    let contrib2 = make_dense_contribution(coeff2);
+  fn test_is_zero_branch_optimal_underflow_resistant() {
+    let many_rows: Vec<[f64; 4]> = vec![[0.0625, 0.0625, 0.0625, 0.0625]; 1000];
+    let arr = Array2::from(many_rows);
+    let contribution = make_dense_contribution(arr);
 
-    let result = is_zero_branch_optimal(&[contrib1, contrib2]);
-
-    // LH = 0.05 * 0.05 = 0.0025 < 0.01, so false
-    assert!(!result);
+    // Old code: 0.25^1000 = 0.0, would return false. New code: derivative = -1000 < 0.
+    assert!(is_zero_branch_optimal(&[contribution]));
   }
 
+
+  /// A site with all-zero coefficients has L_i(0) = 0. The derivative
+  /// formula would divide by zero. The shortcut must decline to decide.
   #[test]
-  fn test_is_zero_branch_optimal_sparse_high_lh_negative_derivative() {
-    // Sparse contribution with single variable site
-    // multiplicity=1.0, coefficients with weight on negative eigenvalue
-    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 1.0, 0.0, 0.0])]);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    // LH = 1.0^1 = 1.0 > 0.01
-    // Derivative at zero uses weighted coefficients over eigenvalues
-    assert!(result);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_sparse_high_lh_zero_derivative() {
-    // Sparse contribution where derivative is zero (all weight on eigval=0)
-    // JC69 eigenvalues sorted ascending, zero eigenvalue is last (index 3)
-    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 0.0, 0.0, 1.0])]);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    // LH = 1.0 > 0.01
-    // Derivative = 0 (not < 0)
-    assert!(!result);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_mixed_dense_and_sparse() {
-    // Mix dense and sparse contributions
-    let dense = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
-    let sparse = make_sparse_contribution(vec![(1.0, vec![0.0, 0.5, 0.0, 0.0])]);
-
-    let result = is_zero_branch_optimal(&[dense, sparse]);
-
-    // LH = 0.5 * 0.5 = 0.25 > 0.01
-    // Both have negative derivatives
-    assert!(result);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_multiple_positions_dense() {
-    // Multiple positions in a single dense contribution
-    // Each row is one position
+  fn test_is_zero_branch_optimal_zero_site_lh_returns_false() {
     let coefficients = array![
-      [0.0, 1.0, 0.0, 0.0], // position 1: negative derivative
-      [0.0, 1.0, 0.0, 0.0], // position 2: negative derivative
+      [0.0, 1.0, 0.0, 0.0], // valid site
+      [0.0, 0.0, 0.0, 0.0], // degenerate: L_i(0) = 0
     ];
     let contribution = make_dense_contribution(coefficients);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    // LH = 1.0 * 1.0 = 1.0 > 0.01
-    // Derivative = -4/3 + -4/3 = -8/3 < 0
-    assert!(result);
+    assert!(!is_zero_branch_optimal(&[contribution]));
   }
 
+  /// A site with negative coefficient sum (physically impossible but
+  /// numerically possible from floating-point error) must be rejected.
   #[test]
-  fn test_is_zero_branch_optimal_sparse_multiplicity_effect() {
-    // Multiplicity affects how site contributes to likelihood
-    // multiplicity=2 means coeff.sum()^2
-    let contribution = make_sparse_contribution(vec![(2.0, vec![0.0, 0.5, 0.0, 0.0])]);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    // LH = 0.5^2 = 0.25 > 0.01
-    // Derivative is also affected by multiplicity
-    assert!(result);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_boundary_lh_just_above_threshold() {
-    // LH just above 0.01 threshold
-    let coefficients = array![[0.0, 0.011, 0.0, 0.0]];
+  fn test_is_zero_branch_optimal_negative_site_lh_returns_false() {
+    let coefficients = array![[1.0, -2.0, 0.0, 0.0]];
     let contribution = make_dense_contribution(coefficients);
-
-    let result = is_zero_branch_optimal(&[contribution]);
-
-    // LH = 0.011 > 0.01, derivative < 0
-    assert!(result);
+    assert!(!is_zero_branch_optimal(&[contribution]));
   }
 
+  /// A site with non-finite coefficient sum (NaN or Inf) must be rejected.
   #[test]
-  fn test_is_zero_branch_optimal_boundary_lh_at_threshold() {
-    // LH exactly at 0.01 threshold (condition is >0.01, not >=)
-    let coefficients = array![[0.0, 0.01, 0.0, 0.0]];
+  fn test_is_zero_branch_optimal_nonfinite_site_lh_returns_false() {
+    let coefficients = array![[f64::INFINITY, 0.0, 0.0, 0.0]];
     let contribution = make_dense_contribution(coefficients);
+    assert!(!is_zero_branch_optimal(&[contribution]));
+  }
 
-    let result = is_zero_branch_optimal(&[contribution]);
 
-    // LH = 0.01, not > 0.01, so false
-    assert!(!result);
+  /// Two contributions both with negative derivatives combine additively.
+  #[test]
+  fn test_is_zero_branch_optimal_multiple_partitions_negative_derivative() {
+    let contrib1 = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
+    let contrib2 = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
+    assert!(is_zero_branch_optimal(&[contrib1, contrib2]));
+  }
+
+  /// Small per-site likelihoods with negative derivative. The old
+  /// raw-product approach would compute 0.05 * 0.05 = 0.0025 < 0.01 and
+  /// skip the derivative check. The new approach checks sites individually
+  /// (both are positive and finite) and evaluates derivative sign.
+  #[test]
+  fn test_is_zero_branch_optimal_small_lh_still_decides() {
+    let contrib1 = make_dense_contribution(array![[0.0, 0.05, 0.0, 0.0]]);
+    let contrib2 = make_dense_contribution(array![[0.0, 0.05, 0.0, 0.0]]);
+
+    // Per-site L_i(0) = 0.05 > 0: valid. Derivative = -4/3 + -4/3 < 0.
+    assert!(is_zero_branch_optimal(&[contrib1, contrib2]));
+  }
+
+  /// Mixed dense and sparse contributions with negative derivatives.
+  #[test]
+  fn test_is_zero_branch_optimal_mixed_dense_and_sparse() {
+    let dense = make_dense_contribution(array![[0.0, 0.5, 0.0, 0.0]]);
+    let sparse = make_sparse_contribution(vec![(1.0, vec![0.0, 0.5, 0.0, 0.0])]);
+    assert!(is_zero_branch_optimal(&[dense, sparse]));
+  }
+
+
+  /// Multiple positions in one dense contribution. Derivative sums over
+  /// all positions: -4/3 + -4/3 = -8/3 < 0.
+  #[test]
+  fn test_is_zero_branch_optimal_multiple_positions_dense() {
+    #[rustfmt::skip]
+    let coefficients = array![
+      [0.0, 1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0, 0.0],
+    ];
+    let contribution = make_dense_contribution(coefficients);
+    assert!(is_zero_branch_optimal(&[contribution]));
+  }
+
+
+  /// Sparse site with negative derivative.
+  #[test]
+  fn test_is_zero_branch_optimal_sparse_negative_derivative() {
+    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 1.0, 0.0, 0.0])]);
+    assert!(is_zero_branch_optimal(&[contribution]));
+  }
+
+  /// Sparse site where derivative is zero (all weight on zero eigenvalue).
+  #[test]
+  fn test_is_zero_branch_optimal_sparse_zero_derivative() {
+    let contribution = make_sparse_contribution(vec![(1.0, vec![0.0, 0.0, 0.0, 1.0])]);
+    assert!(!is_zero_branch_optimal(&[contribution]));
+  }
+
+  /// Sparse multiplicity scales the derivative but not the sign.
+  #[test]
+  fn test_is_zero_branch_optimal_sparse_multiplicity_preserves_sign() {
+    let contribution = make_sparse_contribution(vec![(50.0, vec![0.0, 0.5, 0.0, 0.0])]);
+    assert!(is_zero_branch_optimal(&[contribution]));
+  }
+
+
+  /// Coefficients that produce a positive finite L_i(0) but overflow in the
+  /// derivative ratio. This exercises the `derivative.is_finite()` guard at
+  /// optimize_unified.rs which would otherwise be a dead code path.
+  ///
+  /// With JC69's equal non-zero eigenvalues (-4/3), the per-site derivative
+  /// ratio is always bounded between -4/3 and 0, so overflow is impossible.
+  /// To trigger overflow, we need a GTR model with a very large eigenvalue
+  /// combined with near-canceling coefficients:
+  ///
+  /// eigvals = [-1e300, 0, 0, 0], coefficients = [1, 0, 0, -1 + 2*eps]:
+  /// - L_i(0) = 2 * f64::EPSILON ≈ 4.44e-16 (positive and finite)
+  /// - numerator = 1 * (-1e300) = -1e300
+  /// - ratio = -1e300 / 4.44e-16 ≈ -2.25e315 (overflows f64::MAX)
+  #[test]
+  fn test_is_zero_branch_optimal_nonfinite_derivative_returns_false() {
+    let mut gtr = jc69(JC69Params::default()).unwrap();
+    gtr.eigvals = array![-1e300, 0.0, 0.0, 0.0];
+    let coefficients = array![[1.0, 0.0, 0.0, -1.0 + f64::EPSILON * 2.0]];
+    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+
+    // Site likelihood is positive and finite (2 * f64::EPSILON)
+    assert!(contribution.all_sites_valid_at_zero());
+    // But the derivative overflows due to large eigenvalue / tiny denominator
+    assert!(!contribution.zero_branch_length_derivative().is_finite());
+    // So is_zero_branch_optimal declines to decide
+    assert!(!is_zero_branch_optimal(&[contribution]));
+  }
+
+
+  /// Verify the exact numerical value of the derivative, not just its sign.
+  ///
+  /// JC69 eigvals [-4/3, -4/3, -4/3, 0]. Coefficients [0, 1, 0, 0]:
+  /// - L_i(0) = 1
+  /// - numerator = 0*(-4/3) + 1*(-4/3) + 0*(-4/3) + 0*0 = -4/3
+  /// - derivative = -4/3 / 1 = -4/3
+  #[test]
+  fn test_is_zero_branch_optimal_derivative_magnitude_dense() {
+    let contribution = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    let derivative = contribution.zero_branch_length_derivative();
+    assert_abs_diff_eq!(-4.0 / 3.0, derivative, epsilon = 1e-10);
+  }
+
+  /// Sparse derivative with multiplicity scales the magnitude.
+  /// multiplicity=3, same coefficients: derivative = 3 * (-4/3) = -4.
+  #[test]
+  fn test_is_zero_branch_optimal_derivative_magnitude_sparse() {
+    let contribution = make_sparse_contribution(vec![(3.0, vec![0.0, 1.0, 0.0, 0.0])]);
+    let derivative = contribution.zero_branch_length_derivative();
+    assert_abs_diff_eq!(-4.0, derivative, epsilon = 1e-10);
+  }
+
+  /// Multi-site derivative sums per-site values.
+  /// Two sites each contributing -4/3: total = -8/3.
+  #[test]
+  fn test_is_zero_branch_optimal_derivative_magnitude_multi_site() {
+    #[rustfmt::skip]
+    let coefficients = array![
+      [0.0, 1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0, 0.0],
+    ];
+    let contribution = make_dense_contribution(coefficients);
+    let derivative = contribution.zero_branch_length_derivative();
+    assert_abs_diff_eq!(-8.0 / 3.0, derivative, epsilon = 1e-10);
+  }
+
+
+  /// Dense and sparse representations of the same single-site coefficients
+  /// must produce identical derivative values and validity results.
+  #[test]
+  fn test_is_zero_branch_optimal_dense_sparse_derivative_parity() {
+    let coeffs = vec![0.3, 0.5, 0.1, 0.1];
+    let dense = make_dense_contribution(array![[coeffs[0], coeffs[1], coeffs[2], coeffs[3]]]);
+    let sparse = make_sparse_contribution(vec![(1.0, coeffs)]);
+
+    assert_eq!(dense.all_sites_valid_at_zero(), sparse.all_sites_valid_at_zero());
+    assert_abs_diff_eq!(
+      dense.zero_branch_length_derivative(),
+      sparse.zero_branch_length_derivative(),
+      epsilon = 1e-10
+    );
+  }
+
+  /// Multi-site parity: 3 sites with different coefficient patterns.
+  #[test]
+  fn test_is_zero_branch_optimal_dense_sparse_derivative_parity_multi_site() {
+    #[rustfmt::skip]
+    let dense = make_dense_contribution(array![
+      [0.3, 0.5, 0.1, 0.1],
+      [0.0, 0.0, 0.8, 0.2],
+      [0.1, 0.1, 0.1, 0.7],
+    ]);
+    let sparse = make_sparse_contribution(vec![
+      (1.0, vec![0.3, 0.5, 0.1, 0.1]),
+      (1.0, vec![0.0, 0.0, 0.8, 0.2]),
+      (1.0, vec![0.1, 0.1, 0.1, 0.7]),
+    ]);
+
+    assert_eq!(dense.all_sites_valid_at_zero(), sparse.all_sites_valid_at_zero());
+    assert_abs_diff_eq!(
+      dense.zero_branch_length_derivative(),
+      sparse.zero_branch_length_derivative(),
+      epsilon = 1e-10
+    );
   }
 }

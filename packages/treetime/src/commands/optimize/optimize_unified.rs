@@ -192,10 +192,7 @@ fn evaluate_mixed_impl(
 pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
   // Verify every site's likelihood at t=0 is positive and finite.
   // If any site is degenerate, the derivative is undefined.
-  if !contributions
-    .iter()
-    .all(|contrib| contrib.all_sites_valid_at_zero())
-  {
+  if !contributions.iter().all(|contrib| contrib.all_sites_valid_at_zero()) {
     return false;
   }
 
