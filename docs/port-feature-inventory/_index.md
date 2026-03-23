@@ -416,7 +416,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
 - [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`)
 - [x] Grid search fallback when second derivative >= 0 (100 points, linear grid)
-- [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
+- [x] Zero branch length short-circuit (per-site validity check then derivative sign at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
 - [x] Collect dense contribution (`PartitionMarginalDense`)
 - [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
@@ -465,7 +465,6 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [/] Command always builds one sparse and one dense partition from the same full alignment
 - [ ] `--dense` (parsed but not wired, `infer_dense()` is a stub returning false)
 - [ ] Separate dense-only and sparse-only command modes not exposed
-- [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency (see [known issue](../port-known-issues/N-optimize-sparse-zero-branch-no-derivative.md))
 
 ## 8. Pruning (v1-Only Command)
 

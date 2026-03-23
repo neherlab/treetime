@@ -4,19 +4,21 @@
 
 ## Summary
 
-| Category                        | Files  | Tests  | Support Files | Type |
-| ------------------------------- | ------ | ------ | ------------- | ---- |
-| Coefficient extraction (dense)  | 5      | 13     | 1             | Unit |
-| Coefficient extraction (sparse) | 7      | 19     | 0             | Unit |
-| Newton-Raphson convergence      | 2      | 5      | 1             | Unit |
-| Grid search                     | 3      | 8      | 1             | Unit |
-| Dense/sparse equivalence        | 4      | 8      | 1             | Unit |
-| Convergence control             | 3      | 8      | 1             | Unit |
-| Optimization metrics            | 1      | 7      | 0             | Unit |
-| Zero branch optimal             | 1      | 13     | 0             | Unit |
-| Initial guess GTR messages      | 1      | 2      | 0             | Unit |
-| Initial guess soft Hamming      | 1      | 10     | 0             | Unit |
-| **Total**                       | **28** | **93** | **5**         | Unit |
+| Category                        | Files  | Tests   | Support Files | Type |
+| ------------------------------- | ------ | ------- | ------------- | ---- |
+| Coefficient extraction (dense)  | 5      | 13      | 1             | Unit |
+| Coefficient extraction (sparse) | 7      | 19      | 0             | Unit |
+| Newton-Raphson convergence      | 2      | 5       | 1             | Unit |
+| Grid search                     | 3      | 8       | 1             | Unit |
+| Dense/sparse equivalence        | 4      | 8       | 1             | Unit |
+| Convergence control             | 3      | 8       | 1             | Unit |
+| Optimization metrics            | 1      | 7       | 0             | Unit |
+| Zero branch optimal             | 1      | 22      | 0             | Unit |
+| Dense edge_subs                 | 1      | 5       | 0             | Unit |
+| Initial guess gap handling      | 1      | 7       | 0             | Unit |
+| Initial guess GTR messages      | 1      | 2       | 0             | Unit |
+| Initial guess soft Hamming      | 1      | 10      | 0             | Unit |
+| **Total**                       | **30** | **114** | **5**         | Unit |
 
 ---
 
@@ -331,25 +333,64 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 ---
 
+## Dense Edge Substitutions
+
+**File:** [`test_dense_edge_subs.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs)
+
+Tests for dense `edge_subs()` which counts branch mutations by comparing MAP states of node posteriors. Verifies correctness against manually constructed partitions and full marginal inference pipeline output.
+
+| Test                                                                 | Purpose                                               |
+| -------------------------------------------------------------------- | ----------------------------------------------------- |
+| `test_dense_edge_subs_no_false_mutation_from_uniform_outgroup`       | Uniform msg_to_child must not create false mutations  |
+| `test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages` | Agreeing edge messages must not hide real mutations   |
+| `test_dense_edge_subs_match_reconstructed_branch_differences`        | edge_subs matches MAP-state diffs from posteriors     |
+| `test_dense_edge_subs_excludes_gap_positions_with_posteriors`        | Gap positions excluded even with differing posteriors |
+
+---
+
 ## Zero Branch Optimal
 
 **File:** [`test_is_zero_branch_optimal.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_is_zero_branch_optimal.rs)
 
-| Test                                                                    | Purpose                          |
-| ----------------------------------------------------------------------- | -------------------------------- |
-| `test_is_zero_branch_optimal_empty_contributions`                       | Empty contributions return false |
-| `test_is_zero_branch_optimal_high_lh_negative_derivative_returns_true`  | High LH + negative deriv = true  |
-| `test_is_zero_branch_optimal_high_lh_positive_derivative_returns_false` | High LH + positive deriv = false |
-| `test_is_zero_branch_optimal_low_lh_skips_derivative`                   | Low LH skips derivative check    |
-| `test_is_zero_branch_optimal_multiple_partitions_product_lh`            | Multiple partitions product LH   |
-| `test_is_zero_branch_optimal_multiple_partitions_low_combined_lh`       | Low combined LH returns false    |
-| `test_is_zero_branch_optimal_sparse_high_lh_negative_derivative`        | Sparse with negative derivative  |
-| `test_is_zero_branch_optimal_sparse_high_lh_zero_derivative`            | Sparse with zero derivative      |
-| `test_is_zero_branch_optimal_mixed_dense_and_sparse`                    | Mixed dense and sparse           |
-| `test_is_zero_branch_optimal_multiple_positions_dense`                  | Multiple dense positions         |
-| `test_is_zero_branch_optimal_sparse_multiplicity_effect`                | Multiplicity affects result      |
-| `test_is_zero_branch_optimal_boundary_lh_just_above_threshold`          | LH just above 0.01 threshold     |
-| `test_is_zero_branch_optimal_boundary_lh_at_threshold`                  | LH at exact threshold boundary   |
+Tests for the derivative-sign-based zero-branch shortcut. The decision uses per-site validity (L_i(0) > 0 and finite) and total derivative sign (negative means zero is optimal). No arbitrary threshold.
+
+| Test                                                                  | Purpose                                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| `test_is_zero_branch_optimal_empty_contributions`                     | Empty contributions: derivative sum = 0, returns false |
+| `test_is_zero_branch_optimal_negative_derivative_returns_true`        | Negative derivative at t=0 returns true                |
+| `test_is_zero_branch_optimal_zero_derivative_returns_false`           | Zero derivative (not < 0) returns false                |
+| `test_is_zero_branch_optimal_nonnegative_derivative_returns_false`    | Non-negative derivative returns false                  |
+| `test_is_zero_branch_optimal_scale_invariant_dense`                   | 1 site vs 100 identical: same decision                 |
+| `test_is_zero_branch_optimal_scale_invariant_sparse`                  | Single vs high-multiplicity: same decision             |
+| `test_is_zero_branch_optimal_underflow_resistant`                     | 1000 sites with L_i(0)=0.25: does not underflow        |
+| `test_is_zero_branch_optimal_zero_site_lh_returns_false`              | Degenerate site L_i(0)=0: declines to decide           |
+| `test_is_zero_branch_optimal_negative_site_lh_returns_false`          | Negative site likelihood: declines to decide           |
+| `test_is_zero_branch_optimal_nonfinite_site_lh_returns_false`         | Non-finite site likelihood: declines to decide         |
+| `test_is_zero_branch_optimal_multiple_partitions_negative_derivative` | Two contributions with negative derivatives            |
+| `test_is_zero_branch_optimal_small_lh_still_decides`                  | Small L_i(0) with negative derivative: returns true    |
+| `test_is_zero_branch_optimal_mixed_dense_and_sparse`                  | Mixed dense and sparse contributions                   |
+| `test_is_zero_branch_optimal_multiple_positions_dense`                | Multiple dense positions sum derivatives               |
+| `test_is_zero_branch_optimal_sparse_negative_derivative`              | Sparse site with negative derivative                   |
+| `test_is_zero_branch_optimal_sparse_zero_derivative`                  | Sparse site with zero derivative                       |
+| `test_is_zero_branch_optimal_sparse_multiplicity_preserves_sign`      | Multiplicity scales magnitude, preserves sign          |
+
+---
+
+## Initial Guess Gap Handling
+
+**File:** [`test_initial_guess_gaps.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gaps.rs)
+
+Tests for gap-position exclusion and rate adjustment in the initial branch-length guess. Verifies that `initial_guess_mixed()` and `edge_subs()` correctly handle alignments with gaps.
+
+| Test                                                      | Purpose                                                      |
+| --------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_initial_guess_dense_effective_length_with_gaps`     | Dense effective length excludes shared gap positions         |
+| `test_initial_guess_dense_effective_length_without_gaps`  | Dense effective length equals alignment length without gaps  |
+| `test_initial_guess_sparse_effective_length_with_gaps`    | Sparse effective length excludes shared gap positions        |
+| `test_initial_guess_sparse_effective_length_without_gaps` | Sparse effective length equals alignment length without gaps |
+| `test_dense_edge_subs_excludes_gap_positions`             | Dense edge_subs reports no substitutions at gap positions    |
+| `test_initial_guess_sparse_gap_adjusted_rate`             | Sparse initial guess adjusts rate per informative site       |
+| `test_initial_guess_dense_gap_adjusted_branch_length`     | Dense initial guess adjusts branch length for gaps           |
 
 ---
 
