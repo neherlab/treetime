@@ -293,8 +293,7 @@ where
 /// Initial estimation of branch lengths for mixed partitions.
 ///
 /// Computes per-edge substitution count over canonical (non-gap, non-ambiguous)
-/// positions via `edge_initial_differences()` (delegates to `edge_subs().len()`
-/// for both sparse and dense partitions).
+/// positions via `edge_subs().len()` for both sparse and dense partitions.
 ///
 /// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
@@ -306,9 +305,9 @@ where
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    let differences: f64 = partitions
+    let sub_count: usize = partitions
       .iter()
-      .map(|partition| partition.read_arc().edge_initial_differences(graph, edge_key))
+      .map(|partition| partition.read_arc().edge_subs(graph, edge_key).map(|subs| subs.len()))
       .sum::<Result<_, _>>()?;
 
     let effective_length: usize = partitions
@@ -317,7 +316,7 @@ where
       .sum::<Result<_, _>>()?;
 
     let branch_length = if effective_length > 0 {
-      differences / (effective_length as f64)
+      sub_count as f64 / effective_length as f64
     } else {
       0.0
     };

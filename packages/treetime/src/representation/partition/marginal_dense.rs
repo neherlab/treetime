@@ -82,8 +82,8 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
   /// peak at a different state. Comparing partial-message argmax would report false
   /// mutations at such positions.
   ///
-  /// The default `edge_initial_differences()` delegates to this function,
-  /// counting discrete substitutions for initial branch length estimation.
+  /// `initial_guess_mixed()` calls this to count discrete substitutions for
+  /// initial branch length estimation.
   fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;

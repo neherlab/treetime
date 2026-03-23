@@ -34,13 +34,6 @@ pub trait PartitionOptimizeOps: Send + Sync {
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
-
-  /// Return the number of substitutions for initial branch length estimation.
-  ///
-  /// Delegates to `edge_subs().len()` for both sparse and dense partitions.
-  fn edge_initial_differences(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<f64, Report> {
-    Ok(self.edge_subs(graph, edge_key)?.len() as f64)
-  }
 }
 
 pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;
