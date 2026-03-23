@@ -22,16 +22,8 @@
 //!
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::gtr::gtr::GTR;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::DenseSeqDis;
-use eyre::Report;
-use ndarray::{Array2, Axis};
-use num::clamp;
-use ordered_float::OrderedFloat;
-use parking_lot::RwLock;
-use std::sync::Arc;
-use treetime_graph::edge::HasBranchLength;
+use ndarray::Array2;
 
 pub struct PartitionContribution {
   pub coefficients: Array2<f64>,
@@ -72,93 +64,4 @@ pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis,
     coefficients,
     gtr.clone(), // TODO: avoid clone
   )
-}
-
-pub fn run_optimize_dense(
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-) -> Result<(), Report> {
-  let total_length: usize = partitions
-    .iter()
-    .map(|part| part.read_arc().get_sequence_length())
-    .sum();
-  let one_mutation = 1.0 / total_length as f64;
-  let n_partitions = partitions.len();
-  graph.get_edges().iter().for_each(|edge_ref| {
-    let edge_key = edge_ref.read_arc().key();
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    let mut branch_length = edge.branch_length().unwrap_or(0.0);
-    let mut new_branch_length;
-    let contributions = (0..n_partitions)
-      .map(|pi| {
-        let partition = partitions[pi].read_arc();
-        let edge_partition = &partition.edges[&edge_key];
-        get_coefficients(
-          &edge_partition.msg_to_parent,
-          &edge_partition.msg_to_child,
-          &partition.gtr,
-        )
-      })
-      .collect::<Vec<_>>();
-
-    // Cheap check whether the branch length is zero
-    let zero_branch_length_lh: f64 = contributions
-      .iter()
-      .map(|contribution| contribution.coefficients.sum_axis(Axis(1)).product())
-      .product();
-
-    if zero_branch_length_lh > 0.01 {
-      let zero_branch_length_derivative: f64 = contributions
-        .iter()
-        .map(|contribution| {
-          let gtr = &contribution.gtr;
-          ((&contribution.coefficients * &gtr.eigvals).sum_axis(Axis(1)) / &contribution.coefficients.sum_axis(Axis(1)))
-            .sum()
-        })
-        .sum();
-      if zero_branch_length_derivative < 0.0 {
-        edge.set_branch_length(Some(0.0));
-        return;
-      }
-    }
-
-    // Otherwise, we need to optimize the branch length
-    let metrics = evaluate(&contributions, branch_length);
-    if metrics.log_lh.is_finite() && metrics.second_derivative < 0.0 {
-      // Newton's method to find the optimal branch length
-      new_branch_length = branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length);
-      let max_iter = 10;
-      let mut n_iter = 0;
-      while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
-        let new_metrics = evaluate(&contributions, new_branch_length);
-        if new_metrics.second_derivative < 0.0 {
-          branch_length = new_branch_length;
-          new_branch_length = branch_length
-            - clamp(
-              new_metrics.derivative / new_metrics.second_derivative,
-              -1.0,
-              branch_length,
-            );
-        } else {
-          break;
-        }
-        n_iter += 1;
-      }
-    } else {
-      // Evaluate on a vector of branch lengths to find the maximum
-      let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 10);
-      // This seems like a bit of a mess.
-      let best_branch_length = branch_lengths
-        .iter()
-        .copied()
-        .max_by_key(|&bl| {
-          let metrics = evaluate(&contributions, bl);
-          OrderedFloat(metrics.log_lh)
-        })
-        .unwrap();
-      new_branch_length = best_branch_length;
-    }
-    edge.set_branch_length(Some(new_branch_length));
-  });
-  Ok(())
 }
