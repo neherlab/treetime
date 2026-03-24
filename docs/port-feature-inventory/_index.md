@@ -417,7 +417,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
 - [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`)
 - [x] Grid search fallback when second derivative >= 0 (100 points, linear grid)
-- [x] Zero branch length short-circuit (per-site validity check then derivative sign at zero)
+- [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
 - [x] Collect dense contribution (`PartitionMarginalDense`)
 - [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
@@ -430,7 +430,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
-- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75, see [known issue](../port-known-issues/M-optimize-oscillation-no-damping.md))
+- [x] Damping in marginal loop (`--damping`, default 0.75, matching v0: `new*(1-d^(i+1)) + old*d^(i+1)`)
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)

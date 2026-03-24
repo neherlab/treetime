@@ -4,21 +4,19 @@
 
 ## Summary
 
-| Category                        | Files  | Tests   | Support Files | Type |
-| ------------------------------- | ------ | ------- | ------------- | ---- |
-| Coefficient extraction (dense)  | 5      | 13      | 1             | Unit |
-| Coefficient extraction (sparse) | 7      | 19      | 0             | Unit |
-| Newton-Raphson convergence      | 2      | 5       | 1             | Unit |
-| Grid search                     | 3      | 8       | 1             | Unit |
-| Dense/sparse equivalence        | 4      | 8       | 1             | Unit |
-| Convergence control             | 3      | 8       | 1             | Unit |
-| Optimization metrics            | 1      | 7       | 0             | Unit |
-| Zero branch optimal             | 1      | 22      | 0             | Unit |
-| Dense edge_subs                 | 1      | 5       | 0             | Unit |
-| Initial guess gap handling      | 1      | 7       | 0             | Unit |
-| Initial guess formula           | 1      | 2       | 0             | Unit |
-| Initial guess GTR messages      | 1      | 2       | 0             | Unit |
-| **Total**                       | **30** | **106** | **5**         | Unit |
+| Category                        | Files  | Tests  | Support Files | Type |
+| ------------------------------- | ------ | ------ | ------------- | ---- |
+| Coefficient extraction (dense)  | 5      | 13     | 1             | Unit |
+| Coefficient extraction (sparse) | 7      | 19     | 0             | Unit |
+| Newton-Raphson convergence      | 2      | 5      | 1             | Unit |
+| Grid search                     | 3      | 8      | 1             | Unit |
+| Dense/sparse equivalence        | 4      | 8      | 1             | Unit |
+| Convergence control             | 3      | 8      | 1             | Unit |
+| Optimization metrics            | 1      | 7      | 0             | Unit |
+| Zero branch optimal             | 1      | 13     | 0             | Unit |
+| Initial guess GTR messages      | 1      | 2      | 0             | Unit |
+| Initial guess soft Hamming      | 1      | 10     | 0             | Unit |
+| **Total**                       | **28** | **93** | **5**         | Unit |
 
 ---
 
@@ -284,11 +282,11 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 **File:** [`test_convergence_iterations.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_iterations.rs)
 
-| Test                                                 | Purpose                          |
-| ---------------------------------------------------- | -------------------------------- |
-| `test_optimization_converges_within_iterations`      | Converges within iteration limit |
-| `test_optimization_improves_or_maintains_likelihood` | LH improves or stays stable      |
-| `test_optimization_produces_valid_branch_lengths`    | Branch lengths valid after opt   |
+| Test                                                 | Purpose                                                   |
+| ---------------------------------------------------- | --------------------------------------------------------- |
+| `test_optimization_converges_within_iterations`      | Bounded oscillation: undamped LH stays within tight range |
+| `test_optimization_improves_or_maintains_likelihood` | Strict non-regression: final LH >= initial LH             |
+| `test_optimization_produces_valid_branch_lengths`    | Branch lengths valid after opt                            |
 
 ### Edge Cases Tests
 
@@ -317,6 +315,39 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 ---
 
+## Outer-Loop Damping
+
+**File:** [`test_damping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_damping.rs)
+
+| Test                                                     | Cases | Purpose                                                                           |
+| -------------------------------------------------------- | ----- | --------------------------------------------------------------------------------- |
+| `test_save_branch_lengths_captures_all_edges`            | 1     | Verifies save_branch_lengths reads all edges                                      |
+| `test_apply_damping_zero_is_noop`                        | 1     | damping=0.0 leaves optimized values unchanged                                     |
+| `test_apply_damping_weights_match_v0`                    | 5     | Blend weights match v0 formula at iterations 0-9                                  |
+| `test_apply_damping_blends_correctly`                    | 1     | Verifies bl = new*w_new + old*w_old                                               |
+| `test_apply_damping_new_weight_increases_with_iteration` | 1     | New weight monotonically increases over iterations                                |
+| `test_damped_optimization_converges`                     | 1     | Production convergence criterion, sign-flip oscillation detection, tail stability |
+| `test_damped_optimization_does_not_regress`              | 1     | Strict non-regression: final LH >= initial LH                                     |
+
+---
+
+## v0 Parity and Damped vs Undamped (Golden Master)
+
+**File:** [`test_gm_optimize.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs)
+
+| Test                                  | Cases | Purpose                                                        |
+| ------------------------------------- | ----- | -------------------------------------------------------------- |
+| `test_gm_optimize`                    | 1     | v0/v1 total branch length parity within 5% (flu/h3n2/20, JC69) |
+| `test_gm_optimize_damped_vs_undamped` | 1     | Damping does not increase oscillation on real dataset          |
+
+Fixtures in `__fixtures__/`:
+
+- `gm_optimize_inputs.json` - shared test parameters
+- `gm_optimize_outputs.json` - v0 reference captured by `gm_optimize_capture`
+- `gm_optimize_capture` - Python capture script for v0 TreeAnc.optimize_tree_marginal
+
+---
+
 ## Optimization Metrics
 
 **File:** [`test_optimization_metrics.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimization_metrics.rs)
@@ -333,64 +364,25 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 ---
 
-## Dense Edge Substitutions
-
-**File:** [`test_dense_edge_subs.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs)
-
-Tests for dense `edge_subs()` which counts branch mutations by comparing MAP states of node posteriors. Verifies correctness against manually constructed partitions and full marginal inference pipeline output.
-
-| Test                                                                 | Purpose                                               |
-| -------------------------------------------------------------------- | ----------------------------------------------------- |
-| `test_dense_edge_subs_no_false_mutation_from_uniform_outgroup`       | Uniform msg_to_child must not create false mutations  |
-| `test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages` | Agreeing edge messages must not hide real mutations   |
-| `test_dense_edge_subs_match_reconstructed_branch_differences`        | edge_subs matches MAP-state diffs from posteriors     |
-| `test_dense_edge_subs_excludes_gap_positions_with_posteriors`        | Gap positions excluded even with differing posteriors |
-
----
-
 ## Zero Branch Optimal
 
 **File:** [`test_is_zero_branch_optimal.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_is_zero_branch_optimal.rs)
 
-Tests for the derivative-sign-based zero-branch shortcut. The decision uses per-site validity (L_i(0) > 0 and finite) and total derivative sign (negative means zero is optimal). No arbitrary threshold.
-
-| Test                                                                  | Purpose                                                |
-| --------------------------------------------------------------------- | ------------------------------------------------------ |
-| `test_is_zero_branch_optimal_empty_contributions`                     | Empty contributions: derivative sum = 0, returns false |
-| `test_is_zero_branch_optimal_negative_derivative_returns_true`        | Negative derivative at t=0 returns true                |
-| `test_is_zero_branch_optimal_zero_derivative_returns_false`           | Zero derivative (not < 0) returns false                |
-| `test_is_zero_branch_optimal_nonnegative_derivative_returns_false`    | Non-negative derivative returns false                  |
-| `test_is_zero_branch_optimal_scale_invariant_dense`                   | 1 site vs 100 identical: same decision                 |
-| `test_is_zero_branch_optimal_scale_invariant_sparse`                  | Single vs high-multiplicity: same decision             |
-| `test_is_zero_branch_optimal_underflow_resistant`                     | 1000 sites with L_i(0)=0.25: does not underflow        |
-| `test_is_zero_branch_optimal_zero_site_lh_returns_false`              | Degenerate site L_i(0)=0: declines to decide           |
-| `test_is_zero_branch_optimal_negative_site_lh_returns_false`          | Negative site likelihood: declines to decide           |
-| `test_is_zero_branch_optimal_nonfinite_site_lh_returns_false`         | Non-finite site likelihood: declines to decide         |
-| `test_is_zero_branch_optimal_multiple_partitions_negative_derivative` | Two contributions with negative derivatives            |
-| `test_is_zero_branch_optimal_small_lh_still_decides`                  | Small L_i(0) with negative derivative: returns true    |
-| `test_is_zero_branch_optimal_mixed_dense_and_sparse`                  | Mixed dense and sparse contributions                   |
-| `test_is_zero_branch_optimal_multiple_positions_dense`                | Multiple dense positions sum derivatives               |
-| `test_is_zero_branch_optimal_sparse_negative_derivative`              | Sparse site with negative derivative                   |
-| `test_is_zero_branch_optimal_sparse_zero_derivative`                  | Sparse site with zero derivative                       |
-| `test_is_zero_branch_optimal_sparse_multiplicity_preserves_sign`      | Multiplicity scales magnitude, preserves sign          |
-
----
-
-## Initial Guess Gap Handling
-
-**File:** [`test_initial_guess_gaps.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gaps.rs)
-
-Tests for gap-position exclusion and rate adjustment in the initial branch-length guess. Verifies that `initial_guess_mixed()` and `edge_subs()` correctly handle alignments with gaps.
-
-| Test                                                      | Purpose                                                      |
-| --------------------------------------------------------- | ------------------------------------------------------------ |
-| `test_initial_guess_dense_effective_length_with_gaps`     | Dense effective length excludes shared gap positions         |
-| `test_initial_guess_dense_effective_length_without_gaps`  | Dense effective length equals alignment length without gaps  |
-| `test_initial_guess_sparse_effective_length_with_gaps`    | Sparse effective length excludes shared gap positions        |
-| `test_initial_guess_sparse_effective_length_without_gaps` | Sparse effective length equals alignment length without gaps |
-| `test_dense_edge_subs_excludes_gap_positions`             | Dense edge_subs reports no substitutions at gap positions    |
-| `test_initial_guess_sparse_gap_adjusted_rate`             | Sparse initial guess adjusts rate per informative site       |
-| `test_initial_guess_dense_gap_adjusted_branch_length`     | Dense initial guess adjusts branch length for gaps           |
+| Test                                                                    | Purpose                          |
+| ----------------------------------------------------------------------- | -------------------------------- |
+| `test_is_zero_branch_optimal_empty_contributions`                       | Empty contributions return false |
+| `test_is_zero_branch_optimal_high_lh_negative_derivative_returns_true`  | High LH + negative deriv = true  |
+| `test_is_zero_branch_optimal_high_lh_positive_derivative_returns_false` | High LH + positive deriv = false |
+| `test_is_zero_branch_optimal_low_lh_skips_derivative`                   | Low LH skips derivative check    |
+| `test_is_zero_branch_optimal_multiple_partitions_product_lh`            | Multiple partitions product LH   |
+| `test_is_zero_branch_optimal_multiple_partitions_low_combined_lh`       | Low combined LH returns false    |
+| `test_is_zero_branch_optimal_sparse_high_lh_negative_derivative`        | Sparse with negative derivative  |
+| `test_is_zero_branch_optimal_sparse_high_lh_zero_derivative`            | Sparse with zero derivative      |
+| `test_is_zero_branch_optimal_mixed_dense_and_sparse`                    | Mixed dense and sparse           |
+| `test_is_zero_branch_optimal_multiple_positions_dense`                  | Multiple dense positions         |
+| `test_is_zero_branch_optimal_sparse_multiplicity_effect`                | Multiplicity affects result      |
+| `test_is_zero_branch_optimal_boundary_lh_just_above_threshold`          | LH just above 0.01 threshold     |
+| `test_is_zero_branch_optimal_boundary_lh_at_threshold`                  | LH at exact threshold boundary   |
 
 ---
 
@@ -398,7 +390,7 @@ Tests for gap-position exclusion and rate adjustment in the initial branch-lengt
 
 **File:** [`test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
 
-Regression tests verifying that `initial_guess_mixed()` reads node posteriors computed with the real GTR model, not stale posteriors from the dummy JC69 initialization pass.
+Regression tests verifying that `initial_guess_mixed()` reads edge messages computed with the real GTR model, not stale JC69 messages from the dummy initialization pass.
 
 | Test                                             | Purpose                                                       |
 | ------------------------------------------------ | ------------------------------------------------------------- |
@@ -407,13 +399,28 @@ Regression tests verifying that `initial_guess_mixed()` reads node posteriors co
 
 ---
 
-## Initial Guess Formula
+## Initial Guess Soft Hamming
 
-**File:** [`test_initial_guess_formula.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs)
+**File:** [`test_initial_guess_soft_hamming.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_soft_hamming.rs)
 
-Regression tests verifying that `initial_guess_mixed()` sets `branch_length = edge_subs().len() / edge_effective_length()` per edge for both sparse and dense partitions.
+Tests for the dense partition's soft Hamming distance used in `initial_guess_mixed()`. Validates that `edge_initial_differences()` computes `sum(1 - dot(pp, pc))` correctly across profile shapes.
 
-| Test                                | Purpose                                         |
-| ----------------------------------- | ----------------------------------------------- |
-| `test_initial_guess_formula_sparse` | Formula holds for sparse partitions             |
-| `test_initial_guess_formula_dense`  | Formula holds for dense partitions (regression) |
+### Direct Numerical Tests
+
+| Test                                                 | Purpose                                            |
+| ---------------------------------------------------- | -------------------------------------------------- |
+| `test_sharp_matching_profiles_zero_differences`      | One-hot matching profiles: dot=1, diff=0           |
+| `test_sharp_mismatched_profiles_integer_differences` | One-hot mismatched profiles: dot=0, diff=1 each    |
+| `test_uniform_profiles_fractional_differences`       | Uniform 0.25: dot=0.25, diff=0.75 per position     |
+| `test_weakly_informative_same_dominant_state`        | Dominant 0.7 same state: dot=0.52, diff=0.48       |
+| `test_weakly_informative_different_dominant_state`   | Dominant 0.7 different states: dot=0.16, diff=0.84 |
+| `test_mixed_profiles_sum_of_contributions`           | Sum of sharp, uniform, and weak contributions      |
+| `test_gap_positions_excluded`                        | Gap ranges excluded from soft Hamming sum          |
+
+### Pipeline Integration Tests
+
+| Test                                              | Purpose                                            |
+| ------------------------------------------------- | -------------------------------------------------- |
+| `test_identical_sequences_hard_zero_soft_small`   | Identical sequences: hard=0, soft small positive   |
+| `test_divergent_sequences_soft_differs_from_hard` | Divergent sequences: soft and hard disagree        |
+| `test_differences_bounded_by_effective_length`    | 0 <= differences <= effective_length for all edges |

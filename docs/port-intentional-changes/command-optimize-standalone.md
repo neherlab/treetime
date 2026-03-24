@@ -91,14 +91,14 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 
 ## Differences from v0's internal optimization
 
-| Aspect              | v0 (internal)                            | v1 (standalone command)                |
-| ------------------- | ---------------------------------------- | -------------------------------------- |
-| Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand              |
-| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp` |
-| Outer loop damping  | Exponential decay (factor 0.75)          | No damping                             |
-| Per-branch method   | Brent's method (derivative-free)         | Newton-Raphson + grid fallback         |
-| Partition support   | Single representation                    | Mixed dense + sparse partitions        |
-| Model selection     | GTR inferred internally                  | User-specified via `--model`           |
+| Aspect              | v0 (internal)                            | v1 (standalone command)                       |
+| ------------------- | ---------------------------------------- | --------------------------------------------- |
+| Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                     |
+| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`        |
+| Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0.75) |
+| Per-branch method   | Brent's method (derivative-free)         | Newton-Raphson + grid fallback                |
+| Partition support   | Single representation                    | Mixed dense + sparse partitions               |
+| Model selection     | GTR inferred internally                  | User-specified via `--model`                  |
 
 The per-branch optimization method difference (Newton-Raphson vs Brent) is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
 
@@ -106,7 +106,7 @@ The per-branch optimization method difference (Newton-Raphson vs Brent) is docum
 
 Users can run `treetime optimize --tree=tree.nwk --aln=aln.fasta --outdir=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
 
-The lack of outer loop damping (present in v0) can cause oscillation between iterations for datasets where the likelihood surface is poorly conditioned. This is tracked as a known issue in [M-optimize-oscillation-no-damping](../port-known-issues/M-optimize-oscillation-no-damping.md).
+v1 applies the same outer-loop exponential damping as v0 (`--damping`, default 0.75) to prevent oscillation between iterations for datasets where the likelihood surface is poorly conditioned.
 
 ## References
 

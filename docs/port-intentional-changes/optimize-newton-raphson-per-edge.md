@@ -16,9 +16,9 @@ v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marg
 
 ## What v1 does
 
-v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L217-L287](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L217-L287)) uses Newton-Raphson with two fallback layers:
+v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250)) uses Newton-Raphson with two fallback layers:
 
-1. **Newton-Raphson with analytical derivatives.** The eigendecomposition `Q = V diag(lambda) V^{-1}` allows computing likelihood, first derivative, and second derivative from the same cached coefficients `k_c = (msg.dot(V)) * (msg.dot(V_inv.T))` (dense: [packages/treetime/src/commands/optimize/optimize_dense.rs#L59-L67](../../packages/treetime/src/commands/optimize/optimize_dense.rs#L59-L67), sparse: [packages/treetime/src/commands/optimize/optimize_sparse.rs#L40-L113](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L40-L113)). The derivatives come at negligible cost beyond the likelihood evaluation:
+1. **Newton-Raphson with analytical derivatives.** The eigendecomposition `Q = V diag(lambda) V^{-1}` allows computing likelihood, first derivative, and second derivative from the same cached coefficients `k_c = (msg.dot(V)) * (msg.dot(V_inv.T))` (dense: [packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75](../../packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75), sparse: [packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119)). The derivatives come at negligible cost beyond the likelihood evaluation:
 
    ```
    L   = sum_j log(sum_c k_c exp(lambda_c * t))
@@ -26,11 +26,11 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
    L'' = sum_j (sum_c k_c lambda_c^2 exp(lambda_c * t)) / (...) - (L')^2
    ```
 
-   The Newton step is clamped to `[-1.0, current_bl]` to enforce non-negativity ([optimize_unified.rs#L250](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L250)). Max 10 inner iterations, convergence at `|delta_bl| <= 0.001 * bl`.
+   The Newton step is clamped to `[-1.0, current_bl]` to enforce non-negativity ([optimize_unified.rs#L213](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L213)). Max 10 inner iterations, convergence at `|delta_bl| <= 0.001 * bl`.
 
-2. **Grid search fallback.** When the second derivative is non-negative (non-concave region where Newton would step the wrong way), v1 evaluates 100 equally-spaced points on `[0.1 * one_mutation, 1.5 * bl + one_mutation]` and selects the maximum ([optimize_unified.rs#L270-L282](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L270-L282)).
+2. **Grid search fallback.** When the second derivative is non-negative (non-concave region where Newton would step the wrong way), v1 evaluates 100 equally-spaced points on `[0.1 * one_mutation, 1.5 * bl + one_mutation]` and selects the maximum ([optimize_unified.rs#L233-L244](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L233-L244)).
 
-3. **Zero-branch short-circuit.** Before any optimization, v1 checks if zero branch length is optimal. Each site's likelihood at t=0 must be positive and finite, then the total derivative sign determines the decision. If derivative < 0, zero is optimal (`is_zero_branch_optimal()` at [optimize_unified.rs#L188-L210](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L188-L210)). No arbitrary threshold is applied.
+3. **Zero-branch short-circuit.** Before any optimization, v1 checks if zero branch length is optimal: combined likelihood at zero > 0.01 AND first derivative < 0 at zero (`is_zero_branch_optimal()` at [optimize_unified.rs#L153-L173](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L153-L173)).
 
 ## Why v1 changes this
 
@@ -52,40 +52,11 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 **Gained: cheaper per-evaluation cost.** Each Newton iteration gets likelihood AND derivatives from the same eigenvalue exponentials. Brent needs one full likelihood evaluation per bracket refinement step with no derivative reuse.
 
-## Initial guess formula
-
-v0 and v1 also differ in how the initial branch length estimate is computed before per-edge optimization.
-
-v0's `optimal_t_compressed(..., profiles=True)` ([packages/legacy/treetime/treetime/gtr.py#L871-L876](../../packages/legacy/treetime/treetime/gtr.py#L871-L876)) computes a soft Hamming distance as the bracket midpoint for Brent's method:
-
-```python
-hamming_distance = 1 - sum(multiplicity * sum(pp * pc, axis=1)) / sum(multiplicity)
-bracket = [-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]
-```
-
-Both `pp` and `pc` are marginal profiles evaluated at the child node (outgroup and subtree evidence respectively). The dot product gives a continuous overlap measure where uncertain positions contribute fractionally.
-
-v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L293-L325](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L293-L325)) counts discrete MAP substitutions and sets the branch length directly:
-
-```
-branch_length = edge_subs().len() / edge_effective_length()
-```
-
-`edge_subs()` compares the argmax of full node posteriors at the parent and child endpoints. Each position contributes 0 or 1.
-
-The differences are:
-
-- **Formula**: continuous profile overlap (v0) vs discrete MAP mismatch count (v1)
-- **Role**: Brent bracket midpoint (v0) vs Newton-Raphson starting point (v1)
-- **Data source**: child-end profile pair (v0) vs endpoint node posteriors (v1)
-
-For sharp posteriors (one state dominates), both approaches produce equivalent results. For uncertain posteriors (near-uniform), v0 yields fractional contributions while v1 yields 0 (argmax agrees). This makes v1's initial guess systematically lower at uncertain edges. Newton-Raphson corrects from there during optimization.
-
 ## Practical impact
 
 For end-users, the per-edge optimization method is invisible. Branch lengths converge to the same ML estimates (within numerical tolerance) regardless of whether Newton or Brent finds them, given the same GTR model and marginal profiles.
 
-The convergence issues reported for the optimize command (oscillation between iterations, documented in [M-optimize-oscillation-no-damping](../port-known-issues/M-optimize-oscillation-no-damping.md)) stem from the undamped outer loop, not from the per-branch optimizer. v0 damps the outer loop with exponential decay (damping=0.75); its use of Brent per-branch is orthogonal to this.
+The convergence issues previously reported for the optimize command (oscillation between iterations) stemmed from the undamped outer loop, not from the per-branch optimizer. v1 now applies the same exponential damping as v0 (`--damping`, default 0.75). Brent per-branch in v0 is orthogonal to this.
 
 ## References
 

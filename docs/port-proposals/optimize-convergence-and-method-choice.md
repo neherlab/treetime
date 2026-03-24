@@ -2,13 +2,13 @@
 
 This document proposes improvements to the `optimize` command's convergence behavior and introduces user-selectable optimization methods. The goal is to match v0's convergence reliability, provide the same systematic method choice already available in the `clock` command, and address three documented known issues.
 
-The proposal is **not accepted**. P3 and P4 are implemented independently; P1, P2, P5, P6 remain unimplemented.
+The proposal is **not accepted** as a whole. P1, P3, and P4 are implemented independently; P2, P5, P6 remain unimplemented.
 
 ## Problem statement
 
 The `optimize` command has three documented convergence and robustness problems:
 
-1. **Oscillation without damping** ([M-optimize-oscillation-no-damping](../port-known-issues/M-optimize-oscillation-no-damping.md)). The outer loop alternates between marginal reconstruction and per-edge optimization without blending new and old branch lengths. v0 applies exponential damping (`damping=0.75`); v1 does not.
+1. ~~**Oscillation without damping**~~ (fixed). v1 now applies exponential damping (`--damping`, default 0.75) matching v0.
 
 2. **Initial guess inflated by gaps** (fixed). `initial_guess_mixed()` now filters gap positions from both the substitution count and the effective alignment length denominator.
 
@@ -60,17 +60,9 @@ The `optimize` command uses Newton-Raphson with a grid search fallback and no us
 
 ## Proposed changes
 
-### P1: Outer-loop damping
+### ~~P1: Outer-loop damping~~ (implemented)
 
-Add exponential damping to the convergence loop. After `run_optimize_mixed()` updates each edge's branch length, blend with the previous value:
-
-```
-bl_new = bl_optimized * (1 - damping^(i+1)) + bl_old * damping^(i+1)
-```
-
-Expose `--damping` CLI parameter (default 0.75, matching v0). Value 0.0 disables damping (current behavior). Value 1.0 would prevent any update (degenerate, reject at parse time).
-
-**Implementation location:** `packages/treetime/src/commands/optimize/run.rs`, inside the convergence loop at lines 121-141. Save branch lengths before `run_optimize_mixed()`, then blend after.
+Implemented in [packages/treetime/src/commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs). `--damping` CLI parameter (default 0.75, matching v0). `save_branch_lengths()` captures edge values before `run_optimize_mixed()`, then `apply_damping()` blends `bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Value 0.0 disables damping. Value >= 1.0 rejected at parse time.
 
 **Interaction with timetree:** The timetree command has its own iteration loop and does not call `run_optimize()`. If damping proves beneficial, the timetree loop would need independent damping, but that is out of scope for this proposal.
 
@@ -149,7 +141,7 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 
 - [x] Iterative reconstruction + optimization (current)
 - [x] Early stop on likelihood change (current)
-- [ ] Exponential damping (P1)
+- [x] Exponential damping (P1, implemented)
 - [ ] Progressive tolerance tightening (P2)
 
 ### GTR Integration
