@@ -133,7 +133,7 @@ function main() {
     nicely cargo -q clippy -q --all-targets --all --fix ${vcs_flag} ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "lint-ci")
-    nicely cargo -q clippy --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
+    nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
     ;;
   "format")
     nicely cargo -q fmt "$@"
