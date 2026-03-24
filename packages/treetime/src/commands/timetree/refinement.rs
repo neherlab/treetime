@@ -29,8 +29,9 @@ pub fn run_refinement_iteration(
 ) -> Result<(usize, usize), Report> {
   let mut is_tree_dirty = false;
 
+  let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
+
   if !args.relax.is_empty() {
-    let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
     if total_length == 0 {
       info!("Skipping relaxed clock: no sequence data (partitions empty or zero-length)");
     } else {
@@ -50,7 +51,8 @@ pub fn run_refinement_iteration(
   let prev_states = capture_ancestral_states(graph, partitions);
 
   let n_resolved = if args.resolve_polytomies {
-    let n = resolve_polytomies(graph, partitions).wrap_err("Polytomy resolution failed")?;
+    let zero_branch_slope = clock_model.clock_rate() * total_length as f64;
+    let n = resolve_polytomies(graph, partitions, zero_branch_slope).wrap_err("Polytomy resolution failed")?;
     if n > 0 {
       info!("Resolved polytomies, introduced {n} new nodes");
       prepare_tree_after_topology_change(graph).wrap_err("Failed to prepare tree after topology change")?;

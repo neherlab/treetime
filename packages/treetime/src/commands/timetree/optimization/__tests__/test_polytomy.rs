@@ -6,6 +6,7 @@ mod tests {
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use ndarray::Array1;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::Named;
@@ -107,7 +108,7 @@ mod tests {
 
     // Resolve with very low threshold (should merge all possible pairs)
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
 
     // After resolution, ABC should have 2 children (one merge happened)
     let final_children = graph
@@ -127,7 +128,8 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false)?;
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 10.0)?;
 
     assert_eq!(n_resolved, 0, "Binary tree should have no resolutions");
     assert_eq!(
@@ -145,7 +147,7 @@ mod tests {
 
     // With very high threshold, no merges should occur
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, false)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, false, 10.0)?;
 
     assert_eq!(n_resolved, 0, "Very high threshold should prevent any merges");
 
@@ -192,7 +194,7 @@ mod tests {
 
     // Resolve polytomy
     let partitions = vec![];
-    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false)?;
+    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
 
     // Find the new internal node (not ABC, not a leaf, not root)
     // New nodes created by polytomy resolution don't have a name set
@@ -274,7 +276,7 @@ mod tests {
 
     // Resolve with very low threshold
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
 
     // 5-way polytomy needs 3 merges to become binary (5->4->3->2)
     assert_eq!(n_resolved, 3, "Should create 3 new nodes to resolve 5-way polytomy");
@@ -287,6 +289,85 @@ mod tests {
       .degree_out();
     assert_eq!(final_children, 2, "ABCDE should have 2 children after full resolution");
 
+    Ok(())
+  }
+
+  /// Create a polytomy tree with branch length distributions that produce genuine
+  /// cost improvement from splitting (exponential decay: short branches more probable).
+  fn create_polytomy_tree_with_realistic_distributions() -> Result<GraphTimetree, Report> {
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
+    for (name, time) in tip_times {
+      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+      let node = graph.get_node(key).expect("Node must exist");
+      node.write_arc().payload().write_arc().time = Some(time);
+    }
+
+    if let Some(key) = find_node_key_by_name(&graph, "ABC") {
+      let node = graph.get_node(key).expect("Node must exist");
+      node.write_arc().payload().write_arc().time = Some(2010.0);
+    }
+
+    if let Some(key) = find_node_key_by_name(&graph, "root") {
+      let node = graph.get_node(key).expect("Node must exist");
+      node.write_arc().payload().write_arc().time = Some(2000.0);
+    }
+
+    // Exponential decay distribution: shorter branches are more probable.
+    // This gives the optimizer incentive to split long branches, creating
+    // genuine cost improvement that competes with the zero-branch penalty.
+    let x = Array1::linspace(0.0, 25.0, 200);
+    let y = x.mapv(|t: f64| (-0.5 * t).exp());
+    let dist = Arc::new(Distribution::function(x, y)?);
+
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let mut payload = edge.payload().write_arc();
+      payload.branch_length_distribution = Some(Arc::clone(&dist));
+    }
+
+    Ok(graph)
+  }
+
+  /// Higher zero_branch_slope increases the penalty for zero-mutation branches,
+  /// reducing cost gain and preventing merges that succeed with lower slopes.
+  #[test]
+  fn test_resolve_polytomies_zero_branch_slope_affects_merge_gain() -> Result<(), Report> {
+    let partitions = vec![];
+
+    // Large slope: penalty dominates branch length improvement → no merge
+    let mut graph_high = create_polytomy_tree_with_realistic_distributions()?;
+    let n_high = resolve_polytomies_with_options(
+      &mut graph_high,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      false,
+      1000.0,
+    )?;
+
+    // Small slope: penalty negligible, branch redistribution drives merge
+    let mut graph_low = create_polytomy_tree_with_realistic_distributions()?;
+    let n_low =
+      resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 0.01)?;
+
+    assert!(
+      n_low > n_high,
+      "Lower zero_branch_slope ({n_low} merges) should allow more merges than higher slope ({n_high} merges)"
+    );
+
+    Ok(())
+  }
+
+  /// With zero_branch_slope = 0, penalty vanishes entirely (no sequence data).
+  #[test]
+  fn test_resolve_polytomies_zero_slope_no_penalty() -> Result<(), Report> {
+    let mut graph = create_polytomy_tree_with_realistic_distributions()?;
+    let partitions = vec![];
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 0.0)?;
+
+    assert_eq!(n_resolved, 1, "Zero slope should allow merge");
     Ok(())
   }
 

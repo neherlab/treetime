@@ -23,24 +23,37 @@ pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 /// pairwise merging based on likelihood gain. Resolution stops when no pair exceeds
 /// the threshold. After resolution, removes obsolete single-child internal nodes.
 ///
+/// `zero_branch_slope` is the expected substitutions per unit time for the full
+/// alignment (`clock_rate * sequence_length`). Scales the penalty for zero-mutation
+/// branches introduced during resolution.
+///
 /// Returns count of new nodes inserted.
 pub fn resolve_polytomies(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  zero_branch_slope: f64,
 ) -> Result<usize, Report> {
-  resolve_polytomies_with_options(graph, partitions, DEFAULT_RESOLUTION_THRESHOLD, false)
+  resolve_polytomies_with_options(
+    graph,
+    partitions,
+    DEFAULT_RESOLUTION_THRESHOLD,
+    false,
+    zero_branch_slope,
+  )
 }
 
 /// Resolve polytomies with configurable options.
 ///
 /// - `resolution_threshold`: minimum delta LH to merge a pair (default 0.05)
 /// - `merge_compressed`: if true, also resolve compressed branches (default false)
+/// - `zero_branch_slope`: expected substitutions per unit time (`clock_rate * sequence_length`)
 #[allow(unused_variables)]
 pub fn resolve_polytomies_with_options(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   resolution_threshold: f64,
   merge_compressed: bool,
+  zero_branch_slope: f64,
 ) -> Result<usize, Report> {
   let mut total_resolved = 0;
 
@@ -51,7 +64,7 @@ pub fn resolve_polytomies_with_options(
     let prior_n_children = graph.degree_out(node_key)?;
 
     // Resolve this polytomy using greedy pairwise merging
-    let n_resolved = resolve_single_polytomy(graph, node_key, resolution_threshold)?;
+    let n_resolved = resolve_single_polytomy(graph, node_key, resolution_threshold, zero_branch_slope)?;
     total_resolved += n_resolved;
 
     let new_n_children = graph.degree_out(node_key)?;
@@ -117,6 +130,7 @@ fn resolve_single_polytomy(
   graph: &mut GraphTimetree,
   node_key: GraphNodeKey,
   resolution_threshold: f64,
+  zero_branch_slope: f64,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
@@ -139,7 +153,7 @@ fn resolve_single_polytomy(
 
     for i in 0..n {
       for j in (i + 1)..n {
-        if let Some(candidate) = compute_merge_gain(&children[i], &children[j], parent_time) {
+        if let Some(candidate) = compute_merge_gain(&children[i], &children[j], parent_time, zero_branch_slope) {
           gains[[i, j]] = candidate.cost_gain;
           gains[[j, i]] = candidate.cost_gain;
           optimal_times[[i, j]] = candidate.optimal_time;
@@ -222,7 +236,12 @@ fn collect_children_info(graph: &GraphTimetree, node_key: GraphNodeKey) -> Resul
 ///
 /// Time convention: v1 uses calendar time where parent_time < child_time
 /// (parent is in the past with smaller calendar year, children are in the future).
-fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) -> Option<MergeCandidate> {
+fn compute_merge_gain(
+  child1: &ChildInfo,
+  child2: &ChildInfo,
+  parent_time: f64,
+  zero_branch_slope: f64,
+) -> Option<MergeCandidate> {
   // In calendar time: parent is older (smaller), children are younger (larger)
   // New node must be between parent and children: parent_time < new_time < min(child_times)
   let child_min_time = f64::min(child1.time, child2.time);
@@ -238,6 +257,7 @@ fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) 
     child1_time: child1.time,
     child2_time: child2.time,
     parent_time,
+    zero_branch_slope,
   };
 
   // Use Brent optimization to find optimal merge time
@@ -269,6 +289,9 @@ fn compute_merge_gain(child1: &ChildInfo, child2: &ChildInfo, parent_time: f64) 
 }
 
 /// Cost function for Brent optimization of merge time.
+///
+/// `zero_branch_slope` = `clock_rate * sequence_length`: expected substitutions per
+/// unit time for the full alignment, scaling the penalty for zero-mutation branches.
 #[derive(Clone)]
 struct MergeCostFunction<'a> {
   child1_dist: &'a Distribution,
@@ -276,6 +299,7 @@ struct MergeCostFunction<'a> {
   child1_time: f64,
   child2_time: f64,
   parent_time: f64,
+  zero_branch_slope: f64,
 }
 
 impl CostFunction for MergeCostFunction<'_> {
@@ -303,10 +327,12 @@ impl CostFunction for MergeCostFunction<'_> {
     let log_prob_new1 = self.child1_dist.eval(new_branch1).unwrap_or(1e-10).ln();
     let log_prob_new2 = self.child2_dist.eval(new_branch2).unwrap_or(1e-10).ln();
 
-    // The new branch from parent to new_node has zero mutations
-    // Its cost is proportional to the time difference (longer = less likely)
-    // Using a simple linear penalty similar to v0's zero_branch_slope
-    let zero_branch_penalty = new_branch_to_parent;
+    // The new branch from parent to new_node has zero mutations.
+    // Penalty = zero_branch_slope * dt, where zero_branch_slope = mu * L
+    // (expected substitutions per unit time for the full alignment).
+    // Longer branches, higher mutation rates, and longer alignments all
+    // make zero-mutation branches less probable.
+    let zero_branch_penalty = self.zero_branch_slope * new_branch_to_parent;
 
     // Cost gain = (new log prob) - (old log prob)
     // = (log_prob_new1 + log_prob_new2 - zero_branch_penalty) - (log_prob_old1 + log_prob_old2)
