@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for the optimize command.
+
+Reads inputs from gm_optimize_inputs.json, runs v0 optimize_tree_marginal,
+captures final branch lengths to gm_optimize_outputs.json.
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_capture
+"""
+
+import json
+import lzma
+import random
+import sys
+import tempfile
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path("packages/legacy/treetime").resolve()))
+
+from treetime.treeanc import TreeAnc
+
+SEED = 1010336213
+FIXTURES_DIR = Path(__file__).parent
+
+
+def _decompress_if_xz(path: str) -> str:
+    """Decompress .xz to a temp file, return path. v0 cannot read compressed FASTA."""
+    if not path.endswith(".xz"):
+        return path
+    data = lzma.open(path).read()
+    tmp = tempfile.NamedTemporaryFile(suffix=".fasta", delete=False)
+    tmp.write(data)
+    tmp.close()
+    return tmp.name
+
+
+def capture_optimize(params: dict) -> dict:
+    random.seed(SEED)
+    np.random.seed(SEED)
+
+    aln_path = _decompress_if_xz(params["aln"])
+
+    tt = TreeAnc(
+        tree=params["tree"],
+        aln=aln_path,
+        gtr=params["model"],
+        rng_seed=SEED,
+    )
+
+    # Run the full optimization loop with correct damping schedule.
+    # v0 default LHtol=0.1; use a tighter threshold to let more iterations run.
+    tt.optimize_tree_marginal(
+        max_iter=params["max_iter"],
+        damping=params["damping"],
+        LHtol=1e-4,
+    )
+
+    final_bl: dict[str, float] = {
+        n.name: float(n.branch_length)
+        for n in tt.tree.find_clades()
+        if n.up is not None
+    }
+
+    return {
+        "seed": SEED,
+        "final_total_branch_length": float(sum(final_bl.values())),
+        "final_branch_lengths": final_bl,
+    }
+
+
+def main() -> None:
+    inputs_path = FIXTURES_DIR / "gm_optimize_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_optimize_outputs.json"
+
+    with open(inputs_path) as f:
+        inputs = json.load(f)
+
+    print("Optimize Golden Master Capture")
+    print("=" * 40)
+
+    outputs = {}
+    for case_name, params in inputs.items():
+        print(f"Capturing: {case_name}")
+        outputs[case_name] = capture_optimize(params)
+        print(f"  final total BL: {outputs[case_name]['final_total_branch_length']:.10f}")
+
+    with open(outputs_path, "w") as f:
+        json.dump(outputs, f, indent=2)
+
+    print("=" * 40)
+    print(f"Written: {outputs_path}")
+
+
+if __name__ == "__main__":
+    main()

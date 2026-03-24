@@ -1,0 +1,58 @@
+{
+  "tb_20_jc69_damped": {
+    "tree": "data/tb/20/tree.nwk",
+    "aln": "data/tb/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "flu_h3n2_20_jc69_damped": {
+    "tree": "data/flu/h3n2/20/tree.nwk",
+    "aln": "data/flu/h3n2/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "ebola_20_jc69_damped": {
+    "tree": "data/ebola/20/tree.nwk",
+    "aln": "data/ebola/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "dengue_20_jc69_damped": {
+    "tree": "data/dengue/20/tree.nwk",
+    "aln": "data/dengue/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "zika_20_jc69_damped": {
+    "tree": "data/zika/20/tree.nwk",
+    "aln": "data/zika/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "rsv_a_20_jc69_damped": {
+    "tree": "data/rsv/a/20/tree.nwk",
+    "aln": "data/rsv/a/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "lassa_l_20_jc69_damped": {
+    "tree": "data/lassa/L/20/tree.nwk",
+    "aln": "data/lassa/L/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  },
+  "mpox_clade_ii_20_jc69_damped": {
+    "tree": "data/mpox/clade-ii/20/tree.nwk",
+    "aln": "data/mpox/clade-ii/20/aln.fasta.xz",
+    "model": "jc69",
+    "damping": 0.75,
+    "max_iter": 20
+  }
+}
