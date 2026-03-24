@@ -16,17 +16,33 @@ The total log-likelihood sums over all positions:
 log L(t) = sum_i log L_i(t)
 ```
 
-Finding the ML branch length requires a scalar optimizer (Brent, Newton-Raphson, grid search) applied to each edge independently, with all other branch lengths and ancestral state distributions held fixed. The optimizer needs a starting point.
+This per-site likelihood formula is the basis of <a id="cite-5"></a>[Felsenstein, 1981](https://doi.org/10.1007/BF01734359) [[5](#ref-5)] pruning. Finding the ML branch length requires a scalar optimizer (Brent, Newton-Raphson, grid search) applied to each edge independently, with all other branch lengths and ancestral state distributions held fixed. The optimizer needs a starting point.
+
+For details on the per-edge optimization algorithms themselves, see [optimize-branch-length-algorithms.md](optimize-branch-length-algorithms.md).
 
 ## What the starting point is for
 
 The starting point seeds the optimizer. It does not need to be accurate - it needs to be in the basin of attraction of the correct optimum.
 
-**Brent's method** (v0) takes a bracket `[a, m, b]` where `m` is the midpoint guess. Brent searches the interval by combining golden section with parabolic interpolation. The midpoint determines where Brent starts looking, influencing convergence speed but not the final result (for unimodal surfaces).
+**Brent's method** (v0) takes a bracket `[a, m, b]` where `m` is the midpoint guess. Brent combines golden section search (linear convergence, ratio 0.618) with parabolic interpolation (superlinear, order ~1.325). The midpoint determines where Brent starts looking, influencing convergence speed but not the final result for unimodal surfaces <a id="cite-1"></a>[Brent, 1973](https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf) [[1](#ref-1)].
 
-**Newton-Raphson** (v1) starts from the current branch length and iterates `t_{n+1} = t_n - L'(t_n)/L''(t_n)`. For concave surfaces, convergence is quadratic from any starting point. The starting point determines iteration count and whether the method overshoots into a non-concave region.
+**Newton-Raphson** (v1) starts from the current branch length and iterates `t_{n+1} = t_n - L'(t_n)/L''(t_n)`. Quadratic convergence near the optimum. The starting point determines iteration count and whether the method overshoots into a non-concave region.
 
 **Grid search** (v1 fallback) evaluates likelihood at 100 equally spaced points on `[0.1/L, 1.5*t + 1/L]` where `t` is the current branch length and `L` is the sequence length. The search range depends on `t`, so an underestimated starting point narrows the range.
+
+### How the initial guess interacts with the optimizer
+
+**v0: loose coupling.** Brent's bracket is `[-sqrt(MAX), sqrt(hamming), sqrt(MAX)]` where `MAX = 4.0`. The search range is always `[0, 4]` regardless of the midpoint. A bad midpoint costs convergence speed but does not restrict the search space.
+
+**v1: tight coupling.** Newton starts from `t = sub_count / effective_length`. If Newton hits a non-concave region, the grid search range is `[0.1/L, 1.5*t + 1/L]`. When `t = 0` (no MAP differences at an uncertain edge), the grid shrinks to `[0.1/L, 1/L]` - only zero-to-one-mutation distances. A true optimum at longer branch lengths is invisible to the grid.
+
+This asymmetry means the initial guess quality matters more for v1 than for v0.
+
+### Industry context
+
+RAxML-NG, IQ-TREE, and PhyML do not compute initial guesses from sequence divergence. They use the current branch length (from the tree builder) as the starting point for Newton-Raphson. Their robustness comes from per-branch safeguards (step clamping, bisection fallback, hard branch length bounds `[1e-6, 100]`), not from initial guess quality. See [optimize-branch-length-algorithms.md](optimize-branch-length-algorithms.md) for details.
+
+TreeTime is different: it receives trees from external sources (phylogenetic tree builders, manual constructions) with no guarantee of reasonable branch lengths. This makes the initial guess more important than in typical ML phylogenetic tools.
 
 ## The Hamming distance family
 
@@ -54,14 +70,15 @@ d = sum_i (1 - dot(pp_i, pc_i))    for non-gap i
 
 where `pp_i` and `pc_i` are probability vectors over states at position `i`. Each position contributes a value in `[0, 1]`.
 
-The dot product `dot(pp_i, pc_i) = sum_a pp_i(a) * pc_i(a)` is the Bhattacharyya coefficient: the probability that independent draws from the two distributions yield the same state. The complement `1 - dot(pp_i, pc_i)` measures the probability of disagreement.
+The dot product `dot(pp_i, pc_i) = sum_a pp_i(a) * pc_i(a)` is the probability of agreement: if you draw one state independently from each distribution, this is the probability both draws yield the same state. The complement `1 - dot(pp_i, pc_i)` is the probability of disagreement.
 
-Properties:
+Note: this is NOT the Bhattacharyya coefficient <a id="cite-2"></a>[Bhattacharyya, 1943](https://en.wikipedia.org/wiki/Bhattacharyya_distance) [[2](#ref-2)], which is `BC(P,Q) = sum sqrt(P(x) * Q(x))`. The Bhattacharyya coefficient relates to the Hellinger distance via `H^2 = 1 - BC`. The dot product `sum P(x) * Q(x)` is a different, weaker overlap measure. For uniform distributions over n states: `dot = 1/n`, `BC = 1/sqrt(n)`.
+
+Properties of the dot product overlap:
 
 - When profiles are one-hot (sharp): `dot = 1` if same state, `dot = 0` if different. Reduces to hard Hamming.
 - When both uniform over `n` states: `dot = n * (1/n)^2 = 1/n`. Contribution = `1 - 1/n` = `0.75` for nucleotides.
 - Continuous and differentiable with respect to profile changes.
-- Monotonically related to the Hellinger distance: `H^2 = 1 - sum sqrt(pp * pc)`.
 
 This is v0's `profiles=True` path:
 
@@ -82,7 +99,7 @@ v0's `marginal_branch_profile(node)` at [packages/legacy/treetime/treetime/treea
 
 Both distributions describe beliefs about the **same node** (the child), derived from two independent sources of evidence. The outgroup message `pp` was propagated through the transition matrix from the parent side to the child position during the forward pass of marginal inference.
 
-`dot(pp_i, pc_i)` = probability that the two independent evidence sources agree on the child's state at position `i`. When they disagree strongly, it indicates the branch carries a substitution at that position. This has a clean probabilistic interpretation.
+`dot(pp_i, pc_i)` = probability that the two independent evidence sources agree on the child's state at position `i`. When they disagree strongly, it indicates the branch carries a substitution at that position.
 
 **Choice C: Messages at opposite ends of the edge** (removed v1 override)
 
@@ -91,11 +108,7 @@ The removed code at `marginal_dense.rs:131-152` used:
 - `msg_to_parent.dis` - subtree evidence at the **child** end
 - `msg_to_child.dis` - outgroup evidence at the **parent** end
 
-These distributions describe beliefs about **different nodes**. `dot(msg_to_parent_i, msg_to_child_i)` does not equal the probability that parent and child share a state, because the transition matrix connecting the two positions is not accounted for.
-
-Example: `msg_to_parent = [0.9, 0.1, 0, 0]` (child is probably A), `msg_to_child = [0.6, 0.4, 0, 0]` (parent is probably A). The dot product is `0.54 + 0.04 = 0.58`. But the actual probability that parent and child share a state depends on the branch length and transition matrix, which this dot product ignores.
-
-This formula produces continuous values in the right range but is not grounded in a valid probabilistic measure.
+These distributions describe beliefs about **different nodes**. `dot(msg_to_parent_i, msg_to_child_i)` does not equal the probability that parent and child share a state, because the transition matrix connecting the two positions is not accounted for. This formula produces continuous values in the right range but is not grounded in a valid probabilistic measure.
 
 **Choice E: Posterior distributions at parent and child nodes** (proposed, not implemented)
 
@@ -106,23 +119,23 @@ Use the full marginal posteriors at the parent and child endpoints:
 
 Each posterior incorporates all tree evidence (subtree + outgroup) at its respective node. `dot(parent_posterior_i, child_posterior_i)` = probability that independent draws from the parent and child posteriors yield the same state at position `i`.
 
-This is a valid probabilistic measure, but note: the two distributions describe different nodes (parent and child), not the same node from two evidence sources (like v0). The interpretation is: "how similar are our best estimates of the parent and child states?" rather than "how much do the two evidence sources disagree about the child?"
+This is a valid probabilistic measure, but the two distributions describe different nodes (parent and child), not the same node from two evidence sources (like v0). The interpretation is: "how similar are our best estimates of the parent and child states?" rather than "how much do the two evidence sources disagree about the child?"
 
 ## Comparison table
 
-| Approach                         | Formula                         | Data source                | Position               | Continuity       | Probabilistic interpretation       |
-| -------------------------------- | ------------------------------- | -------------------------- | ---------------------- | ---------------- | ---------------------------------- |
-| A. Hard Hamming (discrete)       | `I(s_p != s_c)`                 | Discrete sequences         | parent + child         | Discrete {0,1}   | Indicator of state mismatch        |
-| B. Soft Hamming (child-end)      | `1 - dot(pp, pc)`               | Marginal profiles at child | both at child          | Continuous [0,1] | P(outgroup disagrees with subtree) |
-| C. Soft Hamming (edge messages)  | `1 - dot(msg_p, msg_c)`         | Per-edge partial messages  | parent-end + child-end | Continuous [0,1] | None (cross-position overlap)      |
-| D. Hard Hamming (MAP posteriors) | `I(argmax(π_p) != argmax(π_c))` | Full node posteriors       | parent + child         | Discrete {0,1}   | Indicator of MAP state mismatch    |
-| E. Soft Hamming (posteriors)     | `1 - dot(π_p, π_c)`             | Full node posteriors       | parent + child         | Continuous [0,1] | P(posterior draws disagree)        |
+| Approach                         | Formula                           | Data source                | Position               | Continuity       | Interpretation               |
+| -------------------------------- | --------------------------------- | -------------------------- | ---------------------- | ---------------- | ---------------------------- |
+| A. Hard Hamming (discrete)       | `I(s_p != s_c)`                   | Discrete sequences         | parent + child         | Discrete {0,1}   | State mismatch indicator     |
+| B. Soft Hamming (child-end)      | `1 - dot(pp, pc)`                 | Marginal profiles at child | both at child          | Continuous [0,1] | P(evidence sources disagree) |
+| C. Soft Hamming (edge messages)  | `1 - dot(msg_p, msg_c)`           | Per-edge partial messages  | parent-end + child-end | Continuous [0,1] | No valid interpretation      |
+| D. Hard Hamming (MAP posteriors) | `I(argmax(pi_p) != argmax(pi_c))` | Full node posteriors       | parent + child         | Discrete {0,1}   | MAP state mismatch indicator |
+| E. Soft Hamming (posteriors)     | `1 - dot(pi_p, pi_c)`             | Full node posteriors       | parent + child         | Continuous [0,1] | P(posterior draws disagree)  |
 
 ### Numerical examples (4-state nucleotide alphabet)
 
 ```
 Position type                    A      B      C      D      E
-─────────────────────────────────────────────────────────────────
+.................................................................
 Sharp, same state               0.00   0.00   0.00   0.00   0.00
 Sharp, different states         1.00   1.00   1.00   1.00   1.00
 Both uniform                    0.00   0.75   0.75   0.00   0.75
@@ -135,7 +148,7 @@ The critical divergence is at uncertain positions. A and D give 0 (argmax agrees
 
 ## How v0 uses the Hamming distance
 
-v0's `optimize_tree_marginal()` at [packages/legacy/treetime/treetime/treeanc.py#L1297-L1360](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1360) loops:
+v0's <a id="cite-6"></a>[Sagulenko et al., 2018](https://doi.org/10.1093/ve/vex042) [[6](#ref-6)] `optimize_tree_marginal()` at [packages/legacy/treetime/treetime/treeanc.py#L1297-L1360](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1360) loops:
 
 ```
 for each iteration:
@@ -159,8 +172,6 @@ The profile likelihood `prob_t_profiles` at [packages/legacy/treetime/treetime/g
 res = np.einsum('ai,ij,aj->a', pc, Qt, pp)   # per-site likelihood
 logP = sum(mult * log(res))                    # total log-likelihood
 ```
-
-This is the exact same eigendecomposition-based likelihood that v1 uses (different notation, same math).
 
 Key observations:
 
@@ -208,8 +219,8 @@ Key observations:
 
 - v1's initial guess and optimizer use **different data**: initial guess reads node posteriors via `edge_subs()`, optimizer reads per-edge messages
 - The initial guess runs once before the loop; the optimizer runs every iteration
-- v1 has no damping in the outer loop (known issue: `M-optimize-oscillation-no-damping.md`)
-- v1 has no regularization penalty (known issue - not explicitly tracked)
+- v1 has no damping in the outer loop (known issue: [M-optimize-oscillation-no-damping.md](../port-known-issues/M-optimize-oscillation-no-damping.md))
+- v1 has no regularization penalty and no hard branch length upper bound
 
 ## Design space analysis
 
@@ -218,7 +229,7 @@ Key observations:
 The initial guess is consumed by Newton-Raphson on the first optimization iteration. Its quality matters for:
 
 1. **Convergence speed**: closer starting point = fewer Newton iterations
-2. **Convergence reliability**: for multimodal surfaces (K80+ models per Dinh & Matsen 2015), the starting point determines which optimum is found
+2. **Convergence reliability**: for multimodal surfaces (K80+ models per <a id="cite-3"></a>[Dinh & Matsen, 2015](https://arxiv.org/abs/1507.03647) [[3](#ref-3)]), the starting point determines which optimum is found
 3. **Grid search range**: when Newton fails, the fallback grid is `[0.1/L, 1.5*t + 1/L]`. If `t=0` (hard Hamming at a fully uncertain edge), the range narrows to `[0.1/L, 1/L]` - covering only zero-to-one-mutation branch lengths
 
 ### Option D (current: hard Hamming on MAP posteriors)
@@ -228,11 +239,10 @@ Advantages:
 - Simple: no dot products, just argmax comparison
 - Uses correct data source (full posteriors)
 - Consistent with sparse behavior
-- Explicitly requested by the user
 
 Disadvantages:
 
-- Loses uncertainty information: two positions with identical argmax but very different posterior shapes both contribute 0
+- Loses uncertainty information: two positions with identical argmax but different posterior shapes both contribute 0
 - Systematically underestimates branch lengths at uncertain edges
 - Narrows grid search range for uncertain edges
 
@@ -241,7 +251,7 @@ Disadvantages:
 Advantages:
 
 - Continuous: smooth with respect to posterior changes
-- Valid probabilistic interpretation: `dot(π_p, π_c)` is the probability of state agreement
+- Valid probabilistic interpretation: probability of disagreement between posterior draws
 - Preserves uncertainty information
 - Closer to v0's scientific intent (profile-based estimation)
 
@@ -275,14 +285,23 @@ Skip `initial_guess_mixed()` entirely and let Newton start from whatever the tre
 - The tree was estimated by another tool (RAxML, IQ-TREE) with reasonable branch lengths
 - The tree was previously optimized by treetime
 
-This is what v1's timetree command currently does (known issue: `M-timetree-missing-initial-branch-optimization.md`).
+This is what v1's timetree command currently does (known issue: [M-timetree-missing-initial-branch-optimization.md](../port-known-issues/M-timetree-missing-initial-branch-optimization.md)).
 
 ## Summary of the current state
 
-After this branch, v1 uses option D (hard Hamming on MAP posteriors). This is a deliberate v0 divergence documented in the Newton-Raphson intentional change doc. The divergence is narrow:
+v1 uses option D (hard Hamming on MAP posteriors). This is a deliberate v0 divergence documented in [optimize-newton-raphson-per-edge.md](../port-intentional-changes/optimize-newton-raphson-per-edge.md). The divergence is narrow:
 
 - For well-resolved trees (sharp posteriors): D gives the same result as B, C, or E
 - For trees with many uncertain internal edges: D underestimates initial branch lengths compared to B or E
 - Newton-Raphson corrects the underestimate during optimization, except when it falls back to the grid search
 
-If future testing reveals convergence problems at uncertain edges (grid search missing optima due to narrow range from D's zero estimates), option E would be the natural fix: replace `edge_subs().len()` with a dot-product loop over node posteriors. This requires no architecture changes and adds ~20 lines to `initial_guess_mixed()`.
+If future testing reveals convergence problems at uncertain edges (grid search missing optima due to narrow range from D's zero estimates), option E would be the natural fix: replace `edge_subs().len()` with a dot-product loop over node posteriors. This requires no architecture changes and adds ~20 lines to `initial_guess_mixed()`. An alternative approach is the surrogate function `f(t) = a*exp(-b*t) + c` proposed by <a id="cite-4"></a>[Claywell et al., 2017](https://arxiv.org/abs/1706.00659) [[4](#ref-4)], which fits the likelihood shape with four parameters and could provide better initial bracketing.
+
+## References
+
+1. <a id="ref-1"></a> Brent RP. "Algorithms for Minimization without Derivatives." Prentice-Hall, 1973. https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf (accessed 2026-03-24) [↩](#cite-1)
+2. <a id="ref-2"></a> Bhattacharyya A. "On a measure of divergence between two statistical populations." Bull Calcutta Math Soc 35:99-109, 1943. https://en.wikipedia.org/wiki/Bhattacharyya_distance (accessed 2026-03-24) [↩](#cite-2)
+3. <a id="ref-3"></a> Dinh V, Matsen FA IV. "The shape of the one-dimensional phylogenetic likelihood function." 2015. https://arxiv.org/abs/1507.03647 (accessed 2026-03-24) [↩](#cite-3)
+4. <a id="ref-4"></a> Claywell BC, Dinh V, McCoy JA, Matsen FA IV. "A surrogate function for one-dimensional phylogenetic likelihoods." 2017. https://arxiv.org/abs/1706.00659 (accessed 2026-03-24) [↩](#cite-4)
+5. <a id="ref-5"></a> Felsenstein J. "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol 17:368-376, 1981. https://doi.org/10.1007/BF01734359 (accessed 2026-03-24) [↩](#cite-5)
+6. <a id="ref-6"></a> Sagulenko P, Puller V, Neher RA. "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution 4(1):vex042, 2018. https://doi.org/10.1093/ve/vex042 (accessed 2026-03-24) [↩](#cite-6)
