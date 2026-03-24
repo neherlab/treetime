@@ -79,7 +79,6 @@ exactly.
 | Medium     | Timetree     | [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)                            |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                            |
 | Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                              |
-| Medium     | Timetree     | [Polytomy zero-branch penalty differs from v0](M-timetree-polytomy-zero-branch-penalty.md)                                      |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                      |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                             |
 | Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                              |
@@ -112,6 +111,8 @@ exactly.
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                               |
 | Negligible | Timetree     | [Timetree does not write auspice JSON output](N-timetree-auspice-json-unimplemented.md)                                         |
 | Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                  |
+| Negligible | Timetree     | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                         |
+| Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                               |
 
 ## Cross-references
 
