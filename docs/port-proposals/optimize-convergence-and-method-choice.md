@@ -161,6 +161,59 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 
 - [x] Gap-aware effective alignment length (P4, implemented)
 
+## Alternative convergence acceleration methods
+
+The outer loop (alternating between marginal reconstruction and branch length optimization) is a fixed-point iteration: `theta_{k+1} = F(theta_k)` where `theta` is the vector of all branch lengths and `F` is "reconstruct profiles, then optimize branch lengths." P1's exponential damping is the simplest acceleration. The optimization literature offers several alternatives with stronger theoretical properties.
+
+### Anderson acceleration (AA)
+
+Anderson acceleration (Anderson, 1965) uses a window of M previous iterates and their residuals to compute the next iterate by solving a constrained least-squares problem. For linear problems it reduces to GMRES (Walker and Ni). Evans et al. (arXiv 1810.08455) prove AA improves the linear convergence rate by a factor related to the residual reduction gain. De Sterck and He (arXiv 2109.14176) show the root-linear convergence factor depends on initial conditions and the acceleration coefficients oscillate near the fixed point.
+
+Henderson and Varadhan (arXiv 1803.06673) propose DAAREM (Damped Anderson Acceleration with Restarts and Monotonicity control), specifically designed for EM-like algorithms. DAAREM combines three safeguards: periodic window restarts to flush stale history, a damping factor blending the AA step with a plain step, and monotonicity enforcement that rejects steps decreasing the objective. DAAREM outperforms SQUAREM on representative EM problems.
+
+Bertrand and Massias (arXiv 2011.10065) apply AA extrapolation directly to coordinate descent, reporting consistent practical speedups over both non-accelerated and Nesterov-accelerated coordinate descent on Lasso and logistic regression.
+
+**Applicability to treetime optimize:** The outer loop is a contractive fixed-point iteration with linear convergence. AA(m) with m=5-10 and monotonicity enforcement (reject steps where total log-likelihood decreases) would be a drop-in replacement for the current damping, with stronger theoretical convergence properties. The per-iteration cost increase is one least-squares solve of size m, negligible compared to the marginal reconstruction. The main implementation cost is maintaining a window of M branch-length vectors.
+
+### SQUAREM
+
+SQUAREM (Varadhan and Roland, 2008; R package: Du and Varadhan, arXiv 1810.11163) accelerates any monotone fixed-point iteration using squared polynomial extrapolation. Each SQUAREM iteration takes two fixed-point steps `theta_1 = F(theta_0)`, `theta_2 = F(theta_1)`, computes `r = theta_1 - theta_0` and `v = (theta_2 - theta_1) - r`, then extrapolates: `theta_sq = theta_0 - 2*alpha*r + alpha^2*v` with step length `alpha = -sqrt(||r||^2 / ||v||^2)`. The objective is checked and if the extrapolated point is worse, the algorithm falls back to `theta_2`.
+
+Typical speedup: 10-50x fewer fixed-point evaluations than plain iteration. SQUAREM uses constant memory (no history window), making it simpler to implement than AA. Three step-length schemes exist (BB-long, BB-short, geometric mean), with the geometric mean (default) performing best.
+
+**Applicability to treetime optimize:** SQUAREM requires two full outer-loop iterations per acceleration step (2x marginal reconstruction + 2x branch length optimization), then one extrapolation + one stabilization evaluation. For the current 20-iteration default, this would mean ~10 SQUAREM steps = ~30 evaluations, vs 20 unaccelerated. The benefit is faster convergence to higher precision, especially for large trees where each outer iteration is expensive.
+
+### Nesterov/momentum acceleration
+
+Classical Nesterov acceleration achieves O(1/k^2) for convex smooth problems. Aujol, Dossal and Rondepierre (arXiv 1805.05719) prove an important caveat: Nesterov acceleration can be _worse_ than plain iteration on sharp (strongly convex) functions because the momentum overshoots the narrow optimum. This is relevant for phylogenetic branch length optimization where likelihood surfaces can have sharp ridges near zero-length branches.
+
+Peng and Yin (arXiv 2405.16020) show that for two-block coordinate descent on least-squares with orthogonal blocks, optimal stepsizes alone (without momentum) achieve convergence rates twice as fast as Polyak momentum. This suggests careful stepsize tuning may be more valuable than momentum for the alternating optimization structure.
+
+**Applicability to treetime optimize:** Nesterov momentum is poorly suited for this problem due to the sharp-function caveat and the non-smooth transitions when branches hit the zero-length boundary. The exponential damping (P1) or Anderson acceleration are safer choices.
+
+### Per-edge Newton safeguards from phylogenetic software
+
+Research on the RAxML-NG and IQ-TREE codebases reveals per-edge Newton safeguards that go beyond v1's current implementation:
+
+**RAxML-NG (via pll-modules):** Six NR variants. The "new NR" (`nr_fast`/`nr_safe`) uses explicit step damping (`dxmax = xmax / max_iters`), bracket tracking with clamping, and concavity safeguards (uses `|H|` when Hessian is non-negative). The `nr_safe` mode recomputes per-branch likelihood after each Newton optimization and reverts the branch length if likelihood worsened. The `FALLBACK` mode starts with `nr_fast` and switches to `nr_safe` when overall likelihood decreases.
+
+**IQ-TREE:** NR implementation numerically identical to PLL "old NR". Uses bisection fallback when Hessian is non-negative or NR step overshoots the bracket. Per-round (not per-branch) monotonicity check: if total likelihood decreases after a full smoothing round, all branch lengths are reverted. If optimized length exceeds 95% of `max_branch_length`, reverts if old length gave better likelihood ("newton raphson diverged, reset").
+
+**v1 comparison:** v1's current NR has step clamping to `[-1.0, current_bl]` and grid search fallback when Hessian is non-negative. It lacks bracket tracking, per-branch likelihood rollback, step damping (`dxmax`), and the bisection fallback. P6's proposed backtracking line search would address the per-branch likelihood check. Bracket tracking and step damping could be added as independent improvements.
+
+### Comparison summary
+
+| Method                            | Memory              | Per-step cost                     | Monotonicity | Convergence rate improvement    | Complexity |
+| --------------------------------- | ------------------- | --------------------------------- | ------------ | ------------------------------- | ---------- |
+| Exponential damping (P1, current) | O(n) branch lengths | 1 outer iteration                 | No guarantee | Smooths path, same fixed point  | Minimal    |
+| Backtracking line search (P6)     | O(1) per edge       | 1-5 likelihood evals per edge     | Per-edge     | Prevents overshoot              | Low        |
+| Progressive tolerance (P2)        | O(1)                | Fewer inner NR iters early        | No           | Reduces wasted work             | Minimal    |
+| SQUAREM                           | O(n) branch lengths | 2-3 outer iterations              | Configurable | 10-50x fewer total iterations   | Low        |
+| Anderson acceleration (DAAREM)    | O(mn) for window m  | 1 outer iteration + O(nm^2) solve | Enforced     | Provably improved linear rate   | Medium     |
+| Nesterov momentum                 | O(n) branch lengths | 1 outer iteration                 | No guarantee | O(1/k^2) convex, worse on sharp | Low        |
+
+n = number of branches, m = AA window size (5-10 typical).
+
 ## Priority ordering
 
 | Priority | Item | Rationale                                                    |
@@ -173,6 +226,8 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 | 6        | P6   | Refinement of Newton step, diminishing returns if P1 is done |
 
 P1 and P3 can be implemented independently. P4 is independent of all others. P5 requires no changes to the Newton path (additive). P2 and P6 refine the Newton path and interact with P1 (damping + tolerance + line search together control step behavior).
+
+SQUAREM or DAAREM could replace P1 in the future for faster convergence on large trees. Both are drop-in replacements that operate on the same outer loop structure. SQUAREM is simpler to implement. DAAREM has stronger theoretical backing and monotonicity guarantees.
 
 ## Validation plan
 
@@ -188,13 +243,24 @@ P1 and P3 can be implemented independently. P4 is independent of all others. P5 
 
 ## References
 
+- Anderson DG (1965). Iterative procedures for nonlinear integral equations. J ACM 12(4):547-560.
+- Aujol JF, Dossal C, Rondepierre A (2019). Optimal convergence rates for Nesterov acceleration. arXiv 1805.05719.
+- Bertrand Q, Massias M (2020). Anderson acceleration of coordinate descent. arXiv 2011.10065.
 - Brent RP (1973). _Algorithms for Minimization without Derivatives_. Prentice-Hall.
 - Clancy D, Lyu S, Roch S (2025). Sample complexity of branch-length estimation by maximum likelihood. arXiv 2507.22038.
+- De Sterck H, He Y (2021). Linear asymptotic convergence of Anderson acceleration: fixed-point analysis. arXiv 2109.14176.
 - Dinh V, Matsen FA IV (2015). The shape of the one-dimensional phylogenetic likelihood function. arXiv 1507.03647.
+- Du Y, Varadhan R (2018). SQUAREM: An R package for off-the-shelf acceleration of EM, MM and other EM-like monotone algorithms. arXiv 1810.11163.
+- Evans C, Pollock S, Rebholz LG, Xiao M (2018). A proof that Anderson acceleration improves the convergence rate in linearly converging fixed-point methods. arXiv 1810.08455.
 - Hasegawa M, Kishino H, Yano T (1985). Dating of the human-ape splitting by a molecular clock of mitochondrial DNA. J Mol Evol 22:160-174.
+- Henderson NC, Varadhan R (2019). Damped Anderson acceleration with restarts and monotonicity control for accelerating EM and EM-like algorithms. arXiv 1803.06673.
+- Kenney T, Gu H (2012). Hessian calculation for phylogenetic likelihood based on the pruning algorithm. Statistical Applications in Genetics and Molecular Biology 11(4):14.
+- Kozlov AM, Darriba D, Flouri T, Morel B, Stamatakis A (2019). RAxML-NG: a fast, scalable and user-friendly tool for maximum likelihood phylogenetic inference. Bioinformatics 35(21):4453-4455.
 - Minh BQ, Schmidt HA, Chernomor O, Schrempf D, Woodhams MD, von Haeseler A, Lanfear R (2020). IQ-TREE 2: New models and efficient methods for phylogenetic inference in the genomic era. Mol Biol Evol 37(5):1530-1534.
 - Nguyen LT, Schmidt HA, von Haeseler A, Minh BQ (2015). IQ-TREE: A fast and effective stochastic algorithm for estimating maximum-likelihood phylogenies. Mol Biol Evol 32(1):268-274.
+- Peng W, Yin W (2024). Optimal stepsizes for two-block alternating gradient descent. arXiv 2405.16020.
 - Polyak BT, Tremba AA (2017). New versions of Newton method: step-size choice, convergence domain and under-determined equations. arXiv 1703.07810.
 - Shea D, Schmidt M (2024). Greedy Newton: Newton's method with exact line search. arXiv 2401.06809.
 - Stamatakis A (2006). RAxML-VI-HPC: maximum likelihood-based phylogenetic analyses with thousands of taxa and mixed models. Bioinformatics 22(21):2688-2690.
 - Stamatakis A (2014). RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312-1313.
+- Varadhan R, Roland C (2008). Simple and globally convergent methods for accelerating the convergence of any EM algorithm. Scandinavian Journal of Statistics 35(2):335-353.
