@@ -48,6 +48,17 @@ pub struct TreetimePruneArgs {
   #[clap(long, short = 'e')]
   pub prune_empty: bool,
 
+  /// Merge branches in polytomies that share identical mutations
+  ///
+  /// When sibling branches in a polytomy (node with >2 children) carry identical substitutions,
+  /// they are grouped under a new internal node. The shared mutations move to the new branch
+  /// (parent to new node), and only unique mutations remain on children's edges.
+  /// Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
+  ///
+  /// Requires --aln
+  #[clap(long, short = 'm')]
+  pub merge_shared_mutations: bool,
+
   /// List of node names to prune
   ///
   /// List of node names to remove from the tree, comma-separated (,)
