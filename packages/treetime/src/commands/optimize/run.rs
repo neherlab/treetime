@@ -10,20 +10,22 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
-use itertools::Itertools;
-use itertools::chain;
+use itertools::{Itertools, chain, izip};
 use log::debug;
 use maplit::btreemap;
+use num_traits::pow::pow;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_utils::fmt::float::float_to_significant_digits;
+use treetime_utils::make_error;
 
 #[derive(Clone, Debug, Default)]
 pub struct TreetimeOptimizeParams {
@@ -41,7 +43,12 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     outdir,
     max_iter,
     dp,
+    damping,
   } = args;
+
+  if !(0.0..1.0).contains(damping) {
+    return make_error!("--damping must be in [0.0, 1.0), got {damping}");
+  }
 
   // FIXME: For demonstration of mixed partitions, we create a sparse and a dense partition,
   // both containing full sequence. Make it configurable.
@@ -141,7 +148,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       break;
     }
 
+    let old_branch_lengths = save_branch_lengths(&graph);
     run_optimize_mixed(&graph, &mixed_partitions)?;
+    apply_damping(&graph, &old_branch_lengths, *damping, i);
     lh_prev = total_lh;
   }
 
@@ -166,7 +175,52 @@ pub(crate) fn collect_optimize_partitions(
   .collect_vec()
 }
 
-fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &treetime_graph::graph::Graph<N, E, D>) -> Result<(), Report>
+/// Save current branch lengths for all edges in graph traversal order.
+pub(crate) fn save_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> Vec<f64>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  graph
+    .get_edges()
+    .iter()
+    .map(|edge_ref| edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+    .collect_vec()
+}
+
+/// Blend optimized branch lengths with saved old values using exponential damping.
+///
+/// At iteration `i` (0-based), each branch length becomes:
+///   bl = bl_optimized * (1 - damping^(i+1)) + bl_old * damping^(i+1)
+///
+/// When `damping == 0.0`, damping_factor = 0 and the optimized value is kept unchanged.
+/// Early iterations take conservative steps; later iterations approach the full update.
+pub(crate) fn apply_damping<N, E, D>(graph: &Graph<N, E, D>, old_branch_lengths: &[f64], damping: f64, iteration: usize)
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  if damping == 0.0 {
+    return;
+  }
+  debug_assert_eq!(
+    graph.get_edges().len(),
+    old_branch_lengths.len(),
+    "apply_damping: edge count changed between save and apply"
+  );
+  let damping_factor = pow(damping, iteration + 1);
+  let new_weight = 1.0 - damping_factor;
+  for (edge_ref, &old_bl) in izip!(graph.get_edges(), old_branch_lengths) {
+    let mut edge = edge_ref.write_arc().payload().write_arc();
+    let optimized_bl = edge.branch_length().unwrap_or(0.0);
+    let damped_bl = optimized_bl * new_weight + old_bl * damping_factor;
+    edge.set_branch_length(Some(damped_bl));
+  }
+}
+
+fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + NodeToNwk + Serialize,
   E: GraphEdge + EdgeToNwk + Serialize,

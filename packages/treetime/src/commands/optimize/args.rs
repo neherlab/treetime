@@ -56,4 +56,16 @@ pub struct TreetimeOptimizeArgs {
   /// Small allowable difference in the likelihood between iterations to determine if the loop should terminate
   #[clap(long, default_value_t = 1e-2)]
   pub dp: f64,
+
+  /// Damping factor for outer-loop branch length updates.
+  ///
+  /// Controls how aggressively new branch lengths replace old ones during
+  /// iterative optimization. At each iteration i, the update is:
+  ///   bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)
+  ///
+  /// Higher values are more conservative (slower convergence, less oscillation).
+  /// Set to 0.0 to disable damping (full Newton update each iteration).
+  /// Must be in [0.0, 1.0).
+  #[clap(long, default_value_t = 0.75)]
+  pub damping: f64,
 }
