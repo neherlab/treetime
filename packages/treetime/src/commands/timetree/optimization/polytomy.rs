@@ -328,10 +328,8 @@ impl CostFunction for MergeCostFunction<'_> {
     let log_prob_new2 = self.child2_dist.eval(new_branch2).unwrap_or(1e-10).ln();
 
     // The new branch from parent to new_node has zero mutations.
-    // Penalty = zero_branch_slope * dt, where zero_branch_slope = mu * L
-    // (expected substitutions per unit time for the full alignment).
-    // Longer branches, higher mutation rates, and longer alignments all
-    // make zero-mutation branches less probable.
+    // Under a Poisson model: P(0 mutations | mu, L, dt) = exp(-mu*L*dt),
+    // so -log P(0) = mu*L*dt = zero_branch_slope * dt.
     let zero_branch_penalty = self.zero_branch_slope * new_branch_to_parent;
 
     // Cost gain = (new log prob) - (old log prob)
