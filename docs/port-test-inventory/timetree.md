@@ -314,6 +314,8 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_resolve_polytomies_respects_threshold`                   | High threshold prevents merges        |
 | `test_resolve_polytomies_new_node_has_correct_time`            | New node time between parent/children |
 | `test_resolve_polytomies_large_polytomy`                       | 5-way polytomy requires 3 merges      |
+| `test_resolve_polytomies_zero_branch_slope_affects_merge_gain` | High slope suppresses merges          |
+| `test_resolve_polytomies_zero_slope_no_penalty`                | Zero slope removes penalty            |
 | `test_prepare_tree_after_topology_change_preserves_leaf_state` | Leaf constraints preserved            |
 
 **Algorithm:** Converting n-way splits to binary

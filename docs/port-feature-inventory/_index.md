@@ -236,6 +236,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Find polytomy nodes with more than two children
 - [x] Greedy pairwise merging (likelihood gain threshold 0.05)
 - [x] Per-pair Brent optimization for merge time
+- [x] Zero-branch penalty scaled by mu*L (clock_rate * sequence_length)
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
 - [/] `--keep-polytomies` (parsed but never read - [known issue](../port-known-issues/N-timetree-dead-cli-flags.md))
