@@ -14,9 +14,9 @@
 | [Branch Optimization](optimization.md)     | 26      | 81       |
 | [Clock Inference](clock.md)                | 4       | 26       |
 | [Distribution Operations](distribution.md) | 20      | 197      |
-| [Supporting Crates](supporting.md)         | 35      | 495      |
+| [Supporting Crates](supporting.md)         | 36      | 507      |
 | [Validation & Smoke](validation.md)        | -       | 185      |
-| **Total**                                  | **149** | **1344** |
+| **Total**                                  | **150** | **1356** |
 
 Counts are test functions. Property tests (proptest) run 256 random cases each; GTR property tests alone produce ~6000 executions.
 

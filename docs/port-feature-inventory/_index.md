@@ -480,15 +480,23 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Empty branch pruning (`--prune-empty`, requires alignment)
 - [x] Name-based pruning (`--prune-nodes-list`, `--prune-nodes-list-file`)
 - [x] Custom delimiters for node lists
+- [x] Polytomy branch merging (`--merge-shared-mutations`, requires alignment)
 
 ### Validation
 
 - [x] `--prune-empty` without `--aln` returns explicit error
+- [x] `--merge-shared-mutations` without `--aln` returns explicit error
 - [x] `--prune-empty` loads sparse partitions and compresses sequences
 - [x] Mutation counts come from sparse edge substitutions
 
 ### Pruning Workflow
 
+- [x] Optional polytomy merge pre-pass (before pruning, when `--merge-shared-mutations`)
+  - [x] Detect polytomies (nodes with >2 children)
+  - [x] Pairwise mutation intersection across all partitions
+  - [x] Greedy merge of best pair under new internal node
+  - [x] Shared mutations redistributed to new edge, remaining to children
+  - [x] Branch length adjustment (proportional to shared mutation count)
 - [x] Two-pass strategy
   - [x] Internal-edge collapse pass
   - [x] Graph rebuild
@@ -665,7 +673,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 | mugration      | 10          | 8              | 2          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
 | optimize       | 0           | 0              | 0          | 8       |
-| prune          | 0           | 0              | 0          | 7       |
+| prune          | 0           | 0              | 0          | 8       |
 | gtr            | 12          | 7              | 5          | 0       |
 | alphabet       | 6           | 5              | 1          | 0       |
 | distribution   | 15          | 5              | 10         | 0       |
