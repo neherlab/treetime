@@ -518,6 +518,7 @@ def run_prune(name: str, out: str, extra_args: str):
   --outdir={RESULTS_DIR}/prune/{out}
   --prune-short=1e-6
   --prune-empty
+  --merge-shared-mutations
   {extra_args}
   """
   return run_batch_cmd(name, "prune", cmd)
