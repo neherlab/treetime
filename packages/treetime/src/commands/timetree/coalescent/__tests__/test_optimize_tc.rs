@@ -1,28 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::date_constraints::load_date_constraints;
+  use super::super::helpers::setup_graph;
   use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
-  use crate::representation::partition::timetree::GraphTimetree;
   use eyre::Report;
-  use maplit::btreemap;
   use rstest::rstest;
-  use treetime_io::dates_csv::DateOrRange;
-  use treetime_io::nwk::nwk_read_str;
-
-  const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
-
-  fn setup_graph() -> Result<GraphTimetree, Report> {
-    let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "internal1".to_owned() => Some(DateOrRange::YearFraction(2005.0)),
-      "leaf1".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf2".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
-    };
-    let graph: GraphTimetree = nwk_read_str(TREE_NWK)?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
-  }
 
   #[test]
   fn test_optimize_tc_converges() -> Result<(), Report> {

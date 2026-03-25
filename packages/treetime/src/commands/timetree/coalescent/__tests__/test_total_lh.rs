@@ -1,31 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::date_constraints::load_date_constraints;
+  use super::super::helpers::setup_graph;
   use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
   use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use approx::assert_abs_diff_eq;
+  use approx::assert_ulps_eq;
   use eyre::Report;
-  use maplit::btreemap;
   use rstest::rstest;
   use treetime_distribution::Distribution;
-  use treetime_io::dates_csv::DateOrRange;
-  use treetime_io::nwk::nwk_read_str;
-
-  const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
-
-  fn setup_graph() -> Result<GraphTimetree, Report> {
-    let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "internal1".to_owned() => Some(DateOrRange::YearFraction(2005.0)),
-      "leaf1".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf2".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
-    };
-    let graph: GraphTimetree = nwk_read_str(TREE_NWK)?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
-  }
 
   #[test]
   fn test_total_lh_returns_finite_value() -> Result<(), Report> {
@@ -40,16 +21,14 @@ mod tests {
 
   #[test]
   fn test_total_lh_negative_for_reasonable_tc() -> Result<(), Report> {
-    // For typical trees, the coalescent log-likelihood is negative
-    // (it's a log-probability)
+    // The coalescent log-likelihood is a log-probability sum, always negative
+    // for non-trivial trees (multiple edges with survival + merger costs).
     let graph = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
     let lh = compute_coalescent_total_lh(&graph, &tc)?;
 
-    assert!(lh.is_finite(), "LH should be finite");
-    // The sign depends on the tree structure and Tc, but for this simple tree
-    // with Tc=1.0, the LH should be a real number (not NaN or inf)
+    assert!(lh < 0.0, "Coalescent log-likelihood should be negative, got {lh}");
     Ok(())
   }
 
@@ -71,9 +50,23 @@ mod tests {
   }
 
   #[test]
+  fn test_total_lh_differs_across_tc_values() -> Result<(), Report> {
+    // The coalescent LH depends on Tc. Different Tc values produce different LH.
+    let graph = setup_graph()?;
+
+    let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1))?;
+    let lh_large = compute_coalescent_total_lh(&graph, &Distribution::constant(100.0))?;
+
+    assert!(
+      (lh_small - lh_large).abs() > 1e-6,
+      "LH should differ across Tc values: lh(0.1)={lh_small:.6}, lh(100.0)={lh_large:.6}"
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_total_lh_monotonic_near_optimum() -> Result<(), Report> {
     // The coalescent LH should peak near the optimal Tc.
-    // Compute LH at three points: below, at, and above the optimum.
     let graph = setup_graph()?;
     let opt = optimize_tc(&graph, 1.0)?;
     assert!(opt.success);
@@ -97,23 +90,22 @@ mod tests {
 
   #[test]
   fn test_total_lh_matches_optimize_tc_likelihood() -> Result<(), Report> {
-    // The LH returned by optimize_tc should match compute_coalescent_total_lh
-    // at the same Tc value. This validates consistency between the two code paths.
+    // Both code paths call sum_coalescent_cost() with identical inputs for
+    // constant Tc. Results should agree to machine precision.
     let graph = setup_graph()?;
     let opt = optimize_tc(&graph, 1.0)?;
     assert!(opt.success);
 
     let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?;
 
-    assert_abs_diff_eq!(opt.likelihood, lh, epsilon = 1e-6);
+    assert_ulps_eq!(opt.likelihood, lh, max_ulps = 10);
 
     Ok(())
   }
 
   #[test]
   fn test_total_lh_with_formula_distribution() -> Result<(), Report> {
-    // Verify that Formula-based Tc distributions (like skyline) work correctly.
-    // A constant formula should give the same result as Distribution::constant.
+    // A constant Formula should give the same result as Distribution::constant.
     let graph = setup_graph()?;
     let tc_value = 5.0;
     let tc_const = Distribution::constant(tc_value);
@@ -126,7 +118,7 @@ mod tests {
     let lh_const = compute_coalescent_total_lh(&graph, &tc_const)?;
     let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula)?;
 
-    assert_abs_diff_eq!(lh_const, lh_formula, epsilon = 1e-10);
+    assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 
     Ok(())
   }

@@ -1,3 +1,4 @@
+pub mod helpers;
 mod test_events;
 mod test_gm_coalescent;
 mod test_integration;
