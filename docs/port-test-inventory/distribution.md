@@ -7,7 +7,7 @@
 | Category                      | Crate                 | Files  | Tests   | Type |
 | ----------------------------- | --------------------- | ------ | ------- | ---- |
 | Distribution core             | treetime-distribution | 2      | 6       | Unit |
-| Distribution ops - multiply   | treetime-distribution | 1      | 2       | Unit |
+| Distribution ops - multiply   | treetime-distribution | 1      | 6       | Unit |
 | Distribution ops - divide     | treetime-distribution | 1      | 10      | Unit |
 | Distribution ops - convolve   | treetime-distribution | 1      | 19      | Unit |
 | Distribution ops - negation   | treetime-distribution | 1      | 9       | Unit |
@@ -55,10 +55,14 @@
 
 **File:** [`test_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs)
 
-| Test                                              | Purpose                           |
-| ------------------------------------------------- | --------------------------------- |
-| `test_multiply_formula_function_returns_function` | Formula \* Function = Function    |
-| `test_multiply_function_formula_commutative`      | Function \* Formula commutativity |
+| Test                                                            | Purpose                                      |
+| --------------------------------------------------------------- | -------------------------------------------- |
+| `test_multiply_formula_function_returns_function`               | Formula \* Function = Function               |
+| `test_multiply_function_formula_commutative`                    | Function \* Formula commutativity            |
+| `test_multiply_function_function_non_overlapping_returns_empty` | Non-overlapping Function \* Function = Empty |
+| `test_multiply_function_function_overlapping_uses_intersection` | Overlapping uses intersection range          |
+| `test_multiply_chain_with_normalize_no_underflow`               | Chain multiply + normalize resists underflow |
+| `test_multiplication_eval_range`                                | Parameterized range intersection (7 cases)   |
 
 ---
 

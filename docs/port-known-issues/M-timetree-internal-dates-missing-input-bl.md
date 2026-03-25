@@ -188,7 +188,8 @@ v1 should enforce the same constraint.
 
 ## Related issues
 
-- [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md)
-  similar symptom from numerical instability at large tree scale
-- [Internal node dates missing with bad fixed clock rate](M-timetree-internal-dates-bad-fixed-rate.md)
-  similar symptom when clock rate is poorly specified
+The "missing at scale" and "bad fixed clock rate" variants of this issue were fixed
+by normalizing distribution products in the backward/forward passes and widening
+branch distribution grids via clock-rate-adaptive `MAX_BRANCH_TIME`. This
+input-branch-length variant has a distinct root cause (Point distribution
+multiplication tolerance).
