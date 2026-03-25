@@ -5,24 +5,20 @@ Procedure:
   ./dev/docker/python python packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_total_lh_capture
 
 Two test trees:
-  1. Binary tree: all nodes have 0 or 2 children. v0 default (m=2) and
-     v1 formula (child's child count) produce identical results.
-  2. Polytomy tree: internal node has 3 children. v0 default (m=2) and
-     v1 formula (m=child_count) diverge for the internal→root edge.
+  1. Binary tree: all nodes have 0 or 2 children. All multiplicity
+     formulas produce identical results (m=2 everywhere).
+  2. Polytomy tree: internal node has 3 children. The parent-based
+     formula (m = parent.child_count) gives m=3 for the 3 edges
+     entering the polytomy, while v0's default gives m=2.
 
 For each tree, branch lengths are set to calendar time durations
 (parent_tbp - child_tbp) to match v1's input semantics. v0 natively
 uses substitution branch lengths from Newick, so we override them.
 
-v1's multiplicity formula:
-  m = node.child_edges.len()  for internal nodes (>0 children)
-  m = 2.0                     for leaves (0 children)
+v1 multiplicity formula (correct Kingman):
+  m = parent_node.outbound().len()  (parent's child count at merger)
 
-This differs from v0's fixed m=2 and from the correct parent-based
-formula (m = parent.child_count). For binary trees all three agree.
-For polytomies only the internal→root edge differs.
-
-v0 errata: docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md
+v0 errata (fixed m=2): docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md
 """
 import random
 import sys
@@ -66,13 +62,13 @@ def compute_total_lh_v0_default(tree, tc_val):
     return float(merger.total_LH())
 
 
-def compute_total_lh_v1_formula(tree, tc_val):
-    """v1's formula: m = child's child count, or 2 for leaves."""
+def compute_total_lh_parent_multiplicity(tree, tc_val):
+    """Correct Kingman formula: m = parent's child count at the merger node."""
     merger = Coalescent(tree, Tc=tc_val, logger=lambda *a, **k: None)
     lh = 0.0
     for node in tree.find_clades():
         if node.up:
-            m = float(len(node.clades)) if len(node.clades) > 0 else 2.0
+            m = float(len(node.up.clades))
             lh -= merger.cost(node.time_before_present, node.branch_length, multiplicity=m)
     return float(lh)
 
@@ -102,14 +98,16 @@ output = {
     },
 }
 
+# Binary: v0 default and parent-based agree (all nodes binary, m=2)
 for tc in tc_values:
     v0_val = compute_total_lh_v0_default(binary_tree, tc)
-    v1_val = compute_total_lh_v1_formula(binary_tree, tc)
-    assert abs(v0_val - v1_val) < 1e-10, f"Binary tree: v0={v0_val}, v1={v1_val} differ at Tc={tc}"
+    parent_val = compute_total_lh_parent_multiplicity(binary_tree, tc)
+    assert abs(v0_val - parent_val) < 1e-10, f"Binary tree: v0={v0_val}, parent={parent_val} differ at Tc={tc}"
     output["binary"]["cases"].append({"tc": tc, "expected_lh": v0_val})
 
+# Polytomy: use parent-based formula (correct Kingman)
 for tc in tc_values:
-    v1_val = compute_total_lh_v1_formula(polytomy_tree, tc)
-    output["polytomy"]["cases"].append({"tc": tc, "expected_lh": v1_val})
+    parent_val = compute_total_lh_parent_multiplicity(polytomy_tree, tc)
+    output["polytomy"]["cases"].append({"tc": tc, "expected_lh": parent_val})
 
 print(json.dumps(output, indent=2))

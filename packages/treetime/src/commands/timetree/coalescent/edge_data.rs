@@ -81,11 +81,13 @@ where
       return;
     };
 
-    let multiplicity = if node.child_edges.is_empty() {
-      2.0
-    } else {
-      node.child_edges.len() as f64
-    };
+    // Multiplicity = number of children at the PARENT (merger) node.
+    // The merger rate credit log(λ) * (m-1)/m is distributed across the m edges
+    // entering the parent. Each edge gets the same share based on the parent's
+    // child count, regardless of whether the child is a leaf or internal node.
+    let multiplicity = graph
+      .get_node(parent_node_key)
+      .map_or(2.0, |parent| parent.read_arc().outbound().len() as f64);
 
     edges.push(CoalescentEdgeData {
       t_node,

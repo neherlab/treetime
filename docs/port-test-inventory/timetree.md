@@ -112,6 +112,37 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 
 ---
 
+### Total Coalescent Likelihood
+
+**File:** [`test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
+
+| Test                                           | Cases | Purpose                                     |
+| ---------------------------------------------- | ----- | ------------------------------------------- |
+| `test_total_lh_returns_finite_value`           | 1     | Basic finite output                         |
+| `test_total_lh_negative_for_reasonable_tc`     | 1     | Log-likelihood is negative                  |
+| `test_total_lh_finite_for_tc`                  | 4     | Finite for Tc in {0.1, 1.0, 10.0, 100.0}    |
+| `test_total_lh_differs_across_tc_values`       | 1     | LH at Tc=0.1 differs from LH at Tc=100      |
+| `test_total_lh_monotonic_near_optimum`         | 1     | LH at optimal Tc >= LH at 0.01x and 100x Tc |
+| `test_total_lh_matches_optimize_tc_likelihood` | 1     | Cross-validates with optimize_tc (ulps=10)  |
+| `test_total_lh_with_formula_distribution`      | 1     | Formula Tc matches constant Tc (ulps=10)    |
+
+10 test executions total. `#[rstest]` with 4 `#[case]` annotations for `test_total_lh_finite_for_tc`.
+
+---
+
+### Golden-Master Total Coalescent Likelihood
+
+**File:** [`test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
+
+| Test                        | Cases | Datasets and Tc values                                        |
+| --------------------------- | ----- | ------------------------------------------------------------- |
+| `test_gm_total_lh_binary`   | 4     | Binary tree, Tc in {0.1, 1.0, 10.0, 100.0}                    |
+| `test_gm_total_lh_polytomy` | 4     | Polytomy tree (3-way internal), Tc in {0.1, 1.0, 10.0, 100.0} |
+
+8 test executions. `#[rstest]` with 4 `#[case]` annotations each. Tolerance: 1e-8 absolute. Reference: v0 `total_LH()` with time-based branch lengths. Fixture: `__fixtures__/gm_total_lh.json`, capture script: `__fixtures__/gm_total_lh_capture`.
+
+---
+
 ### Skyline Optimization
 
 **File:** [`test_skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs)
@@ -314,8 +345,6 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_resolve_polytomies_respects_threshold`                   | High threshold prevents merges        |
 | `test_resolve_polytomies_new_node_has_correct_time`            | New node time between parent/children |
 | `test_resolve_polytomies_large_polytomy`                       | 5-way polytomy requires 3 merges      |
-| `test_resolve_polytomies_zero_branch_slope_affects_merge_gain` | High slope suppresses merges          |
-| `test_resolve_polytomies_zero_slope_no_penalty`                | Zero slope removes penalty            |
 | `test_prepare_tree_after_topology_change_preserves_leaf_state` | Leaf constraints preserved            |
 
 **Algorithm:** Converting n-way splits to binary
@@ -339,28 +368,16 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 Each `__tests__/mod.rs` contains only `mod` declarations.
 
-| Directory                                   | Module declarations                                                                                                                                                            |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `coalescent/__tests__/mod.rs`               | `test_events`, `test_gm_coalescent`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline` |
-| `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                          |
-| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_support`, `test_runner_coalescent`                                |
-| `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                |
-| `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                              |
-| `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                      |
+| Directory                                   | Module declarations                                                                                                                                                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `coalescent/__tests__/mod.rs`               | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
+| `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                                                                          |
+| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_support`, `test_runner_coalescent`                                                                                |
+| `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                                                                |
+| `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                                                                              |
+| `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                                                                      |
 
 ---
-
-## Timetree Pipeline (`run.rs`)
-
-**File:** [`run.rs`](../../packages/treetime/src/commands/timetree/run.rs) - 9 tests (inline)
-
-Tests for `compute_effective_time_marginal()` verifying mode promotion logic:
-
-- `Never` without confidence stays `Never`
-- `Never` with confidence + covariation/clock-std-dev promotes to `OnlyFinal`
-- `Never` with confidence alone (no prerequisites) stays `Never`
-- `Always` is never promoted regardless of confidence flags
-- `OnlyFinal` is never promoted regardless of confidence flags
 
 ## Known Test Limitations
 

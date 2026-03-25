@@ -39,7 +39,7 @@ mod tests {
   #[case::large( 10.0)]
   #[case::very_large(100.0)]
   #[trace]
-  fn test_total_lh_varies_with_tc(#[case] tc_value: f64) -> Result<(), Report> {
+  fn test_total_lh_finite_for_tc(#[case] tc_value: f64) -> Result<(), Report> {
     let graph = setup_graph()?;
     let tc = Distribution::constant(tc_value);
 

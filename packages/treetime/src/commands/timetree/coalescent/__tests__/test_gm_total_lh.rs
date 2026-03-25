@@ -7,11 +7,12 @@
 /// Capture script: `__fixtures__/gm_total_lh_capture`
 /// Fixture data: `__fixtures__/gm_total_lh.json`
 ///
-/// Binary tree cases use v0's default multiplicity=2 (identical to v1 for
-/// binary trees). Polytomy cases use v0 patched with v1's multiplicity
-/// formula (child's child count, 2 for leaves).
+/// Binary tree cases use v0's default multiplicity=2 (all formulas agree
+/// for binary trees). Polytomy cases use the correct parent-based Kingman
+/// formula: m = parent's child count at the merger node.
 #[cfg(test)]
 mod tests {
+  use super::super::helpers::setup_graph;
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::representation::partition::timetree::GraphTimetree;
@@ -23,19 +24,6 @@ mod tests {
   use treetime_io::dates_csv::DateOrRange;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::o;
-
-  fn setup_binary_graph() -> Result<GraphTimetree, Report> {
-    let dates = btreemap! {
-      o!("root") => Some(DateOrRange::YearFraction(2000.0)),
-      o!("internal1") => Some(DateOrRange::YearFraction(2005.0)),
-      o!("leaf1") => Some(DateOrRange::YearFraction(2010.0)),
-      o!("leaf2") => Some(DateOrRange::YearFraction(2010.0)),
-      o!("leaf3") => Some(DateOrRange::YearFraction(2012.0)),
-    };
-    let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
-  }
 
   fn setup_polytomy_graph() -> Result<GraphTimetree, Report> {
     let dates = btreemap! {
@@ -52,7 +40,7 @@ mod tests {
     Ok(graph)
   }
 
-  // Binary tree: v0 and v1 use identical multiplicity (m=2 for all edges).
+  // Binary tree: all formulas agree (m=2 for every edge).
   // Reference: v0 total_LH() with time-based branch lengths.
   #[rustfmt::skip]
   #[rstest]
@@ -62,20 +50,21 @@ mod tests {
   #[case::tc_100(100.0,   -8.316728083308085)]
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
-    let graph = setup_binary_graph()?;
+    let graph = setup_graph()?;
     let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?;
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }
 
-  // Polytomy tree: internal node has 3 children. v1 uses child's child count
-  // (m=3 for internal, m=2 for leaves). Reference: v0 patched with v1's formula.
+  // Polytomy tree: internal node has 3 children. Multiplicity = parent's
+  // child count at each merger node (correct Kingman formula).
+  // Reference: v0 patched with m = len(node.up.clades).
   #[rustfmt::skip]
   #[rstest]
-  #[case::tc_0_1(  0.1, -346.17213387796886)]
-  #[case::tc_1(    1.0,  -32.812360796123585)]
-  #[case::tc_10(  10.0,   -7.002587710808467)]
-  #[case::tc_100(100.0,   -9.947814625459504)]
+  #[case::tc_0_1(  0.1, -344.5087257790268)]
+  #[case::tc_1(    1.0,  -31.916481061509884)]
+  #[case::tc_10(  10.0,   -6.874236340525823)]
+  #[case::tc_100(100.0,  -10.586991619508176)]
   #[trace]
   fn test_gm_total_lh_polytomy(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let graph = setup_polytomy_graph()?;
