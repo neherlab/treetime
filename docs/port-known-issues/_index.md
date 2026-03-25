@@ -55,7 +55,10 @@ exactly.
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | High       | Timetree     | [Timetree crashes on zero-length branches with grid spacing error](H-timetree-crash-grid-zero-branch.md)                        |
-| High       | Clock        | [Clock fails with negative rate before filtering outliers](H-clock-negative-rate-before-filter.md)                              |
+| ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
+| Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                               |
+| Negligible | Clock        | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                        |
+| Negligible | Clock        | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                     |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                               |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                       |
