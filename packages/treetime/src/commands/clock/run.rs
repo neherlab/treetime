@@ -7,9 +7,7 @@ use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
-use crate::commands::clock::clock_regression::{
-  ClockParams, estimate_clock_model_with_reroot, estimate_clock_model_with_reroot_policy,
-};
+use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
@@ -20,15 +18,6 @@ use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_utils::io::console::is_tty;
-
-pub fn get_clock_model(
-  graph: &mut GraphClock,
-  options: &ClockParams,
-  keep_root: bool,
-  optimization_params: &BranchPointOptimizationParams,
-) -> Result<ClockModel, Report> {
-  estimate_clock_model_with_reroot(graph, options, None, keep_root, optimization_params, None)
-}
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
@@ -79,7 +68,14 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
       variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
     };
 
-    estimate_clock_model_with_prefilter(&mut graph, &options, *keep_root, branch_split, *clock_filter)?
+    estimate_clock_model_with_prefilter(
+      &mut graph,
+      &options,
+      *keep_root,
+      branch_split,
+      *clock_filter,
+      *allow_negative_rate,
+    )?
   } else {
     estimate_clock_model_with_prefilter(
       &mut graph,
@@ -87,6 +83,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
       *keep_root,
       branch_split,
       *clock_filter,
+      *allow_negative_rate,
     )?
   };
 
@@ -119,6 +116,7 @@ fn estimate_clock_model_with_prefilter(
   keep_root: bool,
   branch_split: &BranchSplitArgs,
   clock_filter_threshold: f64,
+  allow_negative_rate: bool,
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
@@ -141,6 +139,9 @@ fn estimate_clock_model_with_prefilter(
       )?;
       let pre_clock_model = result.clock_model;
       if pre_clock_model.clock_rate() < 0.0 {
+        // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value
+        // comparison is slope-sign-invariant: outliers are identified by distance from the
+        // fitted line regardless of slope direction.
         log::warn!(
           "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
           pre_clock_model.clock_rate()
@@ -151,6 +152,19 @@ fn estimate_clock_model_with_prefilter(
     .transpose()?;
 
   let params = BranchPointOptimizationParams::from(branch_split);
-  let clock_model = get_clock_model(graph, options, keep_root, &params)?;
-  Ok((clock_model, delta))
+  let reroot_params = RerootParams {
+    force_positive_rate: !allow_negative_rate,
+    ..RerootParams::default()
+  };
+  let result = estimate_clock_model_with_reroot_policy(graph, options, None, keep_root, &params, &reroot_params, None)
+    .wrap_err_with(|| {
+      if delta.is_some() {
+        "Clock model estimation failed after outlier filtering. \
+         The pre-filter step removed outliers but the clock rate remains negative at all root positions."
+          .to_owned()
+      } else {
+        "Clock model estimation failed".to_owned()
+      }
+    })?;
+  Ok((result.clock_model, delta))
 }
