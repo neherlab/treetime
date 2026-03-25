@@ -110,16 +110,23 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
   pub branch_length_mode: BranchLengthMode,
 
-  /// For 'false' or 'never', TreeTime uses the jointly most likely values for the divergence times.
-  ///  For 'true' and 'always', it uses the marginal inference mode at every round of optimization,
-  ///  for 'only-final' (or 'assign' for compatibility with previous versions) only uses the marginal
-  ///  distribution in the final round.
+  /// Control when marginal time distributions are used for output.
+  ///
+  /// All modes use marginal inference during optimization. The mode controls whether
+  /// confidence intervals are extracted from the resulting distributions:
+  ///
+  /// - `never`: no confidence interval output (default)
+  /// - `always`: write confidence intervals from distributions computed during optimization
+  /// - `only-final`: run one extra inference pass after optimization, then write confidence intervals
   #[clap(long, value_enum, default_value_t = TimeMarginalMode::default())]
   pub time_marginal: TimeMarginalMode,
 
-  /// estimate confidence intervals of divergence times using the marginal posterior distribution,
-  /// if `--time-marginal` is False (default) inferred divergence times will still be calculated
-  /// using the jointly most likely tree configuration.
+  /// Add rate-uncertainty to confidence intervals.
+  ///
+  /// `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
+  /// This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
+  /// via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
+  /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
   #[clap(long)]
   pub confidence: bool,
 

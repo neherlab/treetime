@@ -19,3 +19,4 @@ Distinct from [known issues](../port-known-issues/_index.md) (unintentional diff
 | Commands   | [Standalone branch length optimization command](command-optimize-standalone.md#standalone-branch-length-optimization-command)                            | New `optimize` subcommand                      |
 | Commands   | [Standalone tree pruning command](command-prune-standalone.md#standalone-tree-pruning-command)                                                           | New `prune` subcommand                         |
 | I/O        | [Multi-format tree I/O](multi-format-tree-io.md#multi-format-tree-io)                                                                                    | 8 formats, interop with UShER/Auspice/PhyloXML |
+| Timetree   | [CI output not gated on --confidence](timetree-ci-output-ungated.md#confidence-interval-output-not-gated-on---confidence)                                | Extra CI file when using marginal modes        |
