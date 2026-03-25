@@ -51,9 +51,79 @@ v1: [`packages/treetime-grid/src/interp_nonuniform.rs#L25-L56`](../../packages/t
 
 ---
 
+## Exponential Damping for Outer-Loop Convergence
+
+Blends optimized branch lengths with previous values using iteration-dependent weights: `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Early iterations take conservative steps; later iterations approach the full Newton update. Prevents oscillation in the alternating optimization (marginal reconstruction / branch length update) cycle.
+
+v1: [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs) `apply_damping()`.
+
+v0: `optimize_tree_marginal()` at [`packages/legacy/treetime/treetime/treeanc.py#L1297-L1360`](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1360) with `damping=0.75` default.
+
+References:
+
+- Sagulenko, Puller, and Neher (2018). "TreeTime: Maximum-Likelihood Phylodynamic Analysis." Virus Evolution 4(1):vex042. doi:10.1093/ve/vex042
+
+---
+
+## Zero-Length Branch Detection (Derivative Sign)
+
+Determines if zero is the optimal branch length by evaluating the sign of `d/dt log L(0)`. For independent sites with eigendecomposition-based likelihood `L_i(t) = sum_c k_{ic} exp(lambda_c t)`, the per-site derivative at zero is `(sum_c k_{ic} lambda_c) / (sum_c k_{ic})`. If the total derivative (summed over sites) is negative, the likelihood decreases as `t` increases from zero, making zero a local maximum.
+
+v1: [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs) `is_zero_branch_optimal()`.
+
+v0 does not have an equivalent analytical check. v0 uses `prune_short_branches()` with a compound threshold-and-probability criterion instead.
+
+References:
+
+- Zhang, Dinh, and Matsen (2018). "Non-bifurcating Phylogenetic Tree Inference via the Adaptive LASSO." arXiv:1805.11073 (theoretical background on zero-length branch identification)
+
+---
+
+## Zero-Length Branch Pruning
+
+Collapses internal edges whose optimal length is zero or near-zero, reparenting children to the grandparent. Creates polytomies. v0 uses a compound criterion: `branch_length < 0.1 * one_mutation AND prob_t(parent_seq, child_seq, 0) > 0.1`.
+
+v0: `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
+
+v1: Not implemented in the optimize loop. The prune command has `--prune-short` and `--prune-empty` as standalone operations. See known issue `M-optimize-no-topology-cleanup-in-loop.md`.
+
+---
+
+## Shared-Mutation Polytomy Merging
+
+Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node with `branch_length = #shared_mutations / alignment_length`. Shared mutations move to the new parent edge; remaining unique mutations stay on child edges.
+
+v1: [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs) `merge_shared_mutation_branches()`. Available as `--merge-shared-mutations` on the prune command. Not integrated into the optimize loop.
+
+v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrain pathogen pipelines.
+
+---
+
+## Greedy Temporal Polytomy Resolution
+
+For each polytomy, computes pairwise likelihood gain from merging children under a new intermediate node. Uses Brent optimization over the time domain with `zero_branch_slope = mu * L` penalty for the new zero-mutation branch. Greedily picks the best pair above `resolution_threshold` (0.05). O(n^2) per polytomy.
+
+v1: [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs) `resolve_polytomies()`.
+
+v0: `_poly()` at [`packages/legacy/treetime/treetime/treetime.py#L713-L870`](../../packages/legacy/treetime/treetime/treetime.py#L713-L870). v0 distinguishes "stretched" (`mutation_length < clock_length`) from "compressed" children and by default only resolves stretched ones.
+
+---
+
+## Stochastic Coalescent Polytomy Resolution
+
+Simulates a backward-in-time coalescent process. Branches without mutations are "ready to coalesce"; branches with mutations must have mutations removed stochastically. Randomly pairs ready branches for merging. Recommended for large polytomies where greedy mode produces caterpillar-like subtrees.
+
+v0: `generate_subtree()` at [`packages/legacy/treetime/treetime/treetime.py#L872-L1010`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1010).
+
+v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
+
+---
+
 ## File Index
 
-| File                                                                                         | Algorithms                                   |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/) | Newton-Raphson, grid search, likelihood eval |
-| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                           | Interpolation (uniform, non-uniform)         |
+| File                                                                                                                   | Algorithms                                                         |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                           | Newton-Raphson, grid search, likelihood eval, damping, zero-detect |
+| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                 | Shared-mutation merging, edge collapsing                           |
+| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Greedy temporal polytomy resolution                                |
+| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                     | Interpolation (uniform, non-uniform)                               |

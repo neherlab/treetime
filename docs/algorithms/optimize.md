@@ -18,3 +18,12 @@ Potential additional useful things:
 
 prune zero length branches
 merge branches in polytomies that share mutations (a known problem in tree builders for which we have ad-hoc scripts)
+
+The previous paragraph on this didn't talk about initial conditions. They really only serve the purpose to start the Newton iteration from a place that will likely lead to convergence. #subs/length is a good estimate in most cases. Furthermore, the input tree will usually be a fine starting point already, so we could make this step optional. Only when the input tree doesn't have approximate branch length we need the initial guess.
+
+More added value of the optimize command would be
+
+- pruning branches of zero length.
+- scanning for shared subs in children of a polytomy and introducing a new internal node with the individuals that share a sub as children. Initial branch length for this new internal node would be #shared subs/length.
+
+An outstanding question is whether we can extend this to indels. we, as most other phylo software, ignore indels. But the unified optimization should allow to add an indel contribution to the LH. A branch with no subs but an indel should have a finite length. But for this to happen we need to add it somehow to the LH.
