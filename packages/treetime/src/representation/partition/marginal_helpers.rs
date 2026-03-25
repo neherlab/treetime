@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gtr::GTR;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -146,9 +147,77 @@ pub fn propagate_raw(
   message
 }
 
+/// Propagate sparse message with per-site rate variation.
+///
+/// For variable positions, computes a position-specific P(t) using the site rate
+/// at that position. For fixed positions, uses the default scalar mu rate. This is
+/// an approximation: all fixed positions with the same state share one propagated
+/// profile, so per-site rate variation cannot be represented for them. The
+/// approximation is exact when rates are uniform. See
+/// `docs/port-intentional-changes/sparse-fixed-position-scalar-rate-approximation.md`.
+///
+/// `transpose`: when true, uses P(t)^T (backward pass: child -> parent).
+///              when false, uses P(t) directly (forward pass: parent -> child).
+pub fn propagate_raw_per_site(
+  gtr: &GTR,
+  branch_length: f64,
+  transpose: bool,
+  seq_dis: &MarginalSparseSeqDistribution,
+  transmission: Option<&[(usize, usize)]>,
+) -> MarginalSparseSeqDistribution {
+  let site_rates = gtr
+    .site_rates
+    .as_ref()
+    .expect("propagate_raw_per_site requires site_rates");
+  let default_exp_qt = if transpose {
+    gtr.expQt(branch_length).t().to_owned()
+  } else {
+    gtr.expQt(branch_length)
+  };
+
+  let mut message = MarginalSparseSeqDistribution {
+    variable: btreemap! {},
+    variable_indel: btreemap! {},
+    fixed: btreemap! {},
+    fixed_counts: seq_dis.fixed_counts.clone(),
+    log_lh: seq_dis.log_lh,
+  };
+
+  for (&pos, state) in &seq_dis.variable {
+    if let Some(transmission) = &transmission {
+      if !range_contains(transmission, pos) {
+        continue;
+      }
+    }
+
+    let rate = site_rates[pos];
+    let exp_qt_pos = if transpose {
+      gtr.expQt_with_rate(branch_length, rate).t().to_owned()
+    } else {
+      gtr.expQt_with_rate(branch_length, rate)
+    };
+    let dis = exp_qt_pos.dot(&state.dis);
+    message.variable.insert(
+      pos,
+      VarPos {
+        dis,
+        state: state.state,
+      },
+    );
+  }
+
+  // Fixed positions: use default scalar mu rate
+  for (&s, p) in &seq_dis.fixed {
+    message.fixed.insert(s, default_exp_qt.dot(p));
+  }
+
+  message
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::seq::composition::Composition;
   use approx::assert_abs_diff_eq;
   use ndarray::array;
 
@@ -300,6 +369,82 @@ mod tests {
 
     assert_abs_diff_eq!(normalized, array![0.5, 0.5], epsilon = 1e-10);
     assert_abs_diff_eq!(log_norm, 2.0_f64.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_propagate_raw_per_site_forward() {
+    use crate::gtr::get_gtr::{JC69Params, jc69};
+
+    let a = AsciiChar::from_byte_unchecked(b'A');
+    let c = AsciiChar::from_byte_unchecked(b'C');
+    let g = AsciiChar::from_byte_unchecked(b'G');
+
+    let mut gtr = jc69(JC69Params::default()).unwrap();
+    gtr.set_site_rates(Array1::from_vec(vec![
+      0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
+    ]));
+
+    let t = 0.3;
+    let variable = btreemap! {
+      0_usize  => VarPos { dis: array![0.9, 0.03, 0.04, 0.03], state: a },
+      5_usize  => VarPos { dis: array![0.1, 0.6,  0.2,  0.1 ], state: c },
+      10_usize => VarPos { dis: array![0.05, 0.05, 0.8, 0.1 ], state: g },
+    };
+
+    let seq_dis = MarginalSparseSeqDistribution {
+      variable,
+      variable_indel: btreemap! {},
+      fixed: btreemap! {},
+      fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
+      log_lh: 0.0,
+    };
+
+    let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
+
+    for (&pos, var_pos) in &result.variable {
+      let rate = gtr.site_rates.as_ref().unwrap()[pos];
+      let exp_qt = gtr.expQt_with_rate(t, rate);
+      let expected = exp_qt.dot(&seq_dis.variable[&pos].dis);
+      assert_abs_diff_eq!(var_pos.dis, expected, epsilon = 1e-14);
+    }
+  }
+
+  #[test]
+  fn test_propagate_raw_per_site_backward() {
+    use crate::gtr::get_gtr::{JC69Params, jc69};
+
+    let a = AsciiChar::from_byte_unchecked(b'A');
+    let c = AsciiChar::from_byte_unchecked(b'C');
+    let g = AsciiChar::from_byte_unchecked(b'G');
+
+    let mut gtr = jc69(JC69Params::default()).unwrap();
+    gtr.set_site_rates(Array1::from_vec(vec![
+      0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
+    ]));
+
+    let t = 0.3;
+    let variable = btreemap! {
+      0_usize  => VarPos { dis: array![0.9, 0.03, 0.04, 0.03], state: a },
+      5_usize  => VarPos { dis: array![0.1, 0.6,  0.2,  0.1 ], state: c },
+      10_usize => VarPos { dis: array![0.05, 0.05, 0.8, 0.1 ], state: g },
+    };
+
+    let seq_dis = MarginalSparseSeqDistribution {
+      variable,
+      variable_indel: btreemap! {},
+      fixed: btreemap! {},
+      fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
+      log_lh: 0.0,
+    };
+
+    let result = propagate_raw_per_site(&gtr, t, true, &seq_dis, None);
+
+    for (&pos, var_pos) in &result.variable {
+      let rate = gtr.site_rates.as_ref().unwrap()[pos];
+      let exp_qt = gtr.expQt_with_rate(t, rate);
+      let expected = exp_qt.t().dot(&seq_dis.variable[&pos].dis);
+      assert_abs_diff_eq!(var_pos.dis, expected, epsilon = 1e-14);
+    }
   }
 
   mod helpers {

@@ -1,5 +1,5 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw};
+use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use eyre::Report;
@@ -105,11 +105,21 @@ where
     let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
     let branch_length = fix_branch_length(length, branch_length);
     let mut edge_data = partition.edges.remove(edge_key).unwrap();
-    edge_data.msg_from_child = propagate_raw(
-      &partition.gtr.expQt(branch_length).t().to_owned(),
-      &msg_to_parent,
-      edge_data.transmission.as_deref(),
-    );
+    edge_data.msg_from_child = if partition.gtr.has_site_rates() {
+      propagate_raw_per_site(
+        &partition.gtr,
+        branch_length,
+        true,
+        &msg_to_parent,
+        edge_data.transmission.as_deref(),
+      )
+    } else {
+      propagate_raw(
+        &partition.gtr.expQt(branch_length).t().to_owned(),
+        &msg_to_parent,
+        edge_data.transmission.as_deref(),
+      )
+    };
     edge_data.msg_to_parent = msg_to_parent;
     partition.edges.insert(*edge_key, edge_data);
   }
@@ -156,11 +166,21 @@ where
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
       let branch_length = edge_payload.branch_length().unwrap_or(0.0);
 
-      msgs_to_combine.push(propagate_raw(
-        &partition.gtr.expQt(branch_length),
-        &edge_data.msg_to_child,
-        edge_data.transmission.as_deref(),
-      ));
+      msgs_to_combine.push(if partition.gtr.has_site_rates() {
+        propagate_raw_per_site(
+          &partition.gtr,
+          branch_length,
+          false,
+          &edge_data.msg_to_child,
+          edge_data.transmission.as_deref(),
+        )
+      } else {
+        propagate_raw(
+          &partition.gtr.expQt(branch_length),
+          &edge_data.msg_to_child,
+          edge_data.transmission.as_deref(),
+        )
+      });
       msgs_to_combine.push(edge_data.msg_to_parent.clone());
 
       ref_states.push(parent_state);
