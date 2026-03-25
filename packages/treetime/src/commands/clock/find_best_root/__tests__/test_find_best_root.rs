@@ -294,7 +294,10 @@ mod tests {
     let det = best_root.clock_set.determinant();
     assert!(det > 0.0, "determinant should be positive");
     let rate = best_root.clock_set.clock_rate(det);
-    assert!(rate < 0.0, "rate should be negative for this test graph, got {rate:.6e}");
+    assert!(
+      rate < 0.0,
+      "rate should be negative for this test graph, got {rate:.6e}"
+    );
 
     // Non-negative chi-squared from valid weighted least squares
     assert!(best_root.chisq >= 0.0, "chisq should be non-negative");
