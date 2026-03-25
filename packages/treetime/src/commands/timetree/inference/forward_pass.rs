@@ -88,7 +88,7 @@ where
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
-      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?;
+      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?.normalize();
       node.payload.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
   }
