@@ -34,4 +34,4 @@ always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`,
 
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
 - [--aln flag silently ignored](M-timetree-aln-flag-ignored.md) `--aln` also dead, causes confusing error
-- [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md) variant exists but unchecked
+- `--time-marginal=always` **FIXED**: `Always` now wired to produce CI output

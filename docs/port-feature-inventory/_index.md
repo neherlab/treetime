@@ -203,7 +203,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 ### Time Marginal Modes
 
 - [x] `never` (joint most-likely times)
-- [ ] `always` (marginal every round - parsed but not wired, [known issue](../port-known-issues/M-timetree-time-marginal-always-ignored.md))
+- [x] `always` (marginal every round, CI output)
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist

@@ -83,7 +83,7 @@ exactly.
 | Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                              |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                      |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                             |
-| Medium     | Timetree     | [--time-marginal=always has no effect](M-timetree-time-marginal-always-ignored.md)                                              |
+| ~~Medium~~ | ~~Timetree~~ | ~~--time-marginal=always has no effect~~ **FIXED**                                                                              |
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                   |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                           |
 | Negligible | Ancestral    | [Dense normalize_inplace produces NaN for all-zero probability rows](N-dense-normalize-inplace-zero-row.md)                     |

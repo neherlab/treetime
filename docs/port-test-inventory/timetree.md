@@ -350,6 +350,18 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 ---
 
+## Timetree Pipeline (`run.rs`)
+
+**File:** [`run.rs`](../../packages/treetime/src/commands/timetree/run.rs) - 9 tests (inline)
+
+Tests for `compute_effective_time_marginal()` verifying mode promotion logic:
+
+- `Never` without confidence stays `Never`
+- `Never` with confidence + covariation/clock-std-dev promotes to `OnlyFinal`
+- `Never` with confidence alone (no prerequisites) stays `Never`
+- `Always` is never promoted regardless of confidence flags
+- `OnlyFinal` is never promoted regardless of confidence flags
+
 ## Known Test Limitations
 
 1. **Golden-master datasets disabled**: Multiple datasets disabled due to zero-length branches:
