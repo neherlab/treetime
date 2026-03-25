@@ -54,7 +54,8 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| High       | Timetree     | [Timetree crashes on zero-length branches with grid spacing error](H-timetree-crash-grid-zero-branch.md)                        |
+| ~~High~~   | ~~Timetree~~ | ~~Timetree crashes on zero-length branches with grid spacing error~~ **FIXED**                                                  |
+| Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                              |
 | ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
 | Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                               |
 | Negligible | Clock        | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                        |

@@ -28,13 +28,13 @@ mod tests {
 
   #[rustfmt::skip]
 #[rstest]
-  // #[case::dengue_20("dengue_20")]       // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::dengue_20("dengue_20")]       // TODO: missing internal node times, leaf dates not refined
   // #[case::ebola_20("ebola_20")]         // TODO: golden master node key mismatch (v0 captures 11 internal nodes, v1 rerooting produces 19)
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // #[case::lassa_l_20("lassa_L_20")]     // TODO: zero-length branches ("x array must be uniformly spaced")
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: zero-length branches ("x array must be uniformly spaced")
-  // #[case::rsv_a_20("rsv_a_20")]         // TODO: zero-length branches ("x array must be uniformly spaced")
-  // #[case::tb_20("tb_20")]               // TODO: zero-length branches ("x array must be uniformly spaced")
+  // #[case::lassa_l_20("lassa_L_20")]     // TODO: missing internal node times, leaf dates not refined
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: missing internal node times, leaf dates not refined
+  // #[case::rsv_a_20("rsv_a_20")]         // TODO: missing internal node times, leaf dates not refined
+  // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
   // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
   fn test_gm_runner_marginal_dense(#[case] dataset: &str) -> Result<(), Report> {
