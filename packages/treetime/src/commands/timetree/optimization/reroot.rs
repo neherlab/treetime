@@ -23,14 +23,17 @@ pub fn reroot_tree(
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
+  force_positive_rate: bool,
 ) -> Result<ClockModel, Report> {
   let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
-  // Use default reroot params - always allow edge split and trivial root removal
-  let reroot_params = RerootParams::default();
+  let reroot_params = RerootParams {
+    force_positive_rate,
+    ..RerootParams::default()
+  };
 
   info!(
-    "Reroot params: split_edge={}, remove_trivial_root={}",
+    "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={force_positive_rate}",
     reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 

@@ -118,6 +118,7 @@ mod tests {
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
+      true,
     )?;
 
     // Verify we still have a valid tree with exactly one root
@@ -395,6 +396,7 @@ mod tests {
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
+      true,
     )?;
 
     // Verify tree validity after first reroot
@@ -414,6 +416,7 @@ mod tests {
       &clock_params,
       Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),
+      true,
     )?;
 
     // Verify tree validity after second reroot

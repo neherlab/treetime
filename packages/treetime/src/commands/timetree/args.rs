@@ -234,6 +234,10 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub keep_root: bool,
 
+  /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
+  #[clap(long)]
+  pub allow_negative_rate: bool,
+
   /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
   /// clock
   #[clap(long)]

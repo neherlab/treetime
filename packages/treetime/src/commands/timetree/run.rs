@@ -3,8 +3,9 @@ use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal}
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
-use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::commands::clock::reroot::RerootParams;
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
 use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_skyline};
@@ -78,15 +79,21 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   let branch_params = BranchPointOptimizationParams::default();
 
   // Initial regression: always non-covariation (matching v0 treetime.py:488-491)
-  let mut clock_model = estimate_clock_model_with_reroot(
+  let reroot_params = RerootParams {
+    force_positive_rate: !args.allow_negative_rate,
+    ..RerootParams::default()
+  };
+  let mut clock_model = estimate_clock_model_with_reroot_policy(
     &mut graph,
     &ClockParams::default(),
     args.clock_rate,
     args.keep_root,
     &branch_params,
+    &reroot_params,
     None,
   )
-  .wrap_err("Failed to infer clock model")?;
+  .wrap_err("Failed to infer clock model")?
+  .clock_model;
 
   let partitions = match args.branch_length_mode {
     BranchLengthMode::Input => {
@@ -108,6 +115,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       &ClockParams::default(),
       args.clock_rate,
       &branch_params,
+      !args.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (pre-ancestral)")?;
   }
@@ -195,6 +203,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       reroot_clock_params,
       args.clock_rate,
       &branch_params,
+      !args.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
