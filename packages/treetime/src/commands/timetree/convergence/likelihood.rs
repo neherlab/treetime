@@ -1,3 +1,4 @@
+use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::graph_log_lh;
@@ -6,6 +7,7 @@ use crate::representation::payload::timetree::NodeTimetree;
 use log::debug;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 
 /// Sum of per-partition root log-likelihoods from marginal reconstruction.
 pub fn compute_sequence_likelihood(
@@ -75,9 +77,17 @@ pub fn compute_positional_likelihood(graph: &GraphTimetree) -> Option<f64> {
   (count > 0).then_some(total)
 }
 
-/// Coalescent likelihood from merger model.
+/// Total coalescent log-likelihood from the merger model.
 ///
-/// Not yet implemented: requires merger model to expose total log-likelihood.
-pub fn compute_coalescent_likelihood() -> Option<f64> {
-  None
+/// Sums per-edge costs under the Kingman coalescent for the given Tc distribution.
+/// Returns `None` when no coalescent model is active (coalescent_tc is None).
+pub fn compute_coalescent_likelihood(graph: &GraphTimetree, coalescent_tc: Option<&Distribution>) -> Option<f64> {
+  let tc = coalescent_tc?;
+  match compute_coalescent_total_lh(graph, tc) {
+    Ok(lh) => Some(lh),
+    Err(e) => {
+      debug!("Coalescent likelihood unavailable: {e}");
+      None
+    },
+  }
 }

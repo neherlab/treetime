@@ -248,7 +248,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     .wrap_err_with(|| format!("When running round {i}"))?;
 
     optimizer
-      .record(n_diff, n_resolved, &graph, &partitions)
+      .record(n_diff, n_resolved, &graph, &partitions, coalescent_tc.as_ref())
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
   }

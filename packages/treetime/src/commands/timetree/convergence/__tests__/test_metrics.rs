@@ -13,7 +13,7 @@ mod tests {
     let mut optimizer = TimetreeOptimizer::new(5, false, None::<PathBuf>)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, &graph, &[])?;
+    optimizer.record(0, 0, &graph, &[], None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(1, optimizer.iteration_count());
@@ -30,15 +30,15 @@ mod tests {
 
     // Iteration 1: sequences still changing
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(10, 0, &graph, &[])?;
+    optimizer.record(10, 0, &graph, &[], None)?;
 
     // Iteration 2: fewer changes
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(3, 0, &graph, &[])?;
+    optimizer.record(3, 0, &graph, &[], None)?;
 
     // Iteration 3: converged
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, &graph, &[])?;
+    optimizer.record(0, 0, &graph, &[], None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(3, optimizer.iteration_count());
@@ -59,7 +59,7 @@ mod tests {
 
     for _ in 0..3 {
       assert!(optimizer.next_iter().is_some());
-      optimizer.record(10, 0, &graph, &[])?;
+      optimizer.record(10, 0, &graph, &[], None)?;
     }
 
     assert!(optimizer.next_iter().is_none());
@@ -76,11 +76,11 @@ mod tests {
 
     // n_diff=0 but polytomies resolved: not converged
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 3, &graph, &[])?;
+    optimizer.record(0, 3, &graph, &[], None)?;
 
     // Both zero: converged
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, &graph, &[])?;
+    optimizer.record(0, 0, &graph, &[], None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(2, optimizer.iteration_count());

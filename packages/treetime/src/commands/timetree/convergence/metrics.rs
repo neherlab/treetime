@@ -11,6 +11,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_io::csv::CsvStructFileWriter;
 
 pub struct TimetreeOptimizer {
@@ -58,10 +59,11 @@ impl TimetreeOptimizer {
     n_resolved: usize,
     graph: &GraphTimetree,
     partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+    coalescent_tc: Option<&Distribution>,
   ) -> Result<(), Report> {
     let lh_seq = compute_sequence_likelihood(graph, partitions);
     let lh_pos = compute_positional_likelihood(graph);
-    let lh_coal = compute_coalescent_likelihood();
+    let lh_coal = compute_coalescent_likelihood(graph, coalescent_tc);
     let lh_total = [lh_seq, lh_pos, lh_coal].into_iter().flatten().reduce(|acc, v| acc + v);
 
     let metric = ConvergenceMetrics {
@@ -78,10 +80,11 @@ impl TimetreeOptimizer {
     }
 
     info!(
-      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, lh_seq={:.2}, lh_pos={:.2}, total_LH={:.2}{}",
+      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, lh_seq={:.2}, lh_pos={:.2}, lh_coal={:.2}, total_LH={:.2}{}",
       self.i,
       metric.lh_seq.unwrap_or(f64::NAN),
       metric.lh_pos.unwrap_or(f64::NAN),
+      metric.lh_coal.unwrap_or(f64::NAN),
       metric.lh_total.unwrap_or(f64::NAN),
       if metric.has_converged() { " [converged]" } else { "" }
     );
