@@ -135,36 +135,41 @@ fn multiply_range_function<Y: YAxisPolicy>(
   Ok(Distribution::Function(distribution_fn))
 }
 
+/// Compute evaluation range for multiplying two distributions with extrapolation support.
+///
+/// Returns the intersection when ranges overlap, or the union when they don't.
+/// The union fallback prevents returning Empty when message-passing constraints
+/// from different parts of the tree disagree (common in large trees where child
+/// date ranges exceed branch distribution support width). Interpolation uses
+/// constant extrapolation outside each distribution's support, producing small
+/// but nonzero boundary values.
+///
+/// Returns None when both ranges are degenerate (zero width).
+pub(crate) fn multiplication_eval_range(a: (f64, f64), b: (f64, f64)) -> Option<(f64, f64)> {
+  let intersection = (a.0.max(b.0), a.1.min(b.1));
+  let (eval_min, eval_max) = if intersection.0 < intersection.1 {
+    intersection
+  } else {
+    (a.0.min(b.0), a.1.max(b.1))
+  };
+  if eval_min >= eval_max {
+    None
+  } else {
+    Some((eval_min, eval_max))
+  }
+}
+
 fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let a_min = a.t().first().copied().unwrap_or(0.0);
-  let a_max = a.t().last().copied().unwrap_or(0.0);
-  let b_min = b.t().first().copied().unwrap_or(0.0);
-  let b_max = b.t().last().copied().unwrap_or(0.0);
-
-  let overlap_min = a_min.max(b_min);
-  let overlap_max = a_max.min(b_max);
-
-  // When distributions overlap, use the intersection for focused evaluation.
-  // When they don't overlap, use the union so the product captures boundary
-  // information rather than discarding it. Interpolation uses constant
-  // extrapolation outside each distribution's support, producing small but
-  // nonzero values in the gap. This gives a valid "best compromise" distribution
-  // when two message-passing constraints disagree (common in large trees where
-  // child date ranges exceed branch distribution support width).
-  let (eval_min, eval_max) = if overlap_min < overlap_max {
-    (overlap_min, overlap_max)
-  } else {
-    (a_min.min(b_min), a_max.max(b_max))
+  let Some((eval_min, eval_max)) =
+    multiplication_eval_range((a.x_min(), a.x_max()), (b.x_min(), b.x_max()))
+  else {
+    return Ok(Distribution::empty());
   };
 
-  if eval_min >= eval_max {
-    return Ok(Distribution::empty());
-  }
-
-  let n_points = a.t().len().max(b.t().len());
+  let n_points = a.len().max(b.len());
 
   let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
     let t = eval_min + (eval_max - eval_min) * (i as f64 / (n_points - 1) as f64);
@@ -206,11 +211,8 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let b_min = b.t().first().copied().unwrap_or(0.0);
-  let b_max = b.t().last().copied().unwrap_or(0.0);
-
-  let overlap_min = a.t_min().max(b_min);
-  let overlap_max = a.t_max().min(b_max);
+  let overlap_min = a.t_min().max(b.x_min());
+  let overlap_max = a.t_max().min(b.x_max());
 
   if overlap_min >= overlap_max {
     return Ok(Distribution::empty());
@@ -218,7 +220,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
 
   // Evaluate the Formula on the Function's grid (matching multiply_function_function).
   // The Function provides the grid; the Formula is evaluated at each grid point.
-  let n_points = b.t().len();
+  let n_points = b.len();
   let values = (0..n_points)
     .map(|i| {
       let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);

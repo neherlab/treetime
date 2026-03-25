@@ -3,7 +3,7 @@ mod tests {
   use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
-  use crate::distribution_ops::multiply::distribution_multiplication;
+  use crate::distribution_ops::multiply::{distribution_multiplication, multiplication_eval_range};
   use crate::policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
@@ -199,5 +199,31 @@ mod tests {
     let likely = accum.likely_time().expect("Final distribution must have likely_time");
     // After 50 steps with shifts of 0.01, the accumulated peak drifts slightly
     assert!(likely.abs() < 1.0, "Peak at {likely}, expected near 0");
+  }
+
+  #[rustfmt::skip]
+  #[rstest::rstest]
+  #[case::overlapping(         (0.0, 10.0), (5.0, 15.0), Some((5.0, 10.0)))]
+  #[case::identical(           (0.0, 10.0), (0.0, 10.0), Some((0.0, 10.0)))]
+  #[case::contained(           (0.0, 10.0), (2.0,  8.0), Some((2.0,  8.0)))]
+  #[case::non_overlapping(     (0.0,  5.0), (10.0, 15.0), Some((0.0, 15.0)))]
+  #[case::adjacent(            (0.0,  5.0), (5.0,  10.0), Some((0.0, 10.0)))]
+  #[case::non_overlapping_rev( (10.0, 15.0), (0.0, 5.0), Some((0.0, 15.0)))]
+  #[case::degenerate(          (5.0,  5.0), (5.0,  5.0), None)]
+  #[trace]
+  fn test_multiplication_eval_range(
+    #[case] a: (f64, f64),
+    #[case] b: (f64, f64),
+    #[case] expected: Option<(f64, f64)>,
+  ) {
+    let result = multiplication_eval_range(a, b);
+    match (result, expected) {
+      (Some((rmin, rmax)), Some((emin, emax))) => {
+        assert_ulps_eq!(rmin, emin, max_ulps = 4);
+        assert_ulps_eq!(rmax, emax, max_ulps = 4);
+      },
+      (None, None) => {},
+      _ => panic!("Expected {expected:?}, got {result:?}"),
+    }
   }
 }
