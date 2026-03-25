@@ -159,16 +159,16 @@ The algorithm iterates over all nodes with >2 children. For each polytomy, it co
 
 This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree (Sagulenko et al. 2018, Section 2.6).
 
-- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L31-L43](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L31-L43): entry point with default threshold (0.05).
-- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L239](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L239): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
-- `merge_children()` (`#merge_children`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L371](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L371): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L458-L480](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L458-L480): clears cached distributions on internal nodes; leaf date constraints and `bad_branch` flags are preserved.
+- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
+- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
+- `merge_children()` (`#merge_children`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
+- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L432-L454](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L432-L454): clears cached distributions on internal nodes; leaf date constraints and `bad_branch` flags are preserved.
 
 After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
 
-### Zero-branch penalty
+### Known issues
 
-The zero-branch penalty for newly created internal branches is scaled by `zero_branch_slope = clock_rate * sequence_length`, matching v0's `gtr.mu * data.full_length`. The penalty discourages placing new internal nodes far from the parent: `penalty = zero_branch_slope * dt`.
+The zero-branch penalty for newly created internal branches differs from v0: v1 uses bare time difference, v0 scales by `gtr.mu * data.full_length`. See [known issue](../port-known-issues/M-timetree-polytomy-zero-branch-penalty.md).
 
 ---
 
@@ -196,7 +196,10 @@ v1: [`packages/treetime/src/commands/timetree/convergence/`](../../packages/tree
 
 - `compute_sequence_likelihood()` (`#compute_sequence_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
 - `compute_positional_likelihood()` (`#compute_positional_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
-- `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L81-L83](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L81-L83): stub, returns `None`
+- `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
+- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/commands/timetree/coalescent/total_lh.rs](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs): thin wrapper over shared `edge_data` module. Collects tree events, lineage counts, integral merger rate, and per-edge data, then calls `sum_coalescent_cost()`.
+- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/commands/timetree/coalescent/edge_data.rs](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs): collects per-edge TBP time, branch length, and multiplicity from graph traversal. Shared by `total_lh` and `optimize_tc`.
+- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/commands/timetree/coalescent/edge_data.rs](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs): per-edge cost = I(t_merger) - I(t_node) - log(λ(t_merger)) \* (m-1)/m. Uses `eval_left()` for pre-event lineage count at merger times. Accepts any Distribution for Tc.
 
 ---
 
@@ -206,7 +209,7 @@ Alternates sequence reconstruction (E-step) and time inference (M-step), iterati
 
 v1: [`packages/treetime/src/commands/timetree/refinement.rs`](../../packages/treetime/src/commands/timetree/refinement.rs).
 
-- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/commands/timetree/refinement.rs#L21-L108](../../packages/treetime/src/commands/timetree/refinement.rs#L21-L108): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
+- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/commands/timetree/refinement.rs#L21-L106](../../packages/treetime/src/commands/timetree/refinement.rs#L21-L106): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
 
 Reference: Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.4.
 

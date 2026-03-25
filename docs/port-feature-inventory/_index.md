@@ -203,7 +203,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 ### Time Marginal Modes
 
 - [x] `never` (joint most-likely times)
-- [x] `always` (marginal every round, CI output)
+- [ ] `always` (marginal every round - parsed but not wired, [known issue](../port-known-issues/M-timetree-time-marginal-always-ignored.md))
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
@@ -236,7 +236,6 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Find polytomy nodes with more than two children
 - [x] Greedy pairwise merging (likelihood gain threshold 0.05)
 - [x] Per-pair Brent optimization for merge time
-- [x] Zero-branch penalty scaled by mu*L (clock_rate * sequence_length)
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
 - [/] `--keep-polytomies` (parsed but never read - [known issue](../port-known-issues/N-timetree-dead-cli-flags.md))
@@ -273,7 +272,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Sequence likelihood (lh_seq)
 - [x] Positional likelihood (lh_pos)
 - [x] Tracelog CSV output (`--tracelog`)
-- [ ] Coalescent likelihood in metrics ([known issue](../port-known-issues/M-timetree-coalescent-likelihood-stub.md))
+- [x] Coalescent likelihood in metrics (lh_coal)
 
 ### Confidence Intervals
 
@@ -430,7 +429,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
-- [x] Damping in marginal loop (`--damping`, default 0.75, matching v0: `new*(1-d^(i+1)) + old*d^(i+1)`)
+- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75, see [known issue](../port-known-issues/M-optimize-oscillation-no-damping.md))
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)
@@ -466,6 +465,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [/] Command always builds one sparse and one dense partition from the same full alignment
 - [ ] `--dense` (parsed but not wired, `infer_dense()` is a stub returning false)
 - [ ] Separate dense-only and sparse-only command modes not exposed
+- [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency (see [known issue](../port-known-issues/N-optimize-sparse-zero-branch-no-derivative.md))
 
 ## 8. Pruning (v1-Only Command)
 
@@ -480,23 +480,15 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Empty branch pruning (`--prune-empty`, requires alignment)
 - [x] Name-based pruning (`--prune-nodes-list`, `--prune-nodes-list-file`)
 - [x] Custom delimiters for node lists
-- [x] Polytomy branch merging (`--merge-shared-mutations`, requires alignment)
 
 ### Validation
 
 - [x] `--prune-empty` without `--aln` returns explicit error
-- [x] `--merge-shared-mutations` without `--aln` returns explicit error
 - [x] `--prune-empty` loads sparse partitions and compresses sequences
 - [x] Mutation counts come from sparse edge substitutions
 
 ### Pruning Workflow
 
-- [x] Optional polytomy merge pre-pass (before pruning, when `--merge-shared-mutations`)
-  - [x] Detect polytomies (nodes with >2 children)
-  - [x] Pairwise mutation intersection across all partitions
-  - [x] Greedy merge of best pair under new internal node
-  - [x] Shared mutations redistributed to new edge, remaining to children
-  - [x] Branch length adjustment (proportional to shared mutation count)
 - [x] Two-pass strategy
   - [x] Internal-edge collapse pass
   - [x] Graph rebuild
@@ -673,7 +665,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 | mugration      | 10          | 8              | 2          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
 | optimize       | 0           | 0              | 0          | 8       |
-| prune          | 0           | 0              | 0          | 8       |
+| prune          | 0           | 0              | 0          | 7       |
 | gtr            | 12          | 7              | 5          | 0       |
 | alphabet       | 6           | 5              | 1          | 0       |
 | distribution   | 15          | 5              | 10         | 0       |
