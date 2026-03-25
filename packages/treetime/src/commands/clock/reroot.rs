@@ -24,6 +24,12 @@ pub struct RerootParams {
   /// When false, the old root is preserved even if trivial.
   #[default = true]
   pub remove_trivial_root: bool,
+
+  /// Only accept root positions with positive estimated clock rate.
+  /// When false, the best chi-squared root is accepted regardless of rate sign.
+  /// Use false for pre-filter steps where outliers may cause negative rates at all positions.
+  #[default = true]
+  pub force_positive_rate: bool,
 }
 
 /// Information about an edge split during reroot.
@@ -92,7 +98,7 @@ where
 {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = find_best_root(graph, options, params)?;
+  } = find_best_root(graph, options, params, reroot_params.force_positive_rate)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {

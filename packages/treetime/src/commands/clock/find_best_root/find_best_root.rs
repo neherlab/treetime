@@ -14,33 +14,35 @@ use treetime_utils::collections::container::get_exactly_one;
 
 /// Find the best new root node
 ///
-// Loop over all nodes, pick the one with the lowest chisq and positive clock rate,
-// then optimize position along surrounding branches.
+// Loop over all nodes, pick the one with the lowest chisq (and positive clock rate
+// when force_positive is true), then optimize position along surrounding branches.
 pub fn find_best_root<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
+  force_positive: bool,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  info!("Starting root optimization with method: {params:?}");
+  info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");
 
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
   // Initialize with the current root, only accepting it if it has a positive clock rate
+  // (or if force_positive is false)
   let root = root.read_arc().payload().read_arc();
-  let root_positive_rate = has_positive_clock_rate(root.clock_set());
-  let mut best_chisq = if root_positive_rate {
+  let root_acceptable = !force_positive || has_positive_clock_rate(root.clock_set());
+  let mut best_chisq = if root_acceptable {
     root.clock_set().chisq()
   } else {
     f64::INFINITY
   };
   debug!(
-    "Initial root chi-squared: {:.6e} (positive rate: {root_positive_rate})",
+    "Initial root chi-squared: {:.6e} (acceptable: {root_acceptable})",
     root.clock_set().chisq()
   );
 
@@ -51,7 +53,7 @@ where
     clock_set: root.clock_set().clone(),
   };
 
-  // Find best node with positive clock rate
+  // Find best node (with positive clock rate when force_positive is true)
   let mut node_count = 0;
   let mut improvements = 0;
   let mut rejected_negative_rate = 0;
@@ -59,7 +61,7 @@ where
     let node_guard = n.read_arc();
     let payload_guard = node_guard.payload().read_arc();
     let clock_set = payload_guard.clock_set();
-    if !has_positive_clock_rate(clock_set) {
+    if force_positive && !has_positive_clock_rate(clock_set) {
       rejected_negative_rate += 1;
       node_count += 1;
       continue;
@@ -91,7 +93,8 @@ where
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
     );
-    if res.chisq < best_chisq && has_positive_clock_rate(&res.clock_set) {
+    let split_acceptable = !force_positive || has_positive_clock_rate(&res.clock_set);
+    if res.chisq < best_chisq && split_acceptable {
       debug!(
         "Parent branch optimization improved chi-squared from {:.6e} to {:.6e}",
         best_chisq, res.chisq
@@ -109,7 +112,8 @@ where
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split
     );
-    if res.chisq < best_chisq && has_positive_clock_rate(&res.clock_set) {
+    let split_acceptable = !force_positive || has_positive_clock_rate(&res.clock_set);
+    if res.chisq < best_chisq && split_acceptable {
       debug!(
         "Child branch {} optimization improved chi-squared from {:.6e} to {:.6e}",
         child_branch_count, best_chisq, res.chisq
@@ -119,7 +123,7 @@ where
     }
   }
 
-  if !has_positive_clock_rate(&best_res.clock_set) {
+  if force_positive && !has_positive_clock_rate(&best_res.clock_set) {
     return make_error!(
       "Clock rate is negative for all root positions. \
        The data may lack temporal signal. Please specify --clock-rate explicitly."

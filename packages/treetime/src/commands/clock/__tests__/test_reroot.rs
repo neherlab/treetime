@@ -74,6 +74,7 @@ mod tests {
     let reroot_params = RerootParams {
       split_edge: false,
       remove_trivial_root: false,
+      ..RerootParams::default()
     };
 
     reroot_in_place(
@@ -100,6 +101,7 @@ mod tests {
     let reroot_params = RerootParams {
       split_edge: true,
       remove_trivial_root: false,
+      ..RerootParams::default()
     };
 
     let reroot_result = reroot_in_place(

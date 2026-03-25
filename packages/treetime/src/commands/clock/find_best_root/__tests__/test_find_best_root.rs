@@ -61,7 +61,7 @@ mod tests {
   fn test_find_best_root_grid() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid())?;
+    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true)?;
 
     // Verify chisq value
     assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
@@ -88,6 +88,7 @@ mod tests {
       &graph,
       &options,
       &BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),
+      true,
     )?;
 
     // Verify chisq value
@@ -111,7 +112,7 @@ mod tests {
   fn test_find_best_root_brent() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent())?;
+    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent(), true)?;
 
     // Verify chisq value
     assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
@@ -141,6 +142,7 @@ mod tests {
         brent_max_iters: 25,
         brent_tolerance: 1e-8,
       }),
+      true,
     )?;
 
     // Verify chisq value
@@ -164,7 +166,7 @@ mod tests {
   fn test_find_best_root_golden_section() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section())?;
+    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section(), true)?;
 
     // Verify chisq value
     assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
@@ -194,6 +196,7 @@ mod tests {
         golden_max_iters: 25,
         golden_tolerance: 1e-8,
       }),
+      true,
     )?;
 
     // Verify chisq value
@@ -218,9 +221,9 @@ mod tests {
     let (graph, options) = setup_test_graph()?;
 
     // Run all three methods
-    let grid_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid())?;
-    let brent_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent())?;
-    let golden_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section())?;
+    let grid_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true)?;
+    let brent_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent(), true)?;
+    let golden_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section(), true)?;
 
     // Brent and golden section should find better or equal chisq than default grid
     // (lower chisq is better)
@@ -245,6 +248,65 @@ mod tests {
     assert_eq!(
       grid_result.edge, golden_result.edge,
       "Golden section should find same edge as grid"
+    );
+
+    Ok(())
+  }
+
+  /// Graph where dates inversely correlate with divergence, producing negative clock rate
+  /// at all root positions.
+  fn setup_negative_rate_graph() -> Result<(GraphClock, ClockParams), Report> {
+    // Assign oldest dates to most divergent tips, newest to least divergent
+    // Root-to-tip: A=0.2, B=0.3, C=0.25, D=0.17
+    let dates = btreemap! {
+      o!("A") => 2017.0,
+      o!("B") => 2005.0,
+      o!("C") => 2010.0,
+      o!("D") => 2022.0,
+    };
+
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    for n in graph.get_leaves() {
+      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+      n.write_arc().payload().write_arc().time = Some(dates[&name]);
+    }
+
+    let options = ClockParams::default();
+    clock_regression_backward(&graph, &options, None);
+    clock_regression_forward(&graph, &options, None);
+
+    Ok((graph, options))
+  }
+
+  #[test]
+  fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
+    let (graph, options) = setup_negative_rate_graph()?;
+
+    let result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true);
+
+    assert!(
+      result.is_err(),
+      "force_positive=true should reject all-negative-rate graph"
+    );
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+      err_msg.contains("Clock rate is negative"),
+      "Error message should mention negative rate, got: {err_msg}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
+    let (graph, options) = setup_negative_rate_graph()?;
+
+    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), false)?;
+
+    assert!(best_root.chisq.is_finite(), "chisq should be finite");
+    assert!(
+      best_root.split >= 0.0 && best_root.split <= 1.0,
+      "split should be in [0, 1]"
     );
 
     Ok(())

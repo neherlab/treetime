@@ -7,8 +7,11 @@ use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_graph::GraphClock;
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_output::write_clock_model;
-use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+use crate::commands::clock::clock_regression::{
+  ClockParams, estimate_clock_model_with_reroot, estimate_clock_model_with_reroot_policy,
+};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::commands::clock::reroot::RerootParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use eyre::{Report, WrapErr};
 use log::info;
@@ -120,7 +123,29 @@ fn estimate_clock_model_with_prefilter(
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
       let params = BranchPointOptimizationParams::from(branch_split);
-      let pre_clock_model = get_clock_model(graph, &ClockParams::default(), keep_root, &params)?;
+      // Allow negative rates during pre-filter root finding. Some datasets (e.g. dengue/100)
+      // have negative estimated rate at ALL root positions when outliers are included.
+      // The pre-filter clock model only needs to be good enough for IQD-based outlier detection.
+      let reroot_params = RerootParams {
+        force_positive_rate: false,
+        ..RerootParams::default()
+      };
+      let result = estimate_clock_model_with_reroot_policy(
+        graph,
+        &ClockParams::default(),
+        None,
+        keep_root,
+        &params,
+        &reroot_params,
+        None,
+      )?;
+      let pre_clock_model = result.clock_model;
+      if pre_clock_model.clock_rate() < 0.0 {
+        log::warn!(
+          "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
+          pre_clock_model.clock_rate()
+        );
+      }
       Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold).new_outliers)
     })
     .transpose()?;
