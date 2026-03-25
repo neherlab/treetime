@@ -11,7 +11,7 @@ use itertools::Itertools;
 use log::{info, warn};
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -176,8 +176,9 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
     .into_iter()
     .filter_map(|node_ref| {
       let node = node_ref.read_arc();
+      let key = node.key();
       let payload = node.payload().read_arc();
-      let name = payload.name().map(|n| n.as_ref().to_owned())?;
+      let name = payload.name().map_or_else(String::new, |n| n.as_ref().to_owned());
       let date = payload.time?;
 
       // Source 1: mutation stochasticity from marginal posterior HPD region.
@@ -218,19 +219,23 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       let upper = upper.max(date);
 
       Some(NodeConfidenceInterval {
+        key,
         name,
         date,
         lower,
         upper,
       })
     })
-    .sorted_by(|a, b| a.name.cmp(&b.name))
+    .sorted_by_key(|ci| ci.key)
     .collect_vec()
 }
 
 /// Confidence interval for a node's inferred date.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NodeConfidenceInterval {
+  /// Graph node key for stable lookup across naming schemes.
+  #[serde(skip)]
+  pub key: GraphNodeKey,
   pub name: String,
   pub date: f64,
   pub lower: f64,

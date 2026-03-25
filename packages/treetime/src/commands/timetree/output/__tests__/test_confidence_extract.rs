@@ -11,15 +11,17 @@ mod tests {
   use treetime_graph::node::Named;
 
   #[test]
-  fn test_extract_confidence_intervals_skips_unnamed_nodes() {
+  fn test_extract_confidence_intervals_includes_unnamed_nodes() {
     let mut graph = GraphTimetree::new();
     graph.add_node(make_node(None, Some(2020.0), None));
     graph.add_node(make_node(Some("named"), Some(2021.0), None));
     graph.build().unwrap();
 
     let intervals = extract_confidence_intervals(&graph);
-    assert_eq!(intervals.len(), 1);
-    assert_eq!(intervals[0].name, "named");
+    assert_eq!(intervals.len(), 2);
+    // Unnamed node has empty name but valid key
+    assert_eq!(intervals[0].name, "");
+    assert_eq!(intervals[1].name, "named");
   }
 
   #[test]
@@ -63,8 +65,9 @@ mod tests {
   }
 
   #[test]
-  fn test_extract_confidence_intervals_sorted_by_name() {
+  fn test_extract_confidence_intervals_sorted_by_key() {
     let mut graph = GraphTimetree::new();
+    // Insertion order: zebra (key 0), alpha (key 1), middle (key 2)
     graph.add_node(make_node(Some("zebra"), Some(2020.0), None));
     graph.add_node(make_node(Some("alpha"), Some(2021.0), None));
     graph.add_node(make_node(Some("middle"), Some(2022.0), None));
@@ -72,9 +75,10 @@ mod tests {
 
     let intervals = extract_confidence_intervals(&graph);
     assert_eq!(intervals.len(), 3);
-    assert_eq!(intervals[0].name, "alpha");
-    assert_eq!(intervals[1].name, "middle");
-    assert_eq!(intervals[2].name, "zebra");
+    // Sorted by GraphNodeKey (insertion order), not alphabetical
+    assert_eq!(intervals[0].name, "zebra");
+    assert_eq!(intervals[1].name, "alpha");
+    assert_eq!(intervals[2].name, "middle");
   }
 
   #[test]

@@ -134,7 +134,7 @@ pub struct AuspiceTreeNode {
   pub other: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuspiceColoring {
   #[serde(rename = "type")]
   pub type_: String,

@@ -112,37 +112,6 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 
 ---
 
-### Total Coalescent Likelihood
-
-**File:** [`test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
-
-| Test                                           | Cases | Purpose                                     |
-| ---------------------------------------------- | ----- | ------------------------------------------- |
-| `test_total_lh_returns_finite_value`           | 1     | Basic finite output                         |
-| `test_total_lh_negative_for_reasonable_tc`     | 1     | Log-likelihood is negative                  |
-| `test_total_lh_finite_for_tc`                  | 4     | Finite for Tc in {0.1, 1.0, 10.0, 100.0}    |
-| `test_total_lh_differs_across_tc_values`       | 1     | LH at Tc=0.1 differs from LH at Tc=100      |
-| `test_total_lh_monotonic_near_optimum`         | 1     | LH at optimal Tc >= LH at 0.01x and 100x Tc |
-| `test_total_lh_matches_optimize_tc_likelihood` | 1     | Cross-validates with optimize_tc (ulps=10)  |
-| `test_total_lh_with_formula_distribution`      | 1     | Formula Tc matches constant Tc (ulps=10)    |
-
-10 test executions total. `#[rstest]` with 4 `#[case]` annotations for `test_total_lh_finite_for_tc`.
-
----
-
-### Golden-Master Total Coalescent Likelihood
-
-**File:** [`test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
-
-| Test                        | Cases | Datasets and Tc values                                        |
-| --------------------------- | ----- | ------------------------------------------------------------- |
-| `test_gm_total_lh_binary`   | 4     | Binary tree, Tc in {0.1, 1.0, 10.0, 100.0}                    |
-| `test_gm_total_lh_polytomy` | 4     | Polytomy tree (3-way internal), Tc in {0.1, 1.0, 10.0, 100.0} |
-
-8 test executions. `#[rstest]` with 4 `#[case]` annotations each. Tolerance: 1e-8 absolute. Reference: v0 `total_LH()` with time-based branch lengths. Fixture: `__fixtures__/gm_total_lh.json`, capture script: `__fixtures__/gm_total_lh_capture`.
-
----
-
 ### Skyline Optimization
 
 **File:** [`test_skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs)
@@ -277,19 +246,32 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 **File:** [`test_confidence.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence.rs)
 
-| Test                                                                 | Purpose                                 |
-| -------------------------------------------------------------------- | --------------------------------------- |
-| `test_extract_confidence_intervals_skips_unnamed_nodes`              | Unnamed nodes excluded                  |
-| `test_extract_confidence_intervals_skips_nodes_without_time`         | Nodes without time excluded             |
-| `test_extract_confidence_intervals_uses_date_as_fallback`            | Date used when no distribution          |
-| `test_extract_confidence_intervals_with_distribution`                | 90% HPD from distribution               |
-| `test_extract_confidence_intervals_sorted_by_name`                   | Alphabetical ordering                   |
-| `test_combine_confidence_no_contributions`                           | Baseline only                           |
-| `test_combine_confidence_single_contribution`                        | One contribution                        |
-| `test_combine_confidence_quadrature`                                 | Quadrature sum of deviations            |
-| `test_extract_confidence_intervals_clamps_when_date_outside_rate_ci` | Postcondition clamp: date above rate CI |
-| `test_extract_confidence_intervals_clamps_when_date_below_rate_ci`   | Postcondition clamp: date below rate CI |
-| `test_combine_confidence_clipped_to_limits`                          | Clipping to baseline limits             |
+| Test                                                                 | Purpose                                  |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| `test_extract_confidence_intervals_includes_unnamed_nodes`           | Unnamed nodes included with empty name   |
+| `test_extract_confidence_intervals_skips_nodes_without_time`         | Nodes without time excluded              |
+| `test_extract_confidence_intervals_uses_date_as_fallback`            | Date used when no distribution           |
+| `test_extract_confidence_intervals_with_distribution`                | 90% HPD from distribution                |
+| `test_extract_confidence_intervals_sorted_by_key`                    | Sorted by GraphNodeKey (insertion order) |
+| `test_combine_confidence_no_contributions`                           | Baseline only                            |
+| `test_combine_confidence_single_contribution`                        | One contribution                         |
+| `test_combine_confidence_quadrature`                                 | Quadrature sum of deviations             |
+| `test_extract_confidence_intervals_clamps_when_date_outside_rate_ci` | Postcondition clamp: date above rate CI  |
+| `test_extract_confidence_intervals_clamps_when_date_below_rate_ci`   | Postcondition clamp: date below rate CI  |
+| `test_combine_confidence_clipped_to_limits`                          | Clipping to baseline limits              |
+
+**File:** [`test_auspice.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_auspice.rs)
+
+| Test                                             | Purpose                                   |
+| ------------------------------------------------ | ----------------------------------------- |
+| `test_auspice_metadata_structure`                | v2 metadata: panels, colorings, defaults  |
+| `test_auspice_root_node_attributes`              | Root node: div=0, num_date, bad_branch    |
+| `test_auspice_divergence_from_node_payload`      | div read from NodeTimetree.div            |
+| `test_auspice_bad_branch_attribute`              | Yes/No encoding of bad_branch flag        |
+| `test_auspice_confidence_intervals_by_key`       | CI lookup by GraphNodeKey                 |
+| `test_auspice_unnamed_node_gets_ci_by_key`       | Unnamed node gets CI via key-based lookup |
+| `test_auspice_node_without_time_has_no_num_date` | No num_date when time is None             |
+| `test_auspice_output_file_is_valid_json`         | File exists and parses as AuspiceTree     |
 
 ---
 
@@ -368,14 +350,14 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 Each `__tests__/mod.rs` contains only `mod` declarations.
 
-| Directory                                   | Module declarations                                                                                                                                                                                                            |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `coalescent/__tests__/mod.rs`               | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
-| `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                                                                          |
-| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_support`, `test_runner_coalescent`                                                                                |
-| `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                                                                |
-| `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                                                                              |
-| `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                                                                      |
+| Directory                                   | Module declarations                                                                                                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `coalescent/__tests__/mod.rs`               | `test_events`, `test_gm_coalescent`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline` |
+| `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                          |
+| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_support`, `test_runner_coalescent`                                |
+| `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                |
+| `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                              |
+| `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                      |
 
 ---
 
