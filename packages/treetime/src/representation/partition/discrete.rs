@@ -226,7 +226,7 @@ fn normalize_inplace_1d(arr: &mut Array1<f64>) -> Result<f64, Report> {
 }
 
 fn normalize_from_log_1d(log_arr: &Array1<f64>) -> Result<(Array1<f64>, f64), Report> {
-  let (arr, log_lh) = logsumexp_normalize(log_arr);
+  let (arr, log_lh) = logsumexp_normalize(log_arr.view());
   if !log_lh.is_finite() {
     return make_internal_error!(
       "Cannot normalize invalid log profile: all states have zero probability, log_profile={log_arr:?}"

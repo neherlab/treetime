@@ -394,7 +394,7 @@ fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   let mut total_log_lh = 0.0;
 
   for (mut out_row, log_row) in izip!(dis.rows_mut(), log_dis.rows()) {
-    let (normalized, log_norm) = logsumexp_normalize(&log_row.to_owned());
+    let (normalized, log_norm) = logsumexp_normalize(log_row);
     out_row.assign(&normalized);
     total_log_lh += log_norm;
   }
