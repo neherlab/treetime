@@ -166,7 +166,6 @@ pub struct GTRParams {
 #[derive(Clone, Debug)]
 pub struct GTR {
   pub debug: bool,
-  pub is_site_specific: bool,
   /// Average substitution rate before normalization, used for scaling.
   pub average_rate: f64,
   /// Overall substitution rate (incorporates average_rate after normalization).
@@ -181,6 +180,16 @@ pub struct GTR {
   pub v: Array2<f64>,
   /// Left transformation matrix (inverse of v, adjusted for non-symmetric Q).
   pub v_inv: Array2<f64>,
+  /// Per-site rate multipliers for among-site rate variation.
+  ///
+  /// When `Some`, each element `site_rates[a]` is a relative rate multiplier for
+  /// alignment position `a`. Sites with rate > 1 evolve faster than average; sites
+  /// with rate < 1 evolve slower. The eigendecomposition (W, pi, eigvals, v, v_inv)
+  /// is shared across all sites - only the rate scaling changes per site.
+  ///
+  /// The effective rate at site `a` is `mu * site_rates[a]`. The matrix exponential
+  /// becomes `P_a(t) = V * diag(exp(eigvals * mu * site_rates[a] * t)) * V_inv`.
+  pub site_rates: Option<Array1<f64>>,
 }
 
 impl GTR {
@@ -251,7 +260,6 @@ impl GTR {
 
     Ok(Self {
       debug: false,
-      is_site_specific: false,
       average_rate,
       mu,
       W,
@@ -259,11 +267,37 @@ impl GTR {
       eigvals,
       v,
       v_inv,
+      site_rates: None,
     })
   }
 
   pub const fn average_rate(&self) -> f64 {
     self.average_rate
+  }
+
+  /// Whether per-site rate variation is active.
+  pub fn has_site_rates(&self) -> bool {
+    self.site_rates.is_some()
+  }
+
+  /// Set per-site rate multipliers for among-site rate variation.
+  pub fn set_site_rates(&mut self, rates: Array1<f64>) {
+    self.site_rates = Some(rates);
+  }
+
+  /// Clear per-site rates, reverting to uniform scalar mu.
+  pub fn clear_site_rates(&mut self) {
+    self.site_rates = None;
+  }
+
+  /// Compute P(t) for a single site with a custom rate multiplier.
+  ///
+  /// Returns exp(Q * mu * rate * t). The eigendecomposition is shared;
+  /// only the eigenvalue scaling changes.
+  pub fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
+    let eLambdaT = Array2::from_diag(&self.exp_lt_scaled(t, rate));
+    let Qt = self.v.dot(&eLambdaT.dot(&self.v_inv));
+    clamp_min(&Qt, 0.0)
   }
 
   // fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
@@ -310,8 +344,24 @@ impl GTR {
   /// This computes the probability of arriving at state i from any starting state j,
   /// weighted by the parent's probability of being in state j.
   pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let Qt = self.expQt(t);
-    let res = profile.dot(&Qt.t());
+    let res = match &self.site_rates {
+      None => {
+        let Qt = self.expQt(t);
+        profile.dot(&Qt.t())
+      },
+      Some(rates) => {
+        // Efficient batched per-site computation avoiding L separate matrix multiplies.
+        // P_l(t)^T = V_inv^T * diag(exp(λ * μ * r_l * t)) * V^T
+        // result_l = profile_l @ P_l^T
+        //          = (profile_l @ V_inv^T) .* exp_lt_l @ V^T
+        let transformed = profile.dot(&self.v_inv.t());
+        let scaled_eigvals = &self.eigvals * (self.mu * t);
+        // exp_lt[l, k] = exp(rates[l] * scaled_eigvals[k]) via broadcasting
+        let exp_lt = (&rates.view().insert_axis(Axis(1)) * &scaled_eigvals.view().insert_axis(Axis(0))).mapv(f64::exp);
+        let scaled = &transformed * &exp_lt;
+        clamp_min(&scaled.dot(&self.v.t()), 0.0)
+      },
+    };
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
@@ -343,9 +393,23 @@ impl GTR {
   ///
   /// This is the likelihood of the observed data given parent state j.
   pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let Qt = self.expQt(t);
-    let res = profile.dot(&Qt);
-
+    let res = match &self.site_rates {
+      None => {
+        let Qt = self.expQt(t);
+        profile.dot(&Qt)
+      },
+      Some(rates) => {
+        // Efficient batched per-site computation avoiding L separate matrix multiplies.
+        // P_l(t) = V * diag(exp(λ * μ * r_l * t)) * V_inv
+        // result_l = profile_l @ P_l
+        //          = (profile_l @ V) .* exp_lt_l @ V_inv
+        let transformed = profile.dot(&self.v);
+        let scaled_eigvals = &self.eigvals * (self.mu * t);
+        let exp_lt = (&rates.view().insert_axis(Axis(1)) * &scaled_eigvals.view().insert_axis(Axis(0))).mapv(f64::exp);
+        let scaled = &transformed * &exp_lt;
+        clamp_min(&scaled.dot(&self.v_inv), 0.0)
+      },
+    };
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
@@ -386,6 +450,11 @@ impl GTR {
   /// Compute exp(eigenvalue * mu * t) for each eigenvalue.
   fn exp_lt(&self, t: f64) -> Array1<f64> {
     (self.mu * t * &self.eigvals).mapv(f64::exp)
+  }
+
+  /// Compute exp(eigenvalue * mu * rate * t) for each eigenvalue, with a custom rate multiplier.
+  fn exp_lt_scaled(&self, t: f64, rate: f64) -> Array1<f64> {
+    (self.mu * rate * t * &self.eigvals).mapv(f64::exp)
   }
 
   pub fn is_multi_site(&self) -> bool {
