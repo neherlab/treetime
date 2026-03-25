@@ -371,4 +371,62 @@ mod tests {
 
     Ok(())
   }
+
+  /// G3: Uniform per-site rates produce the same sparse log-likelihood as
+  /// scalar mu. Verifies the per-site rate code path does not introduce new
+  /// divergence beyond the existing dense-sparse gap.
+  #[test]
+  fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
+    use ndarray::Array1;
+
+    let aln = gap_free_alignment()?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let seq_len = get_common_length(&aln)?;
+
+    // Run without site_rates (scalar mu)
+    let gtr_scalar = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let (log_lh_scalar, _) = run_sparse_marginal(&graph, &aln, gtr_scalar)?;
+
+    // Run with uniform site_rates (all 1.0) - must produce identical results
+    let mut gtr_uniform = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    gtr_uniform.set_site_rates(Array1::ones(seq_len));
+    let (log_lh_uniform, _) = run_sparse_marginal(&graph, &aln, gtr_uniform)?;
+
+    assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
+
+    Ok(())
+  }
+
+  /// G3b: Dense with uniform per-site rates matches dense with scalar mu.
+  #[test]
+  fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
+    use ndarray::Array1;
+
+    let aln = gap_free_alignment()?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let seq_len = get_common_length(&aln)?;
+
+    let gtr_scalar = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let (log_lh_scalar, _) = run_dense_marginal(&graph, &aln, gtr_scalar)?;
+
+    let mut gtr_uniform = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    gtr_uniform.set_site_rates(Array1::ones(seq_len));
+    let (log_lh_uniform, _) = run_dense_marginal(&graph, &aln, gtr_uniform)?;
+
+    assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
+
+    Ok(())
+  }
 }

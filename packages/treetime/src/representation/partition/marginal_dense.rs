@@ -274,11 +274,8 @@ where
       let branch_length = fix_branch_length(length, branch_length);
       let mut edge_data = DenseEdgePartition::default();
 
-      let mut dis = Array2::ones((length, alphabet.n_canonical()));
       let log_lh = msg_to_parent.log_lh;
-      let exp_qt = self.gtr.expQt(branch_length);
-
-      dis *= &msg_to_parent.dis.dot(&exp_qt);
+      let dis = self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false);
       edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
       edge_data.msg_to_parent = msg_to_parent;
       self.edges.insert(*edge_key, edge_data);
@@ -294,9 +291,7 @@ where
         let edge = &self.edges[edge_key];
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
         let branch_length = edge_payload.branch_length().unwrap_or(0.0);
-        let exp_qt_matrix = self.gtr.expQt(branch_length);
-        let exp_qt = exp_qt_matrix.t();
-        let msg_child = edge.msg_to_child.dis.dot(&exp_qt);
+        let msg_child = self.gtr.evolve(&edge.msg_to_child.dis, branch_length, false);
         log_lh += edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh;
         dis = Some(match dis {
           None => &edge.msg_to_parent.dis * &msg_child,
