@@ -4,13 +4,15 @@
 
 ## Summary
 
-| Category         | Files | Tests  | Type |
-| ---------------- | ----- | ------ | ---- |
-| Clock regression | 1     | 1      | Unit |
-| Date constraints | 1     | 14     | Unit |
-| Rerooting        | 1     | 4      | Unit |
-| Find best root   | 1     | 7      | Unit |
-| **Total**        | **4** | **26** | Unit |
+| Category         | Files | Tests  | Type                                    |
+| ---------------- | ----- | ------ | --------------------------------------- |
+| Clock regression | 1     | 1      | Unit                                    |
+| Date constraints | 1     | 14     | Unit                                    |
+| Rerooting        | 1     | 4      | Unit                                    |
+| Clock filter     | 1     | 2      | Unit                                    |
+| Find best root   | 1     | 9      | Unit                                    |
+| Dengue/100       | 1     | 2      | Integration (assertion + golden master) |
+| **Total**        | **7** | **32** |                                         |
 
 ---
 
@@ -64,12 +66,36 @@
 
 **File:** [`test_find_best_root.rs`](../../packages/treetime/src/commands/clock/find_best_root/__tests__/test_find_best_root.rs)
 
-| Test                                             | Purpose                           |
-| ------------------------------------------------ | --------------------------------- |
-| `test_find_best_root_grid`                       | Grid search root placement        |
-| `test_find_best_root_grid_with_params`           | Grid search with custom n_points  |
-| `test_find_best_root_brent`                      | Brent method root placement       |
-| `test_find_best_root_brent_with_params`          | Brent method with custom params   |
-| `test_find_best_root_golden_section`             | Golden section root placement     |
-| `test_find_best_root_golden_section_with_params` | Golden section with custom params |
-| `test_optimization_methods_improve_on_grid`      | Brent and golden improve on grid  |
+| Test                                                             | Purpose                                                |
+| ---------------------------------------------------------------- | ------------------------------------------------------ |
+| `test_find_best_root_grid`                                       | Grid search root placement                             |
+| `test_find_best_root_grid_with_params`                           | Grid search with custom n_points                       |
+| `test_find_best_root_brent`                                      | Brent method root placement                            |
+| `test_find_best_root_brent_with_params`                          | Brent method with custom params                        |
+| `test_find_best_root_golden_section`                             | Golden section root placement                          |
+| `test_find_best_root_golden_section_with_params`                 | Golden section with custom params                      |
+| `test_optimization_methods_improve_on_grid`                      | Brent and golden improve on grid                       |
+| `test_find_best_root_force_positive_true_rejects_negative_rate`  | Error when all rates negative and force_positive=true  |
+| `test_find_best_root_force_positive_false_accepts_negative_rate` | Success when force_positive=false allows negative rate |
+
+---
+
+## Clock Filter
+
+**File:** [`test_clock_filter.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_filter.rs)
+
+| Test                                                       | Purpose                                                          |
+| ---------------------------------------------------------- | ---------------------------------------------------------------- |
+| `test_clock_filter_positive_rate_identifies_outliers`      | IQD filter identifies outliers with positive-rate model          |
+| `test_clock_filter_negative_rate_identifies_same_outliers` | Same outliers flagged with negative-rate model (sign-invariance) |
+
+---
+
+## Dengue/100 Pipeline
+
+**File:** [`test_clock_dengue100.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_dengue100.rs)
+
+| Test                                                  | Purpose                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `test_dengue100_clock_pipeline_structural_properties` | Assertion-based: rate positive, plausible range, outliers detected, v0 overlap |
+| `test_dengue100_clock_pipeline_golden_master`         | Pin v1 output: rate, intercept, R, chisq, outlier set                          |

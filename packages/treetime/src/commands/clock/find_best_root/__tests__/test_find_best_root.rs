@@ -15,7 +15,7 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
 
-  fn setup_graph_with_dates(dates: BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams), Report> {
+  fn setup_graph_with_dates(dates: &BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams), Report> {
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     for n in graph.get_leaves() {
       let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
@@ -36,7 +36,7 @@ mod tests {
       o!("C") => 2017.0,
       o!("D") => 2005.0,
     };
-    setup_graph_with_dates(dates)
+    setup_graph_with_dates(&dates)
   }
 
   fn get_edge_node_names(graph: &GraphClock, result: &FindRootResult) -> (String, String) {
@@ -265,7 +265,7 @@ mod tests {
       o!("C") => 2010.0,
       o!("D") => 2022.0,
     };
-    setup_graph_with_dates(dates)
+    setup_graph_with_dates(&dates)
   }
 
   #[test]
