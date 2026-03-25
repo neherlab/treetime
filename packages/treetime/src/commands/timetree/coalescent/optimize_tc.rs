@@ -1,15 +1,17 @@
+use crate::commands::timetree::coalescent::edge_data::{
+  CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost,
+};
 use crate::commands::timetree::coalescent::events::collect_tree_events;
 use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
 use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::commands::timetree::timetree_traits::TimetreeNode;
 use crate::make_report;
 use argmin::core::observers::{Observe, ObserverMode};
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use log::{debug, info, warn};
+use log::{debug, info};
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
@@ -86,21 +88,12 @@ where
 
 /// Cost function for Tc optimization.
 ///
-/// Computes negative total coalescent likelihood for a given log(Tc) value.
+/// Precomputes lineage counts and per-edge data from the tree once,
+/// then evaluates the total coalescent likelihood for each candidate Tc
+/// during Brent's method iterations.
 struct TcCostFunction {
-  /// Lineage count distribution k(t), precomputed from tree events.
   lineage_counts: PiecewiseConstantFn,
-  /// Node branch data for likelihood computation.
-  node_branches: Vec<NodeBranchData>,
-}
-
-struct NodeBranchData {
-  /// Time before present of the node.
-  t_node: Tbp,
-  /// Branch length to parent.
-  branch_length: f64,
-  /// Number of children (2 for binary, higher for polytomies).
-  multiplicity: f64,
+  edges: Vec<CoalescentEdgeData>,
 }
 
 impl TcCostFunction {
@@ -116,116 +109,16 @@ impl TcCostFunction {
       .map(|(t, delta)| (t.to_tbp(present_time), *delta))
       .collect();
 
-    // Precompute lineage count distribution - depends only on tree structure, not Tc
     let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
+    let edges = collect_coalescent_edges(graph, present_time);
 
-    // Collect node branch data for likelihood computation
-    let mut node_branches = Vec::new();
-
-    graph.iter_breadth_first_forward(|node| {
-      // Only process nodes with parent edges (skip root)
-      if node.parent_keys.is_empty() {
-        return;
-      }
-
-      let Some(time_dist) = node.payload.time_distribution() else {
-        return;
-      };
-
-      let Some(t_calendar) = time_dist.likely_time() else {
-        return;
-      };
-
-      let t_node = CalendarTime::new(t_calendar).to_tbp(present_time);
-
-      // Get branch length from parent edge
-      // parent_keys is Vec<(GraphNodeKey, GraphEdgeKey)>
-      let (parent_node_key, parent_edge_key) = node.parent_keys[0];
-
-      // Try to get time length from edge, or compute from parent-child time difference
-      let branch_length = graph
-        .get_edge(parent_edge_key)
-        .and_then(|e| e.read_arc().payload().read_arc().time_length())
-        .or_else(|| {
-          // Fall back to computing from parent-child time difference
-          graph.get_node(parent_node_key).and_then(|parent| {
-            parent
-              .read_arc()
-              .payload()
-              .read_arc()
-              .time_distribution()
-              .as_ref()
-              .and_then(|d| d.likely_time())
-              .map(|parent_t| {
-                let parent_tbp = CalendarTime::new(parent_t).to_tbp(present_time);
-                parent_tbp - t_node
-              })
-          })
-        });
-
-      let Some(branch_length) = branch_length else {
-        warn!(
-          "Tc optimization: skipping node (key={:?}) with undetermined branch length",
-          node.key
-        );
-        return;
-      };
-
-      // Multiplicity: number of children for internal nodes, 2 for leaves
-      let multiplicity = if node.child_edges.is_empty() {
-        2.0 // Leaves contribute as binary merger
-      } else {
-        node.child_edges.len() as f64
-      };
-
-      node_branches.push(NodeBranchData {
-        t_node,
-        branch_length,
-        multiplicity,
-      });
-    });
-
-    Ok(Self {
-      lineage_counts,
-      node_branches,
-    })
+    Ok(Self { lineage_counts, edges })
   }
 
-  /// Compute total coalescent likelihood for a given Tc value.
-  ///
-  /// This follows Python v0's total_LH() method:
-  ///   LH = -Σ cost(t_node, branch_length)
-  ///
-  /// where cost = I(t_merger) - I(t_node) - log(λ(t_merger)) * (m-1)/m
   fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {
     let tc_dist = Distribution::constant(tc);
     let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)?;
-
-    let mut total_lh = 0.0;
-
-    for node_data in &self.node_branches {
-      let t_node = node_data.t_node;
-      let branch_length = node_data.branch_length;
-      let multiplicity = node_data.multiplicity;
-
-      // Merger time is when the branch joins its parent
-      let t_merger = t_node + branch_length.max(0.0);
-
-      // Compute cost following Python v0's cost() method
-      let i_merger = integral_merger_rate.eval(t_merger.value());
-      let i_node = integral_merger_rate.eval(t_node.value());
-
-      // Total merger rate λ(t) = k(k-1)/(2*Tc)
-      let k = self.lineage_counts.eval(t_merger.value());
-      let k_clamped = f64::max(0.5, k - 1.0);
-      let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc;
-
-      let cost = (i_merger - i_node) - lambda.ln() * (multiplicity - 1.0) / multiplicity;
-
-      total_lh -= cost;
-    }
-
-    Ok(total_lh)
+    sum_coalescent_cost(&self.edges, &integral_merger_rate, &self.lineage_counts, &tc_dist)
   }
 }
 

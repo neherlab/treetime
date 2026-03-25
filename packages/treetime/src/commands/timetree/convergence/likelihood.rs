@@ -4,7 +4,7 @@ use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::graph_log_lh;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
-use log::debug;
+use log::{debug, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -86,7 +86,7 @@ pub fn compute_coalescent_likelihood(graph: &GraphTimetree, coalescent_tc: Optio
   match compute_coalescent_total_lh(graph, tc) {
     Ok(lh) => Some(lh),
     Err(e) => {
-      debug!("Coalescent likelihood unavailable: {e}");
+      warn!("Coalescent likelihood unavailable: {e}");
       None
     },
   }

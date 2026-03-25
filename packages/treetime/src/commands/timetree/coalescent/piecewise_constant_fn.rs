@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use ndarray::Array1;
 
 /// Piecewise constant function represented by breakpoints and values.
@@ -45,6 +44,7 @@ impl PiecewiseConstantFn {
   }
 
   /// Evaluate at multiple points (must be monotonically sorted ascending).
+  #[allow(dead_code)]
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));
 

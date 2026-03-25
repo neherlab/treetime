@@ -132,7 +132,7 @@ pub struct ConvergenceMetrics {
   pub lh_pos: Option<f64>,
   /// Coalescent likelihood (population genetic prior on node times)
   pub lh_coal: Option<f64>,
-  /// Total likelihood (combined probability of all components)
+  /// Total likelihood (sum of available components; absent components are excluded)
   pub lh_total: Option<f64>,
 }
 

@@ -1,5 +1,6 @@
 pub mod coalescent;
 mod contributions;
+pub(crate) mod edge_data;
 mod events;
 mod integration;
 mod lineage_dynamics;
