@@ -256,7 +256,8 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     );
     coalescent_tc = Some(skyline_result.tc_distribution);
 
-    // Run final timetree pass with optimized skyline, unless OnlyFinal mode will run it below
+    // Run final timetree pass with optimized skyline. OnlyFinal defers this to the
+    // final marginal pass below; Always and Never take this path.
     if time_marginal != TimeMarginalMode::OnlyFinal {
       run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
         .wrap_err("Final timetree pass with optimized skyline failed")?;
@@ -278,9 +279,9 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // AND either --clock-std-dev or --covariation. Without --confidence, rate
   // susceptibility never runs even if rate_std is available.
   //
-  // v0 rate susceptibility uses time_marginal=False (joint mode), so it does not
-  // produce marginal distributions. v1's run_timetree always produces distributions,
-  // but the third run (central rate) restores graph to the correct state.
+  // v1's run_timetree always produces marginal distributions. Rate susceptibility
+  // runs three passes (upper, lower, central rate); the central-rate pass restores
+  // the graph to its pre-call state.
   let rate_std = if args.confidence {
     determine_rate_std(args.clock_std_dev, args.covariation, &clock_model)?
   } else {
@@ -309,8 +310,13 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     }
   }
 
-  // Write CI file when any CI data is available
-  if time_marginal == TimeMarginalMode::OnlyFinal || rate_std.is_some() {
+  // Write CI file when any CI data is available.
+  //
+  // v0 behavior: marginal distributions provide mutation-stochasticity CIs via HPD
+  // regions. OnlyFinal and Always both produce these distributions (v1 always uses
+  // marginal inference, so both modes have HPD data). Rate susceptibility adds
+  // clock-rate-uncertainty CIs independently.
+  if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
@@ -412,4 +418,46 @@ fn write_outputs(
   }
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+
+  fn args_with(
+    time_marginal: TimeMarginalMode,
+    confidence: bool,
+    covariation: bool,
+    clock_std_dev: Option<f64>,
+  ) -> TreetimeTimetreeArgs {
+    TreetimeTimetreeArgs {
+      clock_std_dev,
+      time_marginal,
+      confidence,
+      covariation,
+      ..TreetimeTimetreeArgs::default()
+    }
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::never_no_confidence(            (TimeMarginalMode::Never,     false, false, None),      TimeMarginalMode::Never)]
+  #[case::never_confidence_covariation(   (TimeMarginalMode::Never,     true,  true,  None),      TimeMarginalMode::OnlyFinal)]
+  #[case::never_confidence_clock_std(     (TimeMarginalMode::Never,     true,  false, Some(0.1)), TimeMarginalMode::OnlyFinal)]
+  #[case::never_confidence_no_prereqs(    (TimeMarginalMode::Never,     true,  false, None),      TimeMarginalMode::Never)]
+  #[case::always_no_confidence(           (TimeMarginalMode::Always,    false, false, None),      TimeMarginalMode::Always)]
+  #[case::always_confidence_covariation(  (TimeMarginalMode::Always,    true,  true,  None),      TimeMarginalMode::Always)]
+  #[case::always_confidence_clock_std(    (TimeMarginalMode::Always,    true,  false, Some(0.1)), TimeMarginalMode::Always)]
+  #[case::only_final_no_confidence(       (TimeMarginalMode::OnlyFinal, false, false, None),      TimeMarginalMode::OnlyFinal)]
+  #[case::only_final_confidence(          (TimeMarginalMode::OnlyFinal, true,  true,  None),      TimeMarginalMode::OnlyFinal)]
+  #[trace]
+  fn test_compute_effective_time_marginal(
+    #[case] (mode, confidence, covariation, clock_std_dev): (TimeMarginalMode, bool, bool, Option<f64>),
+    #[case] expected: TimeMarginalMode,
+  ) {
+    let args = args_with(mode, confidence, covariation, clock_std_dev);
+    assert_eq!(expected, compute_effective_time_marginal(&args));
+  }
 }
