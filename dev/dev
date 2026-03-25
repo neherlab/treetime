@@ -24,6 +24,8 @@ declare -A ALIASES=(
   ["E"]="example"
   ["Er"]="example-release"
   ["U"]="upgrade-deps"
+  ["cov"]="coverage"
+  ["cl"]="coverage-lcov"
   ["w"]="why"
   ["L"]="list"
 )
@@ -122,6 +124,24 @@ function main() {
     nicely cargo -q nextest run --test='*' ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
+  "coverage")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    declare -x CARGO_TARGET_DIR="${test_target_dir}"
+    local cov_dir
+    cov_dir="$(project_root)/tmp/coverage"
+    mkdir -p "${cov_dir}"
+    nicely cargo llvm-cov nextest --html --output-dir "${cov_dir}" --ignore-run-fail ${ci_flag} --workspace --hide-progress-bar --color=always "$@"
+    printf "Coverage report: %s/index.html\n" "${cov_dir}"
+    ;;
+  "coverage-lcov")
+    declare -x RUSTFLAGS="${test_rustflags}"
+    declare -x CARGO_TARGET_DIR="${test_target_dir}"
+    local cov_dir
+    cov_dir="$(project_root)/tmp/coverage"
+    mkdir -p "${cov_dir}"
+    nicely cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail ${ci_flag} --workspace --hide-progress-bar --color=always "$@"
+    printf "LCOV: %s/lcov.info\n" "${cov_dir}"
+    ;;
   "lint")
     nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
@@ -148,10 +168,6 @@ function main() {
     nicely cargo -q bench --workspace --benches --profile=profiling ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "upgrade-deps")
-    declare -x CARGO_NET_GIT_FETCH_WITH_CLI=true
-    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git'
-    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo fetch'
-    declare -x CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo upgrade'
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
     ;;
   "quality")

@@ -20,7 +20,7 @@ fi
 cd "${dest}"
 rustup show
 
-rustup component add clippy rustfmt
+rustup component add clippy rustfmt llvm-tools-preview
 
 if [ -n "${triplet:-}" ]; then
   rustup target add "${triplet}"
@@ -33,6 +33,11 @@ CARGO_NEXTEST_VERSION="0.9.67"
 curl -sSL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${CARGO_NEXTEST_VERSION}/cargo-nextest-${CARGO_NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-nextest"
 chmod +x "${dest}/bin/cargo-nextest"
 cargo nextest --version --verbose
+
+CARGO_LLVM_COV_VERSION="0.8.5"
+curl -sSL "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${CARGO_LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-llvm-cov"
+chmod +x "${dest}/bin/cargo-llvm-cov"
+cargo llvm-cov --version
 
 CARGO_EDIT_VERSION="0.13.7"
 cargo -q install --locked cargo-edit --version "${CARGO_EDIT_VERSION}"
