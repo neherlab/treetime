@@ -139,7 +139,6 @@ fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  // Find overlapping support
   let a_min = a.t().first().copied().unwrap_or(0.0);
   let a_max = a.t().last().copied().unwrap_or(0.0);
   let b_min = b.t().first().copied().unwrap_or(0.0);
@@ -148,20 +147,33 @@ fn multiply_function_function<Y: YAxisPolicy>(
   let overlap_min = a_min.max(b_min);
   let overlap_max = a_max.min(b_max);
 
-  if overlap_min >= overlap_max {
+  // When distributions overlap, use the intersection for focused evaluation.
+  // When they don't overlap, use the union so the product captures boundary
+  // information rather than discarding it. Interpolation uses constant
+  // extrapolation outside each distribution's support, producing small but
+  // nonzero values in the gap. This gives a valid "best compromise" distribution
+  // when two message-passing constraints disagree (common in large trees where
+  // child date ranges exceed branch distribution support width).
+  let (eval_min, eval_max) = if overlap_min < overlap_max {
+    (overlap_min, overlap_max)
+  } else {
+    (a_min.min(b_min), a_max.max(b_max))
+  };
+
+  if eval_min >= eval_max {
     return Ok(Distribution::empty());
   }
 
   let n_points = a.t().len().max(b.t().len());
 
   let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
-    let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
+    let t = eval_min + (eval_max - eval_min) * (i as f64 / (n_points - 1) as f64);
     let va = a.interp(t);
     let vb = b.interp(t);
     Y::multiply(va, vb)
   });
 
-  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values)?;
+  let distribution_fn = DistributionFunction::from_range_values((eval_min, eval_max), values)?;
   Ok(Distribution::Function(distribution_fn))
 }
 

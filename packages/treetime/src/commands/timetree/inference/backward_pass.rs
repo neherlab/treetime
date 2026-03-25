@@ -68,9 +68,13 @@ where
       // Store message on edge
       edge.set_msg_to_parent(Some(Arc::clone(&parent_message_arc)));
 
-      // Combine messages from all children using multiplication (intersection of constraints)
+      // Combine messages from all children using multiplication (intersection of constraints).
+      // Normalize after each step to prevent numerical underflow in plain probability space:
+      // without normalization, the peak decays as ~(peak)^N across N children, underflowing
+      // to zero for large trees. Normalization (max=1.0) is safe because all downstream
+      // consumers (likely_time, quantile, hpd_region) are scale-invariant.
       result = Some(if let Some(current) = result {
-        distribution_multiplication(&current, &parent_message_arc)?
+        distribution_multiplication(&current, &parent_message_arc)?.normalize()
       } else {
         (*parent_message_arc).clone()
       });

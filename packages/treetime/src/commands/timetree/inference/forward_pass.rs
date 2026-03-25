@@ -80,7 +80,10 @@ where
       };
 
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?;
-      let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?;
+      // Normalize to prevent numerical underflow: the backward pass stores normalized
+      // distributions (max=1.0), and the convolution/division can produce arbitrary scales.
+      // Without normalization, values accumulate downward across tree depth.
+      let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
       node.payload.set_time_distribution(Some(Arc::new(combined)));
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
