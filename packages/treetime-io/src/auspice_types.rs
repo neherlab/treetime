@@ -48,6 +48,18 @@ impl AuspiceTreeNodeAttrF64 {
   }
 }
 
+/// Numeric date attribute for Auspice v2 JSON.
+///
+/// Auspice schema: `num_date` is an object with required `value` (decimal year)
+/// and optional `confidence` (array of exactly 2 numbers: [lower, upper]).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuspiceNumDate {
+  pub value: f64,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub confidence: Option<[f64; 2]>,
+}
+
 #[derive(Clone, Default, Eq, PartialEq, Serialize, Deserialize, Debug)]
 pub struct AuspiceTreeBranchAttrsLabels {
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,6 +94,12 @@ impl AuspiceTreeBranchAttrs {
 pub struct AuspiceTreeNodeAttrs {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub div: Option<f64>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub num_date: Option<AuspiceNumDate>,
+
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub bad_branch: Option<AuspiceTreeNodeAttr>,
 
   #[serde(skip_serializing_if = "Option::is_none")]
   pub clade_membership: Option<AuspiceTreeNodeAttr>,

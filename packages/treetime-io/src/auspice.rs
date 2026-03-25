@@ -184,6 +184,20 @@ where
   C: AuspiceWrite<N, E, D>,
 {
   let mut converter = C::new(graph)?;
+  auspice_from_graph_with(&mut converter, graph)
+}
+
+/// Convert graph to Auspice v2 JSON using a pre-constructed converter.
+///
+/// Use this when the converter needs initialization beyond what
+/// `AuspiceWrite::new(graph)` provides (e.g. extra data not on the graph).
+pub fn auspice_from_graph_with<C, N, E, D>(converter: &mut C, graph: &Graph<N, E, D>) -> Result<AuspiceTree, Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Sync + Send,
+  C: AuspiceWrite<N, E, D>,
+{
   let root = graph.get_exactly_one_root().wrap_err("When writing Auspice v2 JSON")?;
 
   // Pre-order iteration to construct the nodes from graph nodes and edges

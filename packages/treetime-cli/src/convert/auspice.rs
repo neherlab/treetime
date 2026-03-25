@@ -95,6 +95,8 @@ impl AuspiceWrite<ConverterNode, ConverterEdge, ConverterData> for AuspiceWriter
       },
       node_attrs: AuspiceTreeNodeAttrs {
         div,
+        num_date: None,
+        bad_branch: None,
         clade_membership: None,
         region: None,
         country: None,

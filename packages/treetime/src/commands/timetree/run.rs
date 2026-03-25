@@ -14,8 +14,10 @@ use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::commands::timetree::optimization::reroot::reroot_tree;
+use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::output::confidence::{
-  compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals, write_confidence_intervals,
+  NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
+  write_confidence_intervals,
 };
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
@@ -319,21 +321,24 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     }
   }
 
-  // Write CI file when any CI data is available.
+  // Extract CI when any CI data is available.
   //
   // v0 behavior: marginal distributions provide mutation-stochasticity CIs via HPD
   // regions. OnlyFinal and Always both produce these distributions (v1 always uses
   // marginal inference, so both modes have HPD data). Rate susceptibility adds
   // clock-rate-uncertainty CIs independently.
-  if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
+  let confidence_intervals = if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
     let intervals = extract_confidence_intervals(&graph);
     let ci_path = args.outdir.join("confidence_intervals.tsv");
     write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
     info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
-  }
+    Some(intervals)
+  } else {
+    None
+  };
 
   info!("### TreeTime: writing outputs");
-  write_outputs(args, &graph, &partitions, &clock_model)?;
+  write_outputs(args, &graph, &partitions, &clock_model, confidence_intervals.as_deref())?;
 
   Ok(())
 }
@@ -409,6 +414,7 @@ fn write_outputs(
   graph: &GraphTimetree,
   _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   clock_model: &ClockModel,
+  confidence_intervals: Option<&[NodeConfidenceInterval]>,
 ) -> Result<(), Report> {
   let out_base = args.outdir.join("timetree");
   nwk_write_file(out_base.with_extension("nwk"), graph, &NwkWriteOptions::default())
@@ -417,6 +423,8 @@ fn write_outputs(
     .wrap_err("Failed to write Nexus output")?;
 
   write_clock_model(clock_model, &out_base)?;
+
+  write_auspice_json(graph, confidence_intervals, &args.outdir)?;
 
   if args.plot_rtt.is_some() {
     return make_error!("--plot-rtt is not yet implemented");
