@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::distribution_multiplication;
+  use crate::policy::Plain;
   use approx::assert_ulps_eq;
-  use ndarray::array;
+  use ndarray::{Array1, array};
 
   /// Formula * Function returns a Function with correct pointwise products.
   ///
@@ -63,5 +65,139 @@ mod tests {
     for (&a, &b) in ff_fn.y().iter().zip(fxf_fn.y().iter()) {
       assert_ulps_eq!(a, b, max_ulps = 10);
     }
+  }
+
+  fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {
+    let x_min = mu - 5.0 * sigma;
+    let x_max = mu + 5.0 * sigma;
+    let dx = (x_max - x_min) / (n_points - 1) as f64;
+    let y = Array1::from_shape_fn(n_points, |i| {
+      let x = x_min + dx * (i as f64);
+      (-0.5 * ((x - mu) / sigma).powi(2)).exp()
+    });
+    let f = DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y).unwrap();
+    Distribution::Function(f)
+  }
+
+  /// Non-overlapping Function × Function returns a Function, not Empty.
+  ///
+  /// In the timetree backward pass, messages from children with distant dates
+  /// have non-overlapping time ranges. Returning Empty loses the node's date
+  /// and cascades upward. The union-range fallback produces a valid distribution
+  /// whose peak captures the best compromise between the two constraints.
+  #[test]
+  fn test_multiply_function_function_non_overlapping_returns_function() {
+    // Two Gaussians 20 sigma apart: zero overlap
+    let a = make_gaussian(0.0, 1.0, 101);
+    let b = make_gaussian(20.0, 1.0, 101);
+
+    let result = distribution_multiplication(&a, &b).unwrap();
+
+    assert!(
+      !matches!(result, Distribution::Empty),
+      "Non-overlapping Function distributions must not return Empty"
+    );
+
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function variant, got {result:?}");
+    };
+
+    // Union range: [0-5, 20+5] = [-5, 25]
+    assert!(f.x_min() < 0.0);
+    assert!(f.x_max() > 20.0);
+
+    // Peak should exist (max y > 0)
+    assert!(f.y().iter().any(|&v| v > 0.0), "Product must have nonzero values");
+  }
+
+  /// Non-overlapping multiplication is commutative.
+  #[test]
+  fn test_multiply_function_function_non_overlapping_commutative() {
+    let a = make_gaussian(0.0, 1.0, 101);
+    let b = make_gaussian(20.0, 1.0, 101);
+
+    let ab = distribution_multiplication(&a, &b).unwrap();
+    let ba = distribution_multiplication(&b, &a).unwrap();
+
+    let (Distribution::Function(f_ab), Distribution::Function(f_ba)) = (&ab, &ba) else {
+      panic!("Both results should be Function");
+    };
+
+    assert_eq!(f_ab.y().len(), f_ba.y().len());
+    for (&va, &vb) in f_ab.y().iter().zip(f_ba.y().iter()) {
+      assert_ulps_eq!(va, vb, max_ulps = 10);
+    }
+  }
+
+  /// Non-overlapping product's likely_time falls between the two peaks.
+  ///
+  /// When two constraint messages disagree, the best compromise is between
+  /// their peaks. The exact position depends on boundary values, but it
+  /// must lie within the union range.
+  #[test]
+  fn test_multiply_function_function_non_overlapping_likely_time_in_range() {
+    let a = make_gaussian(100.0, 2.0, 101);
+    let b = make_gaussian(120.0, 2.0, 101);
+
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let likely = result.likely_time().expect("likely_time must be Some for non-Empty");
+
+    // likely_time must be within the union range
+    assert!(likely >= 100.0 - 10.0, "likely_time {likely} is below union range");
+    assert!(likely <= 120.0 + 10.0, "likely_time {likely} is above union range");
+  }
+
+  /// Overlapping Function × Function still uses intersection range.
+  ///
+  /// Regression check: the union fallback must not change behavior for
+  /// overlapping distributions.
+  #[test]
+  fn test_multiply_function_function_overlapping_uses_intersection() {
+    // Two Gaussians 2 sigma apart: significant overlap
+    let a = make_gaussian(0.0, 1.0, 101);
+    let b = make_gaussian(2.0, 1.0, 101);
+
+    let result = distribution_multiplication(&a, &b).unwrap();
+
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function variant");
+    };
+
+    // Intersection range: [2-5, 0+5] = [-3, 5]
+    let overlap_min = (0.0_f64 - 5.0).max(2.0 - 5.0);
+    let overlap_max = (0.0_f64 + 5.0).min(2.0 + 5.0);
+    assert!(overlap_min < overlap_max, "Distributions must overlap");
+
+    // Result range should be the intersection, not the union
+    assert!(f.x_min() >= overlap_min - 0.1);
+    assert!(f.x_max() <= overlap_max + 0.1);
+
+    // Peak should be near the analytical mean of the product: mu* = 1.0
+    let likely = result.likely_time().unwrap();
+    assert!((likely - 1.0).abs() < 0.2, "Product peak at {likely}, expected ~1.0");
+  }
+
+  /// Chain multiplication with normalization does not underflow.
+  ///
+  /// Simulates the backward pass pattern: each step multiplies the
+  /// accumulated product (normalized to max=1.0) with a new message.
+  /// Without normalization, 50 multiplications would underflow.
+  #[test]
+  fn test_multiply_chain_with_normalize_no_underflow() {
+    let mut accum = make_gaussian(0.0, 1.0, 201);
+
+    for i in 0..50 {
+      let msg = make_gaussian(0.0 + i as f64 * 0.01, 1.0, 201);
+      accum = distribution_multiplication(&accum, &msg).unwrap().normalize();
+
+      assert!(
+        !matches!(accum, Distribution::Empty),
+        "Chain multiplication underflowed at step {i}"
+      );
+    }
+
+    let likely = accum.likely_time().expect("Final distribution must have likely_time");
+    // After 50 steps with shifts of 0.01, the accumulated peak drifts slightly
+    assert!(likely.abs() < 1.0, "Peak at {likely}, expected near 0");
   }
 }
