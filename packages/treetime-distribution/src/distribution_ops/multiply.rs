@@ -8,7 +8,6 @@ use eyre::Report;
 use ndarray::Array1;
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
-/// Matches BRANCH_GRID_SIZE in the treetime crate.
 const FORMULA_GRID_SIZE: usize = 200;
 
 pub fn distribution_multiplication<Y: YAxisPolicy>(
@@ -135,37 +134,23 @@ fn multiply_range_function<Y: YAxisPolicy>(
   Ok(Distribution::Function(distribution_fn))
 }
 
-/// Compute evaluation range for multiplying two distributions with extrapolation support.
+/// Compute evaluation range for multiplying two distributions.
 ///
-/// Returns the intersection when ranges overlap, or the union when they don't.
-/// The union fallback prevents returning Empty when message-passing constraints
-/// from different parts of the tree disagree (common in large trees where child
-/// date ranges exceed branch distribution support width). Interpolation uses
-/// constant extrapolation outside each distribution's support, producing small
-/// but nonzero boundary values.
-///
-/// Returns None when both ranges are degenerate (zero width).
-pub(crate) fn multiplication_eval_range(a: (f64, f64), b: (f64, f64)) -> Option<(f64, f64)> {
-  let intersection = (a.0.max(b.0), a.1.min(b.1));
-  let (eval_min, eval_max) = if intersection.0 < intersection.1 {
-    intersection
-  } else {
-    (a.0.min(b.0), a.1.max(b.1))
-  };
-  if eval_min >= eval_max {
-    None
-  } else {
-    Some((eval_min, eval_max))
-  }
+/// Returns the intersection of the two ranges. When distributions have no
+/// overlap, returns None (the product is zero everywhere). Wider branch
+/// distribution grids (see `MAX_BRANCH_TIME` in branch_length_likelihood)
+/// ensure messages overlap for any practical dataset.
+pub fn multiplication_eval_range(a: (f64, f64), b: (f64, f64)) -> Option<(f64, f64)> {
+  let eval_min = a.0.max(b.0);
+  let eval_max = a.1.min(b.1);
+  (eval_min < eval_max).then_some((eval_min, eval_max))
 }
 
 fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let Some((eval_min, eval_max)) =
-    multiplication_eval_range((a.x_min(), a.x_max()), (b.x_min(), b.x_max()))
-  else {
+  let Some((eval_min, eval_max)) = multiplication_eval_range((a.x_min(), a.x_max()), (b.x_min(), b.x_max())) else {
     return Ok(Distribution::empty());
   };
 

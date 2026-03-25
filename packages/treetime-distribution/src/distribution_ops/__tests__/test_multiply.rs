@@ -79,78 +79,21 @@ mod tests {
     Distribution::Function(f)
   }
 
-  /// Non-overlapping Function × Function returns a Function, not Empty.
+  /// Non-overlapping Function × Function returns Empty.
   ///
-  /// In the timetree backward pass, messages from children with distant dates
-  /// have non-overlapping time ranges. Returning Empty loses the node's date
-  /// and cascades upward. The union-range fallback produces a valid distribution
-  /// whose peak captures the best compromise between the two constraints.
+  /// When two distributions have disjoint supports, their product is
+  /// identically zero. Wide branch distribution grids (MAX_BRANCH_TIME)
+  /// prevent this in practice by ensuring backward pass messages overlap.
   #[test]
-  fn test_multiply_function_function_non_overlapping_returns_function() {
-    // Two Gaussians 20 sigma apart: zero overlap
+  fn test_multiply_function_function_non_overlapping_returns_empty() {
     let a = make_gaussian(0.0, 1.0, 101);
     let b = make_gaussian(20.0, 1.0, 101);
 
     let result = distribution_multiplication(&a, &b).unwrap();
-
-    assert!(
-      !matches!(result, Distribution::Empty),
-      "Non-overlapping Function distributions must not return Empty"
-    );
-
-    let Distribution::Function(f) = &result else {
-      panic!("Expected Function variant, got {result:?}");
-    };
-
-    // Union range: [0-5, 20+5] = [-5, 25]
-    assert!(f.x_min() < 0.0);
-    assert!(f.x_max() > 20.0);
-
-    // Peak should exist (max y > 0)
-    assert!(f.y().iter().any(|&v| v > 0.0), "Product must have nonzero values");
+    assert!(matches!(result, Distribution::Empty));
   }
 
-  /// Non-overlapping multiplication is commutative.
-  #[test]
-  fn test_multiply_function_function_non_overlapping_commutative() {
-    let a = make_gaussian(0.0, 1.0, 101);
-    let b = make_gaussian(20.0, 1.0, 101);
-
-    let ab = distribution_multiplication(&a, &b).unwrap();
-    let ba = distribution_multiplication(&b, &a).unwrap();
-
-    let (Distribution::Function(f_ab), Distribution::Function(f_ba)) = (&ab, &ba) else {
-      panic!("Both results should be Function");
-    };
-
-    assert_eq!(f_ab.y().len(), f_ba.y().len());
-    for (&va, &vb) in f_ab.y().iter().zip(f_ba.y().iter()) {
-      assert_ulps_eq!(va, vb, max_ulps = 10);
-    }
-  }
-
-  /// Non-overlapping product's likely_time falls between the two peaks.
-  ///
-  /// When two constraint messages disagree, the best compromise is between
-  /// their peaks. The exact position depends on boundary values, but it
-  /// must lie within the union range.
-  #[test]
-  fn test_multiply_function_function_non_overlapping_likely_time_in_range() {
-    let a = make_gaussian(100.0, 2.0, 101);
-    let b = make_gaussian(120.0, 2.0, 101);
-
-    let result = distribution_multiplication(&a, &b).unwrap();
-    let likely = result.likely_time().expect("likely_time must be Some for non-Empty");
-
-    // likely_time must be within the union range
-    assert!(likely >= 100.0 - 10.0, "likely_time {likely} is below union range");
-    assert!(likely <= 120.0 + 10.0, "likely_time {likely} is above union range");
-  }
-
-  /// Overlapping Function × Function still uses intersection range.
-  ///
-  /// Regression check: the union fallback must not change behavior for
-  /// overlapping distributions.
+  /// Overlapping Function × Function uses intersection range.
   #[test]
   fn test_multiply_function_function_overlapping_uses_intersection() {
     // Two Gaussians 2 sigma apart: significant overlap
@@ -206,9 +149,9 @@ mod tests {
   #[case::overlapping(         (0.0, 10.0), (5.0, 15.0), Some((5.0, 10.0)))]
   #[case::identical(           (0.0, 10.0), (0.0, 10.0), Some((0.0, 10.0)))]
   #[case::contained(           (0.0, 10.0), (2.0,  8.0), Some((2.0,  8.0)))]
-  #[case::non_overlapping(     (0.0,  5.0), (10.0, 15.0), Some((0.0, 15.0)))]
-  #[case::adjacent(            (0.0,  5.0), (5.0,  10.0), Some((0.0, 10.0)))]
-  #[case::non_overlapping_rev( (10.0, 15.0), (0.0, 5.0), Some((0.0, 15.0)))]
+  #[case::non_overlapping(     (0.0,  5.0), (10.0, 15.0), None)]
+  #[case::adjacent(            (0.0,  5.0), (5.0,  10.0), None)]
+  #[case::non_overlapping_rev( (10.0, 15.0), (0.0, 5.0),  None)]
   #[case::degenerate(          (5.0,  5.0), (5.0,  5.0), None)]
   #[trace]
   fn test_multiplication_eval_range(

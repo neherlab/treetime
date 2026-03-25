@@ -18,7 +18,7 @@ use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
-pub const BRANCH_GRID_SIZE: usize = 200;
+pub const BRANCH_GRID_SIZE: usize = 1000;
 
 pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
