@@ -6,3 +6,4 @@ mod test_optimize_tc;
 mod test_piecewise_constant_fn;
 mod test_piecewise_linear_fn;
 mod test_skyline;
+mod test_total_lh;
