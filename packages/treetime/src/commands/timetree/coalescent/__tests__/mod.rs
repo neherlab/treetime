@@ -1,6 +1,7 @@
 pub mod helpers;
 mod test_events;
 mod test_gm_coalescent;
+mod test_gm_total_lh;
 mod test_integration;
 mod test_lineage_dynamics;
 mod test_optimize_tc;

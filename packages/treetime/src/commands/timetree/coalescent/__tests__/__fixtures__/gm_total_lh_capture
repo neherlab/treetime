@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Capture v0 merger_model.total_LH() reference values for golden master tests.
+
+Procedure:
+  ./dev/docker/python python packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_total_lh_capture
+
+Two test trees:
+  1. Binary tree: all nodes have 0 or 2 children. v0 default (m=2) and
+     v1 formula (child's child count) produce identical results.
+  2. Polytomy tree: internal node has 3 children. v0 default (m=2) and
+     v1 formula (m=child_count) diverge for the internal→root edge.
+
+For each tree, branch lengths are set to calendar time durations
+(parent_tbp - child_tbp) to match v1's input semantics. v0 natively
+uses substitution branch lengths from Newick, so we override them.
+
+v1's multiplicity formula:
+  m = node.child_edges.len()  for internal nodes (>0 children)
+  m = 2.0                     for leaves (0 children)
+
+This differs from v0's fixed m=2 and from the correct parent-based
+formula (m = parent.child_count). For binary trees all three agree.
+For polytomies only the internal→root edge differs.
+
+v0 errata: docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md
+"""
+import random
+import sys
+import json
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path("packages/legacy/treetime").resolve()))
+
+from Bio import Phylo
+from io import StringIO
+from treetime.merger_models import Coalescent
+
+SEED = 1010336213
+random.seed(SEED)
+np.random.seed(SEED)
+
+
+def setup_tree(nwk, dates_dict):
+    tree = Phylo.read(StringIO(nwk), "newick")
+    present_time = max(dates_dict.values())
+    for node in tree.find_clades():
+        node.numdate = dates_dict.get(node.name, 0.0)
+        node.time_before_present = present_time - node.numdate
+        node.bad_branch = False
+    for node in tree.find_clades(order="level"):
+        for child in node.clades:
+            child.up = node
+    tree.root.up = None
+    # Override branch lengths with calendar time durations (matching v1)
+    for node in tree.find_clades():
+        if node.up:
+            node.branch_length = node.up.time_before_present - node.time_before_present
+    return tree, present_time
+
+
+def compute_total_lh_v0_default(tree, tc_val):
+    """v0's total_LH() with default multiplicity=2."""
+    merger = Coalescent(tree, Tc=tc_val, logger=lambda *a, **k: None)
+    return float(merger.total_LH())
+
+
+def compute_total_lh_v1_formula(tree, tc_val):
+    """v1's formula: m = child's child count, or 2 for leaves."""
+    merger = Coalescent(tree, Tc=tc_val, logger=lambda *a, **k: None)
+    lh = 0.0
+    for node in tree.find_clades():
+        if node.up:
+            m = float(len(node.clades)) if len(node.clades) > 0 else 2.0
+            lh -= merger.cost(node.time_before_present, node.branch_length, multiplicity=m)
+    return float(lh)
+
+
+# Binary tree
+binary_nwk = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;"
+binary_dates = {"root": 2000.0, "internal1": 2005.0, "leaf1": 2010.0, "leaf2": 2010.0, "leaf3": 2012.0}
+binary_tree, _ = setup_tree(binary_nwk, binary_dates)
+
+# Polytomy tree: internal has 3 children
+polytomy_nwk = "((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;"
+polytomy_dates = {"root": 2000.0, "internal": 2005.0, "leaf1": 2010.0, "leaf2": 2010.0, "leaf3": 2010.0, "leaf4": 2012.0}
+polytomy_tree, _ = setup_tree(polytomy_nwk, polytomy_dates)
+
+tc_values = [0.1, 1.0, 10.0, 100.0]
+
+output = {
+    "binary": {
+        "tree_nwk": binary_nwk,
+        "dates": binary_dates,
+        "cases": [],
+    },
+    "polytomy": {
+        "tree_nwk": polytomy_nwk,
+        "dates": polytomy_dates,
+        "cases": [],
+    },
+}
+
+for tc in tc_values:
+    v0_val = compute_total_lh_v0_default(binary_tree, tc)
+    v1_val = compute_total_lh_v1_formula(binary_tree, tc)
+    assert abs(v0_val - v1_val) < 1e-10, f"Binary tree: v0={v0_val}, v1={v1_val} differ at Tc={tc}"
+    output["binary"]["cases"].append({"tc": tc, "expected_lh": v0_val})
+
+for tc in tc_values:
+    v1_val = compute_total_lh_v1_formula(polytomy_tree, tc)
+    output["polytomy"]["cases"].append({"tc": tc, "expected_lh": v1_val})
+
+print(json.dumps(output, indent=2))

@@ -25,6 +25,22 @@ mod tests {
   }
 
   #[test]
+  fn test_piecewise_constant_eval_left() {
+    // Same function as test_piecewise_constant_eval, but eval_left
+    // returns the pre-event (left-limit) value at breakpoints.
+    let pc = PiecewiseConstantFn::new(array![1.0, 5.0, 10.0], array![0.0, 1.0, 2.0, 3.0]);
+
+    pretty_assert_ulps_eq!(pc.eval_left(-1.0), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(pc.eval_left(0.5), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(pc.eval_left(1.0), 0.0, max_ulps = 4); // at breakpoint: value BEFORE
+    pretty_assert_ulps_eq!(pc.eval_left(3.0), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(pc.eval_left(5.0), 1.0, max_ulps = 4); // at breakpoint: value BEFORE
+    pretty_assert_ulps_eq!(pc.eval_left(7.5), 2.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(pc.eval_left(10.0), 2.0, max_ulps = 4); // at breakpoint: value BEFORE
+    pretty_assert_ulps_eq!(pc.eval_left(100.0), 3.0, max_ulps = 4);
+  }
+
+  #[test]
   fn test_piecewise_constant_eval_many() {
     let pc = PiecewiseConstantFn::new(array![1.0, 5.0], array![0.0, 1.0, 2.0]);
     let ts = array![0.0, 1.0, 3.0, 5.0, 10.0];

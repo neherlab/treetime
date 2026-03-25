@@ -37,9 +37,20 @@ impl PiecewiseConstantFn {
     &self.breakpoints
   }
 
-  /// Evaluate at a single point.
+  /// Evaluate at a single point (right-continuous: at breakpoints returns post-event value).
   pub fn eval(&self, t: f64) -> f64 {
     let idx = self.breakpoints.as_slice().unwrap().partition_point(|&bp| bp <= t);
+    self.values[idx]
+  }
+
+  /// Evaluate the left limit at a single point (at breakpoints returns pre-event value).
+  ///
+  /// For the coalescent merger rate computation, the lineage count at a coalescence
+  /// event should reflect the state BEFORE the merger (more lineages = higher merger
+  /// rate = this merger was more probable). Using `eval()` at exact event times would
+  /// return the post-event count, underestimating the merger rate.
+  pub fn eval_left(&self, t: f64) -> f64 {
+    let idx = self.breakpoints.as_slice().unwrap().partition_point(|&bp| bp < t);
     self.values[idx]
   }
 

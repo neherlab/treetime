@@ -121,7 +121,10 @@ pub fn sum_coalescent_cost(
     let i_merger = integral_merger_rate.eval(t_merger.value());
     let i_node = integral_merger_rate.eval(edge.t_node.value());
 
-    let k = lineage_counts.eval(t_merger.value());
+    // Use eval_left to get the pre-event lineage count at merger times.
+    // Merger times fall exactly on PiecewiseConstantFn breakpoints (t_merger = parent_tbp).
+    // The merger rate λ depends on lineages BEFORE the merger event.
+    let k = lineage_counts.eval_left(t_merger.value());
     let k_clamped = f64::max(0.5, k - 1.0);
 
     let tc_val = tc_dist.eval(t_merger.value())?;
