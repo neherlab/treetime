@@ -17,21 +17,11 @@ mod tests {
   // Both v0 and v1 use iterative GTR inference (5 iterations of rate matrix
   // re-estimation followed by rate optimization via Brent's method).
 
-  // v0 parity: v1's iterative refinement produces correct non-degenerate iterations
-  // (forward messages preserved, per-use branch clamping), resulting in different
-  // numerical trajectories from v0. The argmax differs at ambiguous internal nodes
-  // where posterior probabilities are near-equal between states.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country(          "zika_20_country")]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
-  #[case::lassa_l_20_country(       "lassa_L_20_country")]
-  #[case::dengue_20_country(        "dengue_20_country")]
-  #[case::tb_20_cluster(            "tb_20_cluster")]
-  #[case::rsv_a_20_country(         "rsv_a_20_country")]
-  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: v1 iterative refinement produces different numerical trajectory"]
   fn test_gm_mugration_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -53,6 +43,22 @@ mod tests {
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
 
     Ok(())
+  }
+
+  // Remaining 5 datasets diverge from v0 at ambiguous internal nodes.
+  // Causes: D1 (apply_pseudo_counts on initial pi), D2 (root state uniform-threshold
+  // filtering). Both are intentional v1 improvements over v0.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[trace]
+  #[ignore = "v0 parity: intentional v1 improvements (pseudo-count pi, root-state filtering)"]
+  fn test_gm_mugration_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
+    test_gm_mugration_outputs(case)
   }
 
   // Confidence profile comparison using full-precision floats.

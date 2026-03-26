@@ -7,7 +7,7 @@ use crate::make_report;
 use crate::representation::partition::discrete::PartitionDiscrete;
 use crate::representation::partition::traits::HasLogLh;
 use eyre::Report;
-use log::{debug, info};
+use log::{debug, info, warn};
 use ndarray::{Array1, Array2};
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
@@ -189,7 +189,10 @@ where
     }
     match discrete_marginal_backward(graph, partition) {
       Ok(()) => -partition.get_log_lh(root_key),
-      Err(_) => f64::INFINITY,
+      Err(e) => {
+        warn!("Mugration: backward pass failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+        f64::INFINITY
+      },
     }
   };
 
@@ -212,8 +215,10 @@ where
       partition.gtr.mu, old_mu
     );
   } else {
-    // No valid bracket: keep old mu and restore consistent backward profiles
-    run_backward(partition, sqrt_old_mu);
+    // No valid bracket: restore mu but leave backward profiles at the last bracket
+    // evaluation (hi). v0's scipy also leaves profiles at its last evaluation before
+    // failing, then restores mu without re-running backward.
+    partition.gtr.mu = old_mu;
     debug!("Mugration: rate optimization skipped (no bracket), keeping mu = {old_mu:.6}");
   }
 
@@ -226,6 +231,7 @@ where
 /// superlinear convergence on smooth functions.
 ///
 /// Returns the x value that minimizes f(x) within the interval.
+#[allow(clippy::many_single_char_names, clippy::float_cmp)]
 fn brent_minimize<F>(f: &mut F, a: f64, b: f64, tol: f64, max_iter: usize) -> f64
 where
   F: FnMut(f64) -> f64,

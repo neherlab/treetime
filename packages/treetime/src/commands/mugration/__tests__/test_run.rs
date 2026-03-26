@@ -381,4 +381,119 @@ mod tests {
     assert!(err_msg.contains("only 1 discrete attributes"));
     assert!(err_msg.contains("At least 2 are required"));
   }
+
+  #[test]
+  fn test_iterative_refinement_changes_model() -> Result<(), Report> {
+    let tree = "(A:0.1,(B:0.05,C:0.15)BC:0.2)root;";
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+      o!("C") => o!("usa"),
+    };
+
+    let result_no_iter = execute_mugration(MugrationInput {
+      graph: nwk_read_str(tree)?,
+      traits: traits.clone(),
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 0,
+      sampling_bias_correction: None,
+    })?;
+
+    let result_with_iter = execute_mugration(MugrationInput {
+      graph: nwk_read_str(tree)?,
+      traits,
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+    })?;
+
+    // Iterative refinement must change the model: mu and/or pi should differ
+    let mu_changed = (result_no_iter.gtr.mu - result_with_iter.gtr.mu).abs() > 1e-6;
+    let pi_changed = result_no_iter
+      .gtr
+      .pi
+      .iter()
+      .zip(result_with_iter.gtr.pi.iter())
+      .any(|(a, b)| (a - b).abs() > 1e-6);
+    assert!(
+      mu_changed || pi_changed,
+      "iterative refinement must change the model: mu_0={}, mu_5={}, pi_0={:?}, pi_5={:?}",
+      result_no_iter.gtr.mu,
+      result_with_iter.gtr.mu,
+      result_no_iter.gtr.pi,
+      result_with_iter.gtr.pi
+    );
+
+    // Both models must have valid parameters
+    assert!(result_with_iter.gtr.mu > 0.0);
+    assert_abs_diff_eq!(result_with_iter.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(result_with_iter.gtr.pi.iter().all(|&p| p > 0.0));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_iterative_refinement_pi_reflects_data() -> Result<(), Report> {
+    // 4 tips: 3 usa, 1 germany. Without fixed_pi, iterative refinement
+    // should shift pi toward observed frequencies (higher weight for usa).
+    let tree = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root;";
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("usa"),
+      o!("C") => o!("usa"),
+      o!("D") => o!("germany"),
+    };
+
+    let result = execute_mugration(MugrationInput {
+      graph: nwk_read_str(tree)?,
+      traits,
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+    })?;
+
+    // pi for usa (index 1, alphabetically: germany=0, usa=1) should be > 0.5
+    let pi_usa = result.gtr.pi[1];
+    assert!(
+      pi_usa > 0.5,
+      "pi[usa] should reflect 3/4 observed frequency, got {pi_usa:.4}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
+    let result = execute_mugration(MugrationInput {
+      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
+      traits: btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") },
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 0,
+      sampling_bias_correction: None,
+    })?;
+
+    // With 0 iterations and no weights, initial model has uniform pi
+    // The infer+optimize cycle still runs once (initial inference), but with
+    // iterations=0 the loop body doesn't execute.
+    assert_abs_diff_eq!(result.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(result.gtr.mu > 0.0);
+
+    Ok(())
+  }
 }
