@@ -1,4 +1,5 @@
 use crate::gtr::gtr::eig_single_site;
+use crate::make_error;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray::{Array3, Array4};
@@ -88,13 +89,17 @@ impl GTRSiteSpecific {
       return make_error!("mu length {} does not match seq_len {seq_len}", mu.len());
     }
     if pi.dim() != (n_states, seq_len) {
-      return make_error!(
-        "pi shape {:?} does not match expected ({n_states}, {seq_len})",
-        pi.dim()
-      );
+      return make_error!("pi shape {:?} does not match expected ({n_states}, {seq_len})", pi.dim());
     }
     if let Some(W) = &W {
-      assert_eq!(W.dim(), (n_states, n_states), "W shape must be [n_states, n_states]");
+      if W.dim() != (n_states, n_states) {
+        return make_error!("W shape {:?} does not match expected ({n_states}, {n_states})", W.dim());
+      }
+    }
+    for a in 0..seq_len {
+      if mu[a] < 0.0 {
+        return make_error!("Site {a} has negative substitution rate mu: {}", mu[a]);
+      }
     }
 
     // Symmetrize W and zero diagonal
@@ -109,7 +114,10 @@ impl GTRSiteSpecific {
       W
     };
 
-    // Normalize pi columns to sum to 1
+    // Validate and normalize pi columns to sum to 1.
+    // The similarity transform in eig_single_site divides by sqrt(pi), so all
+    // entries must be strictly positive. A zero column sum or zero entry would
+    // produce NaN/Inf in the eigendecomposition.
     let pi = {
       let col_sums = pi.sum_axis(Axis(0));
       for a in 0..seq_len {
@@ -121,10 +129,7 @@ impl GTRSiteSpecific {
       for a in 0..seq_len {
         for i in 0..n_states {
           if pi[[i, a]] <= 0.0 {
-            return make_error!(
-              "Site {a}, state {i} has non-positive pi after normalization: {}",
-              pi[[i, a]]
-            );
+            return make_error!("Site {a}, state {i} has non-positive pi after normalization: {}", pi[[i, a]]);
           }
         }
       }
@@ -143,6 +148,9 @@ impl GTRSiteSpecific {
         total_avg += rate_a;
       }
       total_avg /= seq_len as f64;
+      if total_avg <= 0.0 {
+        return make_error!("Average substitution rate is non-positive: {total_avg}");
+      }
       mu *= total_avg;
       W / total_avg
     };
@@ -199,6 +207,7 @@ impl GTRSiteSpecific {
   ///
   /// Uses interpolation when available and t is within the interpolation range.
   pub fn expQt(&self, t: f64) -> Array3<f64> {
+    debug_assert!(t >= 0.0, "Branch length t must be non-negative, got {t}");
     if let Some(interp) = &self.interpolator {
       if t * interp.rate_scale < ExpQtInterpolator::MAX_INTERP_RANGE {
         return interp.interpolate(t);
@@ -214,6 +223,7 @@ impl GTRSiteSpecific {
   /// This is the computational bottleneck avoided by interpolation. Each site
   /// requires O(n^2) work for the two matrix-vector products.
   pub fn expQt_raw(&self, t: f64) -> Array3<f64> {
+    debug_assert!(t >= 0.0, "Branch length t must be non-negative, got {t}");
     let n = self.eigvals.nrows();
     let mut result = Array3::zeros((n, n, self.seq_len));
 
@@ -368,11 +378,12 @@ impl ExpQtInterpolator {
     // Clamp to grid range (extrapolation not meaningful for probability matrices)
     let t = t.clamp(self.t_grid[0], self.t_grid[n - 1]);
 
-    // Binary search for bracketing interval
-    let left = {
-      let idx = self.t_grid.as_slice().unwrap().partition_point(|&v| v <= t);
-      idx.saturating_sub(1).min(n - 2)
-    };
+    // Linear scan for bracketing interval (61-element grid, O(n) is fine)
+    let left = self
+      .t_grid
+      .iter()
+      .position(|&v| v > t)
+      .map_or(n - 2, |idx| idx.saturating_sub(1).min(n - 2));
 
     let t_left = self.t_grid[left];
     let t_right = self.t_grid[left + 1];
