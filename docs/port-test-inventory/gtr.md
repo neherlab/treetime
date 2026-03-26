@@ -16,8 +16,6 @@
 | Parameterized edge cases           | 1      | 3       | Parameterized |
 | Model hierarchy                    | 2      | 9       | Unit          |
 | GTR output (write_gtr_json)        | 1      | 4       | Unit          |
-| Per-site rate variation properties | 1      | 17      | Property/Unit |
-| Discrete gamma rates               | 1      | 12      | Mixed         |
 | Generator validation               | 1      | 7       | Property      |
 | GTR inference (dense golden)       | 1      | 13      | Golden-master |
 | GTR inference (dense unit)         | 1      | 5       | Unit          |
@@ -25,9 +23,11 @@
 | Inference contracts                | 1      | 15      | Parameterized |
 | Dense-sparse cross-validation      | 1      | 7       | Integration   |
 | Common functions                   | 1      | 6       | Unit          |
-| Sparse per-site rate propagation   | 1      | 2       | Unit          |
-| Dense-sparse per-site consistency  | 1      | 2       | Integration   |
-| **Total**                          | **22** | **174** | Mixed         |
+| Site-specific GTR properties       | 1      | 19      | Property      |
+| Site-specific GTR unit+validation  | 1      | 5       | Unit          |
+| Site-specific GTR golden-master    | 1      | 9       | Golden-master |
+| Site-specific GTR inference        | 1      | 2       | Unit          |
+| **Total**                          | **22** | **166** | Mixed         |
 
 Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
@@ -331,57 +331,80 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ---
 
-## Per-Site Rate Variation Tests
-
-**File:** [`test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
-
-Property tests verifying per-site rate variation invariants (64 cases each).
-
-| Property                                          | Invariant                                      |
-| ------------------------------------------------- | ---------------------------------------------- |
-| `test_prop_expqt_with_rate_one_equals_expqt`      | expQt_with_rate(t, 1.0) = expQt(t)             |
-| `test_prop_expqt_with_rate_column_stochastic`     | Columns sum to 1                               |
-| `test_prop_expqt_with_rate_non_negative`          | All entries >= 0                               |
-| `test_prop_expqt_with_rate_semigroup`             | P(r*s) * P(r*t) = P(r*(s+t))                   |
-| `test_prop_propagate_uniform_rates_equals_scalar` | Uniform site_rates (1.0) = scalar mu           |
-| `test_prop_evolve_uniform_rates_equals_scalar`    | Uniform site_rates (1.0) = scalar mu           |
-| `test_prop_propagate_per_site_matches_individual` | Batched result matches per-row expQt_with_rate |
-| `test_prop_evolve_per_site_matches_individual`    | Batched result matches per-row expQt_with_rate |
-| `test_prop_propagate_per_site_identity_at_zero`   | P(0) = I regardless of rates                   |
-| `test_prop_evolve_per_site_equilibrium`           | Large t converges to pi                        |
-
-Unit tests:
-
-| Test                               | Purpose                                           |
-| ---------------------------------- | ------------------------------------------------- |
-| `test_higher_rate_more_divergence` | Higher rate -> more divergence from initial state |
-| `test_rate_zero_is_identity`       | Rate 0 produces identity matrix                   |
-| `test_site_rates_lifecycle`        | set/clear/has lifecycle                           |
-
----
-
-## Discrete Gamma Rate Tests
-
-**File:** [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)
-
-| Test                                                      | Type          | Purpose                                    |
-| --------------------------------------------------------- | ------------- | ------------------------------------------ |
-| `test_discrete_gamma_rates_mean_one` (7 cases)            | Parameterized | Mean of categories = 1.0                   |
-| `test_discrete_gamma_rates_single_category`               | Unit          | K=1 returns [1.0]                          |
-| `test_discrete_gamma_rates_sorted_ascending`              | Unit          | Categories sorted by rate                  |
-| `test_discrete_gamma_rates_all_positive`                  | Unit          | All rates > 0                              |
-| `test_discrete_gamma_rates_high_alpha_approaches_uniform` | Unit          | Large alpha -> rates near 1.0              |
-| `test_discrete_gamma_rates_low_alpha_wide_spread`         | Unit          | Small alpha -> wide rate spread            |
-| `test_discrete_gamma_rates_invalid_alpha`                 | Unit          | Rejects alpha < 0.15                       |
-| `test_discrete_gamma_rates_invalid_categories`            | Unit          | Rejects K=0                                |
-| `test_discrete_gamma_rates_reference_alpha_1_k4`          | Unit          | Known values for exponential distribution  |
-| `test_prop_discrete_gamma_rates_mean_one`                 | Property      | Mean = 1.0 for random alpha and K          |
-| `test_prop_discrete_gamma_rates_positive_sorted`          | Property      | Positive and sorted for random alpha and K |
-
----
-
 ## Support Files (no tests)
 
 **File:** [`prop_support.rs`](../../packages/treetime/src/gtr/__tests__/prop_support.rs) - Proptest assertion helpers (`prop_assert_columns_sum_to`, `prop_assert_rows_sum_to`, `prop_assert_detailed_balance`)
 
 **File:** [`test_gtr_numerical_edge_support.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs) - Stochastic matrix assertion helper (`assert_stochastic_matrix`)
+
+---
+
+## Site-Specific GTR Tests
+
+### Property Tests (19)
+
+**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
+
+| Test                                                        | Purpose                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------- |
+| `test_prop_gtr_site_specific_expqt_column_stochastic`       | P_a(t) columns sum to 1 per site                     |
+| `test_prop_gtr_site_specific_expqt_identity_at_zero`        | P_a(0) = I per site                                  |
+| `test_prop_gtr_site_specific_expqt_nonnegative`             | P_a(t) entries non-negative                          |
+| `test_prop_gtr_site_specific_expqt_semigroup`               | P_a(s+t) = P_a(s) \* P_a(t) per site                 |
+| `test_prop_gtr_site_specific_expqt_convergence`             | P_a(t) -> pi_a as t -> infinity                      |
+| `test_prop_gtr_site_specific_propagate_profile_valid`       | propagate_profile output finite and non-negative     |
+| `test_prop_gtr_site_specific_evolve_valid`                  | evolve output finite and non-negative                |
+| `test_prop_gtr_site_specific_equilibrium_fixed_point`       | evolve(pi, t) = pi (equilibrium is fixed point)      |
+| `test_prop_gtr_site_specific_interpolation_accuracy`        | Interpolated expQt within 1e-2 of direct computation |
+| `test_prop_gtr_site_specific_average_rate_positive`         | Per-site average rate is positive                    |
+| `test_prop_gtr_site_specific_expqt_bounded`                 | P_a(t) entries bounded by 1                          |
+| `test_prop_gtr_site_specific_stationary_preserved`          | P_a(t) @ pi_a = pi_a (right eigenvector)             |
+| `test_prop_gtr_site_specific_evolve_transpose_of_propagate` | evolve = profile @ P^T, propagate = profile @ P      |
+| `test_prop_gtr_site_specific_no_nan`                        | No NaN in expQt                                      |
+| `test_prop_gtr_site_specific_no_inf`                        | No Inf in expQt                                      |
+| `test_prop_gtr_site_specific_evolve_preserves_probability`  | evolve preserves row sums                            |
+| `test_prop_gtr_site_specific_approx_column_stochastic`      | Interpolation preserves column stochasticity         |
+| `test_prop_gtr_site_specific_approx_nonnegative`            | Interpolation preserves non-negativity               |
+| `test_prop_gtr_site_specific_approx_equilibrium`            | Interpolation preserves equilibrium                  |
+
+### Unit + Validation Tests (5)
+
+**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
+
+| Test                                                | Purpose                                       |
+| --------------------------------------------------- | --------------------------------------------- |
+| `test_gtr_site_specific_different_sites_differ`     | Different pi produces different P(t) per site |
+| `test_gtr_site_specific_uniform_matches_standard`   | Uniform-pi site-specific matches standard GTR |
+| `test_gtr_site_specific_rejects_zero_pi_column`     | Constructor rejects zero-sum pi column        |
+| `test_gtr_site_specific_rejects_negative_mu`        | Constructor rejects negative mu               |
+| `test_gtr_site_specific_rejects_dimension_mismatch` | Constructor rejects mu length mismatch        |
+
+### Golden-Master Tests (9 runs from 4 functions)
+
+**File:** [`test_gm_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs)
+
+| Test                                         | Cases | Tolerance | Purpose                                            |
+| -------------------------------------------- | ----: | --------: | -------------------------------------------------- |
+| `test_gm_gtr_site_specific_expqt`            |     3 |     1e-10 | Eigenvalues and expQt against v0 oracle            |
+| `test_gm_gtr_site_specific_propagate_evolve` |     2 |     1e-10 | propagate_profile and evolve against v0 oracle     |
+| `test_gm_gtr_site_specific_infer`            |     1 |      1e-3 | Inference pi and W ratios against v0 oracle        |
+| `test_gm_gtr_site_specific_approximate`      |     3 |      1e-8 | Interpolated expQt against v0 interpolation oracle |
+
+**Fixture files:** `gm_gtr_site_specific_inputs.json`, `gm_gtr_site_specific_outputs.json`, `gm_gtr_site_specific_capture`
+
+---
+
+## Site-Specific GTR Inference Tests (2)
+
+**File:** [`test_site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_site_specific.rs)
+
+| Test                                                | Purpose                                                 |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| `test_infer_gtr_site_specific_recovers_parameters`  | Inference from synthetic data recovers W and pi at 1e-3 |
+| `test_infer_gtr_site_specific_produces_valid_model` | Inferred model produces valid P(t) matrices             |
+
+---
+
+## Shared Test Support
+
+**File:** [`site_specific_support.rs`](../../packages/treetime/src/gtr/__tests__/site_specific_support.rs) - `simulate_counts()`, `value_to_array2()`, `value_to_array3()`

@@ -10,13 +10,13 @@
 | ------------------------------------------ | ------- | -------- |
 | [Ancestral Reconstruction](ancestral.md)   | 28      | 123      |
 | [Timetree Inference](timetree.md)          | 20      | 110      |
-| [GTR Models](gtr.md)                       | 16      | 127      |
+| [GTR Models](gtr.md)                       | 22      | 166      |
 | [Branch Optimization](optimization.md)     | 26      | 81       |
 | [Clock Inference](clock.md)                | 4       | 26       |
 | [Distribution Operations](distribution.md) | 20      | 197      |
-| [Supporting Crates](supporting.md)         | 36      | 507      |
+| [Supporting Crates](supporting.md)         | 35      | 495      |
 | [Validation & Smoke](validation.md)        | -       | 185      |
-| **Total**                                  | **150** | **1356** |
+| **Total**                                  | **155** | **1383** |
 
 Counts are test functions. Property tests (proptest) run 256 random cases each; GTR property tests alone produce ~6000 executions.
 
@@ -38,7 +38,6 @@ Counts are test functions. Property tests (proptest) run 256 random cases each; 
 | Matrix exponentiation    | [`gtr/__tests__/test_prop_gtr_expqt.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_expqt.rs)                                            | exp(Qt) properties                    |
 | GTR inference            | [`gtr/infer_gtr/__tests__/`](../../packages/treetime/src/gtr/infer_gtr/__tests__/)                                                                    | Dense/sparse mutation counts          |
 | Newton-Raphson           | [`optimize/__tests__/test_newton_convergence/`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/)                     | Branch length optimization            |
-| Outer-loop damping       | [`optimize/__tests__/test_damping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_damping.rs)                                       | Damping formula, convergence          |
 | Grid search              | [`optimize/__tests__/test_grid_search/`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/)                                   | Parameter sweeps                      |
 | Clock regression         | [`clock/__tests__/test_clock_regression.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_regression.rs)                           | Root-to-tip analysis                  |
 | Rerooting                | [`clock/__tests__/test_reroot.rs`](../../packages/treetime/src/commands/clock/__tests__/test_reroot.rs)                                               | Optimal root placement                |
