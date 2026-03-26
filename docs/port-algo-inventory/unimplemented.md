@@ -90,22 +90,20 @@ After finding optimal root position `x*`:
 
 ---
 
-## Per-Site Rate Variation (partially implemented)
+## Per-Site Rate Variation
 
-Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site.
+Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site, making this cheap to implement.
 
 This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`docs/algorithms/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
 
 v0: per-site `mu` is part of `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py).
-v1: GTR infrastructure implemented. `GTR.site_rates: Option<Array1<f64>>` at [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs). Efficient batched computation in `propagate_profile()` and `evolve()`. Discrete gamma rate computation in [`packages/treetime/src/gtr/site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs). Dense and sparse marginal passes support per-site rates. CLI integration and rate estimation pending.
+v1: `GTR.mu` (`#mu`) is scalar `f64` at [`packages/treetime/src/gtr/gtr.rs#L173`](../../packages/treetime/src/gtr/gtr.rs#L173). No per-site rate support.
 
-Known issue: [Per-site rate variation: infrastructure implemented, CLI and rate estimation pending](../port-known-issues/M-gtr-per-site-rate-variation.md).
+Known issue: [Per-site rate variation not implemented](../port-known-issues/M-gtr-per-site-rate-variation.md).
 
 ### Algorithm
 
 For each site `a`, the matrix exponential becomes `exp(Q * mu_a * t)`. With eigendecomposition `Q = V * diag(lambda) * V_inv`, this is `V * diag(exp(lambda * mu_a * t)) * V_inv`. The eigenvectors `V`, `V_inv` are computed once; only the `exp(lambda_k * mu_a * t)` terms change per site.
-
-v1 implementation avoids materializing L separate `(n x n)` matrices. Instead, profiles are transformed to eigenspace, scaled per-site, and transformed back: O(L\*n^2) same asymptotic cost as the uniform case.
 
 ### Reference
 
@@ -365,24 +363,9 @@ v1: `unimplemented!()` at [`packages/treetime-cli/src/convert/convert.rs#L90`](.
 
 ---
 
-## Iterative GTR for Discrete Traits
+## ~~Iterative GTR for Discrete Traits~~ (Ported)
 
-Iterative parameter estimation for discrete trait (mugration) reconstruction. v0 refines the GTR model over 5 iterations, shifting equilibrium frequencies to reflect actual trait prevalence. Without this, v1 assigns uniform prior weight to all states.
+Iterative parameter estimation for discrete trait (mugration) GTR models following the Expectation-Maximization framework ([Dempster, Laird & Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x)). The E-step computes posterior joint parent-child state distributions via Felsenstein's pruning algorithm ([Felsenstein 1981](https://pubmed.ncbi.nlm.nih.gov/7288891/)), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix W, equilibrium frequencies pi, and scalar rate mu from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
 
-v0: `reconstruct_discrete_traits()` (`#reconstruct_discrete_traits`) in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` (`#infer_gtr`) at [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632), `TreeAnc.optimize_gtr_rate()` (`#optimize_gtr_rate`) at [`packages/legacy/treetime/treetime/treeanc.py#L1679-L1708`](../../packages/legacy/treetime/treetime/treeanc.py#L1679-L1708).
-v1: not ported. Mugration uses uniform GTR at [`packages/treetime/src/commands/mugration/run.rs#L124-L129`](../../packages/treetime/src/commands/mugration/run.rs#L124-L129).
-
-### Algorithm
-
-After initial marginal ancestral reconstruction with `infer_gtr=True`:
-
-1. `infer_gtr()` counts state transitions across all branches using the current marginal reconstruction. Estimates new equilibrium frequencies and symmetric exchangeability matrix from the observed transition/dwell-time statistics.
-2. `optimize_gtr_rate()` optimizes the scalar rate `mu` via `scipy.optimize.minimize_scalar` (Brent), minimizing negative log-likelihood of the observed branch lengths under the current GTR model.
-3. Steps 1-2 repeat for 5 iterations (default `iterations` parameter in `reconstruct_discrete_traits()`).
-4. Final `infer_ancestral_sequences(infer_gtr=False)` reconstructs with the refined model.
-
-The iterative refinement produces non-uniform equilibrium frequencies that reflect actual trait prevalence in the data. For mugration (geographic traits), common locations receive higher prior weight. Without iterative GTR, v1 assigns uniform prior weight to all locations, causing the argmax to differ at ambiguous internal nodes where the phylogeographic signal is weak.
-
-**Impact**: Golden master tests show 4/6 datasets diverge from v0 at internal nodes (dengue, tb, rsv, mpox). 2/6 datasets agree despite uniform rates (zika, lassa) because their phylogeographic signal is strong enough to overwhelm the prior difference.
-
-See [Iterative GTR inference not implemented for mugration](../port-known-issues/M-mugration-iterative-gtr.md) for the known issue entry.
+v0: `reconstruct_discrete_traits()` in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` in [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632).
+v1: `refine_gtr_iterative()` in [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs). Remaining parity gap tracked in [Mugration golden master parity with v0](../port-known-issues/M-mugration-iterative-gtr.md). Full forward-backward per iteration proposed in [mugration-full-reconstruction-per-iteration](../port-proposals/mugration-full-reconstruction-per-iteration.md).

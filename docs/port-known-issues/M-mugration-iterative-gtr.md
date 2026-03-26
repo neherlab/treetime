@@ -1,16 +1,20 @@
-# Iterative GTR inference not implemented for mugration
+# Mugration golden master parity with v0
 
-The mugration command creates a uniform GTR model at [`run.rs#L124-L129`](../../packages/treetime/src/commands/mugration/run.rs#L124-L129) with `W: None` (equal transition rates) and either uniform or weight-based equilibrium frequencies. The model is used directly for a single forward-backward reconstruction pass without iterative refinement.
+v1 implements iterative GTR inference for mugration, matching v0's `reconstruct_discrete_traits()` ([packages/legacy/treetime/treetime/wrappers.py#L653-L811](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811)) algorithm structure. Golden master trait assignments match v0 for 2/7 datasets (zika, zika with weights). The remaining 5 datasets diverge at ambiguous internal nodes due to two intentional v1 improvements over v0.
 
-v0 `reconstruct_discrete_traits()` (`#reconstruct_discrete_traits`) at [`wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811) performs iterative GTR inference:
+## Intentional v1 improvements (D1, D2)
 
-1. Initial `infer_ancestral_sequences(infer_gtr=True)` estimates the rate matrix from observed transitions ([`wrappers.py#L785-L794`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L794))
-2. `optimize_gtr_rate()` optimizes the overall rate scalar via Brent minimization ([`wrappers.py#L795`](../../packages/legacy/treetime/treetime/wrappers.py#L795))
-3. Five iterations of `infer_gtr()` + `optimize_gtr_rate()` re-estimate equilibrium frequencies and rates from the data ([`wrappers.py#L800-L802`](../../packages/legacy/treetime/treetime/wrappers.py#L800-L802))
-4. Final `infer_ancestral_sequences(infer_gtr=False)` reconstructs with the refined model ([`wrappers.py#L807-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L807-L809))
+1. **Pseudo-count smoothing on initial pi** ([packages/treetime/src/commands/mugration/run.rs#L221](../../packages/treetime/src/commands/mugration/run.rs#L221)): v1 applies `apply_pseudo_counts(pi, pc)` before the initial GTR model, giving a smoother prior for the first reconstruction. v0 passes raw weights directly to `GTR.custom()` and reserves `pc` for `infer_gtr()` regularization only.
 
-The iterative refinement shifts equilibrium frequencies away from uniform, changing posterior profiles at ambiguous internal nodes. Golden master tests confirm that 2/6 datasets (zika, lassa) produce identical trait assignments despite the difference, while 4/6 datasets (dengue, tb, rsv, mpox) diverge at internal nodes where the phylogeographic signal is weak.
+2. **Root state uniform-threshold filtering** ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L144-L150](../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L144-L150)): v1 skips the root state contribution to pi estimation when the root posterior is near-uniform (max probability at or below `1/n_states + 1e-10`). v0 always converts the root MAP state to a one-hot count, which injects state-order bias when the root is uninformative. Matches the dense GTR inference path at [packages/treetime/src/gtr/infer_gtr/dense.rs#L158-L166](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L158-L166).
 
-## Related issues
+Both produce scientifically defensible results but shift posterior probabilities at ambiguous internal nodes.
 
-- [Iterative GTR for discrete traits](../port-algo-inventory/unimplemented.md#iterative-gtr-for-discrete-traits) algorithm description in unimplemented inventory
+## Affected golden master tests
+
+- `test_gm_mugration_outputs`: 2/7 passing (zika, zika_weights), 5/7 ignored (D1/D2 divergence)
+- `test_gm_mugration_confidence_outputs`: 7/7 ignored (confidence profiles reflect the same differences)
+
+## Related
+
+- [Full forward-backward reconstruction proposal](../port-proposals/mugration-full-reconstruction-per-iteration.md)
