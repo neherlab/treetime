@@ -1,51 +1,40 @@
 #[cfg(test)]
 mod tests {
+  use crate::gtr::__tests__::site_specific_support::simulate_counts;
   use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
   use crate::gtr::infer_gtr::site_specific::{
-    InferGtrSiteSpecificOptions, MutationCountsSiteSpecific, build_gtr_site_specific, infer_gtr_site_specific_impl,
+    InferGtrSiteSpecificOptions, build_gtr_site_specific, infer_gtr_site_specific_impl,
   };
   use approx::assert_abs_diff_eq;
-  use ndarray::Array3;
   use ndarray::prelude::*;
 
-  /// Simulate per-site mutation counts from a known site-specific GTR model.
-  ///
-  /// For each site a, generates synthetic n_ija and T_ia that are consistent
-  /// with the model's W, pi_a, and mu_a. Uses the equation:
-  ///   n_ija[i,j,a] = pi_a[i] * W[i,j] * T_ia[j,a] * mu_a
-  fn simulate_counts(gtr: &GTRSiteSpecific, total_time: f64) -> MutationCountsSiteSpecific {
-    let n = gtr.pi.nrows();
-    let seq_len = gtr.seq_len;
-
-    // T_ia: time in each state proportional to pi
-    let mut T_ia = Array2::zeros((n, seq_len));
-    for a in 0..seq_len {
-      for i in 0..n {
-        T_ia[[i, a]] = total_time * gtr.pi[[i, a]];
-      }
-    }
-
-    // n_ija: expected mutation counts from the model
-    let mut n_ija = Array3::zeros((n, n, seq_len));
-    for a in 0..seq_len {
-      for i in 0..n {
-        for j in 0..n {
-          if i != j {
-            n_ija[[i, j, a]] = gtr.pi[[i, a]] * gtr.W[[i, j]] * T_ia[[j, a]] * gtr.mu[a];
-          }
-        }
-      }
-    }
-
-    // root_state: proportional to pi
-    let root_state = gtr.pi.clone();
-
-    MutationCountsSiteSpecific {
-      n_ija,
-      T_ia,
-      root_state,
-    }
-  }
+  // TODO(investigate): circular inference validation
+  //
+  // These tests generate mutation counts (n_ija, T_ia, root_state) from the
+  // model's own closed-form equation: n_ija[i,j,a] = pi[i,a] * W[i,j] * T[j,a] * mu[a].
+  // The solver then recovers the planted parameters from these synthetic counts.
+  // This validates solver self-consistency (convergence, normalization, update
+  // equations) but not end-to-end correctness.
+  //
+  // What this catches:
+  // - Solver convergence failures
+  // - Wrong update equation signs or index transpositions
+  // - Normalization bugs in W or pi updates
+  // - Pseudocount regularization effects (bounded by pc/total_time)
+  //
+  // What this does NOT catch:
+  // - Bugs in the mutation count extraction path (get_branch_mutation_matrix,
+  //   accumulate_mutation_counts) which derives n_ija and T_ia from branch
+  //   profiles during ancestral reconstruction
+  // - Parent/child orientation mistakes in the counting path
+  // - Interaction between site-specific GTR and sequence compression
+  //
+  // The golden-master test (test_gm_gtr_site_specific_infer) cross-validates
+  // against v0's GTR_site_specific.infer() on the same synthetic counts at 1e-3.
+  //
+  // Missing: an end-to-end test that derives counts from a real tree+alignment
+  // via the partition system, then compares inferred parameters against v0.
+  // This requires partition integration (GTR -> enum/trait at partition call sites).
 
   /// Inference from synthetic data should recover the original model's
   /// W matrix (shared) and per-site pi to reasonable accuracy.
@@ -71,7 +60,7 @@ mod tests {
     })
     .unwrap();
 
-    let counts = simulate_counts(&gtr, 1000.0);
+    let counts = simulate_counts(&gtr, 10000.0);
 
     let result = infer_gtr_site_specific_impl(
       &counts,
@@ -85,17 +74,18 @@ mod tests {
     )
     .unwrap();
 
-    // Check per-site pi recovery (columns should match original pi proportions)
+    // Check per-site pi recovery. With total_time=10000 and pc=1, pseudocount
+    // distortion is ~0.01%, so 1e-3 tolerance is appropriate.
     for a in 0..2 {
       let inferred_pi = result.pi.column(a);
       let original_pi = gtr.pi.column(a);
       for i in 0..4 {
-        assert_abs_diff_eq!(inferred_pi[i], original_pi[i], epsilon = 0.05);
+        assert_abs_diff_eq!(inferred_pi[i], original_pi[i], epsilon = 1e-3);
       }
     }
 
-    // Check W recovery: relative rates should be approximately correct
-    // The absolute scale is absorbed into mu, so compare ratios
+    // Check W recovery: relative rates should be approximately correct.
+    // The absolute scale is absorbed into mu, so compare ratios.
     let w_ref = result.W[[0, 1]];
     if w_ref > 1e-10 {
       let gtr_w_ref = gtr.W[[0, 1]];
@@ -103,7 +93,7 @@ mod tests {
         for j in (i + 1)..4 {
           let inferred_ratio = result.W[[i, j]] / w_ref;
           let original_ratio = gtr.W[[i, j]] / gtr_w_ref;
-          assert_abs_diff_eq!(inferred_ratio, original_ratio, epsilon = 0.15);
+          assert_abs_diff_eq!(inferred_ratio, original_ratio, epsilon = 1e-2);
         }
       }
     }
@@ -138,7 +128,7 @@ mod tests {
     let inferred = build_gtr_site_specific(&result, 4, false).unwrap();
 
     // Verify the inferred model produces valid transition matrices
-    let p = inferred.expQt(0.5);
+    let p = inferred.expQt(0.5).unwrap();
     for a in 0..3 {
       let p_a = p.slice(s![.., .., a]);
 
