@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for site-specific GTR models.
+
+Reads inputs from gm_gtr_site_specific_inputs.json, captures outputs from
+Python v0 GTR_site_specific reference implementation, writes to
+gm_gtr_site_specific_outputs.json.
+
+Outputs serve as oracle for Rust v1 GTRSiteSpecific golden master tests.
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_capture
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent / "legacy" / "treetime"))
+
+from treetime.gtr_site_specific import GTR_site_specific
+
+FIXTURES_DIR = Path(__file__).parent
+
+
+def build_model(params):
+    """Construct a GTR_site_specific model from input parameters."""
+    n_states = params["n_states"]
+    seq_len = params["seq_len"]
+    mu = np.array(params["mu"])
+    pi = np.array(params["pi"])  # shape [n_states, seq_len]
+
+    if params["W"] is not None:
+        W = np.array(params["W"])
+    else:
+        W = np.ones((n_states, n_states))
+        np.fill_diagonal(W, 0.0)
+
+    gtr = GTR_site_specific.custom(mu=mu, pi=pi, W=W, alphabet="nuc_nogap", seq_len=seq_len, approximate=False)
+    return gtr
+
+
+def capture_model_outputs(gtr, times, profile_cases):
+    """Capture expQt, propagate_profile, evolve for a model."""
+    result = {
+        "mu": gtr.mu.tolist() if hasattr(gtr.mu, "tolist") else [float(gtr.mu)],
+        "pi": gtr.Pi.tolist(),
+        "W": gtr.W.tolist(),
+        "eigenvals": gtr.eigenvals.tolist(),
+    }
+
+    # Capture expQt at each time point (use _expQt for exact, not interpolated)
+    exp_qts = []
+    for t in times:
+        qt = gtr._expQt(t)
+        exp_qts.append({"time": t, "expQt": qt.tolist()})
+    result["expQts"] = exp_qts
+
+    # Capture propagate_profile and evolve for matching profile sizes
+    profile_outputs = {}
+    for name, profile_data in profile_cases.items():
+        profile = np.array(profile_data)
+        if profile.shape[0] != gtr.seq_len:
+            continue
+        prop = gtr.propagate_profile(profile, 0.5, return_log=False)
+        evol = gtr.evolve(profile, 0.5, return_log=False)
+        profile_outputs[name] = {
+            "propagate_profile": prop.tolist(),
+            "evolve": evol.tolist(),
+        }
+    result["profiles"] = profile_outputs
+
+    return result
+
+
+def capture_approximate_outputs(params, times):
+    """Capture interpolated expQt from v0 with approximate=True."""
+    gtr = build_model_approximate(params)
+    exp_qts = []
+    for t in times:
+        qt = gtr.expQt(t)
+        exp_qts.append({"time": t, "expQt": qt.tolist()})
+    return {"expQts": exp_qts}
+
+
+def build_model_approximate(params):
+    """Construct a GTR_site_specific model with interpolation enabled."""
+    n_states = params["n_states"]
+    seq_len = params["seq_len"]
+    mu = np.array(params["mu"])
+    pi = np.array(params["pi"])
+
+    if params["W"] is not None:
+        W = np.array(params["W"])
+    else:
+        W = np.ones((n_states, n_states))
+        np.fill_diagonal(W, 0.0)
+
+    gtr = GTR_site_specific.custom(mu=mu, pi=pi, W=W, alphabet="nuc_nogap", seq_len=seq_len, approximate=True)
+    return gtr
+
+
+def capture_infer(params):
+    """Capture inference output from v0 GTR_site_specific.infer()."""
+    n_states = params["n_states"]
+    seq_len = params["seq_len"]
+    pi = np.array(params["pi"])
+    mu = np.array(params["mu"])
+    W_orig = np.array(params["W"])
+    total_time = params["total_time"]
+    pc = params["pc"]
+
+    # Build a reference model to generate synthetic counts
+    gtr_ref = GTR_site_specific.custom(mu=mu, pi=pi, W=W_orig, alphabet="nuc_nogap", seq_len=seq_len, approximate=False)
+
+    # Generate synthetic counts matching v1's simulate_counts
+    T_ia = np.zeros((n_states, seq_len))
+    for a in range(seq_len):
+        for i in range(n_states):
+            T_ia[i, a] = total_time * gtr_ref.Pi[i, a]
+
+    n_ija = np.zeros((n_states, n_states, seq_len))
+    for a in range(seq_len):
+        for i in range(n_states):
+            for j in range(n_states):
+                if i != j:
+                    n_ija[i, j, a] = gtr_ref.Pi[i, a] * gtr_ref.W[i, j] * T_ia[j, a] * gtr_ref.mu[a]
+
+    root_state = gtr_ref.Pi.copy()
+
+    # Run v0 inference
+    gtr_inferred = GTR_site_specific.infer(
+        n_ija, T_ia, root_state=root_state, pc=pc,
+        alphabet="nuc_nogap", seq_len=seq_len,
+    )
+
+    return {
+        "W": gtr_inferred.W.tolist(),
+        "pi": gtr_inferred.Pi.tolist(),
+        "mu": gtr_inferred.mu.tolist() if hasattr(gtr_inferred.mu, "tolist") else [float(gtr_inferred.mu)],
+    }
+
+
+def main():
+    inputs_path = FIXTURES_DIR / "gm_gtr_site_specific_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_gtr_site_specific_outputs.json"
+
+    with open(inputs_path) as f:
+        inputs = json.load(f)
+
+    print("GTR Site-Specific Golden Master Capture")
+    print("=" * 40)
+
+    times = inputs["times"]
+    profiles = inputs["profiles"]
+
+    # Capture model outputs
+    model_outputs = {}
+    for name, params in inputs["site_specific"].items():
+        print(f"  Capturing model: {name}")
+        gtr = build_model(params)
+        model_outputs[name] = capture_model_outputs(gtr, times, profiles)
+
+    # Capture approximate (interpolated) outputs
+    approx_outputs = {}
+    for name, params in inputs["site_specific"].items():
+        print(f"  Capturing approximate: {name}")
+        approx_outputs[name] = capture_approximate_outputs(params, times)
+
+    # Capture inference outputs
+    infer_outputs = {}
+    for name, params in inputs["infer"].items():
+        print(f"  Capturing inference: {name}")
+        infer_outputs[name] = capture_infer(params)
+
+    outputs = {
+        "site_specific": model_outputs,
+        "approximate": approx_outputs,
+        "infer": infer_outputs,
+    }
+
+    with open(outputs_path, "w") as f:
+        json.dump(outputs, f, indent=2)
+
+    print("=" * 40)
+    print(f"Written: {outputs_path}")
+
+
+if __name__ == "__main__":
+    main()

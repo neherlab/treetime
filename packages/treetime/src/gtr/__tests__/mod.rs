@@ -2,6 +2,7 @@ mod generators;
 #[cfg(test)]
 mod prop_support;
 mod test_gm_gtr;
+mod test_gm_gtr_site_specific;
 mod test_gtr_hierarchy;
 mod test_gtr_numerical_edge;
 mod test_prop_gtr_eigen;
