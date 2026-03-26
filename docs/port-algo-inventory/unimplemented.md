@@ -90,20 +90,22 @@ After finding optimal root position `x*`:
 
 ---
 
-## Per-Site Rate Variation
+## Per-Site Rate Variation (partially implemented)
 
-Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site, making this cheap to implement.
+Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site.
 
 This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`docs/algorithms/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
 
 v0: per-site `mu` is part of `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py).
-v1: `GTR.mu` (`#mu`) is scalar `f64` at [`packages/treetime/src/gtr/gtr.rs#L173`](../../packages/treetime/src/gtr/gtr.rs#L173). No per-site rate support.
+v1: GTR infrastructure implemented. `GTR.site_rates: Option<Array1<f64>>` at [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs). Efficient batched computation in `propagate_profile()` and `evolve()`. Discrete gamma rate computation in [`packages/treetime/src/gtr/site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs). Dense and sparse marginal passes support per-site rates. CLI integration and rate estimation pending.
 
-Known issue: [Per-site rate variation not implemented](../port-known-issues/M-gtr-per-site-rate-variation.md).
+Known issue: [Per-site rate variation: infrastructure implemented, CLI and rate estimation pending](../port-known-issues/M-gtr-per-site-rate-variation.md).
 
 ### Algorithm
 
 For each site `a`, the matrix exponential becomes `exp(Q * mu_a * t)`. With eigendecomposition `Q = V * diag(lambda) * V_inv`, this is `V * diag(exp(lambda * mu_a * t)) * V_inv`. The eigenvectors `V`, `V_inv` are computed once; only the `exp(lambda_k * mu_a * t)` terms change per site.
+
+v1 implementation avoids materializing L separate `(n x n)` matrices. Instead, profiles are transformed to eigenspace, scaled per-site, and transformed back: O(L\*n^2) same asymptotic cost as the uniform case.
 
 ### Reference
 

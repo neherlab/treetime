@@ -16,6 +16,8 @@
 | Parameterized edge cases           | 1      | 3       | Parameterized |
 | Model hierarchy                    | 2      | 9       | Unit          |
 | GTR output (write_gtr_json)        | 1      | 4       | Unit          |
+| Per-site rate variation properties | 1      | 17      | Property/Unit |
+| Discrete gamma rates               | 1      | 12      | Mixed         |
 | Generator validation               | 1      | 7       | Property      |
 | GTR inference (dense golden)       | 1      | 13      | Golden-master |
 | GTR inference (dense unit)         | 1      | 5       | Unit          |
@@ -23,7 +25,9 @@
 | Inference contracts                | 1      | 15      | Parameterized |
 | Dense-sparse cross-validation      | 1      | 7       | Integration   |
 | Common functions                   | 1      | 6       | Unit          |
-| **Total**                          | **17** | **131** | Mixed         |
+| Sparse per-site rate propagation   | 1      | 2       | Unit          |
+| Dense-sparse per-site consistency  | 1      | 2       | Integration   |
+| **Total**                          | **22** | **174** | Mixed         |
 
 Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
@@ -324,6 +328,55 @@ Verifies mutation count invariants across dense and sparse paths.
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `test_write_gtr_json_filename` (3 cases)           | Qualifier produces correct filename: `None` -> `gtr.json`, `Some("sparse")` -> `gtr_sparse.json`, `Some("dense")` -> `gtr_dense.json` |
 | `test_write_gtr_json_both_partitions_no_overwrite` | Both sparse and dense qualifiers produce separate files without overwriting                                                           |
+
+---
+
+## Per-Site Rate Variation Tests
+
+**File:** [`test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
+
+Property tests verifying per-site rate variation invariants (64 cases each).
+
+| Property                                          | Invariant                                      |
+| ------------------------------------------------- | ---------------------------------------------- |
+| `test_prop_expqt_with_rate_one_equals_expqt`      | expQt_with_rate(t, 1.0) = expQt(t)             |
+| `test_prop_expqt_with_rate_column_stochastic`     | Columns sum to 1                               |
+| `test_prop_expqt_with_rate_non_negative`          | All entries >= 0                               |
+| `test_prop_expqt_with_rate_semigroup`             | P(r*s) * P(r*t) = P(r*(s+t))                   |
+| `test_prop_propagate_uniform_rates_equals_scalar` | Uniform site_rates (1.0) = scalar mu           |
+| `test_prop_evolve_uniform_rates_equals_scalar`    | Uniform site_rates (1.0) = scalar mu           |
+| `test_prop_propagate_per_site_matches_individual` | Batched result matches per-row expQt_with_rate |
+| `test_prop_evolve_per_site_matches_individual`    | Batched result matches per-row expQt_with_rate |
+| `test_prop_propagate_per_site_identity_at_zero`   | P(0) = I regardless of rates                   |
+| `test_prop_evolve_per_site_equilibrium`           | Large t converges to pi                        |
+
+Unit tests:
+
+| Test                               | Purpose                                           |
+| ---------------------------------- | ------------------------------------------------- |
+| `test_higher_rate_more_divergence` | Higher rate -> more divergence from initial state |
+| `test_rate_zero_is_identity`       | Rate 0 produces identity matrix                   |
+| `test_site_rates_lifecycle`        | set/clear/has lifecycle                           |
+
+---
+
+## Discrete Gamma Rate Tests
+
+**File:** [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)
+
+| Test                                                      | Type          | Purpose                                    |
+| --------------------------------------------------------- | ------------- | ------------------------------------------ |
+| `test_discrete_gamma_rates_mean_one` (7 cases)            | Parameterized | Mean of categories = 1.0                   |
+| `test_discrete_gamma_rates_single_category`               | Unit          | K=1 returns [1.0]                          |
+| `test_discrete_gamma_rates_sorted_ascending`              | Unit          | Categories sorted by rate                  |
+| `test_discrete_gamma_rates_all_positive`                  | Unit          | All rates > 0                              |
+| `test_discrete_gamma_rates_high_alpha_approaches_uniform` | Unit          | Large alpha -> rates near 1.0              |
+| `test_discrete_gamma_rates_low_alpha_wide_spread`         | Unit          | Small alpha -> wide rate spread            |
+| `test_discrete_gamma_rates_invalid_alpha`                 | Unit          | Rejects alpha < 0.15                       |
+| `test_discrete_gamma_rates_invalid_categories`            | Unit          | Rejects K=0                                |
+| `test_discrete_gamma_rates_reference_alpha_1_k4`          | Unit          | Known values for exponential distribution  |
+| `test_prop_discrete_gamma_rates_mean_one`                 | Property      | Mean = 1.0 for random alpha and K          |
+| `test_prop_discrete_gamma_rates_positive_sorted`          | Property      | Positive and sorted for random alpha and K |
 
 ---
 
