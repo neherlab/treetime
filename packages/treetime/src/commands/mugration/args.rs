@@ -47,6 +47,10 @@ pub struct TreetimeMugrationArgs {
   #[clap(long, default_value_t = 0.5)]
   pub missing_weights_threshold: f64,
 
+  /// Number of iterations for GTR model refinement from data.
+  #[clap(long, default_value_t = 5)]
+  pub iterations: usize,
+
   /// Rough estimate of how many more events would have been observed if sequences represented an
   /// even sample.
   #[clap(long)]

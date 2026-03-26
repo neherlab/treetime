@@ -14,25 +14,8 @@ mod tests {
   // the exact capture parameters shared by the Python oracle and Rust replay.
   // Outputs (gm_mugration_outputs.json) were captured from v0 using gm_mugration_capture.
   //
-  // v0 uses iterative GTR inference (5 iterations of rate matrix re-estimation) while
-  // v1 uses uniform rates without iterative GTR. For datasets with strong phylogeographic
-  // signal, the reconstructed states agree. Confidence profiles still diverge because the
-  // one-shot v1 model remains sharper than the iteratively refined v0 model.
-  //
-  // Cases that pass: datasets where the phylogeographic signal overwhelms the GTR
-  // model differences (zika, lassa).
-  //
-  // Cases that are ignored: datasets where iterative GTR re-estimation changes
-  // the argmax at multiple internal nodes (dengue, tb, rsv, mpox). These will
-  // pass once v1 implements iterative GTR optimization.
-  //
-  // Floating-point coverage:
-  // - trait_assignments: discrete labels, exact match required
-  // - confidence profiles: full-precision floats in oracle, compared with tight tolerance
-  //   Blocked by missing iterative GTR; explicit ignored test preserves oracle contract.
-  // - GTR equilibrium frequencies: not captured in oracle; v1 uses uniform frequencies
-  //   while v0 iteratively refines from data. Adding coverage requires iterative GTR first.
-  // - GTR rate parameters: not captured; same iterative GTR dependency.
+  // Both v0 and v1 use iterative GTR inference (5 iterations of rate matrix
+  // re-estimation followed by rate optimization via Brent's method).
 
   #[rustfmt::skip]
   #[rstest]
@@ -62,17 +45,41 @@ mod tests {
     Ok(())
   }
 
+  // Remaining divergences: v0's scipy rate optimization fails for these datasets
+  // (no valid Brent bracket). On failure, v0 restores mu but leaves backward
+  // profiles computed at an intermediate mu value (scipy's internal state).
+  // The next infer_gtr iteration then uses these inconsistent profiles, creating
+  // a numerical trajectory that v1 (which maintains profile consistency) cannot
+  // reproduce. The differences appear at ambiguous internal nodes where the
+  // phylogeographic signal is weak.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[trace]
+  #[ignore = "v0 parity: scipy rate optimization failure leaves inconsistent backward profiles"]
+  fn test_gm_mugration_outputs_rate_opt_divergence(#[case] case: &str) -> Result<(), Report> {
+    test_gm_mugration_outputs(case)
+  }
+
   // Confidence profile comparison using full-precision floats.
-  // The oracle stores floats at full precision; the test parses the CLI CSV output
-  // back to floats for scientific comparison. This avoids double-rounding through
-  // presentation formatting.
+  // Diverges from v0 for the same reason as trait assignments above: the
+  // accumulated numerical differences from rate optimization failure handling
+  // affect posterior confidence profiles at all internal nodes.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country(          "zika_20_country")]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
   #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "confidence parity depends on iterative GTR refinement: v0 re-estimates rates"]
+  #[ignore = "v0 parity: confidence profiles diverge due to accumulated numerical differences"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -104,23 +111,6 @@ mod tests {
     Ok(())
   }
 
-  // Ignored: v1 lacks iterative GTR optimization. v0 re-estimates the rate matrix
-  // even when equilibrium frequencies are fixed from `--weights`, which still shifts
-  // the argmax at ambiguous internal nodes. These tests will pass once v1 implements
-  // iterative GTR. The captured v0 outputs remain valid oracles.
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::zika_20_country_weights(  "zika_20_country_weights")]
-  #[case::dengue_20_country(        "dengue_20_country")]
-  #[case::tb_20_cluster(            "tb_20_cluster")]
-  #[case::rsv_a_20_country(         "rsv_a_20_country")]
-  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
-  #[trace]
-  #[ignore = "v1 lacks iterative GTR optimization: v0 re-estimates equilibrium frequencies from data"]
-  fn test_gm_mugration_outputs_iterative_gtr(#[case] case: &str) -> Result<(), Report> {
-    test_gm_mugration_outputs(case)
-  }
-
   mod helpers {
     use crate::commands::mugration::input::MugrationInput;
     use crate::commands::mugration::output::MugrationResult;
@@ -147,12 +137,10 @@ mod tests {
     pub struct GmMugrationParameters {
       pub missing_data: String,
       pub pc: Option<f64>,
-      #[allow(dead_code)]
       pub sampling_bias_correction: Option<f64>,
       pub weights_path: Option<String>,
       #[allow(dead_code)]
       pub verbose: usize,
-      #[allow(dead_code)]
       pub iterations: usize,
       #[allow(dead_code)]
       pub rng_seed: u64,
@@ -223,6 +211,8 @@ mod tests {
         missing_data: fixture.parameters.missing_data.clone(),
         pc: fixture.parameters.pc,
         missing_weights_threshold: 0.5,
+        iterations: fixture.parameters.iterations,
+        sampling_bias_correction: fixture.parameters.sampling_bias_correction,
       };
 
       execute_mugration(input)

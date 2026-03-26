@@ -27,6 +27,12 @@ pub struct MugrationInput {
 
   /// Threshold for portion of attribute values allowed to be missing from weights.
   pub missing_weights_threshold: f64,
+
+  /// Number of GTR refinement iterations (re-estimation of rate matrix from data).
+  pub iterations: usize,
+
+  /// Factor to inflate overall switching rate to counteract sampling bias.
+  pub sampling_bias_correction: Option<f64>,
 }
 
 /// Parameters for mugration model construction.

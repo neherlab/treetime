@@ -25,6 +25,8 @@ mod tests {
       missing_data: o!("?"),
       pc: None,
       missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
     };
     let result = execute_mugration(input)?;
     let provider = PartitionCommentProvider::new(&result.partition, &result.traits.attribute);

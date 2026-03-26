@@ -44,7 +44,10 @@ where
   Ok(log_lh)
 }
 
-fn discrete_marginal_backward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionDiscrete) -> Result<(), Report>
+pub(crate) fn discrete_marginal_backward<N, E>(
+  graph: &Graph<N, E, ()>,
+  partition: &mut PartitionDiscrete,
+) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,

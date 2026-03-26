@@ -1,6 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::comment_provider::PartitionCommentProvider;
 use crate::commands::mugration::discrete_marginal::{attach_traits, run_discrete_marginal};
+use crate::commands::mugration::gtr_refinement::refine_gtr_iterative;
 use crate::commands::mugration::input::MugrationInput;
 use crate::commands::mugration::output::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
 use crate::gtr::gtr::{GTR, GTRParams};
@@ -16,6 +17,7 @@ use ndarray::Array1;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
 use std::fs;
+use treetime_graph::edge::HasBranchLength;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
@@ -143,6 +145,8 @@ pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationIn
     missing_data: missing_data.clone(),
     pc: *pc,
     missing_weights_threshold: *missing_weights_threshold,
+    iterations: args.iterations,
+    sampling_bias_correction: args.sampling_bias_correction,
   })
 }
 
@@ -159,6 +163,8 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     missing_data,
     pc,
     missing_weights_threshold,
+    iterations,
+    sampling_bias_correction,
   } = input;
 
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
@@ -208,6 +214,10 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     None => compute_pi_uniform(n_states),
   };
 
+  // fixed_pi for iterative GTR: with weights, keep pi at the user-provided values
+  // (before pseudo-counts, matching v0's fixed_pi=weights); without weights, estimate from data
+  let fixed_pi = weights.as_ref().map(|_| pi.clone());
+
   // Add pseudo-counts if specified
   let pi = apply_pseudo_counts(pi, pc);
 
@@ -219,13 +229,29 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     pi,
   })?;
 
+  // Clamp branch lengths to a minimum floor, matching v0's one_mutation=0.001.
+  // For mugration, geographic transitions can occur even along very short evolutionary
+  // branches, so zero-length branches (exp(Qt) = I, no transition possible) are
+  // not appropriate. The floor ensures all branches allow some transition probability.
+  clamp_branch_lengths(&graph, ONE_MUTATION);
+
   // Create partition and attach traits
   let mut partition = PartitionDiscrete::new(0, gtr, discrete_states);
   attach_traits(&mut partition, &graph, &traits)?;
 
-  // Run discrete marginal reconstruction
+  // Initial marginal reconstruction
   let log_lh = run_discrete_marginal(&graph, &mut partition)?;
-  info!("Mugration: total log likelihood = {log_lh:.4}");
+  info!("Mugration: initial log likelihood = {log_lh:.4}");
+
+  // Iterative GTR refinement: re-estimate rate matrix from data
+  let log_lh = refine_gtr_iterative(
+    &graph,
+    &mut partition,
+    iterations,
+    fixed_pi.as_ref(),
+    pc.unwrap_or(1.0),
+    sampling_bias_correction,
+  )?;
 
   Ok(MugrationResult::new(graph, partition, &attribute, log_lh))
 }
@@ -274,4 +300,22 @@ fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &std::path::Path) -> Re
 fn write_confidence_csv(result: &MugrationResult, output_path: &std::path::Path) -> Result<(), Report> {
   fs::write(output_path, result.confidence.render_csv())?;
   Ok(())
+}
+
+/// Minimum branch length for mugration, matching v0's `one_mutation=0.001`.
+///
+/// For mugration, geographic transitions are not directly coupled to genetic mutations,
+/// so zero-length evolutionary branches should still permit state changes. Without this
+/// floor, `exp(Q*0) = I` forces parent and child to have identical trait profiles.
+const ONE_MUTATION: f64 = 0.001;
+
+fn clamp_branch_lengths(graph: &GraphAncestral, min_bl: f64) {
+  for edge in graph.get_edges() {
+    let edge_guard = edge.read_arc();
+    let mut payload = edge_guard.payload().write_arc();
+    let bl = payload.branch_length().unwrap_or(0.0);
+    if bl < min_bl {
+      payload.set_branch_length(Some(min_bl));
+    }
+  }
 }
