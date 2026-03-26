@@ -38,7 +38,7 @@ impl PartitionDiscrete {
     }
   }
 
-  fn effective_branch_length(&self, raw: f64) -> f64 {
+  pub(crate) fn effective_branch_length(&self, raw: f64) -> f64 {
     raw.max(self.min_branch_length)
   }
 

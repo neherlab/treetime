@@ -61,13 +61,44 @@ mod tests {
     test_gm_mugration_outputs(case)
   }
 
-  // Confidence profile comparison using full-precision floats.
-  // Diverges from v0 for the same reason as trait assignments above: the
-  // accumulated numerical differences from rate optimization failure handling
-  // affect posterior confidence profiles at all internal nodes.
+  // Confidence profile comparison against v0 oracle at 2e-2 tolerance.
+  // Max observed error: 1.34e-2 at one ambiguous internal node (NODE_0000008),
+  // all other nodes within 1.2e-3. The 2e-2 tolerance covers the single
+  // divergent node where D1/D2 improvements shift the posterior.
+  #[test]
+  fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
+    let inputs = load_gm_mugration_inputs();
+    let outputs = load_gm_mugration_outputs();
+    let input = &inputs["zika_20_country"];
+    let expected = &outputs["zika_20_country"];
+    let actual = run_gm_mugration_case(input)?;
+
+    assert_eq!(expected.states, actual.confidence.states);
+
+    for (node_name, expected_profile) in &expected.confidence {
+      let actual_profile = actual
+        .confidence
+        .rows
+        .iter()
+        .find(|row| row.node == *node_name)
+        .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
+      assert_eq!(
+        expected_profile.len(),
+        actual_profile.profile.len(),
+        "profile length mismatch for node '{node_name}'"
+      );
+      for (expected_val, actual_val) in expected_profile.iter().zip(actual_profile.profile.iter()) {
+        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 2e-2);
+      }
+    }
+
+    Ok(())
+  }
+
+  // Remaining confidence tests: max errors exceed 1e-2 at multiple nodes
+  // due to D1/D2 intentional improvements.
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika_20_country(          "zika_20_country")]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
   #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[case::dengue_20_country(        "dengue_20_country")]
@@ -75,7 +106,7 @@ mod tests {
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: confidence profiles diverge due to accumulated numerical differences"]
+  #[ignore = "v0 parity: confidence profiles exceed 1e-2 at multiple nodes (D1/D2 divergence)"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -83,9 +114,7 @@ mod tests {
     let expected = &outputs[case];
     let actual = run_gm_mugration_case(input)?;
 
-    let expected_confidence_states = expected.states.clone();
-    let actual_confidence_states = actual.confidence.states.clone();
-    assert_eq!(expected_confidence_states, actual_confidence_states);
+    assert_eq!(expected.states, actual.confidence.states);
 
     for (node_name, expected_profile) in &expected.confidence {
       let actual_profile = actual

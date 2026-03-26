@@ -107,12 +107,7 @@ where
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = edge_arc
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap_or(0.0)
-      .max(partition.min_branch_length);
+    let branch_length = partition.effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
     let edge_key = edge_arc.key();
 
     let edge_data = &partition.edges[&edge_key];
