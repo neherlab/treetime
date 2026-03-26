@@ -51,6 +51,12 @@ pub struct MugrationParams {
 
   /// Threshold for missing weights validation.
   pub missing_weights_threshold: f64,
+
+  /// Number of GTR refinement iterations.
+  pub iterations: usize,
+
+  /// Sampling bias correction factor.
+  pub sampling_bias_correction: Option<f64>,
 }
 
 impl MugrationInput {
@@ -60,6 +66,8 @@ impl MugrationInput {
       missing_data: self.missing_data.clone(),
       pc: self.pc,
       missing_weights_threshold: self.missing_weights_threshold,
+      iterations: self.iterations,
+      sampling_bias_correction: self.sampling_bias_correction,
     }
   }
 }

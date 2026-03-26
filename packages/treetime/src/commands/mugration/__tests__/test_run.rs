@@ -177,7 +177,11 @@ mod tests {
     assert_eq!(vec_of_owned!["germany", "usa"], result.gtr.states);
     assert_eq!(2, result.gtr.pi.len());
     assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-10);
-    assert!(result.gtr.mu > 0.0, "mu must be positive: {}", result.gtr.mu);
+    assert!(
+      result.gtr.mu > 0.1 && result.gtr.mu < 100.0,
+      "mu should be in reasonable range for 2-state model: {}",
+      result.gtr.mu
+    );
 
     assert_eq!(3, result.traits.assignments.len());
     assert_eq!(Some(&o!("usa")), result.traits.assignments.get("root"));
@@ -307,6 +311,46 @@ mod tests {
     assert_abs_diff_eq!(0.2, result.gtr.pi[0], epsilon = 1e-10); // france
     assert_abs_diff_eq!(0.2, result.gtr.pi[1], epsilon = 1e-10); // germany
     assert_abs_diff_eq!(0.6, result.gtr.pi[2], epsilon = 1e-10); // usa
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_execute_mugration_sampling_bias_correction() -> Result<(), Report> {
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+    };
+
+    let base_input = MugrationInput {
+      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
+      traits: traits.clone(),
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+    };
+    let base_result = execute_mugration(base_input)?;
+    let base_mu = base_result.gtr.mu;
+
+    let corrected_input = MugrationInput {
+      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
+      traits,
+      attribute: o!("country"),
+      weights: None,
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: Some(2.0),
+    };
+    let corrected_result = execute_mugration(corrected_input)?;
+
+    // sampling_bias_correction multiplies mu after iterative refinement
+    assert_abs_diff_eq!(corrected_result.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
   }

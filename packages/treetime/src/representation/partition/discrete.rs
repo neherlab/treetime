@@ -20,6 +20,10 @@ pub struct PartitionDiscrete {
   pub states: DiscreteStates,
   pub nodes: BTreeMap<GraphNodeKey, DiscreteNodeData>,
   pub edges: BTreeMap<GraphEdgeKey, DiscreteEdgeData>,
+  /// Minimum branch length for transition matrix computation.
+  /// Applied per-use without modifying the graph, matching v0's `_branch_length_to_gtr()`.
+  /// For mugration: `MIN_BRANCH_LENGTH / full_length = 1e-3 / 1 = 0.001`.
+  pub min_branch_length: f64,
 }
 
 impl PartitionDiscrete {
@@ -30,7 +34,12 @@ impl PartitionDiscrete {
       states,
       nodes: BTreeMap::new(),
       edges: BTreeMap::new(),
+      min_branch_length: 0.0,
     }
+  }
+
+  fn effective_branch_length(&self, raw: f64) -> f64 {
+    raw.max(self.min_branch_length)
   }
 
   pub fn n_states(&self) -> usize {
@@ -105,7 +114,7 @@ impl PartitionDiscrete {
     } else {
       // Non-root: propagate message to parent via transition matrix
       let edge_key = node.parent_edge_keys[0];
-      let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
+      let branch_length = self.effective_branch_length(node.parent_edges[0].branch_length().unwrap_or(0.0));
       let exp_qt = self.gtr.expQt(branch_length);
 
       // msg_from_child[j] = sum_i msg_to_parent[i] * P(i->j|t)
@@ -114,15 +123,24 @@ impl PartitionDiscrete {
 
       let log_lh = self.nodes.get(&node.key).map_or(0.0, |n| n.log_lh);
 
-      self.edges.insert(
-        edge_key,
-        DiscreteEdgeData {
-          msg_to_parent,
-          msg_from_child,
-          msg_to_child: Array1::zeros(n_states),
-          log_lh,
-        },
-      );
+      // Preserve msg_to_child from a prior forward pass when re-running backward-only.
+      // The backward pass must not destroy forward-pass messages, which are needed by
+      // iterative GTR refinement to count transitions via get_branch_mutation_matrix().
+      if let Some(edge_data) = self.edges.get_mut(&edge_key) {
+        edge_data.msg_to_parent = msg_to_parent;
+        edge_data.msg_from_child = msg_from_child;
+        edge_data.log_lh = log_lh;
+      } else {
+        self.edges.insert(
+          edge_key,
+          DiscreteEdgeData {
+            msg_to_parent,
+            msg_from_child,
+            msg_to_child: Array1::zeros(n_states),
+            log_lh,
+          },
+        );
+      }
     }
 
     Ok(())
@@ -148,7 +166,7 @@ impl PartitionDiscrete {
           .get_edge(*edge_key)
           .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist in graph"))?;
         let edge_payload = graph_edge.read_arc().payload().read_arc();
-        let branch_length = edge_payload.branch_length().unwrap_or(0.0);
+        let branch_length = self.effective_branch_length(edge_payload.branch_length().unwrap_or(0.0));
         let exp_qt = self.gtr.expQt(branch_length);
 
         msgs_to_combine.push(edge.msg_to_parent.clone());

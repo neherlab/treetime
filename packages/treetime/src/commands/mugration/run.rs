@@ -17,7 +17,6 @@ use ndarray::Array1;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
 use std::fs;
-use treetime_graph::edge::HasBranchLength;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
@@ -229,14 +228,14 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     pi,
   })?;
 
-  // Clamp branch lengths to a minimum floor, matching v0's one_mutation=0.001.
-  // For mugration, geographic transitions can occur even along very short evolutionary
-  // branches, so zero-length branches (exp(Qt) = I, no transition possible) are
-  // not appropriate. The floor ensures all branches allow some transition probability.
-  clamp_branch_lengths(&graph, ONE_MUTATION);
-
   // Create partition and attach traits
   let mut partition = PartitionDiscrete::new(0, gtr, discrete_states);
+
+  // Minimum branch length for mugration transition matrix computations, applied per-use
+  // without modifying the graph. In v0, `_branch_length_to_gtr()` returns
+  // `max(MIN_BRANCH_LENGTH * one_mutation, branch_length)` where `MIN_BRANCH_LENGTH = 1e-3`
+  // and `one_mutation = 1.0 / full_length = 1.0` for mugration's single-position pseudo-sequence.
+  partition.min_branch_length = 0.001;
   attach_traits(&mut partition, &graph, &traits)?;
 
   // Initial marginal reconstruction
@@ -300,22 +299,4 @@ fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &std::path::Path) -> Re
 fn write_confidence_csv(result: &MugrationResult, output_path: &std::path::Path) -> Result<(), Report> {
   fs::write(output_path, result.confidence.render_csv())?;
   Ok(())
-}
-
-/// Minimum branch length for mugration, matching v0's `one_mutation=0.001`.
-///
-/// For mugration, geographic transitions are not directly coupled to genetic mutations,
-/// so zero-length evolutionary branches should still permit state changes. Without this
-/// floor, `exp(Q*0) = I` forces parent and child to have identical trait profiles.
-const ONE_MUTATION: f64 = 0.001;
-
-fn clamp_branch_lengths(graph: &GraphAncestral, min_bl: f64) {
-  for edge in graph.get_edges() {
-    let edge_guard = edge.read_arc();
-    let mut payload = edge_guard.payload().write_arc();
-    let bl = payload.branch_length().unwrap_or(0.0);
-    if bl < min_bl {
-      payload.set_branch_length(Some(min_bl));
-    }
-  }
 }

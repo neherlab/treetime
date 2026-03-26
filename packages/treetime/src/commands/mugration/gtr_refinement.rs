@@ -1,8 +1,9 @@
 use crate::commands::mugration::discrete_marginal::{discrete_marginal_backward, run_discrete_marginal};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::gtr::infer_gtr::dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
+use crate::make_report;
 use crate::representation::partition::discrete::PartitionDiscrete;
 use crate::representation::partition::traits::HasLogLh;
 use eyre::Report;
@@ -44,12 +45,7 @@ where
   // Initial GTR inference from the first reconstruction
   let counts = count_transitions_discrete(graph, partition)?;
   let result = infer_gtr_impl(&counts, &options)?;
-  partition.gtr = GTR::new(GTRParams {
-    n_states,
-    mu: result.mu,
-    W: Some(result.W),
-    pi: result.pi,
-  })?;
+  partition.gtr = build_gtr_from_inference(n_states, &result)?;
   debug!(
     "Mugration GTR refinement: initial inference, mu = {:.6}",
     partition.gtr.mu
@@ -66,12 +62,7 @@ where
   for i in 0..iterations {
     let counts = count_transitions_discrete(graph, partition)?;
     let result = infer_gtr_impl(&counts, &options)?;
-    partition.gtr = GTR::new(GTRParams {
-      n_states,
-      mu: result.mu,
-      W: Some(result.W),
-      pi: result.pi,
-    })?;
+    partition.gtr = build_gtr_from_inference(n_states, &result)?;
 
     optimize_gtr_rate(graph, partition)?;
     debug!("Mugration GTR refinement: iteration {i}, mu = {:.6}", partition.gtr.mu);
@@ -116,7 +107,12 @@ where
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = edge_arc.payload().read_arc().branch_length().unwrap_or(0.0);
+    let branch_length = edge_arc
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap_or(0.0)
+      .max(partition.min_branch_length);
     let edge_key = edge_arc.key();
 
     let edge_data = &partition.edges[&edge_key];
@@ -126,31 +122,46 @@ where
       .msg_to_child
       .clone()
       .into_shape_with_order((1, n_states))
-      .expect("reshape msg_to_child");
+      .map_err(|e| make_report!("reshape msg_to_child: {e}"))?;
     let msg_to_parent = edge_data
       .msg_to_parent
       .clone()
       .into_shape_with_order((1, n_states))
-      .expect("reshape msg_to_parent");
+      .map_err(|e| make_report!("reshape msg_to_parent: {e}"))?;
 
     let exp_qt = partition.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
     let mut_stack = get_branch_mutation_matrix(&msg_to_child, &msg_to_parent, &exp_qt);
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }
 
-  // Root state: one-hot vector from argmax of root profile
+  // Root state: one-hot from argmax of root profile, skipping near-uniform profiles.
+  // Near-uniform root profiles carry no phylogenetic signal; converting them to one-hot
+  // injects state-order bias into pi estimation. Matches the dense GTR inference path.
   let root = graph.get_exactly_one_root()?;
   let root_key = root.read_arc().key();
   let root_profile = &partition.nodes[&root_key].profile;
   let mut root_state = Array1::zeros(n_states);
-  if let Some(root_idx) = argmax_first(&root_profile.view()) {
-    root_state[root_idx] = 1.0;
+  let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
+  let max_prob = root_profile.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+  if max_prob > uniform_threshold {
+    if let Some(root_idx) = argmax_first(&root_profile.view()) {
+      root_state[root_idx] = 1.0;
+    }
   }
 
   // Zero diagonal (no-change events excluded)
   nij.diag_mut().fill(0.0);
 
   Ok(MutationCounts { nij, Ti, root_state })
+}
+
+fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<GTR, Report> {
+  GTR::new(GTRParams {
+    n_states,
+    mu: result.mu,
+    W: Some(result.W.clone()),
+    pi: result.pi.clone(),
+  })
 }
 
 /// Optimize the overall GTR rate (mu) via Brent's method.
@@ -176,8 +187,10 @@ where
     for node_data in partition.nodes.values_mut() {
       node_data.log_lh = 0.0;
     }
-    discrete_marginal_backward(graph, partition).expect("backward pass in rate optimization");
-    -partition.get_log_lh(root_key)
+    match discrete_marginal_backward(graph, partition) {
+      Ok(()) => -partition.get_log_lh(root_key),
+      Err(_) => f64::INFINITY,
+    }
   };
 
   // Check for valid downhill bracket: f(mid) < f(lo) AND f(mid) < f(hi).
@@ -293,12 +306,12 @@ where
       } else {
         b = u;
       }
-      if fu <= fw || (w - x).abs() < ZEPS {
+      if fu <= fw || w == x {
         v = w;
         fv = fw;
         w = u;
         fw = fu;
-      } else if fu <= fv || (v - x).abs() < ZEPS || (v - w).abs() < ZEPS {
+      } else if fu <= fv || v == x || v == w {
         v = u;
         fv = fu;
       }
@@ -327,6 +340,14 @@ mod tests {
     let mut f = |x: f64| (x - 0.7) * (x - 0.7) + 1.0;
     let result = brent_minimize(&mut f, 0.0, 5.0, 1e-10, 100);
     assert_abs_diff_eq!(result, 0.7, epsilon = 1e-8);
+  }
+
+  #[test]
+  fn test_brent_minimize_monotone_returns_boundary() {
+    // Monotone decreasing: minimum at the right boundary
+    let mut f = |x: f64| -x;
+    let result = brent_minimize(&mut f, 0.0, 10.0, 1e-10, 100);
+    assert_abs_diff_eq!(result, 10.0, epsilon = 1e-6);
   }
 
   #[test]
