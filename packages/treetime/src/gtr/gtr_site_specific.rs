@@ -3,6 +3,8 @@ use crate::make_error;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray::{Array3, Array4};
+use rand::Rng;
+use rand_distr::Gamma;
 use treetime_utils::array::ndarray::clamp_min;
 
 /// Parameters for constructing a site-specific GTR model.
@@ -181,6 +183,99 @@ impl GTRSiteSpecific {
 
     if approximate {
       model.build_interpolator();
+    }
+
+    Ok(model)
+  }
+
+  /// Generate a random site-specific GTR model from prior distributions.
+  ///
+  /// Samples per-site equilibrium frequencies from Dirichlet (via Gamma),
+  /// shared exchangeability matrix W from Gamma, and per-site rates from Gamma.
+  /// Matches v0's `GTR_site_specific.random()`.
+  ///
+  /// # Arguments
+  ///
+  /// * `n_states` - Number of character states (e.g. 4 for nucleotides).
+  /// * `seq_len` - Number of alignment sites.
+  /// * `avg_mu` - Target average substitution rate.
+  /// * `pi_dirichlet_alpha` - Dirichlet concentration for per-site equilibrium frequencies.
+  ///   0 produces uniform pi.
+  /// * `W_dirichlet_alpha` - Gamma shape for exchangeability matrix entries. 0 produces uniform W.
+  /// * `mu_gamma_alpha` - Gamma shape for per-site rates. 0 produces uniform mu.
+  /// * `rng` - Random number generator.
+  pub fn random(
+    n_states: usize,
+    seq_len: usize,
+    avg_mu: f64,
+    pi_dirichlet_alpha: f64,
+    W_dirichlet_alpha: f64,
+    mu_gamma_alpha: f64,
+    rng: &mut impl Rng,
+  ) -> Result<Self, Report> {
+    // Dirichlet-distributed pi: sample Gamma per entry, then L1-normalize columns
+    let pi = {
+      let mut pi = Array2::zeros((n_states, seq_len));
+      if pi_dirichlet_alpha > 0.0 {
+        let gamma = Gamma::new(pi_dirichlet_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        for a in 0..seq_len {
+          for i in 0..n_states {
+            pi[[i, a]] = rng.sample(gamma);
+          }
+        }
+      } else {
+        pi.fill(1.0);
+      }
+      let col_sums = pi.sum_axis(Axis(0));
+      &pi / &col_sums
+    };
+
+    // Symmetric exchangeability matrix from Gamma-distributed lower triangle
+    let W = {
+      let mut W = Array2::zeros((n_states, n_states));
+      if W_dirichlet_alpha > 0.0 {
+        let gamma = Gamma::new(W_dirichlet_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        for i in 0..n_states {
+          for j in 0..i {
+            let val: f64 = rng.sample(gamma);
+            W[[i, j]] = val;
+            W[[j, i]] = val;
+          }
+        }
+      } else {
+        W.fill(1.0);
+        W.diag_mut().fill(0.0);
+      }
+      W
+    };
+
+    // Per-site rates from Gamma distribution
+    let mu = {
+      let mut mu = Array1::zeros(seq_len);
+      if mu_gamma_alpha > 0.0 {
+        let gamma = Gamma::new(mu_gamma_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        for a in 0..seq_len {
+          mu[a] = rng.sample(gamma);
+        }
+      } else {
+        mu.fill(1.0);
+      }
+      mu
+    };
+
+    let mut model = Self::new(GTRSiteSpecificParams {
+      n_states,
+      seq_len,
+      mu,
+      W: Some(W),
+      pi,
+      approximate: false,
+    })?;
+
+    // Scale mu so that mean average_rate equals avg_mu
+    let mean_rate = model.average_rate().sum() / seq_len as f64;
+    if mean_rate > 0.0 {
+      model.mu *= avg_mu / mean_rate;
     }
 
     Ok(model)
