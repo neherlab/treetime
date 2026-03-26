@@ -3,6 +3,7 @@ use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
+use crate::make_error;
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -40,8 +41,16 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     method_anc,
     dense,
     outdir,
+    site_specific_gtr,
     ..
   } = ancestral_args;
+
+  if *site_specific_gtr {
+    return make_error!(
+      "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
+       The mathematical core (GTRSiteSpecific) is implemented but partition system wiring is pending."
+    );
+  }
 
   let dense = dense.unwrap_or_else(infer_dense);
 
@@ -78,7 +87,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
     // One thing we haven't dealt with at all yet is how to create partitions. One common use case
     // I imagine is partition by codon position. This would require an annotation (gff). Again, this is
-    // only sensible for the probabilitistic methods. We can deal with this later, but good to keep in mind.
+    // only sensible for the probabilistic methods. We can deal with this later.
 
     // VCF input is basically another way to instantiate the sparse representation. MAT format would be another one.
     // Again, we can deal with this later, but the entrypoint is not always going to be a fasta file.

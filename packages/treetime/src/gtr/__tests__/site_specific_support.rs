@@ -1,7 +1,7 @@
 use crate::gtr::gtr_site_specific::GTRSiteSpecific;
 use crate::gtr::infer_gtr::site_specific::MutationCountsSiteSpecific;
-use ndarray::prelude::*;
 use ndarray::Array3;
+use ndarray::prelude::*;
 
 /// Simulate per-site mutation counts from a known site-specific GTR model.
 ///

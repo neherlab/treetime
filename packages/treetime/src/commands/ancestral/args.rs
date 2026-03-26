@@ -104,6 +104,14 @@ pub struct TreetimeAncestralArgs {
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,
 
+  /// Use site-specific GTR model with per-site equilibrium frequencies.
+  ///
+  /// Requires `--model infer` and `--dense true`. Incompatible with sequence compression
+  /// (sparse representation). When enabled, each alignment position gets its own
+  /// eigendecomposition based on position-specific base composition.
+  #[clap(long, hide = true)]
+  pub site_specific_gtr: bool,
+
   /// Random seed
   #[clap(long)]
   pub seed: Option<u64>,
