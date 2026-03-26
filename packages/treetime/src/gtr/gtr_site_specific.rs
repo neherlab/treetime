@@ -206,14 +206,16 @@ impl GTRSiteSpecific {
   /// transition matrix for site a.
   ///
   /// Uses interpolation when available and t is within the interpolation range.
-  pub fn expQt(&self, t: f64) -> Array3<f64> {
-    debug_assert!(t >= 0.0, "Branch length t must be non-negative, got {t}");
+  pub fn expQt(&self, t: f64) -> Result<Array3<f64>, Report> {
+    if t < 0.0 {
+      return make_error!("Branch length t must be non-negative, got {t}");
+    }
     if let Some(interp) = &self.interpolator {
       if t * interp.rate_scale < ExpQtInterpolator::MAX_INTERP_RANGE {
-        return interp.interpolate(t);
+        return Ok(interp.interpolate(t));
       }
     }
-    self.expQt_raw(t)
+    Ok(self.expQt_raw(t))
   }
 
   /// Compute exp(Q*t) directly from eigendecomposition (no interpolation).
@@ -223,17 +225,17 @@ impl GTRSiteSpecific {
   /// This is the computational bottleneck avoided by interpolation. Each site
   /// requires O(n^2) work for the two matrix-vector products.
   pub fn expQt_raw(&self, t: f64) -> Array3<f64> {
-    debug_assert!(t >= 0.0, "Branch length t must be non-negative, got {t}");
     let n = self.eigvals.nrows();
     let mut result = Array3::zeros((n, n, self.seq_len));
 
     for a in 0..self.seq_len {
-      // exp(eigenvalue * mu_a * t) for each eigenvalue at site a
+      // Column scaling: v_a * diag(exp_lambda) = v_a[:, j] * exp_lambda[j]
+      // avoids constructing an explicit diagonal matrix
       let e_lambda_t: Array1<f64> = (&self.eigvals.column(a) * self.mu[a] * t).mapv(f64::exp);
-      let e_diag = Array2::from_diag(&e_lambda_t);
       let v_a = self.v.slice(s![.., .., a]);
       let v_inv_a = self.v_inv.slice(s![.., .., a]);
-      let p_a = v_a.dot(&e_diag.dot(&v_inv_a));
+      let scaled_v = &v_a * &e_lambda_t;
+      let p_a = scaled_v.dot(&v_inv_a);
       result.slice_mut(s![.., .., a]).assign(&clamp_min(&p_a, 0.0));
     }
 
@@ -250,14 +252,14 @@ impl GTRSiteSpecific {
   /// # Arguments
   ///
   /// * `profile` - Child state likelihoods. Shape: [seq_len, n_states].
-  /// * `t` - Branch length.
+  /// * `t` - Branch length (must be non-negative).
   /// * `return_log` - If true, return log-likelihoods.
   ///
   /// # Returns
   ///
   /// Parent partial likelihoods. Shape: [seq_len, n_states].
-  pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let qt = self.expQt(t);
+  pub fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Result<Array2<f64>, Report> {
+    let qt = self.expQt(t)?;
     let mut result = Array2::zeros(profile.dim());
 
     // For each site a: result[a,:] = profile[a,:] @ Qt[:,:,a]
@@ -269,7 +271,7 @@ impl GTRSiteSpecific {
     if return_log {
       result.mapv_inplace(f64::ln);
     }
-    result
+    Ok(result)
   }
 
   /// Evolve a sequence profile forward in time (parent -> child).
@@ -282,14 +284,14 @@ impl GTRSiteSpecific {
   /// # Arguments
   ///
   /// * `profile` - Parent state probabilities. Shape: [seq_len, n_states].
-  /// * `t` - Branch length.
+  /// * `t` - Branch length (must be non-negative).
   /// * `return_log` - If true, return log-probabilities.
   ///
   /// # Returns
   ///
   /// Child state probabilities. Shape: [seq_len, n_states].
-  pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
-    let qt = self.expQt(t);
+  pub fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Result<Array2<f64>, Report> {
+    let qt = self.expQt(t)?;
     let mut result = Array2::zeros(profile.dim());
 
     // For each site a: result[a,:] = profile[a,:] @ Qt[:,:,a]^T
@@ -300,6 +302,23 @@ impl GTRSiteSpecific {
 
     if return_log {
       result.mapv_inplace(f64::ln);
+    }
+    Ok(result)
+  }
+
+  /// Construct the per-site rate matrices Q_a in column-stochastic form for display.
+  ///
+  /// Returns Q_a where Q_a[i,j] = W[i,j] * pi_a[i] for i != j, and columns sum to 0.
+  /// Shape: [n_states, n_states, seq_len].
+  pub fn Q(&self) -> Array3<f64> {
+    let n = self.pi.nrows();
+    let mut result = Array3::zeros((n, n, self.seq_len));
+    for a in 0..self.seq_len {
+      let pi_a = self.pi.column(a);
+      let mut q_a = (&self.W * &pi_a).t().to_owned();
+      let diag = -q_a.sum_axis(Axis(0));
+      q_a.diag_mut().assign(&diag);
+      result.slice_mut(s![.., .., a]).assign(&q_a);
     }
     result
   }
@@ -330,7 +349,7 @@ impl GTRSiteSpecific {
     }
     let t_grid = Array1::from_vec(t_grid);
 
-    // Pre-compute expQt at each grid point
+    // Pre-compute expQt at each grid point (grid t values are always non-negative)
     let n_t = t_grid.len();
     let n = self.eigvals.nrows();
     let mut data = Array4::zeros((n_t, n, n, self.seq_len));
