@@ -77,22 +77,10 @@ mod tests {
     // pos 2: chain (A→G + G→T = A→T)
     // pos 4: child only (passthrough)
     // pos 6: cancellation (C→T + T→C = none)
-    let parent = vec![
-      sub(b'A', 0, b'T'),
-      sub(b'A', 2, b'G'),
-      sub(b'C', 6, b'T'),
-    ];
-    let child = vec![
-      sub(b'G', 2, b'T'),
-      sub(b'G', 4, b'C'),
-      sub(b'T', 6, b'C'),
-    ];
+    let parent = vec![sub(b'A', 0, b'T'), sub(b'A', 2, b'G'), sub(b'C', 6, b'T')];
+    let child = vec![sub(b'G', 2, b'T'), sub(b'G', 4, b'C'), sub(b'T', 6, b'C')];
     let result = compose_substitutions(&parent, &child)?;
-    let expected = vec![
-      sub(b'A', 0, b'T'),
-      sub(b'A', 2, b'T'),
-      sub(b'G', 4, b'C'),
-    ];
+    let expected = vec![sub(b'A', 0, b'T'), sub(b'A', 2, b'T'), sub(b'G', 4, b'C')];
     assert_eq!(result, expected);
     Ok(())
   }
@@ -104,7 +92,12 @@ mod tests {
     let child = vec![sub(b'C', 0, b'G'), sub(b'A', 2, b'T'), sub(b'C', 4, b'G')];
     let result = compose_substitutions(&parent, &child)?;
     for w in result.windows(2) {
-      assert!(w[0].pos() < w[1].pos(), "output not sorted: pos {} >= {}", w[0].pos(), w[1].pos());
+      assert!(
+        w[0].pos() < w[1].pos(),
+        "output not sorted: pos {} >= {}",
+        w[0].pos(),
+        w[1].pos()
+      );
     }
     assert_eq!(result.len(), 6);
     Ok(())

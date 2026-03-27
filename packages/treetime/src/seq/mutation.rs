@@ -82,11 +82,11 @@ pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<
       Ordering::Less => {
         result.push(ps.clone());
         pi += 1;
-      }
+      },
       Ordering::Greater => {
         result.push(cs.clone());
         ci += 1;
-      }
+      },
       Ordering::Equal => {
         // Compose: net change is parent.reff → child.qry
         if ps.reff() != cs.qry() {
@@ -95,7 +95,7 @@ pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<
         // parent.reff == child.qry: mutations cancel, no net change
         pi += 1;
         ci += 1;
-      }
+      },
     }
   }
 
