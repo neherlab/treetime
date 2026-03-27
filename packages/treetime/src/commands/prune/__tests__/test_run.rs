@@ -257,12 +257,13 @@ mod tests {
   fn test_prune_nodes_combined_prune_short_and_empty() -> Result<(), Report> {
     // Tree: root -> internal1 (short edge 0.001, has muts) -> A (leaf)
     //            -> internal2 (normal edge 0.1, no muts)   -> B (leaf)
+    // Topology-only test: mutation counts trigger pruning but content is not verified
     let (mut graph, partitions) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal1:0.001,(B:0.1)internal2:0.1)root;",
       &[
         ("root", "internal1", Some(1)), // short edge with mutations
         ("root", "internal2", None),    // empty edge (no mutations)
-        ("internal1", "A", Some(1)),    // leaf with mutations
+        ("internal1", "A", None),       // leaf, no overlapping subs with parent
         ("internal2", "B", Some(2)),    // leaf with mutations
       ],
     )?;

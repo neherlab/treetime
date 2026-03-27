@@ -70,6 +70,15 @@ impl Sub {
 /// Both input slices must be sorted by position with at most one entry per
 /// position. The output is sorted by position.
 pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
+  debug_assert!(
+    parent_subs.windows(2).all(|w| w[0].pos() < w[1].pos()),
+    "parent_subs not sorted by unique position"
+  );
+  debug_assert!(
+    child_subs.windows(2).all(|w| w[0].pos() < w[1].pos()),
+    "child_subs not sorted by unique position"
+  );
+
   let mut result = Vec::with_capacity(parent_subs.len() + child_subs.len());
   let mut pi = 0;
   let mut ci = 0;
@@ -88,6 +97,14 @@ pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<
         ci += 1;
       },
       Ordering::Equal => {
+        debug_assert_eq!(
+          ps.qry(),
+          cs.reff(),
+          "Substitution chain broken at position {}: parent produces {} but child expects {}",
+          ps.pos(),
+          ps.qry(),
+          cs.reff()
+        );
         // Compose: net change is parent.reff → child.qry
         if ps.reff() != cs.qry() {
           result.push(Sub::new(ps.reff(), ps.pos(), cs.qry())?);
