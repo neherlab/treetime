@@ -9,13 +9,13 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | Args                                          | flu/h3n2/20 | flu/h3n2/200 | flu/h3n2/500 | ebola/20 | zika/20 | rsv/a/20 | tb/20 | dengue/500 | lassa/L/20 | mpox/clade-ii/20 |
 | --------------------------------------------- | ----------- | ------------ | ------------ | -------- | ------- | -------- | ----- | ---------- | ---------- | ---------------- |
 | (default)                                     | OK          | OK           | OK           | OK       | OK      | OK       | OK    | OK         | OK         | OK               |
-| `--coalescent=10`                             | OK,coal     | OK,coal      | -            | OK,coal  | OK,coal | -        | -     | -          | -          | -                |
-| `--coalescent=0.1`                            | OK,coal     | -            | -            | -        | -       | -        | -     | -          | -          | -                |
-| `--coalescent=1000`                           | OK,coal     | -            | -            | -        | -       | -        | -     | -          | -          | -                |
-| `--coalescent-skyline`                        | OK,coal     | OK,coal      | -            | OK,coal  | -       | -        | -     | -          | -          | -                |
+| `--coalescent=10`                             | OK          | OK           | -            | OK       | OK      | -        | -     | -          | -          | -                |
+| `--coalescent=0.1`                            | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
+| `--coalescent=1000`                           | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
+| `--coalescent-skyline`                        | OK          | OK           | -            | OK       | -       | -        | -     | -          | -          | -                |
 | `--coalescent-opt`                            | OK          | OK           | -            | OK       | OK      | -        | -     | -          | -          | -                |
 | `--time-marginal=always`                      | OK          | OK           | OK           | OK       | OK      | -        | -     | -          | -          | -                |
-| `--coalescent-skyline --time-marginal=always` | OK,coal     | -            | -            | -        | -       | -        | -     | -          | -          | -                |
+| `--coalescent-skyline --time-marginal=always` | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
 | `--coalescent-opt --time-marginal=always`     | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
 | `--branch-length-mode=input`                  | OK          | -            | -            | OK       | -       | OK       | OK    | neg-err    | -          | -                |
 | `--clock-rate=0.003`                          | OK          | -            | -            | OK       | -       | -        | -     | -          | -          | -                |
@@ -49,7 +49,6 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 
 | ID      | Issue file                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- |
-| coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
 | conf    | Confidence interval related flags (`--confidence`, `--clock-std-dev`)                       |
 | neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
 

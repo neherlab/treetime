@@ -16,4 +16,6 @@ start from a different initial state.
 
 ## Related issues
 
-The TBP/calendar coordinate mismatch has been fixed. Coalescent contributions now operate in calendar time and have a real effect on node times, making this skipped-initial-Tc issue observable.
+Coalescent contributions operate in calendar time, so skipping the initial Tc pass changes the node times that seed later iterations.
+
+This issue compounds with other coalescent-prior gaps. Any missing contribution in the backward pass or convergence metric is magnified when the first iteration already starts from an unregularized state.

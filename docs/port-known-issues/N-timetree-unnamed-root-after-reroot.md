@@ -8,7 +8,6 @@ After rerooting, the new root node (and any nodes created during polytomy resolu
 
 ## Impact
 
-- Auspice CI lookup was fixed to use `GraphNodeKey` instead of name (no functional impact on auspice output)
 - `confidence_intervals.tsv` includes unnamed nodes with empty name column
 - Newick/Nexus output uses default formatting for unnamed nodes
 - Differs from v0 where all internal nodes have `NODE_` names after any topology change

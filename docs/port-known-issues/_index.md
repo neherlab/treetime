@@ -30,6 +30,8 @@ When a feature appears in `docs/algorithms/` design documents, it is a work item
 
 Issues discovered during testing are documented here and linked from the matrix.
 
+This directory is current-state only. Do not keep resolved rows, strike-through history, or `FIXED` markers here. When an issue is verified fixed, delete the issue file and remove its summary row. If a document mixes a fixed defect with a still-open defect, split the open defect into its own file and then delete the resolved one.
+
 ## Filename convention
 
 Files are prefixed with a severity letter so that `ls` sorts high-severity first:
@@ -55,10 +57,7 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| ~~High~~   | ~~Timetree~~ | ~~Timetree crashes on zero-length branches with grid spacing error~~ **FIXED**                                                  |
 | Medium     | Timetree     | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)         |
-| ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
-| ~~High~~   | ~~Optimize~~ | ~~[Optimize sparse marginal reconstruction crashes with NaN](H-optimize-sparse-marginal-nan-crash.md)~~ **FIXED**               |
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                          |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)              |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                      |
@@ -75,23 +74,19 @@ exactly.
 | Low        | GTR          | [Site-specific GTR not integrated into partition system](L-gtr-site-specific-partition-integration.md)                          |
 | Low        | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](L-gtr-site-specific-e2e-inference-test.md)              |
 | Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
+| Medium     | Optimize     | [Optimize iterative log-likelihood becomes `-inf`/NaN on larger datasets](M-optimize-iterative-log-likelihood-nan.md)           |
 | Medium     | Prune        | [Prune edge collapse uses set-union instead of mutation composition](M-prune-collapse-uses-union-not-composition.md)            |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Medium     | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)    |
-| Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                              |
-| ~~Medium~~ | ~~Timetree~~ | ~~[Coalescent likelihood always returns None](M-timetree-coalescent-likelihood-stub.md)~~ **FIXED**                             |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                      |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                    |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)              |
-| ~~Medium~~ | ~~Timetree~~ | ~~Internal node dates missing at scale~~ **FIXED**                                                                              |
-| ~~Medium~~ | ~~Timetree~~ | ~~Internal node dates missing with bad fixed clock rate~~ **FIXED**                                                             |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                            |
 | Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                              |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                      |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                             |
-| ~~Medium~~ | ~~Timetree~~ | ~~--time-marginal=always has no effect~~ **FIXED**                                                                              |
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                   |
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)            |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                           |

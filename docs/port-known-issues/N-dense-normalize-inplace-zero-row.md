@@ -29,4 +29,4 @@ Guard the zero-sum case: when `norm[ri] == 0.0`, set the row to uniform distribu
 
 ## Related
 
-- Dense `normalize_from_log` all-`-inf` guard (fixed): same class of numerical stability issue, different function and trigger conditions.
+- The stabilized log-space normalization path handles the same class of numerical degeneracy earlier in the pipeline. This issue covers the remaining probability-space path.

@@ -18,12 +18,13 @@
 | `--gtr-params`             | Never read                             |
 | `--reroot`                 | Accepted but always uses least-squares |
 
-Previously dead flags now wired:
+Flags that are already wired and not part of this issue:
 
 - `--confidence` promotes `time_marginal` from `never` to `only-final` when paired with `--covariation` or `--clock-std-dev`
 - `--covariation` drives GLS clock regression params in the timetree pipeline
 - `--clock-std-dev` provides user-specified rate standard deviation for rate susceptibility
 - `--tip-slack` used in covariation variance computation
+- `--time-marginal=always` already triggers confidence-interval extraction, so it is intentionally excluded from the dead-flag list
 
 `--reroot` is accepted but `reroot_tree()` at
 [`packages/treetime/src/commands/timetree/optimization/reroot.rs#L30`](../../packages/treetime/src/commands/timetree/optimization/reroot.rs#L30)
@@ -34,4 +35,3 @@ always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`,
 
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
 - [--aln flag silently ignored](M-timetree-aln-flag-ignored.md) `--aln` also dead, causes confusing error
-- `--time-marginal=always` **FIXED**: `Always` now wired to produce CI output

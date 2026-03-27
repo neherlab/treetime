@@ -51,5 +51,4 @@ v0 does not have this split. `TreeAnc._ml_anc()` ([packages/legacy/treetime/tree
 ## Related issues
 
 - [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md): the output-side symptom of this structural gap
-- Initial branch length guess gap filtering: fixed, `edge_subs()` and `edge_effective_length()` now exclude gap positions
-- [Optimize sparse marginal crashes with NaN](H-optimize-sparse-marginal-nan-crash.md): stale mutation counts can contribute to incorrect initial branch length estimates
+- The optimize command already relies on current-state branch mutations for initial branch length estimation and gap-aware effective lengths. That existing usage shows the shared API is viable, but it remains confined to optimize-specific traits.

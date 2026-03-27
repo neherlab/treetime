@@ -10,7 +10,7 @@ flu/h3n2/20 default: 37/37 annotations (19 tips + 18 internal).
 flu/h3n2/20 with `--branch-length-mode=input`: 19/37 annotations (tips only).
 
 This affects ALL datasets when using input branch length mode. Coalescent
-and skyline modes are not affected (fixed in commit `b4f0e839`).
+and skyline modes follow separate code paths and are not part of this issue.
 
 ## Root cause
 
@@ -188,8 +188,9 @@ v1 should enforce the same constraint.
 
 ## Related issues
 
-The "missing at scale" and "bad fixed clock rate" variants of this issue were fixed
-by normalizing distribution products in the backward/forward passes and widening
-branch distribution grids via clock-rate-adaptive `MAX_BRANCH_TIME`. This
-input-branch-length variant has a distinct root cause (Point distribution
-multiplication tolerance).
+This input-branch-length variant has a distinct root cause from the other
+timetree missing-date failures. Here the problem is Point-distribution
+multiplication tolerance, not branch-grid resolution or normalized product
+handling.
+
+That distinction matters because the symptom is similar - internal nodes lose dates - but the remedy is different. Fixes in the grid-based branches do not address the Point x Point failure in input branch length mode.

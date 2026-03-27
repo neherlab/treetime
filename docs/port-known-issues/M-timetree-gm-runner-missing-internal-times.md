@@ -18,15 +18,13 @@ Test files:
 
 For the Poisson dengue_20 case, expected output has 39 entries (20 leaves + 19 internal nodes) while actual output has only 20 entries (leaves only). Leaf times in the actual output are the raw date constraint values (mid-year .5 for integer year dates) rather than inference-refined values.
 
+The failure is in the inference output itself. The tests reach the value-comparison stage and expose a semantic mismatch: internal node times are absent rather than merely named differently or hidden behind an earlier crash.
+
 ## Possible causes
 
 - `extract_node_times()` returns `None` for `time()` on internal nodes, indicating backward/forward pass does not set time distributions on them for these datasets
 - The golden master rerooted tree structure may differ from what v1's rerooting produces, leading to different internal node naming or topology
 - These datasets have characteristics (short branches, specific branch length distributions) that cause the inference to not converge or produce empty distributions
-
-## History
-
-These tests were previously disabled with TODO comments citing the grid crash (`H-timetree-crash-grid-zero-branch`). The grid crash was fixed by commit `5e4ae89a` (avoid grid x-array roundtrip in distribution operations). The tests now run without crashing but fail with value mismatches.
 
 ## Working datasets
 
