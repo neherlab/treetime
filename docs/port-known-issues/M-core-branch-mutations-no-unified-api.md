@@ -20,6 +20,10 @@ Sparse GTR inference `get_mutation_counts_sparse()` ([packages/treetime/src/gtr/
 
 The partition data needed to fill these annotations exists (sparse `edge.subs` or dense probability matrices), but there is no way for the payload-layer Newick writer to access partition-layer state. This is the structural gap that the `PartitionOptimizeOps` trait solves for the optimize command but no equivalent exists at the output layer.
 
+### Shared-mutation merging reads stale Fitch substitutions
+
+`merge_shared_mutation_branches()` ([packages/treetime/src/commands/prune/run.rs#L311-L331](../../packages/treetime/src/commands/prune/run.rs#L311-L331)) and its helper `compute_shared_subs_across_partitions()` ([packages/treetime/src/commands/prune/run.rs#L422-L437](../../packages/treetime/src/commands/prune/run.rs#L422-L437)) read `partition.edges[&edge_key].subs` directly to find shared mutations between siblings. When the prune command runs after marginal reconstruction (or when integrated into the optimize loop), the shared-mutation detection operates on stale Fitch-era data. Siblings whose marginal posteriors differ from Fitch assignments will produce incorrect shared/unique mutation partitioning, leading to wrong topology changes and wrong branch length estimates for new internal nodes.
+
 ## Root cause
 
 The Fitch forward pass populates `SparseEdgePartition.subs` ([packages/treetime/src/representation/payload/sparse.rs#L100](../../packages/treetime/src/representation/payload/sparse.rs#L100)) ([packages/treetime/src/commands/ancestral/fitch.rs#L442](../../packages/treetime/src/commands/ancestral/fitch.rs#L442)) and never updated after marginal inference. Dense partitions have no `subs` field at all; `DenseEdgePartition` ([packages/treetime/src/representation/payload/dense.rs#L38-L44](../../packages/treetime/src/representation/payload/dense.rs#L38-L44)) stores only probability messages.
