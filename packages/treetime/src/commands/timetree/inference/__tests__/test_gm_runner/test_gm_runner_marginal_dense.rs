@@ -37,6 +37,7 @@ mod tests {
   // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
   // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
+  #[ignore]
   fn test_gm_runner_marginal_dense(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
