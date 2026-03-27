@@ -42,13 +42,6 @@ mod tests {
       .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
       .sum();
 
-    eprintln!("  v0 total BL: {:.10}", expected.final_total_branch_length);
-    eprintln!("  v1 total BL: {v1_total_bl:.10}");
-    eprintln!(
-      "  relative diff: {:.6}",
-      (v1_total_bl - expected.final_total_branch_length).abs() / expected.final_total_branch_length
-    );
-
     assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
 
     Ok(())
@@ -82,17 +75,6 @@ mod tests {
 
     let undamped_sign_flips = count_sign_flips(&undamped.lh_history);
     let damped_sign_flips = count_sign_flips(&damped.lh_history);
-
-    eprintln!(
-      "  undamped: sign_flips={undamped_sign_flips}, converged={}, final_lh={:.6}",
-      undamped.converged_at.is_some(),
-      undamped.lh_history.last().unwrap()
-    );
-    eprintln!(
-      "  damped:   sign_flips={damped_sign_flips}, converged={}, final_lh={:.6}",
-      damped.converged_at.is_some(),
-      damped.lh_history.last().unwrap()
-    );
 
     assert!(
       damped.converged_at.is_some(),
