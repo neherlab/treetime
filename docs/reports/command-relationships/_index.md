@@ -1,6 +1,6 @@
-# Command relationships: prune, optimize, timetree
+# Command relationships: ancestral, prune, optimize, timetree
 
-Scientific and architectural relationships between the three main tree-refinement commands. Covers current implementation, ideal design, the two EM-like loops, and a gap table mapping known issues to required changes.
+Scientific and architectural relationships between the four main tree-refinement commands. Covers current implementation, ideal design, the two EM-like loops, the role of `ancestral` as the shared foundation, and a gap table mapping known issues to required changes.
 
 ## Current implementation: Venn diagram
 
@@ -196,3 +196,37 @@ graph TD
     timetree_loop --> E2
     optimize_loop -- "pre-step max_iter=1" --> timetree_loop
 ```
+
+---
+
+## Where ancestral fits
+
+`ancestral` is not a fourth Venn circle. It is what the two shared intersection zones *are* — made into a standalone user-facing command.
+
+| ancestral mode | What it runs | Corresponds to |
+|:---------------|:-------------|:---------------|
+| `--method-anc=parsimony` | `compress_sequences` + Fitch forward/backward | The prune ∩ optimize zone |
+| `--method-anc=marginal` | `initialize_marginal` + `update_marginal` once | The optimize ∩ timetree zone: one iteration of the shared E-step |
+
+Adding `ancestral` as a fourth Venn circle would produce a shape that covers both existing intersections and nothing else. That is equivalent to labeling those intersections "ancestral" directly, which is precisely what is meant.
+
+### Why ancestral has no unique Venn region
+
+A unique region would mean "something `ancestral` does that nothing else needs." In the ideal design, optimize and timetree call `ancestral`'s internals as a subroutine — they do not reimplement the E-step, they invoke it. Every component of `ancestral` is consumed by at least one other command by construction. The more faithfully the ideal module structure is implemented, the more completely `ancestral` disappears into shared code with no residual unique behavior. This is true in both the current and ideal implementations.
+
+### ancestral in the hierarchy
+
+`ancestral` sits at the **bottom** of the dependency chain — everything depends on it. This is the opposite of a unique Venn region, which would signal independence.
+
+```
+ancestral/
+  parsimony:  compress_sequences()   ← used by prune, optimize
+  marginal:   initialize_marginal()
+              update_marginal()       ← E-step of optimize and timetree
+
+prune    ──parsimony──→  topology_cleanup
+optimize ──E-step (loop)──→ update_marginal  ──M-step──→ run_optimize_mixed
+timetree ──E-step (loop)──→ update_marginal  ──M-step──→ run_timetree
+```
+
+The hierarchy diagram is the correct representation for `ancestral`. The Venn diagram remains valid for prune, optimize, and timetree; `ancestral` is a label for the intersections between those three.

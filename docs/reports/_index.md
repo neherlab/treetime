@@ -8,9 +8,9 @@ Technical reference books for TreeTime v1 algorithms and implementation. Each bo
 
 How TreeTime refines phylogenetic trees: optimizing branch lengths, detecting and collapsing zero-length branches, resolving polytomies, and integrating these operations into convergent iteration loops. 10 chapters covering substitution models, tree likelihood, ancestral reconstruction, per-edge optimization, zero-length branches, polytomy resolution, initial estimation, the iteration loop, and implementation status. 74 verified references. Written for software engineers and bioinformatics students.
 
-### [Command relationships: prune, optimize, timetree](command-relationships/_index.md)
+### [Command relationships: ancestral, prune, optimize, timetree](command-relationships/_index.md)
 
-Scientific and architectural relationships between the three main tree-refinement commands. Covers current Venn diagram of shared components, comparison of the two sibling EM-like loops (optimize vs timetree), current vs ideal architecture, and a gap table mapping six known issues to required changes.
+Scientific and architectural relationships between the four main tree-refinement commands. Covers current Venn diagram of shared components, the role of `ancestral` as the shared foundation, comparison of the two sibling EM-like loops (optimize vs timetree), current vs ideal architecture, and a gap table mapping six known issues to required changes.
 
 ### [Optimization methods](optimization-methods/_index.md)
 
