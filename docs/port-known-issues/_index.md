@@ -74,8 +74,8 @@ exactly.
 | Low        | GTR          | [Site-specific GTR not integrated into partition system](L-gtr-site-specific-partition-integration.md)                          |
 | Low        | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](L-gtr-site-specific-e2e-inference-test.md)              |
 | Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
-| Medium     | Optimize     | [Optimize iterative log-likelihood becomes `-inf`/NaN on larger datasets](M-optimize-iterative-log-likelihood-nan.md)           |
-| Medium     | Prune        | [Prune edge collapse uses set-union instead of mutation composition](M-prune-collapse-uses-union-not-composition.md)            |
+| ~~Medium~~ | ~~Prune~~    | ~~Edge collapse uses union instead of composition for mutations~~ **FIXED**                                                     |
+| Medium     | Prune        | [Prune command applies merge before prune, should be reversed](M-prune-wrong-operation-order.md)                                |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Medium     | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |

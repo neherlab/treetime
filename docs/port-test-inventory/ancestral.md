@@ -341,22 +341,34 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 ---
 
-## Sparse Substitution Composition Tests
+## Substitution Composition Tests
 
-**File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
+**File:** [`test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
 
-| Test                                         | Purpose                                          |
-| -------------------------------------------- | ------------------------------------------------ |
-| `test_compose_substitutions_empty_both`      | Empty parent and child produce empty result      |
-| `test_compose_substitutions_empty_parent`    | Empty parent passes child through                |
-| `test_compose_substitutions_empty_child`     | Empty child passes parent through                |
-| `test_compose_substitutions_no_overlap`      | Disjoint positions merge sorted                  |
-| `test_compose_substitutions_chain`           | A->G + G->T = A->T at same position              |
-| `test_compose_substitutions_cancellation`    | A->G + G->A = no mutation                        |
-| `test_compose_substitutions_mixed`           | Chain, keep, add, cancel in one call             |
-| `test_compose_substitutions_single_position` | Parameterized: 4 cases via rstest (chain/cancel) |
+| Test                                                            | Purpose                                          |
+| --------------------------------------------------------------- | ------------------------------------------------ |
+| `test_mutation_compose_substitutions_both_empty`                | Empty parent and child produce empty result      |
+| `test_mutation_compose_substitutions_parent_empty`              | Empty parent passes child through                |
+| `test_mutation_compose_substitutions_child_empty`               | Empty child passes parent through                |
+| `test_mutation_compose_substitutions_non_overlapping`           | Disjoint positions merge sorted                  |
+| `test_mutation_compose_substitutions_chain`                     | A->G + G->T = A->T at same position              |
+| `test_mutation_compose_substitutions_cancellation`              | A->G + G->A = no mutation                        |
+| `test_mutation_compose_substitutions_mixed`                     | Chain, passthrough, and cancellation in one call |
+| `test_mutation_compose_substitutions_output_sorted_by_position` | Interleaved positions verify merge order         |
+| `test_mutation_compose_substitutions_all_cancel`                | All positions cancel, empty result               |
 
-**Algorithm:** Composition of parent and child substitution lists for sparse marginal passes. The `#[rstest]` test runs 4 `#[case]` variants.
+**Algorithm:** Two-pointer merge composition of parent and child substitution lists by position: chain, cancellation, or passthrough for non-overlapping positions.
+
+### Prune integration tests for composition
+
+**File:** [`test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+
+| Test                                             | Purpose                                                      |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `test_collapse_edge_compose_non_overlapping`     | Non-overlapping subs preserved through edge collapse         |
+| `test_collapse_edge_compose_chain`               | Chain composition (A->G + G->T = A->T) through edge collapse |
+| `test_collapse_edge_compose_cancellation`        | Cancellation (A->G + G->A = none) through edge collapse      |
+| `test_collapse_edge_compose_multiple_partitions` | Composition applied independently per partition              |
 
 ---
 
