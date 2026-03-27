@@ -588,9 +588,9 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_edge_mutation_union_non_overlapping() -> Result<(), Report> {
-    // When collapsing an edge by name, mutations from both edges should be merged
-    // Tree: root -> internal (with muts at pos 0,1) -> A (with muts at pos 2,3), B
+  fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
+    // Non-overlapping positions: all subs kept from both edges
+    // Tree: root -> internal (subs at pos 0,1) -> A (subs at pos 2,3), B
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
@@ -675,8 +675,8 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_edge_mutation_union_overlapping_same_mutation() -> Result<(), Report> {
-    // When both edges have identical mutations, they should be deduplicated
+  fn test_collapse_edge_compose_chain() -> Result<(), Report> {
+    // Chain composition: parent A->G + child G->T = net A->T at same position
     // Tree: root -> internal -> A, B
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
 
@@ -693,19 +693,19 @@ mod tests {
       edges: btreemap! {},
     };
 
-    // Both edges have the same mutation A0T
-    let same_mutation = Sub::new(c(b'A'), 0_usize, c(b'T'))?;
+    // Parent edge: A->G at pos 0
     partition.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![same_mutation.clone()],
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?],
         ..SparseEdgePartition::default()
       },
     );
+    // Child edge: G->T at pos 0 (ref=G matches parent qry)
     partition.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![same_mutation],
+        subs: vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?],
         ..SparseEdgePartition::default()
       },
     );
@@ -715,7 +715,6 @@ mod tests {
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
-    // Collapse internal node by name
     prune_nodes(
       &mut graph,
       &partitions,
@@ -724,7 +723,7 @@ mod tests {
       &btreeset! { "internal".to_owned() },
     )?;
 
-    // After collapse: deduplicated mutation count should be 1
+    // After collapse: net A->T at pos 0 (1 composed sub)
     let partition = partitions[0].read_arc();
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
@@ -735,8 +734,9 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.edges[&edge_key];
-        // Same mutation deduplicated
         assert_eq!(edge_partition.subs.len(), 1);
+        assert_eq!(edge_partition.subs[0].reff(), c(b'A'));
+        assert_eq!(edge_partition.subs[0].qry(), c(b'T'));
       }
     }
 
@@ -744,8 +744,8 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_edge_mutation_union_different_mutations_same_position() -> Result<(), Report> {
-    // Different mutations at the same position should both be kept (they are different Subs)
+  fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
+    // Cancellation: parent A->G + child G->A = no net change at same position
     // Tree: root -> internal -> A, B
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
 
@@ -762,18 +762,19 @@ mod tests {
       edges: btreemap! {},
     };
 
-    // Different mutations at position 0: A0T vs A0C
+    // Parent edge: A->G at pos 0
     partition.edges.insert(
       root_internal_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?],
         ..SparseEdgePartition::default()
       },
     );
+    // Child edge: G->A at pos 0 (reverts back to original state)
     partition.edges.insert(
       internal_a_edge_key,
       SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'C'))?], // Different qry
+        subs: vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?],
         ..SparseEdgePartition::default()
       },
     );
@@ -783,7 +784,6 @@ mod tests {
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
-    // Collapse internal node by name
     prune_nodes(
       &mut graph,
       &partitions,
@@ -792,7 +792,7 @@ mod tests {
       &btreeset! { "internal".to_owned() },
     )?;
 
-    // After collapse: both mutations kept (different qry)
+    // After collapse: mutations cancel, edge to A has 0 subs
     let partition = partitions[0].read_arc();
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
@@ -803,8 +803,7 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.edges[&edge_key];
-        // Two different mutations at same position
-        assert_eq!(edge_partition.subs.len(), 2);
+        assert_eq!(edge_partition.subs.len(), 0);
       }
     }
 
@@ -812,8 +811,8 @@ mod tests {
   }
 
   #[test]
-  fn test_collapse_edge_mutation_union_multiple_partitions() -> Result<(), Report> {
-    // Mutations should be merged independently per partition
+  fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
+    // Substitutions composed independently per partition
     // Tree: root -> internal -> A, B
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
 
