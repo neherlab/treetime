@@ -5,8 +5,7 @@ mod tests {
   use rstest::rstest;
   use treetime_primitives::AsciiChar;
 
-  use crate::representation::partition::marginal_sparse::compose_substitutions;
-  use crate::seq::mutation::Sub;
+  use crate::seq::mutation::{Sub, compose_substitutions};
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)

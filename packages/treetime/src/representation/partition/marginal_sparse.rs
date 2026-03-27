@@ -10,7 +10,7 @@ use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -429,40 +429,4 @@ where
   fn get_sequence_length(&self) -> usize {
     self.length
   }
-}
-
-/// Compose substitutions from two edges: parent edge then child edge.
-/// Applies cancellation rules: A5G + G5T = A5T, A5G + G5A = (no mutation).
-pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
-  // Index child subs by position for efficient lookup
-  let child_by_pos: BTreeMap<usize, &Sub> = child_subs.iter().map(|s| (s.pos(), s)).collect();
-
-  let mut result = Vec::with_capacity(parent_subs.len() + child_subs.len());
-
-  // Process parent subs - compose with child if position overlaps
-  for parent_sub in parent_subs {
-    let pos = parent_sub.pos();
-    if let Some(child_sub) = child_by_pos.get(&pos) {
-      // Composition: parent reff -> parent qry -> child qry
-      // Net effect: parent reff -> child qry
-      if parent_sub.reff() != child_sub.qry() {
-        // Non-cancelling: A5G + G5T = A5T
-        result.push(Sub::new(parent_sub.reff(), pos, child_sub.qry())?);
-      }
-      // else: Cancelling mutation A5G + G5A = no net change
-    } else {
-      // No child mutation at this position - keep parent mutation
-      result.push(parent_sub.clone());
-    }
-  }
-
-  // Add child subs at positions not covered by parent
-  let parent_by_pos: BTreeMap<usize, &Sub> = parent_subs.iter().map(|s| (s.pos(), s)).collect();
-  for child_sub in child_subs {
-    if !parent_by_pos.contains_key(&child_sub.pos()) {
-      result.push(child_sub.clone());
-    }
-  }
-
-  Ok(result)
 }
