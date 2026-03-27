@@ -4,6 +4,7 @@ use eyre::{Report, WrapErr};
 use getset::CopyGetters;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -56,6 +57,54 @@ impl Sub {
   }
 }
 
+/// Compose substitutions from two consecutive edges into net substitutions.
+///
+/// When collapsing node B between parent A and child C, substitutions on
+/// edges A→B (`parent_subs`) and B→C (`child_subs`) are composed to produce
+/// the net A→C substitutions:
+///
+/// - Non-overlapping positions: kept as-is from whichever edge
+/// - Same position, chain: parent ref→X + child X→qry = net ref→qry
+/// - Same position, cancellation: parent ref→X + child X→ref = no net change
+///
+/// Both input slices must be sorted by position with at most one entry per
+/// position. The output is sorted by position.
+pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
+  let mut result = Vec::with_capacity(parent_subs.len() + child_subs.len());
+  let mut pi = 0;
+  let mut ci = 0;
+
+  while pi < parent_subs.len() && ci < child_subs.len() {
+    let ps = &parent_subs[pi];
+    let cs = &child_subs[ci];
+
+    match ps.pos().cmp(&cs.pos()) {
+      Ordering::Less => {
+        result.push(ps.clone());
+        pi += 1;
+      }
+      Ordering::Greater => {
+        result.push(cs.clone());
+        ci += 1;
+      }
+      Ordering::Equal => {
+        // Compose: net change is parent.reff → child.qry
+        if ps.reff() != cs.qry() {
+          result.push(Sub::new(ps.reff(), ps.pos(), cs.qry())?);
+        }
+        // parent.reff == child.qry: mutations cancel, no net change
+        pi += 1;
+        ci += 1;
+      }
+    }
+  }
+
+  result.extend_from_slice(&parent_subs[pi..]);
+  result.extend_from_slice(&child_subs[ci..]);
+
+  Ok(result)
+}
+
 impl FromStr for Sub {
   type Err = Report;
 
@@ -78,10 +127,7 @@ impl FromStr for Sub {
   }
 }
 
-/// Parses position from string.
-///
-/// Note that Nextclade uses 0-based indices, including for positions in sequences. However, in bioinformatics it is
-/// more common to see 1-based indexing. We perform the conversion here.
+/// Parse position from 1-based bioinformatics notation to 0-based index.
 pub fn parse_pos(s: &str) -> Result<usize, Report> {
   let pos = to_eyre_error(s.parse::<usize>()).wrap_err_with(|| format!("Unable to parse position: '{s}'"))?;
   if pos < 1 {

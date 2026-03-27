@@ -6,7 +6,7 @@ use crate::make_error;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::seq::indel::InDel;
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -25,7 +25,6 @@ use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_utils::iterator::difference::iterator_difference;
 use treetime_utils::iterator::intersection::iterator_intersection;
-use treetime_utils::iterator::union::iterator_union;
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   if args.prune_empty && args.input_fastas.is_empty() {
@@ -283,14 +282,12 @@ fn collapse_sparse_edge(
       new_edge.set_branch_length(Some(bl1 + bl2));
     }
 
-    // Union of substitutions per partition
+    // Compose substitutions: parent edge (removed) + child edge = net substitutions
     for partition in partitions {
       let mut partition = partition.write_arc();
-      let removed_edge_subs = partition.edges[&edge_key].subs.clone(); // FIXME: avoid clone
-      let new_edge = partition.edges.entry(new_edge_key).or_default();
-      new_edge.subs = iterator_union(&removed_edge_subs, &new_edge.subs)
-        .cloned()
-        .collect_vec();
+      let removed_edge_subs = partition.edges[&edge_key].subs.clone();
+      let child_edge = partition.edges.entry(new_edge_key).or_default();
+      child_edge.subs = compose_substitutions(&removed_edge_subs, &child_edge.subs)?;
     }
   }
 
