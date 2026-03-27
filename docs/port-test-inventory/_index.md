@@ -11,12 +11,13 @@
 | [Ancestral Reconstruction](ancestral.md)   | 28      | 123      |
 | [Timetree Inference](timetree.md)          | 20      | 110      |
 | [GTR Models](gtr.md)                       | 22      | 166      |
-| [Branch Optimization](optimization.md)     | 26      | 81       |
-| [Clock Inference](clock.md)                | 4       | 26       |
+| [Branch Optimization](optimization.md)     | 28      | 93       |
+| [Clock Inference](clock.md)                | 6       | 32       |
+| [Mugration](mugration.md)                  | 6       | 32       |
 | [Distribution Operations](distribution.md) | 20      | 197      |
 | [Supporting Crates](supporting.md)         | 35      | 495      |
 | [Validation & Smoke](validation.md)        | -       | 185      |
-| **Total**                                  | **155** | **1383** |
+| **Total**                                  | **165** | **1433** |
 
 Counts are test functions. Property tests (proptest) run 256 random cases each; GTR property tests alone produce ~6000 executions.
 
@@ -60,18 +61,20 @@ Counts are test functions. Property tests (proptest) run 256 random cases each; 
 
 ## File Index by Crate
 
-| Crate                   | Test Directories                                                                                                                                                                                                                                                                          | Tests |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `treetime`              | `commands/ancestral/__tests__/`, `commands/clock/__tests__/`, `commands/optimize/__tests__/`, `commands/prune/__tests__/`, `commands/timetree/**/__tests__/`, `gtr/__tests__/`, `alphabet/__tests__/`, `io/__tests__/`, `seq/__tests__/`, `graph/__tests__/`, `representation/__tests__/` | ~7000 |
-| `treetime-distribution` | `__tests__/`, `distribution_core/__tests__/`, `distribution_ops/__tests__/`, `distribution_scaled/__tests__/`                                                                                                                                                                             | 149   |
-| `treetime-analytical`   | `__tests__/`, inline tests                                                                                                                                                                                                                                                                | 24    |
-| `treetime-ops`          | `__tests__/`                                                                                                                                                                                                                                                                              | 10    |
-| `treetime-grid`         | `__tests__/`, inline tests                                                                                                                                                                                                                                                                | 16    |
-| `treetime-primitives`   | `__tests__/`                                                                                                                                                                                                                                                                              | 80    |
-| `treetime-utils`        | `datetime/__tests__/`, `fmt/__tests__/`, `array/__tests__/`, inline tests in `interval/`, `iterator/`                                                                                                                                                                                     | 112   |
-| `treetime-io`           | `__tests__/`                                                                                                                                                                                                                                                                              | 12    |
-| `treetime-cli`          | `convert/__tests__/`, inline tests                                                                                                                                                                                                                                                        | 16    |
-| `treetime-validation`   | `testing/metrics/**`                                                                                                                                                                                                                                                                      | 8     |
+| Crate                   | Test Directories                                                                                                                                                                                                                                                                                                           | Tests   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `treetime`              | `commands/ancestral/__tests__/`, `commands/clock/__tests__/`, `commands/mugration/__tests__/`, `commands/optimize/__tests__/`, `commands/prune/__tests__/`, `commands/timetree/**/__tests__/`, `gtr/__tests__/`, `alphabet/__tests__/`, `io/__tests__/`, `seq/__tests__/`, `graph/__tests__/`, `representation/__tests__/` | ~7000 ¹ |
+| `treetime-distribution` | `__tests__/`, `distribution_core/__tests__/`, `distribution_ops/__tests__/`, `distribution_scaled/__tests__/`                                                                                                                                                                                                              | 149     |
+| `treetime-analytical`   | `__tests__/`, inline tests                                                                                                                                                                                                                                                                                                 | 24      |
+| `treetime-ops`          | `__tests__/`                                                                                                                                                                                                                                                                                                               | 10      |
+| `treetime-grid`         | `__tests__/`, inline tests                                                                                                                                                                                                                                                                                                 | 16      |
+| `treetime-primitives`   | `__tests__/`                                                                                                                                                                                                                                                                                                               | 80      |
+| `treetime-utils`        | `datetime/__tests__/`, `fmt/__tests__/`, `array/__tests__/`, inline tests in `interval/`, `iterator/`                                                                                                                                                                                                                      | 112     |
+| `treetime-io`           | `__tests__/`                                                                                                                                                                                                                                                                                                               | 12      |
+| `treetime-cli`          | `convert/__tests__/`, inline tests                                                                                                                                                                                                                                                                                         | 16      |
+| `treetime-validation`   | `testing/metrics/**`                                                                                                                                                                                                                                                                                                       | 8       |
+
+¹ The `treetime` crate "~7000" count includes proptest case executions (256 random cases per property test). The Summary table counts test functions, not individual case executions.
 
 ---
 

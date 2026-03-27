@@ -168,7 +168,7 @@ After resolution, partition data is reconciled via `reconcile_topology()` to add
 
 ### Known issues
 
-The zero-branch penalty for newly created internal branches differs from v0: v1 uses bare time difference, v0 scales by `gtr.mu * data.full_length`. See [known issue](../port-known-issues/M-timetree-polytomy-zero-branch-penalty.md).
+The zero-branch penalty for newly created internal branches differs from v0: v1 uses bare time difference, v0 scales by `gtr.mu * data.full_length`.
 
 ---
 

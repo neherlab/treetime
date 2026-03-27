@@ -1,6 +1,6 @@
 # Joint ML ancestral reconstruction removed
 
-v1 removes support for joint maximum likelihood ancestral reconstruction. The enum variant `MethodAncestral::Joint` (`#MethodAncestral`) in `packages/treetime/src/commands/ancestral/args.rs:8-16:` is preserved as `#[default]` for CLI compatibility with v0, but selecting it triggers `unimplemented!()` at `packages/treetime/src/commands/ancestral/run.rs:193-195:`. The v0 implementation lives in `_ml_anc_joint()` (`#_ml_anc_joint`) at `packages/legacy/treetime/treetime/treeanc.py:934-1080:`.
+v1 removes support for joint maximum likelihood ancestral reconstruction. The enum variant `MethodAncestral::Joint` (`#MethodAncestral`) in `packages/treetime/src/commands/ancestral/args.rs:8-16:` is preserved as `#[default]` for CLI compatibility with v0, but selecting it triggers `unimplemented!()` at `packages/treetime/src/commands/ancestral/run.rs:201-203:`. The v0 implementation lives in `_ml_anc_joint()` (`#_ml_anc_joint`) at `packages/legacy/treetime/treetime/treeanc.py:934-1080:`.
 
 Currently only the `ancestral` command panics on joint. The `timetree` and `clock` commands have `method_anc` fields in their argument structs but do not dispatch on them yet.
 

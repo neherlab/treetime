@@ -1,6 +1,6 @@
 # Fitch Root Ambiguity: Deterministic Selection
 
-This document describes an intentional deviation from v0 behavior in the v1 Rust implementation. The change affects root sequence reconstruction at positions where Fitch parsimony produces multiple equally optimal states. v1 resolves this in `fitch_forward()` at `packages/treetime/src/commands/ancestral/fitch.rs:320-322:`, while v0 handles it in `_fitch_reconstruction()` at `packages/legacy/treetime/treetime/treeanc.py:615-617:`. The change applies to any phylogenetic tree where the backward pass leaves root positions ambiguous.
+This document describes an intentional deviation from v0 behavior in the v1 Rust implementation. The change affects root sequence reconstruction at positions where Fitch parsimony produces multiple equally optimal states. v1 resolves this in `fitch_forward()` at `packages/treetime/src/commands/ancestral/fitch.rs:315-317:`, while v0 handles it in `_fitch_reconstruction()` at `packages/legacy/treetime/treetime/treeanc.py:615-617:`. The change applies to any phylogenetic tree where the backward pass leaves root positions ambiguous.
 
 ## Fitch Parsimony Algorithm
 
@@ -44,7 +44,7 @@ Note: The v0 logging code at `packages/legacy/treetime/treetime/treeanc.py:612:`
 
 ## v1 Implementation: Deterministic Selection
 
-v1 resolves root ambiguity deterministically in `packages/treetime/src/commands/ancestral/fitch.rs:320-322:`:
+v1 resolves root ambiguity deterministically in `packages/treetime/src/commands/ancestral/fitch.rs:315-317:`:
 
 ```rust
 for (pos, states) in variable {

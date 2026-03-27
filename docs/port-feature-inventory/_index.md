@@ -16,15 +16,15 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 ## Command Map
 
-| Command     | Status | Notes                                           |
-| ----------- | ------ | ----------------------------------------------- |
-| `ancestral` | [x]    | Parsimony and marginal reconstruction           |
-| `clock`     | [x]    | Regression and rerooting                        |
-| `timetree`  | [x]    | Full inference pipeline                         |
-| `optimize`  | [x]    | v1-only branch-length optimization              |
-| `prune`     | [x]    | v1-only tree pruning                            |
-| `mugration` | [x]    | Marginal reconstruction (missing iterative GTR) |
-| `homoplasy` | [ ]    | Unimplemented                                   |
+| Command     | Status | Notes                                      |
+| ----------- | ------ | ------------------------------------------ |
+| `ancestral` | [x]    | Parsimony and marginal reconstruction      |
+| `clock`     | [x]    | Regression and rerooting                   |
+| `timetree`  | [x]    | Full inference pipeline                    |
+| `optimize`  | [x]    | v1-only branch-length optimization         |
+| `prune`     | [x]    | v1-only tree pruning                       |
+| `mugration` | [x]    | Marginal reconstruction with iterative GTR |
+| `homoplasy` | [ ]    | Unimplemented                              |
 
 ## 1. Ancestral Reconstruction
 
@@ -203,7 +203,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 ### Time Marginal Modes
 
 - [x] `never` (joint most-likely times)
-- [ ] `always` (marginal every round - parsed but not wired, [known issue](../port-known-issues/M-timetree-time-marginal-always-ignored.md))
+- [ ] `always` (marginal every round - parsed but not wired)
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
@@ -372,10 +372,10 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] `annotated_tree.nwk` (Newick with NHX-style annotations)
 - [x] `gtr.json` (GTR model parameters)
 
-### Not Implemented
+### Additional Features
 
-- [ ] Iterative GTR inference ([known issue](../port-known-issues/M-mugration-iterative-gtr.md))
-- [ ] Sampling bias correction (`--sampling-bias-correction`)
+- [x] Iterative GTR inference ([golden master parity tracked](../port-known-issues/M-mugration-iterative-gtr.md))
+- [x] Sampling bias correction (`--sampling-bias-correction`)
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts
 
@@ -429,7 +429,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
-- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75, see [known issue](../port-known-issues/M-optimize-oscillation-no-damping.md))
+- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75)
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)
@@ -465,7 +465,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [/] Command always builds one sparse and one dense partition from the same full alignment
 - [ ] `--dense` (parsed but not wired, `infer_dense()` is a stub returning false)
 - [ ] Separate dense-only and sparse-only command modes not exposed
-- [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency (see [known issue](../port-known-issues/N-optimize-sparse-zero-branch-no-derivative.md))
+- [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency
 
 ## 8. Pruning (v1-Only Command)
 
@@ -656,13 +656,15 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 ## Statistics
 
+Counts represent top-level feature groups (section headings and their direct children), not individual leaf checkboxes. Nested sub-items are rolled up into their parent feature.
+
 | Domain         | v0 Features | v1 Implemented | v1 Missing | v1 Only |
 | -------------- | ----------- | -------------- | ---------- | ------- |
 | ancestral      | 16          | 10             | 6          | 0       |
 | clock          | 17          | 14             | 3          | 0       |
 | timetree       | 30          | 21             | 9          | 0       |
 | homoplasy      | 9           | 0              | 9          | 0       |
-| mugration      | 10          | 8              | 2          | 0       |
+| mugration      | 10          | 10             | 0          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
 | optimize       | 0           | 0              | 0          | 8       |
 | prune          | 0           | 0              | 0          | 7       |

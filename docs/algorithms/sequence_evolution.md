@@ -1,4 +1,3 @@
-
 # Sequence evolution models
 
 Sequence evolution models describe the stochastic ways sequences change over time do to mutations.
@@ -27,11 +26,10 @@ $$\sum_i \bar{v}^{n}_i v^m_i = \sum_i v^m_i = 0 \quad \mathrm{m\neq n}$$
 that all right eigenvectors with non-zero eigenvalues have to sum to zero.
 
 ## Average rate
+
 Traditionally, sequence evolution models are normalized such that the average rate equals one, that is on a branch of length one you observe on average one mutation.
 The rate of mutating away from site $i$ is $Q_{ii} = -\sum_j Q_{ji}$ and the average rate is thus $-\sum_{i} Q_{ii}\pi_i = 1$.
 If the average rate calculated such differs from 1, $Q_{ij}$ can be rescaled accordingly (we can't rescale $\pi_i$ as they sum to one).
-
-
 
 ## General time reversible models
 
@@ -54,28 +52,24 @@ $$\mathbf{D} \mathbf{\tilde{Q}}  \mathbf{D}^{-1} \mathbf{D} w^k_i = \mathbf{D} \
 and $\mathbf{D} w^k_i$ is thus a right eigenvector to $\mathbf{Q}$ with eigenvector $\lambda_k$.
 Similarly, the left eigenvectors are $\mathbf{D}^{-1} w^k_i$.
 
-
 ## Special models
 
 ### Jukes Cantor (JC69)
 
 The Jukes-Cantor model is the simplest possible substitution model with an equal rate between any pair of states $Q_{ij} = 1/(n-1)$ where $n$ is the alphabet size.
-In this case, $\lambda_i = (n+1)/n$ for $i=1\ldots, n-1$ and $\lambda_n=0$.
+In this case, $\lambda_i = -n/(n-1)$ for $i=1\ldots, n-1$ and $\lambda_n=0$.
 The eigenvector $v^n_j=1$ and the remaining $n-1$ are degenerate and span the orthogonal space.
 Left and right eigenvectors agree since the model is symmetric.
 
 The sequence evolution of this model is particularly simple
-$$P(s|t) = (1-e^{-(n+1)t/n})/n + e^{-(n+1)t/n}P(s|0)/n$$
+$$P(s|t) = (1-e^{-nt/(n-1)})/n + e^{-nt/(n-1)}P(s|0)/n$$
 The advantage of this model is that we only need to calculate $n$ numbers rather than calculate multiple matrix-vector dot-products.
-
 
 ### HKY model
 
 The HKY model is a fairly general model that allows for uneven base frequencies and transition/transversion biases but can still be calculated analytically.
 However, evolving the state vector still involves a matrix product.
 It is thus not clear whether this is worth implementing, the only aspect saved would be the one-time calculation of eigenvectors.
-
-
 
 ### Inference of GTR models
 
@@ -95,6 +89,7 @@ This implies that the matrix $e^{Q^at}$ is site specific which increases the com
 
 Traditionally, sequence data comes in the form of an alignment with one sequence per individually.
 At each node, the sequence would then be stored as a string of characters or a matrix describing the likelihood of each sequence state
+
 ```
 seq A   N   C   G   ...
 pos 0   1   2   3   ...
@@ -103,6 +98,7 @@ C   0   1   1   0
 G   0   1   0   1
 T   0   1   0   0
 ```
+
 These profiles consist of the column vectors that enter the sequence evolution models.
 Storing these profiles can be quite costly, as they require `nL` floating point numbers.
 For a large data set (say 10k SARS-CoV-2 sequences) this would require $10k\dot 30k\dot 5 \dot 8b=600Mb$.
@@ -111,6 +107,7 @@ Current TreeTime also keeps a few intermediate results around, further increasin
 Memory should therefore be a serious consideration.
 
 One common way in which sequences can be compressed is by lumping together identical alignment columns
+
 ```
 pos     0123456789...
 seq1    ACACTCAGTC...
@@ -118,6 +115,7 @@ seq2    ACACTCAGTC...
 seq3    ATACTCTGTC...
 seq4    ATACTCTGTC...
 ```
+
 In this example, columns 0,2 are identical, as are 3,5,9 and 4,8.
 Each of these groups of identical columns would require exactly the same calculation.
 Similarly, columns that are all one state up to unknown sites will never be inferred to be a state other than that one state.
@@ -135,6 +133,7 @@ There is thus a case for organizing sequence data into a more general structure 
 In the case of sequences, these data would be quite high dimensional with an alphabet size of 4 or 5 for nucleotides, in case of hosts or locations these data would be one dimensional but with a large alphabet.
 
 ### Models
+
 Edges in the graph are the structures along which the data change and thus along which the evolution models act.
 Most of the time, we will have the same models acting across the entire tree but it is conceivable that models could change along the tree.
 
@@ -143,6 +142,3 @@ In some models, some part of the sequence might evolve at different rates $\mu$ 
 
 There is thus quite a bit of trade-off between biological realism and speed.
 In most cases, fairly simple models are used.
-
-
-

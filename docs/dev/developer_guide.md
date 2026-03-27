@@ -2,7 +2,7 @@
 
 This guide describes how to set up a development environment, build Treetime, contribute to the codebase, and maintain the project.
 
-> ⚠️ This is a document for developers, maintainers of the project as well as for the most curious users. It assumes basic familiarity with Treetime program from a user perspective. If you are not familiar with Treetime, read [User Documentation](TODO) first.
+> ⚠️ This is a document for developers, maintainers of the project as well as for the most curious users. It assumes basic familiarity with Treetime program from a user perspective. If you are not familiar with Treetime, read the User Documentation first.
 
 ## Setup Development Environment
 
@@ -103,25 +103,25 @@ Quick examples of usage of different subcommands:
 ```bash
 v="flu/h3n2/20"
 
-# Run ancestral parsimony reconstruction on './data/flu/h3n2/20' 
+# Run ancestral parsimony reconstruction on './data/flu/h3n2/20'
 cargo -q run --bin=treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral-parsimony/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
 # Run ancestral marginal sparse reconstruction on './data/flu/h3n2/20'
 cargo -q run --bin=treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral-marginal-sparse/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
 # Run ancestral marginal dense reconstruction on './data/flu/h3n2/20'
-cargo -q run --bin=treetime -- ancestral --method-anc=marginal --dense --model=jc69 --outdir="tmp/ancestral-marginal-sparse/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+cargo -q run --bin=treetime -- ancestral --method-anc=marginal --dense --model=jc69 --outdir="tmp/ancestral-marginal-dense/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
 # Run clock estimation on './data/flu/h3n2/20'
 cargo -q run --bin=treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
 ```
 
 > 💡 Set variable `v` (virus) to a different path in the `data/` directory to try the same commands with other example inputs. List names of all examples with:
-> 
+>
 > ```
 > find data -type f -name "tree.nwk" -exec dirname {} \; | sort -h
 > ```
-> 
+>
 > Note that some inputs are very large and may take very long time to run, especially in debug mode.
 
 ## Testing
@@ -129,11 +129,13 @@ cargo -q run --bin=treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/
 ### Unit tests
 
 Tests are run using [nextest](https://nexte.st/). This can be installed with:
+
 ```bash
 cargo install nextest
 ```
 
 Then run the tests with:
+
 ```bash
 cargo nextest run
 ```
@@ -148,7 +150,6 @@ cargo nextest run gtr
 
 See also: [nextest running tests](https://nexte.st/docs/running/)
 
-
 ### Smoke tests
 
 Smoke tests run different Treetime commands on many example inputs in bulk. This serves as a screening for bugs and other regressions. Note that the script does not rebuild Treetime - you need to (re-)build the executable yourself and then pass the path to it to the script:
@@ -158,8 +159,7 @@ cargo run --release --bin=treetime
 ./dev/run-smoke-tests ./target/release/treetime
 ```
 
-Refer to the comments in the script for details. Set variable `verbose = True` in the script to print the commands being run.
-
+Refer to the comments in the script for details.
 
 ## Linting (Static Analysis)
 
@@ -206,6 +206,7 @@ hyperfine --warmup 1 --show-output "./target/release/treetime ancestral --method
 ```
 
 Example output:
+
 ```
   Time (mean ± σ):     655.4 ms ±  25.7 ms    [User: 2258.9 ms, System: 210.1 ms]
   Range (min … max):   635.3 ms … 717.6 ms    10 runs
@@ -238,13 +239,13 @@ Dependencies for subprojects are defined in `packages/**/Cargo.toml` and in `Car
 
 ```bash
 export CARGO_NET_GIT_FETCH_WITH_CLI=true
-export CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git'
-export CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo fetch'
-export CARGO_REGISTRIES_CRATES_IO_PROTOCOL='git cargo upgrade'
+export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+cargo fetch
+cargo upgrade
 cargo upgrade --pinned --incompatible --verbose
 ```
 
-Note that dependency upgrade can cause serious breakage - both compile-time and run-time. The upgraded dependencies, including sub-dependencies, need to be reviewer, unit tests, smoke tests and some manual sanity checks may need to be performed.
+Note that dependency upgrade can cause serious breakage - both compile-time and run-time. The upgraded dependencies, including sub-dependencies, need to be reviewed, unit tests, smoke tests and some manual sanity checks may need to be performed.
 
 ### Versioning
 

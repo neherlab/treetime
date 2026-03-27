@@ -10,6 +10,7 @@
 - [`docs/port-proposals/`](port-proposals/_index.md) - New v1 features that neither v0 nor the design docs specify, pre-implementation.
 - [`docs/port-test-inventory/`](port-test-inventory/_index.md) - Test coverage by domain.
 - [`docs/port-v0-errata/`](port-v0-errata/_index.md) - Defects and oversights in v0 that v1 does not reproduce. ALWAYS check before matching v0 behavior.
+- [`docs/reports/`](reports/) - Research reports on iterative tree refinement and optimization methods.
 - [`docs/dev/`](dev/) - Development infrastructure documentation.
 - [`docs/cli_overview.md`](cli_overview.md) - CLI command overview.
 

@@ -41,5 +41,5 @@ Add one call to `run_optimize_mixed()` (or a subset of its logic) before the fir
 Considerations:
 
 - The timetree command has its own iteration loop and convergence criteria. Adding ML optimization should not conflict with the distribution-based inference but needs testing for convergence behavior.
-- v0's `optimize_tree_marginal` includes damping (`0.75`). The standalone `run_optimize_mixed()` does not have damping (tracked in [M-optimize-oscillation-no-damping.md](M-optimize-oscillation-no-damping.md)). A single undamped pass (`max_iter=1` equivalent) may be sufficient for initial seeding.
+- v0's `optimize_tree_marginal` includes damping (`0.75`). The standalone `run_optimize_mixed()` does not have damping (no issue file yet for optimize oscillation/no-damping). A single undamped pass (`max_iter=1` equivalent) may be sufficient for initial seeding.
 - The `initial_guess_mixed()` function computes branch lengths from mutation counts and could serve as a lighter alternative to full Newton optimization for the initial seeding step.

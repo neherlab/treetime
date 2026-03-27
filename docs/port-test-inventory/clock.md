@@ -12,7 +12,7 @@
 | Clock filter     | 1     | 2      | Unit                                    |
 | Find best root   | 1     | 9      | Unit                                    |
 | Dengue/100       | 1     | 2      | Integration (assertion + golden master) |
-| **Total**        | **7** | **32** |                                         |
+| **Total**        | **6** | **32** |                                         |
 
 ---
 

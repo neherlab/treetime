@@ -71,4 +71,4 @@ v1 uses uniform grids throughout (`create_simple_grid` produces `Array1::linspac
 ## Related issues
 
 - [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md) - the mpox test also fails with value mismatch, but the 44-minute runtime is a separate concern
-- [Internal node dates missing at scale](M-timetree-internal-dates-missing-scale.md) - may share root cause of degenerate distributions for slow-evolving lineages
+- Internal node dates missing at scale (resolved) - may have shared root cause of degenerate distributions for slow-evolving lineages

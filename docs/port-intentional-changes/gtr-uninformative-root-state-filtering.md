@@ -2,7 +2,7 @@
 
 This document describes an intentional deviation from v0 in the dense GTR inference path. v1 filters out alignment positions with uninformative marginal profiles when computing `root_state`, while v0 includes all positions regardless of signal content.
 
-The change affects `root_state` computation in `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at `packages/treetime/src/gtr/infer_gtr/dense.rs:139-154:`. v0's equivalent code is at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`. Downstream, this affects equilibrium frequencies (pi), exchangeability matrix (W), and rate scalar (mu) in the GTR model.
+The change affects `root_state` computation in `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at `packages/treetime/src/gtr/infer_gtr/dense.rs:153-168:`. v0's equivalent code is at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`. Downstream, this affects equilibrium frequencies (pi), exchangeability matrix (W), and rate scalar (mu) in the GTR model.
 
 Datasets with gap-only columns are affected. Measured impact: lassa_L_50 showed ~29% shift in W matrix elements before the golden master capture script was updated to match v1's filtering. After updating the capture script, all seven real datasets pass at 1e-6 tolerance.
 
@@ -69,7 +69,7 @@ NumPy's `argmax` returns the first index among ties, so gap-only columns contrib
 
 ## v1: skips uninformative positions
 
-v1 checks whether each profile row has a dominant state before counting, at `packages/treetime/src/gtr/infer_gtr/dense.rs:144-152:`:
+v1 checks whether each profile row has a dominant state before counting, at `packages/treetime/src/gtr/infer_gtr/dense.rs:158-166:`:
 
 ```rust
 let uniform_threshold = 1.0 / n_states as f64 + 1e-10;

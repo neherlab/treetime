@@ -14,7 +14,7 @@ This distance is the bracket midpoint for Brent's method. Both profiles represen
 
 ## What v1 does
 
-v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L258-L293](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L258-L293)) calls `PartitionMarginalDense::edge_initial_differences()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L111-L131](../../packages/treetime/src/representation/partition/marginal_dense.rs#L111-L131)), which computes:
+v1's `initial_guess_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L300-L328](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L300-L328)) calls `PartitionMarginalDense::edge_subs()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L87-L119](../../packages/treetime/src/representation/partition/marginal_dense.rs#L87-L119)) and `edge_effective_length()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L121-L136](../../packages/treetime/src/representation/partition/marginal_dense.rs#L121-L136)), which compute:
 
 ```
 differences = sum(1 - dot(msg_to_parent[i], msg_to_child[i]))  over non-gap positions

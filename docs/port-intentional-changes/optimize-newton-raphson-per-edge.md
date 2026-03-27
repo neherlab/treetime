@@ -16,7 +16,7 @@ v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marg
 
 ## What v1 does
 
-v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250)) uses Newton-Raphson with two fallback layers:
+v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291)) uses Newton-Raphson with two fallback layers:
 
 1. **Newton-Raphson with analytical derivatives.** The eigendecomposition `Q = V diag(lambda) V^{-1}` allows computing likelihood, first derivative, and second derivative from the same cached coefficients `k_c = (msg.dot(V)) * (msg.dot(V_inv.T))` (dense: [packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75](../../packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75), sparse: [packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119)). The derivatives come at negligible cost beyond the likelihood evaluation:
 
@@ -26,11 +26,11 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
    L'' = sum_j (sum_c k_c lambda_c^2 exp(lambda_c * t)) / (...) - (L')^2
    ```
 
-   The Newton step is clamped to `[-1.0, current_bl]` to enforce non-negativity ([optimize_unified.rs#L213](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L213)). Max 10 inner iterations, convergence at `|delta_bl| <= 0.001 * bl`.
+   The Newton step is clamped to `[-1.0, current_bl]` to enforce non-negativity ([optimize_unified.rs#L254](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L254)). Max 10 inner iterations, convergence at `|delta_bl| <= 0.001 * bl`.
 
-2. **Grid search fallback.** When the second derivative is non-negative (non-concave region where Newton would step the wrong way), v1 evaluates 100 equally-spaced points on `[0.1 * one_mutation, 1.5 * bl + one_mutation]` and selects the maximum ([optimize_unified.rs#L233-L244](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L233-L244)).
+2. **Grid search fallback.** When the second derivative is non-negative (non-concave region where Newton would step the wrong way), v1 evaluates 100 equally-spaced points on `[0.1 * one_mutation, 1.5 * bl + one_mutation]` and selects the maximum ([optimize_unified.rs#L273-L286](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L273-L286)).
 
-3. **Zero-branch short-circuit.** Before any optimization, v1 checks if zero branch length is optimal: combined likelihood at zero > 0.01 AND first derivative < 0 at zero (`is_zero_branch_optimal()` at [optimize_unified.rs#L153-L173](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L153-L173)).
+3. **Zero-branch short-circuit.** Before any optimization, v1 checks if zero branch length is optimal: combined likelihood at zero > 0.01 AND first derivative < 0 at zero (`is_zero_branch_optimal()` at [optimize_unified.rs#L192-L214](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L192-L214)).
 
 ## Why v1 changes this
 

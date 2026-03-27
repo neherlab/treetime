@@ -50,6 +50,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | ID      | Issue file                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- |
 | coal    | [M-timetree-coalescent-ci-excludes-internal](M-timetree-coalescent-ci-excludes-internal.md) |
+| conf    | Confidence interval related flags (`--confidence`, `--clock-std-dev`)                       |
 | neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
 
 ## Base Command

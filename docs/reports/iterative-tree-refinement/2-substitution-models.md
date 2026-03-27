@@ -77,7 +77,7 @@ Three cases arise when composing substitutions at the same position:
 
 Set-union produces correct results only for convergent mutations at the same position. For chains and cancellations, it produces incorrect mutation counts and incorrect ancestral state assignments.
 
-In v1, this is a known defect: `collapse_sparse_edge()` uses `iterator_union()` instead of `compose_substitutions()`. Tracked as `M-prune-collapse-uses-union-not-composition` in the known issues ledger.
+In v1, this is a known defect: `collapse_sparse_edge()` in [`packages/treetime/src/commands/prune/run.rs`](../../../packages/treetime/src/commands/prune/run.rs) uses `iterator_union()` from `treetime_utils::iterator::union` instead of composing substitutions. A correct composition operation does not exist yet. Tracked as `M-prune-collapse-uses-union-not-composition` in the known issues ledger.
 
 ## The model hierarchy
 
@@ -167,7 +167,7 @@ v1 code: eigendecomposition-based evaluation in [`packages/treetime/src/commands
 
 For reversible models, all eigenvalues are non-positive. One eigenvalue is always zero (corresponding to the stationary distribution). The remaining eigenvalues determine how fast the Markov chain approaches equilibrium.
 
-For JC69: eigenvalues are `[0, -4mu/3, -4mu/3, -4mu/3]` where `mu` is the per-pair substitution rate (the off-diagonal entry of Q), not the overall substitution rate. Three equal negative eigenvalues.
+For JC69: eigenvalues are `[0, -4mu, -4mu, -4mu]` where `mu` is the per-pair substitution rate (the off-diagonal entry of Q), not the overall substitution rate. Three equal negative eigenvalues.
 
 For GTR: eigenvalues are `[0, lambda_1, lambda_2, lambda_3]` with `lambda_i < 0`. Distinct for most parameter choices, making the likelihood surface more complex.
 
@@ -193,4 +193,4 @@ v1 code: per-site rate variation is tracked as a known issue (`M-gtr-per-site-ra
 - Lanave, C., G. Preparata, C. Saccone, and G. Serio. 1984. "A New Method for Calculating Evolutionary Substitution Rates." _J. Mol. Evol._ 20:86-93. https://doi.org/10.1007/BF02101990
 - Tavare, S. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lect. Math. Life Sci._ 17:57-86. https://doi.org/10.1090/psapm/041
 - Yang, Z. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates." _J. Mol. Evol._ 39:306-314. https://doi.org/10.1007/BF00160154
-- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(2):1250-1286. https://doi.org/10.1214/16-AAP1240
+- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1250-1286. https://doi.org/10.1214/16-AAP1240

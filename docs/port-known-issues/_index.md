@@ -39,6 +39,7 @@ Files are prefixed with a severity letter so that `ls` sorts high-severity first
 | `C-`   | Critical   | Data corruption, security, blocks all usage                                     |
 | `H-`   | High       | Crashes, panics, blocks correct results, or missing standard expected feature   |
 | `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
+| `L-`   | Low        | Minor inefficiency, missing test, non-blocking cleanup                          |
 | `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic gaps              |
 
 The letters C < H < M < N sort alphabetically in severity order. Domain prefix
@@ -55,11 +56,12 @@ exactly.
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | ~~High~~   | ~~Timetree~~ | ~~Timetree crashes on zero-length branches with grid spacing error~~ **FIXED**                                                  |
-| Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                              |
+| Medium     | Timetree     | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)         |
 | ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
-| Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                               |
-| Negligible | Clock        | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                        |
-| Negligible | Clock        | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                     |
+| ~~High~~   | ~~Optimize~~ | ~~[Optimize sparse marginal reconstruction crashes with NaN](H-optimize-sparse-marginal-nan-crash.md)~~ **FIXED**               |
+| Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                          |
+| Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)              |
+| Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                      |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                               |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                       |
@@ -69,18 +71,17 @@ exactly.
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
-| Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
-| Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
-| Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
+| Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                          |
+| Low        | GTR          | [Site-specific GTR not integrated into partition system](L-gtr-site-specific-partition-integration.md)                          |
+| Low        | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](L-gtr-site-specific-e2e-inference-test.md)              |
 | Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
-| Medium     | Prune        | [Edge collapse uses union instead of composition for mutations](M-prune-collapse-uses-union-not-composition.md)                 |
-| Medium     | Prune        | [Prune command applies merge before prune, should be reversed](M-prune-wrong-operation-order.md)                                |
+| Medium     | Prune        | [Prune edge collapse uses set-union instead of mutation composition](M-prune-collapse-uses-union-not-composition.md)            |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Medium     | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)    |
 | Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                              |
-| ~~Medium~~ | ~~Timetree~~ | ~~Coalescent likelihood always returns None~~ **FIXED**                                                                         |
+| ~~Medium~~ | ~~Timetree~~ | ~~[Coalescent likelihood always returns None](M-timetree-coalescent-likelihood-stub.md)~~ **FIXED**                             |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                      |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                    |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)              |
@@ -100,13 +101,11 @@ exactly.
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                 |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                             |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                      |
-| Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                           |
+| Low        | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                           |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                              |
 | Negligible | Optimize     | [Optimizer evaluation functions omit mu scaling factor](N-optimize-mu-scaling-omitted-in-evaluation.md)                         |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
-| Negligible | Optimize     | [Branch length likelihood does not account for indels](N-optimize-indel-contribution-to-likelihood.md)                          |
-| Negligible | Optimize     | [Initial branch length guess always overwrites input values](N-optimize-initial-guess-not-optional.md)                          |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                      |
@@ -120,8 +119,8 @@ exactly.
 | Negligible | Timetree     | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                               |
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)            |
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                               |
-| Negligible | Timetree     | [Auspice JSON output incomplete](N-timetree-auspice-json-incomplete.md)                                                         |
-| Negligible | Timetree     | [Unnamed root after reroot](N-timetree-unnamed-root-after-reroot.md)                                                            |
+| Negligible | Timetree     | [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md)       |
+| Negligible | Timetree     | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                             |
 | Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                  |
 | Negligible | Timetree     | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                         |
 | Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                               |

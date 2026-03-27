@@ -30,8 +30,8 @@ The ancestral CLI does not call [`TreeAnc.infer_gtr_iterative()`](../../packages
 
 The v1 ancestral command in [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs) also performs one conditional model fit.
 
-- Sparse mode: compress sequences, infer one model with [`get_gtr_sparse()`](../../packages/treetime/src/gtr/get_gtr.rs#L101-L111), then run one marginal reconstruction under that model.
-- Dense mode: run one preliminary marginal pass under temporary JC69 to populate profiles, infer one model with [`get_gtr_dense()`](../../packages/treetime/src/gtr/get_gtr.rs#L114-L126), then rerun marginal under the inferred model.
+- Sparse mode: compress sequences, infer one model with [`get_gtr_sparse()`](../../packages/treetime/src/gtr/get_gtr.rs#L115-L132), then run one marginal reconstruction under that model.
+- Dense mode: run one preliminary marginal pass under temporary JC69 to populate profiles, infer one model with [`get_gtr_dense()`](../../packages/treetime/src/gtr/get_gtr.rs#L135-L152), then rerun marginal under the inferred model.
 
 Relevant orchestration is at [`packages/treetime/src/commands/ancestral/run.rs#L109-L188`](../../packages/treetime/src/commands/ancestral/run.rs#L109-L188).
 

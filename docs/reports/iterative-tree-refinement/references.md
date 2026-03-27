@@ -24,7 +24,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 10. Dempster, A. P., N. M. Laird, and D. B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _JRSS:B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x
 
-11. Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(2):1250-1286. https://doi.org/10.1214/16-AAP1240
+11. Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1250-1286. https://doi.org/10.1214/16-AAP1240
 
 12. Drummond, A. J., S. Y. W. Ho, M. J. Phillips, and A. Rambaut. 2006. "Relaxed Phylogenetics and Dating with Confidence." _PLoS Biology_ 4(5):e88. https://doi.org/10.1371/journal.pbio.0040088
 

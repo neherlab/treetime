@@ -16,10 +16,13 @@ v1 produces fewer output files than v0. Several output types are not implemented
   (see [Plot commands unimplemented](N-timetree-plot-unimplemented.md))
 - `timetree.pdf` - time tree visualization
   (see [Plot commands unimplemented](N-timetree-plot-unimplemented.md))
-- `auspice_tree.json` - Auspice JSON for Nextstrain visualization
 - `skyline.tsv` - effective population size over time
   (see [Missing skyline output files](N-timetree-missing-skyline-output.md))
 - `skyline.pdf` - skyline plot
+
+## Produced but incomplete
+
+- `auspice_tree.json` - v1 produces this file, but it is missing mutations, branch confidence, and genome annotations compared to v0 (see [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md))
 
 ## v1-only outputs
 

@@ -32,7 +32,7 @@ This blends new and old branch lengths with a weight that shifts from conservati
 
 v0 also tightens the per-branch Brent tolerance across outer iterations (`tol = 1e-8 + 0.01^(i+1)`), spending less work on early iterations where profiles are still rough.
 
-v1 has none of these safeguards. The convergence loop at [packages/treetime/src/commands/optimize/run.rs#L121-L141](../../packages/treetime/src/commands/optimize/run.rs#L121-L141) applies full Newton-optimal updates each iteration and checks only absolute likelihood change (`--dp`, default 1e-2) for early stopping, which cannot distinguish convergence from oscillation.
+v1 has none of these safeguards. The convergence loop at [packages/treetime/src/commands/optimize/run.rs#L134-L155](../../packages/treetime/src/commands/optimize/run.rs#L134-L155) applies full Newton-optimal updates each iteration and checks only absolute likelihood change (`--dp`, default 1e-2) for early stopping, which cannot distinguish convergence from oscillation.
 
 ### Method choice consistency
 
@@ -68,7 +68,7 @@ Implemented in [packages/treetime/src/commands/optimize/run.rs](../../packages/t
 
 ### P2: Progressive tolerance tightening
 
-Add per-iteration tolerance scaling for the Newton convergence criterion. The current Newton inner loop converges when `|delta_bl| <= 0.001 * bl` ([optimize_unified.rs#L217](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L217)). Scale this by iteration:
+Add per-iteration tolerance scaling for the Newton convergence criterion. The current Newton inner loop converges when `|delta_bl| <= 0.001 * bl` ([optimize_unified.rs#L258](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L258)). Scale this by iteration:
 
 ```
 relative_tol = 0.01 * 0.01^i  // tight: 0.01, 0.0001, 0.000001, ...
@@ -76,7 +76,7 @@ relative_tol = 0.01 * 0.01^i  // tight: 0.01, 0.0001, 0.000001, ...
 
 Early iterations use a loose tolerance (profiles are rough, no point in precise branch lengths). Later iterations tighten as profiles stabilize.
 
-**Implementation location:** `packages/treetime/src/commands/optimize/optimize_unified.rs`, pass tolerance as a parameter to `run_optimize_mixed()`.
+**Implementation location:** `packages/treetime/src/commands/optimize/optimize_unified.rs`, pass tolerance as a parameter to `run_optimize_mixed()` (currently at [optimize_unified.rs#L221](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221)).
 
 ### ~~P3: Wire `--model` flag~~ (implemented)
 
@@ -116,7 +116,7 @@ Create a `BranchLengthOptMethod` enum (Newton, Brent, Grid) analogous to the clo
 
 - New args in `packages/treetime/src/commands/optimize/args.rs`
 - New enum in `packages/treetime/src/commands/optimize/` (or reuse clock's pattern from `packages/treetime/src/commands/clock/find_best_root/params.rs`)
-- Dispatch in `run_optimize_mixed()` at [packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L180-L250)
+- Dispatch in `run_optimize_mixed()` at [packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291)
 
 ### P6: Backtracking line search for Newton
 
@@ -124,7 +124,7 @@ Add an optional backtracking line search within the Newton inner loop. After com
 
 Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retains local superlinear convergence while achieving better global progress than backtracking. For per-branch phylogenetic optimization, a simple halving line search is sufficient because the likelihood evaluation is cheap (reuses cached coefficients).
 
-**Implementation location:** [packages/treetime/src/commands/optimize/optimize_unified.rs#L211-L231](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L211-L231), wrap the Newton step in a line search that checks `evaluate_mixed_log_lh_only(contributions, new_bl) > current_log_lh`.
+**Implementation location:** [packages/treetime/src/commands/optimize/optimize_unified.rs#L252-L272](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L252-L272), wrap the Newton step in a line search that checks `evaluate_mixed_log_lh_only(contributions, new_bl) > current_log_lh`.
 
 ## Proposed feature inventory after implementation
 
