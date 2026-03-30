@@ -563,10 +563,15 @@ fn merge_sibling_pair(
     let mut partition = partition.write_arc();
     let data = &old_partition_data[pi];
 
-    // Add node entry for the new internal node so edge_subs_from_graph()
-    // can reconstruct states on edges connected to it.
-    let empty_node = SparseNodePartition::empty(&partition.alphabet);
-    partition.nodes.entry(new_node_key).or_insert(empty_node);
+    // Add node entry for the new internal node. Copy the parent's composition
+    // so that the backward pass in combine_messages() computes correct fixed-site
+    // contributions. An empty composition would zero out ~99% of the log-likelihood
+    // signal for the merge-created node and all ancestors.
+    let mut new_node = SparseNodePartition::empty(&partition.alphabet);
+    let parent_comp = partition.nodes[&parent_key].seq.composition.clone();
+    new_node.seq.composition = parent_comp.clone();
+    new_node.seq.fitch.composition = parent_comp;
+    partition.nodes.entry(new_node_key).or_insert(new_node);
 
     // Remove old edge entries
     partition.edges.remove(&pair.edge_key_a);
