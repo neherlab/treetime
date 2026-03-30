@@ -64,7 +64,7 @@ exactly.
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                               |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                       |
 | Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                               |
-| Medium     | Core         | [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md)                        |
+| ~~Medium~~ | ~~Core~~     | ~~Branch mutations have no unified API across partition types~~ **FIXED**                                                       |
 | Medium     | Core         | [Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)                                          |
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
