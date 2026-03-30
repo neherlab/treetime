@@ -99,12 +99,14 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     *prune_nodes_list_file_delimiter,
   )?;
 
+  // Prune first: collapsing short/empty branches creates larger polytomies,
+  // exposing more siblings for shared-mutation merging.
+  prune_nodes(&mut graph, &partitions, *prune_short, *prune_empty, &node_names)?;
+
   if *merge_shared_mutations {
     merge_shared_mutation_branches(&mut graph, &partitions)?;
     graph.build()?;
   }
-
-  prune_nodes(&mut graph, &partitions, *prune_short, *prune_empty, &node_names)?;
 
   write_graph(outdir, &graph)?;
 
