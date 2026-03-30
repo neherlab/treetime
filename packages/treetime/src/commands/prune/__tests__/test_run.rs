@@ -465,8 +465,8 @@ mod tests {
     let (graph2, partitions2) = create_test_graph_with_partitions("(A:0.1)root;", &[(0, Some(0))])?;
     let edge_zero_key = graph2.get_edges()[0].read_arc().key();
 
-    assert_eq!(get_edge_num_muts(&partitions, edge_unknown_key), None);
-    assert_eq!(get_edge_num_muts(&partitions2, edge_zero_key), Some(0));
+    assert_eq!(get_edge_num_muts(&graph, &partitions, edge_unknown_key), None);
+    assert_eq!(get_edge_num_muts(&graph2, &partitions2, edge_zero_key), Some(0));
 
     Ok(())
   }

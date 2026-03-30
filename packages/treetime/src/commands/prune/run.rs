@@ -4,6 +4,7 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69, write_gtr_json};
 use crate::make_error;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Sub, compose_substitutions};
@@ -145,7 +146,12 @@ pub(super) fn prune_nodes(
   Ok(())
 }
 
+/// Count current nucleotide mutations on one edge across all partitions.
+///
+/// Uses `PartitionBranchOps::edge_subs()` to derive mutations from the
+/// current partition state rather than reading stale Fitch-era `subs`.
 pub(super) fn get_edge_num_muts(
+  graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
 ) -> Option<usize> {
@@ -154,8 +160,8 @@ pub(super) fn get_edge_num_muts(
 
   for partition in partitions {
     let partition = partition.read_arc();
-    if let Some(edge_partition) = partition.edges.get(&edge_key) {
-      total_muts += edge_partition.subs.len();
+    if partition.edges.contains_key(&edge_key) {
+      total_muts += partition.edge_subs(graph, edge_key).ok()?.len();
       found_any = true;
     }
   }
@@ -186,7 +192,7 @@ fn prune_internal_nodes(
       let weight = edge.payload().read_arc().branch_length();
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
-      let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key()) == Some(0);
+      let should_prune_empty = prune_empty && get_edge_num_muts(graph, partitions, edge.key()) == Some(0);
 
       let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
       let name = target_node.name();
@@ -356,7 +362,7 @@ fn merge_single_polytomy(
       break;
     }
 
-    let best = find_best_shared_mutation_pair(partitions, &child_edges);
+    let best = find_best_shared_mutation_pair(graph, partitions, &child_edges);
     let Some(best) = best else { break };
 
     debug!(
@@ -390,6 +396,7 @@ struct SharedMutationPair {
 /// Find the pair of child edges with the most shared mutations across all partitions.
 /// Returns None if no pair shares any mutations.
 fn find_best_shared_mutation_pair(
+  graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   child_edges: &[GraphEdgeKey],
 ) -> Option<SharedMutationPair> {
@@ -398,7 +405,7 @@ fn find_best_shared_mutation_pair(
 
   for i in 0..n {
     for j in (i + 1)..n {
-      let shared_subs = compute_shared_subs_across_partitions(partitions, child_edges[i], child_edges[j]);
+      let shared_subs = compute_shared_subs_across_partitions(graph, partitions, child_edges[i], child_edges[j]);
       let total_shared: usize = shared_subs.iter().map(Vec::len).sum();
 
       if total_shared > 0 {
@@ -419,7 +426,11 @@ fn find_best_shared_mutation_pair(
 }
 
 /// Compute the intersection of substitutions on two edges, per partition.
+///
+/// Uses `PartitionBranchOps::edge_subs()` to derive mutations from the
+/// current partition state rather than reading stale Fitch-era `subs`.
 fn compute_shared_subs_across_partitions(
+  graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key_a: GraphEdgeKey,
   edge_key_b: GraphEdgeKey,
@@ -428,10 +439,9 @@ fn compute_shared_subs_across_partitions(
     .iter()
     .map(|partition| {
       let partition = partition.read_arc();
-      let empty_subs = vec![];
-      let subs_a = partition.edges.get(&edge_key_a).map_or(&empty_subs, |e| &e.subs);
-      let subs_b = partition.edges.get(&edge_key_b).map_or(&empty_subs, |e| &e.subs);
-      iterator_intersection(subs_a, subs_b).cloned().collect_vec()
+      let subs_a = partition.edge_subs(graph, edge_key_a).unwrap_or_default();
+      let subs_b = partition.edge_subs(graph, edge_key_b).unwrap_or_default();
+      iterator_intersection(&subs_a, &subs_b).cloned().collect_vec()
     })
     .collect()
 }
@@ -469,7 +479,9 @@ fn merge_sibling_pair(
     .get_edge(pair.edge_key_b)
     .and_then(|e| e.read_arc().payload().read_arc().branch_length());
 
-  // Save original partition data for both edges before removal
+  // Save original partition data for both edges before removal.
+  // Uses edge_subs() to derive mutations from current state rather than
+  // reading stale Fitch-era subs directly.
   let old_partition_data: Vec<_> = partitions
     .iter()
     .enumerate()
@@ -477,8 +489,8 @@ fn merge_sibling_pair(
       let partition = partition.read_arc();
       let edge_a = partition.edges.get(&pair.edge_key_a);
       let edge_b = partition.edges.get(&pair.edge_key_b);
-      let subs_a = edge_a.map(|e| e.subs.clone()).unwrap_or_default();
-      let subs_b = edge_b.map(|e| e.subs.clone()).unwrap_or_default();
+      let subs_a = partition.edge_subs(graph, pair.edge_key_a).unwrap_or_default();
+      let subs_b = partition.edge_subs(graph, pair.edge_key_b).unwrap_or_default();
       let indels_a = edge_a.map(|e| e.indels.clone()).unwrap_or_default();
       let indels_b = edge_b.map(|e| e.indels.clone()).unwrap_or_default();
       let shared = &pair.shared_subs[pi];
