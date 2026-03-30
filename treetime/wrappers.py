@@ -709,7 +709,7 @@ def reconstruct_discrete_traits(
     if type(weights) == str:
         try:
             tmp_weights = pd.read_csv(weights, sep='\t' if weights[-3:] == 'tsv' else ',', skipinitialspace=True)
-            weight_dict = {row[0]: row[1] for ri, row in tmp_weights.iterrows() if not np.isnan(row[1])}
+            weight_dict = {row.iloc[0]: row.iloc[1] for ri, row in tmp_weights.iterrows() if not np.isnan(row.iloc[1])}
         except:
             raise ValueError("Loading of weights file '%s' failed!" % weights)
     elif type(weights) == dict:
