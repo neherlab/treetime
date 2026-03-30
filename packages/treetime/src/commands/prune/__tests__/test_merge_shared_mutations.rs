@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::sparse::SparseEdgePartition;
+  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_relative_eq;
@@ -38,6 +38,26 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
+
+    // Build root reference sequence consistent with edge subs.
+    // Set each position to the sub's ref character so that edge_subs_from_graph()
+    // produces the same mutations as the stored subs.
+    let mut ref_seq = treetime_primitives::Seq::from_iter((0..length).map(|_| c(b'A')));
+    for (_, _, subs) in edge_mutations {
+      for s in subs {
+        if s.pos() < length {
+          ref_seq[s.pos()] = s.reff();
+        }
+      }
+    }
+
+    // Populate node entries so edge_subs_from_graph() can reconstruct states
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      let mut node_part = SparseNodePartition::empty(&partition.alphabet);
+      node_part.seq.sequence = ref_seq.clone();
+      partition.nodes.insert(key, node_part);
+    }
 
     for (source, target, subs) in edge_mutations {
       let edge_key =
@@ -360,6 +380,16 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
+    // Populate nodes for p2 with a reference sequence matching the sub ref chars
+    let mut p2_ref_seq = treetime_primitives::Seq::from_iter((0..200).map(|_| c(b'A')));
+    p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      let mut node_part = SparseNodePartition::empty(&p2_inner.alphabet);
+      node_part.seq.sequence = p2_ref_seq.clone();
+      p2_inner.nodes.insert(key, node_part);
+    }
+
     // Partition 2: A and B share mutation at pos 50
     let edge_a = find_edge_key(&graph, "root", "A").unwrap();
     let edge_b = find_edge_key(&graph, "root", "B").unwrap();

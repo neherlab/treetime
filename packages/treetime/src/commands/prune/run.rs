@@ -6,6 +6,7 @@ use crate::make_error;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::representation::payload::sparse::SparseNodePartition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
@@ -551,10 +552,15 @@ fn merge_sibling_pair(
     },
   )?;
 
-  // Update partition edge data
+  // Update partition node and edge data
   for (pi, partition) in partitions.iter().enumerate() {
     let mut partition = partition.write_arc();
     let data = &old_partition_data[pi];
+
+    // Add node entry for the new internal node so edge_subs_from_graph()
+    // can reconstruct states on edges connected to it.
+    let empty_node = SparseNodePartition::empty(&partition.alphabet);
+    partition.nodes.entry(new_node_key).or_insert(empty_node);
 
     // Remove old edge entries
     partition.edges.remove(&pair.edge_key_a);

@@ -6,6 +6,7 @@ mod tests {
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
   use crate::seq::mutation::Sub;

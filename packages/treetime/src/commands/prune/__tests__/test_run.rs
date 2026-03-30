@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-  use crate::representation::payload::sparse::SparseEdgePartition;
+  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -27,6 +27,19 @@ mod tests {
     AsciiChar::from_byte_unchecked(b)
   }
 
+  /// Populate partition node entries for all graph nodes with dummy reference sequences.
+  /// Required for `edge_subs()` to work (it accesses node data to reconstruct states).
+  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      partition.nodes.entry(key).or_insert_with(|| {
+        let mut node_part = SparseNodePartition::empty(&partition.alphabet);
+        node_part.seq.sequence = treetime_primitives::Seq::from_iter((0..partition.length).map(|_| c(b'A')));
+        node_part
+      });
+    }
+  }
+
   fn create_test_graph_with_partitions(
     nwk: &str,
     edge_mutations: &[(usize, Option<usize>)], // (edge_index, num_mutations)
@@ -44,6 +57,8 @@ mod tests {
         nodes: btreemap! {},
         edges: btreemap! {},
       };
+
+      populate_test_nodes(&mut partition, &graph);
 
       for (edge_index, num_muts) in edge_mutations {
         if let Some(edge) = graph.get_edges().get(*edge_index) {
@@ -87,6 +102,8 @@ mod tests {
         nodes: btreemap! {},
         edges: btreemap! {},
       };
+
+      populate_test_nodes(&mut partition, &graph);
 
       for (source_name, target_name, num_muts) in edge_mutations {
         if let Some(edge_key) = find_edge_key(&graph, source_name, target_name) {
@@ -431,10 +448,12 @@ mod tests {
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
 
     graph.add_edge(
@@ -992,18 +1011,22 @@ mod tests {
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
 
     // Root -> internal has branch length, internal -> A has None
@@ -1064,18 +1087,22 @@ mod tests {
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
 
     // Root -> internal has None, internal -> A has Some
@@ -1135,18 +1162,22 @@ mod tests {
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
       desc: None,
+      ..NodeAncestral::default()
     });
 
     graph.add_edge(root, internal, EdgeAncestral { branch_length: None })?;

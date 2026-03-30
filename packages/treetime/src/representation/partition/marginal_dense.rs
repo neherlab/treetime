@@ -1,12 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::representation::partition::traits::PartitionBranchOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
 use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
+use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};

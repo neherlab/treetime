@@ -1,12 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::representation::partition::traits::PartitionBranchOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::HasLogLh;
+use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
@@ -120,16 +120,26 @@ impl PartitionMarginalSparse {
     let edge = &self.edges[&edge_key];
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
-    let parent = &self.nodes[&parent_key];
-    let child = &self.nodes[&child_key];
+
+    // Nodes may be absent when called during topology changes (e.g. after
+    // merge_sibling_pair creates a new node before marginal reconstruction
+    // populates its profile). Missing nodes contribute no variable positions.
+    let parent_vars: Box<dyn Iterator<Item = usize>> =
+      self.nodes.get(&parent_key).map_or(Box::new(std::iter::empty()), |n| {
+        Box::new(n.profile.variable.keys().copied())
+      });
+    let child_vars: Box<dyn Iterator<Item = usize>> =
+      self.nodes.get(&child_key).map_or(Box::new(std::iter::empty()), |n| {
+        Box::new(n.profile.variable.keys().copied())
+      });
 
     Ok(
       edge
         .subs
         .iter()
         .map(Sub::pos)
-        .chain(parent.profile.variable.keys().copied())
-        .chain(child.profile.variable.keys().copied())
+        .chain(parent_vars)
+        .chain(child_vars)
         // Stable ordering keeps `Vec<Sub>` equality meaningful in tests and
         // callers that compare branch mutation lists directly.
         .sorted()
@@ -161,44 +171,50 @@ impl PartitionMarginalSparse {
       .get_node(node_key)
       .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
     let node = node.read_arc();
-    let node_data = &self.nodes[&node_key];
+    let node_data = self.nodes.get(&node_key);
 
     // Compute base state from tree structure
     let base_state = if node.is_root() {
-      node_data.seq.sequence[pos]
+      node_data.map_or(self.alphabet.char(0), |d| {
+        d.seq.sequence.get(pos).copied().unwrap_or(self.alphabet.char(0))
+      })
     } else {
       let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
       let parent_key = parent_node.read_arc().key();
       let edge_key = edge.read_arc().key();
-      let edge_data = &self.edges[&edge_key];
       let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
 
-      // Indels have highest precedence, then substitutions, then parent state
-      if let Some(indel) = edge_data
-        .indels
-        .iter()
-        .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
-      {
-        if indel.deletion {
-          self.alphabet.gap()
+      // Apply edge changes if edge partition data exists
+      self.edges.get(&edge_key).map_or(parent_state, |edge_data| {
+        // Indels have highest precedence, then substitutions, then parent state
+        if let Some(indel) = edge_data
+          .indels
+          .iter()
+          .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
+        {
+          if indel.deletion {
+            self.alphabet.gap()
+          } else {
+            indel.seq[pos - indel.range.0]
+          }
+        } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
+          sub.qry()
         } else {
-          indel.seq[pos - indel.range.0]
+          parent_state
         }
-      } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
-        sub.qry()
-      } else {
-        parent_state
-      }
+      })
     };
 
     // Variable sites have highest precedence, then unknown, then base state
-    let state = if let Some(states) = node_data.profile.variable.get(&pos) {
-      self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0))
-    } else if range_contains(&node_data.seq.unknown, pos) {
-      self.alphabet.unknown()
-    } else {
-      base_state
-    };
+    let state = node_data.map_or(base_state, |d| {
+      if let Some(states) = d.profile.variable.get(&pos) {
+        self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0))
+      } else if range_contains(&d.seq.unknown, pos) {
+        self.alphabet.unknown()
+      } else {
+        base_state
+      }
+    });
 
     cache.insert((node_key, pos), state);
     Ok(state)

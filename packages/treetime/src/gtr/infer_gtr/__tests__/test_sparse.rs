@@ -57,9 +57,13 @@ mod tests {
     update_marginal(&graph, std::slice::from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
+    // Expected values reflect MAP-derived mutations from marginal posteriors
+    // (not stale Fitch substitutions). After marginal inference, edge_subs_from_graph()
+    // compares MAP states between parent and child, which can differ from Fitch
+    // assignments at ambiguous positions.
     let counts_expected = MutationCounts {
-      nij: array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
-      Ti: array![1.98, 2.945, 2.515, 2.64],
+      nij: array![[0., 0., 1., 1.], [0., 0., 0., 1.], [1., 1., 0., 0.], [0., 0., 1., 0.]],
+      Ti: array![1.72, 2.835, 2.775, 2.75],
       root_state: array![4.0, 3.0, 3.0, 4.0],
     };
 
@@ -110,24 +114,26 @@ mod tests {
       },
     )?;
 
+    // Expected values reflect GTR inference from MAP-derived marginal mutations
+    // (not stale Fitch substitutions).
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       array![
-        [0.0, 2.1751124, 2.95601658, 0.18620301],
-        [2.1751124, 0.0, 1.40528091, 1.41465696],
-        [2.95601658, 1.40528091, 0.0, 0.74490315],
-        [0.18620301, 1.41465696, 0.74490315, 0.0]
+        [0.0, 0.23187287, 2.51672889, 1.35482864],
+        [0.23187287, 0.0, 1.29546764, 1.26410798],
+        [2.51672889, 1.29546764, 0.0, 1.23030742],
+        [1.35482864, 1.26410798, 1.23030742, 0.0]
       ],
       &actual.W,
       epsilon = 1e-7
     );
 
     pretty_assert_ulps_eq!(
-      array![0.14878846, 0.24051536, 0.31239203, 0.29830414],
+      array![0.28554666, 0.21928785, 0.24010044, 0.25506505],
       &actual.pi,
       epsilon = 1e-7
     );
-    pretty_assert_ulps_eq!(0.9471364432348814, actual.mu, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(0.6041583893945609, actual.mu, epsilon = 1e-7);
 
     Ok(())
   }
