@@ -272,6 +272,11 @@ impl GTR {
     // Precompute eigendecomposition for efficient exp(Q*t)
     let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
 
+    // A 2-state rate matrix has exactly one nonzero eigenvalue, so L(t) is
+    // unimodal (Dinh & Matsen 2017, Corollary 3.1). JC69/F81 constructors
+    // override this to true for 4-state nucleotide models separately.
+    let unimodal_branch_likelihood = n == 2;
+
     Ok(Self {
       debug: false,
       average_rate,
@@ -282,7 +287,7 @@ impl GTR {
       v,
       v_inv,
       site_rates: None,
-      unimodal_branch_likelihood: false,
+      unimodal_branch_likelihood,
     })
   }
 
