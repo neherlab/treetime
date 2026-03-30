@@ -16,7 +16,7 @@ use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::mem;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
@@ -73,12 +73,50 @@ impl PartitionMarginalSparse {
     self.length
   }
 
+  /// Return current nucleotide changes for one edge, generic over graph type.
+  ///
+  /// This is the generic implementation used by both `PartitionBranchOps::edge_subs()`
+  /// (which constrains to `GraphAncestral`) and direct callers that have other graph
+  /// types (e.g. GTR inference in the timetree context with `Graph<NodeTimetree, ...>`).
+  pub fn edge_subs_from_graph<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
+    &self,
+    graph: &Graph<N, E, D>,
+    edge_key: GraphEdgeKey,
+  ) -> Result<Vec<Sub>, Report> {
+    let parent_key = graph.get_source_node_key(edge_key)?;
+    let child_key = graph.get_target_node_key(edge_key)?;
+    let mut cache = BTreeMap::new();
+    let mut subs = Vec::new();
+
+    for pos in self.edge_candidate_positions(graph, edge_key)? {
+      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
+      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
+
+      if parent_state == child_state {
+        continue;
+      }
+
+      // Gaps and unknowns are not nucleotide substitutions.
+      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
+        continue;
+      }
+
+      subs.push(Sub::new(parent_state, pos, child_state)?);
+    }
+
+    Ok(subs)
+  }
+
   /// Return positions that can change the reconstructed mutation set for one edge.
   ///
   /// In sparse mode, only a small set of sites can change the branch result:
   /// sites changed on this edge, or sites where the parent or child has a
   /// non-default marginal state. Everything else stays the same on both ends.
-  fn edge_candidate_positions(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<usize>, Report> {
+  fn edge_candidate_positions<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
+    &self,
+    graph: &Graph<N, E, D>,
+    edge_key: GraphEdgeKey,
+  ) -> Result<Vec<usize>, Report> {
     let edge = &self.edges[&edge_key];
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
@@ -108,9 +146,9 @@ impl PartitionMarginalSparse {
   ///
   /// After marginal inference, `edge.subs` alone is not enough. The final state
   /// also depends on the node's current marginal result.
-  fn node_state_at(
+  fn node_state_at<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
     &self,
-    graph: &GraphAncestral,
+    graph: &Graph<N, E, D>,
     node_key: GraphNodeKey,
     pos: usize,
     cache: &mut BTreeMap<(GraphNodeKey, usize), AsciiChar>,
@@ -259,33 +297,8 @@ impl PartitionBranchOps for PartitionMarginalSparse {
     self.length
   }
 
-  /// Return the current nucleotide changes for one sparse edge.
-  ///
-  /// This compares the current parent state and child state on the edge.
-  /// It skips gaps and unknowns because optimize counts nucleotide changes only.
   fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
-    let mut cache = BTreeMap::new();
-    let mut subs = Vec::new();
-
-    for pos in self.edge_candidate_positions(graph, edge_key)? {
-      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
-      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
-
-      if parent_state == child_state {
-        continue;
-      }
-
-      // Gaps and unknowns are not nucleotide substitutions.
-      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
-        continue;
-      }
-
-      subs.push(Sub::new(parent_state, pos, child_state)?);
-    }
-
-    Ok(subs)
+    self.edge_subs_from_graph(graph, edge_key)
   }
 
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {

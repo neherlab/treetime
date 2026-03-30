@@ -17,7 +17,7 @@ pub fn infer_gtr_sparse<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
+  D: Send + Sync + Default,
 {
   let counts = get_mutation_counts_sparse(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
@@ -26,6 +26,13 @@ where
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
+/// Count mutations from sparse partition data for GTR inference.
+///
+/// Uses `PartitionMarginalSparse::edge_subs_from_graph()` to derive mutations
+/// from the current partition state rather than reading stale Fitch-era `subs`.
+/// Before marginal inference, this returns the same mutations as Fitch parsimony.
+/// After marginal inference, it returns MAP-derived mutations that reflect the
+/// current posteriors.
 pub fn get_mutation_counts_sparse<N, E, D>(
   graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
@@ -33,7 +40,7 @@ pub fn get_mutation_counts_sparse<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
+  D: Send + Sync + Default,
 {
   let partition = partition.read_arc();
   let alphabet = &partition.alphabet;
@@ -65,8 +72,8 @@ where
       Ti[i] += branch_length * node_composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    let subs = &partition.edges[&edge_key].subs;
-    for m in subs {
+    let subs = partition.edge_subs_from_graph(graph, edge_key)?;
+    for m in &subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry())?;
       let j = alphabet.index(m.reff())?;
