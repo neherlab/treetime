@@ -251,7 +251,7 @@ where
 ///
 /// Only internal (non-leaf-targeting) edges are candidates: collapsing a leaf edge
 /// would remove the leaf from the tree.
-fn find_zero_optimal_internal_edges(graph: &GraphAncestral) -> Vec<GraphEdgeKey> {
+pub(crate) fn find_zero_optimal_internal_edges(graph: &GraphAncestral) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
     .iter()
@@ -274,7 +274,7 @@ fn find_zero_optimal_internal_edges(graph: &GraphAncestral) -> Vec<GraphEdgeKey>
 ///
 /// Dense partitions: stale node/edge entries are removed. Messages will be recomputed
 /// by `update_marginal()` in the next iteration.
-fn collapse_edge_for_optimize(
+pub(crate) fn collapse_edge_for_optimize(
   graph: &mut GraphAncestral,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
@@ -330,7 +330,7 @@ fn collapse_edge_for_optimize(
 /// internal nodes (sparse partitions only, requires discrete substitution data).
 ///
 /// Returns true if any topology change occurred.
-fn prune_and_merge_in_loop(
+pub(crate) fn prune_and_merge_in_loop(
   graph: &mut GraphAncestral,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],

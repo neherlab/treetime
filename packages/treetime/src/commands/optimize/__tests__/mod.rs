@@ -12,3 +12,4 @@ mod test_initial_guess_gtr_messages;
 mod test_is_zero_branch_optimal;
 mod test_newton_convergence;
 mod test_optimization_metrics;
+mod test_topology_cleanup;
