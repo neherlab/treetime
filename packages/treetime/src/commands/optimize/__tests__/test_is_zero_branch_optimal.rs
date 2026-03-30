@@ -360,7 +360,9 @@ mod tests {
     let jc69_contrib = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     let k80_contrib = make_k80_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     // JC69 alone would return true
-    assert!(is_zero_branch_optimal(&[make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]])]));
+    assert!(is_zero_branch_optimal(&[make_dense_contribution(array![[
+      0.0, 1.0, 0.0, 0.0
+    ]])]));
     // But mixed with K80, the shortcut is bypassed
     assert!(!is_zero_branch_optimal(&[jc69_contrib, k80_contrib]));
   }
