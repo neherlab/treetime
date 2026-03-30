@@ -93,17 +93,19 @@ v0 code: [`packages/legacy/treetime/treetime/treetime.py#L307-L376`](../../../pa
 ```
 Initial: initial_guess_mixed()
 Loop (max_iter=20):
-  1. update_marginal()          <-- E-step (sparse + dense)
+  1. update_marginal()                            <-- E-step (sparse + dense)
   2. compute total_lh
   3. if delta_lh < dp: break
   4. save_branch_lengths()
-  5. run_optimize_mixed()       <-- M-step (Newton/grid per edge)
-  6. apply_damping(0.75)        <-- post-pass damping
+  5. run_optimize_mixed()                          <-- M-step (Newton/grid per edge)
+  6. find_zero_optimal_internal_edges()            <-- record zero-optimal edges
+  7. apply_damping(0.75)                           <-- post-pass damping
+  8. prune_and_merge_in_loop(zero_optimal_edges)   <-- topology cleanup
 ```
 
-**No topology cleanup.** `is_zero_branch_optimal()` sets zero-length branches but does not collapse edges or resolve polytomies.
+Zero-optimal edges are identified after the M-step but before damping (step 6), because damping blends the zero values with old branch lengths and obscures the optimizer's decision. Damping applies normally to all edges (step 7). Then `prune_and_merge_in_loop` overrides the damped values for zero-optimal edges back to zero, collapses them, and merges shared mutations in resulting polytomies (sparse partitions only).
 
-v1 code: [`packages/treetime/src/commands/optimize/run.rs#L36-L152`](../../../packages/treetime/src/commands/optimize/run.rs#L36-L152)
+v1 code: [`packages/treetime/src/commands/optimize/run.rs#L37-L162`](../../../packages/treetime/src/commands/optimize/run.rs#L37-L162)
 
 ### Loop 5: v1 timetree refinement
 
@@ -124,31 +126,15 @@ v1 code: [`packages/treetime/src/commands/timetree/refinement.rs#L21-L106`](../.
 
 | Aspect                       | v0 joint    | v0 marginal     | v0 timetree                 | v1 optimize        | v1 timetree         |
 | ---------------------------- | ----------- | --------------- | --------------------------- | ------------------ | ------------------- |
-| Prune zero-length            | Inside loop | After loop      | After resolution (no prune) | Not implemented    | Not implemented     |
-| Polytomy resolution          | N/A         | N/A             | Greedy or stochastic        | Not implemented    | Greedy only         |
+| Prune zero-length            | Inside loop | After loop      | After resolution (no prune) | Inside loop        | Not implemented     |
+| Polytomy resolution          | N/A         | N/A             | Greedy or stochastic        | Merge after prune  | Greedy only         |
 | Damping                      | None        | Inline per-edge | None                        | Post-pass blending | N/A                 |
 | Convergence                  | N_diff < 1  | delta_LH < tol  | ndiff==0 AND n_resolved==0  | delta_LH < dp      | n_diff + n_resolved |
 | Branch re-opt after topology | N/A         | N/A             | Yes                         | N/A                | No                  |
 
-## The proposed integrated loop
+## Implementation notes
 
-Integrating topology cleanup into v1's optimize loop:
-
-```
-Initial: initial_guess_mixed()
-Loop (max_iter=20):
-  1. update_marginal()
-  2. compute total_lh
-  3. if delta_lh < dp: break
-  4. save_branch_lengths()
-  5. run_optimize_mixed()
-  6. apply_damping(0.75)
-  7. if prune_short: prune_short_branches()                <-- NEW
-  8. if merge_shared: merge_shared_mutation_branches()      <-- NEW
-  9. if topology changed: graph.build() + re-init marginal  <-- NEW
-```
-
-Steps 7-9 run after damping so damped branch lengths feed the pruning criterion, and before the next E-step so marginal reconstruction operates on the cleaned topology.
+The topology cleanup in Loop 4 identifies zero-optimal edges before damping (step 6) rather than after. This avoids using damped branch lengths as the pruning criterion: damping blends zero with the old value, so a damped zero-optimal edge has a small positive branch length that does not reflect the optimizer's actual decision. The recorded zero-optimal edge keys are used after damping to override the damped values back to zero and collapse the edges.
 
 ## Convergence theory
 

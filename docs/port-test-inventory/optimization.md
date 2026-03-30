@@ -4,19 +4,20 @@
 
 ## Summary
 
-| Category                        | Files  | Tests  | Support Files | Type |
-| ------------------------------- | ------ | ------ | ------------- | ---- |
-| Coefficient extraction (dense)  | 5      | 13     | 1             | Unit |
-| Coefficient extraction (sparse) | 7      | 19     | 0             | Unit |
-| Newton-Raphson convergence      | 2      | 5      | 1             | Unit |
-| Grid search                     | 3      | 8      | 1             | Unit |
-| Dense/sparse equivalence        | 4      | 8      | 1             | Unit |
-| Convergence control             | 3      | 8      | 1             | Unit |
-| Optimization metrics            | 1      | 7      | 0             | Unit |
-| Zero branch optimal             | 1      | 13     | 0             | Unit |
-| Initial guess GTR messages      | 1      | 2      | 0             | Unit |
-| Initial guess soft Hamming      | 1      | 10     | 0             | Unit |
-| **Total**                       | **28** | **93** | **5**         | Unit |
+| Category                        | Files  | Tests   | Support Files | Type |
+| ------------------------------- | ------ | ------- | ------------- | ---- |
+| Coefficient extraction (dense)  | 5      | 13      | 1             | Unit |
+| Coefficient extraction (sparse) | 7      | 19      | 0             | Unit |
+| Newton-Raphson convergence      | 2      | 5       | 1             | Unit |
+| Grid search                     | 3      | 8       | 1             | Unit |
+| Dense/sparse equivalence        | 4      | 8       | 1             | Unit |
+| Convergence control             | 3      | 8       | 1             | Unit |
+| Optimization metrics            | 1      | 7       | 0             | Unit |
+| Zero branch optimal             | 1      | 13      | 0             | Unit |
+| Initial guess GTR messages      | 1      | 2       | 0             | Unit |
+| Initial guess soft Hamming      | 1      | 10      | 0             | Unit |
+| Topology cleanup in loop        | 1      | 12      | 0             | Unit |
+| **Total**                       | **29** | **105** | **5**         | Unit |
 
 ---
 
@@ -424,3 +425,24 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 | `test_identical_sequences_hard_zero_soft_small`   | Identical sequences: hard=0, soft small positive   |
 | `test_divergent_sequences_soft_differs_from_hard` | Divergent sequences: soft and hard disagree        |
 | `test_differences_bounded_by_effective_length`    | 0 <= differences <= effective_length for all edges |
+
+---
+
+## Topology Cleanup in Loop
+
+**File:** [`test_topology_cleanup.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_topology_cleanup.rs)
+
+| Test                                                               | Purpose                                                    |
+| ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `test_optimize_find_zero_optimal_internal_edges_empty_graph`       | Empty graph returns no edges                               |
+| `test_optimize_find_zero_optimal_internal_edges_no_zero_edges`     | Non-zero branches return no edges                          |
+| `test_optimize_find_zero_optimal_internal_edges_skips_leaves`      | Leaf edges with bl=0 are not collected                     |
+| `test_optimize_find_zero_optimal_internal_edges_collects_internal` | Internal edges with bl=0 are collected                     |
+| `test_optimize_find_zero_optimal_internal_edges_multiple`          | Multiple zero-optimal internal edges collected             |
+| `test_optimize_collapse_edge_sparse_composes_subs`                 | Substitutions composed correctly on sparse collapse        |
+| `test_optimize_collapse_edge_dense_cleanup`                        | Stale dense partition data removed after collapse          |
+| `test_optimize_collapse_edge_branch_length_sum`                    | Branch lengths summed correctly (0 + child = child)        |
+| `test_optimize_prune_and_merge_empty_list`                         | Empty zero-edge list is a noop                             |
+| `test_optimize_prune_and_merge_collapses_and_merges`               | Collapse + shared mutation merge in one pass               |
+| `test_optimize_loop_with_topology_cleanup_sparse`                  | Full loop collapses zero-optimal branches (identical seqs) |
+| `test_optimize_loop_no_collapse_when_branches_nonzero`             | No collapse when all branches carry signal                 |
