@@ -2,7 +2,9 @@
 mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_sparse;
-  use crate::commands::optimize::optimize_unified::{OptimizationContribution, is_zero_branch_optimal};
+  use crate::commands::optimize::optimize_unified::{
+    OptimizationContribution, evaluate_mixed_log_lh_only, is_zero_branch_optimal,
+  };
   use crate::gtr::get_gtr::{
     F81Params, HKY85Params, JC69Params, Jtt92Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, jtt92, k80,
     t92, tn93,
@@ -429,5 +431,75 @@ mod tests {
     assert!(contribution.zero_branch_length_derivative() < 0.0);
     // But shortcut is bypassed
     assert!(!is_zero_branch_optimal(&[contribution]));
+  }
+
+  /// Dinh & Matsen (2017, Section 5) counterexample: K80 with kappa=3 produces
+  /// a multimodal branch-length likelihood with three stationary points.
+  ///
+  /// The construction uses two alignment sites both observed as state A at a
+  /// pendant tip, with specific observation probability vectors b^1, b^2 at the
+  /// inner node. The per-site likelihood lambda_s(t) = sum_i b^s(i) * P_i(t)
+  /// where P_i(t) are K80 transition probabilities from state A.
+  ///
+  /// K80 kappa=3 eigenvalues: 0, -gamma, -2*gamma where gamma=0.5.
+  /// In sorted 4-eigenvalue form: [-1.0, -0.5, -0.5, 0.0].
+  ///
+  /// The eigenvalue-space coefficients are:
+  ///   k_fast  = 0.5 * (b_A - b_T)           [eigenvalue -1.0]
+  ///   k_slow  = 0.25 * (b_A + b_T - b_G - b_C)  [eigenvalue -0.5, split across two slots]
+  ///   k_const = 0.25                         [eigenvalue 0.0]
+  ///
+  /// This test verifies that the log-likelihood has three stationary points
+  /// (local max, local min, approach to a second maximum at equilibrium),
+  /// demonstrating the multimodality that makes the derivative-at-zero
+  /// shortcut unreliable for K80.
+  #[test]
+  fn test_is_zero_branch_optimal_k80_dinh_matsen_multimodal_counterexample() {
+    // K80 kappa=3 eigenvalues from the paper (Section 5, eq 5.1)
+    let mut gtr = jc69(JC69Params::default()).unwrap();
+    gtr.eigvals = array![-1.0, -0.5, -0.5, 0.0];
+    gtr.unimodal_branch_likelihood = false;
+
+    // b^1 = [0.24977275, 0.34067358, 0.2051904, 0.20436327] (A, T, G, C)
+    // b^2 = [0.25, 0.16087344, 0.29328435, 0.29584221]
+    // Eigenvalue-space coefficients derived from the transition probability
+    // decomposition (see Section 5, eq 5.2):
+    //   k_fast  = 0.5 * (b_A - b_T)
+    //   k_slow  = 0.25 * (b_A + b_T - b_G - b_C), split across two -0.5 slots
+    //   k_const = 0.25
+    #[rustfmt::skip]
+    let coefficients = array![
+      [-0.04545042, 0.02261158, 0.02261158, 0.25],
+      [ 0.04456328, -0.02228164, -0.02228164, 0.25],
+    ];
+    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contributions = [contribution];
+
+    // Verify both sites have positive likelihood at t=0
+    assert!(contributions[0].all_sites_valid_at_zero());
+
+    // The log-likelihood has three stationary points: a local max near t=0.2,
+    // a local min near t=1, and a global max at equilibrium (t -> infinity).
+    // This non-monotonic shape -- rise, dip, recovery -- is the hallmark of
+    // multimodality that JC69/F81 cannot exhibit.
+    let lh = |t: f64| evaluate_mixed_log_lh_only(&contributions, t);
+
+    let log_lh_near_peak = lh(0.2);
+    let log_lh_at_dip = lh(1.0);
+    let log_lh_at_recovery = lh(5.0);
+
+    // The first peak (near t=0.2) exceeds the dip (near t=1)
+    assert!(
+      log_lh_near_peak > log_lh_at_dip,
+      "K80 counterexample: log_lh near first peak ({log_lh_near_peak}) should exceed dip ({log_lh_at_dip})"
+    );
+    // Recovery from the dip toward equilibrium
+    assert!(
+      log_lh_at_recovery > log_lh_at_dip,
+      "K80 counterexample: log_lh at recovery ({log_lh_at_recovery}) should exceed dip ({log_lh_at_dip})"
+    );
+
+    // The shortcut must return false for K80 regardless of derivative sign
+    assert!(!is_zero_branch_optimal(&contributions));
   }
 }
