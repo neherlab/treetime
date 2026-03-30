@@ -638,6 +638,8 @@
 
 **File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs) - 11 tests (7 plain + 4 rstest cases)
 
+Tests for `compose_substitutions()` (`#compose_substitutions`) defined in `seq::mutation`, exercised through the representation test file.
+
 | Test                                                   | Purpose                                     |
 | ------------------------------------------------------ | ------------------------------------------- |
 | `test_compose_substitutions_empty_both`                | Empty parent and child yields empty         |
