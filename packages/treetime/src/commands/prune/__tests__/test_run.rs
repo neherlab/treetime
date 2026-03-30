@@ -6,6 +6,7 @@ mod tests {
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::representation::payload::sparse::SparseEdgePartition;
+  use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::{assert_relative_eq, assert_ulps_eq};
@@ -1169,6 +1170,82 @@ mod tests {
       let branch_length = edge.payload().read_arc().branch_length;
       // Both None -> stays None
       assert!(branch_length.is_none());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
+    // Indels from both removed (parent) and retained (child) edges must be preserved
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+
+    let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
+    let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
+    let internal_b_edge_key = find_edge_key(&graph, "internal", "B").unwrap();
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());
+    let child_indel = InDel::ins((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice());
+
+    partition.edges.insert(
+      root_internal_edge_key,
+      SparseEdgePartition {
+        indels: vec![parent_indel],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition.edges.insert(
+      internal_a_edge_key,
+      SparseEdgePartition {
+        indels: vec![child_indel],
+        ..SparseEdgePartition::default()
+      },
+    );
+    partition
+      .edges
+      .insert(internal_b_edge_key, SparseEdgePartition::default());
+
+    let partitions = vec![Arc::new(RwLock::new(partition))];
+
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "internal".to_owned() },
+    )?;
+
+    let partition = partitions[0].read_arc();
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      let target_key = edge.read_arc().target();
+      let target_name = graph
+        .get_node(target_key)
+        .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+
+      if target_name.as_deref() == Some("A") {
+        let edge_partition = &partition.edges[&edge_key];
+        // Parent indel first, then child indel
+        assert_eq!(edge_partition.indels.len(), 2);
+        assert_eq!(edge_partition.indels[0].range, (10, 15));
+        assert!(edge_partition.indels[0].deletion);
+        assert_eq!(edge_partition.indels[1].range, (20, 23));
+        assert!(!edge_partition.indels[1].deletion);
+      } else if target_name.as_deref() == Some("B") {
+        let edge_partition = &partition.edges[&edge_key];
+        // Only parent indel (child had none)
+        assert_eq!(edge_partition.indels.len(), 1);
+        assert_eq!(edge_partition.indels[0].range, (10, 15));
+      }
     }
 
     Ok(())
