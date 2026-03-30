@@ -190,6 +190,17 @@ pub struct GTR {
   /// The effective rate at site `a` is `mu * site_rates[a]`. The matrix exponential
   /// becomes `P_a(t) = V * diag(exp(eigvals * mu * site_rates[a] * t)) * V_inv`.
   pub site_rates: Option<Array1<f64>>,
+  /// Whether the one-dimensional branch-length likelihood $L(t)$ is guaranteed
+  /// unimodal on $(0, \infty)$ for this model.
+  ///
+  /// Dinh & Matsen (2017) prove that models with a single distinct nonzero
+  /// eigenvalue (JC69, F81, binary symmetric) have at most one stationary point.
+  /// For these models, a negative derivative at $t = 0$ guarantees zero is the
+  /// global maximum on $[0, \infty)$, enabling the zero-branch shortcut.
+  ///
+  /// Models with multiple distinct nonzero eigenvalues (K80, HKY85, TN93, GTR)
+  /// can have two local maxima. The shortcut is not valid for these models.
+  pub unimodal_branch_likelihood: bool,
 }
 
 impl GTR {
@@ -268,6 +279,7 @@ impl GTR {
       v,
       v_inv,
       site_rates: None,
+      unimodal_branch_likelihood: false,
     })
   }
 

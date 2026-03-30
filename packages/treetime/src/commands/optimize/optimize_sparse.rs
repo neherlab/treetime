@@ -35,6 +35,7 @@ pub struct SiteContribution {
 pub struct PartitionContribution {
   pub site_contributions: Vec<SiteContribution>,
   pub eigenvalues: ndarray::Array1<f64>,
+  pub unimodal_branch_likelihood: bool,
 }
 
 pub fn get_coefficients(
@@ -109,5 +110,6 @@ pub fn get_coefficients(
   Ok(PartitionContribution {
     site_contributions,
     eigenvalues: partition.gtr.eigvals.to_owned(),
+    unimodal_branch_likelihood: partition.gtr.unimodal_branch_likelihood,
   })
 }

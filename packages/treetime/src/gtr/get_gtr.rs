@@ -185,7 +185,10 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
+  // JC69 has one distinct nonzero eigenvalue: L(t) is unimodal (Dinh & Matsen 2017, Corollary 3.1)
+  gtr.unimodal_branch_likelihood = true;
+  Ok(gtr)
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -244,7 +247,10 @@ pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
-  GTR::new(GTRParams { n_states, mu, W, pi })
+  let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
+  // F81 has one distinct nonzero eigenvalue: L(t) is unimodal (Dinh & Matsen 2017, Corollary 3.1)
+  gtr.unimodal_branch_likelihood = true;
+  Ok(gtr)
 }
 
 #[derive(Clone, Debug, SmartDefault)]

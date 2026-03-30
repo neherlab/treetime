@@ -106,6 +106,18 @@ impl OptimizationContribution {
     }
   }
 
+  /// Whether this contribution's model has proven unimodal branch-length likelihood.
+  ///
+  /// When true, a negative derivative at t=0 guarantees zero is the global
+  /// maximum on [0, infinity). When false, the derivative test only proves
+  /// zero is a local maximum - a better positive-length maximum may exist.
+  pub fn has_unimodal_branch_likelihood(&self) -> bool {
+    match self {
+      OptimizationContribution::Dense(contribution) => contribution.gtr.unimodal_branch_likelihood,
+      OptimizationContribution::Sparse(contribution) => contribution.unimodal_branch_likelihood,
+    }
+  }
+
   /// Derivative of log-likelihood with respect to branch length at t=0.
   ///
   /// For the eigendecomposition-based likelihood L_i(t) = sum_c k_{ic} exp(lambda_c t),
@@ -176,20 +188,34 @@ fn evaluate_mixed_impl(
 /// If this sum is negative, the log-likelihood decreases as t moves away
 /// from zero, meaning zero is a local maximum.
 ///
+/// This shortcut is restricted to models with proven unimodal branch-length
+/// likelihood: JC69, F81, and binary models (Dinh & Matsen 2017, Theorem 3.1).
+/// For these models, at most one stationary point exists on (0, infinity), so a
+/// negative derivative at t=0 guarantees zero is the global maximum.
+///
+/// For models with multiple distinct nonzero eigenvalues (K80, HKY85, TN93,
+/// general GTR), the likelihood can have two local maxima. A negative
+/// derivative at t=0 only proves zero is a local maximum. The shortcut
+/// returns false and the caller falls through to Newton/grid search.
+///
 /// Before evaluating the derivative, each site's likelihood at t=0 must be
 /// verified as positive and finite. If any site is degenerate (L_i(0) <= 0
 /// or non-finite), the derivative formula divides by zero or produces
 /// overflow. In that case, this function returns false and the caller falls
 /// back to full Newton/grid optimization, which evaluates the likelihood
 /// surface at positive branch lengths where the issue does not arise.
-///
-/// This replaces an earlier implementation that multiplied raw per-site
-/// likelihoods into a product and compared against a fixed threshold (0.01).
-/// That approach suffered from two defects:
-/// - Underflow: many small site likelihoods multiplied to f64 zero
-/// - Scale dependence: the same local likelihood shape passed or failed
-///   the threshold depending on alignment length
 pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
+  // The derivative-sign shortcut is valid only when every partition uses a
+  // model with proven unimodal branch-length likelihood. If any partition
+  // uses a model that can be multimodal (K80, HKY85, TN93, general GTR),
+  // skip the shortcut and let Newton/grid search evaluate the full surface.
+  if !contributions
+    .iter()
+    .all(|contrib| contrib.has_unimodal_branch_likelihood())
+  {
+    return false;
+  }
+
   // Verify every site's likelihood at t=0 is positive and finite.
   // If any site is degenerate, the derivative is undefined.
   if !contributions.iter().all(|contrib| contrib.all_sites_valid_at_zero()) {
