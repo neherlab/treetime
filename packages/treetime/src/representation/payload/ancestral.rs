@@ -154,3 +154,160 @@ pub fn annotate_branch_mutations(
 
   Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+  use crate::alphabet::alphabet::Alphabet;
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::traits::PartitionBranchOps;
+  use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral, annotate_branch_mutations};
+  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::seq::mutation::Sub;
+  use eyre::Report;
+  use maplit::btreemap;
+  use parking_lot::RwLock;
+  use pretty_assertions::assert_eq;
+  use std::sync::Arc;
+  use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AsciiChar;
+
+  fn c(b: u8) -> AsciiChar {
+    AsciiChar::from_byte_unchecked(b)
+  }
+
+  fn make_test_partition(
+    graph: &GraphAncestral,
+    length: usize,
+    edge_subs: &[(usize, Vec<Sub>)],
+  ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
+    let alphabet = Alphabet::default();
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: alphabet.clone(),
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    // Build reference sequence consistent with sub ref chars
+    let mut ref_seq = treetime_primitives::Seq::from_iter((0..length).map(|_| c(b'A')));
+    for (_, subs) in edge_subs {
+      for s in subs {
+        if s.pos() < length {
+          ref_seq[s.pos()] = s.reff();
+        }
+      }
+    }
+
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      let mut node_part = SparseNodePartition::empty(&alphabet);
+      node_part.seq.sequence = ref_seq.clone();
+      partition.nodes.insert(key, node_part);
+    }
+
+    let edges = graph.get_edges();
+    for (idx, subs) in edge_subs {
+      if let Some(edge) = edges.get(*idx) {
+        let edge_key = edge.read_arc().key();
+        partition.edges.insert(
+          edge_key,
+          SparseEdgePartition {
+            subs: subs.clone(),
+            ..SparseEdgePartition::default()
+          },
+        );
+      }
+    }
+
+    Ok(Arc::new(RwLock::new(partition)))
+  }
+
+  #[test]
+  fn test_annotate_branch_mutations_formats_1_based_positions() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(
+      &graph,
+      100,
+      &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?, Sub::new(c(b'G'), 5_usize, c(b'C'))?])],
+    )?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let child = graph.get_leaves()[0].read_arc();
+    let mutations = child.payload().read_arc().mutations.clone();
+    // Sub::Display uses 1-based positions: A1T, G6C
+    assert_eq!(mutations, Some("A1T,G6C".to_owned()));
+    Ok(())
+  }
+
+  #[test]
+  fn test_annotate_branch_mutations_empty_partitions() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let child = graph.get_leaves()[0].read_arc();
+    let mutations = child.payload().read_arc().mutations.clone();
+    assert_eq!(mutations, None);
+    Ok(())
+  }
+
+  #[test]
+  fn test_annotate_branch_mutations_no_mutations_on_edge() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(&graph, 100, &[(0, vec![])])?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let child = graph.get_leaves()[0].read_arc();
+    let mutations = child.payload().read_arc().mutations.clone();
+    assert_eq!(mutations, None);
+    Ok(())
+  }
+
+  #[test]
+  fn test_annotate_branch_mutations_sorts_by_position() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(
+      &graph,
+      100,
+      &[(
+        0,
+        vec![
+          Sub::new(c(b'C'), 50_usize, c(b'G'))?,
+          Sub::new(c(b'A'), 10_usize, c(b'T'))?,
+          Sub::new(c(b'G'), 30_usize, c(b'C'))?,
+        ],
+      )],
+    )?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let child = graph.get_leaves()[0].read_arc();
+    let mutations = child.payload().read_arc().mutations.clone();
+    // Sorted by position (1-based): A11T, G31C, C51G
+    assert_eq!(mutations, Some("A11T,G31C,C51G".to_owned()));
+    Ok(())
+  }
+
+  #[test]
+  fn test_annotate_branch_mutations_multi_partition_merge() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+
+    let p1 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?])])?;
+    let p2 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'G'), 20_usize, c(b'C'))?])])?;
+
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> =
+      vec![p1 as Arc<RwLock<dyn PartitionBranchOps>>, p2];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let child = graph.get_leaves()[0].read_arc();
+    let mutations = child.payload().read_arc().mutations.clone();
+    // Merged from both partitions, sorted by position
+    assert_eq!(mutations, Some("A6T,G21C".to_owned()));
+    Ok(())
+  }
+}
