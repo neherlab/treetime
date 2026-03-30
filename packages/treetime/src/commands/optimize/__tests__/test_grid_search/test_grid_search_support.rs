@@ -12,7 +12,7 @@ pub mod tests {
   }
 
   pub fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+    let branch_lengths = Array1::linspace(0.0, 1.5 * branch_length + one_mutation, 100);
 
     branch_lengths
       .iter()

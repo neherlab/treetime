@@ -305,7 +305,7 @@ where
       }
     } else {
       // Evaluate on a vector of branch lengths to find the maximum
-      let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+      let branch_lengths = ndarray::Array1::linspace(0.0, 1.5 * branch_length + one_mutation, 100);
 
       let best_branch_length = branch_lengths
         .iter()

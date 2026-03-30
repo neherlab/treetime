@@ -18,7 +18,7 @@ mod tests {
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
     // Verify no other point in the grid has higher log-LH
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+    let branch_lengths = Array1::linspace(0.0, 1.5 * branch_length + one_mutation, 100);
     let best_log_lh = evaluate_mixed(&contributions, best_bl).log_lh;
 
     for &bl in &branch_lengths {
@@ -42,10 +42,9 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    let lower = 0.1 * one_mutation;
     let upper = 1.5 * branch_length + one_mutation;
 
-    assert!(best_bl >= lower, "best_bl={best_bl} < lower={lower}");
+    assert!(best_bl >= 0.0, "best_bl={best_bl} < 0");
     assert!(best_bl <= upper, "best_bl={best_bl} > upper={upper}");
   }
 
