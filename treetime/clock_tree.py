@@ -276,8 +276,8 @@ class ClockTree(TreeAnc):
         branch_value = lambda x: x.mutation_length
         if covariation:
             om = self.one_mutation
-            branch_variance = (
-                lambda x: (
+            branch_variance = lambda x: (
+                (
                     (max(0, x.clock_length) if hasattr(x, 'clock_length') else x.mutation_length)
                     + (self.tip_slack**2 * om if x.is_terminal() else 0.0)
                 )
