@@ -55,6 +55,7 @@ extend-ignore = [
     "PERF401", # unnecessary comprehension
     "PIE790", # unnecessary `pass` statement
     "PIE804", # unnecessary lambda assignment
+    "PLC0415", # import not at top-level (deferred imports are idiomatic)
     "PLC1802", # len(x) used as condition without explicit comparison
     "PLR0911", # too many return statements
     "PLR0912", # too many branches
@@ -63,6 +64,7 @@ extend-ignore = [
     "PLR0915", # too many statements
     "PLR1714", # consider merging multiple comparisons
     "PLR1722", # use-a-generator
+    "PLR1733", # unnecessary dict index lookup
     "PLR2004", # magic value used in comparison, consider replacing with a named constant
     "PLR2044", # line contains an empty comment
     "PLR5501", # consider-using-with
@@ -75,6 +77,7 @@ extend-ignore = [
     "RUF015", # prefer `next(...)` over single-element slice
     "RUF019", # unnecessary key check before dictionary access
     "RUF034", # useless `if`-`else` condition
+    "RUF059", # unused unpacked variable
     "SIM101", # simplifiable-if-statement
     "SIM102", # nested-if can be simplified
     "SIM103", # if-else can be simplified
