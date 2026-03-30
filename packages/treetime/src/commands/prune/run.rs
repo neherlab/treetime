@@ -282,12 +282,15 @@ fn collapse_sparse_edge(
       new_edge.set_branch_length(Some(bl1 + bl2));
     }
 
-    // Compose substitutions: parent edge (removed) + child edge = net substitutions
+    // Compose substitutions and merge indels: parent edge (removed) + child edge
     for partition in partitions {
       let mut partition = partition.write_arc();
-      let removed_edge_subs = partition.edges[&edge_key].subs.clone();
+      let removed_edge_data = partition.edges[&edge_key].clone();
       let child_edge = partition.edges.entry(new_edge_key).or_default();
-      child_edge.subs = compose_substitutions(&removed_edge_subs, &child_edge.subs)?;
+      child_edge.subs = compose_substitutions(&removed_edge_data.subs, &child_edge.subs)?;
+      let mut merged_indels = removed_edge_data.indels;
+      merged_indels.append(&mut child_edge.indels);
+      child_edge.indels = merged_indels;
     }
   }
 
