@@ -985,6 +985,10 @@ class TreeTime(ClockTree):
                     if hasattr(parent, '_cseq'):
                         new_node._cseq = parent._cseq
                         self.add_branch_state(new_node)
+                    if self.branch_length_mode == 'marginal':
+                        new_node.marginal_subtree_LH = parent.marginal_subtree_LH
+                        new_node.marginal_outgroup_LH = parent.marginal_outgroup_LH
+                        new_node.profile_pair = self.marginal_branch_profile(new_node)
                     new_node.branch_length_interpolator = BranchLenInterpolator(
                         new_node,
                         self.gtr,
