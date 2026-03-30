@@ -349,7 +349,7 @@ pub(crate) fn prune_and_merge_in_loop(
     }
   }
 
-  let mut collapsed = 0usize;
+  let mut collapsed = 0_usize;
   for &edge_key in zero_optimal_edges {
     // Edge may already be gone if a prior collapse in this batch removed it
     // (e.g., collapsing a parent also removed a child edge that was zero-optimal)

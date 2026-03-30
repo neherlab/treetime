@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::commands::optimize::run::{
     apply_damping, collapse_edge_for_optimize, collect_optimize_partitions, find_zero_optimal_internal_edges,
@@ -188,18 +188,20 @@ mod tests {
     // Add dummy entries for all nodes/edges to verify cleanup
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
-      dense_partition
-        .nodes
-        .insert(key, crate::representation::payload::dense::DenseNodePartition {
+      dense_partition.nodes.insert(
+        key,
+        crate::representation::payload::dense::DenseNodePartition {
           seq: crate::representation::payload::dense::DenseSeqInfo::default(),
           profile: crate::representation::payload::dense::DenseSeqDis::default(),
-        });
+        },
+      );
     }
     for edge in graph.get_edges() {
       let key = edge.read_arc().key();
-      dense_partition
-        .edges
-        .insert(key, crate::representation::payload::dense::DenseEdgePartition::default());
+      dense_partition.edges.insert(
+        key,
+        crate::representation::payload::dense::DenseEdgePartition::default(),
+      );
     }
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
