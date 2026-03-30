@@ -118,7 +118,7 @@ where
     // determine parts of the sequence that are unknown, gaps in all children
     let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
     let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
-    // non_char are ranges that are either unknown or gaps in all children (note that can be different from the union of gaps and unknown)
+    // non_char are ranges that are either unknown or gaps in all children (can differ from the union of gaps and unknown)
     let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
     // calculate the complement of gaps for later look-up
     let non_gap = range_complement(&[(0, partition.length())], &[gaps.clone()]); // FIXME(perf): unnecessary clone
@@ -344,7 +344,7 @@ where
       let parent = &partition.node(parent_key).seq;
       *composition = parent.composition.clone();
 
-      // fill in the indeterminate positions by copying the parent (note that new gaps in the node will be introduced later)
+      // fill in the indeterminate positions by copying the parent (new gaps in the node will be introduced later)
       for r in non_char {
         sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
       }
@@ -438,6 +438,9 @@ where
       }
 
       {
+        // Sort by position: the two loops above (child variable, then parent-only variable)
+        // can emit positions out of order when parent-only positions precede child positions.
+        subs.sort();
         let edge = partition.edge_mut(edge_key);
         edge.subs.extend(subs);
         edge.indels.extend(indels);

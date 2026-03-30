@@ -512,7 +512,7 @@ mod tests {
       o!("CDE->C")    => vec![o!("C4T")],
       o!("CDE->D")    => vec![o!("C3T"), o!("C4T")],
       o!("CDE->E")    => vec![],
-      o!("root->CDE") => vec![o!("A4C"), o!("C2G")],
+      o!("root->CDE") => vec![o!("C2G"), o!("A4C")],
     };
     assert_eq!(expected_subs, actual_subs);
 
