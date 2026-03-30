@@ -17,7 +17,7 @@ mod tests {
     let contribution = PartitionContribution {
       site_contributions: vec![site],
       eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: false,
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
     };
 
     // At different branch lengths, exp(λt) changes for non-zero eigenvalues

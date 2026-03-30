@@ -3,9 +3,14 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, is_zero_branch_optimal};
-  use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
+  use crate::gtr::get_gtr::{
+    F81Params, HKY85Params, JC69Params, Jtt92Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, jtt92, k80,
+    t92, tn93,
+  };
+  use crate::gtr::gtr::GTR;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
+  use rstest::rstest;
 
   /// Create a dense contribution with specified coefficients and JC69 GTR model.
   ///
@@ -341,6 +346,27 @@ mod tests {
     assert!(!gtr.unimodal_branch_likelihood);
   }
 
+  /// All model constructors must classify unimodal_branch_likelihood correctly.
+  /// JC69 and F81 have one distinct nonzero eigenvalue (unimodal per Dinh &
+  /// Matsen 2017, Corollary 3.1). All others have multiple distinct nonzero
+  /// eigenvalues and can exhibit multimodal branch-length likelihood.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::jc69( jc69(JC69Params::default()).unwrap(),  true)]
+  #[case::f81(  f81(F81Params::default()).unwrap(),    true)]
+  #[case::k80(  k80(K80Params::default()).unwrap(),    false)]
+  #[case::hky85(hky85(HKY85Params::default()).unwrap(), false)]
+  #[case::t92(  t92(T92Params::default()).unwrap(),    false)]
+  #[case::tn93( tn93(TN93Params::default()).unwrap(),  false)]
+  #[case::jtt92(jtt92(Jtt92Params::default()).unwrap(), false)]
+  #[trace]
+  fn test_is_zero_branch_optimal_model_unimodal_classification(
+    #[case] gtr: GTR,
+    #[case] expected_unimodal: bool,
+  ) {
+    assert_eq!(expected_unimodal, gtr.unimodal_branch_likelihood);
+  }
+
   /// K80 contribution with negative derivative at t=0: shortcut returns false
   /// because K80 can be multimodal. The same coefficients under JC69 would
   /// return true.
@@ -392,7 +418,7 @@ mod tests {
 
     let site_contributions = vec![optimize_sparse::SiteContribution {
       multiplicity: 1.0,
-      coefficients: ndarray::Array1::from_vec(vec![0.0, 1.0, 0.0, 0.0]),
+      coefficients: array![0.0, 1.0, 0.0, 0.0],
     }];
     let contribution = OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
       site_contributions,
