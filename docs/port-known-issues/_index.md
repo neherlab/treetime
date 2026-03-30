@@ -119,6 +119,7 @@ exactly.
 | Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                               |
 | Medium     | Timetree     | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                   |
 | Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                          |
+| Negligible | Optimize     | [Grid search does not include t=0 as candidate branch length](N-optimize-grid-search-missing-zero-candidate.md)                 |
 
 ## Cross-references
 
