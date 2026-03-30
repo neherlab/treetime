@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::representation::partition::traits::PartitionBranchOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
@@ -53,16 +54,9 @@ impl PartitionMarginal for PartitionMarginalDense {}
 
 impl PartitionRerootOps for PartitionMarginalDense {}
 
-impl PartitionOptimizeOps for PartitionMarginalDense {
+impl PartitionBranchOps for PartitionMarginalDense {
   fn sequence_length(&self) -> usize {
     self.length
-  }
-
-  fn create_edge_contribution(
-    &self,
-    edge_key: GraphEdgeKey,
-  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
-    Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 
   /// Count branch mutations by comparing the MAP (argmax) states of the full
@@ -133,6 +127,15 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
       .sum();
 
     Ok(self.length.saturating_sub(gap_positions))
+  }
+}
+
+impl PartitionOptimizeOps for PartitionMarginalDense {
+  fn create_edge_contribution(
+    &self,
+    edge_key: GraphEdgeKey,
+  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
+    Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }
 }
 

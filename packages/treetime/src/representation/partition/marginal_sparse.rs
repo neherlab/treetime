@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::representation::partition::traits::PartitionBranchOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
@@ -253,16 +254,9 @@ impl PartitionRerootOps for PartitionMarginalSparse {
   }
 }
 
-impl PartitionOptimizeOps for PartitionMarginalSparse {
+impl PartitionBranchOps for PartitionMarginalSparse {
   fn sequence_length(&self) -> usize {
     self.length
-  }
-
-  fn create_edge_contribution(
-    &self,
-    edge_key: GraphEdgeKey,
-  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
-    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
   }
 
   /// Return the current nucleotide changes for one sparse edge.
@@ -310,6 +304,15 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
       .sum();
 
     Ok(self.length.saturating_sub(non_char_positions))
+  }
+}
+
+impl PartitionOptimizeOps for PartitionMarginalSparse {
+  fn create_edge_contribution(
+    &self,
+    edge_key: GraphEdgeKey,
+  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
+    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
   }
 }
 

@@ -1,5 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
@@ -10,6 +12,33 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
+
+/// Derive branch mutations and effective lengths from the current partition state.
+///
+/// Both dense and sparse partitions implement this: dense partitions compare
+/// MAP states from full marginal posteriors, sparse partitions compare
+/// reconstructed states from Fitch data and current variable-site assignments.
+///
+/// Post-marginal consumers (GTR inference, prune, output) should use this
+/// trait instead of reading `SparseEdgePartition.subs` directly, which
+/// reflects Fitch parsimony data and becomes stale after marginal inference.
+pub trait PartitionBranchOps: Send + Sync {
+  /// Return the sequence length represented by this partition.
+  fn sequence_length(&self) -> usize;
+
+  /// Return nucleotide substitutions for one edge derived from current state.
+  ///
+  /// For sparse partitions, reconstructs parent and child states from Fitch
+  /// parsimony data and current variable-site assignments, then compares.
+  /// For dense partitions, takes the MAP state (argmax of the node posterior)
+  /// at the parent and child endpoints. Non-canonical states and gap positions
+  /// are excluded in both cases.
+  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
+
+  /// Return the number of alignment positions where both parent and child
+  /// have canonical (non-gap, non-ambiguous) states for one edge.
+  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
+}
 
 pub trait PartitionMarginal {}
 
