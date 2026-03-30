@@ -2,16 +2,18 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::commands::optimize::run::{
     apply_damping, collapse_edge_for_optimize, collect_optimize_partitions, find_zero_optimal_internal_edges,
     prune_and_merge_in_loop, save_branch_lengths,
   };
+  use crate::commands::prune::run::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -152,12 +154,11 @@ mod tests {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = target.read_arc().payload().read_arc().name.clone();
-      if let Some(edge_data) = p.edges.get(&edge.key()) {
-        match target_name.as_deref() {
-          Some("A") => assert_eq!(edge_data.subs.len(), 2, "A: parent sub + own sub"),
-          Some("B") => assert_eq!(edge_data.subs.len(), 1, "B: parent sub only"),
-          _ => {},
-        }
+      let edge_data = &p.edges[&edge.key()];
+      match target_name.as_deref() {
+        Some("A") => assert_eq!(edge_data.subs.len(), 2, "A: parent sub + own sub"),
+        Some("B") => assert_eq!(edge_data.subs.len(), 1, "B: parent sub only"),
+        other => unreachable!("unexpected target node: {other:?}"),
       }
     }
 
@@ -190,18 +191,15 @@ mod tests {
       let key = node.read_arc().key();
       dense_partition.nodes.insert(
         key,
-        crate::representation::payload::dense::DenseNodePartition {
-          seq: crate::representation::payload::dense::DenseSeqInfo::default(),
-          profile: crate::representation::payload::dense::DenseSeqDis::default(),
+        DenseNodePartition {
+          seq: DenseSeqInfo::default(),
+          profile: DenseSeqDis::default(),
         },
       );
     }
     for edge in graph.get_edges() {
       let key = edge.read_arc().key();
-      dense_partition.edges.insert(
-        key,
-        crate::representation::payload::dense::DenseEdgePartition::default(),
-      );
+      dense_partition.edges.insert(key, DenseEdgePartition::default());
     }
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
@@ -240,7 +238,7 @@ mod tests {
       match target_name.as_deref() {
         Some("A") => assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-8),
         Some("B") => assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-8),
-        _ => {},
+        other => unreachable!("unexpected target node: {other:?}"),
       }
     }
 
@@ -482,6 +480,174 @@ mod tests {
 
     // No edges should have been collapsed - all branches carry genuine signal
     assert_eq!(graph.get_nodes().len(), initial_node_count);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_merge_then_marginal_finite_likelihood() -> Result<(), Report> {
+    // After merge creates new internal nodes, update_marginal must produce
+    // finite log-likelihood. This exercises the composition propagation fix:
+    // merge-created nodes inherit the parent's composition so the backward
+    // pass computes correct fixed-site contributions.
+    //
+    // Tree: star polytomy with 5 leaves. A and B share a derived state (T at
+    // pos 0) while C, D, E retain the ancestral state (A at pos 0). With 3-vs-2
+    // majority, the root's marginal MAP resolves to A. Edges to A and B carry
+    // the shared mutation A->T, triggering merge.
+    let nuc = Alphabet::new(AlphabetName::Nuc)?;
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        TCGTACGTACGTACGT
+        >B
+        TCGTACGTACGTACGT
+        >C
+        ACGTACGTACGTACGT
+        >D
+        ACGTACGTACGTACGT
+        >E
+        ACGTACGTACGTACGT
+      "#},
+      &nuc,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
+
+    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: nuc,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    update_marginal(&graph, &sparse_partitions)?;
+
+    let initial_node_count = graph.get_nodes().len();
+
+    // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority)
+    let merged = merge_shared_mutation_branches(&mut graph, &sparse_partitions)?;
+    assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
+    graph.build()?;
+
+    assert!(
+      graph.get_nodes().len() > initial_node_count,
+      "merge should have created new internal nodes"
+    );
+
+    // The critical test: update_marginal after merge must produce finite log-likelihood.
+    // Before the composition fix, the merge-created node had zero composition,
+    // causing the backward pass to produce incorrect values.
+    let lh = update_marginal(&graph, &sparse_partitions)?;
+    assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
+    assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
+    // Parent and child internal edges are both zero-optimal.
+    // Tree: root -> I1 (bl=0.0) -> I2 (bl=0.0) -> A, B
+    //       root -> C
+    //
+    // Both I1 and I2 should be collapsed. The guard for already-removed edges
+    // must handle the case where collapsing I1 removes I2's inbound edge.
+    let mut graph: GraphAncestral = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+
+    let ri1_key = find_edge_key(&graph, "root", "I1").unwrap();
+    let i1i2_key = find_edge_key(&graph, "I1", "I2").unwrap();
+
+    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri1_key, i1i2_key])?;
+    assert!(changed);
+
+    // Both I1 and I2 should be gone. A, B become children of root.
+    assert!(find_node_key_by_name(&graph, "I1").is_none());
+    assert!(find_node_key_by_name(&graph, "I2").is_none());
+
+    // root should have 3 children: A, B, C
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_node = graph.get_node(root_key).unwrap();
+    assert_eq!(root_node.read_arc().degree_out(), 3);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_loop_with_topology_cleanup_dense() -> Result<(), Report> {
+    // Dense-mode integration test: identical sequences A and B should cause
+    // the AB internal edge to be collapsed during optimization.
+    let nuc = Alphabet::new(AlphabetName::Nuc)?;
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACGTACGTACGT
+        >B
+        ACGTACGTACGT
+        >C
+        ACGTACGTACGG
+        >D
+        TCGTACGTACGT
+      "#},
+      &nuc,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: nuc,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &dense_partitions, &aln)?;
+    update_marginal(&graph, &dense_partitions)?;
+
+    let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+
+    initial_guess_mixed(&graph, &mixed_partitions)?;
+
+    let initial_node_count = graph.get_nodes().len();
+
+    let mut lh_prev = f64::MIN;
+    for i in 0..10 {
+      let dense_lh = update_marginal(&graph, &dense_partitions)?;
+      if (dense_lh - lh_prev).abs() < 1e-2 {
+        break;
+      }
+
+      let old_branch_lengths = save_branch_lengths(&graph);
+      run_optimize_mixed(&graph, &mixed_partitions)?;
+
+      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);
+      apply_damping(&graph, &old_branch_lengths, 0.75, i);
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges)?;
+
+      lh_prev = dense_lh;
+    }
+
+    // A and B are identical: AB edge should have been collapsed
+    let final_node_count = graph.get_nodes().len();
+    assert!(
+      final_node_count < initial_node_count,
+      "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
+    );
+
+    // All remaining branch lengths should be non-negative
+    for edge in graph.get_edges() {
+      let bl = edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
+    }
 
     Ok(())
   }

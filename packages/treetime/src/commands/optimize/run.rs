@@ -323,7 +323,7 @@ pub(crate) fn collapse_edge_for_optimize(
 
 /// Collapse zero-optimal internal edges and merge shared mutations in resulting polytomies.
 ///
-/// Matches v0's `prune_short_branches()` behavior inside the optimization loop:
+/// Analogous to v0's `prune_short_branches()` inside the optimization loop:
 /// edges whose optimal branch length is zero are collapsed, simplifying the tree
 /// progressively across iterations. After collapsing, sibling branches in newly
 /// formed polytomies that share identical substitutions are merged under new
