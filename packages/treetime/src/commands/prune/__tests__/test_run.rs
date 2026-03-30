@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::commands::prune::run::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
+  use crate::commands::prune::run::{
+    collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, merge_shared_mutation_branches, prune_nodes,
+  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -1202,6 +1204,106 @@ mod tests {
       // Both None -> stays None
       assert!(branch_length.is_none());
     }
+
+    Ok(())
+  }
+
+  /// Pruning a short internal branch exposes a hidden polytomy, enabling merge
+  /// to group all siblings that share the same mutation.
+  ///
+  /// Before prune:
+  ///   P → I (bl=1e-8, no subs) → A (subs: A0T), B (subs: A0T)
+  ///   P → C (subs: A0T)
+  ///   P → D (subs: A5T)
+  ///
+  /// After prune (I collapsed, P becomes degree-4 polytomy):
+  ///   P → A (subs: A0T), B (subs: A0T), C (subs: A0T), D (subs: A5T)
+  ///
+  /// After merge (A, B, C grouped by shared A0T):
+  ///   P → N2 (subs: A0T) → N1 → A, B
+  ///                       → C
+  ///   P → D (subs: A5T)
+  #[test]
+  fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    populate_test_nodes(&mut partition, &graph);
+
+    // P→I: no subs (short branch)
+    let pi_key = find_edge_key(&graph, "root", "I").unwrap();
+    partition.edges.insert(pi_key, SparseEdgePartition::default());
+
+    // I→A, I→B, P→C: identical mutation A0T
+    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
+    partition.edges.insert(
+      ia_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
+        ..SparseEdgePartition::default()
+      },
+    );
+
+    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    partition.edges.insert(
+      ib_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
+        ..SparseEdgePartition::default()
+      },
+    );
+
+    let pc_key = find_edge_key(&graph, "root", "C").unwrap();
+    partition.edges.insert(
+      pc_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
+        ..SparseEdgePartition::default()
+      },
+    );
+
+    // P→D: different mutation at position 5 (not shared with A, B, C)
+    let pd_key = find_edge_key(&graph, "root", "D").unwrap();
+    partition.edges.insert(
+      pd_key,
+      SparseEdgePartition {
+        subs: vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?],
+        ..SparseEdgePartition::default()
+      },
+    );
+
+    let partitions = vec![Arc::new(RwLock::new(partition))];
+
+    // Step 1: Prune short branch I (bl=1e-8 < threshold 1e-6)
+    prune_nodes(&mut graph, &partitions, Some(1e-6), false, &btreeset! {})?;
+    assert!(
+      find_node_key_by_name(&graph, "I").is_none(),
+      "I should be collapsed by prune"
+    );
+
+    // Step 2: Merge shared mutations on the now-exposed polytomy
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    // Greedy merge: first A&B (or any pair sharing A0T), then the merged
+    // node and C also share A0T → two pairwise merges total.
+    assert_eq!(merged, 2, "two pairwise merges should group A, B, C together");
+
+    // Root should have exactly 2 children: the merged subtree and D
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_node = graph.get_node(root_key).unwrap();
+    assert_eq!(root_node.read_arc().degree_out(), 2);
+
+    // D should remain directly under root
+    assert!(find_node_key_by_name(&graph, "D").is_some());
 
     Ok(())
   }
