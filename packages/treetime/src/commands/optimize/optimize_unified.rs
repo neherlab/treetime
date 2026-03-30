@@ -1,5 +1,6 @@
 use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
+use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
 use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
@@ -177,6 +178,30 @@ fn evaluate_mixed_impl(
   total_metrics
 }
 
+/// Evaluate substitution + indel contributions for a given branch length.
+fn evaluate_with_indels(
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  branch_length: f64,
+) -> OptimizationMetrics {
+  let mut metrics = evaluate_mixed(contributions, branch_length);
+  metrics.add(&poisson_indel_log_lh(indel_count, indel_rate, branch_length));
+  metrics
+}
+
+/// Log-likelihood only (no derivatives) for substitution + indel contributions.
+fn evaluate_with_indels_log_lh_only(
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  branch_length: f64,
+) -> f64 {
+  let sub_lh = evaluate_mixed_log_lh_only(contributions, branch_length);
+  let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, branch_length).log_lh;
+  sub_lh + indel_lh
+}
+
 /// Check if zero branch length is optimal across all contributions.
 ///
 /// The scientific criterion for zero-length optimality is the sign of the
@@ -261,6 +286,7 @@ where
     .sum();
 
   let one_mutation = 1.0 / total_length as f64;
+  let indel_rate = estimate_indel_rate(graph, partitions);
 
   graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
     let edge_key = edge_ref.read_arc().key();
@@ -272,14 +298,20 @@ where
       .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
       .collect::<Result<_, _>>()?;
 
-    // Check if zero branch length is optimal
-    if is_zero_branch_optimal(&contributions) {
+    let indel_count: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+      .sum();
+
+    // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
+    // so zero branch length is never optimal. Only check the substitution-based criterion
+    // when there are no indels.
+    if indel_count == 0 && is_zero_branch_optimal(&contributions) {
       edge.set_branch_length(Some(0.0));
       return Ok(());
     }
 
-    // Otherwise, optimize the branch length
-    let metrics = evaluate_mixed(&contributions, branch_length);
+    let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
     let mut new_branch_length;
 
     if metrics.second_derivative < 0.0 {
@@ -289,7 +321,7 @@ where
       let mut n_iter = 0;
 
       while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
-        let new_metrics = evaluate_mixed(&contributions, new_branch_length);
+        let new_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length);
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
           new_branch_length = branch_length
@@ -310,8 +342,8 @@ where
       let best_positive = branch_lengths
         .iter()
         .max_by_key(|&&bl| {
-          let metrics = evaluate_mixed(&contributions, bl);
-          ordered_float::OrderedFloat(metrics.log_lh)
+          let log_lh = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, bl);
+          ordered_float::OrderedFloat(log_lh)
         })
         .copied()
         .unwrap();
@@ -339,10 +371,16 @@ where
 ///
 /// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
+///
+/// For edges with indels but no substitutions, the Poisson MLE $\hat{t} = k / \mu$
+/// provides a non-zero initial estimate so Newton optimization starts from a
+/// reasonable point (the indel derivative diverges at $t = 0$).
 pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
 {
+  let indel_rate = estimate_indel_rate(graph, partitions);
+
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
@@ -357,8 +395,19 @@ where
       .map(|partition| partition.read_arc().edge_effective_length(graph, edge_key))
       .sum::<Result<_, _>>()?;
 
+    let indel_count: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+      .sum();
+
     let branch_length = if effective_length > 0 {
-      sub_count as f64 / effective_length as f64
+      let sub_estimate = sub_count as f64 / effective_length as f64;
+      if sub_estimate == 0.0 && indel_count > 0 && indel_rate > 0.0 {
+        // Poisson MLE for indel-only branches: t = k / mu
+        indel_count as f64 / indel_rate
+      } else {
+        sub_estimate
+      }
     } else {
       0.0
     };

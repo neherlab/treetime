@@ -320,6 +320,10 @@ impl PartitionBranchOps for PartitionMarginalSparse {
     self.edge_subs_from_graph(graph, edge_key)
   }
 
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.edges[&edge_key].indels.len()
+  }
+
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;

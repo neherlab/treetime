@@ -13,6 +13,9 @@ use treetime_graph::edge::GraphEdgeKey;
 pub trait PartitionOptimizeOps: PartitionBranchOps {
   /// Return the precomputed likelihood contribution for one edge.
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
+
+  /// Return the number of indel events on one edge.
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize;
 }
 
 pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;
