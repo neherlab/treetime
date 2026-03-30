@@ -321,7 +321,7 @@ fn collapse_sparse_edge(
 ///
 /// Greedily merges the pair with the most shared mutations, repeating until no pair
 /// shares any mutations. Returns the total number of new internal nodes created.
-pub(super) fn merge_shared_mutation_branches(
+pub(crate) fn merge_shared_mutation_branches(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
 ) -> Result<usize, Report> {
