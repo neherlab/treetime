@@ -181,31 +181,31 @@ fn prune_internal_nodes(
   let edges_to_collapse: Vec<_> = graph
     .get_edges()
     .iter()
-    .filter_map(|edge| {
+    .map(|edge| -> Result<Option<GraphEdgeKey>, Report> {
       let edge = edge.read_arc();
       let target_is_leaf = graph.is_leaf(edge.target());
 
       // Skip leaves in this pass
       if target_is_leaf {
-        return None;
+        return Ok(None);
       }
 
       let weight = edge.payload().read_arc().branch_length();
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
-      let should_prune_empty = prune_empty
-        && get_edge_num_muts(graph, partitions, edge.key())
-          .inspect_err(|e| log::warn!("edge_subs failed for edge {}: {e}", edge.key()))
-          .ok()
-          == Some(Some(0));
+      let should_prune_empty = prune_empty && get_edge_num_muts(graph, partitions, edge.key())? == Some(0);
 
-      let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
-      let name = target_node.name();
-      let should_prune_by_name = name.is_some_and(|name| node_names.contains(name.as_ref()));
+      let target_node = graph
+        .get_node(edge.target())
+        .map(|n| n.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()));
+      let should_prune_by_name = target_node.is_some_and(|name| name.is_some_and(|n| node_names.contains(&n)));
 
       let should_prune = should_prune_short || should_prune_empty || should_prune_by_name;
-      should_prune.then(|| edge.key())
+      Ok(should_prune.then(|| edge.key()))
     })
+    .collect::<Result<Vec<_>, Report>>()?
+    .into_iter()
+    .flatten()
     .collect();
 
   edges_to_collapse.into_iter().try_for_each(|edge_key| {

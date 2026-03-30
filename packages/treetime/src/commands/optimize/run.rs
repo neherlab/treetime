@@ -155,17 +155,14 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     lh_prev = total_lh;
   }
 
-  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = chain!(
-    dense_partitions
-      .iter()
-      .cloned()
-      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p }),
-    sparse_partitions
-      .iter()
-      .cloned()
-      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p }),
-  )
-  .collect_vec();
+  // Annotate from sparse partitions only. The optimize command creates both
+  // dense and sparse partitions over the same alignment; using both would
+  // duplicate every mutation in the output annotation.
+  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = sparse_partitions
+    .iter()
+    .cloned()
+    .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+    .collect_vec();
   annotate_branch_mutations(&graph, &branch_ops)?;
 
   write_graph(outdir, &graph)?;
