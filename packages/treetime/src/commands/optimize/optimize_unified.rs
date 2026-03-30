@@ -304,10 +304,10 @@ where
         n_iter += 1;
       }
     } else {
-      // Evaluate on a vector of branch lengths to find the maximum
-      let branch_lengths = ndarray::Array1::linspace(0.0, 1.5 * branch_length + one_mutation, 100);
+      // Grid search over positive branch lengths
+      let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
 
-      let best_branch_length = branch_lengths
+      let best_positive = branch_lengths
         .iter()
         .max_by_key(|&&bl| {
           let metrics = evaluate_mixed(&contributions, bl);
@@ -315,7 +315,16 @@ where
         })
         .copied()
         .unwrap();
-      new_branch_length = best_branch_length;
+
+      // Evaluate t=0 as a separate candidate: for non-unimodal models that
+      // bypass the derivative shortcut, zero may still be optimal. Guard with
+      // site validity to avoid ln(0) for degenerate coefficient rows.
+      let zero_is_better = contributions.iter().all(|c| c.all_sites_valid_at_zero()) && {
+        let log_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0);
+        let log_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive);
+        log_lh_zero > log_lh_best
+      };
+      new_branch_length = if zero_is_better { 0.0 } else { best_positive };
     }
 
     edge.set_branch_length(Some(new_branch_length));
