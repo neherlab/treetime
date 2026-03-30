@@ -74,7 +74,6 @@ exactly.
 | Low        | GTR          | [Site-specific GTR not integrated into partition system](L-gtr-site-specific-partition-integration.md)                          |
 | Low        | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](L-gtr-site-specific-e2e-inference-test.md)              |
 | Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
-| ~~Medium~~ | ~~Prune~~    | ~~Edge collapse uses union instead of composition for mutations~~ **FIXED**                                                     |
 | Negligible | Prune        | [Merge shared mutations uses raw p-distance for branch length](N-prune-merge-branch-length-p-distance.md)                       |
 | Medium     | Prune        | [Prune command applies merge before prune, should be reversed](M-prune-wrong-operation-order.md)                                |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
