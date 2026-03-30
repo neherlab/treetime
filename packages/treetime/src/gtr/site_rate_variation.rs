@@ -93,6 +93,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use proptest::prelude::*;
   use rstest::rstest;
+  use treetime_utils::assert_error;
 
   #[rustfmt::skip]
   #[rstest]
@@ -157,14 +158,26 @@ mod tests {
 
   #[test]
   fn test_discrete_gamma_rates_invalid_alpha() {
-    let _ = discrete_gamma_rates(0.0, 4).unwrap_err();
-    let _ = discrete_gamma_rates(-1.0, 4).unwrap_err();
-    let _ = discrete_gamma_rates(0.14, 4).unwrap_err(); // below 0.15 minimum
+    assert_error!(
+      discrete_gamma_rates(0.0, 4),
+      "Gamma shape parameter alpha must be >= 0.15 (statrs Gamma CDF is numerically unstable for smaller values), got 0"
+    );
+    assert_error!(
+      discrete_gamma_rates(-1.0, 4),
+      "Gamma shape parameter alpha must be >= 0.15 (statrs Gamma CDF is numerically unstable for smaller values), got -1"
+    );
+    assert_error!(
+      discrete_gamma_rates(0.14, 4),
+      "Gamma shape parameter alpha must be >= 0.15 (statrs Gamma CDF is numerically unstable for smaller values), got 0.14"
+    );
   }
 
   #[test]
   fn test_discrete_gamma_rates_invalid_categories() {
-    let _ = discrete_gamma_rates(1.0, 0).unwrap_err();
+    assert_error!(
+      discrete_gamma_rates(1.0, 0),
+      "Number of rate categories must be at least 1, got 0"
+    );
   }
 
   // Conditional-mean discretization for Gamma(1,1) (exponential), K=4.
