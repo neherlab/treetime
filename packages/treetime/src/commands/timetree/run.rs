@@ -327,15 +327,16 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // regions. OnlyFinal and Always both produce these distributions (v1 always uses
   // marginal inference, so both modes have HPD data). Rate susceptibility adds
   // clock-rate-uncertainty CIs independently.
-  let confidence_intervals = if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
-    let intervals = extract_confidence_intervals(&graph);
-    let ci_path = args.outdir.join("confidence_intervals.tsv");
-    write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
-    info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
-    Some(intervals)
-  } else {
-    None
-  };
+  let confidence_intervals =
+    if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
+      let intervals = extract_confidence_intervals(&graph);
+      let ci_path = args.outdir.join("confidence_intervals.tsv");
+      write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
+      info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
+      Some(intervals)
+    } else {
+      None
+    };
 
   info!("### TreeTime: writing outputs");
   write_outputs(args, &graph, &partitions, &clock_model, confidence_intervals.as_deref())?;

@@ -274,7 +274,10 @@ mod tests {
 
     let result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true);
 
-    assert!(result.is_err(), "force_positive=true should reject all-negative-rate graph");
+    assert!(
+      result.is_err(),
+      "force_positive=true should reject all-negative-rate graph"
+    );
     let err_msg = result.unwrap_err().to_string();
     assert!(
       err_msg.contains("Clock rate is negative"),

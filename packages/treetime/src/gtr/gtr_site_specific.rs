@@ -91,7 +91,10 @@ impl GTRSiteSpecific {
       return make_error!("mu length {} does not match seq_len {seq_len}", mu.len());
     }
     if pi.dim() != (n_states, seq_len) {
-      return make_error!("pi shape {:?} does not match expected ({n_states}, {seq_len})", pi.dim());
+      return make_error!(
+        "pi shape {:?} does not match expected ({n_states}, {seq_len})",
+        pi.dim()
+      );
     }
     if let Some(W) = &W {
       if W.dim() != (n_states, n_states) {
@@ -131,7 +134,10 @@ impl GTRSiteSpecific {
       for a in 0..seq_len {
         for i in 0..n_states {
           if pi[[i, a]] <= 0.0 {
-            return make_error!("Site {a}, state {i} has non-positive pi after normalization: {}", pi[[i, a]]);
+            return make_error!(
+              "Site {a}, state {i} has non-positive pi after normalization: {}",
+              pi[[i, a]]
+            );
           }
         }
       }
