@@ -16,8 +16,8 @@
 | Zero branch optimal             | 1      | 13      | 0             | Unit |
 | Initial guess GTR messages      | 1      | 2       | 0             | Unit |
 | Initial guess soft Hamming      | 1      | 10      | 0             | Unit |
-| Topology cleanup in loop        | 1      | 12      | 0             | Unit |
-| **Total**                       | **29** | **105** | **5**         | Unit |
+| Topology cleanup in loop        | 1      | 15      | 0             | Unit |
+| **Total**                       | **29** | **108** | **5**         | Unit |
 
 ---
 
@@ -446,3 +446,6 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 | `test_optimize_prune_and_merge_collapses_and_merges`               | Collapse + shared mutation merge in one pass               |
 | `test_optimize_loop_with_topology_cleanup_sparse`                  | Full loop collapses zero-optimal branches (identical seqs) |
 | `test_optimize_loop_no_collapse_when_branches_nonzero`             | No collapse when all branches carry signal                 |
+| `test_optimize_merge_then_marginal_finite_likelihood`              | Merge + update_marginal produces finite log-likelihood     |
+| `test_optimize_cascading_collapse_parent_child_both_zero`          | Parent-child both zero-optimal, guard handles removal      |
+| `test_optimize_loop_with_topology_cleanup_dense`                   | Dense-mode full loop with topology cleanup                 |
