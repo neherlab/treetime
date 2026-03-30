@@ -189,7 +189,7 @@ fn evaluate_mixed_impl(
 /// from zero, meaning zero is a local maximum.
 ///
 /// This shortcut is restricted to models with proven unimodal branch-length
-/// likelihood: JC69, F81, and binary models (Dinh & Matsen 2017, Theorem 3.1).
+/// likelihood: JC69, F81, and binary models (Dinh & Matsen 2017, Corollary 3.1).
 /// For these models, at most one stationary point exists on (0, infinity), so a
 /// negative derivative at t=0 guarantees zero is the global maximum.
 ///
@@ -197,6 +197,13 @@ fn evaluate_mixed_impl(
 /// general GTR), the likelihood can have two local maxima. A negative
 /// derivative at t=0 only proves zero is a local maximum. The shortcut
 /// returns false and the caller falls through to Newton/grid search.
+///
+/// The derivative-sign approach replaces an earlier implementation that
+/// multiplied raw per-site likelihoods into a product and compared against
+/// a fixed threshold (0.01). That approach suffered from two defects:
+/// - Underflow: many small site likelihoods multiplied to f64 zero
+/// - Scale dependence: the same local likelihood shape passed or failed
+///   the threshold depending on alignment length
 ///
 /// Before evaluating the derivative, each site's likelihood at t=0 must be
 /// verified as positive and finite. If any site is degenerate (L_i(0) <= 0

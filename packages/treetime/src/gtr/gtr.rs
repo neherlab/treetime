@@ -194,9 +194,12 @@ pub struct GTR {
   /// unimodal on $(0, \infty)$ for this model.
   ///
   /// Dinh & Matsen (2017) prove that models with a single distinct nonzero
-  /// eigenvalue (JC69, F81, binary symmetric) have at most one stationary point.
-  /// For these models, a negative derivative at $t = 0$ guarantees zero is the
-  /// global maximum on $[0, \infty)$, enabling the zero-branch shortcut.
+  /// eigenvalue (JC69, F81, binary symmetric) have at most one stationary point
+  /// (Corollary 3.1). With one distinct nonzero eigenvalue, the per-site
+  /// characteristic polynomial factors into linear terms with real roots,
+  /// satisfying the condition of Theorem 3.1. For these models, a negative
+  /// derivative at $t = 0$ guarantees zero is the global maximum on
+  /// $[0, \infty)$, enabling the zero-branch shortcut.
   ///
   /// Models with multiple distinct nonzero eigenvalues (K80, HKY85, TN93, GTR)
   /// can have two local maxima. The shortcut is not valid for these models.
