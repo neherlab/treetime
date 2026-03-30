@@ -3,7 +3,6 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::traits::PartitionBranchOps;

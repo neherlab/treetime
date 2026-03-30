@@ -120,7 +120,7 @@ pub fn get_gtr_sparse<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
-  D: Send + Sync + Default,
+  D: Send + Sync,
 {
   let gtr = match name {
     GtrModelName::Infer => infer_gtr_sparse(partition, graph),

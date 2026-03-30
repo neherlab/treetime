@@ -155,19 +155,19 @@ pub(super) fn get_edge_num_muts(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
-) -> Option<usize> {
+) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 
   for partition in partitions {
     let partition = partition.read_arc();
     if partition.edges.contains_key(&edge_key) {
-      total_muts += partition.edge_subs(graph, edge_key).ok()?.len();
+      total_muts += partition.edge_subs(graph, edge_key)?.len();
       found_any = true;
     }
   }
 
-  found_any.then_some(total_muts)
+  Ok(found_any.then_some(total_muts))
 }
 
 fn prune_internal_nodes(
@@ -193,7 +193,11 @@ fn prune_internal_nodes(
       let weight = edge.payload().read_arc().branch_length();
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
-      let should_prune_empty = prune_empty && get_edge_num_muts(graph, partitions, edge.key()) == Some(0);
+      let should_prune_empty = prune_empty
+        && get_edge_num_muts(graph, partitions, edge.key())
+          .inspect_err(|e| log::warn!("edge_subs failed for edge {}: {e}", edge.key()))
+          .ok()
+          == Some(Some(0));
 
       let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
       let name = target_node.name();
@@ -363,7 +367,7 @@ fn merge_single_polytomy(
       break;
     }
 
-    let best = find_best_shared_mutation_pair(graph, partitions, &child_edges);
+    let best = find_best_shared_mutation_pair(graph, partitions, &child_edges)?;
     let Some(best) = best else { break };
 
     debug!(
@@ -400,13 +404,13 @@ fn find_best_shared_mutation_pair(
   graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   child_edges: &[GraphEdgeKey],
-) -> Option<SharedMutationPair> {
+) -> Result<Option<SharedMutationPair>, Report> {
   let n = child_edges.len();
   let mut best: Option<SharedMutationPair> = None;
 
   for i in 0..n {
     for j in (i + 1)..n {
-      let shared_subs = compute_shared_subs_across_partitions(graph, partitions, child_edges[i], child_edges[j]);
+      let shared_subs = compute_shared_subs_across_partitions(graph, partitions, child_edges[i], child_edges[j])?;
       let total_shared: usize = shared_subs.iter().map(Vec::len).sum();
 
       if total_shared > 0 {
@@ -423,7 +427,7 @@ fn find_best_shared_mutation_pair(
     }
   }
 
-  best
+  Ok(best)
 }
 
 /// Compute the intersection of substitutions on two edges, per partition.
@@ -435,14 +439,14 @@ fn compute_shared_subs_across_partitions(
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key_a: GraphEdgeKey,
   edge_key_b: GraphEdgeKey,
-) -> Vec<Vec<Sub>> {
+) -> Result<Vec<Vec<Sub>>, Report> {
   partitions
     .iter()
     .map(|partition| {
       let partition = partition.read_arc();
-      let subs_a = partition.edge_subs(graph, edge_key_a).unwrap_or_default();
-      let subs_b = partition.edge_subs(graph, edge_key_b).unwrap_or_default();
-      iterator_intersection(&subs_a, &subs_b).cloned().collect_vec()
+      let subs_a = partition.edge_subs(graph, edge_key_a)?;
+      let subs_b = partition.edge_subs(graph, edge_key_b)?;
+      Ok(iterator_intersection(&subs_a, &subs_b).cloned().collect_vec())
     })
     .collect()
 }
@@ -490,21 +494,21 @@ fn merge_sibling_pair(
       let partition = partition.read_arc();
       let edge_a = partition.edges.get(&pair.edge_key_a);
       let edge_b = partition.edges.get(&pair.edge_key_b);
-      let subs_a = partition.edge_subs(graph, pair.edge_key_a).unwrap_or_default();
-      let subs_b = partition.edge_subs(graph, pair.edge_key_b).unwrap_or_default();
+      let subs_a = partition.edge_subs(graph, pair.edge_key_a)?;
+      let subs_b = partition.edge_subs(graph, pair.edge_key_b)?;
       let indels_a = edge_a.map(|e| e.indels.clone()).unwrap_or_default();
       let indels_b = edge_b.map(|e| e.indels.clone()).unwrap_or_default();
       let shared = &pair.shared_subs[pi];
       let remaining_a = iterator_difference(&subs_a, shared).cloned().collect_vec();
       let remaining_b = iterator_difference(&subs_b, shared).cloned().collect_vec();
-      ChildPartitionData {
+      Ok(ChildPartitionData {
         remaining_subs_a: remaining_a,
         remaining_subs_b: remaining_b,
         indels_a,
         indels_b,
-      }
+      })
     })
-    .collect();
+    .collect::<Result<Vec<_>, Report>>()?;
 
   // Compute new branch length: shared_mutations / alignment_length
   let total_alignment_length: usize = partitions.iter().map(|p| p.read_arc().length).sum();

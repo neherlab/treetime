@@ -10,7 +10,7 @@ use treetime_graph::edge::GraphEdgeKey;
 /// Extends `PartitionBranchOps` (which provides `edge_subs()`,
 /// `edge_effective_length()`, and `sequence_length()`) with
 /// optimize-specific likelihood contribution computation.
-pub trait PartitionOptimizeOps: PartitionBranchOps + Send + Sync {
+pub trait PartitionOptimizeOps: PartitionBranchOps {
   /// Return the precomputed likelihood contribution for one edge.
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
 }

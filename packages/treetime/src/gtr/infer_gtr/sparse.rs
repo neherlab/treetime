@@ -17,7 +17,7 @@ pub fn infer_gtr_sparse<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
-  D: Send + Sync + Default,
+  D: Send + Sync,
 {
   let counts = get_mutation_counts_sparse(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
@@ -40,7 +40,7 @@ pub fn get_mutation_counts_sparse<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
-  D: Send + Sync + Default,
+  D: Send + Sync,
 {
   let partition = partition.read_arc();
   let alphabet = &partition.alphabet;

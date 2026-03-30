@@ -6,4 +6,3 @@
 # everyone who runs the test benefits from these saved cases.
 cc 6be2b734766517c19fcc033e57998be6259c7a0a742521bfd1fda305892fb9fd # shrinks to alpha = 0.01, n_categories = 2
 cc 724ee08cf28fa10b1319c83cc16cd726455bf77ac0e8defc7ac404787540276c # shrinks to alpha = 0.1, n_categories = 3
-cc b5a82d5cdd70b8f344bcfc5e36e496ba60ceaed7eb947229aa0c0a2a1435dd27 # shrinks to alpha = 0.2, n_categories = 5

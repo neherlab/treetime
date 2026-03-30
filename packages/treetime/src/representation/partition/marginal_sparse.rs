@@ -78,7 +78,7 @@ impl PartitionMarginalSparse {
   /// This is the generic implementation used by both `PartitionBranchOps::edge_subs()`
   /// (which constrains to `GraphAncestral`) and direct callers that have other graph
   /// types (e.g. GTR inference in the timetree context with `Graph<NodeTimetree, ...>`).
-  pub fn edge_subs_from_graph<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
+  pub fn edge_subs_from_graph<N: GraphNode, E: GraphEdge, D: Send + Sync>(
     &self,
     graph: &Graph<N, E, D>,
     edge_key: GraphEdgeKey,
@@ -112,12 +112,14 @@ impl PartitionMarginalSparse {
   /// In sparse mode, only a small set of sites can change the branch result:
   /// sites changed on this edge, or sites where the parent or child has a
   /// non-default marginal state. Everything else stays the same on both ends.
-  fn edge_candidate_positions<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
+  fn edge_candidate_positions<N: GraphNode, E: GraphEdge, D: Send + Sync>(
     &self,
     graph: &Graph<N, E, D>,
     edge_key: GraphEdgeKey,
   ) -> Result<Vec<usize>, Report> {
-    let edge = &self.edges[&edge_key];
+    let Some(edge) = self.edges.get(&edge_key) else {
+      return Ok(vec![]);
+    };
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
@@ -156,7 +158,7 @@ impl PartitionMarginalSparse {
   ///
   /// After marginal inference, `edge.subs` alone is not enough. The final state
   /// also depends on the node's current marginal result.
-  fn node_state_at<N: GraphNode, E: GraphEdge, D: Send + Sync + Default>(
+  fn node_state_at<N: GraphNode, E: GraphEdge, D: Send + Sync>(
     &self,
     graph: &Graph<N, E, D>,
     node_key: GraphNodeKey,
@@ -173,11 +175,12 @@ impl PartitionMarginalSparse {
     let node = node.read_arc();
     let node_data = self.nodes.get(&node_key);
 
-    // Compute base state from tree structure
+    // Compute base state from tree structure.
+    // Root must have partition data (populated by Fitch compression).
+    // Non-root nodes may be absent during topology changes.
     let base_state = if node.is_root() {
-      node_data.map_or(self.alphabet.char(0), |d| {
-        d.seq.sequence.get(pos).copied().unwrap_or(self.alphabet.char(0))
-      })
+      let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
+      d.seq.sequence.get(pos).copied().unwrap_or(self.alphabet.char(0))
     } else {
       let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
       let parent_key = parent_node.read_arc().key();
