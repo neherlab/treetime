@@ -303,6 +303,12 @@ where
       .map(|partition| partition.read_arc().edge_indel_count(edge_key))
       .sum();
 
+    // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
+    // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
+    if branch_length == 0.0 && indel_count > 0 && indel_rate > 0.0 {
+      branch_length = (indel_count as f64 / indel_rate).max(one_mutation);
+    }
+
     // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
     // so zero branch length is never optimal. Only check the substitution-based criterion
     // when there are no indels.
