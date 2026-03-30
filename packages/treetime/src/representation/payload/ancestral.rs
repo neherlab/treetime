@@ -161,7 +161,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral, annotate_branch_mutations};
+  use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -231,7 +231,13 @@ mod tests {
     let partition = make_test_partition(
       &graph,
       100,
-      &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?, Sub::new(c(b'G'), 5_usize, c(b'C'))?])],
+      &[(
+        0,
+        vec![
+          Sub::new(c(b'A'), 0_usize, c(b'T'))?,
+          Sub::new(c(b'G'), 5_usize, c(b'C'))?,
+        ],
+      )],
     )?;
     let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
     annotate_branch_mutations(&graph, &branch_ops)?;
@@ -300,8 +306,7 @@ mod tests {
     let p1 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?])])?;
     let p2 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'G'), 20_usize, c(b'C'))?])])?;
 
-    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> =
-      vec![p1 as Arc<RwLock<dyn PartitionBranchOps>>, p2];
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![p1 as Arc<RwLock<dyn PartitionBranchOps>>, p2];
     annotate_branch_mutations(&graph, &branch_ops)?;
 
     let child = graph.get_leaves()[0].read_arc();
