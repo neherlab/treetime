@@ -51,25 +51,17 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     return make_error!("--damping must be in [0.0, 1.0), got {damping}");
   }
 
-  // FIXME: For demonstration of mixed partitions, we create a sparse and a dense partition,
-  // both containing full sequence. Make it configurable.
-
-  // TODO: currently unused, but we could implement automatic suggestion of dense/sparse mode for individual partitions
-  let _dense = dense.unwrap_or_else(infer_dense);
-
-  let alphabet_sparse = Alphabet::new(alphabet.unwrap_or_default())?;
-  let alphabet_dense = Alphabet::new(alphabet.unwrap_or_default())?;
-
-  let aln = read_many_fasta(input_fastas, &alphabet_sparse)?;
-
+  let dense = dense.unwrap_or_else(infer_dense);
+  let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
+  let aln = read_many_fasta(input_fastas, &alphabet)?;
   let graph: GraphAncestral = nwk_read_file(tree)?;
 
-  let sparse_partitions = {
+  let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if !dense {
     #[allow(clippy::iter_on_single_items)]
-    let sparse_partitions = [PartitionMarginalSparse {
+    let partitions = [PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-      alphabet: alphabet_sparse,
+      alphabet: alphabet.clone(),
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -78,25 +70,27 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     .map(|p| Arc::new(RwLock::new(p)))
     .collect_vec();
 
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    compress_sequences(&graph, &partitions, &aln)?;
 
     // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-    for partition in &sparse_partitions {
+    for partition in &partitions {
       let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-      write_gtr_json(&gtr, *model_name, outdir, Some("sparse"))?;
+      write_gtr_json(&gtr, *model_name, outdir, None)?;
       partition.write_arc().gtr = gtr;
     }
 
-    sparse_partitions
+    partitions
+  } else {
+    vec![]
   };
 
-  let dense_partitions = {
+  let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = if dense {
     #[allow(clippy::iter_on_single_items)]
-    let dense_partitions = [PartitionMarginalDense {
-      index: 1,
+    let partitions = [PartitionMarginalDense {
+      index: 0,
       gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-      alphabet: alphabet_dense,
+      alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -105,27 +99,29 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     .map(|p| Arc::new(RwLock::new(p)))
     .collect_vec();
 
-    dense_partitions
+    partitions
+  } else {
+    vec![]
   };
 
-  // Run marginal reconstruction to initialize edge data before optimization
+  // Initialize marginal data for whichever partitions are active
   update_marginal(&graph, &sparse_partitions)?;
-  initialize_marginal(&graph, &dense_partitions, &aln)?;
+  if !dense_partitions.is_empty() {
+    initialize_marginal(&graph, &dense_partitions, &aln)?;
 
-  // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-  // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-  // Dense GTR requires profiles populated via initialize_marginal + update_marginal.
-  // Run first marginal pass with dummy GTR, then replace with real model.
-  update_marginal(&graph, &dense_partitions)?;
-  for partition in &dense_partitions {
-    let gtr = get_gtr_dense(model_name, partition, &graph)?;
-    write_gtr_json(&gtr, *model_name, outdir, Some("dense"))?;
-    partition.write_arc().gtr = gtr;
+    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
+    // Dense GTR requires profiles populated via initialize_marginal + update_marginal.
+    // Run first marginal pass with dummy GTR, then replace with real model.
+    update_marginal(&graph, &dense_partitions)?;
+    for partition in &dense_partitions {
+      let gtr = get_gtr_dense(model_name, partition, &graph)?;
+      write_gtr_json(&gtr, *model_name, outdir, None)?;
+      partition.write_arc().gtr = gtr;
+    }
+
+    // Re-run with inferred GTR so node posteriors reflect the real model.
+    update_marginal(&graph, &dense_partitions)?;
   }
-
-  // Re-run marginal with inferred GTR so node posteriors used by
-  // initial_guess_mixed reflect the real model, not the dummy JC69.
-  update_marginal(&graph, &dense_partitions)?;
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
@@ -155,14 +151,20 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     lh_prev = total_lh;
   }
 
-  // Annotate from sparse partitions only. The optimize command creates both
-  // dense and sparse partitions over the same alignment; using both would
-  // duplicate every mutation in the output annotation.
-  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = sparse_partitions
-    .iter()
-    .cloned()
-    .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-    .collect_vec();
+  // Annotate mutations from whichever partition type is active
+  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = if dense {
+    dense_partitions
+      .iter()
+      .cloned()
+      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+      .collect_vec()
+  } else {
+    sparse_partitions
+      .iter()
+      .cloned()
+      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+      .collect_vec()
+  };
   annotate_branch_mutations(&graph, &branch_ops)?;
 
   write_graph(outdir, &graph)?;
