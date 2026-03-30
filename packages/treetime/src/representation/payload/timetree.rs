@@ -130,7 +130,7 @@ impl NodeToNwk for NodeTimetree {
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
-    let mut comments = BTreeMap::new();
+    let mut comments = self.base.nwk_comments();
     if let Some(time) = self.time {
       comments.insert("date".to_owned(), format!("{time:.2}"));
     }

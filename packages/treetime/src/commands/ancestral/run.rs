@@ -8,7 +8,8 @@ use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::representation::partition::traits::PartitionBranchOps;
+use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
@@ -151,6 +152,12 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
               output_fasta.write(name, desc, seq)
             },
           )?;
+
+          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions_marginal_sparse
+            .into_iter()
+            .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+            .collect_vec();
+          annotate_branch_mutations(&graph, &branch_ops)?;
         }
       } else {
         #[allow(clippy::iter_on_single_items)]
@@ -195,6 +202,12 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
               output_fasta.write(name, desc, seq)
             },
           )?;
+
+          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions_marginal_dense
+            .into_iter()
+            .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+            .collect_vec();
+          annotate_branch_mutations(&graph, &branch_ops)?;
         }
       }
     },

@@ -1,6 +1,5 @@
 use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::o;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -39,8 +38,7 @@ impl NodeToNwk for NodeClock {
   }
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
-    let mutations: String = "".to_owned(); // TODO: fill mutations
-    BTreeMap::from([(o!("mutations"), mutations)])
+    BTreeMap::new()
   }
 }
 

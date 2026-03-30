@@ -1,7 +1,11 @@
 use crate::o;
+use crate::representation::partition::traits::PartitionBranchOps;
 use eyre::Report;
+use itertools::Itertools;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{Described, GraphNode, Named};
@@ -14,6 +18,11 @@ pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 pub struct NodeAncestral {
   pub name: Option<String>,
   pub desc: Option<String>,
+  /// Branch mutations annotation for Newick/Nexus output.
+  /// Populated by `annotate_branch_mutations()` from partition data
+  /// before tree output. Format: "A55G,T93C" (1-based positions).
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub mutations: Option<String>,
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -32,8 +41,9 @@ impl NodeToNwk for NodeAncestral {
 
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     let mut comments = BTreeMap::new();
-    let mutations: String = "".to_owned(); // TODO: fill mutations
-    comments.insert(o!("mutations"), mutations);
+    if let Some(mutations) = &self.mutations {
+      comments.insert(o!("mutations"), mutations.clone());
+    }
     comments
   }
 }
@@ -105,4 +115,42 @@ impl EdgeToGraphviz for EdgeAncestral {
   fn to_graphviz_weight(&self) -> Option<f64> {
     self.branch_length()
   }
+}
+
+/// Populate mutation annotations on graph nodes from partition data.
+///
+/// For each edge, derives current mutations via `PartitionBranchOps::edge_subs()`
+/// across all partitions and stores the formatted string on the child node.
+/// Mutations are sorted by position and formatted as "A55G,T93C" (1-based).
+///
+/// Call this after reconstruction and before Newick/Nexus output to fill
+/// the `mutations` field in `NodeAncestral::nwk_comments()`.
+pub fn annotate_branch_mutations(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<dyn PartitionBranchOps>>],
+) -> Result<(), Report> {
+  for edge in graph.get_edges() {
+    let edge = edge.read_arc();
+    let edge_key = edge.key();
+    let child_key = edge.target();
+
+    let mut all_subs = Vec::new();
+    for partition in partitions {
+      let partition = partition.read_arc();
+      all_subs.extend(partition.edge_subs(graph, edge_key)?);
+    }
+
+    all_subs.sort_by_key(|s| s.pos());
+
+    let mutations = if all_subs.is_empty() {
+      None
+    } else {
+      Some(all_subs.iter().join(","))
+    };
+
+    let child = graph.get_node(child_key).expect("Child node must exist");
+    child.read_arc().payload().write_arc().mutations = mutations;
+  }
+
+  Ok(())
 }

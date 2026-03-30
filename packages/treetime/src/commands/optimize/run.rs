@@ -8,7 +8,8 @@ use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::representation::partition::traits::PartitionBranchOps;
+use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
 use eyre::Report;
 use itertools::{Itertools, chain, izip};
 use log::debug;
@@ -153,6 +154,19 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     apply_damping(&graph, &old_branch_lengths, *damping, i);
     lh_prev = total_lh;
   }
+
+  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = chain!(
+    dense_partitions
+      .iter()
+      .cloned()
+      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p }),
+    sparse_partitions
+      .iter()
+      .cloned()
+      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p }),
+  )
+  .collect_vec();
+  annotate_branch_mutations(&graph, &branch_ops)?;
 
   write_graph(outdir, &graph)?;
   Ok(())
