@@ -70,6 +70,7 @@ exactly.
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
+| Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)        |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
 | Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
