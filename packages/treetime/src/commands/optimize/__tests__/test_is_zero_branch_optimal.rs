@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_unified::{OptimizationContribution, is_zero_branch_optimal};
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
 
@@ -33,6 +33,7 @@ mod tests {
     OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
       site_contributions,
       eigenvalues,
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
     })
   }
 
@@ -307,5 +308,98 @@ mod tests {
       sparse.zero_branch_length_derivative(),
       epsilon = 1e-10
     );
+  }
+
+  /// Create a dense contribution using K80 (Kimura 2-parameter) model.
+  ///
+  /// K80 has multiple distinct nonzero eigenvalues, so L(t) can be multimodal.
+  /// The zero-branch shortcut must not apply for this model.
+  fn make_k80_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
+    let gtr = k80(K80Params::default()).unwrap();
+    OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
+  }
+
+  /// JC69 model is marked unimodal.
+  #[test]
+  fn test_is_zero_branch_optimal_jc69_is_unimodal() {
+    let gtr = jc69(JC69Params::default()).unwrap();
+    assert!(gtr.unimodal_branch_likelihood);
+  }
+
+  /// F81 model is marked unimodal.
+  #[test]
+  fn test_is_zero_branch_optimal_f81_is_unimodal() {
+    let gtr = f81(F81Params::default()).unwrap();
+    assert!(gtr.unimodal_branch_likelihood);
+  }
+
+  /// K80 model is NOT marked unimodal (can have two local maxima per
+  /// Dinh & Matsen 2017).
+  #[test]
+  fn test_is_zero_branch_optimal_k80_is_not_unimodal() {
+    let gtr = k80(K80Params::default()).unwrap();
+    assert!(!gtr.unimodal_branch_likelihood);
+  }
+
+  /// K80 contribution with negative derivative at t=0: shortcut returns false
+  /// because K80 can be multimodal. The same coefficients under JC69 would
+  /// return true.
+  #[test]
+  fn test_is_zero_branch_optimal_k80_bypasses_shortcut() {
+    let k80_contrib = make_k80_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    // K80 has negative derivative at t=0 (weight on negative eigenvalue)
+    assert!(k80_contrib.zero_branch_length_derivative() < 0.0);
+    // But shortcut is bypassed because K80 is not proven unimodal
+    assert!(!is_zero_branch_optimal(&[k80_contrib]));
+  }
+
+  /// Mixed JC69 + K80 contributions: shortcut returns false because at least
+  /// one partition uses a non-unimodal model.
+  #[test]
+  fn test_is_zero_branch_optimal_mixed_unimodal_non_unimodal_returns_false() {
+    let jc69_contrib = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    let k80_contrib = make_k80_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
+    // JC69 alone would return true
+    assert!(is_zero_branch_optimal(&[make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]])]));
+    // But mixed with K80, the shortcut is bypassed
+    assert!(!is_zero_branch_optimal(&[jc69_contrib, k80_contrib]));
+  }
+
+  /// F81 with non-uniform frequencies still uses the shortcut (F81 has one
+  /// distinct nonzero eigenvalue regardless of frequency distribution).
+  #[test]
+  fn test_is_zero_branch_optimal_f81_nonuniform_uses_shortcut() {
+    let gtr = f81(F81Params {
+      pi: Some(array![0.1, 0.2, 0.3, 0.4]),
+      ..F81Params::default()
+    })
+    .unwrap();
+    assert!(gtr.unimodal_branch_likelihood);
+
+    // Coefficients with weight on a negative eigenvalue
+    let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
+    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    assert!(is_zero_branch_optimal(&[contribution]));
+  }
+
+  /// K80 sparse contribution also bypasses the shortcut.
+  #[test]
+  fn test_is_zero_branch_optimal_k80_sparse_bypasses_shortcut() {
+    let gtr = k80(K80Params::default()).unwrap();
+    let eigenvalues = gtr.eigvals;
+
+    let site_contributions = vec![optimize_sparse::SiteContribution {
+      multiplicity: 1.0,
+      coefficients: ndarray::Array1::from_vec(vec![0.0, 1.0, 0.0, 0.0]),
+    }];
+    let contribution = OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
+      site_contributions,
+      eigenvalues,
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+    });
+    // Derivative is negative
+    assert!(contribution.zero_branch_length_derivative() < 0.0);
+    // But shortcut is bypassed
+    assert!(!is_zero_branch_optimal(&[contribution]));
   }
 }

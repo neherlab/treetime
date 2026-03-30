@@ -28,6 +28,7 @@ mod tests {
     let contribution = PartitionContribution {
       site_contributions: vec![site],
       eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: false,
     };
 
     // Verify coefficients match
@@ -61,6 +62,7 @@ mod tests {
     let contribution = PartitionContribution {
       site_contributions: vec![site],
       eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: false,
     };
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0);
@@ -90,6 +92,7 @@ mod tests {
     let contribution = PartitionContribution {
       site_contributions: vec![site],
       eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: false,
     };
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0);
