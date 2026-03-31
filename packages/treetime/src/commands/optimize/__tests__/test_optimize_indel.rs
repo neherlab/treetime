@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
+    TREE_NEWICK, setup_partitions, simple_alignment,
+  };
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
-    initial_guess_mixed, is_zero_branch_optimal, run_optimize_mixed, OptimizationContribution,
-  };
-  use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    setup_partitions, simple_alignment, TREE_NEWICK,
+    OptimizationContribution, initial_guess_mixed, is_zero_branch_optimal, run_optimize_mixed,
   };
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
@@ -18,8 +18,12 @@ mod tests {
   /// Inject indels onto the first edge in each partition (both dense and sparse).
   fn inject_indels_on_first_edge(
     graph: &GraphAncestral,
-    dense_partitions: &[std::sync::Arc<parking_lot::RwLock<crate::representation::partition::marginal_dense::PartitionMarginalDense>>],
-    sparse_partitions: &[std::sync::Arc<parking_lot::RwLock<crate::representation::partition::marginal_sparse::PartitionMarginalSparse>>],
+    dense_partitions: &[std::sync::Arc<
+      parking_lot::RwLock<crate::representation::partition::marginal_dense::PartitionMarginalDense>,
+    >],
+    sparse_partitions: &[std::sync::Arc<
+      parking_lot::RwLock<crate::representation::partition::marginal_sparse::PartitionMarginalSparse>,
+    >],
     indels: Vec<InDel>,
   ) -> treetime_graph::edge::GraphEdgeKey {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
@@ -105,7 +109,10 @@ mod tests {
       .sum::<Result<_, _>>()?;
 
     if sub_count == 0 {
-      assert!(bl > 0.0, "Branch with indels but no subs should have positive initial guess");
+      assert!(
+        bl > 0.0,
+        "Branch with indels but no subs should have positive initial guess"
+      );
     }
     Ok(())
   }
@@ -123,7 +130,10 @@ mod tests {
 
     // Inject indels AFTER setup (which includes update_marginal) to avoid being wiped
     // by the backward pass that recreates DenseEdgePartition from scratch.
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?), InDel::del((5, 8), Seq::try_from_str("ACG")?)];
+    let indels = vec![
+      InDel::del((0, 3), Seq::try_from_str("ACG")?),
+      InDel::del((5, 8), Seq::try_from_str("ACG")?),
+    ];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
 
     run_optimize_mixed(&graph, &mixed_partitions)?;
@@ -135,7 +145,10 @@ mod tests {
       .read_arc()
       .branch_length()
       .unwrap();
-    assert!(bl > 0.0, "Branch with indels should have positive length after optimization");
+    assert!(
+      bl > 0.0,
+      "Branch with indels should have positive length after optimization"
+    );
     Ok(())
   }
 
@@ -164,11 +177,7 @@ mod tests {
       let mu = 3.0;
       let t_mle = k as f64 / mu;
       let metrics = poisson_indel_log_lh(k, mu, t_mle);
-      assert_abs_diff_eq!(
-        metrics.derivative,
-        0.0,
-        epsilon = 1e-13
-      );
+      assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
     }
   }
 
@@ -185,7 +194,10 @@ mod tests {
       let t = t_mle + delta;
       if t > 0.0 {
         let lh = poisson_indel_log_lh(k, mu, t).log_lh;
-        assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
+        assert!(
+          lh <= lh_mle + 1e-14,
+          "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})"
+        );
       }
     }
   }

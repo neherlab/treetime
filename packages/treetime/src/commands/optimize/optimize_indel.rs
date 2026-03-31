@@ -52,10 +52,7 @@ where
     let edge_key = edge_ref.read_arc().key();
     let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
 
-    let edge_indels: usize = partitions
-      .iter()
-      .map(|p| p.read_arc().edge_indel_count(edge_key))
-      .sum();
+    let edge_indels: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
 
     total_indels += edge_indels;
     total_branch_length += branch_length;
