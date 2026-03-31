@@ -96,8 +96,8 @@ exactly.
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                              |
 | Negligible | Optimize     | [Optimizer evaluation functions omit mu scaling factor](N-optimize-mu-scaling-omitted-in-evaluation.md)                         |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
+| Negligible | Optimize     | [Dense marginal backward pass wipes indels from edge partitions](N-optimize-dense-marginal-backward-wipes-indels.md)            |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
-| Negligible | Optimize     | [Branch length likelihood does not account for indels](N-optimize-indel-contribution-to-likelihood.md)                          |
 | Negligible | Optimize     | [Initial branch length guess always overwrites input values](N-optimize-initial-guess-not-optional.md)                          |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
