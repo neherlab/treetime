@@ -9,6 +9,7 @@ mod test_grid_search;
 mod test_initial_guess_formula;
 mod test_initial_guess_gaps;
 mod test_initial_guess_gtr_messages;
+mod test_initial_guess_mode;
 mod test_is_zero_branch_optimal;
 mod test_newton_convergence;
 mod test_optimization_metrics;

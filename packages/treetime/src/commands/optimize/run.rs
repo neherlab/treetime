@@ -379,7 +379,7 @@ pub(crate) fn prune_and_merge_in_loop(
 }
 
 /// Decide whether to run the discrete-count initial guess based on mode and tree state.
-fn should_run_initial_guess<N, E, D>(mode: InitialGuessMode, graph: &Graph<N, E, D>) -> bool
+pub(crate) fn should_run_initial_guess<N, E, D>(mode: InitialGuessMode, graph: &Graph<N, E, D>) -> bool
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
