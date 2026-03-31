@@ -126,14 +126,15 @@ impl PartitionMarginalSparse {
     // Nodes may be absent when called during topology changes (e.g. after
     // merge_sibling_pair creates a new node before marginal reconstruction
     // populates its profile). Missing nodes contribute no variable positions.
-    let parent_vars: Box<dyn Iterator<Item = usize>> =
-      self.nodes.get(&parent_key).map_or(Box::new(std::iter::empty()), |n| {
-        Box::new(n.profile.variable.keys().copied())
-      });
-    let child_vars: Box<dyn Iterator<Item = usize>> =
-      self.nodes.get(&child_key).map_or(Box::new(std::iter::empty()), |n| {
-        Box::new(n.profile.variable.keys().copied())
-      });
+    let empty_iter = || -> Box<dyn Iterator<Item = usize>> { Box::new(std::iter::empty()) };
+    let parent_vars: Box<dyn Iterator<Item = usize>> = self
+      .nodes
+      .get(&parent_key)
+      .map_or_else(empty_iter, |n| Box::new(n.profile.variable.keys().copied()));
+    let child_vars: Box<dyn Iterator<Item = usize>> = self
+      .nodes
+      .get(&child_key)
+      .map_or_else(empty_iter, |n| Box::new(n.profile.variable.keys().copied()));
 
     Ok(
       edge
@@ -180,7 +181,11 @@ impl PartitionMarginalSparse {
     // Non-root nodes may be absent during topology changes.
     let base_state = if node.is_root() {
       let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
-      d.seq.sequence.get(pos).copied().unwrap_or(self.alphabet.char(0))
+      d.seq
+        .sequence
+        .get(pos)
+        .copied()
+        .unwrap_or_else(|| self.alphabet.char(0))
     } else {
       let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
       let parent_key = parent_node.read_arc().key();
