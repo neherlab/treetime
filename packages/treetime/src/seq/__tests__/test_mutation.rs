@@ -92,12 +92,9 @@ mod tests {
     let child = vec![sub(b'C', 0, b'G'), sub(b'A', 2, b'T'), sub(b'C', 4, b'G')];
     let result = compose_substitutions(&parent, &child)?;
     for w in result.windows(2) {
-      assert!(
-        w[0].pos() < w[1].pos(),
-        "output not sorted: pos {} >= {}",
-        w[0].pos(),
-        w[1].pos()
-      );
+      if let [a, b] = w {
+        assert!(a.pos() < b.pos(), "output not sorted: pos {} >= {}", a.pos(), b.pos());
+      }
     }
     assert_eq!(result.len(), 6);
     Ok(())

@@ -93,8 +93,17 @@ mod tests {
   }
 
   fn count_sign_flips(lh_history: &[f64]) -> usize {
-    let deltas: Vec<f64> = lh_history.windows(2).map(|w| w[1] - w[0]).collect();
-    deltas.windows(2).filter(|w| w[0].signum() != w[1].signum()).count()
+    let deltas: Vec<f64> = lh_history
+      .windows(2)
+      .map(|w| match w {
+        [a, b] => b - a,
+        _ => 0.0,
+      })
+      .collect();
+    deltas
+      .windows(2)
+      .filter(|w| matches!(w, [a, b] if a.signum() != b.signum()))
+      .count()
   }
 
   mod helpers {
@@ -128,6 +137,7 @@ mod tests {
     #[derive(Deserialize)]
     pub struct GmOptimizeExpected {
       pub final_total_branch_length: f64,
+      #[allow(dead_code)]
       pub final_branch_lengths: BTreeMap<String, f64>,
     }
 
