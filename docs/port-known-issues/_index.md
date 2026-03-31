@@ -55,7 +55,7 @@ exactly.
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | ~~High~~   | ~~Timetree~~ | ~~Timetree crashes on zero-length branches with grid spacing error~~ **FIXED**                                                  |
-| High       | Optimize     | [Sparse second derivative formula squares multiplicity incorrectly](H-optimize-sparse-hessian-multiplicity.md)                  |
+| ~~High~~   | ~~Optimize~~ | ~~Sparse second derivative formula squares multiplicity incorrectly~~ **FIXED**                                                 |
 | Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                              |
 | ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
 | Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                               |

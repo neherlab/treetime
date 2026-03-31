@@ -111,10 +111,13 @@ Helper file. Provides `make_dense_seq_dis()`. No tests.
 
 **File:** [`test_coefficient_extraction_sparse_derivatives.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_derivatives.rs)
 
-| Test                                                       | Purpose                             |
-| ---------------------------------------------------------- | ----------------------------------- |
-| `test_evaluate_sparse_derivative_matches_numerical`        | Analytical vs numerical derivative  |
-| `test_evaluate_sparse_derivative_scales_with_multiplicity` | Derivative scales with multiplicity |
+| Test                                                                 | Purpose                                         |
+| -------------------------------------------------------------------- | ----------------------------------------------- |
+| `test_evaluate_sparse_first_derivative_matches_numerical`            | Analytical vs numerical first derivative        |
+| `test_evaluate_sparse_second_derivative_matches_numerical`           | Analytical vs numerical second derivative       |
+| `test_evaluate_sparse_second_derivative_numerical_high_multiplicity` | Second derivative numerical at multiplicity=500 |
+| `test_evaluate_sparse_derivatives_scale_with_multiplicity`           | All metrics scale linearly with multiplicity    |
+| `test_evaluate_sparse_matches_dense_multiplicity_1`                  | Sparse (m=1) matches dense for all metrics      |
 
 ### Eigenvalues Tests
 
