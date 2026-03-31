@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::optimize::args::{InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
@@ -47,6 +47,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     max_iter,
     dp,
     damping,
+    initial_guess,
   } = args;
 
   if !(0.0..1.0).contains(damping) {
@@ -127,7 +128,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-  initial_guess_mixed(&graph, &mixed_partitions)?;
+  if should_run_initial_guess(*initial_guess, &graph) {
+    initial_guess_mixed(&graph, &mixed_partitions)?;
+  }
 
   let mut lh_prev = f64::MIN;
   for i in 0..*max_iter {
@@ -373,6 +376,23 @@ pub(crate) fn prune_and_merge_in_loop(
 
   graph.build()?;
   Ok(true)
+}
+
+/// Decide whether to run the discrete-count initial guess based on mode and tree state.
+fn should_run_initial_guess<N, E, D>(mode: InitialGuessMode, graph: &Graph<N, E, D>) -> bool
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  match mode {
+    InitialGuessMode::Always => true,
+    InitialGuessMode::Never => false,
+    InitialGuessMode::Auto => graph
+      .get_edges()
+      .iter()
+      .any(|edge_ref| edge_ref.read_arc().payload().read_arc().branch_length().is_none()),
+  }
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
