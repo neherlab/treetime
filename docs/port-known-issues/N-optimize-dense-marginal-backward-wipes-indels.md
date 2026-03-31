@@ -19,6 +19,12 @@ Low in the current codebase. Indels for optimization are read from sparse partit
 
 If future code relies on dense partition indels for non-optimization purposes (e.g., ancestral sequence output with dense mode), the missing indels would be a correctness issue.
 
+## Downstream consequence: indel double-counting
+
+The indel rate estimator `estimate_indel_rate()` and per-edge indel count in `run_optimize_mixed()` sum across all partitions. When dense indels are wiped (current behavior), only sparse contributes and the count is correct. Fixing this issue would cause both dense and sparse partitions to report indels for the same alignment, doubling the count. The Poisson MLE $t = k/\mu$ is unaffected (both numerator and denominator scale equally), but the curvature $-k/t^2$ doubles, changing Newton dynamics.
+
+When fixing the backward pass, also add partition-aware deduplication to `estimate_indel_rate()` and the per-edge count in `run_optimize_mixed()`.
+
 ## Fix
 
 Preserve the existing `indels` field when rebuilding edge partition data in the dense backward pass. The `msg_from_child` and `msg_to_parent` messages should be updated without creating a new `DenseEdgePartition` from scratch.
