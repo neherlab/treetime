@@ -155,7 +155,7 @@ $$p_1(t) = e^{-\mu t}(1 - \lambda \beta) \quad \text{(homolog survival: ancestor
 $$p_0'(t) = \mu \beta \quad \text{(deletion: ancestor residue absent in descendant)}$$
 $$p_1''(t) = 1 - \lambda \beta \quad \text{(no insertion to right of immortal link)}$$
 
-The insertion probability (a new residue appears in the descendant to the right of a surviving ancestor residue) is $\lambda\beta$. The deletion-then-insertion correction factor $\eta$ accounts for the case where an ancestor residue is deleted but a new residue is inserted in its place:
+The insertion probability (a new residue appears in the descendant to the right of a surviving ancestor residue) is $\lambda\beta$. The deletion-then-insertion correction factor $\eta$ accounts for the case where an ancestor residue is deleted but a new residue is inserted in its place. The intermediate product $n_1$ is:
 
 $$n_1 = (1 - e^{-\mu t} - \mu\beta)(1 - \lambda\beta)$$
 $$\eta = \ln(n_1) - \ln(\lambda\beta) - \ln(\mu\beta)$$
@@ -175,7 +175,7 @@ The pairwise alignment likelihood under TKF91 is the forward probability of this
 
 ### Multi-sequence complexity
 
-For $N$ sequences on a tree, the exact marginal likelihood (summing over all possible alignments) requires an $N$-dimensional DP hypercube: $O(L^N)$, which is exponential in the number of taxa. This is equivalent to <a id="cite-8"></a>[Sankoff's 1975](https://doi.org/10.1137/0130021) [[8](#ref-8)] simultaneous alignment and phylogeny problem, which is NP-complete for the optimal-scoring path.
+For $N$ sequences on a tree, the exact marginal likelihood (summing over all possible alignments) requires an $N$-dimensional DP hypercube: $O(L^N)$, which is exponential in the number of taxa. This is equivalent to Sankoff's <a id="cite-8"></a>[1975](https://doi.org/10.1137/0128004) [[8](#ref-8)] simultaneous alignment and phylogeny problem, which is NP-complete for the optimal-scoring path.
 
 With a fixed alignment (treating the alignment as observed data, not marginalizing over it), the likelihood computation reduces to an $O(L \cdot N)$ postorder traversal. <a id="cite-9"></a>[Rivas 2008](https://doi.org/10.1371/journal.pcbi.1000172) [[9](#ref-9)] showed how to extend <a id="gloss-use-5"></a>Felsenstein's peeling <sup>[5](#gloss-5)</sup> algorithm to handle single-residue indel events per alignment column under a non-reversible birth-death model.
 
@@ -203,7 +203,7 @@ TKF91 distinguishes insertions from deletions (separate $\lambda$ and $\mu$), wh
 
 ### References
 
-- <a id="cite-7-loc"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) (TKF91 original paper)
+- <a id="cite-7b"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) [[7](#ref-7)] (TKF91 original paper)
 - <a id="cite-13"></a>[Holmes 2005](https://doi.org/10.1093/bioinformatics/bti177) [[13](#ref-13)] (EM estimation of TKF91 insertion/deletion rates)
 
 ---
@@ -330,7 +330,7 @@ The intractability of exact GGI has motivated several approximation strategies:
 
 - **TKF92**: fragments (see section 5)
 - **Knudsen and Miyamoto 2003, Redelings and Suchard 2005/2007 (RS07)**: guessed pair HMM forms matching GGI moments (see section 6)
-- **De Maio 2021**: moment-matching differential equations for best-fit pair HMM. The Cumulative Indel Model approximates GGI dynamics via ODEs with adaptive banding. <a id="cite-21"></a>[De Maio 2020](https://doi.org/10.1093/sysbio/syaa050) [[21](#ref-21)]. 18 citations.
+- **De Maio 2020**: moment-matching differential equations for best-fit pair HMM. The Cumulative Indel Model approximates GGI dynamics via ODEs with adaptive banding. <a id="cite-21"></a>[De Maio 2020](https://doi.org/10.1093/sysbio/syaa050) [[21](#ref-21)]. 18 citations.
 - **Holmes 2020**: refined ODEs via coarse-graining of pair HMM state spaces. <a id="cite-22"></a>[Holmes 2020](https://doi.org/10.1534/genetics.120.303630) [[22](#ref-22)]. Currently the best known approximation to GGI.
 
 ### The Redelings 2024 review
@@ -583,24 +583,24 @@ The models differ in how they affect branch length optimization:
 
 ### Software at a glance
 
-| Software                                             |   ★ | Tech        | Last active         | Indel model          | BL method      | Indels in BL? |
-| :--------------------------------------------------- | --: | :---------- | :------------------ | :------------------- | :------------- | :------------ |
-| [RAxML-NG](https://github.com/amkozlov/raxml-ng)     | 461 | C++         | 2026-03-27     | Missing data         | Newton-Raphson | No            |
-| [IQ-TREE](https://github.com/iqtree/iqtree3)         | 120 | C++         | 2026-03-27     | Missing data         | Newton-Raphson | No            |
-| [PhyML](https://github.com/stephaneguindon/phyml)    | 195 | C           | 2026-03-19    | Missing data         | Brent          | No            |
-| [BEAST](https://github.com/beast-dev/beast-mcmc)     | 239 | Java        | 2026-03-20     | Missing data / TKF91 | MCMC           | Optional      |
-| [MrBayes](https://github.com/NBISweden/MrBayes)      | 260 | C           | 2026-01-09    | Missing data         | MCMC           | No            |
+| Software                                             |   ★ | Tech        | Last active | Indel model          | BL method      | Indels in BL? |
+| :--------------------------------------------------- | --: | :---------- | :---------- | :------------------- | :------------- | :------------ |
+| [RAxML-NG](https://github.com/amkozlov/raxml-ng)     | 461 | C++         | 2026-03-27  | Missing data         | Newton-Raphson | No            |
+| [IQ-TREE](https://github.com/iqtree/iqtree3)         | 120 | C++         | 2026-03-27  | Missing data         | Newton-Raphson | No            |
+| [PhyML](https://github.com/stephaneguindon/phyml)    | 195 | C           | 2026-03-19  | Missing data         | Brent          | No            |
+| [BEAST](https://github.com/beast-dev/beast-mcmc)     | 239 | Java        | 2026-03-20  | Missing data / TKF91 | MCMC           | Optional      |
+| [MrBayes](https://github.com/NBISweden/MrBayes)      | 260 | C           | 2026-01-09  | Missing data         | MCMC           | No            |
 | [BAli-Phy](https://github.com/bredelings/BAli-Phy)   |  49 | C++/Haskell | 2026-03-29  | RS07 / TKF91 / TKF92 | MCMC (joint)   | Yes           |
-| [StatAlign](https://github.com/statalign/statalign)  |   5 | Java        | 2020-04-12 | TKF92                | MCMC (joint)   | Yes           |
-| [Historian](https://github.com/ihh/dart)             |  32 | C++         | 2020-06-13 | RS07                 | Fixed tree     | No            |
-| [PRANK](https://github.com/ariloytynoja/prank-msa)   |  33 | C++         | 2026-03-19    | Heuristic            | Fixed tree     | No            |
-| [ProPIP](https://github.com/acg-team/ProPIP)         |   7 | C++         | 2021-08-04 | PIP                  | ML (joint)     | Yes           |
-| [ARPIP](https://github.com/acg-team/bpp-arpip)       |  11 | C++         | 2023-10-02 | PIP                  | Fixed tree     | No            |
-| [rust-phylo](https://github.com/acg-team/rust-phylo) |  11 | Rust        | 2026-03-25     | TKF91 / TKF92 / PIP  | Brent (joint)  | Yes           |
-| [indelMaP](https://github.com/acg-team/indelMaP)     |   5 | Python      | 2023-11-07 | Parsimony            | N/A            | N/A           |
-| [SpartaABC](https://github.com/gilloe/SpartaABC)     |   4 | C++/Python  | 2021-08-10 | SIM/RIM              | Fixed tree     | No            |
-| TreeTime v0                                          |   - | Python      | -                   | Missing data         | Brent          | No            |
-| TreeTime v1                                          |   - | Rust        | -                   | Poisson count        | Newton-Raphson | Yes           |
+| [StatAlign](https://github.com/statalign/statalign)  |   5 | Java        | 2020-04-12  | TKF92                | MCMC (joint)   | Yes           |
+| [Historian](https://github.com/ihh/dart)             |  32 | C++         | 2020-06-13  | RS07                 | Fixed tree     | No            |
+| [PRANK](https://github.com/ariloytynoja/prank-msa)   |  33 | C++         | 2026-03-19  | Heuristic            | Fixed tree     | No            |
+| [ProPIP](https://github.com/acg-team/ProPIP)         |   7 | C++         | 2021-08-04  | PIP                  | ML (joint)     | Yes           |
+| [ARPIP](https://github.com/acg-team/bpp-arpip)       |  11 | C++         | 2023-10-02  | PIP                  | Fixed tree     | No            |
+| [rust-phylo](https://github.com/acg-team/rust-phylo) |  11 | Rust        | 2026-03-25  | TKF91 / TKF92 / PIP  | Brent (joint)  | Yes           |
+| [indelMaP](https://github.com/acg-team/indelMaP)     |   5 | Python      | 2023-11-07  | Parsimony            | N/A            | N/A           |
+| [SpartaABC](https://github.com/gilloe/SpartaABC)     |   4 | C++/Python  | 2021-08-10  | SIM/RIM              | Fixed tree     | No            |
+| TreeTime v0                                          |   - | Python      | -           | Missing data         | Brent          | No            |
+| TreeTime v1                                          |   - | Rust        | -           | Poisson count        | Newton-Raphson | Yes           |
 
 ---
 
