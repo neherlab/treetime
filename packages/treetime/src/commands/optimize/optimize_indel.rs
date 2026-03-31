@@ -2,6 +2,7 @@ use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::representation::payload::ancestral::GraphAncestral;
 use parking_lot::RwLock;
+use statrs::function::factorial::ln_factorial;
 use std::sync::Arc;
 use treetime_graph::edge::HasBranchLength;
 
@@ -26,9 +27,11 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> OptimizationMetrics {
     return OptimizationMetrics::new(-mu * t, -mu, 0.0);
   }
 
+  debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}");
+
   let k_f = k as f64;
   let lambda = mu * t;
-  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(k);
+  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(k as u64);
   let derivative = k_f / t - mu;
   let second_derivative = -k_f / (t * t);
 
@@ -63,11 +66,6 @@ where
   } else {
     0.0
   }
-}
-
-/// $\ln(k!)$ for non-negative integer $k$.
-fn ln_factorial(k: usize) -> f64 {
-  (1..=k).fold(0.0, |acc, i| acc + (i as f64).ln())
 }
 
 #[cfg(test)]
@@ -139,12 +137,13 @@ mod tests {
     assert!(metrics.second_derivative < 0.0);
   }
 
+  /// Verify statrs ln_factorial agrees with direct computation for small k.
   #[test]
-  fn test_optimize_indel_ln_factorial() {
+  fn test_optimize_indel_statrs_ln_factorial() {
     assert_abs_diff_eq!(ln_factorial(0), 0.0, epsilon = 1e-15);
     assert_abs_diff_eq!(ln_factorial(1), 0.0, epsilon = 1e-15);
-    assert_abs_diff_eq!(ln_factorial(2), 2.0_f64.ln(), epsilon = 1e-15);
-    assert_abs_diff_eq!(ln_factorial(5), 120.0_f64.ln(), epsilon = 1e-13);
-    assert_abs_diff_eq!(ln_factorial(10), 3628800.0_f64.ln(), epsilon = 1e-11);
+    assert_abs_diff_eq!(ln_factorial(2), 2.0_f64.ln(), epsilon = 1e-14);
+    assert_abs_diff_eq!(ln_factorial(5), 120.0_f64.ln(), epsilon = 1e-14);
+    assert_abs_diff_eq!(ln_factorial(10), 3628800.0_f64.ln(), epsilon = 1e-14);
   }
 }

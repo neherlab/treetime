@@ -305,8 +305,12 @@ where
 
     // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
     // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
-    if branch_length == 0.0 && indel_count > 0 && indel_rate > 0.0 {
-      branch_length = (indel_count as f64 / indel_rate).max(one_mutation);
+    if branch_length == 0.0 && indel_count > 0 {
+      branch_length = if indel_rate > 0.0 {
+        (indel_count as f64 / indel_rate).max(one_mutation)
+      } else {
+        one_mutation
+      };
     }
 
     // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
@@ -320,9 +324,14 @@ where
     let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
     let mut new_branch_length;
 
+    // Lower bound for Newton steps on indel-bearing edges. The Poisson derivative
+    // diverges at t=0, so we must prevent Newton from landing exactly at zero.
+    let min_branch_length = if indel_count > 0 { one_mutation * 0.01 } else { 0.0 };
+
     if metrics.second_derivative < 0.0 {
       // Newton's method to find the optimal branch length
-      new_branch_length = branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length);
+      new_branch_length = (branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length))
+        .max(min_branch_length);
       let max_iter = 10;
       let mut n_iter = 0;
 
@@ -330,12 +339,13 @@ where
         let new_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length);
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
-          new_branch_length = branch_length
+          new_branch_length = (branch_length
             - clamp(
               new_metrics.derivative / new_metrics.second_derivative,
               -1.0,
               branch_length,
-            );
+            ))
+          .max(min_branch_length);
         } else {
           break;
         }
@@ -385,6 +395,11 @@ pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P
 where
   P: PartitionOptimizeOps + ?Sized,
 {
+  let total_length: usize = partitions
+    .iter()
+    .map(|partition| partition.read_arc().sequence_length())
+    .sum();
+  let one_mutation = 1.0 / total_length as f64;
   let indel_rate = estimate_indel_rate(graph, partitions);
 
   for edge_ref in graph.get_edges() {
@@ -408,12 +423,21 @@ where
 
     let branch_length = if effective_length > 0 {
       let sub_estimate = sub_count as f64 / effective_length as f64;
-      if sub_estimate == 0.0 && indel_count > 0 && indel_rate > 0.0 {
-        // Poisson MLE for indel-only branches: t = k / mu
-        indel_count as f64 / indel_rate
+      if sub_estimate == 0.0 && indel_count > 0 {
+        if indel_rate > 0.0 {
+          // Poisson MLE for indel-only branches: t = k / mu
+          indel_count as f64 / indel_rate
+        } else {
+          // Bootstrap: rate unknown (e.g. all-zero input tree), seed with one_mutation
+          // so that estimate_indel_rate produces a positive rate in run_optimize_mixed
+          one_mutation
+        }
       } else {
         sub_estimate
       }
+    } else if indel_count > 0 {
+      // All positions are gaps/ambiguous but indels are present
+      one_mutation
     } else {
       0.0
     };
