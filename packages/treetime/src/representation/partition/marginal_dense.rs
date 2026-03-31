@@ -281,7 +281,7 @@ where
       let branch_length = fix_branch_length(length, branch_length);
       // Remove-mutate-reinsert to preserve fields set during Fitch reconstruction
       // (indels, transmission) that are not recomputed by the marginal backward pass.
-      let mut edge_data = self.edges.remove(edge_key).unwrap_or_default();
+      let mut edge_data = self.edges.remove(edge_key).unwrap();
 
       let log_lh = msg_to_parent.log_lh;
       let dis = self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false);
