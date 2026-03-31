@@ -34,7 +34,7 @@ pub fn evaluate_sparse_contribution_impl(
       log_lh += multiplicity * site_lh.ln();
       derivative += multiplicity * (coefficients * &ev_exp_ev).sum() / site_lh;
       second_derivative += multiplicity * (coefficients * &ev2_exp_ev).sum() / site_lh
-        - (multiplicity * (coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
+        - multiplicity * ((coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
     }
   } else {
     for optimize_sparse::SiteContribution {
