@@ -130,6 +130,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   if should_run_initial_guess(*initial_guess, &graph) {
     initial_guess_mixed(&graph, &mixed_partitions)?;
+  } else if matches!(initial_guess, InitialGuessMode::Never) && any_edge_missing_branch_length(&graph) {
+    log::warn!("--initial-guess=never but some edges have no branch length; optimization starts from 0.0 for those edges");
   }
 
   let mut lh_prev = f64::MIN;
@@ -246,6 +248,7 @@ where
   }
 }
 
+<<<<<<< HEAD
 /// Collect internal edge keys whose branch length is exactly zero after optimization.
 ///
 /// These edges were identified as zero-optimal by `is_zero_branch_optimal()` during
@@ -378,6 +381,29 @@ pub(crate) fn prune_and_merge_in_loop(
   Ok(true)
 }
 
+/// Whether a branch length is absent or NaN.
+///
+/// The bio crate newick parser returns `f32::NAN` for branches without
+/// a `:length` suffix. After cast to f64 and wrapping in `Some`, this
+/// appears as `Some(NaN)` rather than `None`. Both represent a missing
+/// branch length for optimization purposes.
+fn is_branch_length_missing(bl: Option<f64>) -> bool {
+  bl.map_or(true, |v| v.is_nan())
+}
+
+/// Whether any edge in the graph lacks a usable branch length.
+pub(crate) fn any_edge_missing_branch_length<N, E, D>(graph: &Graph<N, E, D>) -> bool
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  graph
+    .get_edges()
+    .iter()
+    .any(|edge_ref| is_branch_length_missing(edge_ref.read_arc().payload().read_arc().branch_length()))
+}
+
 /// Decide whether to run the discrete-count initial guess based on mode and tree state.
 pub(crate) fn should_run_initial_guess<N, E, D>(mode: InitialGuessMode, graph: &Graph<N, E, D>) -> bool
 where
@@ -388,10 +414,7 @@ where
   match mode {
     InitialGuessMode::Always => true,
     InitialGuessMode::Never => false,
-    InitialGuessMode::Auto => graph
-      .get_edges()
-      .iter()
-      .any(|edge_ref| edge_ref.read_arc().payload().read_arc().branch_length().is_none()),
+    InitialGuessMode::Auto => any_edge_missing_branch_length(graph),
   }
 }
 
