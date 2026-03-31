@@ -396,13 +396,16 @@ Fixtures in `__fixtures__/`:
 
 Tests for `should_run_initial_guess()` dispatch logic with the `InitialGuessMode` enum.
 
-| Test                                                          | Purpose                                                  |
-| ------------------------------------------------------------- | -------------------------------------------------------- |
-| `test_initial_guess_mode_always_returns_true`                 | Always mode returns true regardless of tree state        |
-| `test_initial_guess_mode_never_returns_false`                 | Never mode returns false regardless of tree state        |
-| `test_initial_guess_mode_auto_skips_when_all_lengths_present` | Auto mode skips when all edges have branch lengths       |
-| `test_initial_guess_mode_auto_runs_when_one_length_missing`   | Auto mode runs when a single edge has None branch length |
-| `test_initial_guess_mode_auto_runs_when_all_lengths_missing`  | Auto mode runs when all edges have None branch length    |
+| Test                                                          | Purpose                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------- |
+| `test_initial_guess_mode_default_is_auto`                     | Default variant is Auto                                       |
+| `test_initial_guess_mode_always_runs`                         | Always mode returns true regardless of tree state             |
+| `test_initial_guess_mode_never_skips`                         | Never mode returns false regardless of tree state             |
+| `test_initial_guess_mode_auto_skips_when_all_lengths_present` | Auto mode skips when all edges have branch lengths            |
+| `test_initial_guess_mode_auto_runs_when_one_length_none`      | Auto mode runs when a single edge has None branch length      |
+| `test_initial_guess_mode_auto_runs_when_all_lengths_none`     | Auto mode runs when all edges have None branch length         |
+| `test_initial_guess_mode_auto_detects_nan_from_newick`        | Auto mode detects NaN branch lengths from bio crate newick    |
+| `test_initial_guess_mode_auto_detects_explicit_nan`           | Auto mode detects explicit Some(NaN) as missing branch length |
 
 ---
 
