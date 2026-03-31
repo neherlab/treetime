@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::optimize::optimize_dense;
+  use crate::commands::optimize::optimize_dense_eval::evaluate_dense_contribution;
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
-  use ndarray::array;
+  use ndarray::{array, Array2};
 
   #[test]
-  fn test_evaluate_sparse_derivative_matches_numerical() {
+  fn test_evaluate_sparse_first_derivative_matches_numerical() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let site = SiteContribution {
@@ -21,7 +23,6 @@ mod tests {
       unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
     };
 
-    // Verify analytical first derivative against numerical approximation
     let h = 1e-6;
     for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
       let metrics = evaluate_sparse_contribution(&contribution, branch_length);
@@ -32,21 +33,68 @@ mod tests {
       let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
 
       assert_ulps_eq!(metrics.derivative, numerical_d1, epsilon = 1e-4);
-
-      // Second derivative should be finite and negative (log-likelihood is concave)
-      assert!(
-        metrics.second_derivative.is_finite(),
-        "second_derivative should be finite at branch_length={branch_length}"
-      );
-      assert!(
-        metrics.second_derivative < 0.0,
-        "second_derivative should be negative (concave) at branch_length={branch_length}"
-      );
     }
   }
 
   #[test]
-  fn test_evaluate_sparse_derivative_scales_with_multiplicity() {
+  fn test_evaluate_sparse_second_derivative_matches_numerical() {
+    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
+
+    let site = SiteContribution {
+      multiplicity: 5.0,
+      coefficients: array![0.4, 0.3, 0.2, 0.1],
+    };
+
+    let contribution = PartitionContribution {
+      site_contributions: vec![site],
+      eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+    };
+
+    // Numerical second derivative via central difference of first derivative:
+    // d2 ≈ (d1(t+h) - d1(t-h)) / 2h
+    let h = 1e-5;
+    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
+      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+      let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
+
+      assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
+    }
+  }
+
+  /// Second derivative with high multiplicity must match numerical approximation.
+  /// Before the fix, multiplicity was squared in the Hessian, causing divergence
+  /// proportional to m for large m.
+  #[test]
+  fn test_evaluate_sparse_second_derivative_numerical_high_multiplicity() {
+    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
+
+    let site = SiteContribution {
+      multiplicity: 500.0,
+      coefficients: array![0.4, 0.3, 0.2, 0.1],
+    };
+
+    let contribution = PartitionContribution {
+      site_contributions: vec![site],
+      eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+    };
+
+    let h = 1e-5;
+    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
+      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+      let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
+
+      assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
+    }
+  }
+
+  #[test]
+  fn test_evaluate_sparse_derivatives_scale_with_multiplicity() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let coefficients = array![0.4, 0.3, 0.2, 0.1];
@@ -74,7 +122,55 @@ mod tests {
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1);
     let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1);
 
-    // Derivative should scale with multiplicity
+    // All three quantities scale linearly with multiplicity:
+    // ℓ(t) = m * ln(L), ℓ'(t) = m * d1, ℓ''(t) = m * (d2 - d1^2)
+    assert_ulps_eq!(metrics3.log_lh, 3.0 * metrics1.log_lh, max_ulps = 100);
     assert_ulps_eq!(metrics3.derivative, 3.0 * metrics1.derivative, max_ulps = 100);
+    assert_ulps_eq!(metrics3.second_derivative, 3.0 * metrics1.second_derivative, max_ulps = 100);
+  }
+
+  /// Sparse with multiplicity=1 must produce identical metrics to dense for the
+  /// same coefficients and eigenvalues.
+  #[test]
+  fn test_evaluate_sparse_matches_dense_multiplicity_1() {
+    let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
+
+    let coefficients_a = array![0.4, 0.3, 0.2, 0.1];
+    let coefficients_b = array![0.3, 0.3, 0.2, 0.2];
+
+    // Sparse: two sites with multiplicity 1
+    let sparse_contribution = PartitionContribution {
+      site_contributions: vec![
+        SiteContribution {
+          multiplicity: 1.0,
+          coefficients: coefficients_a.clone(),
+        },
+        SiteContribution {
+          multiplicity: 1.0,
+          coefficients: coefficients_b.clone(),
+        },
+      ],
+      eigenvalues: gtr.eigvals.to_owned(),
+      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+    };
+
+    // Dense: same two sites as rows of a 2D array
+    let coefficients_2d = Array2::from_shape_vec((2, 4), {
+      let mut v = coefficients_a.to_vec();
+      v.extend(coefficients_b.to_vec());
+      v
+    })
+    .expect("shape mismatch");
+
+    let dense_contribution = optimize_dense::PartitionContribution::new(coefficients_2d, gtr);
+
+    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
+      let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length);
+      let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length);
+
+      assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
+      assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
+      assert_ulps_eq!(sparse_metrics.second_derivative, dense_metrics.second_derivative, max_ulps = 10);
+    }
   }
 }
