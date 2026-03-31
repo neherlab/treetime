@@ -99,6 +99,7 @@ exactly.
 | Negligible | Optimize     | [Dense marginal backward pass wipes indels from edge partitions](N-optimize-dense-marginal-backward-wipes-indels.md)            |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible | Optimize     | [Initial branch length guess always overwrites input values](N-optimize-initial-guess-not-optional.md)                          |
+| Negligible | Timetree     | [Branch length distribution ignores indels](N-timetree-branch-length-distribution-ignores-indels.md)                            |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                      |

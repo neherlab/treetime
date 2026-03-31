@@ -4,20 +4,23 @@
 
 ## Summary
 
-| Category                        | Files  | Tests   | Support Files | Type |
-| ------------------------------- | ------ | ------- | ------------- | ---- |
-| Coefficient extraction (dense)  | 5      | 13      | 1             | Unit |
-| Coefficient extraction (sparse) | 7      | 19      | 0             | Unit |
-| Newton-Raphson convergence      | 2      | 5       | 1             | Unit |
-| Grid search                     | 3      | 8       | 1             | Unit |
-| Dense/sparse equivalence        | 4      | 8       | 1             | Unit |
-| Convergence control             | 3      | 8       | 1             | Unit |
-| Optimization metrics            | 1      | 7       | 0             | Unit |
-| Zero branch optimal             | 1      | 13      | 0             | Unit |
-| Initial guess GTR messages      | 1      | 2       | 0             | Unit |
-| Initial guess soft Hamming      | 1      | 10      | 0             | Unit |
-| Topology cleanup in loop        | 1      | 15      | 0             | Unit |
-| **Total**                       | **29** | **108** | **5**         | Unit |
+| Category                         | Files  | Tests   | Support Files | Type     |
+| -------------------------------- | ------ | ------- | ------------- | -------- |
+| Coefficient extraction (dense)   | 5      | 13      | 1             | Unit     |
+| Coefficient extraction (sparse)  | 7      | 19      | 0             | Unit     |
+| Newton-Raphson convergence       | 2      | 5       | 1             | Unit     |
+| Grid search                      | 3      | 8       | 1             | Unit     |
+| Dense/sparse equivalence         | 4      | 8       | 1             | Unit     |
+| Convergence control              | 3      | 8       | 1             | Unit     |
+| Optimization metrics             | 1      | 7       | 0             | Unit     |
+| Zero branch optimal              | 1      | 13      | 0             | Unit     |
+| Initial guess GTR messages       | 1      | 2       | 0             | Unit     |
+| Initial guess soft Hamming       | 1      | 10      | 0             | Unit     |
+| Topology cleanup in loop         | 1      | 15      | 0             | Unit     |
+| Indel contribution (inline)      | 1      | 8       | 0             | Unit     |
+| Indel contribution (integration) | 1      | 11      | 0             | Unit     |
+| Indel contribution (property)    | 1      | 3       | 0             | Property |
+| **Total**                        | **32** | **130** | **5**         |          |
 
 ---
 

@@ -33,6 +33,18 @@ References:
 
 ---
 
+## Poisson Indel Contribution
+
+Adds a Poisson indel log-likelihood term to per-edge branch length optimization. For $k$ observed indel events on a branch of length $t$ with global rate $\mu$: $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. The rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from the tree at each optimization round.
+
+v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs).
+
+v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
+
+This is a v1-only feature. See [intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) and [design doc](../algorithms/optimize.md).
+
+---
+
 ## Piecewise Linear Interpolation (Uniform Grid)
 
 O(1) interval lookup via `floor((x - x_min) / dx)` for uniformly spaced grids. Used throughout the distribution system for evaluating discretized probability distributions and branch length likelihoods on fixed grids.
