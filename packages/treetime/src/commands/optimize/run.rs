@@ -131,7 +131,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   if should_run_initial_guess(*initial_guess, &graph) {
     initial_guess_mixed(&graph, &mixed_partitions)?;
   } else if matches!(initial_guess, InitialGuessMode::Never) && any_edge_missing_branch_length(&graph) {
-    log::warn!("--initial-guess=never but some edges have no branch length; optimization starts from 0.0 for those edges");
+    log::warn!(
+      "--initial-guess=never but some edges have no branch length; optimization starts from 0.0 for those edges"
+    );
   }
 
   let mut lh_prev = f64::MIN;
@@ -388,7 +390,7 @@ pub(crate) fn prune_and_merge_in_loop(
 /// appears as `Some(NaN)` rather than `None`. Both represent a missing
 /// branch length for optimization purposes.
 fn is_branch_length_missing(bl: Option<f64>) -> bool {
-  bl.map_or(true, |v| v.is_nan())
+  bl.is_none_or(|v| v.is_nan())
 }
 
 /// Whether any edge in the graph lacks a usable branch length.
