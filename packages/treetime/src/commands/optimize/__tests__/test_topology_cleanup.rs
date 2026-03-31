@@ -379,7 +379,7 @@ mod tests {
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -457,7 +457,7 @@ mod tests {
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -615,7 +615,7 @@ mod tests {
     let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     let initial_node_count = graph.get_nodes().len();
 

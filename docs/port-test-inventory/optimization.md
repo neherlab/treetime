@@ -394,18 +394,20 @@ Fixtures in `__fixtures__/`:
 
 **File:** [`test_initial_guess_mode.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs)
 
-Tests for `should_run_initial_guess()` dispatch logic with the `InitialGuessMode` enum.
+Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), overwrite (always), and error on missing (never).
 
-| Test                                                          | Purpose                                                       |
-| ------------------------------------------------------------- | ------------------------------------------------------------- |
-| `test_initial_guess_mode_default_is_auto`                     | Default variant is Auto                                       |
-| `test_initial_guess_mode_always_runs`                         | Always mode returns true regardless of tree state             |
-| `test_initial_guess_mode_never_skips`                         | Never mode returns false regardless of tree state             |
-| `test_initial_guess_mode_auto_skips_when_all_lengths_present` | Auto mode skips when all edges have branch lengths            |
-| `test_initial_guess_mode_auto_runs_when_one_length_none`      | Auto mode runs when a single edge has None branch length      |
-| `test_initial_guess_mode_auto_runs_when_all_lengths_none`     | Auto mode runs when all edges have None branch length         |
-| `test_initial_guess_mode_auto_detects_nan_from_newick`        | Auto mode detects NaN branch lengths from bio crate newick    |
-| `test_initial_guess_mode_auto_detects_explicit_nan`           | Auto mode detects explicit Some(NaN) as missing branch length |
+| Test                                                    | Purpose                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_initial_guess_mode_default_is_auto`               | Default variant is Auto                                      |
+| `test_initial_guess_mode_detects_nan_from_newick`       | Detects NaN branch lengths from bio crate newick parser      |
+| `test_initial_guess_mode_detects_explicit_nan`          | Detects explicit `Some(NaN)` as missing                      |
+| `test_initial_guess_mode_no_missing_when_all_finite`    | Reports no missing when all edges have finite lengths        |
+| `test_initial_guess_mode_auto_preserves_valid_lengths`  | Auto mode does not overwrite valid finite branch lengths     |
+| `test_initial_guess_mode_auto_fills_nan_from_newick`    | Auto mode fills NaN edges with finite non-negative values    |
+| `test_initial_guess_mode_auto_fills_only_missing_edges` | Auto mode fills one NaN edge, preserves all others exactly   |
+| `test_initial_guess_mode_always_overwrites_all`         | Always mode overwrites existing branch lengths               |
+| `test_initial_guess_mode_never_accepts_complete_tree`   | Never mode accepts tree with all finite branch lengths       |
+| `test_initial_guess_mode_never_rejects_nan_tree`        | Never mode detects NaN tree as having missing branch lengths |
 
 ---
 

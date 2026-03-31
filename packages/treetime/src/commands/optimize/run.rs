@@ -260,7 +260,6 @@ where
   }
 }
 
-<<<<<<< HEAD
 /// Collect internal edge keys whose branch length is exactly zero after optimization.
 ///
 /// These edges were identified as zero-optimal by `is_zero_branch_optimal()` during

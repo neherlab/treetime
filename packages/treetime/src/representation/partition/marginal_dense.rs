@@ -112,10 +112,6 @@ impl PartitionBranchOps for PartitionMarginalDense {
     Ok(subs)
   }
 
-  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
-    self.edges[&edge_key].indels.len()
-  }
-
   fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
@@ -140,6 +136,10 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
     edge_key: GraphEdgeKey,
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
+  }
+
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.edges[&edge_key].indels.len()
   }
 }
 

@@ -92,7 +92,7 @@ mod tests {
     update_marginal(graph, &sparse_partitions)?;
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(graph, &mixed_partitions)?;
+    initial_guess_mixed(graph, &mixed_partitions, true)?;
 
     Ok((dense_partitions, sparse_partitions, mixed_partitions))
   }
@@ -142,7 +142,7 @@ mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
 
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -175,7 +175,7 @@ mod tests {
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
 
     // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -244,7 +244,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
 
-    initial_guess_mixed(&graph, &mixed_partitions)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
     // After initial_guess, the indel-bearing edge should have positive BL (bootstrap)
     let bl_after_guess = graph.get_edges()[0]
