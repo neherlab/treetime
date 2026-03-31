@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
-  use ndarray::{array, Array2};
+  use ndarray::{Array2, array};
 
   #[test]
   fn test_evaluate_sparse_first_derivative_matches_numerical() {
@@ -126,7 +126,11 @@ mod tests {
     // ℓ(t) = m * ln(L), ℓ'(t) = m * d1, ℓ''(t) = m * (d2 - d1^2)
     assert_ulps_eq!(metrics3.log_lh, 3.0 * metrics1.log_lh, max_ulps = 100);
     assert_ulps_eq!(metrics3.derivative, 3.0 * metrics1.derivative, max_ulps = 100);
-    assert_ulps_eq!(metrics3.second_derivative, 3.0 * metrics1.second_derivative, max_ulps = 100);
+    assert_ulps_eq!(
+      metrics3.second_derivative,
+      3.0 * metrics1.second_derivative,
+      max_ulps = 100
+    );
   }
 
   /// Sparse with multiplicity=1 must produce identical metrics to dense for the
@@ -170,7 +174,11 @@ mod tests {
 
       assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
       assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
-      assert_ulps_eq!(sparse_metrics.second_derivative, dense_metrics.second_derivative, max_ulps = 10);
+      assert_ulps_eq!(
+        sparse_metrics.second_derivative,
+        dense_metrics.second_derivative,
+        max_ulps = 10
+      );
     }
   }
 }
