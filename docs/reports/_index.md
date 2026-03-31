@@ -16,6 +16,10 @@ Scientific and architectural relationships between the four main tree-refinement
 
 Side-by-side comparison of the `ancestral` and `mugration` commands in both v0 (Python) and v1 (Rust). Covers the shared Felsenstein pruning core, divergent pipelines (one-shot vs iterative GTR refinement), data representations (multi-position sequences vs single-position discrete traits), partition types, message-passing implementations, output formats, known issues, and architectural observations. Extends the command-relationships report by documenting mugration's position as a sibling outside the ancestral-prune-optimize-timetree hierarchy.
 
+### [Indel models in phylogenetics](indel-models/_index.md)
+
+Survey of insertion-deletion (indel) modeling approaches: mathematical foundations, pair HMM and transducer formalisms, software implementations, and applicability to branch length optimization. Covers 12 models from gap-as-missing-data through full mechanistic birth-death processes (TKF91, TKF92, PIP, GGI). Includes per-tool writeups of 17 phylogenetic software packages with implementation details. 6 chapters, glossary, 30 verified references.
+
 ### [Optimization methods](optimization-methods/_index.md)
 
 Numerical optimization algorithms in TreeTime v1: per-edge branch length optimization (Newton-Raphson, Brent, cubic Hermite spline), coalescent skyline estimation (GMRF, NelderMead vs LBFGS), EM convergence, and the argmin Rust crate. Systematic comparison across RAxML-NG, IQ-TREE, PhyML, BEAST, and TreeTime v0/v1 with code locations. Includes a v1 optimization audit with 17 items inventoried, 7 inconsistencies identified, and 8 prioritized refactoring proposals. 7 chapters, glossary, 36 verified references.

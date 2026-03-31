@@ -4,11 +4,11 @@
 
 ## TKF91 (Thorne-Kishino-Felsenstein 1991)
 
-The first continuous-time Markov chain model jointly modeling substitutions and indels as a single evolutionary process. Introduced by <a id="cite-7"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) [[7](references.md#ref-7)].
+The first continuous-time Markov chain model jointly modeling substitutions and indels as a single evolutionary process. Introduced by <a id="cite-7"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) [[7](#ref-7)].
 
 ### Biological model
 
-Sequence evolution is modeled as a linear birth-death process on a chain of characters, anchored by an <a id="gloss-use-6"></a>"immortal link" <sup>[6](glossary.md#gloss-6)</sup> at the left end (preventing the entire sequence from being deleted):
+Sequence evolution is modeled as a linear birth-death process on a chain of characters, anchored by an <a id="gloss-use-6"></a>"immortal link" <sup>[6](#gloss-6)</sup> at the left end (preventing the entire sequence from being deleted):
 
 - Each existing character can spawn a new adjacent character (insertion) at rate $\lambda$
 - Each existing character can be removed (deletion) at rate $\mu$
@@ -36,7 +36,7 @@ $$\eta = \ln(n_1) - \ln(\lambda\beta) - \ln(\mu\beta)$$
 
 ### Pair HMM representation
 
-TKF91 can be represented as a three-state <a id="gloss-use-3"></a>pair HMM <sup>[3](glossary.md#gloss-3)</sup> with states Match (M), Insert (G1), and Delete (G2). The transition matrix, as implemented in BAli-Phy (`src/imodel/imodel.cc:579-638`):
+TKF91 can be represented as a three-state <a id="gloss-use-3"></a>pair HMM <sup>[3](#gloss-3)</sup> with states Match (M), Insert (G1), and Delete (G2). The transition matrix, as implemented in BAli-Phy (`src/imodel/imodel.cc:579-638`):
 
 | From \ To  | M                                               | G1             | G2                                                  | End                                       |
 | :--------- | :---------------------------------------------- | :------------- | :-------------------------------------------------- | :---------------------------------------- |
@@ -49,15 +49,15 @@ The pairwise alignment likelihood under TKF91 is the forward probability of this
 
 ### Multi-sequence complexity
 
-For $N$ sequences on a tree, the exact marginal likelihood (summing over all possible alignments) requires an $N$-dimensional DP hypercube: $O(L^N)$, which is exponential in the number of taxa. This is equivalent to Sankoff's <a id="cite-8"></a>[1975](https://doi.org/10.1137/0128004) [[8](references.md#ref-8)] simultaneous alignment and phylogeny problem, which is NP-complete for the optimal-scoring path.
+For $N$ sequences on a tree, the exact marginal likelihood (summing over all possible alignments) requires an $N$-dimensional DP hypercube: $O(L^N)$, which is exponential in the number of taxa. This is equivalent to Sankoff's <a id="cite-8"></a>[1975](https://doi.org/10.1137/0128004) [[8](#ref-8)] simultaneous alignment and phylogeny problem, which is NP-complete for the optimal-scoring path.
 
-With a fixed alignment (treating the alignment as observed data, not marginalizing over it), the likelihood computation reduces to an $O(L \cdot N)$ postorder traversal. <a id="cite-9"></a>[Rivas 2008](https://doi.org/10.1371/journal.pcbi.1000172) [[9](references.md#ref-9)] showed how to extend <a id="gloss-use-5"></a>Felsenstein's peeling <sup>[5](glossary.md#gloss-5)</sup> algorithm to handle single-residue indel events per alignment column under a non-reversible birth-death model.
+With a fixed alignment (treating the alignment as observed data, not marginalizing over it), the likelihood computation reduces to an $O(L \cdot N)$ postorder traversal. <a id="cite-9"></a>[Rivas 2008](https://doi.org/10.1371/journal.pcbi.1000172) [[9](#ref-9)] showed how to extend <a id="gloss-use-5"></a>Felsenstein's peeling <sup>[5](#gloss-5)</sup> algorithm to handle single-residue indel events per alignment column under a non-reversible birth-death model.
 
-<a id="cite-10"></a>[Westesson et al. 2012](https://doi.org/10.1371/journal.pone.0034572) [[10](references.md#ref-10)] showed the equivalence of TKF91 to a pair HMM and generalized Felsenstein's peeling from single sites to entire sequences via phylogenetic <a id="gloss-use-4"></a>transducers <sup>[4](glossary.md#gloss-4)</sup>, reducing the multi-sequence complexity to $O(L^2 N)$ under MCMC.
+<a id="cite-10"></a>[Westesson et al. 2012](https://doi.org/10.1371/journal.pone.0034572) [[10](#ref-10)] showed the equivalence of TKF91 to a pair HMM and generalized Felsenstein's peeling from single sites to entire sequences via phylogenetic <a id="gloss-use-4"></a>transducers <sup>[4](#gloss-4)</sup>, reducing the multi-sequence complexity to $O(L^2 N)$ under MCMC.
 
 ### Software implementations
 
-**[BAli-Phy](https://github.com/bredelings/BAli-Phy)** (C++). Bayesian joint alignment and phylogeny inference via MCMC. Implements TKF91 as `TKF1` in `src/imodel/imodel.cc:579-638`. Parameters: $\lambda = \exp(\text{parameter}[0])$ (log-scale), mean sequence length from which $\mu = \lambda/\sigma$ is derived. Builds the full pair HMM transition matrix. Branch lengths are jointly estimated with alignment and indel parameters via MCMC, not Newton-Raphson. Reference: <a id="cite-11"></a>[Redelings and Suchard 2005](https://doi.org/10.1080/10635150590947041) [[11](references.md#ref-11)].
+**[BAli-Phy](https://github.com/bredelings/BAli-Phy)** (C++). Bayesian joint alignment and phylogeny inference via MCMC. Implements TKF91 as `TKF1` in `src/imodel/imodel.cc:579-638`. Parameters: $\lambda = \exp(\text{parameter}[0])$ (log-scale), mean sequence length from which $\mu = \lambda/\sigma$ is derived. Builds the full pair HMM transition matrix. Branch lengths are jointly estimated with alignment and indel parameters via MCMC, not Newton-Raphson. Reference: <a id="cite-11"></a>[Redelings and Suchard 2005](https://doi.org/10.1080/10635150590947041) [[11](#ref-11)].
 
 **[BEAST](https://github.com/beast-dev/beast-mcmc)** (Java). `dr.oldevomodel.indel.TKF91Likelihood` wraps `HomologyRecursion` (680 lines). Uses `BFloat` arbitrary-precision arithmetic to avoid underflow in the DP table. Parameters: `lambda = deathRate * lengthDistributionValue`, `mu = deathRate`. Precomputes per-node arrays ($\beta$, $\mu\beta$, $e^{-\mu t}(1-\lambda\beta)$, etc.) for the tree recursion.
 
@@ -65,7 +65,7 @@ With a fixed alignment (treating the alignment as observed data, not marginalizi
 
 **[CRAN/TKF](https://github.com/cran/TKF)** (C/R). Pairwise distance estimation. Three DP matrices (gap-in-B, match, gap-in-A) in log space. Uses GSL Brent minimizer for 1D or Nelder-Mead/BFGS for 2D ML estimation of $(\lambda, \mu)$ or $(t, \mu)$.
 
-**[StatAlign](https://github.com/statalign/statalign)** (Java). Bayesian MCMC statistical alignment. Uses TKF92 (fragment model). Reference: <a id="cite-12"></a>[Novak et al. 2008](https://doi.org/10.1093/bioinformatics/btn457) [[12](references.md#ref-12)].
+**[StatAlign](https://github.com/statalign/statalign)** (Java). Bayesian MCMC statistical alignment. Uses TKF92 (fragment model). Reference: <a id="cite-12"></a>[Novak et al. 2008](https://doi.org/10.1093/bioinformatics/btn457) [[12](#ref-12)].
 
 ### Applicability to TreeTime branch length optimization
 
@@ -77,14 +77,14 @@ TKF91 distinguishes insertions from deletions (separate $\lambda$ and $\mu$), wh
 
 ### Additional references
 
-- <a id="cite-7b"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) [[7](references.md#ref-7)] (TKF91 original paper)
-- <a id="cite-13"></a>[Holmes 2005](https://doi.org/10.1093/bioinformatics/bti177) [[13](references.md#ref-13)] (EM estimation of TKF91 insertion/deletion rates)
+- <a id="cite-7b"></a>[Thorne, Kishino, and Felsenstein 1991](https://doi.org/10.1007/BF02193625) [[7](#ref-7)] (TKF91 original paper)
+- <a id="cite-13"></a>[Holmes 2005](https://doi.org/10.1093/bioinformatics/bti177) [[13](#ref-13)] (EM estimation of TKF91 insertion/deletion rates)
 
 ---
 
 ## Poisson Indel Process (PIP, Bouchard-Cote and Jordan 2013)
 
-A continuous-time Markov process that achieves tractable marginal likelihood computation by decoupling insertions from existing characters. Introduced by <a id="cite-17"></a>[Bouchard-Cote and Jordan 2013](https://doi.org/10.1073/pnas.1220450110) [[17](references.md#ref-17)].
+A continuous-time Markov process that achieves tractable marginal likelihood computation by decoupling insertions from existing characters. Introduced by <a id="cite-17"></a>[Bouchard-Cote and Jordan 2013](https://doi.org/10.1073/pnas.1220450110) [[17](#ref-17)].
 
 ### Biological model
 
@@ -98,9 +98,9 @@ The price of tractability is that PIP's equilibrium sequence length distribution
 
 ### Software
 
-**[ProPIP](https://github.com/acg-team/ProPIP)**: ML progressive alignment under PIP. The first polynomial-time progressive aligner with a rigorous indel model. <a id="cite-18"></a>[Maiolo et al. 2018](https://doi.org/10.1186/s12859-018-2357-1) [[18](references.md#ref-18)]. Estimates indel rates from data. Supports Gamma rate heterogeneity.
+**[ProPIP](https://github.com/acg-team/ProPIP)**: ML progressive alignment under PIP. The first polynomial-time progressive aligner with a rigorous indel model. <a id="cite-18"></a>[Maiolo et al. 2018](https://doi.org/10.1186/s12859-018-2357-1) [[18](#ref-18)]. Estimates indel rates from data. Supports Gamma rate heterogeneity.
 
-**[ARPIP](https://github.com/acg-team/bpp-arpip)**: ancestral sequence reconstruction under PIP. <a id="cite-19"></a>[Jowkar et al. 2022](https://doi.org/10.1093/sysbio/syac050) [[19](references.md#ref-19)]. Two-step approach: find most probable indel points, then reconstruct on the pruned subtree. <a id="cite-20"></a>[Jowkar et al. 2024](https://doi.org/10.1186/s12859-024-05986-1) [[20](references.md#ref-20)] showed that the single-character indel assumption still captures long indel patterns on mammalian protein orthologs.
+**[ARPIP](https://github.com/acg-team/bpp-arpip)**: ancestral sequence reconstruction under PIP. <a id="cite-19"></a>[Jowkar et al. 2022](https://doi.org/10.1093/sysbio/syac050) [[19](#ref-19)]. Two-step approach: find most probable indel points, then reconstruct on the pruned subtree. <a id="cite-20"></a>[Jowkar et al. 2024](https://doi.org/10.1186/s12859-024-05986-1) [[20](#ref-20)] showed that the single-character indel assumption still captures long indel patterns on mammalian protein orthologs.
 
 **[rust-phylo](https://github.com/acg-team/rust-phylo)** implements PIP alongside TKF91/TKF92.
 
@@ -108,6 +108,29 @@ The price of tractability is that PIP's equilibrium sequence length distribution
 
 PIP's linear-time marginal likelihood is attractive compared to TKF91's exponential cost. But PIP still requires alignment-aware likelihood computation (tracking which characters are present on which branches), not just a per-edge scalar. The integration would change TreeTime's optimization architecture: the current per-edge eigendecomposition coefficients cache would need to be replaced or augmented with PIP's column-based likelihood. For the branch-length-prevents-zero use case, the Poisson count model achieves the same practical effect with negligible implementation cost.
 
-### v0/v1 status
+---
 
-v0: not implemented. v1: not implemented.
+## Glossary
+
+1. <a id="gloss-6"></a> **Immortal link.** A TKF91 concept: a permanent anchor at the left end of the sequence that cannot be deleted. [↩](#gloss-use-6)
+2. <a id="gloss-3"></a> **Pair HMM.** A hidden Markov model generating two sequences simultaneously, with Match/Insert/Delete states. [↩](#gloss-use-3)
+3. <a id="gloss-5"></a> **Felsenstein peeling.** Postorder tree traversal for phylogenetic likelihoods ([Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[29](#ref-29)]). [↩](#gloss-use-5)
+4. <a id="gloss-4"></a> **Phylogenetic transducer.** Finite-state machine transforming ancestor into descendant sequence ([Bradley and Holmes 2007](https://doi.org/10.1093/bioinformatics/btm402) [[28](#ref-28)]). [↩](#gloss-use-4)
+
+## References
+
+7. <a id="ref-7"></a> Thorne, Jeffrey L., Hirohisa Kishino, and Joseph Felsenstein. 1991. "An Evolutionary Model for Maximum Likelihood Alignment of DNA Sequences." _J Mol Evol_ 33(2):114-124. https://doi.org/10.1007/BF02193625
+8. <a id="ref-8"></a> Sankoff, David. 1975. "Minimal Mutation Trees of Sequences." _SIAM J Appl Math_ 28(1):35-42. https://doi.org/10.1137/0128004
+9. <a id="ref-9"></a> Rivas, Elena. 2008. "Probabilistic Phylogenetic Inference with Insertions and Deletions." _PLOS Comp Biol_ 4(9):e1000172. https://doi.org/10.1371/journal.pcbi.1000172
+10. <a id="ref-10"></a> Westesson, Oscar, et al. 2012. "Accurate Reconstruction of Insertion-Deletion Histories." _PLOS ONE_ 7(4):e34572. https://doi.org/10.1371/journal.pone.0034572
+11. <a id="ref-11"></a> Redelings, Benjamin D., and Marc A. Suchard. 2005. "Joint Bayesian Estimation of Alignment and Phylogeny." _Syst Biol_ 54(3):401-418. https://doi.org/10.1080/10635150590947041
+12. <a id="ref-12"></a> Novak, Adam, et al. 2008. "StatAlign." _Bioinformatics_ 24(20):2403-2404. https://doi.org/10.1093/bioinformatics/btn457
+13. <a id="ref-13"></a> Holmes, Ian. 2005. "Using Evolutionary EM to Estimate Indel Rates." _Bioinformatics_ 21(10):2294-2300. https://doi.org/10.1093/bioinformatics/bti177
+14. <a id="ref-17"></a> Bouchard-Cote, Alexandre, and Michael I. Jordan. 2013. "Evolutionary Inference via the Poisson Indel Process." _PNAS_ 110(4):1160-1166. https://doi.org/10.1073/pnas.1220450110
+15. <a id="ref-18"></a> Maiolo, Massimo, et al. 2018. "Progressive Multiple Sequence Alignment with Indel Evolution." _BMC Bioinformatics_ 19:331. https://doi.org/10.1186/s12859-018-2357-1
+16. <a id="ref-19"></a> Jowkar, Gholamhossein, et al. 2022. "ARPIP." _Syst Biol_ 72(2):460-472. https://doi.org/10.1093/sysbio/syac050
+17. <a id="ref-20"></a> Jowkar, Gholamhossein, et al. 2024. "Single-Character Insertion-Deletion Model Preserves Long Indels." _BMC Bioinformatics_ 25:273. https://doi.org/10.1186/s12859-024-05986-1
+18. <a id="ref-28"></a> Bradley, Robert K., and Ian Holmes. 2007. "Transducers." _Bioinformatics_ 23(23):3258-3262. https://doi.org/10.1093/bioinformatics/btm402
+19. <a id="ref-29"></a> Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences." _J Mol Evol_ 17(6):368-376. https://doi.org/10.1007/BF01734359
+
+See [consolidated references](references.md) for the complete bibliography.

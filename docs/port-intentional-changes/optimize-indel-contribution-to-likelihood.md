@@ -34,7 +34,7 @@ The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_
 
 ## Alternatives considered
 
-The Poisson count model was chosen over more sophisticated approaches. See [indel models algorithm inventory](../port-algo-inventory/indel-models.md) for a full catalog of indel modeling approaches with scientific background, and [indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md) for future directions.
+The Poisson count model was chosen over more sophisticated approaches. See [indel models report](../reports/indel-models/_index.md) for a full catalog of indel modeling approaches with scientific background, and [indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md) for future directions.
 
 Three approaches were evaluated:
 

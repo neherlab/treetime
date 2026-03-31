@@ -50,9 +50,9 @@ Full unimplemented algorithm details: [unimplemented.md](unimplemented.md)
 | [Dense GTR Inference](gtr.md#dense-gtr-inference)                                  | custom     | gtr          | [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)                                                   | complete      |
 | [Parallel BFS](graph.md#parallel-bfs)                                              | well-known | graph        | [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs)                                                   | complete      |
 | [Newton-Raphson](optimization.md#newton-raphson-for-branch-length-optimization)    | well-known | optimization | [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)                     | complete      |
-| [Poisson Indel Count](indel-models.md#poisson-indel-count-model-implemented-in-v1) | custom     | indel        | [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs)                         | complete      |
-| [TKF91](indel-models.md#tkf91-thorne-kishino-felsenstein-1991)                     | well-known | indel        | -                                                                                                                                                      | unimplemented |
-| [PIP](indel-models.md#poisson-indel-process-pip-bouchard-cote-and-jordan-2012)     | well-known | indel        | -                                                                                                                                                      | unimplemented |
+| [Poisson Indel Count](indel-models.md) | custom     | indel        | [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs)                         | complete      |
+| [TKF91](../reports/indel-models/3-single-residue.md)                     | well-known | indel        | -                                                                                                                                                      | unimplemented |
+| [PIP](../reports/indel-models/3-single-residue.md)     | well-known | indel        | -                                                                                                                                                      | unimplemented |
 
 ---
 

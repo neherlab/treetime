@@ -6,7 +6,7 @@ Evaluate whether the current Poisson indel count model should be extended with l
 
 ## Current state
 
-v1 uses a Poisson count model where each indel event contributes equally to the branch length log-likelihood regardless of indel length. This prevents zero-length assignment on branches with only indel evidence. See [intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) and [algorithm inventory](../port-algo-inventory/indel-models.md) for the full catalog of indel models and the rationale for the current choice.
+v1 uses a Poisson count model where each indel event contributes equally to the branch length log-likelihood regardless of indel length. This prevents zero-length assignment on branches with only indel evidence. See [intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) and [indel models report](../reports/indel-models/_index.md) for the full catalog of indel models and the rationale for the current choice.
 
 The model is implemented in [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs).
 
@@ -95,7 +95,7 @@ Fitting indel length distributions (geometric, Zipf/power-law, multi-exponential
 
 ## Related documents
 
-- [Indel models algorithm inventory](../port-algo-inventory/indel-models.md) - full catalog of indel modeling approaches
+- [Indel models report](../reports/indel-models/_index.md) - full catalog of indel modeling approaches
 - [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) - current Poisson model documentation
 - [Design doc](../algorithms/optimize.md#poisson-indel-contribution-implemented) - model formulation and assumptions
 - [Grid search ignores indels](../port-known-issues/M-optimize-grid-zero-ignores-indels.md) - related known issue

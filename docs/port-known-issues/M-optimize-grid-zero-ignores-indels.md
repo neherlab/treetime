@@ -41,7 +41,7 @@ v0 uses Brent's method with fixed bracket [0, 4.0] for all branch length optimiz
 - [H-optimize-sparse-hessian-multiplicity.md](H-optimize-sparse-hessian-multiplicity.md) -- grid fallback triggers when Newton fails; if the Hessian bug is fixed, fewer edges fall through to grid
 - [M-optimize-grid-search-narrow-at-zero.md](M-optimize-grid-search-narrow-at-zero.md) -- related grid search issue affecting range coverage
 - [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) -- Poisson model documentation
-- [Indel models algorithm inventory](../port-algo-inventory/indel-models.md) -- full catalog of indel modeling approaches
+- [Indel models report](../reports/indel-models/_index.md) -- full catalog of indel modeling approaches
 - [Indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md) -- future extensions
 
 ## Fix

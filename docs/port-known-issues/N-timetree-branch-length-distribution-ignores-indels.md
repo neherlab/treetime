@@ -30,7 +30,7 @@ v0's `BranchLenInterpolator` (`branch_len_interpolator.py`) does not include ind
 
 - [Optimize algorithm design](../algorithms/optimize.md): Source of the indel contribution design question.
 - [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md): Poisson model documentation and alternatives considered.
-- [Indel models algorithm inventory](../port-algo-inventory/indel-models.md): Full catalog of indel modeling approaches.
+- [Indel models report](../reports/indel-models/_index.md): Full catalog of indel modeling approaches.
 - [Indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md): Future extensions (length-weighted, separate rates).
 
 ## Broader design question

@@ -95,7 +95,7 @@ The models differ in how they affect branch length optimization:
 
 ### Bayesian joint alignment and phylogeny
 
-**[BAli-Phy](https://github.com/bredelings/BAli-Phy)** (C++, 49 stars). Bayesian co-estimation of alignment, phylogeny, and evolutionary parameters via MCMC. Supports three indel models, more than any other phylogenetic inference tool: RS07 (default), TKF91 (`TKF1`), and TKF92 (`TKF2`). All implemented as <a id="gloss-use-3"></a>pair HMMs <sup>[†3](glossary.md#gloss-pairhmm)</sup> with 5 states (Start, Match, Gap-in-1, Gap-in-2, End) in `src/imodel/imodel.cc`. Branch lengths are jointly sampled with alignment, topology, and indel parameters. MCMC moves include alignment realignment (`AlignmentMove`), topology changes (`TopologyMove`), edge length proposals (`EdgeMove`), and per-parameter moves for $\lambda$, $\mu$, $r$ (TKF92), and $\rho = \lambda + \mu$. The RS07 model's `fragmentize` operation adds geometric self-loops to pair HMM states, making indel lengths geometric with parameter $\epsilon$. Indel parameters directly influence the branch length posterior: higher indel rates widen the branch length distribution because the same alignment is consistent with a broader range of evolutionary distances.
+**[BAli-Phy](https://github.com/bredelings/BAli-Phy)** (C++, 49 stars). Bayesian co-estimation of alignment, phylogeny, and evolutionary parameters via MCMC. Supports three indel models, more than any other phylogenetic inference tool: RS07 (default), TKF91 (`TKF1`), and TKF92 (`TKF2`). All implemented as <a id="gloss-use-3"></a>pair HMMs <sup>[†3](#gloss-pairhmm)</sup> with 5 states (Start, Match, Gap-in-1, Gap-in-2, End) in `src/imodel/imodel.cc`. Branch lengths are jointly sampled with alignment, topology, and indel parameters. MCMC moves include alignment realignment (`AlignmentMove`), topology changes (`TopologyMove`), edge length proposals (`EdgeMove`), and per-parameter moves for $\lambda$, $\mu$, $r$ (TKF92), and $\rho = \lambda + \mu$. The RS07 model's `fragmentize` operation adds geometric self-loops to pair HMM states, making indel lengths geometric with parameter $\epsilon$. Indel parameters directly influence the branch length posterior: higher indel rates widen the branch length distribution because the same alignment is consistent with a broader range of evolutionary distances.
 
 **[StatAlign](https://github.com/statalign/statalign)** (Java, 5 stars). Bayesian MCMC statistical alignment. Uses TKF92 pair HMMs (`HmmTkf92` with 5 states). Parameters: fragment length $r$, insertion rate $\lambda$, deletion rate $\mu$. MCMC moves over alignment columns, topology, edge lengths, and TKF92 parameters. Alignment stored as linked lists of `AlignColumn` objects with `orphan` flags distinguishing homologous from inserted columns. Felsenstein likelihoods cached per column. Supports structural alignment (`StructAlign` plugin) and RNA structure prediction (`PPFold`, `RNAAliFold`). Low activity since 2020.
 
@@ -103,7 +103,7 @@ The models differ in how they affect branch length optimization:
 
 **[PRANK](https://github.com/ariloytynoja/prank-msa)** (C++, 33 stars). Phylogeny-aware progressive alignment. Does not use a formal indel model (TKF91/PIP/etc.) for gap placement. Instead uses a heuristic strategy that infers ancestral sequences and places gaps on tree branches, defaulting to inferring ancestral residues as absent when ambiguous. This reduces the "gap attraction" problem where unrelated regions get aligned. Branch lengths are taken from the input guide tree and not re-estimated. Indels influence the alignment but not the branch lengths. PRANK is a major influence on modern phylogeny-aware alignment tools but uses heuristic gap costs, not probabilistic indel models.
 
-**[Historian](https://github.com/ihh/dart)** (C++, 32 stars, part of the DART toolkit). Progressive alignment with MCMC refinement using the RS07 pair HMM. Computes a fast initial alignment via progressive application of the pair HMM forward-backward algorithm, then refines via MCMC moves. Uses phylogenetic <a id="gloss-use-4"></a>transducers <sup>[†4](glossary.md#gloss-transducer)</sup> (composition of pair HMMs along tree edges) for multi-sequence likelihood. Branch lengths are taken from the input tree. The `ihh/trajectory-likelihood` repository (14 stars) implements the related trajectory likelihood calculations from Miklos, Lunter & Holmes 2004, De Maio 2020, and Holmes 2020.
+**[Historian](https://github.com/ihh/dart)** (C++, 32 stars, part of the DART toolkit). Progressive alignment with MCMC refinement using the RS07 pair HMM. Computes a fast initial alignment via progressive application of the pair HMM forward-backward algorithm, then refines via MCMC moves. Uses phylogenetic <a id="gloss-use-4"></a>transducers <sup>[†4](#gloss-transducer)</sup> (composition of pair HMMs along tree edges) for multi-sequence likelihood. Branch lengths are taken from the input tree. The `ihh/trajectory-likelihood` repository (14 stars) implements the related trajectory likelihood calculations from Miklos, Lunter & Holmes 2004, De Maio 2020, and Holmes 2020.
 
 **[ProPIP](https://github.com/acg-team/ProPIP)** (C++, 7 stars). ML progressive alignment under the Poisson Indel Process. The first polynomial-time progressive aligner with a rigorous indel model. Estimates indel rates ($\lambda$, $\mu$) from the data during alignment, unlike PRANK which uses fixed heuristic gap costs. Supports Gamma rate heterogeneity across sites. Branch lengths and alignment are jointly estimated in the progressive ML framework. ProPIP tends to infer shorter gaps than tools using multi-residue indel models because PIP assumes single-character insertions.
 
@@ -113,7 +113,7 @@ The models differ in how they affect branch length optimization:
 
 **[FastML](http://fastml.tau.ac.il/)** (web server only, no public repository). ML ancestral reconstruction. Uses binary encoding of indels (two-state character per alignment position) for indel reconstruction, analyzed under a simple substitution model. Branch lengths from substitution model only.
 
-**[GRASP](https://github.com/bodenlab/GRASP)** (Java, 12 stars). Ancestral reconstruction using <a id="gloss-use-10"></a>partial-order graphs <sup>[†10](glossary.md#gloss-pog)</sup> (POGs). Handles alternative splicings and repeat variation. Does not use a probabilistic indel model. Branch lengths from input tree.
+**[GRASP](https://github.com/bodenlab/GRASP)** (Java, 12 stars). Ancestral reconstruction using <a id="gloss-use-10"></a>partial-order graphs <sup>[†10](#gloss-pog)</sup> (POGs). Handles alternative splicings and repeat variation. Does not use a probabilistic indel model. Branch lengths from input tree.
 
 ### ML phylogenetic inference with indel models
 
@@ -152,8 +152,8 @@ The models differ in how they affect branch length optimization:
 
 ## Glossary
 
-1. <a id="gloss-3"></a> **Pair HMM.** See [consolidated glossary](glossary.md#gloss-pairhmm). [↩](#gloss-use-3)
-2. <a id="gloss-4"></a> **Phylogenetic transducer.** See [consolidated glossary](glossary.md#gloss-transducer). [↩](#gloss-use-4)
-3. <a id="gloss-10"></a> **POG (partial order graph).** See [consolidated glossary](glossary.md#gloss-pog). [↩](#gloss-use-10)
+1. <a id="gloss-3"></a> **Pair HMM.** See [consolidated glossary](#gloss-pairhmm). [↩](#gloss-use-3)
+2. <a id="gloss-4"></a> **Phylogenetic transducer.** See [consolidated glossary](#gloss-transducer). [↩](#gloss-use-4)
+3. <a id="gloss-10"></a> **POG (partial order graph).** See [consolidated glossary](#gloss-pog). [↩](#gloss-use-10)
 
 See [consolidated glossary](glossary.md) for all term definitions across chapters.
