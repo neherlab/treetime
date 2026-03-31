@@ -20,6 +20,18 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 - `optimize_unified.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
 - `partition_ops.rs`: `edge_indel_count()` trait method
 
+## Convergence note
+
+The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from current branch lengths at each optimization round. On the first iteration, branch lengths come from `initial_guess_mixed` which bootstraps indel-only edges to `one_mutation` (a small value). This makes the denominator artificially small and the rate estimate artificially high, biasing branches shorter on the first iteration. The bias self-corrects on subsequent iterations as branch lengths converge.
+
+## Double-counting caveat
+
+The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_indel_count()` across all partitions. When dense and sparse partitions represent the same alignment, this produces the correct count only if one partition type has zero indels. Currently, Fitch reconstruction populates indels on sparse partitions only. If indel detection is added for dense partitions, partition-aware deduplication is needed to avoid doubling the count and the Poisson curvature.
+
+## Integration note
+
+`edge_indel_count()` is on `PartitionOptimizeOps`. When `PartitionBranchOps` (branch `refactor/unified-branch-mutations-api`) is merged, move `edge_indel_count` to `PartitionBranchOps` since indel counts are a general partition property.
+
 ## v0 handling
 
 v0 ignores indels in the likelihood. This is consistent with RAxML, IQ-TREE, PhyML, and BEAST, which all treat gaps as missing data. The v1 indel contribution is a design-doc feature, not a v0 port.
