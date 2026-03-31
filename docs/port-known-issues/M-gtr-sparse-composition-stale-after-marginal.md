@@ -16,6 +16,15 @@ Practical magnitude is small: only variable sites differ between Fitch and margi
 
 Recompute `seq.composition` from `seq.sequence` after marginal reconstruction, or derive `Ti`/`root_state` from the same MAP state that `edge_subs_from_graph()` uses.
 
+## v0 comparison
+
+v0 overwrites `node.cseq` (compressed sequence) after each marginal pass. The `mutations` property dynamically compares current `node.up.cseq` vs `node.cseq`, so composition data always reflects the current reconstruction state. The stale-composition problem does not exist in v0.
+
+## Related
+
+- [M-gtr-per-site-rate-variation](M-gtr-per-site-rate-variation.md) - per-site rate variation, another GTR inference gap
+- [docs/reports/optimization-methods/](../reports/optimization-methods/) - GTR inference comparison across tools
+
 ## Scientific background
 
 GTR parameter estimation from phylogenetic data uses the EM framework <a id="cite-1"></a>[Holmes and Rubin 2002](https://doi.org/10.1006/jmbi.2002.5405) [[1](#ref-1)]. The E-step computes expected sufficient statistics (dwell times $T_i$ and transition counts $n_{ij}$) conditioned on observed data and current parameters. The M-step re-estimates rate matrix parameters from these statistics in closed form.

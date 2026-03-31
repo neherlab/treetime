@@ -41,7 +41,7 @@ v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages
 
 v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
 
-This is a v1-only feature. See [intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) and [design doc](../algorithms/optimize.md).
+This is a v1-only feature. See [indel models inventory](indel-models.md) for the full catalog of indel modeling approaches, [intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md), [design doc](../algorithms/optimize.md), and [alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md).
 
 ---
 

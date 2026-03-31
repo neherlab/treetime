@@ -29,10 +29,7 @@ $$\ell''(t) = \sum_i m_i \left[ \frac{\sum_c k_{ic} \lambda_c^2 e^{\lambda_c t}}
 
 The multiplicity $m_i$ is a linear factor on each site's contribution to $\ell''$. The squared term is the per-site first derivative squared, independent of multiplicity.
 
-References:
-
-- Felsenstein 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." J Mol Evol 17:368-376. https://doi.org/10.1007/BF01734359 -- original ML phylogenetic framework
-- Stamatakis 2014. "RAxML Version 8." Bioinformatics 30(9):1312-1313. https://doi.org/10.1093/bioinformatics/btu033 -- eigendecomposition-based per-edge optimization with compressed site patterns
+The per-edge ML framework originates from <a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)]. The eigendecomposition-based optimization with compressed site patterns follows <a id="cite-2"></a>[Stamatakis 2014](https://doi.org/10.1093/bioinformatics/btu033) [[2](#ref-2)]. <a id="cite-3"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[3](#ref-3)] proved that JC69 and F81 have unimodal branch-length likelihoods where Newton-Raphson converges in 3-8 iterations. This bug makes Newton under-step even on these unimodal surfaces, wasting iterations on a problem that should converge fast.
 
 ## Bug
 
@@ -54,6 +51,15 @@ All sparse branch length optimization is affected. Newton takes steps $\sim m$ t
 
 This explains observed convergence differences between sparse and dense modes for the same dataset.
 
+## v0 comparison
+
+v0 uses Brent's method (derivative-free) for per-edge branch length optimization via `scipy.optimize.minimize_scalar(method='bounded')`. The Hessian is never computed, so this bug is v1-only, introduced with the Newton-Raphson implementation.
+
+## Cross-links
+
+- [docs/reports/optimization-methods/2-branch-length-optimization.md](../../docs/reports/optimization-methods/2-branch-length-optimization.md) -- eigendecomposition approach
+- [docs/reports/iterative-tree-refinement/5-branch-length-optimization.md](../../docs/reports/iterative-tree-refinement/5-branch-length-optimization.md) -- Newton-Raphson details
+
 ## Fix
 
 Move `.powi(2)` inside so it applies only to the per-site derivative ratio:
@@ -62,3 +68,9 @@ Move `.powi(2)` inside so it applies only to the per-site derivative ratio:
 second_derivative += multiplicity * (coefficients * &ev2_exp_ev).sum() / site_lh
   - multiplicity * ((coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
 ```
+
+## References
+
+1. <a id="ref-1"></a> Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17:368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
+2. <a id="ref-2"></a> Stamatakis, Alexandros. 2014. "RAxML Version 8: A Tool for Phylogenetic Analysis and Post-Analysis of Large Phylogenies." _Bioinformatics_ 30(9):1312-1313. https://doi.org/10.1093/bioinformatics/btu033 [↩](#cite-2)
+3. <a id="ref-3"></a> Dinh, Vu, and Frederick A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Annals of Applied Probability_ 27(3):1432-1461. https://doi.org/10.1214/16-AAP1240 [↩](#cite-3)

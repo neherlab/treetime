@@ -16,9 +16,13 @@ The deslop audit identified additional structural duplication:
 - `write_graph()` duplicated across ancestral, optimize, and prune commands
 - GTR initialization blocks (Fitch compression + dummy JC69 + partition creation) duplicated with FIXME comments across optimize and prune
 
+## v0 comparison
+
+v0 has a single `prune_short_branches()` at `treeanc.py:1475:` used from both `optimize_tree` and the timetree pre-loop. Edge collapse is handled by Bio.Phylo's `collapse()` method. v0 does not have shared-mutation merging. The duplication in v1 arose because optimize and prune were implemented independently with different partition type requirements.
+
 ## Design decision
 
-Keep `prune` as a separate user-facing command (useful standalone without alignment for prune-by-name). Share the implementation via a common module. The command-relationships report describes the ideal hierarchy:
+Keep `prune` as a separate user-facing command (useful standalone without alignment for prune-by-name). Share the implementation via a common module. The [command-relationships report](../reports/command-relationships/_index.md) describes the ideal hierarchy:
 
 ```
 topology_cleanup/
@@ -33,6 +37,17 @@ Both `prune` and `optimize` delegate to this module. The `prune` command is a th
 
 Edge collapse is a graph contraction operation where an internal node is removed and its children become children of its parent. When the collapsed edge carries substitutions, these must be composed with child edge substitutions using the Markov semigroup property: if the parent edge maps state $A \to G$ and the child edge maps $G \to T$, the net effect is $A \to T$, not the union $\{A \to G, G \to T\}$. Reversions ($A \to G$ then $G \to A$) cancel to no net change. `compose_substitutions()` implements this correctly.
 
-## Fix
+## Related
 
-Extract `collapse_edge()`, `prune_short_branches()`, and `merge_shared_mutation_branches()` into a shared module (under `representation/` or a new `topology/` module). Update both prune and optimize to delegate. The optimize version's dense-partition handling and stale-entry cleanup become the canonical implementation.
+- [Command-relationships report](../reports/command-relationships/_index.md) -- ideal architecture with shared `topology_cleanup` module
+- [Iterative tree refinement: status and recommendations](../reports/iterative-tree-refinement/10-status-and-recommendations.md) -- recommendation R3
+
+## Implementation pointers
+
+The optimize version (`collapse_edge_for_optimize`) is the superset -- it handles both sparse and dense partitions and cleans up stale node/edge entries. Use it as the canonical implementation. The prune version (`collapse_sparse_edge`) is a strict subset.
+
+Module placement: `packages/treetime/src/representation/topology/` or `packages/treetime/src/commands/shared/` are natural candidates. The functions operate on `GraphAncestral` and partition types, so `representation/` aligns better with the layer structure (commands depend on representation, not the reverse).
+
+The refactoring scope includes three related duplications found by the deslop audit: `write_graph()` across commands, and GTR initialization blocks. These can be addressed in the same module extraction pass or as follow-up commits.
+
+Use `ast-grep` for bulk updates of import paths after moving functions.

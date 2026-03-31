@@ -32,6 +32,18 @@ The Newton path handles this correctly: `run_optimize_mixed()` at [L308-L314](..
 
 Low in practice. Requires both conditions: (1) Newton fails on the edge (non-concave second derivative, falls through to grid) AND (2) indels are present on that edge. Both are individually uncommon in typical viral datasets. When triggered, assigns zero length to a branch that has indel evidence for finite length.
 
+## v0 comparison
+
+v0 uses Brent's method with fixed bracket [0, 4.0] for all branch length optimization. There is no grid search fallback. Indels are not modeled in v0 branch length optimization at all. This bug is v1-only.
+
+## Cross-links
+
+- [H-optimize-sparse-hessian-multiplicity.md](H-optimize-sparse-hessian-multiplicity.md) -- grid fallback triggers when Newton fails; if the Hessian bug is fixed, fewer edges fall through to grid
+- [M-optimize-grid-search-narrow-at-zero.md](M-optimize-grid-search-narrow-at-zero.md) -- related grid search issue affecting range coverage
+- [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) -- Poisson model documentation
+- [Indel models algorithm inventory](../port-algo-inventory/indel-models.md) -- full catalog of indel modeling approaches
+- [Indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md) -- future extensions
+
 ## Fix
 
 Use `evaluate_with_indels_log_lh_only` for the zero-vs-best comparison, consistent with the grid evaluation. When `indel_count > 0`, skip the zero candidate entirely (matching the Newton path logic).

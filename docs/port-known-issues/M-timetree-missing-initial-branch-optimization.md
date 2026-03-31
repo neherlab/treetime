@@ -1,6 +1,6 @@
 # Timetree skips initial ML branch length optimization before time inference
 
-v0's timetree calls `optimize_tree(max_iter=1)` before the first `make_time_tree()`, performing one round of ML branch-length optimization (Brent per-edge with damping). v1's timetree goes directly to distribution-based time inference (`run_timetree`) using input branch lengths from the tree file and clock regression, without an initial ML optimization pass.
+v0's timetree calls `optimize_tree(max_iter=1)` before the first `make_time_tree()`, performing one round of ML branch-length optimization (Brent per-edge with damping). v1's timetree goes directly to distribution-based time inference (`run_timetree`) using input branch lengths from the tree file and clock regression, without an initial ML optimization pass. The ML optimization pre-step maximizes the phylogenetic likelihood <a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)] before time inference begins, as described in the TreeTime pipeline <a id="cite-2"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[2](#ref-2)].
 
 ## v0 behavior
 
@@ -46,3 +46,25 @@ Considerations:
 - v0's `optimize_tree_marginal` includes damping (`0.75`). The standalone `run_optimize_mixed()` does not have damping (no issue file yet for optimize oscillation/no-damping). A single undamped pass (`max_iter=1` equivalent) may be sufficient for initial seeding.
 - The `initial_guess_mixed()` function computes branch lengths from mutation counts and could serve as a lighter alternative to full Newton optimization for the initial seeding step.
 - A CLI flag (e.g. `--optimize-branch-lengths-pre-step` with auto/always/never modes, following the pattern of `--branch-length-initial-guess`) would allow users to control this.
+
+## Implementation pointers
+
+The insertion point is `run_timetree_estimation()` in `packages/treetime/src/commands/timetree/run.rs`, after partition initialization and before the first `run_timetree()` call. Timetree partitions already implement `PartitionOptimizeOps` (the trait required by `run_optimize_mixed`). The wiring is missing, not the infrastructure.
+
+For the CLI flag, follow the `--branch-length-initial-guess` pattern: an enum with `auto`/`always`/`never` modes, defaulting to `auto`. In `auto` mode, run the pre-step when input branch lengths appear unoptimized (all equal, all zero, or high variance relative to substitution counts).
+
+Consider whether `initial_guess_mixed()` is a sufficient lighter alternative when input branch lengths are entirely missing (no Newton needed, just substitution-count seeding).
+
+## Related issues
+
+- [H-optimize-sparse-hessian-multiplicity](H-optimize-sparse-hessian-multiplicity.md): The pre-step would use the sparse optimizer, which requires the Hessian multiplicity fix first.
+
+## Cross-references
+
+- [Command relationships](../reports/command-relationships/_index.md): Documents the ideal hierarchy where the optimize pre-step feeds timetree.
+- [Iteration loop design](../reports/iterative-tree-refinement/9-iteration-loop.md): Loop structure and convergence criteria.
+
+## References
+
+1. <a id="ref-1"></a> Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
+2. <a id="ref-2"></a> Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-2)

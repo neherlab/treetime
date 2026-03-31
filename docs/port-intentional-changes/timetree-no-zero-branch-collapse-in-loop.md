@@ -19,3 +19,13 @@ The optimize M-step operates in substitution space with free branch lengths ($b_
 The two loops are siblings sharing an E-step (ancestral reconstruction via `update_marginal()`) but with different M-step objectives. Topology cleanup belongs in the substitution-space objective, not the time-space objective.
 
 Initial branch quality is handled by the optimize pre-step before the timetree loop begins (tracked in [M-timetree-missing-initial-branch-optimization](../port-known-issues/M-timetree-missing-initial-branch-optimization.md)).
+
+Topology cleanup in the substitution-space M-step is consistent with EM algorithm theory <a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)]: each M-step maximizes the expected complete-data log-likelihood under its own parameterization. The substitution-space M-step optimizes branch lengths freely and can detect zero-length branches. The time-space M-step optimizes node times under clock constraints, where zero time difference is a valid state.
+
+## Cross-references
+
+- [Command relationships](../reports/command-relationships/_index.md): Documents the two sibling loops (optimize and timetree) sharing an E-step.
+
+## References
+
+1. <a id="ref-1"></a> Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _Journal of the Royal Statistical Society: Series B (Methodological)_ 39(1):1-22. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-1)

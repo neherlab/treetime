@@ -32,6 +32,23 @@ The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_
 
 `edge_indel_count()` is on `PartitionOptimizeOps`. When `PartitionBranchOps` (branch `refactor/unified-branch-mutations-api`) is merged, move `edge_indel_count` to `PartitionBranchOps` since indel counts are a general partition property.
 
+## Alternatives considered
+
+The Poisson count model was chosen over more sophisticated approaches. See [indel models algorithm inventory](../port-algo-inventory/indel-models.md) for a full catalog of indel modeling approaches with scientific background, and [indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md) for future directions.
+
+Three approaches were evaluated:
+
+1. **Affine gap penalty** - fixed cost per indel event plus per-position extension cost. Not probabilistic; cannot produce a proper likelihood.
+2. **TKF91 birth-death process** - separates insertion rate $\lambda$ from deletion rate $\mu$ with equilibrium constraint $\lambda < \mu$. Tracks individual indel lengths. Computationally expensive ($O(L^N)$ exact), requires restructuring the per-edge likelihood. Over-parameterized for the branch-length-prevents-zero use case.
+3. **Poisson indel count** (chosen) - single rate, each indel event has equal weight. Negligible computational cost. Integrates directly into Newton step via additive log-likelihood term.
+
+The primary goal is preventing zero-length assignment on branches with only indel evidence, not reconstructing the indel process. The Poisson model achieves this with minimal implementation and computational cost.
+
+## Related known issues
+
+- [Grid search zero-comparison ignores indel likelihood](../port-known-issues/M-optimize-grid-zero-ignores-indels.md)
+- [Timetree branch length distribution ignores indels](../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md)
+
 ## v0 handling
 
 v0 ignores indels in the likelihood. This is consistent with RAxML, IQ-TREE, PhyML, and BEAST, which all treat gaps as missing data. The v1 indel contribution is a design-doc feature, not a v0 port.

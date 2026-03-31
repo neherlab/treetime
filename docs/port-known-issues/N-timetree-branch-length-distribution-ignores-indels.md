@@ -18,6 +18,21 @@ Low for typical viral datasets (indels are rare). Visible on branches where the 
 
 Pass the indel count and rate to `compute_branch_length_distribution()` and use `evaluate_with_indels_log_lh_only()` (or equivalent) instead of `evaluate_mixed_log_lh_only()`.
 
+## v0 comparison
+
+v0's `BranchLenInterpolator` (`branch_len_interpolator.py`) does not include indels either. The word "indel" does not appear anywhere in that file. This is not a regression from v0 but a gap in both implementations.
+
+## Related issues
+
+- [M-optimize-grid-zero-ignores-indels](M-optimize-grid-zero-ignores-indels.md): The optimize grid evaluation also ignores indels -- same class of bug.
+
+## Cross-references
+
+- [Optimize algorithm design](../algorithms/optimize.md): Source of the indel contribution design question.
+- [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md): Poisson model documentation and alternatives considered.
+- [Indel models algorithm inventory](../port-algo-inventory/indel-models.md): Full catalog of indel modeling approaches.
+- [Indel model alternatives proposal](../port-proposals/optimize-indel-model-alternatives.md): Future extensions (length-weighted, separate rates).
+
 ## Broader design question
 
 The Poisson indel model (documented in [docs/algorithms/optimize.md#L31-L46](../../docs/algorithms/optimize.md#L31-L46)) currently contributes to:

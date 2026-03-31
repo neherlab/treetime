@@ -62,10 +62,23 @@ YAML or JSON configuration file specifying:
 
 This leverages the existing v1 partition architecture (`PartitionMarginalDense`, `PartitionMarginalSparse`) which already supports multiple independent partitions on the same tree.
 
-## Related known issues
+## Implementation pointers
+
+Open design questions:
+
+- YAML vs JSON vs TOML? The project already uses `serde` for all three. YAML is human-friendliest for nested config. JSON is simplest to validate. TOML is used for Cargo but less natural for lists-of-partitions.
+- Should the config file replace CLI flags or complement them? IQ-TREE uses partition file alongside CLI flags. BEAST uses XML for everything. A hybrid (config file for partitions, CLI for global options) is the lightest integration.
+- Edge-linked vs edge-unlinked partitions: should partitions share branch lengths (proportional scaling) or have independent branch lengths? IQ-TREE supports both via `-q` (linked) and `-sp` (unlinked). The v1 partition system currently shares branch lengths at the graph level.
+- The existing `worktree/feat/optimize-multi-alignment` branch has config parsing and multi-partition tests. The `worktree/feat/multi-segment-genome-input` branch has `--segment` flag for segment-aware FASTA loading. Both should be reviewed before starting fresh.
+
+The `mugration` command already demonstrates multi-partition operation (discrete trait partition alongside sequence partition). Study its partition setup for patterns.
+
+## Related
 
 - [N-optimize-multi-alignment-input](../port-known-issues/N-optimize-multi-alignment-input.md) -- optimize accepts only a single alignment
 - [N-io-multi-segment-genome-input](../port-known-issues/N-io-multi-segment-genome-input.md) -- multi-segment genome input not wired
+- [docs/algorithms/sequence_evolution.md](../algorithms/sequence_evolution.md) -- source: "For flu, genomes come in segments"
+- [docs/algorithms/optimize.md](../algorithms/optimize.md) -- source: "we might need a config file format"
 
 ## References
 

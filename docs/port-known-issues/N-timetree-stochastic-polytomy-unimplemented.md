@@ -33,7 +33,7 @@ polytomies to estimate divergence times on internal branches.
 
 ### Kingman coalescent
 
-The Kingman coalescent (Kingman 1982) describes the genealogical process of a sample
+The Kingman coalescent <a id="cite-1"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[1](#ref-1)] describes the genealogical process of a sample
 from a population. For k lineages, coalescent events occur at rate:
 
 ```
@@ -81,14 +81,20 @@ v1 uses greedy pairwise merging with Brent optimization:
 - Users needing topology uncertainty from polytomy resolution must use v0
 - Greedy resolution produces a single "best" topology without confidence measure
 - For trees with many polytomies, the deterministic choice may bias downstream analysis
+- The star tree paradox <a id="cite-3"></a>[Lewis, Holder, and Holsinger 2005](https://doi.org/10.1080/10635150590924208) [[3](#ref-3)] shows that unresolved polytomies can bias inference toward the star topology in Bayesian analysis; stochastic resolution mitigates this by exploring the space of binary resolutions
 
 ## Algorithm detail
 
 See [Stochastic Polytomy Resolution](../port-algo-inventory/unimplemented.md#stochastic-polytomy-resolution) for the full v0 algorithm walkthrough.
 
+The TreeTime pipeline <a id="cite-2"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[2](#ref-2)] describes the coalescent-based polytomy resolution as part of the iterative timetree refinement.
+
+## Cross-references
+
+- [Polytomy resolution design](../reports/iterative-tree-refinement/7-polytomy-resolution.md): Detailed design for polytomy resolution in the iteration loop.
+
 ## References
 
-- Kingman, J.F.C. (1982). "The coalescent." Stochastic Processes and their
-  Applications, 13(3):235-248.
-- Sagulenko, P., Puller, V., & Neher, R.A. (2018). "TreeTime: Maximum-likelihood
-  phylodynamic analysis." Virus Evolution, 4(1):vex042.
+1. <a id="ref-1"></a> Kingman, John F. C. 1982. "The Coalescent." _Stochastic Processes and Their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-1)
+2. <a id="ref-2"></a> Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-2)
+3. <a id="ref-3"></a> Lewis, Paul O., Mark T. Holder, and Kent E. Holsinger. 2005. "Polytomies and Bayesian Phylogenetic Inference." _Systematic Biology_ 54(2):241-253. https://doi.org/10.1080/10635150590924208 [↩](#cite-3)
