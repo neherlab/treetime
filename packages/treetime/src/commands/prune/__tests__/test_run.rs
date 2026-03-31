@@ -36,7 +36,7 @@ mod tests {
       let key = node.read_arc().key();
       partition.nodes.entry(key).or_insert_with(|| {
         let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = treetime_primitives::Seq::from_iter((0..partition.length).map(|_| c(b'A')));
+        node_part.seq.sequence = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
         node_part
       });
     }

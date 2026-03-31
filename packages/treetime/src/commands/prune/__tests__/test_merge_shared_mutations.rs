@@ -42,7 +42,7 @@ mod tests {
     // Build root reference sequence consistent with edge subs.
     // Set each position to the sub's ref character so that edge_subs_from_graph()
     // produces the same mutations as the stored subs.
-    let mut ref_seq = treetime_primitives::Seq::from_iter((0..length).map(|_| c(b'A')));
+    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, _, subs) in edge_mutations {
       for s in subs {
         if s.pos() < length {
@@ -381,7 +381,7 @@ mod tests {
       edges: btreemap! {},
     };
     // Populate nodes for p2 with a reference sequence matching the sub ref chars
-    let mut p2_ref_seq = treetime_primitives::Seq::from_iter((0..200).map(|_| c(b'A')));
+    let mut p2_ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
     p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
     for node in graph.get_nodes() {
       let key = node.read_arc().key();

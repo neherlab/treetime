@@ -192,7 +192,7 @@ mod tests {
     };
 
     // Build reference sequence consistent with sub ref chars
-    let mut ref_seq = treetime_primitives::Seq::from_iter((0..length).map(|_| c(b'A')));
+    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, subs) in edge_subs {
       for s in subs {
         if s.pos() < length {
@@ -306,7 +306,7 @@ mod tests {
     let p1 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?])])?;
     let p2 = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'G'), 20_usize, c(b'C'))?])])?;
 
-    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![p1 as Arc<RwLock<dyn PartitionBranchOps>>, p2];
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![p1, p2];
     annotate_branch_mutations(&graph, &branch_ops)?;
 
     let child = graph.get_leaves()[0].read_arc();
