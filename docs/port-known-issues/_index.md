@@ -55,6 +55,7 @@ exactly.
 | Severity   | Scope        | Issue                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | ~~High~~   | ~~Timetree~~ | ~~Timetree crashes on zero-length branches with grid spacing error~~ **FIXED**                                                  |
+| High       | Optimize     | [Sparse second derivative formula squares multiplicity incorrectly](H-optimize-sparse-hessian-multiplicity.md)                  |
 | Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                              |
 | ~~High~~   | ~~Clock~~    | ~~Clock fails with negative rate before filtering outliers~~ **FIXED**                                                          |
 | Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                               |
@@ -64,22 +65,18 @@ exactly.
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                               |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                       |
 | Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                               |
-| Medium     | Core         | [Branch mutations have no unified API across partition types](M-core-branch-mutations-no-unified-api.md)                        |
 | Medium     | Core         | [Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)                                          |
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
+| Low        | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
-| Medium     | Optimize     | [Optimize loop does not prune zero-length branches or resolve polytomies](M-optimize-no-topology-cleanup-in-loop.md)            |
-| Medium     | Prune        | [Edge collapse uses union instead of composition for mutations](M-prune-collapse-uses-union-not-composition.md)                 |
-| Medium     | Prune        | [Prune command applies merge before prune, should be reversed](M-prune-wrong-operation-order.md)                                |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Medium     | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)    |
-| Medium     | Timetree     | [Coalescent and skyline CI excludes internal nodes](M-timetree-coalescent-ci-excludes-internal.md)                              |
 | ~~Medium~~ | ~~Timetree~~ | ~~Coalescent likelihood always returns None~~ **FIXED**                                                                         |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                      |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                    |
@@ -105,7 +102,8 @@ exactly.
 | Negligible | Optimize     | [Optimizer evaluation functions omit mu scaling factor](N-optimize-mu-scaling-omitted-in-evaluation.md)                         |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
-| Negligible | Optimize     | [Branch length likelihood does not account for indels](N-optimize-indel-contribution-to-likelihood.md)                          |
+| Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
+| Medium     | Optimize     | [Grid search zero-comparison ignores indel likelihood](M-optimize-grid-zero-ignores-indels.md)                                  |
 | Medium     | Optimize     | [Newton convergence tolerance degenerates at zero branch length](M-optimize-newton-tolerance-degenerate-at-zero.md)             |
 | Medium     | Optimize     | [Grid search fallback covers narrow range at zero branch length](M-optimize-grid-search-narrow-at-zero.md)                      |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |

@@ -25,7 +25,7 @@ graph TD
 
     subgraph optimize_timetree_shared["optimize ∩ timetree"]
         OT1[GTR inference]
-        OT2[marginal reconstruction — update_marginal]
+        OT2[marginal reconstruction -- update_marginal]
         OT3[EM-like iterative loop]
     end
 
@@ -53,36 +53,36 @@ graph TD
 
 ## Current key intersections
 
-| Intersection | Shared scientific components |
-|:-------------|:-----------------------------|
-| prune ∩ optimize | Fitch-compressed sparse partition (structure, no inference) |
+| Intersection        | Shared scientific components                                                                         |
+| :------------------ | :--------------------------------------------------------------------------------------------------- |
+| prune ∩ optimize    | Fitch-compressed sparse partition (structure, no inference)                                          |
 | optimize ∩ timetree | GTR inference + `update_marginal` ancestral reconstruction (shared code, different M-step objective) |
-| prune ∩ timetree | — (none beyond I/O) |
-| all three | tree input, fasta input, alphabet |
+| prune ∩ timetree    | -- (none beyond I/O)                                                                                 |
+| all three           | tree input, fasta input, alphabet                                                                    |
 
 ## The two EM-like loops compared
 
 Both optimize and timetree use an EM-like alternating optimization. The E-step is identical. The M-steps differ fundamentally.
 
-| Phase | optimize | timetree |
-|:------|:---------|:---------|
-| E-step | `update_marginal()` — ancestral reconstruction | `update_marginal()` — same call, same code |
-| M-step | `run_optimize_mixed()` — Newton/grid on **branch lengths** (free, unconstrained) | `run_timetree()` — belief propagation on **node times** (constrained by clock, dates, coalescent) |
-| Primary variable | branch length $b_e$ (substitution units) | node time $t_v$ (calendar units) |
-| Constraint | none — free $b_e \geq 0$ | clock: $b_e = \Delta t \cdot \mu \cdot \gamma$; date bounds; coalescent prior |
-| Topology cleanup | absent (known issue `M-optimize-no-topology-cleanup-in-loop`) | temporal greedy polytomy resolution |
-| Damping | explicit post-sweep blending (`d = 0.75`) | absent |
-| Convergence | $\|\Delta \ell\| < \epsilon$ | `n_diff == 0 && n_resolved == 0` |
+| Phase            | optimize                                                                          | timetree                                                                                           |
+| :--------------- | :-------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| E-step           | `update_marginal()` -- ancestral reconstruction                                   | `update_marginal()` -- same call, same code                                                        |
+| M-step           | `run_optimize_mixed()` -- Newton/grid on **branch lengths** (free, unconstrained) | `run_timetree()` -- belief propagation on **node times** (constrained by clock, dates, coalescent) |
+| Primary variable | branch length $b_e$ (substitution units)                                          | node time $t_v$ (calendar units)                                                                   |
+| Constraint       | none -- free $b_e \geq 0$                                                         | clock: $b_e = \Delta t \cdot \mu \cdot \gamma$; date bounds; coalescent prior                      |
+| Topology cleanup | zero-branch collapse + shared-mutation merge (`prune_and_merge_in_loop`)          | temporal greedy polytomy resolution                                                                |
+| Damping          | explicit post-sweep blending (`d = 0.75`)                                         | absent                                                                                             |
+| Convergence      | $\|\Delta \ell\| < \epsilon$                                                      | `n_diff == 0 && n_resolved == 0`                                                                   |
 
-The two loops are **siblings** sharing an E-step, not parent/child. Running optimize's M-step inside timetree's loop would optimize the wrong objective — unconstrained per-edge substitution rate when the constraint is a molecular clock.
+The two loops are **siblings** sharing an E-step, not parent/child. Running optimize's M-step inside timetree's loop would optimize the wrong objective -- unconstrained per-edge substitution rate when the constraint is a molecular clock.
 
 ## Current objective functions
 
-| Command | Primary optimization variable | Objective |
-|:--------|:------------------------------|:----------|
-| prune | — | topology manipulation only |
-| optimize | branch lengths (substitution space) | $\ell(\text{branch lengths} \mid \text{sequences, GTR})$ |
-| timetree | node times (calendar space) | $\ell(\text{node times} \mid \text{sequences, GTR, clock rate, dates, coalescent})$ |
+| Command  | Primary optimization variable       | Objective                                                                           |
+| :------- | :---------------------------------- | :---------------------------------------------------------------------------------- |
+| prune    | --                                  | topology manipulation only                                                          |
+| optimize | branch lengths (substitution space) | $\ell(\text{branch lengths} \mid \text{sequences, GTR})$                            |
+| timetree | node times (calendar space)         | $\ell(\text{node times} \mid \text{sequences, GTR, clock rate, dates, coalescent})$ |
 
 ---
 
@@ -129,7 +129,7 @@ EM theory (Dempster et al. 1977) guarantees monotonic likelihood increase only w
 
 Order within topology cleanup: **prune first, then merge**. Merging before pruning hides shared mutations behind short internal nodes that pruning would have exposed as part of the same polytomy (`M-prune-wrong-operation-order`).
 
-The `prune` command as a user-facing entry point retains value — users want topology cleanup without full ML. Its implementation should delegate to the same shared `topology_cleanup` module used inside optimize's loop (Chapter 10 of the iterative tree refinement report, Recommendation R3).
+The `prune` command as a user-facing entry point retains value -- users want topology cleanup without full ML. Its implementation should delegate to the same shared `topology_cleanup` module used inside optimize's loop (Chapter 10 of the iterative tree refinement report, Recommendation R3).
 
 ### Why optimize(max_iter=1) precedes timetree's loop
 
@@ -139,14 +139,11 @@ Time inference uses branch-length distributions $P(b_e) = \exp(Q b_e)$ to inform
 
 ## Current vs ideal: gap table
 
-| Gap | Severity | Tracking issue | Blocker |
-|:----|:---------|:---------------|:--------|
-| `collapse_sparse_edge` uses `iterator_union` instead of `compose_substitutions` | Blocking | `M-prune-collapse-uses-union-not-composition` | Prerequisite for all topology integration |
-| Optimize loop has no topology cleanup (zero-length edges accumulate) | High | `M-optimize-no-topology-cleanup-in-loop` | Needs composition fix first |
-| Prune runs merge before prune (wrong order) | Medium | `M-prune-wrong-operation-order` | Standalone fix |
-| Topology cleanup not in a shared module | Medium | Chapter 10 (iterative-tree-refinement), R3 | None |
-| Timetree skips optimize(max_iter=1) pre-step | Medium | `M-timetree-missing-initial-branch-optimization` | None |
-| Timetree has no branch re-optimization after polytomy resolution | Low | Chapter 10 (iterative-tree-refinement) | None |
+| Gap                                                              | Severity | Tracking issue                                   | Status |
+| :--------------------------------------------------------------- | :------- | :----------------------------------------------- | :----- |
+| Topology cleanup not in a shared module                          | Medium   | `L-optimize-prune-duplicate-collapse`            | Open   |
+| Timetree skips optimize(max_iter=1) pre-step                     | Medium   | `M-timetree-missing-initial-branch-optimization` | Open   |
+| Timetree has no branch re-optimization after polytomy resolution | Low      | Chapter 10 (iterative-tree-refinement)           | Open   |
 
 ---
 
@@ -156,7 +153,7 @@ In the ideal design, prune is a proper subset of optimize (shared topology_clean
 
 ```mermaid
 graph TD
-    subgraph topology_cleanup["topology_cleanup — shared module"]
+    subgraph topology_cleanup["topology_cleanup -- shared module"]
         TC1[compose_substitutions edge collapse]
         TC2[prune_short_branches]
         TC3[merge_shared_mutation_branches]
@@ -173,7 +170,7 @@ graph TD
     end
 
     subgraph shared_estep["shared E-step"]
-        E1[update_marginal — ancestral reconstruction]
+        E1[update_marginal -- ancestral reconstruction]
         E2[GTR inference]
     end
 
@@ -201,22 +198,22 @@ graph TD
 
 ## Where ancestral fits
 
-`ancestral` is not a fourth Venn circle. It is what the two shared intersection zones *are* — made into a standalone user-facing command.
+`ancestral` is not a fourth Venn circle. It is what the two shared intersection zones _are_ -- made into a standalone user-facing command.
 
-| ancestral mode | What it runs | Corresponds to |
-|:---------------|:-------------|:---------------|
-| `--method-anc=parsimony` | `compress_sequences` + Fitch forward/backward | The prune ∩ optimize zone |
-| `--method-anc=marginal` | `initialize_marginal` + `update_marginal` once | The optimize ∩ timetree zone: one iteration of the shared E-step |
+| ancestral mode           | What it runs                                   | Corresponds to                                                   |
+| :----------------------- | :--------------------------------------------- | :--------------------------------------------------------------- |
+| `--method-anc=parsimony` | `compress_sequences` + Fitch forward/backward  | The prune ∩ optimize zone                                        |
+| `--method-anc=marginal`  | `initialize_marginal` + `update_marginal` once | The optimize ∩ timetree zone: one iteration of the shared E-step |
 
 Adding `ancestral` as a fourth Venn circle would produce a shape that covers both existing intersections and nothing else. That is equivalent to labeling those intersections "ancestral" directly, which is precisely what is meant.
 
 ### Why ancestral has no unique Venn region
 
-A unique region would mean "something `ancestral` does that nothing else needs." In the ideal design, optimize and timetree call `ancestral`'s internals as a subroutine — they do not reimplement the E-step, they invoke it. Every component of `ancestral` is consumed by at least one other command by construction. The more faithfully the ideal module structure is implemented, the more completely `ancestral` disappears into shared code with no residual unique behavior. This is true in both the current and ideal implementations.
+A unique region would mean "something `ancestral` does that nothing else needs." In the ideal design, optimize and timetree call `ancestral`'s internals as a subroutine -- they do not reimplement the E-step, they invoke it. Every component of `ancestral` is consumed by at least one other command by construction. The more faithfully the ideal module structure is implemented, the more completely `ancestral` disappears into shared code with no residual unique behavior. This is true in both the current and ideal implementations.
 
 ### ancestral in the hierarchy
 
-`ancestral` sits at the **bottom** of the dependency chain — everything depends on it. This is the opposite of a unique Venn region, which would signal independence.
+`ancestral` sits at the **bottom** of the dependency chain -- everything depends on it. This is the opposite of a unique Venn region, which would signal independence.
 
 ```
 ancestral/

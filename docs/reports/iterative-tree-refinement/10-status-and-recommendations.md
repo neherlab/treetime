@@ -9,10 +9,10 @@
 | Operation                      | v0 optimize      | v0 timetree       | v1 optimize     | v1 prune                 | v1 timetree     | RAxML     | IQ-TREE   |
 | ------------------------------ | ---------------- | ----------------- | --------------- | ------------------------ | --------------- | --------- | --------- |
 | Zero-length detection          | Threshold + prob | Via optimize_tree | Derivative sign | N/A                      | N/A             | Min clamp | Min clamp |
-| Zero-length pruning            | Inside loop      | After resolution  | Not implemented | --prune-short            | Not implemented | N/A       | N/A       |
-| Greedy polytomy resolution     | N/A              | Inside loop       | Not implemented | Not implemented          | Inside loop     | N/A       | N/A       |
+| Zero-length pruning            | Inside loop      | After resolution  | Inside loop     | --prune-short            | Not implemented | N/A       | N/A       |
+| Greedy polytomy resolution     | N/A              | Inside loop       | N/A             | Not implemented          | Inside loop     | N/A       | N/A       |
 | Stochastic polytomy resolution | N/A              | Inside loop       | N/A             | N/A                      | Not implemented | N/A       | N/A       |
-| Shared-mutation merging        | N/A              | N/A               | Not implemented | --merge-shared-mutations | N/A             | N/A       | N/A       |
+| Shared-mutation merging        | N/A              | N/A               | Inside loop     | --merge-shared-mutations | N/A             | N/A       | N/A       |
 
 ### Optimization methods
 
@@ -27,8 +27,8 @@
 
 | Flag                        | v0 optimize          | v0 timetree            | v1 optimize        | v1 prune        | v1 timetree                                     |
 | --------------------------- | -------------------- | ---------------------- | ------------------ | --------------- | ----------------------------------------------- |
-| prune_short / --prune-short | True (default)       | False after resolution | Not implemented    | Yes (threshold) | Not implemented                                 |
-| --merge-shared-mutations    | N/A                  | N/A                    | Not implemented    | Yes             | N/A                                             |
+| prune_short / --prune-short | True (default)       | False after resolution | Inside loop        | Yes (threshold) | Not implemented                                 |
+| --merge-shared-mutations    | N/A                  | N/A                    | Inside loop        | Yes             | N/A                                             |
 | --resolve-polytomies        | N/A                  | True (default)         | N/A                | N/A             | Yes                                             |
 | --keep-polytomies           | N/A                  | Available              | N/A                | N/A             | Parsed, not wired (`N-timetree-dead-cli-flags`) |
 | --stochastic-resolve        | N/A                  | Available              | N/A                | N/A             | Not implemented                                 |
@@ -36,13 +36,7 @@
 
 ## Defects by severity
 
-### Blocking
-
-**Edge collapse uses substitution union instead of composition.** `collapse_sparse_edge()` merges substitutions via `iterator_union()`. The Markov semigroup property requires composition ([Chapter 2](2-substitution-models.md)): `A->G` then `G->T` = net `A->T`, not `{A->G, G->T}`. The existing `compose_substitutions()` function is the correct replacement. Tracked: `M-prune-collapse-uses-union-not-composition`. Blocks all topology cleanup integration.
-
 ### Important
-
-**No topology cleanup in optimize loop.** v0 prunes zero-length branches inside each iteration. v1 detects zero-optimal branches but does not collapse them. Zero-length edges accumulate, wasting computation and preventing polytomy resolution. Tracked: `M-optimize-no-topology-cleanup-in-loop`. See [Chapter 9](9-iteration-loop.md) for the proposed loop.
 
 **No branch re-optimization after timetree polytomy resolution.** v0 calls `optimize_tree(max_iter=0)` after resolving polytomies. v1 skips this. The time inference adjusts branch lengths indirectly through distributions, which partially compensates.
 
@@ -72,21 +66,21 @@
 
 ## Recommendations
 
-### R1 (blocking): Fix composition bug
+### ~~R1 (blocking): Fix composition bug~~ DONE
 
-Replace `iterator_union()` with `compose_substitutions()` in `collapse_sparse_edge()`. One function call change. Prerequisite for everything else.
+`collapse_sparse_edge()` now uses `compose_substitutions()`.
 
-### R2 (high): Integrate topology cleanup into optimize loop
+### ~~R2 (high): Integrate topology cleanup into optimize loop~~ DONE
 
-Implement `prune_short_branches()` with v0's compound criterion. Integrate after damping, before next E-step. See [Chapter 9](9-iteration-loop.md) for the loop structure. Add `--prune-short` flag to optimize command (default enabled).
+`prune_and_merge_in_loop()` collapses zero-optimal edges and merges shared mutations inside each optimize iteration, after damping.
 
 ### R3 (high): Extract topology operations to shared module
 
-Move `merge_shared_mutation_branches()` and `collapse_sparse_edge()` to a shared module callable from both optimize and prune commands.
+Move `merge_shared_mutation_branches()` and `collapse_sparse_edge()` to a shared module callable from both optimize and prune commands. Tracked: `L-optimize-prune-duplicate-collapse`.
 
-### R4 (medium): Add `--merge-shared-mutations` to optimize command
+### ~~R4 (medium): Add `--merge-shared-mutations` to optimize command~~ DONE
 
-Default disabled (new feature not in v0).
+Shared-mutation merging runs inside the optimize loop via `prune_and_merge_in_loop()`.
 
 ### R5 (low): Implement stochastic polytomy resolution
 
@@ -94,13 +88,14 @@ For SARS-CoV-2-scale datasets. Priority depends on target dataset scale.
 
 ## Ledger cross-references
 
-| Issue                     | File                                           | Status |
-| ------------------------- | ---------------------------------------------- | ------ |
-| Composition bug           | `M-prune-collapse-uses-union-not-composition`  | Open   |
-| No topology cleanup       | `M-optimize-no-topology-cleanup-in-loop`       | Open   |
-| Stochastic resolution     | `N-timetree-stochastic-polytomy-unimplemented` | Open   |
-| Polytomy numerical issues | `N-timetree-polytomy-numerical-robustness`     | Open   |
-| Optimize loop extraction  | `L-optimize-loop-not-extracted`                | Open   |
+| Issue                     | File                                              | Status |
+| ------------------------- | ------------------------------------------------- | ------ |
+| ~~Composition bug~~       | ~~`M-prune-collapse-uses-union-not-composition`~~ | Done   |
+| ~~No topology cleanup~~   | ~~`M-optimize-no-topology-cleanup-in-loop`~~      | Done   |
+| Shared module extraction  | `L-optimize-prune-duplicate-collapse`             | Open   |
+| Stochastic resolution     | `N-timetree-stochastic-polytomy-unimplemented`    | Open   |
+| Polytomy numerical issues | `N-timetree-polytomy-numerical-robustness`        | Open   |
+| Optimize loop extraction  | `L-optimize-loop-not-extracted`                   | Open   |
 
 ## References
 

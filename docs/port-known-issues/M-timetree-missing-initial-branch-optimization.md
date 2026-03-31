@@ -38,8 +38,11 @@ Branch lengths entering the first time-tree pass are unoptimized (raw input valu
 
 Add one call to `run_optimize_mixed()` (or a subset of its logic) before the first `run_timetree()` in the timetree pipeline. This aligns with v0's `optimize_tree(max_iter=1)` and reuses the existing Newton/grid-search infrastructure.
 
+Design decision: make the pre-step configurable (not hardcoded on/off). Trees from IQ-TREE or FastTree already have decent ML branch lengths and may not need a pre-step. Trees from neighbor-joining or parsimony benefit from it.
+
 Considerations:
 
 - The timetree command has its own iteration loop and convergence criteria. Adding ML optimization should not conflict with the distribution-based inference but needs testing for convergence behavior.
 - v0's `optimize_tree_marginal` includes damping (`0.75`). The standalone `run_optimize_mixed()` does not have damping (no issue file yet for optimize oscillation/no-damping). A single undamped pass (`max_iter=1` equivalent) may be sufficient for initial seeding.
 - The `initial_guess_mixed()` function computes branch lengths from mutation counts and could serve as a lighter alternative to full Newton optimization for the initial seeding step.
+- A CLI flag (e.g. `--optimize-branch-lengths-pre-step` with auto/always/never modes, following the pattern of `--branch-length-initial-guess`) would allow users to control this.
