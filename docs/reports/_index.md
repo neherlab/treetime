@@ -12,6 +12,10 @@ How TreeTime refines phylogenetic trees: optimizing branch lengths, detecting an
 
 Scientific and architectural relationships between the four main tree-refinement commands. Covers current Venn diagram of shared components, the role of `ancestral` as the shared foundation, comparison of the two sibling EM-like loops (optimize vs timetree), current vs ideal architecture, and a gap table mapping six known issues to required changes.
 
+### [Ancestral vs mugration comparison](ancestral-mugration-comparison/_index.md)
+
+Side-by-side comparison of the `ancestral` and `mugration` commands in both v0 (Python) and v1 (Rust). Covers the shared Felsenstein pruning core, divergent pipelines (one-shot vs iterative GTR refinement), data representations (multi-position sequences vs single-position discrete traits), partition types, message-passing implementations, output formats, known issues, and architectural observations. Extends the command-relationships report by documenting mugration's position as a sibling outside the ancestral-prune-optimize-timetree hierarchy.
+
 ### [Optimization methods](optimization-methods/_index.md)
 
 Numerical optimization algorithms in TreeTime v1: per-edge branch length optimization (Newton-Raphson, Brent, cubic Hermite spline), coalescent skyline estimation (GMRF, NelderMead vs LBFGS), EM convergence, and the argmin Rust crate. Systematic comparison across RAxML-NG, IQ-TREE, PhyML, BEAST, and TreeTime v0/v1 with code locations. Includes a v1 optimization audit with 17 items inventoried, 7 inconsistencies identified, and 8 prioritized refactoring proposals. 7 chapters, glossary, 36 verified references.
