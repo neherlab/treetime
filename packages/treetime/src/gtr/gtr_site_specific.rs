@@ -44,6 +44,7 @@ pub struct GTRSiteSpecificParams {
 /// Reference: Puller et al (2020). "TreeTime: Maximum-likelihood phylodynamic analysis."
 /// Virus Evolution, 6(1), veaa066.
 #[derive(Clone, Debug)]
+#[allow(clippy::partial_pub_fields)]
 pub struct GTRSiteSpecific {
   /// Sequence length (number of alignment sites).
   pub seq_len: usize,

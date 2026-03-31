@@ -94,10 +94,10 @@ pub struct TreetimeOptimizeArgs {
 
   /// Initial branch length estimate before Newton optimization.
   ///
-  /// - auto:   estimate only edges with missing or invalid branch lengths,
-  ///           preserve valid input values (default)
+  /// - auto: estimate only edges with missing or invalid branch lengths,
+  ///   preserve valid input values (default)
   /// - always: estimate all edges, overwriting input branch lengths
-  /// - never:  use input branch lengths as-is; fails if any are missing
+  /// - never: use input branch lengths as-is; fails if any are missing
   #[clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto)]
   pub branch_length_initial_guess: InitialGuessMode,
 }

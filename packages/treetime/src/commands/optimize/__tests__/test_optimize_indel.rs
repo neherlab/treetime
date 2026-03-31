@@ -31,16 +31,16 @@ mod tests {
     graph: &GraphAncestral,
     dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
     sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-    indels: Vec<InDel>,
+    indels: &[InDel],
   ) -> treetime_graph::edge::GraphEdgeKey {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     for partition in dense_partitions {
       let mut p = partition.write_arc();
-      p.edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+      p.edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
     }
     for partition in sparse_partitions {
       let mut p = partition.write_arc();
-      p.edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+      p.edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
     }
     first_edge_key
   }
@@ -117,7 +117,7 @@ mod tests {
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
-    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
+    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     let rate = estimate_indel_rate(&graph, &mixed_partitions);
 
@@ -140,7 +140,7 @@ mod tests {
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
-    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
+    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
@@ -172,7 +172,7 @@ mod tests {
 
     // Inject indels on the first edge (after zeroing, so indel_rate starts at 0)
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
-    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
+    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
     initial_guess_mixed(&graph, &mixed_partitions, true)?;
@@ -204,7 +204,7 @@ mod tests {
       InDel::del((0, 3), Seq::try_from_str("ACG")?),
       InDel::del((5, 8), Seq::try_from_str("ACG")?),
     ];
-    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, indels);
+    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     run_optimize_mixed(&graph, &mixed_partitions)?;
 

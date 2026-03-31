@@ -22,6 +22,7 @@ use treetime_utils::make_error;
 /// - alpha = 1: exponential distribution
 /// - alpha > 1: moderate variation, bell-shaped
 /// - alpha → ∞: uniform rates (no variation)
+///
 /// Values between 0.1 and 2.0 are typical for biological sequences.
 ///
 /// # Algorithm

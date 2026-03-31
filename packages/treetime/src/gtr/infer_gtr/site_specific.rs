@@ -90,7 +90,6 @@ pub fn infer_gtr_site_specific_impl(
     gap_index,
     max_iter,
     dp,
-    ..
   } = options;
 
   let q = *n_states;
