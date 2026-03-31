@@ -8,8 +8,7 @@ mod tests {
   };
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
-    OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_branch_optimal,
-    run_optimize_mixed,
+    OptimizationContribution, initial_guess_mixed, is_zero_branch_optimal, run_optimize_mixed,
   };
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -133,7 +132,6 @@ mod tests {
     Ok(())
   }
 
-
   /// With identical sequences (zero subs on every edge), `initial_guess_mixed` uses
   /// the Poisson MLE for indel-bearing edges.
   #[test]
@@ -152,7 +150,10 @@ mod tests {
       .read_arc()
       .branch_length()
       .unwrap();
-    assert!(bl > 0.0, "Branch with indels but no subs should have positive initial guess, got {bl}");
+    assert!(
+      bl > 0.0,
+      "Branch with indels but no subs should have positive initial guess, got {bl}"
+    );
     Ok(())
   }
 
@@ -182,10 +183,12 @@ mod tests {
       .read_arc()
       .branch_length()
       .unwrap();
-    assert!(bl > 0.0, "Indel-bearing edge on zero-BL tree should get positive initial guess, got {bl}");
+    assert!(
+      bl > 0.0,
+      "Indel-bearing edge on zero-BL tree should get positive initial guess, got {bl}"
+    );
     Ok(())
   }
-
 
   /// `run_optimize_mixed` assigns non-zero branch length when indels are present.
   /// Verifies both positivity and local optimality of the result.
@@ -211,7 +214,10 @@ mod tests {
       .read_arc()
       .branch_length()
       .unwrap();
-    assert!(bl > 0.0, "Branch with indels should have positive length after optimization, got {bl}");
+    assert!(
+      bl > 0.0,
+      "Branch with indels should have positive length after optimization, got {bl}"
+    );
     assert!(bl.is_finite(), "Optimized branch length should be finite, got {bl}");
     Ok(())
   }
@@ -267,7 +273,6 @@ mod tests {
     assert!(bl_final.is_finite(), "Optimized BL should be finite, got {bl_final}");
     Ok(())
   }
-
 
   /// The Poisson indel contribution makes the combined second derivative more negative
   /// (more concave), aiding Newton convergence.
@@ -355,7 +360,6 @@ mod tests {
 
     assert!(is_zero_branch_optimal(&[contribution]));
   }
-
 
   mod generators {
     use proptest::prelude::*;
