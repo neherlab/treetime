@@ -44,11 +44,11 @@ Replace the single rate $\mu$ with separate insertion rate $\lambda$ and deletio
 
 $$\ell_{\text{indel}}(t) = k_{\text{ins}} \ln(\lambda t) - \lambda t + k_{\text{del}} \ln(\delta t) - \delta t - \text{const}$$
 
-Empirical studies consistently find $\delta > \lambda$ (deletion rate exceeds insertion rate) across most datasets (Loewenthal et al. 2021, doi:10.1093/molbev/msab266).
+Loewenthal et al. 2021 (doi:10.1093/molbev/msab266) found 74% of RIM-supported protein datasets have $R_D > R_I$, with $R_D/R_I \approx 2$ in Drosophilidae. The asymmetry is not universal: Saccharomycetaceae coding genes show $R_I > R_D$ in 56% of RIM datasets.
 
-**Implementation effort**: moderate. Requires distinguishing insertions from deletions in the `InDel` struct (already has `InDelType` enum with `Insert` and `Delete` variants). Rate estimation splits into two MLEs. The Newton step gains two additive terms instead of one.
+**Mathematical note**: with global MLE estimation, $\lambda + \delta = \mu$ always holds (the total rate is the same). The per-edge optimum $t^* = (k_{\text{ins}} + k_{\text{del}})/(\lambda + \delta) = k/\mu$ is identical to the current single-rate model. Separate rates do not change branch length estimates under global MLE. The separation is useful for reporting and for downstream analyses that distinguish insertion-dominated from deletion-dominated branches, but it requires per-edge or per-clade rate estimation to affect branch lengths.
 
-**Tradeoff**: one additional parameter. Improves biological realism for datasets with asymmetric indel rates. For viral datasets where indels are rare, both rates are near zero and the distinction is immaterial.
+**Tradeoff**: no branch length change with global rates. Requires per-edge or hierarchical rate estimation to produce different branch lengths, which adds complexity.
 
 ### E3. Affine-inspired two-parameter model
 
@@ -62,21 +62,39 @@ This factorizes the indel process into "how many events" (opening) and "how long
 
 **Implementation effort**: moderate. Two rate parameters estimated from the tree. The Newton step gains two terms. Requires the `InDel` struct to store length (already available).
 
-**Tradeoff**: two parameters. The opening and extension rates are independently estimated, which is more principled than the affine gap penalty's fixed ratio. The model is still not a proper evolutionary process (Rivas 2005 showed geometric instantaneous rates do not produce geometric finite-time distributions), but it is a better approximation than equal-weight counting for branch length optimization.
+**Mathematical note**: the per-edge optimum $t^* = (k + L_{\text{ext}})/(\mu_o + \mu_e)$. Since $k + L_{\text{ext}} = \sum l_i$, E3 is equivalent to E1 with linear weighting $w(l) = l$ when $\mu_o = \mu_e$. The separate opening/extension rates add a degree of freedom beyond E1: they allow the model to weight short indels (dominated by opening) differently from long indels (dominated by extension). Rivas 2005 showed geometric instantaneous rates do not produce geometric finite-time distributions, so this is an approximation.
 
-## Not proposed
+**Tradeoff**: two parameters. More expressive than E1 (separates opening from extension dynamics). Subsumes E1-linear as a special case ($\mu_o = \mu_e$).
 
-### TKF91/TKF92 integration
+## Architectural alternatives
 
-Full TKF91 or TKF92 integration would require restructuring the per-edge likelihood evaluation to use pair HMMs or extended Felsenstein peeling. The computational cost ($O(L^N)$ exact for TKF91) is prohibitive for TreeTime's interactive use case. The implementation effort is disproportionate to the benefit for branch length optimization specifically.
+These require deeper changes to the optimization architecture. Each is described with tradeoffs for evaluation.
 
-### Poisson Indel Process (PIP)
+### E4. TKF91/TKF92 integration
 
-PIP achieves linear-time marginal likelihood by decoupling insertions from existing characters. While tractable, it still requires alignment-aware likelihood computation, not just a scalar indel count per edge. The integration would change the optimization architecture, not just add a term.
+Integrate TKF91 or TKF92 as the indel model for branch length optimization. TKF91 jointly models substitutions and indels via a pair HMM with separate insertion rate $\lambda$ and deletion rate $\mu$. Branch length optimization uses Brent's method (as in rust-phylo) or Newton-Raphson with pair HMM derivatives.
 
-### Length-distribution fitting
+**Fixed-alignment mode**: with a fixed alignment (treating it as observed data), TKF91 likelihood per edge is $O(L)$ via column-by-column evaluation. This is the mode relevant to TreeTime's optimizer, where the alignment is fixed and only branch lengths are optimized. The $O(L^N)$ cost applies to marginalizing over all possible alignments, which TreeTime does not do.
 
-Fitting indel length distributions (geometric, Zipf/power-law, multi-exponential) from the data would add statistical rigor but requires solving a nested optimization problem (estimate length distribution parameters, then use them in branch length optimization). The benefit for branch length optimization is marginal compared to simpler weighting schemes.
+**Architectural change**: replaces the per-site eigendecomposition coefficient cache with a per-column pair HMM evaluation. The rust-phylo library (`acg-team/rust-phylo`) demonstrates this architecture in Rust with `argmin::BrentOpt` for per-edge optimization.
+
+**Tradeoff**: 2 parameters ($\lambda$, $\mu$). Distinguishes insertions from deletions. Single-residue indels only (TKF92 extends to geometric fragments with parameter $r$). Requires pair HMM DP per edge instead of scalar addition.
+
+### E5. Poisson Indel Process (PIP)
+
+PIP decouples insertions from existing characters, making the marginal likelihood (summing over alignments) linear in the number of taxa. For fixed-alignment branch length optimization, PIP provides a column-based likelihood where each column's contribution depends on whether the character was inserted or deleted on each branch.
+
+**Architectural change**: requires tracking per-column insertion/deletion status on each edge, not just a total count. The column-based likelihood replaces the scalar Poisson term with a per-column product.
+
+**Tradeoff**: 2 parameters ($\lambda$, $\mu$). Linear-time marginal likelihood (relevant if TreeTime ever marginalizes over alignments). Equilibrium length distribution is Poisson (lighter tails than TKF91's geometric).
+
+### E6. Length-distribution fitting
+
+Fit indel length distributions (geometric, Zipf/power-law, multi-exponential) from the observed indel data, then use the fitted distribution to weight each indel event in the branch length likelihood.
+
+**Approach**: estimate distribution parameters from the tree's indel length histogram (e.g., MLE for geometric, or ABC as in SpartaABC for Zipf). Use the fitted probability $P(l_i)$ as a weight for each indel event in the Poisson term: $\ell(t) = \sum_i \ln(P(l_i)) + k \ln(\mu t) - \mu t$.
+
+**Tradeoff**: 1-2 additional distribution parameters. Requires a nested optimization (fit distribution, then optimize branch lengths, iterate). More principled than E1's fixed weighting function but adds iteration complexity.
 
 ## Validation plan
 
@@ -97,7 +115,6 @@ Fitting indel length distributions (geometric, Zipf/power-law, multi-exponential
 
 - [Indel models report](../reports/indel-models/_index.md) - full catalog of indel modeling approaches
 - [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) - current Poisson model documentation
-- [Design doc](../algorithms/optimize.md#poisson-indel-contribution-implemented) - model formulation and assumptions
 - [Grid search ignores indels](../port-known-issues/M-optimize-grid-zero-ignores-indels.md) - related known issue
 - [Timetree ignores indels](../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md) - related known issue
 - [Convergence and method choice proposal](optimize-convergence-and-method-choice.md) - related optimization proposal
