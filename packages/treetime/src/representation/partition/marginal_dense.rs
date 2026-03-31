@@ -279,7 +279,9 @@ where
       let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
       let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
       let branch_length = fix_branch_length(length, branch_length);
-      let mut edge_data = DenseEdgePartition::default();
+      // Remove-mutate-reinsert to preserve fields set during Fitch reconstruction
+      // (indels, transmission) that are not recomputed by the marginal backward pass.
+      let mut edge_data = self.edges.remove(edge_key).unwrap_or_default();
 
       let log_lh = msg_to_parent.log_lh;
       let dis = self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false);
