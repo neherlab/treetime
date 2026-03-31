@@ -11,4 +11,5 @@ pub mod skyline;
 mod time_coordinate;
 pub mod total_lh;
 
+#[cfg(test)]
 mod __tests__;

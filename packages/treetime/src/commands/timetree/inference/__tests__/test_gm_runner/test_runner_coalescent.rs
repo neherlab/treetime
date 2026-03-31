@@ -34,7 +34,7 @@ mod tests {
   #[case::tc_1_0( 1.0)]
   #[case::tc_10_0(10.0)]
   #[trace]
-  #[ignore]
+  #[ignore = "golden master datasets not yet passing"]
   fn test_runner_coalescent_completes(#[case] tc: f64) -> Result<(), Report> {
     let dataset = "flu_h3n2_20";
     let case = &OUTPUTS[dataset];
