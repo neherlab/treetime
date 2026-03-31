@@ -5,24 +5,26 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-/// Controls when the discrete-count initial branch length estimate runs
-/// before Newton optimization.
+/// Controls the initial branch length estimate that runs before Newton
+/// optimization.
 ///
-/// The initial guess computes `#substitutions / effective_length` per edge,
-/// which is a crude starting point. When input trees already carry
+/// The estimate computes `#substitutions / effective_alignment_length` per
+/// edge from the marginal reconstruction. When input trees already carry
 /// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
-/// TreeTime run), skipping the initial guess preserves those values and
-/// lets Newton converge from a better starting position.
+/// TreeTime run), preserving those values lets Newton converge from a
+/// better starting position.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum InitialGuessMode {
-  /// Run only when any edge lacks a branch length
+  /// Estimate only edges with missing or invalid branch lengths, preserve
+  /// valid input values. No-op when all edges have finite branch lengths.
   #[default]
   Auto,
-  /// Run unconditionally (overwrites input branch lengths)
+  /// Estimate all edges, overwriting input branch lengths.
   Always,
-  /// Skip entirely (use input branch lengths as-is)
+  /// Use input branch lengths as-is. Fails if any edge has a missing or
+  /// invalid branch length.
   Never,
 }
 
@@ -90,12 +92,12 @@ pub struct TreetimeOptimizeArgs {
   #[clap(long, default_value_t = 0.75)]
   pub damping: f64,
 
-  /// When to compute the discrete-count initial branch length estimate
-  /// before Newton optimization.
+  /// Initial branch length estimate before Newton optimization.
   ///
-  /// - auto:   run only when any edge has no branch length (default)
-  /// - always: run unconditionally, overwriting input values
-  /// - never:  skip, use input branch lengths as-is
-  #[clap(long, value_enum, default_value_t = InitialGuessMode::Auto)]
-  pub initial_guess: InitialGuessMode,
+  /// - auto:   estimate only edges with missing or invalid branch lengths,
+  ///           preserve valid input values (default)
+  /// - always: estimate all edges, overwriting input branch lengths
+  /// - never:  use input branch lengths as-is; fails if any are missing
+  #[clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto)]
+  pub branch_length_initial_guess: InitialGuessMode,
 }

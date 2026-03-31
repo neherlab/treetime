@@ -82,7 +82,7 @@ mod tests {
     let partitions_stale = setup_dense_jc69(&graph_stale, &aln)?;
     update_marginal(&graph_stale, &partitions_stale)?;
     partitions_stale[0].write_arc().gtr = f81_gtr.clone();
-    initial_guess_mixed(&graph_stale, &partitions_stale)?;
+    initial_guess_mixed(&graph_stale, &partitions_stale, true)?;
     let bl_stale = get_branch_lengths(&graph_stale);
 
     // Scenario 2: fresh F81 messages (the fix)
@@ -92,7 +92,7 @@ mod tests {
     update_marginal(&graph_fresh, &partitions_fresh)?;
     partitions_fresh[0].write_arc().gtr = f81_gtr;
     update_marginal(&graph_fresh, &partitions_fresh)?;
-    initial_guess_mixed(&graph_fresh, &partitions_fresh)?;
+    initial_guess_mixed(&graph_fresh, &partitions_fresh, true)?;
     let bl_fresh = get_branch_lengths(&graph_fresh);
 
     assert_ne!(
@@ -120,7 +120,7 @@ mod tests {
     update_marginal(&graph, &partitions)?;
     partitions[0].write_arc().gtr = f81_gtr.clone();
     update_marginal(&graph, &partitions)?;
-    initial_guess_mixed(&graph, &partitions)?;
+    initial_guess_mixed(&graph, &partitions, true)?;
     let bl_first = get_branch_lengths(&graph);
 
     // Run update_marginal + initial_guess again on the same graph.
@@ -134,7 +134,7 @@ mod tests {
     update_marginal(&graph2, &partitions2)?;
     partitions2[0].write_arc().gtr = f81_gtr;
     update_marginal(&graph2, &partitions2)?;
-    initial_guess_mixed(&graph2, &partitions2)?;
+    initial_guess_mixed(&graph2, &partitions2, true)?;
     let bl_second = get_branch_lengths(&graph2);
 
     assert_eq!(

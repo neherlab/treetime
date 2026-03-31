@@ -47,7 +47,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     max_iter,
     dp,
     damping,
-    initial_guess,
+    branch_length_initial_guess,
   } = args;
 
   if !(0.0..1.0).contains(damping) {
@@ -128,12 +128,22 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-  if should_run_initial_guess(*initial_guess, &graph) {
-    initial_guess_mixed(&graph, &mixed_partitions)?;
-  } else if matches!(initial_guess, InitialGuessMode::Never) && any_edge_missing_branch_length(&graph) {
-    log::warn!(
-      "--initial-guess=never but some edges have no branch length; optimization starts from 0.0 for those edges"
-    );
+  match branch_length_initial_guess {
+    InitialGuessMode::Auto => {
+      initial_guess_mixed(&graph, &mixed_partitions, false)?;
+    },
+    InitialGuessMode::Always => {
+      initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    },
+    InitialGuessMode::Never => {
+      if any_edge_missing_branch_length(&graph) {
+        return make_error!(
+          "--branch-length-initial-guess=never requires all edges to have finite branch lengths, \
+           but some edges have missing or NaN values. \
+           Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
+        );
+      }
+    },
   }
 
   let mut lh_prev = f64::MIN;
@@ -404,20 +414,6 @@ where
     .get_edges()
     .iter()
     .any(|edge_ref| is_branch_length_missing(edge_ref.read_arc().payload().read_arc().branch_length()))
-}
-
-/// Decide whether to run the discrete-count initial guess based on mode and tree state.
-pub(crate) fn should_run_initial_guess<N, E, D>(mode: InitialGuessMode, graph: &Graph<N, E, D>) -> bool
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  match mode {
-    InitialGuessMode::Always => true,
-    InitialGuessMode::Never => false,
-    InitialGuessMode::Auto => any_edge_missing_branch_length(graph),
-  }
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>

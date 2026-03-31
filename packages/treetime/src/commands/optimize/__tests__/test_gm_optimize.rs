@@ -184,7 +184,7 @@ mod tests {
       update_marginal(&graph, &dense_partitions)?;
 
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-      initial_guess_mixed(&graph, &mixed_partitions)?;
+      initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
       let dp = 1e-2;
       let mut lh_history = Vec::with_capacity(case.max_iter + 1);

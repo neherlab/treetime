@@ -382,8 +382,9 @@ where
 
 /// Initial estimation of branch lengths for mixed partitions.
 ///
-/// Computes per-edge substitution count over canonical (non-gap, non-ambiguous)
-/// positions via `edge_subs().len()` for both sparse and dense partitions.
+/// Computes per-edge substitution count over canonical (non-ambiguous,
+/// non-deletion) positions via `edge_subs().len()` for both sparse and
+/// dense partitions.
 ///
 /// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
@@ -391,7 +392,15 @@ where
 /// For edges with indels but no substitutions, the Poisson MLE $\hat{t} = k / \mu$
 /// provides a non-zero initial estimate so Newton optimization starts from a
 /// reasonable point (the indel derivative diverges at $t = 0$).
-pub fn initial_guess_mixed<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+///
+/// When `overwrite_valid` is false, edges that already have a finite branch
+/// length are skipped, preserving calibrated input values while filling in
+/// edges with missing (`None`) or invalid (`NaN`) branch lengths.
+pub fn initial_guess_mixed<P>(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<P>>],
+  overwrite_valid: bool,
+) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
 {
@@ -405,6 +414,14 @@ where
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
+
+    if !overwrite_valid {
+      if let Some(bl) = edge.branch_length() {
+        if bl.is_finite() {
+          continue;
+        }
+      }
+    }
 
     let sub_count: usize = partitions
       .iter()
