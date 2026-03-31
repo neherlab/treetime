@@ -390,6 +390,22 @@ Fixtures in `__fixtures__/`:
 
 ---
 
+## Initial Guess Mode
+
+**File:** [`test_initial_guess_mode.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs)
+
+Tests for `should_run_initial_guess()` dispatch logic with the `InitialGuessMode` enum.
+
+| Test                                                          | Purpose                                                  |
+| ------------------------------------------------------------- | -------------------------------------------------------- |
+| `test_initial_guess_mode_always_returns_true`                 | Always mode returns true regardless of tree state        |
+| `test_initial_guess_mode_never_returns_false`                 | Never mode returns false regardless of tree state        |
+| `test_initial_guess_mode_auto_skips_when_all_lengths_present` | Auto mode skips when all edges have branch lengths       |
+| `test_initial_guess_mode_auto_runs_when_one_length_missing`   | Auto mode runs when a single edge has None branch length |
+| `test_initial_guess_mode_auto_runs_when_all_lengths_missing`  | Auto mode runs when all edges have None branch length    |
+
+---
+
 ## Initial Guess GTR Messages
 
 **File:** [`test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
