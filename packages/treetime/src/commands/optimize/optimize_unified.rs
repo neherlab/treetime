@@ -202,6 +202,30 @@ fn evaluate_with_indels_log_lh_only(
   sub_lh + indel_lh
 }
 
+/// Whether zero branch length beats the best positive grid point.
+///
+/// For non-unimodal models that bypass the derivative shortcut, the grid
+/// search must compare zero against the best positive candidate. When indels
+/// are present ($k > 0$), the Poisson log-likelihood at $t = 0$ is $-\infty$,
+/// so zero is never optimal. The `indel_count == 0` guard skips the comparison
+/// entirely, matching the Newton path logic.
+///
+/// When `indel_count == 0`, both sides of the comparison use the indel-aware
+/// evaluator for consistency with the grid evaluation, though the Poisson
+/// contribution is zero in that case.
+pub(crate) fn is_zero_better_than_grid_best(
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  best_positive: f64,
+) -> bool {
+  indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero()) && {
+    let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, 0.0);
+    let log_lh_best = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, best_positive);
+    log_lh_zero > log_lh_best
+  }
+}
+
 /// Check if zero branch length is optimal across all contributions.
 ///
 /// The scientific criterion for zero-length optimality is the sign of the
@@ -364,17 +388,7 @@ where
         .copied()
         .unwrap();
 
-      // Evaluate t=0 as a separate candidate: for non-unimodal models that
-      // bypass the derivative shortcut, zero may still be optimal. Guard with
-      // site validity to avoid ln(0) for degenerate coefficient rows.
-      // When indels are present (k > 0), the Poisson log-likelihood at t=0 is
-      // -infinity, so zero is never optimal. Skip the zero candidate entirely,
-      // matching the Newton path logic.
-      let zero_is_better = indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero()) && {
-        let log_lh_zero = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, 0.0);
-        let log_lh_best = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, best_positive);
-        log_lh_zero > log_lh_best
-      };
+      let zero_is_better = is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive);
       new_branch_length = if zero_is_better { 0.0 } else { best_positive };
     }
 

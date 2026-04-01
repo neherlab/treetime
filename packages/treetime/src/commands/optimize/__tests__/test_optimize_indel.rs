@@ -9,8 +9,8 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
-    OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_branch_optimal,
-    run_optimize_mixed,
+    OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best,
+    is_zero_branch_optimal, run_optimize_mixed,
   };
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -378,7 +378,7 @@ mod tests {
     let indel_count = 1_usize;
     let indel_rate = 5.0;
 
-    // Bug scenario: substitution-only comparison prefers zero
+    // Bug precondition: substitution-only comparison prefers zero
     let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0);
     let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive);
     assert!(
@@ -393,15 +393,16 @@ mod tests {
     let combined_near_zero = sub_lh_zero + indel_lh_near_zero;
     let combined_at_best = sub_lh_best + indel_lh_at_best;
 
-    // Indel-aware comparison correctly prefers positive t over near-zero
     assert!(
       combined_at_best > combined_near_zero,
       "Indel-aware comparison should prefer positive t: at_best={combined_at_best}, near_zero={combined_near_zero}"
     );
 
-    // The fix: indel_count > 0 short-circuits zero_is_better to false
-    let zero_is_better = indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero());
-    assert!(!zero_is_better, "zero_is_better must be false when indel_count > 0");
+    // Production function: indel_count > 0 causes is_zero_better_than_grid_best to return false
+    assert!(
+      !is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive),
+      "Production helper must return false when indel_count > 0"
+    );
   }
 
   /// Regression: without indels, the grid search zero-comparison still allows zero
@@ -413,18 +414,10 @@ mod tests {
     let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
-    let indel_count = 0_usize;
-
-    // Guard passes when indel_count == 0 and sites are valid at zero
-    let guard_passes = indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero());
-    assert!(guard_passes, "Guard should pass when indel_count == 0");
-
-    // Substitution-only comparison correctly identifies zero as better
-    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0);
-    let sub_lh_positive = evaluate_mixed_log_lh_only(&contributions, 0.01);
+    // Production function: indel_count == 0 with pure-state coefficients selects zero
     assert!(
-      sub_lh_zero > sub_lh_positive,
-      "Without indels, zero should still be selectable: lh_zero={sub_lh_zero}, lh_positive={sub_lh_positive}"
+      is_zero_better_than_grid_best(&contributions, 0, 0.0, 0.01),
+      "Production helper should return true when indel_count == 0 and zero is better for subs"
     );
   }
 
