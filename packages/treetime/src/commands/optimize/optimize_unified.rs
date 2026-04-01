@@ -370,13 +370,11 @@ where
       // When indels are present (k > 0), the Poisson log-likelihood at t=0 is
       // -infinity, so zero is never optimal. Skip the zero candidate entirely,
       // matching the Newton path logic.
-      let zero_is_better = indel_count == 0
-        && contributions.iter().all(|c| c.all_sites_valid_at_zero())
-        && {
-          let log_lh_zero = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, 0.0);
-          let log_lh_best = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, best_positive);
-          log_lh_zero > log_lh_best
-        };
+      let zero_is_better = indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero()) && {
+        let log_lh_zero = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, 0.0);
+        let log_lh_best = evaluate_with_indels_log_lh_only(&contributions, indel_count, indel_rate, best_positive);
+        log_lh_zero > log_lh_best
+      };
       new_branch_length = if zero_is_better { 0.0 } else { best_positive };
     }
 
