@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use ndarray::{Array2, array};
   use rstest::rstest;
 
@@ -38,7 +38,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
     let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
 
-    assert_ulps_eq!(metrics.derivative, numerical_d1, epsilon = 1e-4);
+    assert_abs_diff_eq!(metrics.derivative, numerical_d1, epsilon = 1e-9);
   }
 
   #[rustfmt::skip]
@@ -70,7 +70,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-    assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
+    assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-9);
   }
 
   /// Second derivative with high multiplicity must match numerical approximation.
@@ -103,7 +103,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-    assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
+    assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-8);
   }
 
   #[test]
