@@ -115,6 +115,6 @@ Fit indel length distributions (geometric, Zipf/power-law, multi-exponential) fr
 
 - [Indel models report](../reports/indel-models/_index.md) - full catalog of indel modeling approaches
 - [Indel contribution intentional change](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md) - current Poisson model documentation
-- [Grid search ignores indels](../port-known-issues/M-optimize-grid-zero-ignores-indels.md) - related known issue
+- ~~Grid search ignores indels~~ - **FIXED**
 - [Timetree ignores indels](../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md) - related known issue
 - [Convergence and method choice proposal](optimize-convergence-and-method-choice.md) - related optimization proposal

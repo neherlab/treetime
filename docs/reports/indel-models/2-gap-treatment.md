@@ -58,7 +58,7 @@ v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../../packa
 
 ### Related known issues
 
-- [Grid search zero-comparison ignores indel likelihood](../../port-known-issues/M-optimize-grid-zero-ignores-indels.md)
+- ~~Grid search zero-comparison ignores indel likelihood~~ **FIXED**
 - [Timetree branch length distribution ignores indels](../../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md)
 
 ### Cross-references

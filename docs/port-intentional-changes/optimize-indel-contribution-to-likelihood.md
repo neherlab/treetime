@@ -46,7 +46,7 @@ The primary goal is preventing zero-length assignment on branches with only inde
 
 ## Related known issues
 
-- [Grid search zero-comparison ignores indel likelihood](../port-known-issues/M-optimize-grid-zero-ignores-indels.md)
+- ~~Grid search zero-comparison ignores indel likelihood~~ **FIXED**
 - [Timetree branch length distribution ignores indels](../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md)
 
 ## v0 handling

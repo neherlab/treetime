@@ -24,7 +24,7 @@ v0's `BranchLenInterpolator` (`branch_len_interpolator.py`) does not include ind
 
 ## Related issues
 
-- [M-optimize-grid-zero-ignores-indels](M-optimize-grid-zero-ignores-indels.md): The optimize grid evaluation also ignores indels -- same class of bug.
+- ~~M-optimize-grid-zero-ignores-indels~~: The optimize grid evaluation also ignored indels -- same class of bug. **FIXED**
 
 ## Cross-references
 
