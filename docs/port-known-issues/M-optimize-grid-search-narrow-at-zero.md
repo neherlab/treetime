@@ -23,7 +23,6 @@ v0 uses `scipy.optimize.minimize_scalar(method='bounded')` (Brent's method) with
 ## Cross-links
 
 - [M-optimize-grid-zero-ignores-indels.md](M-optimize-grid-zero-ignores-indels.md) -- related grid search issue affecting indel-aware zero comparison
-- [H-optimize-sparse-hessian-multiplicity.md](H-optimize-sparse-hessian-multiplicity.md) -- Hessian bug causes more edges to fall through to grid search
 - [docs/reports/optimization-methods/2-branch-length-optimization.md](../../docs/reports/optimization-methods/2-branch-length-optimization.md) -- comparison table of fallback strategies across tools
 
 ## Proposed fix

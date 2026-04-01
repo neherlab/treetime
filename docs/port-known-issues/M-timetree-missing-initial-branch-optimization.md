@@ -55,10 +55,6 @@ For the CLI flag, follow the `--branch-length-initial-guess` pattern: an enum wi
 
 Consider whether `initial_guess_mixed()` is a sufficient lighter alternative when input branch lengths are entirely missing (no Newton needed, just substitution-count seeding).
 
-## Related issues
-
-- [H-optimize-sparse-hessian-multiplicity](H-optimize-sparse-hessian-multiplicity.md): The pre-step would use the sparse optimizer, which requires the Hessian multiplicity fix first.
-
 ## Cross-references
 
 - [Command relationships](../reports/command-relationships/_index.md): Documents the ideal hierarchy where the optimize pre-step feeds timetree.
