@@ -14,11 +14,15 @@
 //!
 //!   logLh = sum_i sum_j \log(\sum_c k_c exp(\lambda^i_c t))
 //!
-//! The derivative is simply:
+//! For compressed site patterns with multiplicity $m_i$, the derivatives are:
 //!
-//!   dlogLh/dt = sum_i sum_j \sum_c k_c \lambda_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
+//!   dlogLh/dt = sum_i m_i * (sum_c k_c \lambda_c exp(\lambda_c t)) / (sum_c k_c exp(\lambda_c t))
 //!
-//!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
+//!   d^2logLh/dt^2 = sum_i m_i * [(sum_c k_c \lambda_c^2 exp(\lambda_c t)) / L_i
+//!                                 - ((sum_c k_c \lambda_c exp(\lambda_c t)) / L_i)^2]
+//!
+//! where L_i = sum_c k_c exp(\lambda_c t). The multiplicity is a linear factor on
+//! each site's contribution; the squared term applies only to the per-site ratio.
 //!
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
