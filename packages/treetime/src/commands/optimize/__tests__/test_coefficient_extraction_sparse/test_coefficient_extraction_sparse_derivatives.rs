@@ -7,9 +7,16 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_ulps_eq;
   use ndarray::{Array2, array};
+  use rstest::rstest;
 
-  #[test]
-  fn test_evaluate_sparse_first_derivative_matches_numerical() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short( 0.01)]
+  #[case::medium(0.1 )]
+  #[case::long(  0.5 )]
+  #[case::very_long(1.0)]
+  #[trace]
+  fn test_evaluate_sparse_first_derivative_matches_numerical(#[case] branch_length: f64) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let site = SiteContribution {
@@ -24,20 +31,24 @@ mod tests {
     };
 
     let h = 1e-6;
-    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
-      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
 
-      // Numerical first derivative: (f(t+h) - f(t-h)) / 2h
-      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
-      let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
+    // Numerical first derivative: (f(t+h) - f(t-h)) / 2h
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
 
-      assert_ulps_eq!(metrics.derivative, numerical_d1, epsilon = 1e-4);
-    }
+    assert_ulps_eq!(metrics.derivative, numerical_d1, epsilon = 1e-4);
   }
 
-  #[test]
-  fn test_evaluate_sparse_second_derivative_matches_numerical() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short( 0.01)]
+  #[case::medium(0.1 )]
+  #[case::long(  0.5 )]
+  #[case::very_long(1.0)]
+  #[trace]
+  fn test_evaluate_sparse_second_derivative_matches_numerical(#[case] branch_length: f64) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let site = SiteContribution {
@@ -54,21 +65,25 @@ mod tests {
     // Numerical second derivative via central difference of first derivative:
     // d2 ≈ (d1(t+h) - d1(t-h)) / 2h
     let h = 1e-5;
-    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
-      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
-      let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-      assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
-    }
+    assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
   }
 
   /// Second derivative with high multiplicity must match numerical approximation.
   /// Before the fix, multiplicity was squared in the Hessian, causing divergence
   /// proportional to m for large m.
-  #[test]
-  fn test_evaluate_sparse_second_derivative_numerical_high_multiplicity() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short( 0.01)]
+  #[case::medium(0.1 )]
+  #[case::long(  0.5 )]
+  #[case::very_long(1.0)]
+  #[trace]
+  fn test_evaluate_sparse_second_derivative_numerical_high_multiplicity(#[case] branch_length: f64) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let site = SiteContribution {
@@ -83,14 +98,12 @@ mod tests {
     };
 
     let h = 1e-5;
-    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
-      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-      let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-      let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
-      let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-      assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
-    }
+    assert_ulps_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-4);
   }
 
   #[test]
@@ -135,8 +148,14 @@ mod tests {
 
   /// Sparse with multiplicity=1 must produce identical metrics to dense for the
   /// same coefficients and eigenvalues.
-  #[test]
-  fn test_evaluate_sparse_matches_dense_multiplicity_1() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short( 0.01)]
+  #[case::medium(0.1 )]
+  #[case::long(  0.5 )]
+  #[case::very_long(1.0)]
+  #[trace]
+  fn test_evaluate_sparse_matches_dense_multiplicity_1(#[case] branch_length: f64) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let coefficients_a = array![0.4, 0.3, 0.2, 0.1];
@@ -168,17 +187,15 @@ mod tests {
 
     let dense_contribution = optimize_dense::PartitionContribution::new(coefficients_2d, gtr);
 
-    for &branch_length in &[0.01, 0.1, 0.5, 1.0] {
-      let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length);
-      let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length);
+    let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length);
+    let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length);
 
-      assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
-      assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
-      assert_ulps_eq!(
-        sparse_metrics.second_derivative,
-        dense_metrics.second_derivative,
-        max_ulps = 10
-      );
-    }
+    assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
+    assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
+    assert_ulps_eq!(
+      sparse_metrics.second_derivative,
+      dense_metrics.second_derivative,
+      max_ulps = 10
+    );
   }
 }
