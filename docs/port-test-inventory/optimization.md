@@ -438,6 +438,15 @@ Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), ove
 | `test_initial_guess_mode_never_accepts_complete_tree`   | Never mode accepts tree with all finite branch lengths       |
 | `test_initial_guess_mode_never_rejects_nan_tree`        | Never mode detects NaN tree as having missing branch lengths |
 
+### Indel Zero-BL Tests
+
+**File:** [`test_initial_guess_indel_zero_bl.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_indel_zero_bl.rs)
+
+| Test                                                       | Purpose                                            |
+| ---------------------------------------------------------- | -------------------------------------------------- |
+| `test_initial_guess_auto_preserves_zero_bl_without_indels` | Zero BL preserved when no indels present           |
+| `test_initial_guess_auto_overrides_zero_bl_with_indels`    | Zero BL overridden to positive when indels present |
+
 ---
 
 ## Initial Guess GTR Messages
