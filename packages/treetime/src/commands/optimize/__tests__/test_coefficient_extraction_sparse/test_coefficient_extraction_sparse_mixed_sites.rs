@@ -26,8 +26,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![variable_site, fixed_site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     let branch_length = 0.1;
@@ -39,16 +38,14 @@ mod tests {
         multiplicity: 1.0,
         coefficients: variable_coeffs,
       }],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
     let fixed_contribution = PartitionContribution {
       site_contributions: vec![SiteContribution {
         multiplicity: 100.0,
         coefficients: fixed_coeffs,
       }],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let variable_metrics = evaluate_sparse_contribution(&variable_contribution, branch_length);
@@ -81,8 +78,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![variable_site, fixed_site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0);

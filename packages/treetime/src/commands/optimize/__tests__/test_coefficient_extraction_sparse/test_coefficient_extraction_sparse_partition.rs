@@ -11,12 +11,11 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     assert!(contribution.site_contributions.is_empty());
-    assert_eq!(contribution.eigenvalues.len(), 4);
+    assert_eq!(contribution.gtr.eigvals.len(), 4);
   }
 
   #[test]
@@ -31,8 +30,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     assert_eq!(contribution.site_contributions.len(), 1);
@@ -61,8 +59,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: sites,
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     assert_eq!(contribution.site_contributions.len(), 3);
@@ -89,8 +86,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: sites,
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     assert_eq!(contribution.site_contributions.len(), 2);

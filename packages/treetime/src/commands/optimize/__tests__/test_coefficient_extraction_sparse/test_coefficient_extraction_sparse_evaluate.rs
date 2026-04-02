@@ -18,8 +18,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0);
@@ -42,8 +41,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0);
@@ -67,8 +65,7 @@ mod tests {
     };
     let contribution1 = PartitionContribution {
       site_contributions: vec![site1],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     // Multiplicity 5
@@ -78,8 +75,7 @@ mod tests {
     };
     let contribution5 = PartitionContribution {
       site_contributions: vec![site5],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1);
@@ -102,16 +98,14 @@ mod tests {
         multiplicity: 1.0,
         coefficients: coefficients_a.clone(),
       }],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
     let contribution_b = PartitionContribution {
       site_contributions: vec![SiteContribution {
         multiplicity: 1.0,
         coefficients: coefficients_b.clone(),
       }],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1);
@@ -129,8 +123,7 @@ mod tests {
           coefficients: coefficients_b,
         },
       ],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
     let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1);
 

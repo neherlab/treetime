@@ -26,8 +26,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let h = 1e-6;
@@ -118,8 +117,7 @@ mod tests {
     };
     let contribution1 = PartitionContribution {
       site_contributions: vec![site1],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     let site3 = SiteContribution {
@@ -128,8 +126,7 @@ mod tests {
     };
     let contribution3 = PartitionContribution {
       site_contributions: vec![site3],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     };
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1);

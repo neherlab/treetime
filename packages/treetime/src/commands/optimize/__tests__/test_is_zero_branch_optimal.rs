@@ -27,7 +27,6 @@ mod tests {
   /// Create a sparse contribution with specified (multiplicity, coefficients) pairs.
   fn make_sparse_contribution(sites: Vec<(f64, Vec<f64>)>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
-    let eigenvalues = gtr.eigvals;
 
     let site_contributions = sites
       .into_iter()
@@ -39,8 +38,7 @@ mod tests {
 
     OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
       site_contributions,
-      eigenvalues,
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     })
   }
 
@@ -416,7 +414,6 @@ mod tests {
   #[test]
   fn test_is_zero_branch_optimal_k80_sparse_bypasses_shortcut() {
     let gtr = k80(K80Params::default()).unwrap();
-    let eigenvalues = gtr.eigvals;
 
     let site_contributions = vec![optimize_sparse::SiteContribution {
       multiplicity: 1.0,
@@ -424,8 +421,7 @@ mod tests {
     }];
     let contribution = OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
       site_contributions,
-      eigenvalues,
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr,
     });
     // Derivative is negative
     assert!(contribution.zero_branch_length_derivative() < 0.0);

@@ -22,7 +22,7 @@ pub fn evaluate_dense_contribution_impl(
   let gtr = &contribution.gtr;
   let coefficients = &contribution.coefficients;
 
-  let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
+  let exp_ev = gtr.exp_eigvals_branch_length(branch_length);
 
   if compute_derivatives {
     let ev_exp_ev = &gtr.eigvals * &exp_ev;

@@ -477,6 +477,19 @@ impl GTR {
     (self.mu * rate * t * &self.eigvals).mapv(f64::exp)
   }
 
+  /// Exponentiated eigenvalues in branch-length space: `exp(eigvals * d)`.
+  ///
+  /// Branch length `d` is in substitutions per site (= `mu * t`). The `mu`
+  /// scaling is already absorbed into `d`, so this method uses raw eigenvalues
+  /// without the `mu` factor. This is the correct formulation for the per-edge
+  /// likelihood in branch-length optimization.
+  ///
+  /// Contrast with `exp_lt(t)` which operates in time space and includes `mu`:
+  /// `exp(eigvals * mu * t)`. The two are equivalent because `d = mu * t`.
+  pub fn exp_eigvals_branch_length(&self, branch_length: f64) -> Array1<f64> {
+    (&self.eigvals * branch_length).mapv(f64::exp)
+  }
+
   pub fn is_multi_site(&self) -> bool {
     self.pi.shape().len() > 1
   }

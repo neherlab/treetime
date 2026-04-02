@@ -42,7 +42,7 @@ pub fn evaluate(contributions: &[PartitionContribution], branch_length: f64) -> 
   let mut second_derivative = 0.0;
   for contribution in contributions {
     let gtr = &contribution.gtr;
-    let exp_ev = gtr.eigvals.mapv(|ev| (ev * branch_length).exp());
+    let exp_ev = gtr.exp_eigvals_branch_length(branch_length);
     let ev_exp_ev = &gtr.eigvals * &exp_ev;
     let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
     // This loop could be coded more efficiently

@@ -19,11 +19,11 @@ pub fn evaluate_sparse_contribution_impl(
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
 
-  let exp_ev = contribution.eigenvalues.mapv(|ev| (ev * branch_length).exp());
+  let exp_ev = contribution.gtr.exp_eigvals_branch_length(branch_length);
 
   if compute_derivatives {
-    let ev_exp_ev = &contribution.eigenvalues * &exp_ev;
-    let ev2_exp_ev = &contribution.eigenvalues * &ev_exp_ev;
+    let ev_exp_ev = &contribution.gtr.eigvals * &exp_ev;
+    let ev2_exp_ev = &contribution.gtr.eigvals * &ev_exp_ev;
 
     for optimize_sparse::SiteContribution {
       multiplicity,

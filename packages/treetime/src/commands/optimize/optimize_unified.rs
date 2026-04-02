@@ -144,7 +144,7 @@ impl OptimizationContribution {
   pub fn has_unimodal_branch_likelihood(&self) -> bool {
     match self {
       OptimizationContribution::Dense(contribution) => contribution.gtr.unimodal_branch_likelihood,
-      OptimizationContribution::Sparse(contribution) => contribution.unimodal_branch_likelihood,
+      OptimizationContribution::Sparse(contribution) => contribution.gtr.unimodal_branch_likelihood,
     }
   }
 
@@ -176,7 +176,7 @@ impl OptimizationContribution {
         .site_contributions
         .iter()
         .map(|coeff| {
-          coeff.multiplicity * ((&coeff.coefficients * &contribution.eigenvalues).sum() / coeff.coefficients.sum())
+          coeff.multiplicity * ((&coeff.coefficients * &contribution.gtr.eigvals).sum() / coeff.coefficients.sum())
         })
         .sum(),
     }
