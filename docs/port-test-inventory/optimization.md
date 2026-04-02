@@ -174,6 +174,19 @@ Helper file. Provides `make_dense_seq_dis()`. No tests.
 | `test_newton_iteration_converges_within_bounds` | Convergence within bounds |
 | `test_newton_iteration_respects_max_iter`       | Stops at max iterations   |
 
+### Tolerance Tests
+
+**File:** [`test_newton_convergence_tolerance.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_tolerance.rs)
+
+| Test                                                     | Purpose                                    |
+| -------------------------------------------------------- | ------------------------------------------ |
+| `test_newton_tolerance_positive_branch_uses_relative`    | Relative tolerance dominates for large BL  |
+| `test_newton_tolerance_zero_branch_uses_absolute_floor`  | Absolute floor prevents degenerate zero    |
+| `test_newton_tolerance_small_branch_uses_absolute_floor` | Absolute floor for very small BL           |
+| `test_newton_tolerance_crossover`                        | Relative = absolute at crossover point     |
+| `test_newton_tolerance_always_positive`                  | Positive and finite for all BL values      |
+| `test_newton_zero_start_converges_efficiently`           | Zero-start does not exhaust all iterations |
+
 ### Evaluate Mixed Tests
 
 **File:** [`test_newton_convergence_evaluate_mixed.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_evaluate_mixed.rs)
