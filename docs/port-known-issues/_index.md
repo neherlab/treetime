@@ -98,7 +98,6 @@ exactly.
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                      |
 | Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                           |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                              |
-| Negligible | Optimize     | [Optimizer evaluation functions omit mu scaling factor](N-optimize-mu-scaling-omitted-in-evaluation.md)                         |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
