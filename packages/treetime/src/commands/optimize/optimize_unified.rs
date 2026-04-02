@@ -27,6 +27,24 @@ const GRID_SEARCH_POINTS: usize = 100;
 /// when the current estimate is already large.
 const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
+/// Relative tolerance for Newton inner-loop convergence.
+const NEWTON_REL_TOL: f64 = 0.001;
+
+/// Absolute tolerance floor for Newton inner-loop convergence (subs/site).
+/// Prevents the purely relative tolerance from degenerating to zero when
+/// the current branch length is zero or very small. The value 1e-8 is well
+/// below the smallest meaningful branch length (1/L ~ 1e-4 for L=10000)
+/// so it does not mask real convergence.
+const NEWTON_ABS_TOL: f64 = 1e-8;
+
+/// Newton inner-loop convergence tolerance for branch length updates.
+///
+/// Combines relative tolerance (0.1% of current branch length) with an
+/// absolute floor to avoid degenerate behavior at zero branch length.
+pub(crate) fn newton_tolerance(branch_length: f64) -> f64 {
+  f64::max(NEWTON_REL_TOL * branch_length, NEWTON_ABS_TOL)
+}
+
 /// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]
 pub struct OptimizationMetrics {
@@ -386,7 +404,7 @@ where
       let max_iter = 10;
       let mut n_iter = 0;
 
-      while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
+      while (new_branch_length - branch_length).abs() > newton_tolerance(branch_length) && n_iter < max_iter {
         let new_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length);
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;

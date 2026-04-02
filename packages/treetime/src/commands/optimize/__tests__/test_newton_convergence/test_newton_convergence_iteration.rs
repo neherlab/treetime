@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::optimize_unified::evaluate_mixed;
+  use crate::commands::optimize::optimize_unified::{evaluate_mixed, newton_tolerance};
   use ndarray::array;
   use num::clamp;
 
@@ -22,7 +22,7 @@ mod tests {
       let mut new_branch_length =
         branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length);
 
-      while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
+      while (new_branch_length - branch_length).abs() > newton_tolerance(branch_length) && n_iter < max_iter {
         let new_metrics = evaluate_mixed(&contributions, new_branch_length);
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
@@ -62,7 +62,7 @@ mod tests {
       let mut new_branch_length =
         branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length);
 
-      while (new_branch_length - branch_length).abs() > 0.001 * branch_length && n_iter < max_iter {
+      while (new_branch_length - branch_length).abs() > newton_tolerance(branch_length) && n_iter < max_iter {
         let new_metrics = evaluate_mixed(&contributions, new_branch_length);
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
