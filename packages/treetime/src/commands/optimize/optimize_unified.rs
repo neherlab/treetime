@@ -477,9 +477,18 @@ where
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
+    let indel_count: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+      .sum();
+
     if !overwrite_valid {
       if let Some(bl) = edge.branch_length() {
-        if bl.is_finite() {
+        // A finite positive BL is always valid. A zero BL is valid only
+        // if the edge has no indels: with indels present, the Poisson
+        // derivative diverges at t=0 and estimate_indel_rate() needs
+        // positive total BL to produce a nonzero rate.
+        if bl.is_finite() && (bl > 0.0 || indel_count == 0) {
           continue;
         }
       }
@@ -494,11 +503,6 @@ where
       .iter()
       .map(|partition| partition.read_arc().edge_effective_length(graph, edge_key))
       .sum::<Result<_, _>>()?;
-
-    let indel_count: usize = partitions
-      .iter()
-      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-      .sum();
 
     let branch_length = if effective_length > 0 {
       let sub_estimate = sub_count as f64 / effective_length as f64;
