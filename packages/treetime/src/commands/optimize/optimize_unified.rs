@@ -10,11 +10,22 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
-use ndarray::Axis;
+use ndarray::{Array1, Axis};
 use num::clamp;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+
+/// Number of points in the grid search fallback.
+const GRID_SEARCH_POINTS: usize = 100;
+
+/// Minimum upper bound (subs/site) for the grid search fallback.
+/// Ensures the grid covers the biologically plausible range regardless
+/// of the current branch length estimate. Branches longer than 0.5
+/// subs/site are rare in real phylogenies; the proportional upper
+/// bound `1.5 * branch_length + one_mutation` extends beyond this
+/// when the current estimate is already large.
+const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
 /// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]
@@ -295,6 +306,22 @@ pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> boo
   derivative < 0.0
 }
 
+/// Log-spaced grid of candidate branch lengths for the grid search fallback.
+///
+/// The grid lower bound is `0.1 * one_mutation` (smallest meaningful branch length).
+/// The upper bound is `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)`,
+/// ensuring coverage of the biologically plausible range (up to 0.5 subs/site) even
+/// when the current branch length estimate is zero or very small.
+///
+/// Log spacing provides uniform resolution per decade across the 3-4 orders of
+/// magnitude that branch lengths span in real phylogenies. A linear grid wastes
+/// resolution near zero while under-sampling the long-branch tail.
+pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Array1<f64> {
+  let lower = 0.1 * one_mutation;
+  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
+  Array1::linspace(lower.ln(), upper.ln(), GRID_SEARCH_POINTS).mapv(f64::exp)
+}
+
 /// Unified optimization function for mixed partition types
 ///
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
@@ -377,7 +404,7 @@ where
       }
     } else {
       // Grid search over positive branch lengths
-      let branch_lengths = ndarray::Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+      let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
 
       let best_positive = branch_lengths
         .iter()

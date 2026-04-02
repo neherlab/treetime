@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::optimize_unified::evaluate_mixed;
-  use ndarray::{Array1, array};
+  use crate::commands::optimize::optimize_unified::{evaluate_mixed, grid_search_branch_lengths};
+  use ndarray::array;
 
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
 
@@ -19,8 +19,8 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    // Verify combined log-LH is maximized
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+    // Verify combined log-LH is maximized across the grid
+    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
     let best_log_lh = evaluate_mixed(&contributions, best_bl).log_lh;
 
     for &bl in &branch_lengths {

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::optimize::optimize_unified::grid_search_branch_lengths;
   use ndarray::array;
 
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
@@ -15,10 +16,10 @@ mod tests {
     let branch_length = 0.001;
     let one_mutation = 0.01; // 10x branch_length
 
-    let lower = 0.1 * one_mutation;
-    let upper = 1.5 * branch_length + one_mutation;
+    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let lower = grid[0];
+    let upper = grid[grid.len() - 1];
 
-    // Lower bound is 0.001, upper is 0.0115
     assert!(lower < upper, "lower={lower} >= upper={upper}");
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);

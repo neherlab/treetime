@@ -1,9 +1,11 @@
 #[cfg(test)]
 pub mod tests {
   use crate::commands::optimize::optimize_dense;
-  use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed};
+  use crate::commands::optimize::optimize_unified::{
+    OptimizationContribution, evaluate_mixed, grid_search_branch_lengths,
+  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use ndarray::{Array1, Array2};
+  use ndarray::Array2;
   use ordered_float::OrderedFloat;
 
   pub fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
@@ -12,7 +14,7 @@ pub mod tests {
   }
 
   pub fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
-    let branch_lengths = Array1::linspace(0.1 * one_mutation, 1.5 * branch_length + one_mutation, 100);
+    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
 
     branch_lengths
       .iter()
