@@ -225,6 +225,19 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 | `test_grid_search_multiple_partitions`  | Combines multiple contributions |
 | `test_grid_search_uniform_coefficients` | Handles uniform coefficients    |
 
+### Coverage Tests
+
+**File:** [`test_grid_search_coverage.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_coverage.rs)
+
+| Test                                                                  | Purpose                                                  |
+| --------------------------------------------------------------------- | -------------------------------------------------------- |
+| `test_grid_search_branch_lengths_zero_branch_covers_full_range`       | Grid extends to 0.5 subs/site when branch_length=0       |
+| `test_grid_search_branch_lengths_large_branch_extends_beyond_minimum` | Proportional bound dominates for large branches          |
+| `test_grid_search_branch_lengths_is_log_spaced`                       | Grid is log-spaced with constant ratio                   |
+| `test_grid_search_branch_lengths_has_correct_point_count`             | Grid always has 100 points                               |
+| `test_grid_search_reaches_extended_range_from_zero`                   | Monotonic likelihood finds optimum near upper bound      |
+| `test_grid_search_branch_lengths_coverage_invariant`                  | Grid covers [one_mutation, 0.5] for all parameter combos |
+
 ### Support
 
 **File:** [`test_grid_search_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_support.rs)

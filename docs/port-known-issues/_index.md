@@ -104,7 +104,6 @@ exactly.
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
 | Negligible | Optimize     | [Indel rate estimation returns zero on all-zero-BL input trees](N-optimize-indel-rate-zero-on-zero-bl-tree.md)                  |
 | Medium     | Optimize     | [Newton convergence tolerance degenerates at zero branch length](M-optimize-newton-tolerance-degenerate-at-zero.md)             |
-| Medium     | Optimize     | [Grid search fallback covers narrow range at zero branch length](M-optimize-grid-search-narrow-at-zero.md)                      |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                      |
