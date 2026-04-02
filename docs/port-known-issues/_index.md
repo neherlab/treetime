@@ -102,6 +102,7 @@ exactly.
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
+| Negligible | Optimize     | [Indel rate estimation returns zero on all-zero-BL input trees](N-optimize-indel-rate-zero-on-zero-bl-tree.md)                  |
 | Medium     | Optimize     | [Newton convergence tolerance degenerates at zero branch length](M-optimize-newton-tolerance-degenerate-at-zero.md)             |
 | Medium     | Optimize     | [Grid search fallback covers narrow range at zero branch length](M-optimize-grid-search-narrow-at-zero.md)                      |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
