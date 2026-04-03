@@ -490,10 +490,6 @@ impl GTR {
     (&self.eigvals * branch_length).mapv(f64::exp)
   }
 
-  pub fn is_multi_site(&self) -> bool {
-    self.pi.shape().len() > 1
-  }
-
   /// Construct the rate matrix Q in column-stochastic form for display.
   ///
   /// Returns Q where Q[i,j] = W[i,j] * pi[i] for i != j, and columns sum to 0.
@@ -522,47 +518,4 @@ impl GTR {
     Q
   }
 
-  // pub fn print<W: Write>(&self, w: &mut W) -> Result<(), Report> {
-  //   if self.is_multi_site() {
-  //     writeln!(w, "Average substitution rate (mu): {:.6}", self.average_rate)?;
-  //   } else {
-  //     writeln!(w, "Substitution rate (mu): {:.6}", self.mu)?;
-  //     writeln!(w, "\nEquilibrium frequencies (pi_i):")?;
-  //     for (a, p) in zip(self.alphabet.canonical(), &self.pi) {
-  //       writeln!(w, "{a}:\t{p:.4}")?;
-  //     }
-  //   }
-  //
-  //   writeln!(w, "\nSymmetrized rates from j->i (W_ij):")?;
-  //   writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
-  //   for (a, Wi) in zip(self.alphabet.canonical(), self.W.rows()) {
-  //     writeln!(
-  //       w,
-  //       "{a}\t{}",
-  //       Wi.iter().map(|Wij| format!("{:.4}", Wij.max(0.0))).join("\t")
-  //     )?;
-  //   }
-  //
-  //   if !self.is_multi_site() {
-  //     writeln!(w, "\nActual rates from j->i (Q_ij):")?;
-  //     writeln!(w, "\t{}", self.alphabet.canonical().join("\t"))?;
-  //     for (a, Qi) in zip(self.alphabet.canonical(), self.Q().rows()) {
-  //       writeln!(
-  //         w,
-  //         "{a}\t{}",
-  //         Qi.iter().map(|Qij| format!("{:.4}", Qij.max(0.0))).join("\t")
-  //       )?;
-  //     }
-  //   }
-  //   writeln!(w)?;
-  //   Ok(())
-  // }
 }
-
-// impl Display for GTR {
-//   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//     let mut buf = vec![];
-//     self.print(&mut buf).unwrap();
-//     write!(f, "{}", String::from_utf8(buf).unwrap())
-//   }
-// }
