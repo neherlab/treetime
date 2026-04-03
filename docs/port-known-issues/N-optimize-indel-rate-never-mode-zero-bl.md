@@ -10,7 +10,7 @@ When `--branch-length-initial-guess=never` is used with a tree where all branch 
 
 ## Mechanism
 
-The `Auto` path was fixed by treating zero-BL indel-bearing edges as invalid in `initial_guess_mixed()`, seeding positive BLs before `run_optimize_mixed()`. The `Never` path skips `initial_guess_mixed()` entirely, so `estimate_indel_rate()` sees total BL = 0 and returns zero. The per-edge bootstrap at `optimize_unified.rs:L377-L382` sets a local `branch_length = one_mutation`, but `indel_rate` was already computed as zero.
+The `Auto` path treats zero-BL indel-bearing edges as invalid in `initial_guess_mixed()`, seeding positive BLs before `run_optimize_mixed()`. The `Never` path skips `initial_guess_mixed()` entirely, so `estimate_indel_rate()` sees total BL = 0 and returns zero. The per-edge bootstrap at `optimize_unified.rs:L377-L382` sets a local `branch_length = one_mutation`, but `indel_rate` was already computed as zero.
 
 ## Impact
 

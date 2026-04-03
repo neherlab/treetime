@@ -69,6 +69,10 @@ exactly.
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
+| Medium     | Optimize     | [Unguarded ln(site_lh) in evaluation functions](N-optimize-eval-unguarded-ln-zero.md)                                           |
+| Medium     | Optimize     | [Division by zero when total sequence length is zero](N-optimize-zero-sequence-length-division.md)                              |
+| Medium     | Optimize     | [Indel-aware Newton optimization path has no direct tests](N-optimize-indel-newton-path-untested.md)                            |
+| Medium     | Optimize     | [Coefficient extraction lacks invariant property tests](N-optimize-coefficient-property-tests-missing.md)                       |
 | Low        | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
@@ -102,6 +106,9 @@ exactly.
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible | Optimize     | [Dead `optimize_dense::evaluate()` function](N-optimize-dense-evaluate-dead-code.md)                                            |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
+| Negligible | Optimize     | [Derivative ratio computed twice per site](N-optimize-duplicate-derivative-computation.md)                                      |
+| Negligible | GTR          | [expQt uses O(n^3) diagonal matrix multiply](N-gtr-expqt-diagonal-matrix-cubic.md)                                              |
+| Negligible | GTR          | [Dead `GTR::is_multi_site()` method](N-gtr-is-multi-site-dead-code.md)                                                          |
 | Negligible | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
