@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::optimize::optimize_unified::grid_search_branch_lengths;
   use ndarray::array;
+  use rstest::rstest;
 
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
 
@@ -27,21 +28,24 @@ mod tests {
     assert!(best_bl <= upper);
   }
 
-  #[test]
-  fn test_grid_search_preserves_positive_branch_length() {
-    // Grid search should always return a positive branch length
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::moderate_bl(  (0.1,   0.001  ))]
+  #[case::small_bl(     (0.01,  0.001  ))]
+  #[case::tiny_bl(      (0.001, 0.0001 ))]
+  #[case::large_bl(     (1.0,   0.001  ))]
+  #[trace]
+  fn test_grid_search_preserves_positive_branch_length(
+    #[case] (branch_length, one_mutation): (f64, f64),
+  ) {
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
-    let test_cases = [(0.1, 0.001), (0.01, 0.001), (0.001, 0.0001), (1.0, 0.001)];
-
-    for (branch_length, one_mutation) in test_cases {
-      let best_bl = grid_search(&contributions, branch_length, one_mutation);
-      assert!(
-        best_bl > 0.0,
-        "grid_search({branch_length}, {one_mutation}) = {best_bl} should be > 0"
-      );
-    }
+    let best_bl = grid_search(&contributions, branch_length, one_mutation);
+    assert!(
+      best_bl > 0.0,
+      "grid_search({branch_length}, {one_mutation}) = {best_bl} should be > 0"
+    );
   }
 }

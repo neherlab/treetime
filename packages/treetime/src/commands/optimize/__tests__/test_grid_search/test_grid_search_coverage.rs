@@ -3,6 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_unified::grid_search_branch_lengths;
   use approx::assert_abs_diff_eq;
   use ndarray::Array2;
+  use rstest::rstest;
 
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
 
@@ -117,44 +118,32 @@ mod tests {
     assert!(best_bl.is_finite());
   }
 
-  #[test]
-  fn test_grid_search_branch_lengths_coverage_invariant() {
-    // For any branch_length >= 0 and any reasonable one_mutation, the grid
-    // must always cover at least [one_mutation, 0.5].
-    #[rustfmt::skip]
-    let cases: &[(f64, f64)] = &[
-      (0.0,    0.001  ),
-      (0.0,    0.0001 ),
-      (0.0,    0.01   ),
-      (0.001,  0.001  ),
-      (0.1,    0.001  ),
-      (0.5,    0.001  ),
-      (1.0,    0.001  ),
-      (2.0,    0.0001 ),
-    ];
+  /// The grid must always cover at least [one_mutation, 0.5]. The upper bound
+  /// is max(1.5*bl + one_mutation, 0.5). The log-spaced grid computes
+  /// exp(ln(upper)) which introduces round-trip error (~1 ulp), so use a small
+  /// epsilon instead of exact >=.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero_bl_medium_L(     (0.0,   0.001  ))]
+  #[case::zero_bl_large_L(      (0.0,   0.0001 ))]
+  #[case::zero_bl_small_L(      (0.0,   0.01   ))]
+  #[case::tiny_bl(               (0.001, 0.001  ))]
+  #[case::moderate_bl(           (0.1,   0.001  ))]
+  #[case::half_sub_per_site(     (0.5,   0.001  ))]
+  #[case::one_sub_per_site(      (1.0,   0.001  ))]
+  #[case::long_bl_large_L(      (2.0,   0.0001 ))]
+  #[trace]
+  fn test_grid_search_branch_lengths_coverage_invariant(
+    #[case] (branch_length, one_mutation): (f64, f64),
+  ) {
+    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let lower = grid[0];
+    let upper = grid[grid.len() - 1];
 
-    for &(branch_length, one_mutation) in cases {
-      let grid = grid_search_branch_lengths(branch_length, one_mutation);
-      let lower = grid[0];
-      let upper = grid[grid.len() - 1];
+    assert!(lower <= one_mutation, "lower={lower} > one_mutation={one_mutation}");
 
-      assert!(
-        lower <= one_mutation,
-        "branch_length={branch_length}, one_mutation={one_mutation}: lower={lower} > one_mutation"
-      );
-      // The grid upper bound is max(1.5*bl + one_mutation, 0.5). Assert both
-      // independently so the test catches regressions in either bound.
-      // The log-spaced grid computes exp(ln(upper)) which introduces round-trip
-      // error (~1 ulp), so use a small epsilon instead of exact >=.
-      let proportional = 1.5 * branch_length + one_mutation;
-      assert!(
-        upper >= 0.5 - 1e-12,
-        "branch_length={branch_length}, one_mutation={one_mutation}: upper={upper} < 0.5 (absolute minimum)"
-      );
-      assert!(
-        upper >= proportional - 1e-12,
-        "branch_length={branch_length}, one_mutation={one_mutation}: upper={upper} < {proportional} (proportional bound)"
-      );
-    }
+    let proportional = 1.5 * branch_length + one_mutation;
+    assert!(upper >= 0.5 - 1e-12, "upper={upper} < 0.5 (absolute minimum)");
+    assert!(upper >= proportional - 1e-12, "upper={upper} < {proportional} (proportional bound)");
   }
 }

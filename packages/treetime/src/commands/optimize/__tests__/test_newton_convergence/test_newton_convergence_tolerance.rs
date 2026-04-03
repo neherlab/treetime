@@ -4,6 +4,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use ndarray::array;
   use num::clamp;
+  use rstest::rstest;
 
   use super::super::test_newton_convergence_support::tests::make_dense_contribution;
 
@@ -37,15 +38,22 @@ mod tests {
     assert_abs_diff_eq!(tol, 1e-8, epsilon = 1e-15);
   }
 
-  #[test]
-  fn test_newton_tolerance_always_positive() {
-    #[rustfmt::skip]
-    let cases = [0.0, 1e-15, 1e-10, 1e-8, 1e-5, 0.001, 0.1, 1.0, 10.0];
-    for bl in cases {
-      let tol = newton_tolerance(bl);
-      assert!(tol > 0.0, "Tolerance must be positive for branch_length={bl}");
-      assert!(tol.is_finite(), "Tolerance must be finite for branch_length={bl}");
-    }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero(     0.0  )]
+  #[case::tiny(     1e-15)]
+  #[case::small(    1e-10)]
+  #[case::at_floor( 1e-8 )]
+  #[case::crossover(1e-5 )]
+  #[case::moderate( 0.001)]
+  #[case::typical(  0.1  )]
+  #[case::one(      1.0  )]
+  #[case::large(    10.0 )]
+  #[trace]
+  fn test_newton_tolerance_always_positive(#[case] bl: f64) {
+    let tol = newton_tolerance(bl);
+    assert!(tol > 0.0, "Tolerance must be positive for branch_length={bl}");
+    assert!(tol.is_finite(), "Tolerance must be finite for branch_length={bl}");
   }
 
   #[test]
