@@ -23,6 +23,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -279,49 +280,54 @@ mod tests {
 
   /// The Poisson indel contribution makes the combined second derivative more negative
   /// (more concave), aiding Newton convergence.
-  #[test]
-  fn test_optimize_indel_poisson_concavity() {
-    let k = 3;
-    let mu = 5.0;
-
-    for &t in &[0.01, 0.1, 0.5, 1.0, 5.0] {
-      let metrics = poisson_indel_log_lh(k, mu, t);
-      assert!(
-        metrics.second_derivative < 0.0,
-        "Poisson log-likelihood should be concave for k>0, but at t={t} got d2={:.6}",
-        metrics.second_derivative
-      );
-    }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::tiny(    0.01)]
+  #[case::small(   0.1 )]
+  #[case::moderate( 0.5)]
+  #[case::one(     1.0 )]
+  #[case::large(   5.0 )]
+  #[trace]
+  fn test_optimize_indel_poisson_concavity(#[case] t: f64) {
+    let metrics = poisson_indel_log_lh(3, 5.0, t);
+    assert!(metrics.second_derivative < 0.0, "Poisson log-likelihood should be concave for k>0");
   }
 
   /// The Poisson derivative at the MLE (t = k/mu) is zero.
-  #[test]
-  fn test_optimize_indel_poisson_mle_derivative_zero() {
-    for k in 1..=10 {
-      let mu = 3.0;
-      let t_mle = k as f64 / mu;
-      let metrics = poisson_indel_log_lh(k, mu, t_mle);
-      assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
-    }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1( 1)]
+  #[case::k2( 2)]
+  #[case::k3( 3)]
+  #[case::k5( 5)]
+  #[case::k10(10)]
+  #[trace]
+  fn test_optimize_indel_poisson_mle_derivative_zero(#[case] k: usize) {
+    let mu = 3.0;
+    let t_mle = k as f64 / mu;
+    let metrics = poisson_indel_log_lh(k, mu, t_mle);
+    assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
   }
 
   /// The Poisson log-likelihood at the MLE is the maximum.
-  #[test]
-  fn test_optimize_indel_poisson_mle_is_maximum() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_far(  -0.5 )]
+  #[case::below_near( -0.1 )]
+  #[case::below_close(-0.01)]
+  #[case::above_close( 0.01)]
+  #[case::above_near(  0.1 )]
+  #[case::above_far(   0.5 )]
+  #[trace]
+  fn test_optimize_indel_poisson_mle_is_maximum(#[case] delta: f64) {
     let k = 4;
     let mu = 2.0;
     let t_mle = k as f64 / mu;
-    let lh_mle = poisson_indel_log_lh(k, mu, t_mle).log_lh;
-
-    for &delta in &[-0.5, -0.1, -0.01, 0.01, 0.1, 0.5] {
-      let t = t_mle + delta;
-      if t > 0.0 {
-        let lh = poisson_indel_log_lh(k, mu, t).log_lh;
-        assert!(
-          lh <= lh_mle + 1e-14,
-          "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})"
-        );
-      }
+    let t = t_mle + delta;
+    if t > 0.0 {
+      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).log_lh;
+      let lh = poisson_indel_log_lh(k, mu, t).log_lh;
+      assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
     }
   }
 

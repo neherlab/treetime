@@ -3,6 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_dense::{evaluate, get_coefficients};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use ndarray::array;
+  use rstest::rstest;
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
@@ -57,9 +58,14 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_coefficients_support_positive_branch_length() {
-    // Coefficients should produce valid metrics at positive branch lengths
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::tiny(    0.001)]
+  #[case::small(   0.01 )]
+  #[case::moderate( 0.1 )]
+  #[case::large(   1.0  )]
+  #[trace]
+  fn test_coefficients_support_positive_branch_length(#[case] branch_length: f64) {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
     let parent = array![[0.7, 0.1, 0.1, 0.1]];
@@ -70,21 +76,9 @@ mod tests {
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
     let contributions = [contribution];
 
-    // Test at various branch lengths
-    for &branch_length in &[0.001, 0.01, 0.1, 1.0] {
-      let metrics = evaluate(&contributions, branch_length);
-      assert!(
-        metrics.log_lh.is_finite(),
-        "log-LH should be finite at branch_length={branch_length}"
-      );
-      assert!(
-        metrics.derivative.is_finite(),
-        "derivative should be finite at branch_length={branch_length}"
-      );
-      assert!(
-        metrics.second_derivative.is_finite(),
-        "second_derivative should be finite at branch_length={branch_length}"
-      );
-    }
+    let metrics = evaluate(&contributions, branch_length);
+    assert!(metrics.log_lh.is_finite(), "log-LH should be finite");
+    assert!(metrics.derivative.is_finite(), "derivative should be finite");
+    assert!(metrics.second_derivative.is_finite(), "second_derivative should be finite");
   }
 }
