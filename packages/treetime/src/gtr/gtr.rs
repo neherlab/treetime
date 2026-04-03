@@ -517,5 +517,4 @@ impl GTR {
     Q.diag_mut().assign(&diag);
     Q
   }
-
 }
