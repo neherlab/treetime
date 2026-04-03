@@ -57,8 +57,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     // Numerical second derivative via central difference of first derivative:
@@ -92,8 +91,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     let h = 1e-5;
@@ -170,8 +168,7 @@ mod tests {
           coefficients: coefficients_b.clone(),
         },
       ],
-      eigenvalues: gtr.eigvals.to_owned(),
-      unimodal_branch_likelihood: gtr.unimodal_branch_likelihood,
+      gtr: gtr.clone(),
     };
 
     // Dense: same two sites as rows of a 2D array

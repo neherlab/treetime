@@ -402,7 +402,7 @@ command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 - [x] `optimize` command with `--tree`, `--aln`, `--outdir`
 - [x] Mixed dense and sparse partition setup (one of each, from same alignment)
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
-- [x] `--branch-length-initial-guess` flag: `auto` (selective fill), `always` (overwrite all), `never` (error on missing)
+- [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing)
 - [x] Output annotated Newick and Nexus trees
 - [x] GTR parameters written to JSON
 
@@ -415,7 +415,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
-- [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`)
+- [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`, absolute tolerance floor 1e-8 subs/site)
 - [x] Grid search fallback when second derivative >= 0 (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
