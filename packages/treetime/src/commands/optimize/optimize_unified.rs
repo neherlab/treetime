@@ -451,7 +451,7 @@ where
 /// The denominator is the per-edge effective alignment length rather than the raw
 /// sequence length, so gap-heavy edges get correctly scaled rates.
 ///
-/// For edges with indels but no substitutions, the Poisson MLE $\hat{t} = k / \mu$
+/// For edges with indels but no substitutions, the Poisson maximum likelihood estimate (MLE) $\hat{t} = k / \mu$
 /// provides a non-zero initial estimate so Newton optimization starts from a
 /// reasonable point (the indel derivative diverges at $t = 0$).
 ///

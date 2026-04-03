@@ -115,7 +115,7 @@ mod tests {
 
   #[test]
   fn test_optimize_indel_poisson_mle_at_optimum() {
-    // At the MLE t = k/mu, the derivative should be zero
+    // At the maximum likelihood estimate (MLE) t = k/mu, the derivative should be zero
     let k = 5;
     let mu = 10.0;
     let t_mle = k as f64 / mu; // 0.5

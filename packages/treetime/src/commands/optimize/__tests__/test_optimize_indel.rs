@@ -137,7 +137,7 @@ mod tests {
   }
 
   /// With identical sequences (zero subs on every edge), `initial_guess_mixed` uses
-  /// the Poisson MLE for indel-bearing edges.
+  /// the Poisson maximum likelihood estimate (MLE) for indel-bearing edges.
   #[test]
   fn test_optimize_indel_initial_guess_nonzero_with_indels() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
