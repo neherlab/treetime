@@ -57,7 +57,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      gtr: gtr.clone(),
+      gtr: gtr,
     };
 
     // Numerical second derivative via central difference of first derivative:
@@ -91,7 +91,7 @@ mod tests {
 
     let contribution = PartitionContribution {
       site_contributions: vec![site],
-      gtr: gtr.clone(),
+      gtr: gtr,
     };
 
     let h = 1e-5;
