@@ -58,9 +58,8 @@ mod tests {
 
   #[test]
   fn test_newton_zero_start_converges_efficiently() {
-    // Before fix: starting from branch_length=0 caused the loop to exhaust
-    // all 10 iterations because 0.001 * 0.0 = 0.0 made the tolerance zero.
-    // After fix: the absolute floor allows early convergence.
+    // Starting from branch_length=0, the absolute tolerance floor (NEWTON_ABS_TOL)
+    // prevents degeneration to zero tolerance and allows early convergence.
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04], [0.1, 0.1, 0.7, 0.1],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];

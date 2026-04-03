@@ -9,18 +9,15 @@ mod tests {
 
   #[test]
   fn test_grid_search_branch_lengths_zero_branch_covers_full_range() {
-    // The original bug: when branch_length=0.0 and L=1000, the grid covered
-    // only [1e-4, 1e-3]. After the fix, the grid must extend to at least 0.5
-    // subs/site regardless of the current branch length.
+    // At branch_length=0 with L=1000, the grid must extend to at least 0.5
+    // subs/site (GRID_SEARCH_MIN_UPPER), covering the biologically plausible range.
     let one_mutation = 1.0 / 1000.0; // L = 1000
     let grid = grid_search_branch_lengths(0.0, one_mutation);
 
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
 
-    // Lower bound: 0.1 * one_mutation = 1e-4
     assert_abs_diff_eq!(lower, 0.1 * one_mutation, epsilon = 1e-10);
-    // Upper bound: max(1.5*0.0 + 1e-3, 0.5) = 0.5
     assert_abs_diff_eq!(upper, 0.5, epsilon = 1e-10);
     // Grid must span at least 3 orders of magnitude
     assert!(
@@ -95,8 +92,7 @@ mod tests {
     // L_i(t) increases monotonically with t. For all-substitution
     // sites, the grid search returns the highest grid point.
     //
-    // With the old narrow grid at branch_length=0 (L=1000), the upper
-    // bound was ~0.001. The fix extends it to 0.5.
+    // At branch_length=0 (L=1000), the grid extends to GRID_SEARCH_MIN_UPPER=0.5.
     let coefficients = Array2::from_shape_fn((3, 4), |(_, j)| {
       // Negative non-stationary (indices 0-2), positive stationary (index 3)
       [-0.06, -0.06, -0.06, 0.25][j]
@@ -110,7 +106,7 @@ mod tests {
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
     // With monotonically increasing likelihood, grid search returns near
-    // the upper bound (~0.5). The old grid would have returned ~0.001.
+    // the upper bound (~0.5).
     assert!(
       best_bl > 0.1,
       "Expected best_bl > 0.1 (grid should extend to 0.5), got {best_bl}"
