@@ -108,7 +108,6 @@ exactly.
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
 | Negligible | Optimize     | [Derivative ratio computed twice per site](N-optimize-duplicate-derivative-computation.md)                                      |
 | Negligible | GTR          | [expQt uses O(n^3) diagonal matrix multiply](N-gtr-expqt-diagonal-matrix-cubic.md)                                              |
-| Negligible | GTR          | [Dead `GTR::is_multi_site()` method](N-gtr-is-multi-site-dead-code.md)                                                          |
 | Negligible | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |
