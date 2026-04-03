@@ -142,9 +142,18 @@ mod tests {
         lower <= one_mutation,
         "branch_length={branch_length}, one_mutation={one_mutation}: lower={lower} > one_mutation"
       );
+      // The grid upper bound is max(1.5*bl + one_mutation, 0.5). Assert both
+      // independently so the test catches regressions in either bound.
+      // The log-spaced grid computes exp(ln(upper)) which introduces round-trip
+      // error (~1 ulp), so use a small epsilon instead of exact >=.
+      let proportional = 1.5 * branch_length + one_mutation;
       assert!(
-        upper >= 0.5_f64.min(1.5 * branch_length + one_mutation),
-        "branch_length={branch_length}, one_mutation={one_mutation}: upper={upper} < min(0.5, proportional)"
+        upper >= 0.5 - 1e-12,
+        "branch_length={branch_length}, one_mutation={one_mutation}: upper={upper} < 0.5 (absolute minimum)"
+      );
+      assert!(
+        upper >= proportional - 1e-12,
+        "branch_length={branch_length}, one_mutation={one_mutation}: upper={upper} < {proportional} (proportional bound)"
       );
     }
   }
