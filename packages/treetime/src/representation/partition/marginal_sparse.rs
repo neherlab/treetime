@@ -11,6 +11,7 @@ use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
+use crate::seq::composition::Composition;
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use itertools::Itertools;
@@ -21,7 +22,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{AsciiChar, Seq, seq};
+use treetime_primitives::{AlphabetLike, AsciiChar, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
@@ -465,6 +466,13 @@ where
     }
 
     node_data.seq.sequence = seq.clone();
+
+    // Recompute composition from the updated sequence so that downstream
+    // consumers (GTR inference Ti, root_state) see post-marginal character
+    // counts instead of stale Fitch-era values.
+    node_data.seq.composition =
+      Composition::with_sequence(node_data.seq.sequence.iter().copied(), self.alphabet.chars(), self.alphabet.gap());
+
     self.nodes.insert(node.key, node_data);
 
     Some(seq)
