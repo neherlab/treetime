@@ -28,11 +28,14 @@ where
 
 /// Count mutations from sparse partition data for GTR inference.
 ///
-/// Uses `PartitionMarginalSparse::edge_subs_from_graph()` to derive mutations
-/// from the current partition state rather than reading stale Fitch-era `subs`.
-/// Before marginal inference, this returns the same mutations as Fitch parsimony.
-/// After marginal inference, it returns MAP-derived mutations that reflect the
-/// current posteriors.
+/// Requires `reconstruct_node_sequence()` to have been called after
+/// marginal inference so that `seq.composition` reflects current MAP
+/// states. Without reconstruction, composition retains Fitch-era counts
+/// while `edge_subs_from_graph()` returns MAP-derived mutations, creating
+/// mixed-provenance sufficient statistics.
+///
+/// Before marginal inference (Fitch-only state), both composition and
+/// edge subs are Fitch-consistent and no reconstruction is needed.
 pub fn get_mutation_counts_sparse<N, E, D>(
   graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,

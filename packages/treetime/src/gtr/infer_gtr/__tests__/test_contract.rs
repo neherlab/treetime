@@ -766,4 +766,77 @@ mod tests {
 
     Ok(())
   }
+
+  /// Reconstruction updates Ti and root_state for ambiguous sequences.
+  ///
+  /// With ambiguous positions (N, R), Fitch-era composition includes non-canonical
+  /// chars that don't contribute to canonical Ti counts. After reconstruction,
+  /// ambiguities resolve to canonical states, increasing canonical counts.
+  /// This test verifies that reconstruction makes a difference on ambiguous input,
+  /// confirming the composition update in `reconstruct_node_sequence()` is not a no-op.
+  #[test]
+  fn test_reconstruction_changes_composition_for_ambiguous_input() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+
+    // Without reconstruction: Fitch-era composition (includes N, R)
+    let counts_fitch = {
+      let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+      let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
+        index: 0,
+        gtr: jc69(JC69Params::default())?,
+        alphabet: Alphabet::default(),
+        length: get_common_length(&aln)?,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+      }));
+      compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+      get_mutation_counts_sparse(&graph, &partition)?
+    };
+
+    // With reconstruction: MAP-resolved composition (N→G, R→G, etc.)
+    let counts_map = {
+      let (graph, partition) = setup_sparse(tree_nwk, &aln)?;
+      get_mutation_counts_sparse(&graph, &partition)?
+    };
+
+    // Ti: canonical count distribution shifts after reconstruction resolves ambiguities.
+    // Total Ti sum is preserved (only canonical chars contribute), but per-state
+    // allocation changes as non-canonical positions resolve to specific canonical states.
+    let ti_diff = (&counts_map.Ti - &counts_fitch.Ti).mapv(f64::abs).sum();
+    assert!(
+      ti_diff > 0.1,
+      "Ti should differ between Fitch and MAP paths for ambiguous input, got total abs diff {ti_diff}"
+    );
+
+    // root_state: canonical count distribution shifts after reconstruction.
+    // Ambiguous root positions (N, R) are not counted as canonical in either path,
+    // but reconstruction resolves them, increasing the canonical total.
+    let fitch_root_total = counts_fitch.root_state.sum();
+    let map_root_total = counts_map.root_state.sum();
+    assert!(
+      map_root_total >= fitch_root_total,
+      "MAP root_state total ({map_root_total}) should be >= Fitch total ({fitch_root_total})"
+    );
+    let root_diff = (&counts_map.root_state - &counts_fitch.root_state).mapv(f64::abs).sum();
+    assert!(
+      root_diff > 0.1,
+      "root_state should differ between Fitch and MAP paths, got total abs diff {root_diff}"
+    );
+
+    Ok(())
+  }
 }
