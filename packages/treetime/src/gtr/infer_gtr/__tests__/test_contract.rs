@@ -744,8 +744,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (_, partition) =
-      setup_sparse("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
+    let (_, partition) = setup_sparse("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
     let partition = partition.read_arc();
     for (node_key, node_data) in &partition.nodes {

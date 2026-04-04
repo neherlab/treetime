@@ -470,8 +470,11 @@ where
     // Recompute composition from the updated sequence so that downstream
     // consumers (GTR inference Ti, root_state) see post-marginal character
     // counts instead of stale Fitch-era values.
-    node_data.seq.composition =
-      Composition::with_sequence(node_data.seq.sequence.iter().copied(), self.alphabet.chars(), self.alphabet.gap());
+    node_data.seq.composition = Composition::with_sequence(
+      node_data.seq.sequence.iter().copied(),
+      self.alphabet.chars(),
+      self.alphabet.gap(),
+    );
 
     self.nodes.insert(node.key, node_data);
 
