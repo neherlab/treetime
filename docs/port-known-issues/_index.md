@@ -69,6 +69,7 @@ exactly.
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
+| Medium     | Sparse       | [Sparse seq.composition is cached derived state that can go stale](M-sparse-composition-cached-staleness.md)                    |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
 | Low        | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
