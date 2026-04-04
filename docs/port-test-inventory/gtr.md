@@ -20,14 +20,14 @@
 | GTR inference (dense golden)       | 1      | 13      | Golden-master |
 | GTR inference (dense unit)         | 1      | 5       | Unit          |
 | GTR inference (sparse)             | 1      | 2       | Unit          |
-| Inference contracts                | 1      | 15      | Parameterized |
+| Inference contracts                | 1      | 16      | Parameterized |
 | Dense-sparse cross-validation      | 1      | 7       | Integration   |
 | Common functions                   | 1      | 6       | Unit          |
 | Site-specific GTR properties       | 1      | 19      | Property      |
 | Site-specific GTR unit+validation  | 1      | 5       | Unit          |
 | Site-specific GTR golden-master    | 1      | 9       | Golden-master |
 | Site-specific GTR inference        | 1      | 2       | Unit          |
-| **Total**                          | **22** | **166** | Mixed         |
+| **Total**                          | **22** | **167** | Mixed         |
 
 Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
@@ -256,10 +256,10 @@ Generators (not tests):
 
 **File:** [`test_sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs)
 
-| Test                              | Purpose                                      |
-| --------------------------------- | -------------------------------------------- |
-| `test_get_mutation_counts_sparse` | Integer mutation counts from Fitch parsimony |
-| `test_infer_gtr_sparse`           | GTR inference from sparse representation     |
+| Test                              | Purpose                                       |
+| --------------------------------- | --------------------------------------------- |
+| `test_get_mutation_counts_sparse` | Mutation counts from post-marginal MAP states |
+| `test_infer_gtr_sparse`           | GTR inference from sparse representation      |
 
 ---
 
@@ -269,23 +269,24 @@ Generators (not tests):
 
 Verifies mutation count invariants across dense and sparse paths.
 
-| Test                                                  | Purpose                                    |
-| ----------------------------------------------------- | ------------------------------------------ |
-| `test_nij_orientation_dense`                          | A->C: nij[C,A] >> nij[A,C] (dense)         |
-| `test_nij_orientation_sparse`                         | A->C: nij[C,A] = 1, nij[A,C] = 0           |
-| `test_ti_scaling_sparse`                              | Ti proportional to branch length (2 cases) |
-| `test_ti_scaling_dense`                               | Ti proportional to branch length (2 cases) |
-| `test_dense_sparse_consistency`                       | Dense ~ sparse for unambiguous sequences   |
-| `test_root_state_dense`                               | Root reflects ancestral composition        |
-| `test_root_state_sparse`                              | Root reflects Fitch consensus              |
-| `test_nij_orientation_multiple_mutations_sparse`      | Multiple mutation directions correct       |
-| `test_nij_accumulation_dense`                         | nij accumulates across edges               |
-| `test_ti_proportional_to_composition_sparse`          | Ti proportional to state frequency         |
-| `test_dense_sparse_nij_direction_agreement`           | Both agree on dominant mutation cell       |
-| `test_root_state_total_equals_alignment_length_dense` | sum(root_state) = seq_length               |
-| `test_nij_diagonal_zero`                              | nij[i,i] = 0 (dense and sparse)            |
-| `test_nij_non_negative`                               | nij[i,j] >= 0 (dense and sparse)           |
-| `test_ti_non_negative`                                | Ti[i] >= 0 (dense and sparse)              |
+| Test                                                     | Purpose                                           |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| `test_nij_orientation_dense`                             | A->C: nij[C,A] >> nij[A,C] (dense)                |
+| `test_nij_orientation_sparse`                            | A->C: nij[C,A] = 1, nij[A,C] = 0                  |
+| `test_ti_scaling_sparse`                                 | Ti proportional to branch length (2 cases)        |
+| `test_ti_scaling_dense`                                  | Ti proportional to branch length (2 cases)        |
+| `test_dense_sparse_consistency`                          | Dense ~ sparse for unambiguous sequences          |
+| `test_root_state_dense`                                  | Root reflects ancestral composition               |
+| `test_root_state_sparse`                                 | Root reflects post-marginal composition           |
+| `test_nij_orientation_multiple_mutations_sparse`         | Multiple mutation directions correct              |
+| `test_nij_accumulation_dense`                            | nij accumulates across edges                      |
+| `test_ti_proportional_to_composition_sparse`             | Ti proportional to state frequency                |
+| `test_dense_sparse_nij_direction_agreement`              | Both agree on dominant mutation cell              |
+| `test_root_state_total_equals_alignment_length_dense`    | sum(root_state) = seq_length                      |
+| `test_nij_diagonal_zero`                                 | nij[i,i] = 0 (dense and sparse)                   |
+| `test_nij_non_negative`                                  | nij[i,j] >= 0 (dense and sparse)                  |
+| `test_ti_non_negative`                                   | Ti[i] >= 0 (dense and sparse)                     |
+| `test_composition_matches_sequence_after_reconstruction` | Composition matches sequence chars after marginal |
 
 ---
 
