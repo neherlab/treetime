@@ -10,7 +10,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
   use crate::gtr::infer_gtr::sparse::get_mutation_counts_sparse;
@@ -27,6 +27,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlphabetLike;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -76,6 +77,7 @@ mod tests {
     }));
     compress_sequences(&graph, std::slice::from_ref(&partition), aln)?;
     update_marginal(&graph, std::slice::from_ref(&partition))?;
+    ancestral_reconstruction_marginal(&graph, true, std::slice::from_ref(&partition), |_, _| Ok(()))?;
     Ok((graph, partition))
   }
 
@@ -362,9 +364,9 @@ mod tests {
     Ok(())
   }
 
-  /// Sparse root_state reflects the Fitch consensus composition.
+  /// Sparse root_state reflects the post-marginal reconstructed composition.
   ///
-  /// Same alignment as dense test. Fitch consensus at the root should be all-A
+  /// Same alignment as dense test. Root should be all-A
   /// (3/4 leaves have A at position 0, majority wins).
   #[test]
   fn test_root_state_sparse() -> Result<(), Report> {
@@ -385,7 +387,7 @@ mod tests {
     let (graph, partition) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
     let counts = get_mutation_counts_sparse(&graph, &partition)?;
 
-    // Sparse root_state comes from Fitch composition counts.
+    // Sparse root_state comes from post-marginal composition counts.
     // All 8 positions should be A at root (3/4 leaves have A at pos 0).
     pretty_assert_ulps_eq!(8.0, counts.root_state[IDX_A], epsilon = 1e-9);
     pretty_assert_ulps_eq!(0.0, counts.root_state[IDX_C], epsilon = 1e-9);
@@ -715,6 +717,52 @@ mod tests {
     }
     for (k, &v) in sparse.Ti.iter().enumerate() {
       assert!(v >= 0.0, "Sparse Ti[{k}] should be non-negative, got {v}");
+    }
+
+    Ok(())
+  }
+
+  /// After marginal reconstruction, each node's composition matches its sequence.
+  ///
+  /// This verifies the fix for stale Fitch-era composition: after
+  /// `reconstruct_node_sequence()`, `seq.composition` is recomputed from
+  /// `seq.sequence` so downstream consumers (Ti, root_state) see
+  /// post-marginal character counts.
+  #[test]
+  fn test_composition_matches_sequence_after_reconstruction() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let (_, partition) =
+      setup_sparse("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
+
+    let partition = partition.read_arc();
+    for (node_key, node_data) in &partition.nodes {
+      let seq = &node_data.seq.sequence;
+      if seq.is_empty() {
+        continue;
+      }
+
+      // Count characters directly from the sequence
+      for nuc in partition.alphabet.chars() {
+        let seq_count = seq.iter().filter(|&&c| c == nuc).count();
+        let comp_count = node_data.seq.composition.get(nuc).unwrap_or(0);
+        assert_eq!(
+          seq_count, comp_count,
+          "Node {node_key:?}: composition[{nuc:?}] = {comp_count} but sequence has {seq_count}"
+        );
+      }
     }
 
     Ok(())
