@@ -32,7 +32,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
@@ -148,6 +148,7 @@ mod tests {
       }));
       compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
       update_marginal(&graph, std::slice::from_ref(&partition))?;
+      ancestral_reconstruction_marginal(&graph, true, std::slice::from_ref(&partition), |_, _| Ok(()))?;
       infer_gtr_sparse(&partition, &graph)?
     };
 

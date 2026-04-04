@@ -568,9 +568,7 @@ fn merge_sibling_pair(
     // contributions. An empty composition would zero out ~99% of the log-likelihood
     // signal for the merge-created node and all ancestors.
     let mut new_node = SparseNodePartition::empty(&partition.alphabet);
-    let parent_comp = partition.nodes[&parent_key].seq.composition.clone();
-    new_node.seq.composition = parent_comp.clone();
-    new_node.seq.fitch.composition = parent_comp;
+    new_node.seq.composition = partition.nodes[&parent_key].seq.composition.clone();
     partition.nodes.entry(new_node_key).or_insert(new_node);
 
     // Remove old edge entries

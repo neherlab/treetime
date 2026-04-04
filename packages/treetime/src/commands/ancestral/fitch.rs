@@ -141,7 +141,6 @@ where
     let mut seq_dis = FitchSeqDistribution {
       variable: btreemap! {},
       variable_indel: btreemap! {},
-      composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
     };
 
     for pos in variable_positions {
@@ -500,6 +499,7 @@ where
       seq.fitch.variable = btreemap! {};
     }
 
+<<<<<<< HEAD
     seq.fitch.composition = seq.composition.clone();
     for p in seq.fitch.variable.values() {
       if let Some(state) = p.get_one_maybe() {
@@ -510,6 +510,11 @@ where
     // Keep the exact reconstructed sequence on every node. Sparse marginal
     // passes need an authoritative reference state for fixed-site lookups at
     // ambiguous-variable positions.
+=======
+    if !node.is_root {
+      seq.sequence = seq![];
+    }
+>>>>>>> 73563ac4 (refactor(sparse): remove dead FitchSeqDistribution.composition field)
   }
 
   GraphTraversalContinuation::Continue
