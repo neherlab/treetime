@@ -48,6 +48,7 @@ pub fn evaluate(contributions: &[PartitionContribution], branch_length: f64) -> 
     // This loop could be coded more efficiently
     for coeff in contribution.coefficients.outer_iter() {
       let val = (&coeff * &exp_ev).sum();
+      debug_assert!(val.is_finite(), "Non-finite site likelihood: {val}");
       log_likelihood += val.ln();
       let d1 = (&coeff * &ev_exp_ev).sum() / val;
       derivative += d1;

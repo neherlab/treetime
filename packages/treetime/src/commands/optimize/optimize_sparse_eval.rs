@@ -31,6 +31,7 @@ pub fn evaluate_sparse_contribution_impl(
     } in &contribution.site_contributions
     {
       let site_lh = (coefficients * &exp_ev).sum();
+      debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
       let d1 = (coefficients * &ev_exp_ev).sum() / site_lh;
       derivative += multiplicity * d1;
@@ -43,6 +44,7 @@ pub fn evaluate_sparse_contribution_impl(
     } in &contribution.site_contributions
     {
       let site_lh = (coefficients * &exp_ev).sum();
+      debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
     }
   }
