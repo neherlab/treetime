@@ -31,9 +31,9 @@ pub fn evaluate_dense_contribution_impl(
     for coefficients in coefficients.outer_iter() {
       let site_lh = (&coefficients * &exp_ev).sum();
       log_lh += site_lh.ln();
-      derivative += (&coefficients * &ev_exp_ev).sum() / site_lh;
-      second_derivative +=
-        (&coefficients * &ev2_exp_ev).sum() / site_lh - ((&coefficients * &ev_exp_ev).sum() / site_lh).powi(2);
+      let d1 = (&coefficients * &ev_exp_ev).sum() / site_lh;
+      derivative += d1;
+      second_derivative += (&coefficients * &ev2_exp_ev).sum() / site_lh - d1.powi(2);
     }
   } else {
     for coefficients in coefficients.outer_iter() {

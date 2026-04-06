@@ -49,8 +49,9 @@ pub fn evaluate(contributions: &[PartitionContribution], branch_length: f64) -> 
     for coeff in contribution.coefficients.outer_iter() {
       let val = (&coeff * &exp_ev).sum();
       log_likelihood += val.ln();
-      derivative += (&coeff * &ev_exp_ev).sum() / val;
-      second_derivative += (&coeff * &ev2_exp_ev).sum() / val - ((&coeff * &ev_exp_ev).sum() / val).powi(2);
+      let d1 = (&coeff * &ev_exp_ev).sum() / val;
+      derivative += d1;
+      second_derivative += (&coeff * &ev2_exp_ev).sum() / val - d1.powi(2);
     }
   }
   OptimizationMetrics::new(log_likelihood, derivative, second_derivative)
