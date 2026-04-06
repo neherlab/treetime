@@ -469,11 +469,11 @@ Regression tests verifying that `initial_guess_mixed()` reads edge messages comp
 
 Tests that `initial_guess_mixed()` still follows the edge substitution formula after marginal reconstruction, and that dense and sparse stay aligned on ambiguity-sensitive sparse reference-state paths.
 
-| Test                                                                          | Purpose                                                           |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `test_initial_guess_formula_sparse`                                           | Sparse branch length equals substitution count over effective length |
-| `test_initial_guess_formula_dense`                                            | Dense branch length equals substitution count over effective length |
-| `test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency`     | Dense and sparse initial branch lengths match on partial ambiguity |
+| Test                                                                                 | Purpose                                                                                  |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `test_initial_guess_formula_sparse`                                                  | Sparse branch length equals substitution count over effective length                     |
+| `test_initial_guess_formula_dense`                                                   | Dense branch length equals substitution count over effective length                      |
+| `test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency`            | Dense and sparse initial branch lengths match on partial ambiguity                       |
 | `test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency` | Dense and sparse optimize contributions agree in value and gradient on partial ambiguity |
 
 ---

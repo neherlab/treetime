@@ -117,6 +117,16 @@ pub(crate) fn sqrt_step_lower_bound(s: f64) -> f64 {
   s - (s * s + 1.0).sqrt()
 }
 
+/// Lower bound on the Newton step $\delta_u$ in $\ln(t)$-space.
+///
+/// Limits $t$-space increase to 1.0 subs/site per iteration.
+/// Derived from $e^{u - \delta_u} - e^u \leq 1$, giving
+/// $\delta_u \geq -\ln(1 + 1/t)$. Uses `ln_1p` for accuracy at small $1/t$.
+/// Always negative for $t > 0$ (permits $u$ to increase).
+pub(crate) fn log_step_lower_bound(t: f64) -> f64 {
+  -(1.0 / t).ln_1p()
+}
+
 /// Transform $t$-space derivatives to $\sqrt{t}$-space via the chain rule.
 ///
 /// Given $s = \sqrt{t}$:
@@ -184,9 +194,9 @@ pub(crate) fn newton_log_inner(
   }
 
   // Step clamping bounds in u-space:
-  // Lower: -ln(1 + 1/t) limits t-space increase to 1.0 subs/site
+  // Lower: log_step_lower_bound(t) limits t-space increase to 1.0 subs/site
   // Upper: u - u_min prevents u from going below u_min
-  let step_lower = -(1.0 / branch_length).ln_1p();
+  let step_lower = log_step_lower_bound(branch_length);
   let step_upper = u - u_min;
   let mut new_u = (u - clamp(du / d2u, step_lower, step_upper)).max(u_min);
 
@@ -199,7 +209,7 @@ pub(crate) fn newton_log_inner(
     let (du_new, d2u_new) = chain_rule_log(t, new_metrics.derivative, new_metrics.second_derivative);
     if d2u_new < 0.0 {
       u = new_u;
-      let step_lower = -(1.0 / t).ln_1p();
+      let step_lower = log_step_lower_bound(t);
       let step_upper = u - u_min;
       new_u = (u - clamp(du_new / d2u_new, step_lower, step_upper)).max(u_min);
     } else {

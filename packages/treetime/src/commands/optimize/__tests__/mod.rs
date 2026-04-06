@@ -17,5 +17,6 @@ mod test_newton_convergence;
 mod test_optimization_metrics;
 mod test_optimize_indel;
 mod test_optimize_method;
+mod test_optimize_method_step_clamping;
 mod test_optimize_zero_sequence_length;
 mod test_topology_cleanup;
