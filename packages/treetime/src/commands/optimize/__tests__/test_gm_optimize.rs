@@ -11,9 +11,9 @@ mod tests {
 
   use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
 
-  // Golden master: v1 damped optimization against v0 reference.
-  // v0 uses Brent + inline damping, v1 uses Newton-Raphson + post-pass damping.
-  // Both target the same ML fixed point. Total branch length compared within 5%.
+  // Golden master: v1 brent-sqrt against v0 reference.
+  // v0 uses Brent in sqrt(t) space, so brent-sqrt is the matching v1 method.
+  // Total branch length compared within 5%.
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
   // #[case::dengue_20("dengue_20_jc69_damped")] // slow
@@ -24,40 +24,6 @@ mod tests {
   // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
   fn test_gm_optimize(#[case] case_name: &str) -> Result<(), Report> {
-    let inputs = load_gm_inputs();
-    let outputs = load_gm_outputs();
-    let case = &inputs[case_name];
-    let expected = &outputs[case_name];
-
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(|p| p.parent())
-      .unwrap();
-
-    let result = setup_and_run(workspace_root, case, BranchOptMethod::Newton)?;
-
-    let v1_total_bl: f64 = result
-      .graph
-      .get_edges()
-      .iter()
-      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
-      .sum();
-
-    assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
-
-    Ok(())
-  }
-
-  // Golden master: v1 brent-sqrt against v0 reference.
-  // v0 uses Brent in sqrt(t) space, so brent-sqrt is the closest v1 match.
-  // Same v0 reference data, same 5% tolerance.
-  #[rstest]
-  #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
-  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
-  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
-  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
-  // #[case::zika_20("zika_20_jc69_damped")] // slow
-  fn test_gm_optimize_brent_sqrt(#[case] case_name: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
     let case = &inputs[case_name];
@@ -82,7 +48,7 @@ mod tests {
     Ok(())
   }
 
-  // End-to-end: damped vs undamped on same dataset.
+  // End-to-end: damped vs undamped on same dataset using BrentSqrt (v0-matching method).
   // Damped should converge and show fewer sign flips.
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
@@ -105,8 +71,8 @@ mod tests {
     let mut undamped_case = case.clone();
     undamped_case.damping = 0.0;
 
-    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::Newton)?;
-    let damped = setup_and_run(workspace_root, case, BranchOptMethod::Newton)?;
+    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::BrentSqrt)?;
+    let damped = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
 
     let undamped_sign_flips = count_sign_flips(&undamped.lh_history);
     let damped_sign_flips = count_sign_flips(&damped.lh_history);

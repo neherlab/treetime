@@ -560,6 +560,11 @@ mod tests {
   }
 
   /// C4: Brent bracket validity for all three parameterizations.
+  ///
+  /// The bracket used by production code is computed from the *input* branch
+  /// length (before optimization), not the optimized result. This test captures
+  /// the input BL first, computes the bracket from it, runs optimization, then
+  /// verifies the optimum beats both bracket endpoints.
   #[rustfmt::skip]
   #[rstest]
   #[case::brent(     BranchOptMethod::Brent)]
@@ -570,6 +575,15 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
 
+    // Capture input branch length and compute bracket BEFORE optimization
+    // (production code computes the bracket from the input BL).
+    let input_bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+    let one_mutation = 1.0 / total_length as f64;
+    let min_bl = one_mutation * 0.01; // indel_count > 0
+    let lower = min_bl.max(1e-12);
+    let upper = f64::max(1.5 * input_bl + one_mutation, GRID_SEARCH_MIN_UPPER);
+
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = graph.get_edges()[0]
@@ -579,13 +593,6 @@ mod tests {
       .branch_length()
       .unwrap();
     let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
-
-    // Bracket endpoints: same computation as brent_bracket
-    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
-    let one_mutation = 1.0 / total_length as f64;
-    let min_bl = one_mutation * 0.01; // indel_count > 0
-    let lower = min_bl.max(1e-12);
-    let upper = f64::max(1.5 * bl + one_mutation, GRID_SEARCH_MIN_UPPER);
 
     let lh_lower = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, lower)?;
     let lh_upper = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, upper)?;
