@@ -1,5 +1,5 @@
 use crate::commands::optimize::args::BranchOptMethod;
-use crate::commands::optimize::method_brent::brent_inner;
+use crate::commands::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
 use crate::commands::optimize::method_newton::{NEWTON_ABS_TOL, NEWTON_REL_TOL, newton_inner, newton_sqrt_inner};
 use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
@@ -460,7 +460,23 @@ where
         min_branch_length,
         one_mutation,
       ),
-      BranchOptMethod::BrentSqrt | BranchOptMethod::BrentLog | BranchOptMethod::NewtonLog => {
+      BranchOptMethod::BrentSqrt => brent_sqrt_inner(
+        branch_length,
+        &contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      ),
+      BranchOptMethod::BrentLog => brent_log_inner(
+        branch_length,
+        &contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      ),
+      BranchOptMethod::NewtonLog => {
         todo!("Optimization method {method:?} is not yet implemented")
       },
     };

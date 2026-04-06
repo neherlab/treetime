@@ -159,13 +159,11 @@ pub struct TreetimeOptimizeArgs {
   ///
   /// Algorithm x parameterization:
   /// - brent: Brent's method in t space (derivative-free)
-  /// - brent-sqrt: Brent's method in sqrt(t) space (target default, matches v0; not yet implemented)
-  /// - brent-log: Brent's method in ln(t) space (not yet implemented)
+  /// - brent-sqrt: Brent's method in sqrt(t) space (default, matches v0)
+  /// - brent-log: Brent's method in ln(t) space
   /// - newton: Newton-Raphson in t space
   /// - newton-sqrt: Newton-Raphson in sqrt(t) space
   /// - newton-log: Newton-Raphson in ln(t) space (not yet implemented)
-  ///
-  /// Temporary default is brent (in t space) until brent-sqrt is implemented.
-  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::Brent)]
+  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::BrentSqrt)]
   pub opt_method: BranchOptMethod,
 }
