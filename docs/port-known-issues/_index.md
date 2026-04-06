@@ -79,7 +79,6 @@ exactly.
 | Low            | Optimize     | [Dense-sparse duplication in OptimizationContribution enum dispatch](L-optimize-eval-dense-sparse-duplication.md)               |
 | Medium         | Optimize     | [Brent paths exclude zero branch length for non-unimodal models](M-optimize-brent-zero-branch-non-unimodal.md)                  |
 | Medium         | Optimize     | [Per-edge optimization: dispatch all 6 methods](M-optimize-method-dispatch.md)                                                  |
-| Medium         | Optimize     | [Per-edge optimization: Newton-Raphson in ln(t) space](M-optimize-method-newton-log.md)                                         |
 | Medium         | Optimize     | [Per-edge optimization: Newton step clamping in reparameterized spaces](M-optimize-method-step-clamping.md)                     |
 | Medium         | Optimize     | [Per-edge optimization: test rewrite for 6 methods](M-optimize-method-tests.md)                                                 |
 | Medium         | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |

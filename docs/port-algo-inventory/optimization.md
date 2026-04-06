@@ -4,9 +4,15 @@
 
 ## Newton-Raphson for Branch Length Optimization
 
-Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. The update rule is `t_new = t - clamp(f'/f'', -1.0, t)`, clamping the step to prevent negative branch lengths. When the second derivative is non-negative (likelihood surface is convex at the current point), the method falls back to a 100-point linear grid search over the branch length domain.
+Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. Three parameterizations trade off singularity handling near zero:
 
-v1: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L249-L268`](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L249-L268).
+- **t-space** (`newton_inner`): update `t_new = t - clamp(f'/f'', -1.0, t)`. Indel Hessian $-k/t^2$ dominates on short branches.
+- **sqrt(t)-space** (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$. Reduces indel singularity from $O(1/t^2)$ to $O(1/t)$.
+- **ln(t)-space** (`newton_log_inner`): chain rule with $u = \ln(t)$. Eliminates indel singularity entirely (bounded curvature $-\mu t$). Correct step clamping: upper $u - u_{\min}$, lower $-\ln(1 + 1/t)$.
+
+All variants fall back to a 100-point log-spaced grid search when the second derivative is non-negative.
+
+v1: [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs).
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket instead of Newton's method. v1's analytical derivatives avoid the derivative-free overhead of Brent but require correct second-derivative computation. See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details.
 

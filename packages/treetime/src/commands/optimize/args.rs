@@ -162,7 +162,7 @@ pub struct TreetimeOptimizeArgs {
   /// - brent-log: Brent's method in ln(t) space
   /// - newton: Newton-Raphson in t space
   /// - newton-sqrt: Newton-Raphson in sqrt(t) space
-  /// - newton-log: Newton-Raphson in ln(t) space (not yet implemented)
+  /// - newton-log: Newton-Raphson in ln(t) space
   #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
   pub opt_method: BranchOptMethod,
 }
