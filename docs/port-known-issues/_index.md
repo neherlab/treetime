@@ -70,7 +70,6 @@ exactly.
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
 | Medium     | Optimize     | [Indel-aware Newton optimization path has no direct tests](N-optimize-indel-newton-path-untested.md)                            |
-| Medium     | Optimize     | [Coefficient extraction lacks invariant property tests](N-optimize-coefficient-property-tests-missing.md)                       |
 | Low        | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
