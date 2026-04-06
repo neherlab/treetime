@@ -315,8 +315,9 @@ impl GTR {
   /// Returns exp(Q * mu * rate * t). The eigendecomposition is shared;
   /// only the eigenvalue scaling changes.
   pub fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
-    let eLambdaT = Array2::from_diag(&self.exp_lt_scaled(t, rate));
-    let Qt = self.v.dot(&eLambdaT.dot(&self.v_inv));
+    let exp_lt = self.exp_lt_scaled(t, rate);
+    let scaled_v_inv = &self.v_inv * &exp_lt.view().insert_axis(Axis(1));
+    let Qt = self.v.dot(&scaled_v_inv);
     clamp_min(&Qt, 0.0)
   }
 
@@ -456,12 +457,12 @@ impl GTR {
   /// Results are clamped to [0, infinity) to handle floating-point errors that might
   /// produce tiny negative values.
   pub fn expQt(&self, t: f64) -> Array2<f64> {
-    // Diagonal matrix of exp(eigenvalue * mu * t) for each eigenvalue
-    let eLambdaT: Array2<f64> = Array2::from_diag(&self.exp_lt(t));
-
-    // P(t) = v * exp(Lambda * t) * v_inv
-    let eLambdaT_dot_v_inv: Array2<f64> = eLambdaT.dot(&self.v_inv);
-    let Qt: Array2<f64> = self.v.dot(&eLambdaT_dot_v_inv);
+    // P(t) = V * diag(exp(Lambda * t)) * V_inv
+    // Row-scale V_inv by the diagonal vector instead of constructing a full
+    // diagonal matrix: O(n^2) broadcast vs O(n^3) matrix multiply.
+    let exp_lt = self.exp_lt(t);
+    let scaled_v_inv = &self.v_inv * &exp_lt.view().insert_axis(Axis(1));
+    let Qt = self.v.dot(&scaled_v_inv);
 
     // Clamp to handle floating-point errors (should never be significantly negative)
     clamp_min(&Qt, 0.0)
