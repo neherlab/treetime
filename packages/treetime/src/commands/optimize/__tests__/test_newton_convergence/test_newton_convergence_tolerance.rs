@@ -110,9 +110,12 @@ mod tests {
     assert_abs_diff_eq!(implied_log, eta, epsilon = 1e-6);
   }
 
-  /// The log-space tolerance does NOT grow with |ln(t)|.
-  /// This was the defect OPT-1 identified: the old tolerance scaled as η*|u|,
-  /// which grew as branches got shorter.
+  /// The log-space tolerance is constant in $u$, independent of $|\ln(t)|$.
+  /// A tolerance proportional to $|u|$ would grow unboundedly as branches
+  /// shrink, weakening the convergence criterion at exactly the values
+  /// where extra precision matters. A constant $\eta$ in $u$-space
+  /// corresponds to a constant relative tolerance in $t$-space because
+  /// $du = dt/t$.
   #[rustfmt::skip]
   #[rstest]
   #[case::moderate(1e-3 )]

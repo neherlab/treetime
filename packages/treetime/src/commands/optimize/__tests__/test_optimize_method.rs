@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
-  use crate::commands::optimize::method_newton::chain_rule_sqrt;
+  use crate::commands::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
@@ -47,6 +47,106 @@ mod tests {
     let (ds, d2s) = chain_rule_sqrt(s, 10.0, -100.0);
     assert_abs_diff_eq!(ds, 6.0, epsilon = 1e-14);
     assert_abs_diff_eq!(d2s, -16.0, epsilon = 1e-14);
+  }
+
+  /// Chain rule log transform: known analytical values.
+  ///
+  /// t=0.09, dl_dt=10.0, d2l_dt2=-100.0:
+  ///   dl_du = 0.09 * 10.0 = 0.9
+  ///   d2l_du2 = 0.09^2 * (-100.0) + 0.09 * 10.0 = -0.81 + 0.9 = 0.09
+  #[test]
+  fn test_optimize_method_chain_rule_log_analytical() {
+    let t = 0.09;
+    let (du, d2u) = chain_rule_log(t, 10.0, -100.0);
+    assert_abs_diff_eq!(du, 0.9, epsilon = 1e-14);
+    assert_abs_diff_eq!(d2u, 0.09, epsilon = 1e-14);
+  }
+
+  /// At very small t, both log-space derivatives approach zero because
+  /// the t factor suppresses them.
+  #[test]
+  fn test_optimize_method_chain_rule_log_small_t() {
+    let t = 1e-10;
+    let (du, d2u) = chain_rule_log(t, 1e6, -1e12);
+    // dl_du = 1e-10 * 1e6 = 1e-4
+    assert_abs_diff_eq!(du, 1e-4, epsilon = 1e-14);
+    // d2l_du2 = (1e-10)^2 * (-1e12) + 1e-10 * 1e6 = -1e-8 + 1e-4 ≈ 1e-4
+    assert_abs_diff_eq!(d2u, -1e-8 + 1e-4, epsilon = 1e-14);
+  }
+
+  /// u-space first derivative matches numerical central difference of the
+  /// combined (substitution + indel) log-likelihood evaluated at t = exp(u).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::small(   0.01,  2, 10.0)]
+  #[case::medium(  0.1,   3, 20.0)]
+  #[case::large(   0.5,   1,  5.0)]
+  #[case::no_indel(0.2,   0,  0.0)]
+  #[trace]
+  fn test_optimize_method_chain_rule_log_numerical_first_derivative(
+    #[case] t: f64,
+    #[case] k: usize,
+    #[case] mu: f64,
+  ) {
+    let gtr = jc69(JC69Params::default()).unwrap();
+    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
+    let contribution = OptimizationContribution::Dense(
+      optimize_dense::PartitionContribution::new(coefficients, gtr),
+    );
+    let contributions = vec![contribution];
+
+    let u = t.ln();
+    let metrics = evaluate_mixed(&contributions, t);
+    let indel = poisson_indel_log_lh(k, mu, t);
+    let dl_dt = metrics.derivative + indel.derivative;
+    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
+    let (dl_du_analytical, _) = chain_rule_log(t, dl_dt, d2l_dt2);
+
+    let h = u.abs() * 1e-5;
+    let eval_u = |uv: f64| {
+      let tv = uv.exp();
+      evaluate_mixed_log_lh_only(&contributions, tv) + poisson_indel_log_lh(k, mu, tv).log_lh
+    };
+    let dl_du_numerical = (eval_u(u + h) - eval_u(u - h)) / (2.0 * h);
+
+    assert_abs_diff_eq!(dl_du_analytical, dl_du_numerical, epsilon = 1e-4);
+  }
+
+  /// u-space second derivative matches numerical central difference.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::small(   0.01,  2, 10.0)]
+  #[case::medium(  0.1,   3, 20.0)]
+  #[case::large(   0.5,   1,  5.0)]
+  #[case::no_indel(0.2,   0,  0.0)]
+  #[trace]
+  fn test_optimize_method_chain_rule_log_numerical_second_derivative(
+    #[case] t: f64,
+    #[case] k: usize,
+    #[case] mu: f64,
+  ) {
+    let gtr = jc69(JC69Params::default()).unwrap();
+    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
+    let contribution = OptimizationContribution::Dense(
+      optimize_dense::PartitionContribution::new(coefficients, gtr),
+    );
+    let contributions = vec![contribution];
+
+    let u = t.ln();
+    let metrics = evaluate_mixed(&contributions, t);
+    let indel = poisson_indel_log_lh(k, mu, t);
+    let dl_dt = metrics.derivative + indel.derivative;
+    let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
+    let (_, d2l_du2_analytical) = chain_rule_log(t, dl_dt, d2l_dt2);
+
+    let h = u.abs() * 1e-4;
+    let eval_u = |uv: f64| {
+      let tv = uv.exp();
+      evaluate_mixed_log_lh_only(&contributions, tv) + poisson_indel_log_lh(k, mu, tv).log_lh
+    };
+    let d2l_du2_numerical = (eval_u(u + h) - 2.0 * eval_u(u) + eval_u(u - h)) / (h * h);
+
+    assert_abs_diff_eq!(d2l_du2_analytical, d2l_du2_numerical, epsilon = 1e-2);
   }
 
   /// s-space first derivative matches numerical central difference of the
@@ -130,6 +230,7 @@ mod tests {
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
   #[case::brent_log(  BranchOptMethod::BrentLog)]
@@ -234,6 +335,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
   #[case::brent_log(  BranchOptMethod::BrentLog)]
@@ -274,6 +376,7 @@ mod tests {
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_optimize_method_stationarity(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
@@ -332,6 +435,76 @@ mod tests {
 
     Ok(())
   }
+
+  /// C3b: Cross-method agreement -- NewtonLog and Brent achieve similar
+  /// combined log-likelihood values.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1(1)]
+  #[case::k2(2)]
+  #[case::k4(4)]
+  #[trace]
+  fn test_optimize_method_cross_method_lh_agreement_newton_log(#[case] n_indels: usize) -> Result<(), Report> {
+    let graph_brent: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, n_indels)?;
+    run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent)?;
+    let bl_brent = graph_brent.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
+
+    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
+    let bl_log = graph_log.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+
+    let lh_diff = (lh_brent - lh_log).abs();
+    assert!(
+      lh_diff < 1e-3,
+      "Brent lh ({lh_brent}) and NewtonLog lh ({lh_log}) differ by {lh_diff}, \
+       bl_brent={bl_brent}, bl_log={bl_log}"
+    );
+
+    Ok(())
+  }
+
+  /// C5b: NewtonLog achieves equal or better log-likelihood than Newton
+  /// in t-space on the Hessian-dominated case.
+  #[test]
+  fn test_optimize_method_newton_log_improves_over_newton() -> Result<(), Report> {
+    let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
+    run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
+    let bl_newton = graph_newton.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
+
+    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, 4)?;
+    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
+    let bl_log = graph_log.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+
+    assert!(bl_newton > 0.0 && bl_newton.is_finite());
+    assert!(bl_log > 0.0 && bl_log.is_finite());
+
+    assert!(
+      lh_log >= lh_newton - 1e-10,
+      "NewtonLog lh ({lh_log}) should be >= Newton lh ({lh_newton}), \
+       bl_log={bl_log}, bl_newton={bl_newton}"
+    );
+
+    Ok(())
+  }
+
 
   /// C5: NewtonSqrt achieves equal or better log-likelihood than Newton
   /// in t-space on the Hessian-dominated case.
@@ -396,6 +569,25 @@ mod tests {
     let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
     assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "{method:?} BL must be finite, got {bl}");
+    Ok(())
+  }
+
+  /// NewtonLog produces positive, finite branch lengths with indels present.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1(1)]
+  #[case::k2(2)]
+  #[case::k4(4)]
+  #[trace]
+  fn test_optimize_method_newton_log_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonLog)?;
+
+    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    assert!(bl > 0.0, "NewtonLog BL with {n_indels} indels must be positive, got {bl}");
+    assert!(bl.is_finite(), "NewtonLog BL must be finite, got {bl}");
     Ok(())
   }
 
