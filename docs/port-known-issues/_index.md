@@ -77,7 +77,7 @@ exactly.
 | Low            | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
 | Low            | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Low            | Optimize     | [Dense-sparse duplication in OptimizationContribution enum dispatch](L-optimize-eval-dense-sparse-duplication.md)               |
-| Medium         | Optimize     | [Per-edge optimization: Brent in sqrt(t) and ln(t) spaces](M-optimize-method-brent-parameterized.md)                            |
+| ~~Medium~~     | ~~Optimize~~ | ~~Per-edge optimization: Brent in sqrt(t) and ln(t) spaces~~ **FIXED**                                                          |
 | Medium         | Optimize     | [Per-edge optimization: dispatch all 6 methods](M-optimize-method-dispatch.md)                                                  |
 | Medium         | Optimize     | [Per-edge optimization: Newton-Raphson in ln(t) space](M-optimize-method-newton-log.md)                                         |
 | Medium         | Optimize     | [Per-edge optimization: Newton step clamping in reparameterized spaces](M-optimize-method-step-clamping.md)                     |

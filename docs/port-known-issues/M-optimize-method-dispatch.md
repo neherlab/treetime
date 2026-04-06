@@ -2,26 +2,28 @@
 
 ## Problem
 
-After the scaffolding, Brent, Newton-log, and step-clamping issues are implemented, all 6 inner-loop functions exist but only 3 are wired into `run_optimize_mixed`. The `BrentSqrt`, `BrentLog`, and `NewtonLog` arms in the dispatch match still use `todo!()`.
+After the scaffolding, Brent, Newton-log, and step-clamping issues are implemented, all 6 inner-loop functions exist but only 5 are wired into `run_optimize_mixed`. The `NewtonLog` arm in the dispatch match still uses `todo!()`.
+
+`BrentSqrt` and `BrentLog` were wired as part of M-optimize-method-brent-parameterized.
 
 ## Context
 
 The 6 inner-loop functions and their locations (after M-optimize-method-scaffolding split the file):
 
-| Variant      | Function            | Module        |
-| :----------- | :------------------ | :------------ |
-| `Brent`      | `brent_inner`       | Brent module  |
-| `BrentSqrt`  | `brent_sqrt_inner`  | Brent module  |
-| `BrentLog`   | `brent_log_inner`   | Brent module  |
-| `Newton`     | `newton_inner`      | Newton module |
-| `NewtonSqrt` | `newton_sqrt_inner` | Newton module |
-| `NewtonLog`  | `newton_log_inner`  | Newton module |
+| Variant      | Function            | Module        | Status |
+| :----------- | :------------------ | :------------ | :----- |
+| `Brent`      | `brent_inner`       | Brent module  | Wired  |
+| `BrentSqrt`  | `brent_sqrt_inner`  | Brent module  | Wired  |
+| `BrentLog`   | `brent_log_inner`   | Brent module  | Wired  |
+| `Newton`     | `newton_inner`      | Newton module | Wired  |
+| `NewtonSqrt` | `newton_sqrt_inner` | Newton module | Wired  |
+| `NewtonLog`  | `newton_log_inner`  | Newton module | todo!  |
 
 All share the same prelude in `run_optimize_mixed` (contribution collection, indel setup, zero-branch check, min_branch_length computation). The only difference: Newton variants need `evaluate_with_indels` to get metrics (derivatives), Brent variants need only the branch length and contributions.
 
 ## Approach
 
-Replace `todo!()` arms with calls to the new functions. Add necessary imports from the Newton and Brent modules. The dispatch block is at `optimize_unified.rs:~580` (currently `run_optimize_mixed`).
+Replace `todo!()` arm for `NewtonLog` with a call to the new function. Add necessary import from the Newton module. The dispatch block is at `optimize_unified.rs` (currently `run_optimize_mixed`).
 
 ## Verification
 
@@ -41,7 +43,7 @@ done
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-brent-parameterized](M-optimize-method-brent-parameterized.md), [M-optimize-method-newton-log](M-optimize-method-newton-log.md), [M-optimize-method-step-clamping](M-optimize-method-step-clamping.md)
+- Depends on: ~~M-optimize-method-brent-parameterized~~ (done), [M-optimize-method-newton-log](M-optimize-method-newton-log.md), [M-optimize-method-step-clamping](M-optimize-method-step-clamping.md)
 - Depended on by: [M-optimize-method-tests](M-optimize-method-tests.md), [L-optimize-method-docs](L-optimize-method-docs.md)
 
 ## Cross-references

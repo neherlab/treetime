@@ -422,7 +422,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Collect dense contribution (`PartitionMarginalDense`)
 - [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
 - [x] Unified mixed-partition evaluation (`evaluate_mixed()` sums metrics across partition types)
-- [ ] sqrt(t) reparameterization (v0 optimizes in s=sqrt(t) space for better conditioning near zero)
+- [x] sqrt(t) reparameterization (Brent in s=sqrt(t) space, matching v0; also ln(t) space variant)
 - [ ] Regularization penalty for profile-based optimization (v0: `exp(t^4/10000)` prevents unbounded growth)
 - [ ] Hamming distance fallback when optimization fails (v0 falls back to observed distance)
 
