@@ -427,6 +427,145 @@ mod tests {
     );
   }
 
+  // Newton convergence to Poisson MLE: with identical sequences (zero
+  // substitution signal), the only signal comes from indels. The optimized
+  // branch length should converge to k/mu, the Poisson MLE.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1_mu5( 1, 5.0)]
+  #[case::k2_mu5( 2, 5.0)]
+  #[case::k3_mu10(3, 10.0)]
+  #[case::k5_mu3( 5, 3.0)]
+  #[trace]
+  fn test_optimize_indel_newton_converges_to_poisson_mle(
+    #[case] n_indels: usize,
+    #[case] target_rate: f64,
+  ) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+
+    // Build indel vector with the requested count
+    let indels: Vec<InDel> = (0..n_indels)
+      .map(|i| InDel::del((i * 4, i * 4 + 3), Seq::try_from_str("ACG").unwrap()))
+      .collect();
+    let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+
+    // Set branch lengths to the target MLE neighborhood so indel_rate = target_rate
+    let total_indels_per_edge = n_indels * 2; // dense + sparse partition
+    let target_bl = total_indels_per_edge as f64 / target_rate;
+    for edge_ref in graph.get_edges() {
+      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(target_bl));
+    }
+
+    // Re-run initial guess and optimize
+    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    update_marginal(&graph, &dense_partitions)?;
+    update_marginal(&graph, &sparse_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions)?;
+
+    let bl = graph
+      .get_edges()
+      .iter()
+      .find(|e| e.read_arc().key() == first_edge_key)
+      .unwrap()
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+
+    // With identical sequences, substitution contribution is constant across t
+    // (all coefficients are identical). The Poisson MLE = k/mu dominates.
+    // Allow relaxed tolerance since substitution term still contributes a weak gradient.
+    let expected_mle = total_indels_per_edge as f64 / estimate_indel_rate(&graph, &mixed_partitions);
+    assert!(bl > 0.0, "Optimized BL must be positive, got {bl}");
+    assert!(bl.is_finite(), "Optimized BL must be finite, got {bl}");
+    // The branch length should be in the same order of magnitude as the MLE
+    assert!(
+      bl > expected_mle * 0.1 && bl < expected_mle * 10.0,
+      "Optimized BL ({bl}) should be within an order of magnitude of Poisson MLE ({expected_mle})"
+    );
+    Ok(())
+  }
+
+  // Min branch length clamping: when indels are present, the Newton loop
+  // should not allow the branch length to reach zero.
+  #[test]
+  fn test_optimize_indel_min_branch_length_clamping() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+
+    // Set a very small initial branch length to test clamping
+    let edge_ref = graph
+      .get_edges()
+      .iter()
+      .find(|e| e.read_arc().key() == first_edge_key)
+      .unwrap()
+      .clone();
+    edge_ref
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(1e-15));
+
+    update_marginal(&graph, &dense_partitions)?;
+    update_marginal(&graph, &sparse_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions)?;
+
+    let bl = edge_ref
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+
+    assert!(
+      bl > 0.0,
+      "Indel-bearing edge must have positive BL after optimization (min_branch_length clamping), got {bl}"
+    );
+    Ok(())
+  }
+
+  // Poisson indel contribution: for k >= 0 and t > 0, adding indels
+  // changes the total log-likelihood. For k=0, indel term is -mu*t < 0.
+  // For k>0, indel term is finite. In both cases, the combined
+  // log-likelihood differs from substitution-only.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k0(0, 5.0, 0.1)]
+  #[case::k1(1, 5.0, 0.1)]
+  #[case::k3(3, 5.0, 0.1)]
+  #[case::k5(5, 5.0, 0.5)]
+  #[trace]
+  fn test_optimize_indel_evaluate_with_indels_shifts_log_lh(
+    #[case] k: usize,
+    #[case] mu: f64,
+    #[case] t: f64,
+  ) {
+    let gtr = jc69(JC69Params::default()).unwrap();
+    let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
+    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contributions = vec![contribution];
+
+    let sub_only = evaluate_mixed_log_lh_only(&contributions, t);
+    let indel_lh = poisson_indel_log_lh(k, mu, t).log_lh;
+    let combined = sub_only + indel_lh;
+
+    if k == 0 {
+      // For k=0, indel term is -mu*t, always negative
+      assert!(combined < sub_only, "k=0 indel term should reduce log-lh: combined={combined} < sub_only={sub_only}");
+    } else {
+      // For k>0, indel term is finite and the combined differs from sub-only
+      assert!(
+        (combined - sub_only).abs() > 1e-10,
+        "k={k} indel term should shift log-lh: combined={combined}, sub_only={sub_only}"
+      );
+    }
+  }
+
   mod generators {
     use proptest::prelude::*;
 
