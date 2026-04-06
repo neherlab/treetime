@@ -87,7 +87,7 @@ pub(crate) fn newton_sqrt_inner(
     return grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation);
   }
 
-  let mut new_s = (s - clamp(ds / d2s, -1.0, s)).max(min_s);
+  let mut new_s = (s - clamp(ds / d2s, sqrt_step_lower_bound(s), s)).max(min_s);
 
   for _ in 0..NEWTON_MAX_ITER {
     if (new_s - s).abs() <= newton_tolerance_sqrt(s) {
@@ -98,13 +98,23 @@ pub(crate) fn newton_sqrt_inner(
     let (ds_new, d2s_new) = chain_rule_sqrt(new_s, new_metrics.derivative, new_metrics.second_derivative);
     if d2s_new < 0.0 {
       s = new_s;
-      new_s = (s - clamp(ds_new / d2s_new, -1.0, s)).max(min_s);
+      new_s = (s - clamp(ds_new / d2s_new, sqrt_step_lower_bound(s), s)).max(min_s);
     } else {
       break;
     }
   }
 
   new_s * new_s
+}
+
+/// Lower bound on the Newton step $\delta_s$ in $\sqrt{t}$-space.
+///
+/// Limits $t$-space increase to 1.0 subs/site per iteration.
+/// Derived from $(s - \delta_s)^2 - s^2 \leq 1$, giving
+/// $\delta_s \geq s - \sqrt{s^2 + 1}$.
+/// Always negative (permits $s$ to increase).
+pub(crate) fn sqrt_step_lower_bound(s: f64) -> f64 {
+  s - (s * s + 1.0).sqrt()
 }
 
 /// Transform $t$-space derivatives to $\sqrt{t}$-space via the chain rule.
