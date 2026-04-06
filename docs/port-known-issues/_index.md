@@ -106,7 +106,6 @@ exactly.
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible | Optimize     | [Dead `optimize_dense::evaluate()` function](N-optimize-dense-evaluate-dead-code.md)                                            |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
-| Negligible | Optimize     | [Derivative ratio computed twice per site](N-optimize-duplicate-derivative-computation.md)                                      |
 | Negligible | GTR          | [expQt uses O(n^3) diagonal matrix multiply](N-gtr-expqt-diagonal-matrix-cubic.md)                                              |
 | Negligible | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
