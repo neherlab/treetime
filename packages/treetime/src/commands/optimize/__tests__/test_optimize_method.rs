@@ -4,12 +4,13 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::commands::optimize::args::BranchOptMethod;
+  use crate::commands::optimize::method_brent::{brent_log_inner, brent_sqrt_inner};
   use crate::commands::optimize::method_newton::chain_rule_sqrt;
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
-    OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, newton_tolerance,
-    run_optimize_mixed,
+    GRID_SEARCH_MIN_UPPER, OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
+    evaluate_with_indels_log_lh_only, newton_tolerance, run_optimize_mixed,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -123,13 +124,15 @@ mod tests {
     assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
   }
 
-  /// All three methods produce finite non-negative branch lengths on a
+  /// All methods produce finite non-negative branch lengths on a
   /// simple tree with no indels (well-conditioned substitution-only objective).
   #[rustfmt::skip]
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[case::newton(     BranchOptMethod::Newton)]
   #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
@@ -232,6 +235,8 @@ mod tests {
   #[rstest]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
@@ -328,45 +333,6 @@ mod tests {
     Ok(())
   }
 
-  /// C4: Brent bracket validity -- the log-likelihood at the optimum
-  /// exceeds the log-likelihood at both bracket endpoints.
-  #[test]
-  fn test_optimize_method_brent_bracket_validity() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
-
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Brent)?;
-
-    let bl = graph.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
-    let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
-
-    // Bracket endpoints: same computation as brent_inner
-    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
-    let one_mutation = 1.0 / total_length as f64;
-    let min_bl = one_mutation * 0.01; // indel_count > 0
-    let lower = min_bl.max(1e-12);
-    let upper = f64::max(1.5 * bl + one_mutation, 0.5);
-
-    let lh_lower = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, lower)?;
-    let lh_upper = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, upper)?;
-
-    assert!(
-      lh_opt >= lh_lower - 1e-10,
-      "Brent optimum lh ({lh_opt}) < lower bracket lh ({lh_lower})"
-    );
-    assert!(
-      lh_opt >= lh_upper - 1e-10,
-      "Brent optimum lh ({lh_opt}) < upper bracket lh ({lh_upper})"
-    );
-
-    Ok(())
-  }
-
   /// C5: NewtonSqrt achieves equal or better log-likelihood than Newton
   /// in t-space on the Hessian-dominated case.
   #[test]
@@ -405,22 +371,31 @@ mod tests {
     Ok(())
   }
 
-  /// Brent produces positive, finite branch lengths with indels present.
+  /// All Brent variants produce positive, finite branch lengths with indels.
   #[rustfmt::skip]
   #[rstest]
-  #[case::k1(1)]
-  #[case::k2(2)]
-  #[case::k4(4)]
+  #[case::brent_k1(     BranchOptMethod::Brent,     1)]
+  #[case::brent_k2(     BranchOptMethod::Brent,     2)]
+  #[case::brent_k4(     BranchOptMethod::Brent,     4)]
+  #[case::brent_sqrt_k1(BranchOptMethod::BrentSqrt, 1)]
+  #[case::brent_sqrt_k2(BranchOptMethod::BrentSqrt, 2)]
+  #[case::brent_sqrt_k4(BranchOptMethod::BrentSqrt, 4)]
+  #[case::brent_log_k1( BranchOptMethod::BrentLog,  1)]
+  #[case::brent_log_k2( BranchOptMethod::BrentLog,  2)]
+  #[case::brent_log_k4( BranchOptMethod::BrentLog,  4)]
   #[trace]
-  fn test_optimize_method_brent_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
+  fn test_optimize_method_brent_positive_with_indels(
+    #[case] method: BranchOptMethod,
+    #[case] n_indels: usize,
+  ) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Brent)?;
+    run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
-    assert!(bl > 0.0, "Brent BL with {n_indels} indels must be positive, got {bl}");
-    assert!(bl.is_finite(), "Brent BL must be finite, got {bl}");
+    assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
+    assert!(bl.is_finite(), "{method:?} BL must be finite, got {bl}");
     Ok(())
   }
 
@@ -440,6 +415,190 @@ mod tests {
     let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
     assert!(bl > 0.0, "NewtonSqrt BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "NewtonSqrt BL must be finite, got {bl}");
+    Ok(())
+  }
+
+  /// All three Brent parameterizations achieve similar log-likelihood.
+  #[test]
+  fn test_optimize_method_brent_cross_parameterization_lh_agreement() -> Result<(), Report> {
+    let n_indels = 3;
+
+    let graph_t: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (parts_t, rate_t) = setup_with_indels(&graph_t, n_indels)?;
+    run_optimize_mixed(&graph_t, &parts_t, BranchOptMethod::Brent)?;
+    let bl_t = graph_t.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_t = eval_combined_first_edge(&graph_t, &parts_t, rate_t, bl_t)?;
+
+    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (parts_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
+    run_optimize_mixed(&graph_sqrt, &parts_sqrt, BranchOptMethod::BrentSqrt)?;
+    let bl_sqrt = graph_sqrt.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &parts_sqrt, rate_sqrt, bl_sqrt)?;
+
+    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (parts_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    run_optimize_mixed(&graph_log, &parts_log, BranchOptMethod::BrentLog)?;
+    let bl_log = graph_log.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_log = eval_combined_first_edge(&graph_log, &parts_log, rate_log, bl_log)?;
+
+    let diff_sqrt = (lh_t - lh_sqrt).abs();
+    let diff_log = (lh_t - lh_log).abs();
+    assert!(
+      diff_sqrt < 1e-3,
+      "Brent-t lh ({lh_t}) vs Brent-sqrt lh ({lh_sqrt}) differ by {diff_sqrt}"
+    );
+    assert!(
+      diff_log < 1e-3,
+      "Brent-t lh ({lh_t}) vs Brent-log lh ({lh_log}) differ by {diff_log}"
+    );
+
+    Ok(())
+  }
+
+  /// brent_sqrt_inner: the transform s=sqrt(t), evaluate at s^2, square
+  /// result back must produce a branch length in t-space that is a local
+  /// optimum of the original objective.
+  #[test]
+  fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let edge_key = graph.get_edges()[0].read_arc().key();
+    let contributions: Vec<OptimizationContribution> = mixed_partitions
+      .iter()
+      .map(|p| p.read_arc().create_edge_contribution(edge_key))
+      .collect::<Result<_, _>>()?;
+
+    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+    let one_mutation = 1.0 / total_length as f64;
+    let branch_length = 0.01;
+
+    let result = brent_sqrt_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation);
+    assert!(
+      result >= 0.0,
+      "brent_sqrt_inner result must be non-negative, got {result}"
+    );
+    assert!(
+      result.is_finite(),
+      "brent_sqrt_inner result must be finite, got {result}"
+    );
+
+    // Verify local optimality in t-space
+    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result);
+    if result > 1e-10 {
+      let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99);
+      let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01);
+      assert!(
+        lh_opt >= lh_below - 1e-10,
+        "sqrt: lh at opt ({lh_opt}) < lh below ({lh_below})"
+      );
+      assert!(
+        lh_opt >= lh_above - 1e-10,
+        "sqrt: lh at opt ({lh_opt}) < lh above ({lh_above})"
+      );
+    }
+
+    Ok(())
+  }
+
+  /// brent_log_inner: the transform u=ln(t), evaluate at exp(u), exponentiate
+  /// result back must produce a branch length in t-space that is a local
+  /// optimum of the original objective.
+  #[test]
+  fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let edge_key = graph.get_edges()[0].read_arc().key();
+    let contributions: Vec<OptimizationContribution> = mixed_partitions
+      .iter()
+      .map(|p| p.read_arc().create_edge_contribution(edge_key))
+      .collect::<Result<_, _>>()?;
+
+    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+    let one_mutation = 1.0 / total_length as f64;
+    let branch_length = 0.01;
+
+    let result = brent_log_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation);
+    assert!(result > 0.0, "brent_log_inner result must be positive, got {result}");
+    assert!(
+      result.is_finite(),
+      "brent_log_inner result must be finite, got {result}"
+    );
+
+    // Verify local optimality in t-space
+    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result);
+    let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99);
+    let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01);
+    assert!(
+      lh_opt >= lh_below - 1e-10,
+      "log: lh at opt ({lh_opt}) < lh below ({lh_below})"
+    );
+    assert!(
+      lh_opt >= lh_above - 1e-10,
+      "log: lh at opt ({lh_opt}) < lh above ({lh_above})"
+    );
+
+    Ok(())
+  }
+
+  /// C4: Brent bracket validity for all three parameterizations.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::brent(     BranchOptMethod::Brent)]
+  #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
+  #[case::brent_log( BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
+
+    run_optimize_mixed(&graph, &mixed_partitions, method)?;
+
+    let bl = graph.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
+
+    // Bracket endpoints: same computation as brent_bracket
+    let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+    let one_mutation = 1.0 / total_length as f64;
+    let min_bl = one_mutation * 0.01; // indel_count > 0
+    let lower = min_bl.max(1e-12);
+    let upper = f64::max(1.5 * bl + one_mutation, GRID_SEARCH_MIN_UPPER);
+
+    let lh_lower = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, lower)?;
+    let lh_upper = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, upper)?;
+
+    assert!(
+      lh_opt >= lh_lower - 1e-10,
+      "{method:?} optimum lh ({lh_opt}) < lower bracket lh ({lh_lower})"
+    );
+    assert!(
+      lh_opt >= lh_upper - 1e-10,
+      "{method:?} optimum lh ({lh_opt}) < upper bracket lh ({lh_upper})"
+    );
+
     Ok(())
   }
 }

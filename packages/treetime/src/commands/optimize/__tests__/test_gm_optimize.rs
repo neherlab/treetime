@@ -5,6 +5,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
 
+  use crate::commands::optimize::args::BranchOptMethod;
   use std::path::Path;
   use treetime_graph::edge::HasBranchLength;
 
@@ -33,7 +34,41 @@ mod tests {
       .and_then(|p| p.parent())
       .unwrap();
 
-    let result = setup_and_run(workspace_root, case)?;
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::Newton)?;
+
+    let v1_total_bl: f64 = result
+      .graph
+      .get_edges()
+      .iter()
+      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .sum();
+
+    assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
+
+    Ok(())
+  }
+
+  // Golden master: v1 brent-sqrt against v0 reference.
+  // v0 uses Brent in sqrt(t) space, so brent-sqrt is the closest v1 match.
+  // Same v0 reference data, same 5% tolerance.
+  #[rstest]
+  #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
+  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
+  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
+  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
+  // #[case::zika_20("zika_20_jc69_damped")] // slow
+  fn test_gm_optimize_brent_sqrt(#[case] case_name: &str) -> Result<(), Report> {
+    let inputs = load_gm_inputs();
+    let outputs = load_gm_outputs();
+    let case = &inputs[case_name];
+    let expected = &outputs[case_name];
+
+    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+      .parent()
+      .and_then(|p| p.parent())
+      .unwrap();
+
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
 
     let v1_total_bl: f64 = result
       .graph
@@ -70,8 +105,8 @@ mod tests {
     let mut undamped_case = case.clone();
     undamped_case.damping = 0.0;
 
-    let undamped = setup_and_run(workspace_root, &undamped_case)?;
-    let damped = setup_and_run(workspace_root, case)?;
+    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::Newton)?;
+    let damped = setup_and_run(workspace_root, case, BranchOptMethod::Newton)?;
 
     let undamped_sign_flips = count_sign_flips(&undamped.lh_history);
     let damped_sign_flips = count_sign_flips(&damped.lh_history);
@@ -162,7 +197,11 @@ mod tests {
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
-    pub fn setup_and_run(workspace_root: &Path, case: &GmOptimizeCase) -> Result<OptimizeResult, Report> {
+    pub fn setup_and_run(
+      workspace_root: &Path,
+      case: &GmOptimizeCase,
+      method: BranchOptMethod,
+    ) -> Result<OptimizeResult, Report> {
       let alphabet_sparse = Alphabet::default();
       let alphabet_dense = Alphabet::default();
 
@@ -213,7 +252,7 @@ mod tests {
         }
 
         let old_bls = save_branch_lengths(&graph);
-        run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+        run_optimize_mixed(&graph, &mixed_partitions, method)?;
         apply_damping(&graph, &old_bls, case.damping, i);
         lh_prev = total_lh;
       }
