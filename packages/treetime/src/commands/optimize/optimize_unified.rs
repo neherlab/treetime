@@ -1,5 +1,4 @@
 use crate::commands::optimize::optimize_dense;
-use crate::make_error;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
 use crate::commands::optimize::optimize_sparse;
@@ -7,6 +6,7 @@ use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
