@@ -78,8 +78,8 @@ exactly.
 | Low            | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
 | Low            | Optimize     | [Dense-sparse duplication in OptimizationContribution enum dispatch](L-optimize-eval-dense-sparse-duplication.md)               |
 | Medium         | Optimize     | [Brent paths exclude zero branch length for non-unimodal models](M-optimize-brent-zero-branch-non-unimodal.md)                  |
+| Medium         | Optimize     | [Brent optimizer failures silently return stale branch length](M-optimize-brent-silent-error.md)                                |
 | Medium         | Optimize     | [Per-edge optimization: dispatch all 6 methods](M-optimize-method-dispatch.md)                                                  |
-| Medium         | Optimize     | [Per-edge optimization: Newton step clamping in reparameterized spaces](M-optimize-method-step-clamping.md)                     |
 | Medium         | Optimize     | [Per-edge optimization: test rewrite for 6 methods](M-optimize-method-tests.md)                                                 |
 | Medium         | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium         | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |

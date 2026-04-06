@@ -21,7 +21,9 @@
 | Indel contribution (inline)      | 1      | 8       | 0             | Unit     |
 | Indel contribution (integration) | 1      | 11      | 0             | Unit     |
 | Indel contribution (property)    | 1      | 3       | 0             | Property |
-| **Total**                        | **33** | **134** | **5**         |          |
+| Optimization method              | 1      | 28      | 0             | Unit     |
+| Optimization method step clamp   | 1      | 23      | 0             | Unit     |
+| **Total**                        | **35** | **185** | **5**         |          |
 
 ---
 
@@ -527,3 +529,43 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 | `test_optimize_merge_then_marginal_finite_likelihood`              | Merge + update_marginal produces finite log-likelihood     |
 | `test_optimize_cascading_collapse_parent_child_both_zero`          | Parent-child both zero-optimal, guard handles removal      |
 | `test_optimize_loop_with_topology_cleanup_dense`                   | Dense-mode full loop with topology cleanup                 |
+
+---
+
+## Optimization Method
+
+**File:** [`test_optimize_method.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method.rs)
+
+| Test                                                          | Cases | Purpose                                                |
+| ------------------------------------------------------------- | ----- | ------------------------------------------------------ |
+| `test_optimize_method_chain_rule_at_zero`                     | 1     | Chain rule sqrt at s=0: ds=0, d2s=2\*dl_dt             |
+| `test_optimize_method_chain_rule_analytical`                  | 1     | Chain rule sqrt at known analytical values             |
+| `test_optimize_method_chain_rule_numerical_first_derivative`  | 4     | First derivative matches numerical central difference  |
+| `test_optimize_method_chain_rule_numerical_second_derivative` | 4     | Second derivative matches numerical central difference |
+| `test_optimize_method_equivalence_no_indels`                  | 3     | All methods produce finite non-negative BLs            |
+| `test_optimize_method_local_optimality`                       | 2     | Combined LH at optimum exceeds nearby points           |
+| `test_optimize_method_stationarity`                           | 2     | Implied Newton step at optimum is below tolerance      |
+| `test_optimize_method_cross_method_lh_agreement`              | 3     | NewtonSqrt and Brent achieve similar LH                |
+| `test_optimize_method_brent_bracket_validity`                 | 1     | LH at optimum exceeds bracket endpoints                |
+| `test_optimize_method_newton_sqrt_improves_over_newton`       | 1     | NewtonSqrt LH >= Newton LH on Hessian-dominated case   |
+| `test_optimize_method_brent_positive_with_indels`             | 3     | Brent produces positive finite BLs with indels         |
+| `test_optimize_method_newton_sqrt_positive_with_indels`       | 3     | NewtonSqrt produces positive finite BLs with indels    |
+
+---
+
+## Optimization Method Step Clamping
+
+**File:** [`test_optimize_method_step_clamping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method_step_clamping.rs)
+
+| Test                                                                      | Cases | Purpose                                                                    |
+| ------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------- |
+| `test_optimize_method_step_clamping_sqrt_at_zero`                         | 1     | At s=0 the bound equals -1.0 (coincides with t-space)                      |
+| `test_optimize_method_step_clamping_sqrt_analytical`                      | 4     | Known analytical values at representative s values                         |
+| `test_optimize_method_step_clamping_sqrt_always_negative`                 | 7     | Bound is always negative for non-negative s                                |
+| `test_optimize_method_step_clamping_sqrt_produces_unit_t_increase`        | 6     | Applying the bound step yields delta_t = 1.0                               |
+| `test_optimize_method_step_clamping_sqrt_large_s_asymptote`               | 1     | For large s, bound approaches -1/(2s)                                      |
+| `test_optimize_method_step_clamping_sqrt_strictly_greater_than_minus_one` | 4     | For s > 0 the bound is strictly greater than -1.0 (delta_t bounded by 1.0) |
+| `test_optimize_method_step_clamping_log_analytical`                       | 4     | Known analytical values at representative t values                         |
+| `test_optimize_method_step_clamping_log_always_negative`                  | 6     | Bound is always negative for positive t                                    |
+| `test_optimize_method_step_clamping_log_produces_unit_t_increase`         | 6     | Applying the bound step in u-space yields delta_t = 1.0                    |
+| `test_optimize_method_step_clamping_log_large_t_asymptote`                | 1     | For large t, bound approaches -1/t                                         |
