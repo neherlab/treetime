@@ -69,7 +69,6 @@ exactly.
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
-| Medium     | Optimize     | [Unguarded ln(site_lh) in evaluation functions](N-optimize-eval-unguarded-ln-zero.md)                                           |
 | Medium     | Optimize     | [Division by zero when total sequence length is zero](N-optimize-zero-sequence-length-division.md)                              |
 | Medium     | Optimize     | [Indel-aware Newton optimization path has no direct tests](N-optimize-indel-newton-path-untested.md)                            |
 | Medium     | Optimize     | [Coefficient extraction lacks invariant property tests](N-optimize-coefficient-property-tests-missing.md)                       |
