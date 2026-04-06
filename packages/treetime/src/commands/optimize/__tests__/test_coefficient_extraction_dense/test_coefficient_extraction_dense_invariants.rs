@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::optimize_dense::{evaluate, get_coefficients, PartitionContribution};
+  use crate::commands::optimize::optimize_dense::{PartitionContribution, evaluate, get_coefficients};
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use approx::assert_abs_diff_eq;
-  use ndarray::{array, concatenate, Array1, Axis};
+  use ndarray::{Array1, Axis, array, concatenate};
   use rstest::rstest;
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -24,7 +24,12 @@ mod tests {
   }
 
   /// Build a sparse SiteContribution with given multiplicity and message profiles.
-  fn sparse_site(parent: &Array1<f64>, child: &Array1<f64>, gtr: &GTR, multiplicity: f64) -> optimize_sparse::SiteContribution {
+  fn sparse_site(
+    parent: &Array1<f64>,
+    child: &Array1<f64>,
+    gtr: &GTR,
+    multiplicity: f64,
+  ) -> optimize_sparse::SiteContribution {
     let coefficients = parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t());
     optimize_sparse::SiteContribution {
       multiplicity,
@@ -159,17 +164,36 @@ mod tests {
     let metrics_b = evaluate(&[contrib_b], branch_length);
 
     // Combined: 2-row dense matrix
-    let parents = concatenate(Axis(0), &[parent_a.view().insert_axis(Axis(0)), parent_b.view().insert_axis(Axis(0))]).unwrap();
-    let children = concatenate(Axis(0), &[child_a.view().insert_axis(Axis(0)), child_b.view().insert_axis(Axis(0))]).unwrap();
-    let contrib_combined = get_coefficients(
-      &make_dense_seq_dis(parents),
-      &make_dense_seq_dis(children),
-      &gtr,
-    );
+    let parents = concatenate(
+      Axis(0),
+      &[
+        parent_a.view().insert_axis(Axis(0)),
+        parent_b.view().insert_axis(Axis(0)),
+      ],
+    )
+    .unwrap();
+    let children = concatenate(
+      Axis(0),
+      &[child_a.view().insert_axis(Axis(0)), child_b.view().insert_axis(Axis(0))],
+    )
+    .unwrap();
+    let contrib_combined = get_coefficients(&make_dense_seq_dis(parents), &make_dense_seq_dis(children), &gtr);
     let metrics_combined = evaluate(&[contrib_combined], branch_length);
 
-    assert_abs_diff_eq!(metrics_combined.log_lh, metrics_a.log_lh + metrics_b.log_lh, epsilon = 1e-12);
-    assert_abs_diff_eq!(metrics_combined.derivative, metrics_a.derivative + metrics_b.derivative, epsilon = 1e-12);
-    assert_abs_diff_eq!(metrics_combined.second_derivative, metrics_a.second_derivative + metrics_b.second_derivative, epsilon = 1e-12);
+    assert_abs_diff_eq!(
+      metrics_combined.log_lh,
+      metrics_a.log_lh + metrics_b.log_lh,
+      epsilon = 1e-12
+    );
+    assert_abs_diff_eq!(
+      metrics_combined.derivative,
+      metrics_a.derivative + metrics_b.derivative,
+      epsilon = 1e-12
+    );
+    assert_abs_diff_eq!(
+      metrics_combined.second_derivative,
+      metrics_a.second_derivative + metrics_b.second_derivative,
+      epsilon = 1e-12
+    );
   }
 }
