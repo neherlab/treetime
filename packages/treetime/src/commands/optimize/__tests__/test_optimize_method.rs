@@ -10,7 +10,7 @@ mod tests {
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
     GRID_SEARCH_MIN_UPPER, OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
-    evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance, run_optimize_mixed,
+    evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -286,7 +286,7 @@ mod tests {
 
     if metrics.second_derivative < 0.0 {
       let implied_step = (metrics.derivative / metrics.second_derivative).abs();
-      let tol = newton_tolerance(bl);
+      let tol = newton_tolerance_t(bl);
       // Allow 10x tolerance: the optimizer stops when the step is below
       // tolerance, but the next step from the final position can be slightly
       // larger due to nonlinearity of the objective.

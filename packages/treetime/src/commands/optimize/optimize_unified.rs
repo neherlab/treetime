@@ -1,6 +1,8 @@
 use crate::commands::optimize::args::BranchOptMethod;
 use crate::commands::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
-use crate::commands::optimize::method_newton::{NEWTON_ABS_TOL, NEWTON_REL_TOL, newton_inner, newton_sqrt_inner};
+use crate::commands::optimize::method_newton::{
+  NEWTON_ABS_TOL, NEWTON_REL_TOL, newton_inner, newton_log_inner, newton_sqrt_inner,
+};
 use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
@@ -31,12 +33,32 @@ const GRID_SEARCH_POINTS: usize = 100;
 /// when the current estimate is already large.
 pub(crate) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
-/// Newton inner-loop convergence tolerance for branch length updates.
+/// Newton convergence tolerance in $t$-space.
 ///
-/// Combines relative tolerance (0.1% of current branch length) with an
-/// absolute floor to avoid degenerate behavior at zero branch length.
-pub(crate) fn newton_tolerance(branch_length: f64) -> f64 {
-  f64::max(NEWTON_REL_TOL * branch_length, NEWTON_ABS_TOL)
+/// A step $|\Delta t| \leq \eta t$ corresponds to relative tolerance $\eta$
+/// in branch-length space. The absolute floor prevents degeneration at $t = 0$.
+pub(crate) fn newton_tolerance_t(t: f64) -> f64 {
+  f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
+}
+
+/// Newton convergence tolerance in $\sqrt{t}$-space.
+///
+/// Since $\Delta t / t \approx 2 \Delta s / s$ for small steps, matching the
+/// target relative tolerance $\eta$ in branch-length space requires
+/// $|\Delta s| \leq \frac{\eta}{2} s$. The factor 0.5 corrects the
+/// coordinate-space scaling.
+pub(crate) fn newton_tolerance_sqrt(s: f64) -> f64 {
+  f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
+}
+
+/// Newton convergence tolerance in $\ln(t)$-space.
+///
+/// Since $\Delta t / t \approx \Delta u$ for small steps, a constant tolerance
+/// $\eta$ in $u$-space directly corresponds to relative tolerance $\eta$ in
+/// branch-length space, regardless of $|u|$. No scaling by the current value.
+pub(crate) fn newton_tolerance_log() -> f64 {
+  // ln(1 + η) ≈ η for small η; use the exact form for correctness
+  NEWTON_REL_TOL.ln_1p()
 }
 
 /// Metrics computed during branch length optimization
@@ -489,7 +511,22 @@ where
         )
       },
       BranchOptMethod::NewtonLog => {
-        todo!("Optimization method {method:?} is not yet implemented")
+        // ln(t) requires t > 0; bump zero branch lengths to one_mutation
+        let bl = if branch_length == 0.0 {
+          one_mutation
+        } else {
+          branch_length
+        };
+        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl);
+        newton_log_inner(
+          bl,
+          &metrics,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        )
       },
     };
 
