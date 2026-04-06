@@ -1,4 +1,5 @@
 use crate::commands::optimize::optimize_dense;
+use crate::make_error;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
 use crate::commands::optimize::optimize_sparse;
@@ -354,6 +355,10 @@ where
     .map(|partition| partition.read_arc().sequence_length())
     .sum();
 
+  if total_length == 0 {
+    return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
+  }
+
   let one_mutation = 1.0 / total_length as f64;
   let indel_rate = estimate_indel_rate(graph, partitions);
 
@@ -470,6 +475,11 @@ where
     .iter()
     .map(|partition| partition.read_arc().sequence_length())
     .sum();
+
+  if total_length == 0 {
+    return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
+  }
+
   let one_mutation = 1.0 / total_length as f64;
   let indel_rate = estimate_indel_rate(graph, partitions);
 
