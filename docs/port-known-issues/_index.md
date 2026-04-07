@@ -73,6 +73,7 @@ exactly.
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                |
+| Low        | Optimize     | [Dense and sparse evaluation loops duplicated across 4 inner loops](L-optimize-eval-dense-sparse-duplication.md)                |
 | Medium     | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md) |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                   |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)    |
@@ -100,7 +101,6 @@ exactly.
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                              |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                         |
 | Negligible | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
-| Negligible | Optimize     | [Dead `optimize_dense::evaluate()` function](N-optimize-dense-evaluate-dead-code.md)                                            |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
 | Negligible | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |

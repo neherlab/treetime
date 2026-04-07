@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::optimize_dense::{evaluate, get_coefficients};
+  use crate::commands::optimize::optimize_dense::get_coefficients;
   use crate::commands::optimize::optimize_dense_eval::evaluate_dense_contribution;
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
@@ -38,7 +38,7 @@ mod tests {
 
     // At positive branch length, site likelihood becomes positive
     // (transition matrix allows state changes)
-    let metrics = evaluate(&[contribution], 0.1);
+    let metrics = evaluate_dense_contribution(&contribution, 0.1);
     assert!(
       metrics.log_lh.is_finite(),
       "At t>0, disjoint support should have finite log-lh"
@@ -163,7 +163,7 @@ mod tests {
           &make_dense_seq_dis(children_stacked),
           &gtr,
         );
-        let dense_metrics = evaluate(&[dense_contrib], branch_length);
+        let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length);
 
         let sparse_contrib = optimize_sparse::PartitionContribution {
           site_contributions: vec![sparse_site_from(&parent, &child, &gtr, n_rows as f64)],
@@ -190,8 +190,8 @@ mod tests {
 
         let contrib_a = dense_contribution_from(&parent_a, &child_a, &gtr);
         let contrib_b = dense_contribution_from(&parent_b, &child_b, &gtr);
-        let metrics_a = evaluate(&[contrib_a], branch_length);
-        let metrics_b = evaluate(&[contrib_b], branch_length);
+        let metrics_a = evaluate_dense_contribution(&contrib_a, branch_length);
+        let metrics_b = evaluate_dense_contribution(&contrib_b, branch_length);
 
         let parents = concatenate(
           Axis(0),
@@ -204,7 +204,7 @@ mod tests {
         )
         .unwrap();
         let contrib_combined = get_coefficients(&make_dense_seq_dis(parents), &make_dense_seq_dis(children), &gtr);
-        let metrics_combined = evaluate(&[contrib_combined], branch_length);
+        let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length);
 
         prop_assert_abs_diff_eq!(metrics_combined.log_lh, metrics_a.log_lh + metrics_b.log_lh, epsilon = 1e-9);
         prop_assert_abs_diff_eq!(metrics_combined.derivative, metrics_a.derivative + metrics_b.derivative, epsilon = 1e-9);

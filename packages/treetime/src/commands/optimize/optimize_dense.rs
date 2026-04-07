@@ -20,7 +20,6 @@
 //!
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
-use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::gtr::gtr::GTR;
 use crate::representation::payload::dense::DenseSeqDis;
 use ndarray::Array2;
@@ -34,28 +33,6 @@ impl PartitionContribution {
   pub fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
     Self { coefficients, gtr }
   }
-}
-
-pub fn evaluate(contributions: &[PartitionContribution], branch_length: f64) -> OptimizationMetrics {
-  let mut log_likelihood = 0.0;
-  let mut derivative = 0.0;
-  let mut second_derivative = 0.0;
-  for contribution in contributions {
-    let gtr = &contribution.gtr;
-    let exp_ev = gtr.exp_eigvals_branch_length(branch_length);
-    let ev_exp_ev = &gtr.eigvals * &exp_ev;
-    let ev2_exp_ev = &gtr.eigvals * &ev_exp_ev;
-    // This loop could be coded more efficiently
-    for coeff in contribution.coefficients.outer_iter() {
-      let val = (&coeff * &exp_ev).sum();
-      debug_assert!(val.is_finite(), "Non-finite site likelihood: {val}");
-      log_likelihood += val.ln();
-      let d1 = (&coeff * &ev_exp_ev).sum() / val;
-      derivative += d1;
-      second_derivative += (&coeff * &ev2_exp_ev).sum() / val - d1.powi(2);
-    }
-  }
-  OptimizationMetrics::new(log_likelihood, derivative, second_derivative)
 }
 
 pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> PartitionContribution {

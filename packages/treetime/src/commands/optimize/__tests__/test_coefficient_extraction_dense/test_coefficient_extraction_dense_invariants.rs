@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::optimize_dense::{PartitionContribution, evaluate, get_coefficients};
+  use crate::commands::optimize::optimize_dense::{PartitionContribution, get_coefficients};
+  use crate::commands::optimize::optimize_dense_eval::evaluate_dense_contribution;
   use crate::commands::optimize::optimize_sparse;
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -127,7 +128,7 @@ mod tests {
       &make_dense_seq_dis(children_stacked),
       &gtr,
     );
-    let dense_metrics = evaluate(&[dense_contrib], branch_length);
+    let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length);
 
     // Sparse: 1 site with multiplicity n_rows
     let sparse_contrib = optimize_sparse::PartitionContribution {
@@ -160,8 +161,8 @@ mod tests {
     // Individual sites
     let contrib_a = dense_contribution(parent_a.clone(), child_a.clone(), &gtr);
     let contrib_b = dense_contribution(parent_b.clone(), child_b.clone(), &gtr);
-    let metrics_a = evaluate(&[contrib_a], branch_length);
-    let metrics_b = evaluate(&[contrib_b], branch_length);
+    let metrics_a = evaluate_dense_contribution(&contrib_a, branch_length);
+    let metrics_b = evaluate_dense_contribution(&contrib_b, branch_length);
 
     // Combined: 2-row dense matrix
     let parents = concatenate(
@@ -178,7 +179,7 @@ mod tests {
     )
     .unwrap();
     let contrib_combined = get_coefficients(&make_dense_seq_dis(parents), &make_dense_seq_dis(children), &gtr);
-    let metrics_combined = evaluate(&[contrib_combined], branch_length);
+    let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length);
 
     assert_abs_diff_eq!(
       metrics_combined.log_lh,

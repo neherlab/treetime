@@ -321,25 +321,6 @@ impl GTR {
     clamp_min(&Qt, 0.0)
   }
 
-  // fn assign_gap_and_ambiguous(alphabet: &Alphabet) -> Option<usize> {
-  //   // let n_states = self.alphabet.len();
-  //
-  //   // // determine if a character exists that corresponds to no info, i.e. all one profile
-  //   // if any([x.sum()==n_states for x in self.profile_map.values()]):
-  //   //     amb_states = [c for c,x in self.profile_map.items() if x.sum()==n_states]
-  //   //     self.ambiguous = 'N' if 'N' in amb_states else amb_states[0]
-  //   // else:
-  //   //     self.ambiguous=None
-  //   //
-  //   // // check for a gap symbol
-  //   // try:
-  //   //     self.gap_index = self.state_index['-']
-  //   // except:
-  //   //     self.gap_index=None
-  //
-  //   None
-  // }
-
   /// Evolve a sequence profile forward in time (parent -> child).
   ///
   /// Given a probability distribution over states at the parent node, compute the
