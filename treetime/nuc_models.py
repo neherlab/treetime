@@ -67,7 +67,7 @@ def K80(mu=1.0, kappa=0.1, **kwargs):
     num_chars = len(alphabets['nuc_nogap'])
     pi = np.ones(len(alphabets['nuc_nogap']), dtype=float) / len(alphabets['nuc_nogap'])
     W = _create_transversion_transition_W(kappa)
-    gtr = GTR(alphabet=alphabets['nuc_nogap'])
+    gtr = GTR(alphabet='nuc_nogap')
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -112,7 +112,7 @@ def F81(mu=1.0, pi=None, alphabet='nuc', **kwargs):
 
     W = np.ones((num_chars, num_chars))
     pi /= 1.0 * np.sum(pi)
-    gtr = GTR(alphabet=get_alphabet(alphabet))
+    gtr = GTR(alphabet=alphabet)
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -153,7 +153,7 @@ def HKY85(mu=1.0, pi=None, kappa=0.1, **kwargs):
 
     W = _create_transversion_transition_W(kappa)
     pi /= pi.sum()
-    gtr = GTR(alphabet=alphabets['nuc_nogap'])
+    gtr = GTR(alphabet='nuc_nogap')
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -185,7 +185,7 @@ def T92(mu=1.0, pi_GC=0.5, kappa=0.1, **kwargs):
     if pi_GC >= 1.0:
         raise ValueError('The relative GC content specified is larger than 1.0!')
     pi = np.array([(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1 - pi_GC) * 0.5])
-    gtr = GTR(alphabet=alphabets['nuc_nogap'])
+    gtr = GTR(alphabet='nuc_nogap')
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
@@ -235,7 +235,7 @@ def TN93(mu=1.0, kappa1=1.0, kappa2=1.0, pi=None, **kwargs):
             'shape of the vector of equilibrium frequencies Pi -- assuming equal frequencies for all states.'
         )
 
-    gtr = GTR(alphabet=alphabets['nuc'])
+    gtr = GTR(alphabet='nuc')
     gtr.assign_rates(mu=mu, pi=pi, W=W)
     return gtr
 
