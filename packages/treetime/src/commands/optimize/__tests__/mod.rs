@@ -4,6 +4,7 @@ pub mod test_convergence;
 mod test_damping;
 mod test_dense_edge_subs;
 mod test_dense_sparse_equivalence;
+mod test_dispatch_zero_boundary;
 mod test_eval_zero_branch_mismatch;
 mod test_gm_optimize;
 mod test_grid_search;
