@@ -13,9 +13,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
-  fn zero_length_partitions(
-    graph: &GraphAncestral,
-  ) -> crate::commands::optimize::partition_ops::PartitionOptimizeVec {
+  fn zero_length_partitions(graph: &GraphAncestral) -> crate::commands::optimize::partition_ops::PartitionOptimizeVec {
     let dense = vec![Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr: jc69(JC69Params::default()).unwrap(),
