@@ -391,6 +391,95 @@ pub(crate) fn grid_search_inner(
   if zero_is_better { 0.0 } else { best_positive }
 }
 
+/// Reconcile a per-edge optimizer result against the boundary $t = 0$.
+///
+/// The pre-dispatch `is_zero_branch_optimal` shortcut catches the boundary
+/// only for models with proven unimodal branch-length likelihood (JC69,
+/// F81, binary; Dinh & Matsen 2017, Corollary 3.1). For all other cases
+/// the inner solver runs, and its result can be wrong when the method
+/// cannot evaluate at $t = 0$: NewtonLog ($u = \ln t$ undefined at zero)
+/// and the Brent variants (bracket lower bound is strictly positive).
+/// Their output can be a tiny positive value when the true ML branch
+/// length is zero. On a non-unimodal model the cheap two-point check
+/// `is_zero_better_than_grid_best` then flags the result as inferior to
+/// zero, but forcing zero unconditionally would itself be wrong: a better
+/// positive mode may exist elsewhere on the admissible interval, and
+/// collapsing the edge would feed `find_zero_optimal_internal_edges()`
+/// with a false zero. Delegate to `grid_search_inner`, which enumerates
+/// 100 log-spaced positive candidates and internally compares its best
+/// against zero, so it returns $0$ when zero is genuinely the global
+/// maximum and the better positive mode otherwise.
+///
+/// `branch_length_for_extent` is the input branch length used to size the
+/// grid (the optimizer's output is unsuitable because it may be clamped
+/// to a tiny floor like $10^{-12}$).
+///
+/// For Newton and NewtonSqrt this is a no-op when the optimizer already
+/// reached zero (or its own grid-search fallback resolved the boundary).
+/// The verification cost is bounded: the grid scan only runs when
+/// `is_zero_better_than_grid_best` (a two-point log-likelihood comparison)
+/// already flags the optimizer's point as inferior to zero.
+///
+/// # Why the gate is `candidate > 0.0` only
+///
+/// `newton_inner` and `newton_sqrt_inner` clamp the Newton step against
+/// `[-1.0, bl]` (resp. `[sqrt_step_lower_bound(s), s]`); when the
+/// unclamped step `d/d2` exceeds `bl`, the new branch length is exactly
+/// $0$. The first iteration on `bl = 0` always returns $0$ because the
+/// upper clamp bound is itself zero. In principle, this could mask a
+/// better positive mode on a non-unimodal surface.
+///
+/// The structural pattern is real but not reachable on the multi-modal
+/// surfaces present in the codebase. For Newton from `bl > 0` to clamp
+/// to zero, the local quadratic at `bl` (with `d2 < 0`) must have its
+/// apex at `t* = bl - d/d2 <= 0`, i.e., the local Taylor expansion is
+/// monotone decreasing on $[0, bl]$ with maximum at the boundary. For a
+/// competing positive mode `t** > bl` to satisfy
+/// $\ell(t^{**}) > \ell(0)$, the function must rise again past `bl`,
+/// which requires `d2` to change sign on $(bl, t^{**})$. Newton has no
+/// way to discover that other basin from a single Taylor expansion at
+/// `bl`; it converges within the local concave region containing `bl`.
+///
+/// The only multi-modal counterexample available in the codebase is
+/// the Dinh and Matsen 2017 K80 $\kappa = 3$ surface (Section 5,
+/// eq 5.1-5.2). On that surface $\ell'(0) > 0$, so $0$ is not even a
+/// local maximum: the function is increasing AT the boundary, with
+/// the first local max at $t \approx 0.2$ and the global max at
+/// equilibrium. Newton from any starting point in the admissible
+/// range steps toward the local max at $\approx 0.2$, never toward
+/// zero. This observation is pinned by
+/// `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80`,
+/// which sweeps 12 starting points and asserts every result is
+/// strictly positive. If a future refactor of `newton_inner` causes
+/// any starting point on this surface to start producing $0.0$, the
+/// test fails and the gate condition here must be re-evaluated.
+///
+/// If a multi-modal surface where $\ell'(0) \leq 0$ AND a competing
+/// positive mode exists is later identified, this helper grows an
+/// exact-zero entry condition (route to `grid_search_inner` when
+/// `candidate == 0.0` on a non-unimodal model with valid sites and no
+/// indels). The signature already accommodates that addition.
+pub(crate) fn reconcile_zero_boundary(
+  candidate: f64,
+  branch_length_for_extent: f64,
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  one_mutation: f64,
+) -> f64 {
+  if candidate > 0.0 && is_zero_better_than_grid_best(contributions, indel_count, indel_rate, candidate) {
+    grid_search_inner(
+      branch_length_for_extent,
+      contributions,
+      indel_count,
+      indel_rate,
+      one_mutation,
+    )
+  } else {
+    candidate
+  }
+}
+
 /// Unified optimization function for mixed partition types.
 ///
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
@@ -529,6 +618,19 @@ where
         )
       },
     };
+
+    // Post-optimization boundary reconciliation. See `reconcile_zero_boundary`
+    // for the full rationale. The input `branch_length` is used to size the
+    // verification grid (the optimizer's output may be clamped to zero or to a
+    // tiny floor like $10^{-12}$ and is unsuitable as an extent).
+    let new_branch_length = reconcile_zero_boundary(
+      new_branch_length,
+      branch_length,
+      &contributions,
+      indel_count,
+      indel_rate,
+      one_mutation,
+    );
 
     edge.set_branch_length(Some(new_branch_length));
     Ok(())

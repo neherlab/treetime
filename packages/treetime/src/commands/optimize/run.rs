@@ -330,9 +330,14 @@ where
 /// Collect internal edge keys whose branch length is exactly zero after optimization,
 /// provided the edge carries no substitutions or indels on any sparse partition.
 ///
-/// These edges were identified as zero-optimal by `is_zero_branch_optimal()` during
-/// `run_optimize_mixed()`. Call this BEFORE `apply_damping()`, which would blend the
-/// zero values with old branch lengths and obscure the optimizer's decision.
+/// `run_optimize_mixed()` sets a branch length to exactly zero through two paths:
+/// the pre-dispatch `is_zero_branch_optimal()` derivative shortcut (for models
+/// with proven unimodal branch-length likelihood) and the post-dispatch
+/// grid-verified boundary check (for all other models, delegating to
+/// `grid_search_inner` when the optimizer's point is worse than zero). This
+/// function collects internal edges that reach exactly zero through either
+/// path. Call this BEFORE `apply_damping()`, which would blend the zero values
+/// with old branch lengths and obscure the optimizer's decision.
 ///
 /// Only internal (non-leaf-targeting) edges are candidates: collapsing a leaf edge
 /// would remove the leaf from the tree.
