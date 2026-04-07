@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 431fb37a7b7eb56e4b14d917447fcf53ad6e7794f51cbb18429e2f18597147f7 # shrinks to parent = [9.393512963589477e-7, 0.43453894209129584, 0.5654591792061116, 9.393512963589477e-7], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1, child = [0.42633537075529726, 5.193722098158574e-7, 0.5043425283793914, 0.06932158149310153], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1, branch_length = 0.001
