@@ -515,12 +515,7 @@ mod tests {
     update_marginal(&graph, &sparse_partitions)?;
     run_optimize_mixed(&graph, &mixed_partitions)?;
 
-    let bl = edge_ref
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();
 
     assert!(
       bl > 0.0,
