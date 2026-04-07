@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use ndarray::{array, concatenate, Array1, Axis};
+  use ndarray::{Array1, Axis, array, concatenate};
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
@@ -39,7 +39,10 @@ mod tests {
     // At positive branch length, site likelihood becomes positive
     // (transition matrix allows state changes)
     let metrics = evaluate(&[contribution], 0.1);
-    assert!(metrics.log_lh.is_finite(), "At t>0, disjoint support should have finite log-lh");
+    assert!(
+      metrics.log_lh.is_finite(),
+      "At t>0, disjoint support should have finite log-lh"
+    );
     assert!(metrics.derivative.is_finite(), "At t>0, derivative should be finite");
   }
 
@@ -60,12 +63,12 @@ mod tests {
 
     // Generate a positive branch length spanning the biologically relevant range.
     pub fn branch_length() -> impl Strategy<Value = f64> {
-      (1e-6..2.0_f64)
+      1e-6..2.0_f64
     }
 
     // Generate a multiplicity in a realistic range.
     pub fn multiplicity() -> impl Strategy<Value = f64> {
-      (1.0..500.0_f64)
+      1.0..500.0_f64
     }
   }
 
