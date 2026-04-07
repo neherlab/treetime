@@ -387,6 +387,14 @@ where
       };
     }
 
+    // When branch length is zero and any site has non-positive likelihood at t=0
+    // (mismatched certain states), evaluating ln(site_lh) or dividing by site_lh
+    // produces -inf/inf. Bump to a small positive value so the evaluator operates
+    // in the well-defined domain.
+    if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
+      branch_length = one_mutation;
+    }
+
     // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
     // so zero branch length is never optimal. Only check the substitution-based criterion
     // when there are no indels.
