@@ -114,7 +114,7 @@ No code behavior change. Verify documents render correctly and cross-references 
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-dispatch](M-optimize-method-dispatch.md) -- all 6 methods exist before documenting them
+- Depends on: nothing
 - Depended on by: nothing (terminal)
 
 ## Cross-references

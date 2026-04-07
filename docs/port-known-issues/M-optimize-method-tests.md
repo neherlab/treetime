@@ -82,7 +82,7 @@ Smoke tests: `./dev/docker/run ./dev/dev br && ./dev/docker/run ./dev/run-smoke-
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-dispatch](M-optimize-method-dispatch.md) -- all 6 methods wired up before tests can call them
+- Depends on: nothing
 - Depended on by: nothing (terminal)
 
 ## Cross-references

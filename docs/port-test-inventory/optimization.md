@@ -23,7 +23,8 @@
 | Indel contribution (property)    | 1      | 3       | 0             | Property |
 | Optimization method              | 1      | 28      | 0             | Unit     |
 | Optimization method step clamp   | 1      | 23      | 0             | Unit     |
-| **Total**                        | **35** | **185** | **5**         |          |
+| Dispatch zero boundary           | 1      | 19      | 0             | Unit     |
+| **Total**                        | **36** | **204** | **5**         |          |
 
 ---
 
@@ -550,6 +551,20 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 | `test_optimize_method_newton_sqrt_improves_over_newton`       | 1     | NewtonSqrt LH >= Newton LH on Hessian-dominated case   |
 | `test_optimize_method_brent_positive_with_indels`             | 3     | Brent produces positive finite BLs with indels         |
 | `test_optimize_method_newton_sqrt_positive_with_indels`       | 3     | NewtonSqrt produces positive finite BLs with indels    |
+
+---
+
+## Dispatch Zero Boundary
+
+**File:** [`test_dispatch_zero_boundary.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs)
+
+| Test                                                                                 | Cases | Purpose                                                                                    |
+| ------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------ |
+| `test_dispatch_zero_boundary_k80_identical_sequences`                                | 6     | All 6 methods return $t = 0$ on K80 edges where $t = 0$ is the optimum (end-to-end)        |
+| `test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode`       | 1     | `reconcile_zero_boundary` selects a positive mode over zero on the Dinh-Matsen K80 surface |
+| `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80` | 12    | Pin: `newton_inner` returns a positive value from each of 12 starting points               |
+
+Exercises the post-dispatch boundary check in `run_optimize_mixed` for non-unimodal models (K80) where the pre-dispatch `is_zero_branch_optimal` shortcut is bypassed. The identical-sequences parameterized case is an end-to-end test that drives `run_optimize_mixed` and asserts the final branch length is exactly $t = 0$, catching any refactor that drops the dispatch call. The reconcile case calls `reconcile_zero_boundary` directly with a positive optimizer output that loses to zero on the Dinh and Matsen 2017 $\kappa = 3$ counterexample, verifying that the helper selects a positive local maximum within the admissible interval instead of incorrectly clamping to zero when a better positive mode exists. The newton_inner pinning cases parameterize over 12 starting points spanning the multi-modal surface and assert `newton_inner` never returns $0.0$, verifying that the structural step-clamping pattern is unreachable on this counterexample. If a future refactor changes that, the affected case fails and forces re-evaluation of the helper's `candidate > 0.0` gate.
 
 ---
 

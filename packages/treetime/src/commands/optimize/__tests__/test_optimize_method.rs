@@ -505,7 +505,6 @@ mod tests {
     Ok(())
   }
 
-
   /// C5: NewtonSqrt achieves equal or better log-likelihood than Newton
   /// in t-space on the Hessian-dominated case.
   #[test]
