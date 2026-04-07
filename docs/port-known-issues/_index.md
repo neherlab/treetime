@@ -108,6 +108,10 @@ exactly.
 | Negligible     | Optimize     | [Dense/sparse equivalence validity tests silently skip None branch lengths](N-optimize-validity-test-silent-none-skip.md)       |
 | Negligible     | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                          |
 | Negligible     | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                |
+| Negligible     | Optimize     | [Multi-modal surface counterexample with $\ell'(0) < 0$ not constructed](N-optimize-multimodal-counterexample-unreproduced.md)  |
+| Negligible     | Optimize     | [Grid search resolution (100 points) is unverified](N-optimize-grid-search-resolution-unverified.md)                            |
+| Negligible     | Optimize     | [Grid search upper bound caps at 0.5 subs/site](N-optimize-grid-search-upper-bound-capped.md)                                   |
+| Negligible     | Optimize     | [`reconcile_zero_boundary` grid extent argument is unverified](N-optimize-reconcile-grid-extent-unverified.md)                  |
 | ~~Negligible~~ | ~~Optimize~~ | ~~Missing end-to-end test coverage for indel Newton path~~ **FIXED**                                                            |
 | Negligible     | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                         |
 | Negligible     | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                      |

@@ -61,6 +61,7 @@ Files NOT parameterized:
 
 - `test_eval_zero_branch_mismatch.rs` (1 call) -- tests prelude guard before dispatch, method-independent
 - `test_optimize_zero_sequence_length.rs` (1 call) -- tests error check, method-independent
+- `test_dispatch_zero_boundary.rs` -- already covers all 6 methods in `test_dispatch_zero_boundary_k80_identical_sequences` and 4 methods that cannot evaluate exactly at zero in `test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges`. Other tests in the file target specific inner solvers (`newton_inner`, `newton_sqrt_inner`) or the `reconcile_zero_boundary` helper directly; those are intentionally method-specific.
 
 ### Golden master switch
 

@@ -23,8 +23,8 @@
 | Indel contribution (property)    | 1      | 3       | 0             | Property |
 | Optimization method              | 1      | 28      | 0             | Unit     |
 | Optimization method step clamp   | 1      | 23      | 0             | Unit     |
-| Dispatch zero boundary           | 1      | 19      | 0             | Unit     |
-| **Total**                        | **36** | **204** | **5**         |          |
+| Dispatch zero boundary           | 1      | 34      | 0             | Unit     |
+| **Total**                        | **36** | **219** | **5**         |          |
 
 ---
 
@@ -558,13 +558,45 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 
 **File:** [`test_dispatch_zero_boundary.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs)
 
-| Test                                                                                 | Cases | Purpose                                                                                    |
-| ------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------ |
-| `test_dispatch_zero_boundary_k80_identical_sequences`                                | 6     | All 6 methods return $t = 0$ on K80 edges where $t = 0$ is the optimum (end-to-end)        |
-| `test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode`       | 1     | `reconcile_zero_boundary` selects a positive mode over zero on the Dinh-Matsen K80 surface |
-| `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80` | 12    | Pin: `newton_inner` returns a positive value from each of 12 starting points               |
+### End-to-end dispatch
 
-Exercises the post-dispatch boundary check in `run_optimize_mixed` for non-unimodal models (K80) where the pre-dispatch `is_zero_branch_optimal` shortcut is bypassed. The identical-sequences parameterized case is an end-to-end test that drives `run_optimize_mixed` and asserts the final branch length is exactly $t = 0$, catching any refactor that drops the dispatch call. The reconcile case calls `reconcile_zero_boundary` directly with a positive optimizer output that loses to zero on the Dinh and Matsen 2017 $\kappa = 3$ counterexample, verifying that the helper selects a positive local maximum within the admissible interval instead of incorrectly clamping to zero when a better positive mode exists. The newton_inner pinning cases parameterize over 12 starting points spanning the multi-modal surface and assert `newton_inner` never returns $0.0$, verifying that the structural step-clamping pattern is unreachable on this counterexample. If a future refactor changes that, the affected case fails and forces re-evaluation of the helper's `candidate > 0.0` gate.
+| Test                                                                  | Cases | Purpose                                                                               |
+| --------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_k80_identical_sequences`                 | 6     | All 6 methods return $t = 0$ on K80 identical sequences (end-to-end)                  |
+| `test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero`      | 4     | BrentSqrt reaches $t = 0$ on every non-unimodal nucleotide model (K80/HKY85/T92/TN93) |
+| `test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero` | 1     | `is_zero_branch_optimal` fires for JC69 identical sequences (pre-dispatch path)       |
+
+### Reconcile helper contract
+
+| Test                                                                           | Cases | Purpose                                                                                     |
+| ------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode` | 1     | Positive candidate worse than zero on multi-modal surface -> grid returns the positive mode |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_finds_positive_mode`         | 1     | Exact-zero candidate on multi-modal surface -> grid returns the positive mode               |
+| `test_dispatch_zero_boundary_reconcile_degenerate_site_passes_through`         | 1     | Degenerate site short-circuits via `all_sites_valid_at_zero` gate                           |
+| `test_dispatch_zero_boundary_reconcile_indel_count_positive_passes_through`    | 1     | `indel_count > 0` short-circuits via Poisson $-\infty$ at zero                              |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_unimodal_passes_through`     | 1     | Unimodal model skips grid verification on exact-zero candidate                              |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_indels_passes_through`       | 1     | Exact-zero candidate with indels skips grid verification                                    |
+
+### Downstream topology cleanup
+
+| Test                                                                       | Cases | Purpose                                                                                |
+| -------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges` | 4     | `find_zero_optimal_internal_edges` collects both internal edges after K80 optimization |
+
+### Inner-solver reproductions
+
+| Test                                                                                 | Cases | Purpose                                                                                         |
+| ------------------------------------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80` | 12    | Pin: `newton_inner` returns a positive value from 12 starting points on the Dinh-Matsen surface |
+| `test_dispatch_zero_boundary_newton_sqrt_inner_clamps_to_zero_on_dinh_matsen_k80`    | 1     | Reproduction: `newton_sqrt_inner` from $t_0 = 0.6$ returns exactly $0$ on the same surface      |
+
+The end-to-end group drives `run_optimize_mixed` with identical leaf sequences and asserts every edge reaches $t = 0$. For non-unimodal models (K80/HKY85/T92/TN93) this exercises the post-dispatch reconciliation path; for JC69 it exercises the pre-dispatch derivative-sign shortcut. Both code paths converge on the same answer.
+
+The reconcile helper contract tests verify each entry condition of `reconcile_zero_boundary`: positive-candidate-worse-than-zero and exact-zero both route to `grid_search_inner` when the model is non-unimodal, all sites are valid at zero, and no indels are present; all other combinations pass the candidate through unchanged.
+
+The topology cleanup test closes the loop between the post-dispatch reconciliation and `find_zero_optimal_internal_edges`: the four methods that cannot evaluate exactly at zero (Brent, BrentSqrt, BrentLog, NewtonLog) must all produce zero-length internal edges that the cleanup collects.
+
+The two inner-solver reproductions together justify the helper's exact-zero gate. On the Dinh and Matsen 2017 K80 $\kappa = 3$ counterexample (Section 5, eq 5.1-5.2), $t$-space Newton is safe (never clamps to zero across 12 starting points) but sqrt-space Newton clamps at $t_0 = 0.6$ because the chain rule flips the sign of the local Hessian. Without the exact-zero gate, the sqrt-space clamping would feed `find_zero_optimal_internal_edges()` a false zero.
 
 ---
 
