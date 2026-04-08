@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -101,6 +102,31 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency() -> Result<(), Report> {
+    let aln = ambiguous_r_in_g_clade_alignment()?;
+
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+
+    let partitions_dense = setup_dense(&graph_dense, &aln)?;
+    let partitions_sparse = setup_sparse(&graph_sparse, &aln)?;
+
+    let dense_metrics = optimization_metrics_by_child_name(&graph_dense, &*partitions_dense[0].read_arc(), 0.1)?;
+    let sparse_metrics = optimization_metrics_by_child_name(&graph_sparse, &*partitions_sparse[0].read_arc(), 0.1)?;
+
+    assert_eq!(
+      dense_metrics.keys().cloned().collect::<Vec<_>>(),
+      sparse_metrics.keys().cloned().collect::<Vec<_>>()
+    );
+    for (edge_name, (dense_log_lh, dense_derivative, _dense_second_derivative)) in dense_metrics {
+      let (sparse_log_lh, sparse_derivative, _sparse_second_derivative) = sparse_metrics[&edge_name];
+      assert_abs_diff_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-12);
+      assert_abs_diff_eq!(dense_derivative, sparse_derivative, epsilon = 1e-12);
+    }
+    Ok(())
+  }
+
   fn divergent_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -194,6 +220,36 @@ mod tests {
           .to_owned();
         let branch_length = edge_ref.payload().read_arc().branch_length().unwrap_or(0.0);
         Ok((child_name, branch_length))
+      })
+      .collect()
+  }
+
+  fn optimization_metrics_by_child_name<P: PartitionOptimizeOps>(
+    graph: &GraphAncestral,
+    partition: &P,
+    branch_length: f64,
+  ) -> Result<BTreeMap<String, (f64, f64, f64)>, Report> {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge_ref| {
+        let edge_ref = edge_ref.read_arc();
+        let child_key = edge_ref.target();
+        let child_name = graph
+          .get_node(child_key)
+          .ok_or_eyre("Child node must exist")?
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .unwrap()
+          .as_ref()
+          .to_owned();
+        let metrics = partition.create_edge_contribution(edge_ref.key())?.evaluate(branch_length);
+        Ok((
+          child_name,
+          (metrics.log_lh, metrics.derivative, metrics.second_derivative),
+        ))
       })
       .collect()
   }

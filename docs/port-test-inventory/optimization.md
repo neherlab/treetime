@@ -15,12 +15,13 @@
 | Optimization metrics             | 1      | 7       | 0             | Unit     |
 | Zero branch optimal              | 1      | 13      | 0             | Unit     |
 | Initial guess GTR messages       | 1      | 2       | 0             | Unit     |
+| Initial guess formula            | 1      | 4       | 0             | Unit     |
 | Initial guess soft Hamming       | 1      | 10      | 0             | Unit     |
 | Topology cleanup in loop         | 1      | 15      | 0             | Unit     |
 | Indel contribution (inline)      | 1      | 8       | 0             | Unit     |
 | Indel contribution (integration) | 1      | 11      | 0             | Unit     |
 | Indel contribution (property)    | 1      | 3       | 0             | Property |
-| **Total**                        | **32** | **130** | **5**         |          |
+| **Total**                        | **33** | **134** | **5**         |          |
 
 ---
 
@@ -459,6 +460,21 @@ Regression tests verifying that `initial_guess_mixed()` reads edge messages comp
 | ------------------------------------------------ | ------------------------------------------------------------- |
 | `test_stale_jc69_messages_bias_initial_guess`    | Stale JC69 messages produce different branch lengths than F81 |
 | `test_initial_guess_idempotent_after_gtr_update` | Identical initialization sequences produce identical results  |
+
+---
+
+## Initial Guess Formula
+
+**File:** [`test_initial_guess_formula.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs)
+
+Tests that `initial_guess_mixed()` still follows the edge substitution formula after marginal reconstruction, and that dense and sparse stay aligned on ambiguity-sensitive sparse reference-state paths.
+
+| Test                                                                          | Purpose                                                           |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `test_initial_guess_formula_sparse`                                           | Sparse branch length equals substitution count over effective length |
+| `test_initial_guess_formula_dense`                                            | Dense branch length equals substitution count over effective length |
+| `test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency`     | Dense and sparse initial branch lengths match on partial ambiguity |
+| `test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency` | Dense and sparse optimize contributions agree in value and gradient on partial ambiguity |
 
 ---
 
