@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Extract the topmost versioned section from changelog.md and print to stdout.
+
+The changelog uses level-1 headings: '# X.Y.Z' or '# X.Y.Z: title'.
+The '# Unreleased' heading is skipped. The first versioned heading found
+and all lines up to (but not including) the next heading are extracted.
+"""
+import sys
+
+
+def extract(path: str) -> str:
+    lines: list[str] = []
+    inside = False
+    with open(path) as f:
+        for line in f:
+            if line.startswith("# ") and not line.startswith("# Unreleased"):
+                if inside:
+                    break
+                inside = True
+                lines.append(line)
+            elif inside:
+                lines.append(line)
+    return "".join(lines).strip()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <changelog.md>", file=sys.stderr)
+        sys.exit(1)
+    notes = extract(sys.argv[1])
+    if not notes:
+        print("No versioned release section found in changelog", file=sys.stderr)
+        sys.exit(1)
+    print(notes)

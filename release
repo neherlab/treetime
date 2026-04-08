@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#
+# Usage: release <version>
+#
+# Prepare a release: bump version in code and changelog, commit, tag, and
+# push. CI then runs checks, creates the GitHub Release, and publishes to PyPI.
+#
+# The changelog must have a '# Unreleased' or '# Unreleased: <title>' line
+# before running. That line is renamed to '# <version>' or '# <version>: <title>'.
+#
+# Arguments:
+#   <version>   Version to release in MAJOR.MINOR.PATCH format
+#
+# Options:
+#   -h, --help  Show this help
+#
+set -euo pipefail
+trap "exit" INT
+
+THIS_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+ask_yes_no() {
+  local prompt="$1"
+  local choice=
+  while [[ "${choice}" != "y" ]]; do
+    read -r -p "${prompt} [y/n] " choice
+    case "${choice}" in
+      y|Y) return 0 ;;
+      n|N) printf "Aborted.\n"; exit 0 ;;
+      *)   printf "Type 'y' or 'n'.\n" ;;
+    esac
+  done
+}
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  [[ "${1:-}" =~ ^(-h|--help)$ ]] && { show_help; exit 0; }
+
+  if [[ $# -ne 1 ]]; then
+    show_help >&2
+    exit 1
+  fi
+
+  local version="$1"
+  local tag="v${version}"
+
+  printf "Pre-check: version format... "
+  if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf "\nInvalid version '%s': expected MAJOR.MINOR.PATCH\n" "${version}" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Pre-check: required tools (git, python3)... "
+  for tool in git python3; do
+    if ! command -v "${tool}" &>/dev/null; then
+      printf "\nRequired tool not found: %s\n" "${tool}" >&2
+      exit 1
+    fi
+  done
+  printf "✅\n"
+
+  printf "Pre-check: working tree is clean... "
+  if ! git -C "${THIS_DIR}" diff --quiet \
+    || ! git -C "${THIS_DIR}" diff --cached --quiet; then
+    printf "\nWorking tree has uncommitted changes. Commit or stash before releasing.\n" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Pre-check: on master branch... "
+  local branch
+  branch=$(git -C "${THIS_DIR}" rev-parse --abbrev-ref HEAD)
+  if [[ "${branch}" != "master" ]]; then
+    printf "\nNot on master branch (current: %s)\n" "${branch}" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Pre-check: up to date with origin/master... "
+  git -C "${THIS_DIR}" fetch origin --quiet
+  local local_sha remote_sha
+  local_sha=$(git -C "${THIS_DIR}" rev-parse HEAD)
+  remote_sha=$(git -C "${THIS_DIR}" rev-parse origin/master)
+  if [[ "${local_sha}" != "${remote_sha}" ]]; then
+    printf "\nLocal master is not up to date with origin/master. Push or pull first.\n" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Pre-check: tag %s does not exist on origin... " "${tag}"
+  if git -C "${THIS_DIR}" ls-remote --tags origin | grep -q "refs/tags/${tag}$"; then
+    printf "\nTag %s already exists on origin\n" "${tag}" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Pre-check: changelog has '# Unreleased' section... "
+  if ! grep -qE "^# Unreleased" "${THIS_DIR}/changelog.md"; then
+    printf "\nchangelog.md does not have a '# Unreleased' section.\n" >&2
+    printf "Add '# Unreleased: <title>' above the previous release and retry.\n" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Setting version in treetime/__init__.py to %s... " "${version}"
+  sed -i "s/^version = '.*'/version = '${version}'/" "${THIS_DIR}/treetime/__init__.py"
+  if ! grep -q "^version = '${version}'" "${THIS_DIR}/treetime/__init__.py"; then
+    printf "\nFailed to set version in treetime/__init__.py\n" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "Updating changelog.md: '# Unreleased' -> '# %s'... " "${version}"
+  # Preserves any trailing ': <title>' on the Unreleased line.
+  sed -i "s/^# Unreleased/# ${version}/" "${THIS_DIR}/changelog.md"
+  if ! grep -qE "^# ${version}" "${THIS_DIR}/changelog.md"; then
+    printf "\nFailed to update changelog.md\n" >&2
+    exit 1
+  fi
+  printf "✅\n"
+
+  printf "\nChanges staged for release commit:\n\n"
+  git -C "${THIS_DIR}" --no-pager diff --unified=3 -- treetime/__init__.py changelog.md
+  printf "\n"
+
+  printf "Committing... "
+  git -C "${THIS_DIR}" add treetime/__init__.py changelog.md
+  git -C "${THIS_DIR}" commit -m "chore: release ${version}" --quiet
+  printf "✅\n"
+
+  printf "Creating tag %s... " "${tag}"
+  git -C "${THIS_DIR}" tag "${tag}"
+  printf "✅\n"
+
+  printf "\nRelease %s is ready locally.\n" "${version}"
+  ask_yes_no "Push commit and tag to origin?"
+
+  git -C "${THIS_DIR}" push origin master --quiet
+  git -C "${THIS_DIR}" push origin "${tag}" --quiet
+  printf "Tag %s pushed. CI will run checks, create the GitHub Release, and publish to PyPI.\n" "${tag}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
