@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
+    TREE_NEWICK, setup_partitions, simple_alignment,
+  };
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{
     OptimizationContribution, OptimizationMetrics, chain_rule_sqrt, evaluate_mixed, evaluate_mixed_log_lh_only,
     newton_tolerance, run_optimize_mixed,
-  };
-  use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -336,7 +336,12 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Brent)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = graph.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
     let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
 
     // Bracket endpoints: same computation as brent_inner
@@ -368,13 +373,23 @@ mod tests {
     let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
-    let bl_newton = graph_newton.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_newton = graph_newton.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
     let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, 4)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
-    let bl_sqrt = graph_sqrt.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_sqrt = graph_sqrt.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
     assert!(bl_newton > 0.0 && bl_newton.is_finite());

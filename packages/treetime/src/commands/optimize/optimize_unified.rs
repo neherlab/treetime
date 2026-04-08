@@ -44,9 +44,6 @@ const NEWTON_ABS_TOL: f64 = 1e-8;
 /// Maximum iterations for Newton inner loop.
 const NEWTON_MAX_ITER: usize = 10;
 
-/// Convergence tolerance for Brent's method.
-const BRENT_TOL: f64 = 1e-10;
-
 /// Maximum iterations for Brent's method.
 const BRENT_MAX_ITER: u64 = 50;
 
@@ -370,8 +367,7 @@ fn newton_inner(
 ) -> f64 {
   if metrics.second_derivative < 0.0 {
     let mut bl = branch_length;
-    let mut new_bl =
-      (bl - clamp(metrics.derivative / metrics.second_derivative, -1.0, bl)).max(min_branch_length);
+    let mut new_bl = (bl - clamp(metrics.derivative / metrics.second_derivative, -1.0, bl)).max(min_branch_length);
 
     for _ in 0..NEWTON_MAX_ITER {
       if (new_bl - bl).abs() <= newton_tolerance(bl) {
@@ -615,15 +611,36 @@ where
     let new_branch_length = match method {
       BranchOptMethod::Newton => {
         let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_inner(branch_length, &metrics, &contributions, indel_count, indel_rate, min_branch_length, one_mutation)
+        newton_inner(
+          branch_length,
+          &metrics,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        )
       },
       BranchOptMethod::NewtonSqrt => {
         let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_sqrt_inner(branch_length, &metrics, &contributions, indel_count, indel_rate, min_branch_length, one_mutation)
+        newton_sqrt_inner(
+          branch_length,
+          &metrics,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        )
       },
-      BranchOptMethod::Brent => {
-        brent_inner(branch_length, &contributions, indel_count, indel_rate, min_branch_length, one_mutation)
-      },
+      BranchOptMethod::Brent => brent_inner(
+        branch_length,
+        &contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      ),
     };
 
     edge.set_branch_length(Some(new_branch_length));
