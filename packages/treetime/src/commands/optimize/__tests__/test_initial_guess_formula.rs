@@ -10,12 +10,15 @@ mod tests {
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
-  use eyre::Report;
+  use eyre::{OptionExt, Report};
   use indoc::indoc;
   use maplit::btreemap;
   use parking_lot::RwLock;
+  use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
 
@@ -78,6 +81,26 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
+    let aln = ambiguous_r_in_g_clade_alignment()?;
+
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+
+    let partitions_dense = setup_dense(&graph_dense, &aln)?;
+    let partitions_sparse = setup_sparse(&graph_sparse, &aln)?;
+
+    initial_guess_mixed(&graph_dense, &partitions_dense, true)?;
+    initial_guess_mixed(&graph_sparse, &partitions_sparse, true)?;
+
+    let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense)?;
+    let sparse_branch_lengths = branch_lengths_by_child_name(&graph_sparse)?;
+
+    assert_eq!(dense_branch_lengths, sparse_branch_lengths);
+    Ok(())
+  }
+
   fn divergent_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
     read_many_fasta_str(
@@ -90,6 +113,23 @@ mod tests {
         GGGGTTTTAAAACCCC
         >D
         TTTTAAAACCCCGGGG
+      "#},
+      &alphabet,
+    )
+  }
+
+  fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<FastaRecord>, Report> {
+    let alphabet = Alphabet::default();
+    read_many_fasta_str(
+      indoc! {r#"
+        >A
+        RCGTACGT
+        >B
+        GCGTACGT
+        >C
+        GCGTACGT
+        >D
+        GCGTACGT
       "#},
       &alphabet,
     )
@@ -133,5 +173,28 @@ mod tests {
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)
+  }
+
+  fn branch_lengths_by_child_name(graph: &GraphAncestral) -> Result<BTreeMap<String, f64>, Report> {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge_ref| {
+        let edge_ref = edge_ref.read_arc();
+        let child_key = edge_ref.target();
+        let child_name = graph
+          .get_node(child_key)
+          .ok_or_eyre("Child node must exist")?
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .unwrap()
+          .as_ref()
+          .to_owned();
+        let branch_length = edge_ref.payload().read_arc().branch_length().unwrap_or(0.0);
+        Ok((child_name, branch_length))
+      })
+      .collect()
   }
 }

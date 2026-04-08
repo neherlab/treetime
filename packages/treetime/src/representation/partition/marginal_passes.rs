@@ -8,10 +8,26 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_primitives::AsciiChar;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
+
+fn node_reference_state(partition: &PartitionMarginalSparse, node_key: GraphNodeKey, pos: usize) -> Option<AsciiChar> {
+  partition
+    .nodes
+    .get(&node_key)
+    .and_then(|node_data| node_data.seq.sequence.get(pos).copied())
+}
+
+fn node_reference_state_or(
+  partition: &PartitionMarginalSparse,
+  node_key: GraphNodeKey,
+  pos: usize,
+  fallback: AsciiChar,
+) -> AsciiChar {
+  node_reference_state(partition, node_key, pos).unwrap_or(fallback)
+}
 
 pub fn process_node_backward<N, E>(
   partition: &mut PartitionMarginalSparse,
@@ -40,7 +56,7 @@ where
       .iter()
       .map(|(pos, p)| {
         let dis = alphabet.construct_profile(p.chars()).unwrap();
-        let state = p.get_one();
+        let state = node_reference_state_or(partition, node.key, *pos, p.get_one());
         (*pos, VarPos { dis, state })
       })
       .collect();
@@ -65,7 +81,8 @@ where
         child_states[ci].insert(m.pos(), m.qry());
       }
       for (pos, p) in &edge_data.msg_from_child.variable {
-        variable_pos.entry(*pos).or_insert(p.state);
+        let state = node_reference_state_or(partition, node.key, *pos, p.state);
+        variable_pos.entry(*pos).or_insert(state);
       }
       child_messages.push(edge_data.msg_from_child.clone());
     }
@@ -75,12 +92,18 @@ where
       let states = &mut child_states[ci];
       let child_data = &partition.nodes[child_key];
       for pos in variable_pos.keys() {
-        if !states.contains_key(pos) && range_contains(&child_data.seq.non_char, *pos) {
-          if range_contains(&child_data.seq.gaps, *pos) {
-            states.insert(*pos, alphabet.gap());
+        if states.contains_key(pos) {
+          continue;
+        }
+        if let Some(state) = node_reference_state(partition, *child_key, *pos) {
+          states.insert(*pos, state);
+        } else if range_contains(&child_data.seq.non_char, *pos) {
+          let state = if range_contains(&child_data.seq.gaps, *pos) {
+            alphabet.gap()
           } else {
-            states.insert(*pos, alphabet.unknown());
-          }
+            alphabet.unknown()
+          };
+          states.insert(*pos, state);
         }
       }
     }
@@ -140,7 +163,7 @@ where
     let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
     let mut msgs_to_combine: Vec<MarginalSparseSeqDistribution> = vec![];
     let mut removed_edges = vec![];
-    for (_, edge_key) in &node.parent_keys {
+    for (parent_key, edge_key) in &node.parent_keys {
       let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
       let mut child_state: BTreeMap<usize, AsciiChar> = btreemap! {};
       let edge_data = partition.edges.remove(edge_key).unwrap();
@@ -149,18 +172,22 @@ where
       let node_data = &partition.nodes[&node.key];
       for (pos, p) in &edge_data.msg_to_child.variable {
         if !range_contains(&node_data.seq.gaps, *pos) {
-          variable_pos.entry(*pos).or_insert(p.state);
-          parent_state.insert(*pos, p.state);
+          let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
+          let parent_ref_state = node_reference_state_or(partition, *parent_key, *pos, p.state);
+          variable_pos.entry(*pos).or_insert(current_state);
+          parent_state.insert(*pos, parent_ref_state);
         }
       }
       for m in &edge_data.subs {
-        variable_pos.insert(m.pos(), m.qry());
+        let current_state = node_reference_state_or(partition, node.key, m.pos(), m.qry());
+        variable_pos.insert(m.pos(), current_state);
         parent_state.entry(m.pos()).or_insert_with(|| m.reff());
-        child_state.entry(m.pos()).or_insert_with(|| m.qry());
+        child_state.entry(m.pos()).or_insert(current_state);
       }
       for (pos, p) in &edge_data.msg_to_parent.variable {
-        variable_pos.entry(*pos).or_insert(p.state);
-        child_state.entry(*pos).or_insert(p.state);
+        let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
+        variable_pos.entry(*pos).or_insert(current_state);
+        child_state.entry(*pos).or_insert(current_state);
       }
 
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
@@ -219,17 +246,23 @@ where
     let child_dis = child_edge_data.msg_from_child.clone();
     let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
     let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
+    let child_key = graph.get_target_node_key(*child_edge_key)?;
     for (pos, p) in &seq_info.profile.variable {
-      child_states.insert(*pos, p.state);
-      parent_states.insert(*pos, p.state);
+      let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
+      child_states.insert(*pos, current_state);
+      parent_states.insert(*pos, current_state);
     }
     for (pos, p) in &child_dis.variable {
-      child_states.insert(*pos, p.state);
-      parent_states.entry(*pos).or_insert(p.state);
+      let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
+      let child_state = node_reference_state_or(partition, child_key, *pos, p.state);
+      child_states.insert(*pos, child_state);
+      parent_states.entry(*pos).or_insert(current_state);
     }
     for sub in &child_edge_data.subs {
-      child_states.insert(sub.pos(), sub.qry());
-      parent_states.insert(sub.pos(), sub.reff());
+      let current_state = node_reference_state_or(partition, node.key, sub.pos(), sub.reff());
+      let child_state = node_reference_state_or(partition, child_key, sub.pos(), sub.qry());
+      child_states.insert(sub.pos(), child_state);
+      parent_states.insert(sub.pos(), current_state);
     }
 
     let mut delta_ll = 0.0;

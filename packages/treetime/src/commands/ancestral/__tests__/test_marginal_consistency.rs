@@ -2,12 +2,14 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
   use eyre::Report;
@@ -15,7 +17,9 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::make_report;
@@ -41,6 +45,28 @@ mod tests {
       ACGTACGTACGTACGG
       >D
       ACGTACGTACGTACGC
+    "#},
+      &*NUC_ALPHABET,
+    )
+  }
+
+  /// 4-taxon alignment shaped like the sparse ambiguity bug.
+  ///
+  /// At position 1, leaf A is `R = {A,G}` while all other leaves are canonical `G`.
+  /// Fitch forward can resolve the A leaf canonically to `G` from its parent context,
+  /// but sparse marginal leaf encoding must not rebuild a false canonical `A` from
+  /// the ambiguous state set.
+  fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<FastaRecord>, Report> {
+    read_many_fasta_str(
+      indoc! {r#"
+      >A
+      RCGTACGT
+      >B
+      GCGTACGT
+      >C
+      GCGTACGT
+      >D
+      GCGTACGT
     "#},
       &*NUC_ALPHABET,
     )
@@ -285,6 +311,91 @@ mod tests {
     }
 
     Ok(())
+  }
+
+  #[test]
+  fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
+    let aln = ambiguous_r_in_g_clade_alignment()?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+
+    let gtr_dense = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let gtr_sparse = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+
+    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
+    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
+
+    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
+
+    let dense_sequences = reconstruct_named_sequences(&graph, std::slice::from_ref(&dense_partition))?;
+    let sparse_sequences = reconstruct_named_sequences(&graph, std::slice::from_ref(&sparse_partition))?;
+    assert_eq!(dense_sequences, sparse_sequences);
+
+    let dense_branch_subs = edge_subs_by_edge_name(&graph, &*dense_partition.read_arc())?;
+    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &*sparse_partition.read_arc())?;
+    assert_eq!(dense_branch_subs, sparse_branch_subs);
+
+    Ok(())
+  }
+
+  fn reconstruct_named_sequences<P>(
+    graph: &GraphAncestral,
+    partitions: &[Arc<RwLock<P>>],
+  ) -> Result<BTreeMap<String, String>, Report>
+  where
+    P: crate::representation::partition::traits::PartitionMarginalOps<
+        crate::representation::payload::ancestral::NodeAncestral,
+        crate::representation::payload::ancestral::EdgeAncestral,
+      > + crate::representation::partition::traits::HasLogLh,
+  {
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_marginal(graph, false, partitions, |node, seq| {
+      actual.insert(node.name.clone().expect("all test nodes are named"), seq.to_string());
+      Ok(())
+    })?;
+    Ok(actual)
+  }
+
+  fn edge_subs_by_edge_name<P>(
+    graph: &GraphAncestral,
+    partition: &P,
+  ) -> Result<BTreeMap<String, Vec<Sub>>, Report>
+  where
+    P: PartitionBranchOps,
+  {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge_ref| {
+        let edge = edge_ref.read_arc();
+        let parent_name = graph
+          .get_node(edge.source())
+          .expect("parent node exists")
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .map(|name| name.as_ref().to_owned())
+          .expect("named parent");
+        let child_name = graph
+          .get_node(edge.target())
+          .expect("child node exists")
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .map(|name| name.as_ref().to_owned())
+          .expect("named child");
+        let edge_name = format!("{parent_name}->{child_name}");
+        let subs = partition.edge_subs(graph, edge.key())?;
+        Ok((edge_name, subs))
+      })
+      .collect()
   }
 
   /// Verify marginal posterior normalization under a highly skewed GTR model.

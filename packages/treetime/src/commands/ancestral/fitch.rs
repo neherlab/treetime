@@ -507,9 +507,9 @@ where
       }
     }
 
-    if !node.is_root {
-      seq.sequence = seq![];
-    }
+    // Keep the exact reconstructed sequence on every node. Sparse marginal
+    // passes need an authoritative reference state for fixed-site lookups at
+    // ambiguous-variable positions.
   }
 
   GraphTraversalContinuation::Continue

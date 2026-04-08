@@ -122,6 +122,19 @@ mod tests {
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
+  fn get_internal_sequences(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, String> {
+    graph
+      .get_internal_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        let node_name = node.payload().read_arc().name.clone().unwrap();
+        let sequence = partition.nodes[&node.key()].seq.sequence.as_str().to_owned();
+        (node_name, sequence)
+      })
+      .collect()
+  }
+
   /// Collect insertion/deletion (indel) mutations on every edge, keyed by "parent->child" label.
   ///
   /// Each indel is formatted as a range with parent and child states (e.g. "12--13: T -> -"
@@ -294,6 +307,49 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_compress_sequences_retains_internal_exact_sequences() -> Result<(), Report> {
+    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
+
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        RCGTACGT
+        >B
+        GCGTACGT
+        >C
+        GCGTACGT
+        >D
+        GCGTACGT
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let alphabet = Alphabet::default();
+
+    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+      index: 0,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &partitions, &aln)?;
+
+    let partition = partitions[0].read_arc();
+    let actual = get_internal_sequences(&graph, &partition);
+    let expected = btreemap! {
+      o!("AB") => o!("GCGTACGT"),
+      o!("CD") => o!("GCGTACGT"),
+      o!("root") => o!("GCGTACGT"),
+    };
+
+    assert_eq!(expected, actual);
     Ok(())
   }
 
