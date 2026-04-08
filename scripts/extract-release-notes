@@ -17,7 +17,7 @@ def extract(path: str) -> str:
                 if inside:
                     break
                 inside = True
-                lines.append(line)
+                # skip the heading — GitHub Release title already carries the version
             elif inside:
                 lines.append(line)
     return "".join(lines).strip()
