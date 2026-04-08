@@ -25,3 +25,7 @@ Candidates for root cause (from test file comments):
 
 The bimodal distribution (clean separation between populations 1 and 2)
 suggests a discrete trigger rather than continuous numerical drift.
+
+## Excluded cause
+
+Partial-IUPAC sparse reference-state fallback is covered separately by [`test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs#L317) and the `flu/h3n2/500` site-451 regression. The remaining issue in this file is not the fixed ambiguous-`R` exact-state bug.

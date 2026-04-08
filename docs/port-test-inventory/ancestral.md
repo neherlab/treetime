@@ -6,7 +6,7 @@
 
 | Category                 | Files  | Tests   | Type            |
 | ------------------------ | ------ | ------- | --------------- |
-| Fitch parsimony          | 1      | 6       | Unit            |
+| Fitch parsimony          | 1      | 7       | Unit            |
 | Marginal ML dense        | 1      | 5       | Unit            |
 | Marginal ML sparse       | 1      | 6       | Unit            |
 | Dense/sparse equivalence | 2      | 2       | Unit + Property |
@@ -14,14 +14,14 @@
 | Normalization            | 2      | 6       | Unit + Property |
 | Root invariance          | 1      | 4       | Property + Unit |
 | Python parity            | 1      | 8       | Unit            |
-| Consistency              | 1      | 4       | Unit            |
+| Consistency              | 1      | 5       | Unit            |
 | Branch length            | 2      | 12      | Unit            |
 | Topology                 | 3      | 13      | Unit            |
 | Stability                | 3      | 16      | Unit            |
 | Analytical               | 3      | 10      | Golden-master   |
 | Sparse composition       | 1      | 12      | Unit            |
 | Generator validation     | 4      | 15      | Property        |
-| **Total**                | **28** | **123** | Mixed           |
+| **Total**                | **28** | **125** | Mixed           |
 
 Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_marginal_analytical_support.rs`, `test_marginal_stability_support.rs`
 
@@ -35,6 +35,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | ------------------------------------------------- | -------------------------------------------------- |
 | `test_ancestral_reconstruction_fitch`             | MAP sequences at internal nodes                    |
 | `test_ancestral_reconstruction_fitch_with_leaves` | Same with leaf sequences included                  |
+| `test_compress_sequences_retains_internal_exact_sequences` | Internal exact sequences remain available after compression |
 | `test_fitch_internals`                            | Substitution and indel mutations on edges          |
 | `test_fitch_complex_gaps`                         | Overlapping deletions and variable insertions      |
 | `test_fitch_polytomy`                             | Multifurcation with 3 children                     |
@@ -164,6 +165,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_marginal_dense_sparse_log_lh_consistency_gap_free`                 | Dense and sparse log-likelihoods match (gap-free, JC69)   |
 | `test_marginal_sparse_varpos_matches_dense_profile_gap_free`             | Sparse variable-position distributions match dense rows   |
 | `test_marginal_dense_sparse_ambiguous_character_expectations_documented` | Log-likelihood agreement with ambiguity codes             |
+| `test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`     | Dense and sparse reconstruct the same exact state for partial ambiguity |
 | `test_marginal_posteriors_sum_to_one_skewed_gtr`                         | Normalization under extreme GTR (pi=[0.9,0.06,0.02,0.02]) |
 
 ---
