@@ -3,8 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
+  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -245,7 +245,9 @@ mod tests {
           .unwrap()
           .as_ref()
           .to_owned();
-        let metrics = partition.create_edge_contribution(edge_ref.key())?.evaluate(branch_length);
+        let metrics = partition
+          .create_edge_contribution(edge_ref.key())?
+          .evaluate(branch_length);
         Ok((
           child_name,
           (metrics.log_lh, metrics.derivative, metrics.second_derivative),
