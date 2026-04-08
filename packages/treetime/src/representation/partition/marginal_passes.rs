@@ -26,7 +26,9 @@ fn node_reference_state_or(
   pos: usize,
   fallback: AsciiChar,
 ) -> AsciiChar {
-  node_reference_state(partition, node_key, pos).unwrap_or(fallback)
+  node_reference_state(partition, node_key, pos)
+    .filter(|state| partition.alphabet.is_canonical(*state))
+    .unwrap_or(fallback)
 }
 
 pub fn process_node_backward<N, E>(

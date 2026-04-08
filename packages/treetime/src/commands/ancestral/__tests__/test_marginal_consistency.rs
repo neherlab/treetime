@@ -361,10 +361,7 @@ mod tests {
     Ok(actual)
   }
 
-  fn edge_subs_by_edge_name<P>(
-    graph: &GraphAncestral,
-    partition: &P,
-  ) -> Result<BTreeMap<String, Vec<Sub>>, Report>
+  fn edge_subs_by_edge_name<P>(graph: &GraphAncestral, partition: &P) -> Result<BTreeMap<String, Vec<Sub>>, Report>
   where
     P: PartitionBranchOps,
   {
