@@ -1,4 +1,4 @@
-# Unreleased
+# 0.11.5
 
 - fix `fill_overhangs` filling terminal gaps with `N` (asparagine) instead of `X` (ambiguous) for amino acid sequences by @jbloom [issue #522](https://github.com/neherlab/treetime/issues/522) [PR #523](https://github.com/neherlab/treetime/pull/523)
 - fix crash when combining `branch_length_mode='marginal'` with `stochastic_resolve=True`. Reported by @jameshadfield [issue #516](https://github.com/neherlab/treetime/issues/516), fixed by @ivan-aksamentov [PR #517](https://github.com/neherlab/treetime/pull/517)
