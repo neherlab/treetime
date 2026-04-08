@@ -3,7 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
+    use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::commands::optimize::run::{
     apply_damping, collapse_edge_for_optimize, collect_optimize_partitions, find_zero_optimal_internal_edges,
     prune_and_merge_in_loop, save_branch_lengths,
@@ -394,7 +395,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);
 
@@ -469,7 +470,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);
@@ -627,7 +628,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);

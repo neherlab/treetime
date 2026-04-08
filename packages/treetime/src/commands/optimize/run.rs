@@ -48,6 +48,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     dp,
     damping,
     branch_length_initial_guess,
+    opt_method,
   } = args;
 
   if !(0.0..1.0).contains(damping) {
@@ -165,7 +166,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     }
 
     let old_branch_lengths = save_branch_lengths(&graph);
-    run_optimize_mixed(&graph, &mixed_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions, *opt_method)?;
 
     // Identify zero-optimal internal edges BEFORE damping blends them with old values
     let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);

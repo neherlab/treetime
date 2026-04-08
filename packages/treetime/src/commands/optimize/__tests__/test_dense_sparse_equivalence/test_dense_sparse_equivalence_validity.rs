@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -21,7 +22,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
       let lh = update_marginal(&graph, &partitions)?;
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
@@ -64,7 +65,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
       let lh = update_marginal(&graph, &partitions)?;
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }

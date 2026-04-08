@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_ulps_eq;
@@ -23,7 +24,7 @@ mod tests {
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
       let lh = update_marginal(&graph, &dense_partitions)? + update_marginal(&graph, &sparse_partitions)?;
 
       lh_history.push(lh);
@@ -64,7 +65,7 @@ mod tests {
     let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &mixed_partitions1)?;
+      run_optimize_mixed(&graph1, &mixed_partitions1, BranchOptMethod::Newton)?;
       update_marginal(&graph1, &dense_partitions1)?;
       update_marginal(&graph1, &sparse_partitions1)?;
     }
@@ -76,7 +77,7 @@ mod tests {
     let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &mixed_partitions2)?;
+      run_optimize_mixed(&graph2, &mixed_partitions2, BranchOptMethod::Newton)?;
       update_marginal(&graph2, &dense_partitions2)?;
       update_marginal(&graph2, &sparse_partitions2)?;
     }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -19,7 +20,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions, BranchOptMethod::Newton)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -30,7 +31,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions, BranchOptMethod::Newton)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 
@@ -67,7 +68,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions, BranchOptMethod::Newton)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -78,7 +79,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions, BranchOptMethod::Newton)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 

@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::AlphabetName;
+use crate::commands::optimize::optimize_method::BranchOptMethod;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
@@ -100,4 +101,13 @@ pub struct TreetimeOptimizeArgs {
   /// - never: use input branch lengths as-is; fails if any are missing
   #[clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto)]
   pub branch_length_initial_guess: InitialGuessMode,
+
+  /// Per-edge branch length optimization method.
+  ///
+  /// - newton-sqrt: Newton-Raphson in sqrt(t) space (default, best
+  ///   conditioning for branches with indels)
+  /// - newton: Newton-Raphson in t space
+  /// - brent: Brent's derivative-free method
+  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
+  pub opt_method: BranchOptMethod,
 }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -25,7 +26,7 @@ mod tests {
     lh_history.push(initial_lh);
 
     for _ in 0..max_iter {
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
       let lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
       lh_history.push(lh);
     }
@@ -57,7 +58,7 @@ mod tests {
 
     // Run several optimization steps
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
     }
 
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
@@ -93,7 +94,7 @@ mod tests {
 
     // Run several optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
       update_marginal(&graph, &dense_partitions)?;
       update_marginal(&graph, &sparse_partitions)?;
     }

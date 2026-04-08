@@ -8,6 +8,7 @@ mod tests {
   };
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{
     OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best,
     is_zero_branch_optimal, run_optimize_mixed,
@@ -210,7 +211,7 @@ mod tests {
     ];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
-    run_optimize_mixed(&graph, &mixed_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -265,7 +266,7 @@ mod tests {
     // Run marginal + optimize
     update_marginal(&graph, &dense_partitions)?;
     update_marginal(&graph, &sparse_partitions)?;
-    run_optimize_mixed(&graph, &mixed_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
     let bl_final = graph.get_edges()[0]
       .read_arc()
@@ -489,7 +490,7 @@ mod tests {
 
     update_marginal(&graph, &dense_partitions)?;
     update_marginal(&graph, &sparse_partitions)?;
-    run_optimize_mixed(&graph, &mixed_partitions)?;
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
     let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();
 

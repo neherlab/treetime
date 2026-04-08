@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -20,7 +21,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }
@@ -64,7 +65,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions)?;
+      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }

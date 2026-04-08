@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
+  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -158,7 +159,7 @@ mod tests {
       lh_history.push(lh);
 
       let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
       apply_damping(&graph, &old_bls, damping, i);
     }
 
@@ -222,7 +223,7 @@ mod tests {
     let damping = 0.75;
     for i in 0..10 {
       let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions)?;
+      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
       apply_damping(&graph, &old_bls, damping, i);
       update_marginal(&graph, &dense_partitions)?;
       update_marginal(&graph, &sparse_partitions)?;

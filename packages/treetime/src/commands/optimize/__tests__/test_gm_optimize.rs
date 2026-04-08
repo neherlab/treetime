@@ -110,6 +110,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
     use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+    use crate::commands::optimize::optimize_method::BranchOptMethod;
     use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
     use crate::commands::optimize::run::{apply_damping, collect_optimize_partitions, save_branch_lengths};
     use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -212,7 +213,7 @@ mod tests {
         }
 
         let old_bls = save_branch_lengths(&graph);
-        run_optimize_mixed(&graph, &mixed_partitions)?;
+        run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
         apply_damping(&graph, &old_bls, case.damping, i);
         lh_prev = total_lh;
       }
