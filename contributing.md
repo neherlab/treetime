@@ -11,28 +11,35 @@ Upon pushing a commit, GitHub Actions runs tests across supported Python version
 
 ## Releasing
 
-Releases are handled by the `release` script at the repo root. Before running it, add a `# Unreleased: <title>` section at the top of `changelog.md` with bullet points describing the changes.
+### Steps
 
-```
-./release 0.x.y
-```
+1. Add a `# Unreleased` heading at the top of `changelog.md` followed by bullet points describing the changes. Commit to master (directly or via PR).
+2. Run the release script from the repo root:
+   ```bash
+   ./release 0.x.y
+   ```
+3. Review the diff shown by the script, then confirm to push.
+4. Watch CI complete at https://github.com/neherlab/treetime/actions. On success, the [GitHub Release](https://github.com/neherlab/treetime/releases) and the [PyPI package](https://pypi.org/project/phylo-treetime/) are created automatically.
 
-The script will:
-1. Validate the working tree, branch, and changelog
-2. Set the version in `treetime/__init__.py` and rename `# Unreleased` to `# 0.x.y` in `changelog.md`
-3. Show a diff and commit `chore: release 0.x.y`
-4. Create tag `v0.x.y`
-5. Ask for confirmation, then push the commit and tag
+### How it works
 
-CI then runs on the tag, and on success:
-- Creates a GitHub Release with the changelog section as release notes
-- Publishes to PyPI
+The [`release`](release) script:
+- Validates the working tree: clean, on master, up-to-date with origin, tag absent, `# Unreleased` present in changelog.
+- Bumps the version in [`treetime/__init__.py`](treetime/__init__.py).
+- Renames the `# Unreleased` heading to `# 0.x.y` in [`changelog.md`](changelog.md).
+- Commits (`chore: release 0.x.y`) and creates tag `v0.x.y`.
+- Pushes the commit and tag after confirmation.
 
-Requires a `PYPI_API_TOKEN` secret in the repository. To check it's there:
+The tag push triggers the [release CI workflow](.github/workflows/release.yml), which:
+- Runs the full test matrix and lint.
+- Extracts the changelog section using [`scripts/extract-release-notes`](scripts/extract-release-notes) and creates a [GitHub Release](https://github.com/neherlab/treetime/releases).
+- Builds and publishes the package to [PyPI](https://pypi.org/project/phylo-treetime/) using the `PYPI_API_TOKEN` repository secret.
 
-```
-gh secret list
-```
+   To verify the secret is present:
+
+   ```bash
+   gh secret list
+   ```
 
 ## Coding conventions (loosly adhered to)
 
