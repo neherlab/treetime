@@ -306,7 +306,6 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
-          ..
         },
         ..
       } = &mut node_data.seq;
@@ -330,7 +329,6 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
-          ..
         },
       } = &mut node_data.seq;
 
