@@ -458,8 +458,16 @@ pub(crate) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
 /// Brent's method inner loop (derivative-free, bracket-based).
 ///
 /// Wraps the combined (substitution + indel) log-likelihood in an
-/// `argmin::CostFunction` and runs `BrentOpt` within bounds derived
-/// from the grid search range. Immune to Hessian conditioning issues.
+/// `argmin::CostFunction` and runs `BrentOpt` to find the minimum of
+/// the negated log-likelihood within a bracket.
+///
+/// The bracket lower bound is `min_branch_length` (or a small epsilon when
+/// no indels are present), ensuring coverage of optima near zero. The upper
+/// bound matches the grid search range. For concave objectives (JC69/F81
+/// substitution + Poisson indel), the bracket is guaranteed to contain the
+/// unique maximum: at the lower bound the Poisson derivative dominates
+/// (positive, pushing right), and at the upper bound the substitution
+/// derivative dominates (negative, pushing left).
 fn brent_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -468,9 +476,11 @@ fn brent_inner(
   min_branch_length: f64,
   one_mutation: f64,
 ) -> f64 {
-  let grid = grid_search_branch_lengths(branch_length, one_mutation);
-  let lower = grid[0].max(min_branch_length).max(1e-15);
-  let upper = grid[grid.len() - 1];
+  // Lower bound: smallest t where the objective is well-defined.
+  // When indels are present, min_branch_length > 0 (prevents Poisson
+  // singularity at t=0). When no indels, use a small epsilon.
+  let lower = min_branch_length.max(1e-12);
+  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
 
   let cost_fn = BranchLengthCostFunction {
     contributions,
@@ -480,7 +490,7 @@ fn brent_inner(
 
   let solver = BrentOpt::new(lower, upper);
   let result = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER).target_cost(BRENT_TOL))
+    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
     .run();
 
   match result {
