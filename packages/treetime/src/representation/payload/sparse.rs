@@ -146,7 +146,7 @@ pub struct FitchSeqDistribution {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   pub dis: Array1<f64>, // array of floats of size 'alphabet'
-  pub state: AsciiChar,
+  pub state: AsciiChar, // exact reference state for this sparse position
 }
 
 impl VarPos {
