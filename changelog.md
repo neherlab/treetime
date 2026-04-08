@@ -1,3 +1,9 @@
+# Unreleased
+
+- fix `fill_overhangs` filling terminal gaps with `N` (asparagine) instead of `X` (ambiguous) for amino acid sequences by @jbloom [issue #522](https://github.com/neherlab/treetime/issues/522) [PR #523](https://github.com/neherlab/treetime/pull/523)
+- fix crash when combining `branch_length_mode='marginal'` with `stochastic_resolve=True`. Reported by @jameshadfield [issue #516](https://github.com/neherlab/treetime/issues/516), fixed by @ivan-aksamentov [PR #517](https://github.com/neherlab/treetime/pull/517)
+- fix `KeyError: 1` when loading mugration weights CSV with pandas 3.x by @ivan-aksamentov [PR #518](https://github.com/neherlab/treetime/pull/518)
+
 # 0.11.4: Bug fixed
 - fix output of mutations into the `branch_mutation.txt` file which was masked by a conditional
 - adjust CLI help
