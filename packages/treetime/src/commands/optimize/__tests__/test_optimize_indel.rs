@@ -476,12 +476,7 @@ mod tests {
     let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // Set a very small initial branch length to test clamping
-    let edge_ref = graph
-      .get_edges()
-      .iter()
-      .find(|e| e.read_arc().key() == first_edge_key)
-      .unwrap()
-      .clone();
+    let edge_ref = &graph.get_edges()[0];
     edge_ref
       .write_arc()
       .payload()
