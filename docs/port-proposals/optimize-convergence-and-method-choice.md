@@ -2,7 +2,7 @@
 
 This document proposes improvements to the `optimize` command's convergence behavior and introduces user-selectable optimization methods. The goal is to match v0's convergence reliability, provide the same systematic method choice already available in the `clock` command, and address three documented known issues.
 
-The proposal is **not accepted** as a whole. P1, P3, and P4 are implemented independently; P2, P5, P6 remain unimplemented.
+The proposal is **not accepted** as a whole. P1, P3, P4, and P5 are implemented independently; P2, P6 remain unimplemented. P5 was implemented as part of the `--opt-method` feature (Newton, NewtonSqrt, Brent) with NewtonSqrt as default.
 
 ## Problem statement
 
@@ -130,9 +130,10 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 
 ### Per-Edge Optimization
 
-- [x] Newton-Raphson with analytical derivatives (current, P5 keeps as default)
-- [x] Grid search fallback (current, P5 promotes to standalone mode)
-- [ ] Brent as alternative method (P5)
+- [x] Newton-Raphson with analytical derivatives (`--opt-method newton`)
+- [x] Newton-Raphson in sqrt(t) space (`--opt-method newton-sqrt`, default)
+- [x] Brent as alternative method (`--opt-method brent`, P5 implemented)
+- [x] Grid search fallback (shared non-concave fallback for Newton methods)
 - [ ] Backtracking line search for Newton (P6)
 - [x] Zero branch length short-circuit (current)
 - [x] Eigenvalue-space coefficient caching (current)
