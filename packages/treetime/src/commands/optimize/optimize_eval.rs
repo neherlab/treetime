@@ -15,6 +15,7 @@ use ndarray::{Array1, ArrayView1};
 ///
 /// where $k_{ic}$ are the eigenvalue-space coefficients and $\lambda_c$ the
 /// eigenvalues. The first and second derivatives follow from the quotient rule.
+#[allow(single_use_lifetimes)]
 pub fn evaluate_site_contributions<'a>(
   sites: impl Iterator<Item = (f64, ArrayView1<'a, f64>)>,
   eigvals: &Array1<f64>,
