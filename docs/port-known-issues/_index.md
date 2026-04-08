@@ -69,7 +69,7 @@ exactly.
 | Medium         | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                              |
 | Medium         | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium         | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
-| ~~Medium~~     | ~~Optimize~~ | ~~Newton premature convergence when indel Hessian dominates~~ **FIXED**                                                         |
+| ~~Medium~~     | ~~Optimize~~ | ~~Per-edge optimizer converges to wrong optimum on indel-bearing edges~~ **FIXED**                                              |
 | Low            | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low            | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low            | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
