@@ -16,21 +16,18 @@ v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marg
 
 ## What v1 does
 
-v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291)) uses Newton-Raphson with two fallback layers:
+v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)) offers three per-edge optimization methods selectable via `--opt-method`:
 
-1. **Newton-Raphson with analytical derivatives.** The eigendecomposition `Q = V diag(lambda) V^{-1}` allows computing likelihood, first derivative, and second derivative from the same cached coefficients `k_c = (msg.dot(V)) * (msg.dot(V_inv.T))` (dense: [packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75](../../packages/treetime/src/commands/optimize/optimize_dense.rs#L67-L75), sparse: [packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L46-L119)). The derivatives come at negligible cost beyond the likelihood evaluation:
+1. **`newton-sqrt` (default).** Newton-Raphson in $\sqrt{t}$ space. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule to transform $t$-space derivatives. This reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$, improving conditioning on short branches with indels. Falls back to grid search when the $s$-space Hessian is non-negative.
 
-   ```
-   L   = sum_j log(sum_c k_c exp(lambda_c * t))
-   L'  = sum_j (sum_c k_c lambda_c exp(lambda_c * t)) / (sum_c k_c exp(lambda_c * t))
-   L'' = sum_j (sum_c k_c lambda_c^2 exp(lambda_c * t)) / (...) - (L')^2
-   ```
+2. **`newton`.** Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. The Newton step is clamped to `[-1.0, current_bl]`. Max 10 inner iterations, convergence at `|delta_bl| <= max(0.001 * bl, 1e-8)`. Falls back to grid search when the Hessian is non-negative.
 
-   The Newton step is clamped to `[-1.0, current_bl]` to enforce non-negativity ([optimize_unified.rs#L254](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L254)). Max 10 inner iterations, convergence at `|delta_bl| <= 0.001 * bl`.
+3. **`brent`.** Brent's method via `argmin::BrentOpt`. Derivative-free, bracket-based. The bracket lower bound is `min_branch_length` (or 1e-12 when no indels); the upper bound is `max(1.5 * bl + one_mutation, 0.5)`.
 
-2. **Grid search fallback.** When the second derivative is non-negative (non-concave region where Newton would step the wrong way), v1 evaluates 100 equally-spaced points on `[0.1 * one_mutation, 1.5 * bl + one_mutation]` and selects the maximum ([optimize_unified.rs#L273-L286](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L273-L286)).
+All methods share:
 
-3. **Zero-branch short-circuit.** Before any optimization, v1 checks if zero branch length is optimal: combined likelihood at zero > 0.01 AND first derivative < 0 at zero (`is_zero_branch_optimal()` at [optimize_unified.rs#L192-L214](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L192-L214)).
+- **Grid search fallback** for non-concave regions (100 log-spaced points).
+- **Zero-branch short-circuit** using the derivative-sign criterion at $t = 0$ for unimodal models (JC69, F81).
 
 ## Why v1 changes this
 
@@ -44,13 +41,15 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 ## Tradeoffs
 
-**Lost: sqrt(t) reparameterization.** v0's optimization in sqrt(t) space improves conditioning near zero where dL/dt can be large. v1 compensates with the zero-branch short-circuit and Newton step clamping, but does not reshape the likelihood surface itself.
+**Recovered: sqrt(t) reparameterization.** The default `newton-sqrt` method restores v0's sqrt(t) conditioning. The chain rule transformation is $O(1)$ per evaluation.
 
-**Lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. For well-behaved datasets this is immaterial; for cases where the likelihood surface is flat at large branch lengths, v0's penalty prevents runaway. The grid search upper bound `1.5 * bl + one_mutation` provides a soft cap in v1.
+**Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 
-**Lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent fallback: if both Newton and grid search fail to improve the likelihood, the branch length remains at its current value.
+**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent fallback: if optimization fails, the branch length remains at its current value.
 
-**Gained: cheaper per-evaluation cost.** Each Newton iteration gets likelihood AND derivatives from the same eigenvalue exponentials. Brent needs one full likelihood evaluation per bracket refinement step with no derivative reuse.
+**Gained: method selection.** Users can choose between three methods via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
+
+**Gained: cheaper per-evaluation cost (Newton methods).** Each Newton iteration gets likelihood AND derivatives from the same eigenvalue exponentials. Brent needs one full likelihood evaluation per bracket refinement step with no derivative reuse.
 
 ## Practical impact
 
