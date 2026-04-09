@@ -70,6 +70,8 @@ exactly.
 | Medium         | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                     |
 | Medium         | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                           |
 | ~~Medium~~     | ~~Optimize~~ | ~~Per-edge optimizer converges to wrong optimum on indel-bearing edges~~ **FIXED**                                              |
+| Medium         | Optimize     | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)     |
+| Medium         | Optimize     | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu ≠ 1](M-optimize-gtr-mu-coordinate-mismatch.md) |
 | Low            | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                         |
 | Low            | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                 |
 | Low            | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                |
