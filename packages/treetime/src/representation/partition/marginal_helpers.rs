@@ -84,7 +84,13 @@ pub fn combine_messages(
     }
 
     let (dis, log_norm) = logsumexp_normalize(log_vec.view());
-    seq_dis.log_lh += fixed_counts[&state] * log_norm;
+    let multiplicity = fixed_counts[&state];
+    // Zero fixed-site multiplicity means this shared row corresponds to no
+    // actual sites. Its contribution is therefore exactly zero, even if the
+    // row itself underflowed and `log_norm` is `NEG_INFINITY`.
+    if multiplicity != 0.0 {
+      seq_dis.log_lh += multiplicity * log_norm;
+    }
     seq_dis.fixed.insert(state, dis);
   }
   Ok(seq_dis)
@@ -475,12 +481,55 @@ mod tests {
     let variable_pos = btreemap! { 0_usize => g };
     let reference_states = vec![btreemap! { 0_usize => a }];
 
-    let combined = combine_messages(&composition, &[message], &variable_pos, &reference_states, &alphabet, None)?;
+    let combined = combine_messages(
+      &composition,
+      &[message],
+      &variable_pos,
+      &reference_states,
+      &alphabet,
+      None,
+    )?;
 
-    let explicit = combined.variable.get(&0).expect("state-changing deterministic sites must stay explicit");
+    let explicit = combined
+      .variable
+      .get(&0)
+      .expect("state-changing deterministic sites must stay explicit");
     assert_eq!(explicit.state, g);
     assert_abs_diff_eq!(explicit.dis, alphabet.get_profile(a)?.clone(), epsilon = 1e-14);
     assert_eq!(combined.fixed_counts.get(g), Some(0));
+
+    Ok(())
+  }
+  #[test]
+  fn test_combine_messages_zero_multiplicity_does_not_create_nan_log_lh() -> Result<(), Report> {
+    use crate::alphabet::alphabet::Alphabet;
+
+    let alphabet = Alphabet::default();
+    let a = AsciiChar::from_byte_unchecked(b'A');
+    let c = AsciiChar::from_byte_unchecked(b'C');
+    let g = AsciiChar::from_byte_unchecked(b'G');
+    let t = AsciiChar::from_byte_unchecked(b'T');
+    let composition = Composition::with_sequence([c], alphabet.chars(), alphabet.gap());
+    let message = MarginalSparseSeqDistribution {
+      variable: btreemap! {},
+      variable_indel: btreemap! {},
+      fixed: btreemap! {
+        a => array![0.0, 0.0, 0.0, 0.0],
+        c => array![0.0, 1.0, 0.0, 0.0],
+        g => array![0.0, 0.0, 1.0, 0.0],
+        t => array![0.0, 0.0, 0.0, 1.0],
+      },
+      fixed_counts: composition.clone(),
+      log_lh: 0.0,
+    };
+
+    let combined = combine_messages(&composition, &[message], &btreemap! {}, &[], &alphabet, None)?;
+
+    assert!(
+      combined.log_lh.is_finite(),
+      "zero-multiplicity fixed rows must not poison log-likelihood"
+    );
+    assert_eq!(combined.fixed_counts.get(a), Some(0));
 
     Ok(())
   }
