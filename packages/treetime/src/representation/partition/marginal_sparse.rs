@@ -8,7 +8,7 @@ use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::PartitionCompressed;
-use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
+use crate::representation::partition::traits::{ExactStateCache, PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::{Sub, compose_substitutions};
@@ -227,6 +227,7 @@ impl PartitionMarginalSparse {
     cache.insert((node_key, pos), state);
     Ok(state)
   }
+
 }
 
 impl HasLogLh for PartitionMarginalSparse {
@@ -397,12 +398,22 @@ where
     Ok(())
   }
 
-  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
-    marginal_passes::process_node_backward(self, node)
+  fn process_node_backward(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeBackward<N, E, ()>,
+    cache: &ExactStateCache,
+  ) -> Result<(), Report> {
+    marginal_passes::process_node_backward(self, graph, node, cache)
   }
 
-  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
-    marginal_passes::process_node_forward(self, graph, node)
+  fn process_node_forward(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
+    cache: &ExactStateCache,
+  ) -> Result<(), Report> {
+    marginal_passes::process_node_forward(self, graph, node, cache)
   }
 
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
@@ -410,7 +421,6 @@ where
       if !node_data.seq.sequence.is_empty() {
         node_data.seq.sequence.clone()
       } else {
-        // Return empty seq to be filled later by the reconstruction algorithm
         seq![]
       }
     } else {
@@ -434,12 +444,10 @@ where
 
       let mut seq = parent_data.seq.sequence.clone();
 
-      // Implant mutations
       for m in &edge_data.subs {
         seq[m.pos()] = m.qry();
       }
 
-      // Implant indels
       for indel in &edge_data.indels {
         if indel.deletion {
           seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
@@ -451,15 +459,12 @@ where
       seq
     };
 
-    // At the node itself, mask whatever is unknown in the node.
     let alphabet = &self.alphabet;
     for r in &node_data.seq.unknown {
       let ambig_char = alphabet.unknown();
       seq[r.0..r.1].fill(ambig_char);
     }
 
-    // Change variable sites to their most likely state.
-    // Uses argmax_first for NumPy-compatible tie-breaking.
     for (pos, states) in &node_data.profile.variable {
       seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
     }

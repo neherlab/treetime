@@ -1,6 +1,7 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::ExactStateCache;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use eyre::Report;
 use maplit::btreemap;
@@ -15,7 +16,9 @@ use treetime_utils::interval::range::range_contains;
 
 pub fn process_node_backward<N, E>(
   partition: &mut PartitionMarginalSparse,
+  _graph: &Graph<N, E, ()>,
   node: &GraphNodeBackward<N, E, ()>,
+  _cache: &ExactStateCache,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -130,6 +133,7 @@ pub fn process_node_forward<N, E>(
   partition: &mut PartitionMarginalSparse,
   graph: &Graph<N, E, ()>,
   node: &GraphNodeForward<N, E, ()>,
+  _cache: &ExactStateCache,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,

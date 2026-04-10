@@ -1,9 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::make_internal_report;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
@@ -11,7 +12,46 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::Seq;
+use treetime_primitives::{AsciiChar, Seq};
+
+pub type ExactStateCache = Arc<Mutex<BTreeMap<(GraphNodeKey, usize), AsciiChar>>>;
+pub type CurrentStateCache = Arc<Mutex<BTreeMap<(GraphNodeKey, usize), AsciiChar>>>;
+pub type SequenceReconstructionCache = BTreeMap<GraphNodeKey, Seq>;
+
+pub trait GraphNodePathLookup: Send + Sync {
+  fn source_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report>;
+
+  fn target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report>;
+
+  fn parent_of(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report>;
+}
+
+impl<N, E, D> GraphNodePathLookup for Graph<N, E, D>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  fn source_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    self.get_source_node_key(edge_key)
+  }
+
+  fn target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
+    self.get_target_node_key(edge_key)
+  }
+
+  fn parent_of(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    let node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
+    let node = node.read_arc();
+    if node.is_root() {
+      return Ok(None);
+    }
+    let (parent_node, edge) = self.exactly_one_parent_of(&node)?;
+    Ok(Some((parent_node.read_arc().key(), edge.read_arc().key())))
+  }
+}
 
 /// Derive branch mutations and effective lengths from the current partition state.
 ///
@@ -53,10 +93,20 @@ where
   fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report>;
 
   /// Process a node during backward pass (equivalent to run_marginal_*_backward)
-  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report>;
+  fn process_node_backward(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeBackward<N, E, ()>,
+    cache: &ExactStateCache,
+  ) -> Result<(), Report>;
 
   /// Process a node during forward pass (equivalent to run_marginal_*_forward)
-  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>;
+  fn process_node_forward(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
+    cache: &ExactStateCache,
+  ) -> Result<(), Report>;
 
   /// Extract ancestral sequence from node profile
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
