@@ -63,26 +63,37 @@ pub struct EdgeMergeInfo {
 /// Result of a reroot operation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RerootResult {
+  /// The key of the previous root node before rerooting.
+  pub old_root_key: GraphNodeKey,
   /// The key of the new root node.
   pub new_root_key: GraphNodeKey,
   /// Information about edge split, if one occurred.
   pub edge_split: Option<EdgeSplitInfo>,
   /// Information about edge merge, if a trivial node was removed.
   pub edge_merge: Option<EdgeMergeInfo>,
+  /// Keys of edges on the path from the previous root to the new root.
+  pub inverted_edge_keys: Vec<GraphEdgeKey>,
+  /// Node keys on the same path, starting at the old root and ending at the new root.
+  pub path_node_keys: Vec<GraphNodeKey>,
 }
 
 /// Bundles all topology changes from a reroot operation for partition updates.
 ///
 /// Passed to `PartitionRerootOps::apply_reroot` to update partition state in a single call.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RerootChanges {
+  /// The key of the previous root node before rerooting.
+  pub old_root_key: GraphNodeKey,
+  /// The key of the new root node after rerooting.
+  pub new_root_key: GraphNodeKey,
   /// Edge split info if a new node was created at the reroot point.
   pub edge_split: Option<EdgeSplitInfo>,
   /// Edge merge info if the old root was removed as a trivial node.
   pub edge_merge: Option<EdgeMergeInfo>,
-  /// Keys of edges on the path from old root to new root (post-inversion direction).
-  /// Empty if root did not change or old root was removed.
+  /// Keys of edges on the path from old root to new root before any trivial-root removal.
   pub inverted_edge_keys: Vec<GraphEdgeKey>,
+  /// Node keys on the same path, starting at the old root and ending at the new root.
+  pub path_node_keys: Vec<GraphNodeKey>,
 }
 
 pub fn reroot_in_place<N, E, D>(
@@ -104,9 +115,12 @@ where
   let Some(edge_key) = edge else {
     // Already at the best root
     return Ok(RerootResult {
+      old_root_key,
       new_root_key: old_root_key,
       edge_split: None,
       edge_merge: None,
+      inverted_edge_keys: vec![],
+      path_node_keys: vec![],
     });
   };
 
@@ -132,24 +146,37 @@ where
     (if split < 0.5 { target_key } else { source_key }, None)
   };
 
-  let edge_merge = if new_root_key != old_root_key {
+  let (edge_merge, inverted_edge_keys, path_node_keys) = if new_root_key != old_root_key {
     apply_reroot(graph, old_root_key, new_root_key, options)?;
+    let path = graph.path_from_node_to_node(old_root_key, new_root_key)?;
+    let inverted_edge_keys = path
+      .iter()
+      .filter_map(|(_, edge)| edge.as_ref().map(|edge| edge.read_arc().key()))
+      .collect();
+    let path_node_keys = path.iter().map(|(node, _)| node.read_arc().key()).collect();
+    // `remove_node_if_trivial()` takes ownership of the old-root edges. Drop the
+    // path snapshots first so those Arc handles do not keep the same edges alive.
+    drop(path);
 
-    if reroot_params.remove_trivial_root {
+    let edge_merge = if reroot_params.remove_trivial_root {
       // Clean up old root if it is now a trivial node, i.e. has exactly one parent and one child
       // Nb: the attributes of the old root node and branches (other than branch lengths) are discarded
       remove_node_if_trivial(graph, old_root_key)?
     } else {
       None
-    }
+    };
+    (edge_merge, inverted_edge_keys, path_node_keys)
   } else {
-    None
+    (None, vec![], vec![])
   };
 
   Ok(RerootResult {
+    old_root_key,
     new_root_key,
     edge_split,
     edge_merge,
+    inverted_edge_keys,
+    path_node_keys,
   })
 }
 

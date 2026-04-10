@@ -378,6 +378,45 @@ impl PartitionMarginalSparse {
     cache.insert(node_key, seq.clone());
     Ok(seq)
   }
+
+  fn reconstruct_split_root_sequence(&self, changes: &RerootChanges) -> Result<Seq, Report> {
+    let root_data = self
+      .nodes
+      .get(&changes.old_root_key)
+      .ok_or_else(|| make_internal_report!("Old root {} has no partition data", changes.old_root_key))?;
+    let mut sequence = root_data.seq.sequence.clone();
+    if sequence.len() != self.length {
+      return Err(make_internal_report!(
+        "Old root {} sequence length {} does not match partition length {}",
+        changes.old_root_key,
+        sequence.len(),
+        self.length
+      ));
+    }
+
+    for (step, edge_key) in changes.inverted_edge_keys.iter().enumerate() {
+      for pos in 0..self.length {
+        sequence[pos] = self.edge_state_from_parent(*edge_key, pos, sequence[pos]);
+      }
+
+      // Split-root reconstruction must follow the same exact-state precedence as
+      // the canonical sparse path. Existing nodes on the reroot path can impose
+      // gap and unknown masks after the edge transition, and the new split node
+      // itself has no partition payload yet.
+      if let Some(node_key) = changes.path_node_keys.get(step + 1).copied() {
+        if let Some(node_data) = self.nodes.get(&node_key) {
+          for gap in &node_data.seq.gaps {
+            sequence[gap.0..gap.1].fill(self.alphabet.gap());
+          }
+          for unknown in &node_data.seq.unknown {
+            sequence[unknown.0..unknown.1].fill(self.alphabet.unknown());
+          }
+        }
+      }
+    }
+
+    Ok(sequence)
+  }
 }
 
 impl HasLogLh for PartitionMarginalSparse {
@@ -392,9 +431,11 @@ impl PartitionRerootOps for PartitionMarginalSparse {
   fn apply_reroot(&mut self, changes: &RerootChanges) -> Result<(), Report> {
     // Handle edge split: create new node entry, move mutations to child-side edge
     if let Some(info) = &changes.edge_split {
-      self
-        .nodes
-        .insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
+      let split_root_sequence = self.reconstruct_split_root_sequence(changes)?;
+      self.nodes.insert(
+        info.new_node_key,
+        SparseNodePartition::new(&split_root_sequence, &self.alphabet)?,
+      );
 
       let old_edge_data = self
         .edges
@@ -410,7 +451,32 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         .insert(info.parent_side_edge_key, SparseEdgePartition::default());
     }
 
-    // Handle edge merge: compose mutations from two edges
+    // Invert edge data for each edge on the reroot path
+    for edge_key in &changes.inverted_edge_keys {
+      let edge_data = self
+        .edges
+        .get_mut(edge_key)
+        .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
+
+      // Invert all substitutions
+      for sub in &mut edge_data.subs {
+        sub.invert();
+      }
+
+      // Invert all indels
+      for indel in &mut edge_data.indels {
+        indel.invert();
+      }
+
+      // Swap directional messages
+      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
+
+      // Reset msg_from_child (stale propagated message cache)
+      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
+    }
+
+    // Handle edge merge after inversion so path edges still exist when their
+    // mutations are flipped into the new root orientation.
     if let Some(info) = &changes.edge_merge {
       self.nodes.remove(&info.removed_node_key);
 
@@ -437,30 +503,6 @@ impl PartitionRerootOps for PartitionMarginalSparse {
       };
 
       self.edges.insert(info.merged_edge_key, merged_edge);
-    }
-
-    // Invert edge data for each edge on the reroot path
-    for edge_key in &changes.inverted_edge_keys {
-      let edge_data = self
-        .edges
-        .get_mut(edge_key)
-        .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
-
-      // Invert all substitutions
-      for sub in &mut edge_data.subs {
-        sub.invert();
-      }
-
-      // Invert all indels
-      for indel in &mut edge_data.indels {
-        indel.invert();
-      }
-
-      // Swap directional messages
-      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
-
-      // Reset msg_from_child (stale propagated message cache)
-      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
     }
 
     Ok(())

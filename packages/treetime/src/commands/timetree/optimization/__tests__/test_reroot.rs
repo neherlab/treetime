@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::commands::clock::reroot::EdgeSplitInfo;
   use crate::commands::clock::reroot::RerootChanges;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
@@ -28,7 +29,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::{Named, TimeConstraint};
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq, seq};
@@ -159,6 +161,81 @@ mod tests {
   }
 
   #[test]
+  fn test_sparse_reroot_split_root_sequence_applies_path_node_masks() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let gtr = jc69(JC69Params::default())?;
+
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("AB not found"))?;
+    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let root_to_ab_key = graph
+      .get_edges()
+      .iter()
+      .find_map(|edge_ref| {
+        let edge = edge_ref.read_arc();
+        ((edge.source() == root_key && edge.target() == ab_key)
+          || (edge.source() == ab_key && edge.target() == root_key))
+          .then(|| edge.key())
+      })
+      .ok_or_else(|| make_report!("root->AB edge not found"))?;
+    let ab_to_a_key = graph
+      .get_edges()
+      .iter()
+      .find_map(|edge_ref| {
+        let edge = edge_ref.read_arc();
+        ((edge.source() == ab_key && edge.target() == a_key) || (edge.source() == a_key && edge.target() == ab_key))
+          .then(|| edge.key())
+      })
+      .ok_or_else(|| make_report!("AB->A edge not found"))?;
+
+    let split_root_key = GraphNodeKey(10_000);
+    let parent_side_edge_key = GraphEdgeKey(10_001);
+    let child_side_edge_key = GraphEdgeKey(10_002);
+    let mut sparse_partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 4,
+      nodes: btreemap! {
+        root_key => SparseNodePartition::new(&seq![c(b'A'), c(b'A'), c(b'A'), c(b'A')], &alphabet)?,
+        ab_key => SparseNodePartition::new(&seq![c(b'A'), c(b'A'), c(b'A'), c(b'A')], &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![c(b'A'), c(b'A'), c(b'A'), c(b'A')], &alphabet)?,
+      },
+      edges: btreemap! {
+        root_to_ab_key => SparseEdgePartition::default(),
+        ab_to_a_key => SparseEdgePartition::default(),
+      },
+    };
+    sparse_partition.nodes.get_mut(&ab_key).unwrap().seq.gaps = vec![(1, 2)];
+    sparse_partition.nodes.get_mut(&ab_key).unwrap().seq.unknown = vec![(2, 3)];
+
+    let changes = RerootChanges {
+      old_root_key: root_key,
+      new_root_key: split_root_key,
+      edge_split: Some(EdgeSplitInfo {
+        old_edge_key: ab_to_a_key,
+        new_node_key: split_root_key,
+        parent_side_edge_key,
+        child_side_edge_key,
+        split_position: 0.5,
+      }),
+      edge_merge: None,
+      inverted_edge_keys: vec![root_to_ab_key, parent_side_edge_key],
+      path_node_keys: vec![root_key, ab_key, split_root_key],
+    };
+
+    sparse_partition.apply_reroot(&changes)?;
+
+    let split_root = &sparse_partition.nodes[&split_root_key];
+    assert_eq!(
+      seq![c(b'A'), alphabet.gap(), alphabet.unknown(), c(b'A')],
+      split_root.seq.sequence
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     // Tree: (A:0.1,B:0.2)root;
     // After reroot to A, edge direction inverts
@@ -234,8 +311,12 @@ mod tests {
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
     let changes = RerootChanges {
+      old_root_key: root_key,
+      new_root_key: a_key,
+      edge_split: None,
+      edge_merge: None,
       inverted_edge_keys: vec![edge_to_a_key],
-      ..RerootChanges::default()
+      path_node_keys: vec![root_key, a_key],
     };
 
     // Call apply_reroot directly
@@ -324,8 +405,12 @@ mod tests {
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
     let changes = RerootChanges {
+      old_root_key: root_key,
+      new_root_key: a_key,
+      edge_split: None,
+      edge_merge: None,
       inverted_edge_keys: vec![edge_to_a_key],
-      ..RerootChanges::default()
+      path_node_keys: vec![root_key, a_key],
     };
 
     // Call apply_reroot

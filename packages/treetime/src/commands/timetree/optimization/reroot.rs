@@ -8,7 +8,6 @@ use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -25,8 +24,6 @@ pub fn reroot_tree(
   branch_params: &BranchPointOptimizationParams,
   force_positive_rate: bool,
 ) -> Result<ClockModel, Report> {
-  let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
-
   let reroot_params = RerootParams {
     force_positive_rate,
     ..RerootParams::default()
@@ -54,29 +51,20 @@ pub fn reroot_tree(
   // Update partitions if we have any and rerooting occurred
   if let Some(reroot_result) = &clock_reroot_result.reroot_result {
     if !partitions.is_empty() {
-      // Build inverted edge keys: edges on path from old root to new root (if old root still exists)
-      let inverted_edge_keys = if new_root_key != old_root_key && graph.get_node(old_root_key).is_some() {
+      if reroot_result.new_root_key != reroot_result.old_root_key {
         info!(
-          "Root changed from {} to {} - computing reroot path",
-          old_root_key.0, new_root_key.0
+          "Root changed from {} to {} - applying cached reroot path",
+          reroot_result.old_root_key.0, reroot_result.new_root_key.0
         );
-
-        let path = graph
-          .path_from_node_to_node(old_root_key, new_root_key)
-          .wrap_err("Failed to compute path from old root to new root")?;
-
-        path
-          .iter()
-          .filter_map(|(_, edge)| edge.as_ref().map(|e| e.read_arc().key()))
-          .collect_vec()
-      } else {
-        vec![]
-      };
+      }
 
       let changes = RerootChanges {
+        old_root_key: reroot_result.old_root_key,
+        new_root_key: reroot_result.new_root_key,
         edge_split: reroot_result.edge_split.clone(),
         edge_merge: reroot_result.edge_merge.clone(),
-        inverted_edge_keys,
+        inverted_edge_keys: reroot_result.inverted_edge_keys.clone(),
+        path_node_keys: reroot_result.path_node_keys.clone(),
       };
 
       info!("Applying reroot changes to {} partitions", partitions.len());
