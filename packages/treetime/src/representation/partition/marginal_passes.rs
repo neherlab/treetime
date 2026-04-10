@@ -1,5 +1,5 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
+use crate::representation::partition::marginal_helpers::{EPS, combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::ExactStateCache;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
@@ -334,13 +334,14 @@ where
       let dis = numerator / divisor;
       let norm = dis.sum();
       delta_ll += norm.ln();
-      seq_dis.variable.insert(
-        pos,
-        VarPos {
-          dis: dis / norm,
-          state: pstate,
-        },
-      );
+      let dis = dis / norm;
+      let max_prob = dis.iter().copied().fold(0.0_f64, f64::max);
+      let map_state = partition
+        .alphabet
+        .char(treetime_utils::array::ndarray::argmax_first(&dis.view()).unwrap_or(0));
+      if max_prob < (1.0 - EPS) || map_state != pstate {
+        seq_dis.variable.insert(pos, VarPos { dis, state: pstate });
+      }
       seq_dis.fixed_counts.adjust_count(pstate, -1);
     }
     for (s, p) in &seq_info.profile.fixed {

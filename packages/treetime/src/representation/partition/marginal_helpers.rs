@@ -7,7 +7,10 @@ use maplit::btreemap;
 use ndarray::{Array1, Array2, ArrayView1};
 use std::collections::BTreeMap;
 use std::iter::zip;
+#[cfg(test)]
+use treetime_primitives::AlphabetLike;
 use treetime_primitives::AsciiChar;
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;
@@ -65,8 +68,9 @@ pub fn combine_messages(
       *count -= 1.0;
     }
 
+    let map_state = alphabet.char(argmax_first(&dis.view()).unwrap_or(0));
     let max_prob = dis.iter().copied().fold(0.0_f64, f64::max);
-    if max_prob < (1.0 - EPS) || !all_states_equal {
+    if max_prob < (1.0 - EPS) || !all_states_equal || map_state != state {
       seq_dis.fixed_counts.adjust_count(state, -1);
       seq_dis.variable.insert(pos, VarPos { dis, state });
     }
@@ -447,6 +451,39 @@ mod tests {
     }
   }
 
+  #[test]
+  fn test_combine_messages_keeps_deterministic_state_change_explicit() -> Result<(), Report> {
+    use crate::alphabet::alphabet::Alphabet;
+    use treetime_primitives::AsciiChar;
+
+    let alphabet = Alphabet::default();
+    let a = AsciiChar::from_byte_unchecked(b'A');
+    let g = AsciiChar::from_byte_unchecked(b'G');
+    let composition = Composition::with_sequence([g], alphabet.chars(), alphabet.gap());
+    let fixed = alphabet
+      .determined()
+      .map(|state| Ok((state, alphabet.get_profile(state)?.clone())))
+      .collect::<Result<BTreeMap<_, _>, Report>>()?;
+
+    let message = MarginalSparseSeqDistribution {
+      variable: btreemap! {},
+      variable_indel: btreemap! {},
+      fixed,
+      fixed_counts: composition.clone(),
+      log_lh: 0.0,
+    };
+    let variable_pos = btreemap! { 0_usize => g };
+    let reference_states = vec![btreemap! { 0_usize => a }];
+
+    let combined = combine_messages(&composition, &[message], &variable_pos, &reference_states, &alphabet, None)?;
+
+    let explicit = combined.variable.get(&0).expect("state-changing deterministic sites must stay explicit");
+    assert_eq!(explicit.state, g);
+    assert_abs_diff_eq!(explicit.dis, alphabet.get_profile(a)?.clone(), epsilon = 1e-14);
+    assert_eq!(combined.fixed_counts.get(g), Some(0));
+
+    Ok(())
+  }
   mod helpers {
     use approx::assert_abs_diff_eq;
     use ndarray::Array1;
