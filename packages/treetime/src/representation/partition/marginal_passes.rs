@@ -14,14 +14,10 @@ use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 
 fn node_reference_state(partition: &PartitionMarginalSparse, node_key: GraphNodeKey, pos: usize) -> Option<AsciiChar> {
-  partition.nodes.get(&node_key).and_then(|node_data| {
-    node_data
-      .seq
-      .fitch
-      .chosen_state
-      .get(&pos)
-      .copied()
-  })
+  partition
+    .nodes
+    .get(&node_key)
+    .and_then(|node_data| node_data.seq.fitch.chosen_state.get(&pos).copied())
 }
 
 fn node_reference_state_or(
@@ -112,7 +108,7 @@ where
             alphabet.unknown()
           };
           states.insert(*pos, state);
-        } else{
+        } else {
           states.insert(*pos, *parent_state);
         }
       }
@@ -267,12 +263,16 @@ where
     // if not yet set, variable in parent is same as in child (no substitution);
     // skip positions where the child has no sequence (gap or N)
     for (pos, p) in &seq_info.profile.variable {
-      if range_contains(child_non_char, *pos) { continue; }
+      if range_contains(child_non_char, *pos) {
+        continue;
+      }
       child_states.entry(*pos).or_insert(p.state);
       parent_states.entry(*pos).or_insert(p.state);
     }
     for (pos, p) in &child_dis.variable {
-      if range_contains(child_non_char, *pos) { continue; }
+      if range_contains(child_non_char, *pos) {
+        continue;
+      }
       child_states.entry(*pos).or_insert(p.state);
       parent_states.entry(*pos).or_insert(p.state);
     }

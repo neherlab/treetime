@@ -305,12 +305,13 @@ where
       let SparseSeqInfo {
         gaps,
         sequence,
-        fitch: FitchSeqDistribution {
-          variable,
-          variable_indel,
-          chosen_state,
-          ..
-        },
+        fitch:
+          FitchSeqDistribution {
+            variable,
+            variable_indel,
+            chosen_state,
+            ..
+          },
         ..
       } = &mut node_data.seq;
 
@@ -332,12 +333,13 @@ where
         sequence,
         composition,
         non_char,
-        fitch: FitchSeqDistribution {
-          variable,
-          variable_indel,
-          chosen_state,
-          ..
-        },
+        fitch:
+          FitchSeqDistribution {
+            variable,
+            variable_indel,
+            chosen_state,
+            ..
+          },
       } = &mut node_data.seq;
 
       let (parent_key, edge_key) =
