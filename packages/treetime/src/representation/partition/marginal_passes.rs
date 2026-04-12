@@ -197,7 +197,6 @@ where
       }
       // variable in child
       for (pos, p) in &edge_data.msg_to_parent.variable {
-        let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
         variable_pos.entry(*pos).or_insert(p.state);
         child_state.entry(*pos).or_insert(p.state);
       }
@@ -258,23 +257,19 @@ where
     let child_dis = child_edge_data.msg_from_child.clone();
     let mut parent_states: BTreeMap<usize, AsciiChar> = btreemap! {};
     let mut child_states: BTreeMap<usize, AsciiChar> = btreemap! {};
-    let child_key = graph.get_target_node_key(*child_edge_key)?;
+    // handle substitutions first, these have defined states for both parent and child
+    for sub in &child_edge_data.subs {
+      child_states.insert(sub.pos(), sub.qry());
+      parent_states.insert(sub.pos(), sub.reff());
+    }
+    // if not yet set, variable in parent is same as in child (no substitution)
     for (pos, p) in &seq_info.profile.variable {
-      let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
-      child_states.insert(*pos, current_state);
-      parent_states.insert(*pos, current_state);
+      child_states.entry(*pos).or_insert(p.state);
+      parent_states.entry(*pos).or_insert(p.state);
     }
     for (pos, p) in &child_dis.variable {
-      let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
-      let child_state = node_reference_state_or(partition, child_key, *pos, p.state);
-      child_states.insert(*pos, child_state);
-      parent_states.entry(*pos).or_insert(current_state);
-    }
-    for sub in &child_edge_data.subs {
-      let current_state = node_reference_state_or(partition, node.key, sub.pos(), sub.reff());
-      let child_state = node_reference_state_or(partition, child_key, sub.pos(), sub.qry());
-      child_states.insert(sub.pos(), child_state);
-      parent_states.insert(sub.pos(), current_state);
+      child_states.entry(*pos).or_insert( p.state);
+      parent_states.entry(*pos).or_insert(p.state);
     }
 
     let mut delta_ll = 0.0;
