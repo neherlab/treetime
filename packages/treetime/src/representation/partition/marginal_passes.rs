@@ -180,24 +180,26 @@ where
       removed_edges.push((*edge_key, edge_data.clone()));
 
       let node_data = &partition.nodes[&node.key];
-      for (pos, p) in &edge_data.msg_to_child.variable {
-        if !range_contains(&node_data.seq.gaps, *pos) {
-          let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
-          let parent_ref_state = node_reference_state_or(partition, *parent_key, *pos, p.state);
-          variable_pos.entry(*pos).or_insert(current_state);
-          parent_state.insert(*pos, parent_ref_state);
-        }
-      }
+      // process substitutions first. these have defined states for both parent and child.
       for m in &edge_data.subs {
-        let current_state = node_reference_state_or(partition, node.key, m.pos(), m.qry());
+        let current_state = m.qry();
         variable_pos.insert(m.pos(), current_state);
         parent_state.entry(m.pos()).or_insert_with(|| m.reff());
         child_state.entry(m.pos()).or_insert(current_state);
       }
+      // variable in parent
+      for (pos, p) in &edge_data.msg_to_child.variable {
+        // check if the node as a defined sequence at this position. If yes, state is same as parent unless there is a substitution (which is covered above)
+        if !range_contains(&node_data.seq.non_char, *pos) {
+          variable_pos.entry(*pos).or_insert(p.state);
+          parent_state.entry(*pos).or_insert(p.state);
+        }
+      }
+      // variable in child
       for (pos, p) in &edge_data.msg_to_parent.variable {
         let current_state = node_reference_state_or(partition, node.key, *pos, p.state);
-        variable_pos.entry(*pos).or_insert(current_state);
-        child_state.entry(*pos).or_insert(current_state);
+        variable_pos.entry(*pos).or_insert(p.state);
+        child_state.entry(*pos).or_insert(p.state);
       }
 
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
