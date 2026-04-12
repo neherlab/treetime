@@ -7,6 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_ulps_eq;
@@ -15,6 +16,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
@@ -44,6 +46,62 @@ mod tests {
     "#},
       &*NUC_ALPHABET,
     )
+  }
+
+  fn ambiguous_r_alignment() -> Result<Vec<FastaRecord>, Report> {
+    read_many_fasta_str(
+      indoc! {r#"
+      >A
+      GCCC
+      >B
+      RCCC
+      >C
+      ACCC
+      >D
+      ACCC
+    "#},
+      &*NUC_ALPHABET,
+    )
+  }
+
+  fn collect_edge_subs<P: PartitionBranchOps>(
+    graph: &GraphAncestral,
+    partition: &P,
+  ) -> Result<BTreeMap<String, Vec<String>>, Report> {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge_ref| {
+        let (edge_key, parent_key, child_key) = {
+          let edge = edge_ref.read_arc();
+          (edge.key(), edge.source(), edge.target())
+        };
+        let parent_name = graph
+          .get_node(parent_key)
+          .expect("parent exists")
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name
+          .clone()
+          .expect("parent named");
+        let child_name = graph
+          .get_node(child_key)
+          .expect("child exists")
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name
+          .clone()
+          .expect("child named");
+        let subs = partition
+          .edge_subs(graph, edge_key)?
+          .into_iter()
+          .map(|sub| sub.to_string())
+          .collect();
+        Ok((format!("{parent_name}->{child_name}"), subs))
+      })
+      .collect()
   }
 
   /// Run dense marginal ancestral reconstruction on the given tree and alignment.
@@ -426,6 +484,90 @@ mod tests {
     let (log_lh_uniform, _) = run_dense_marginal(&graph, &aln, gtr_uniform)?;
 
     assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
+    let aln = ambiguous_r_alignment()?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.05,B:0.05)AB:0.05,(C:0.05,D:0.05)CD:0.05)root:0.01;")?;
+
+    let gtr_dense = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let gtr_sparse = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+
+    let (_, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
+    let (_, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
+
+    let dense_subs = collect_edge_subs(&graph, &*dense_partition.read_arc())?;
+    let sparse_subs = collect_edge_subs(&graph, &*sparse_partition.read_arc())?;
+
+    assert_eq!(dense_subs, sparse_subs);
+    assert_eq!(
+      Vec::<String>::new(),
+      sparse_subs["AB->B"],
+      "Ambiguous R leaf picked a spurious mutation"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_sparse_repeated_update_ambiguous_r_stable() -> Result<(), Report> {
+    let aln = ambiguous_r_alignment()?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.05,B:0.05)AB:0.05,(C:0.05,D:0.05)CD:0.05)root:0.01;")?;
+    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params {
+        alphabet: AlphabetName::Nuc,
+        ..JC69Params::default()
+      })?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+
+    let log_lh_first = update_marginal(&graph, std::slice::from_ref(&partition))?;
+    let edge_subs_first = {
+      let partition = partition.read_arc();
+      collect_edge_subs(&graph, &*partition)?
+    };
+
+    let log_lh_second = update_marginal(&graph, std::slice::from_ref(&partition))?;
+    let edge_subs_second = {
+      let partition = partition.read_arc();
+      collect_edge_subs(&graph, &*partition)?
+    };
+
+    assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-12);
+    assert_eq!(edge_subs_first, edge_subs_second);
+    assert_eq!(
+      Vec::<String>::new(),
+      edge_subs_second["AB->B"],
+      "Second marginal update introduced a spurious mutation"
+    );
+
+    for node_ref in graph.get_nodes() {
+      let node = node_ref.read_arc();
+      if node.is_root() {
+        continue;
+      }
+      let seq = &partition.read_arc().nodes[&node.key()].seq.sequence;
+      assert!(
+        seq.is_empty(),
+        "Sparse marginal wrote back a persistent sequence to non-root node {:?}",
+        node.payload().read_arc().name.clone()
+      );
+    }
 
     Ok(())
   }

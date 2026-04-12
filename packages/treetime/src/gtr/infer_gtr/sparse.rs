@@ -28,11 +28,15 @@ where
 
 /// Count mutations from sparse partition data for GTR inference.
 ///
-/// Uses `PartitionMarginalSparse::edge_subs_from_graph()` to derive mutations
-/// from the current partition state rather than reading stale Fitch-era `subs`.
-/// Before marginal inference, this returns the same mutations as Fitch parsimony.
-/// After marginal inference, it returns MAP-derived mutations that reflect the
-/// current posteriors.
+/// Reads per-node nucleotide counts from the stored `seq.composition` populated
+/// by Fitch compression. In the current sparse flow, GTR inference runs before
+/// any marginal update (see `ancestral/run.rs` and `optimize/run.rs`), so the
+/// stored composition is the Fitch-resolved composition and matches what the
+/// algorithm requires.
+///
+/// If the flow is ever changed to infer GTR after marginal (as dense does),
+/// the stored composition would go stale at MAP-shifted positions. A cached
+/// derivation from current MAP states would be needed here.
 pub fn get_mutation_counts_sparse<N, E, D>(
   graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,

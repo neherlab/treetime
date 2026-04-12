@@ -5,8 +5,11 @@ mod tests {
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
     get_common_length,
   };
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::traits::ExactStateCache;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -630,6 +633,81 @@ mod tests {
 
       let root_seq = get_root_seq(&graph, &partition);
       assert_eq!("ACAGCCATGTATTG--", root_seq);
+    }
+
+    Ok(())
+  }
+  #[test]
+  fn test_compress_sequences_reconstructs_exact_states_without_non_root_sequences() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACATCGCCNNA--GAC
+        >B
+        GCATCCCTGTA-NG--
+        >C
+        CCGGCGATGTRTTG--
+        >D
+        TCGGCCGTGTRTTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::default(),
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }));
+
+    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+
+    let expected = read_many_fasta_str(
+      indoc! {r#"
+        >root
+        ACAGCCATGTATTG--
+        >AB
+        ACATCCCTGTA-TG--
+        >CD
+        CCGGCCATGTATTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?
+    .into_iter()
+    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .collect::<BTreeMap<_, _>>();
+
+    let partition = partition.read_arc();
+    let mut exact_state_cache = ExactStateCache::new();
+    for node_ref in graph.get_nodes() {
+      let node = node_ref.read_arc();
+      let key = node.key();
+      let name = node.payload().read_arc().name.clone().expect("node has name");
+
+      if node.is_root() {
+        assert_eq!(partition.length, partition.nodes[&key].seq.sequence.len());
+      } else {
+        assert!(
+          partition.nodes[&key].seq.sequence.is_empty(),
+          "Non-root node {name} retained a sparse sequence"
+        );
+      }
+
+      let Some(expected_sequence) = expected.get(&name) else {
+        continue;
+      };
+
+      let oracle_sequence = (0..expected_sequence.len())
+        .map(|pos| partition.node_canonical_state(&graph, key, pos, &mut exact_state_cache))
+        .collect::<Result<Vec<_>, _>>()?;
+      assert_eq!(
+        expected_sequence.as_slice(),
+        oracle_sequence.as_slice(),
+        "Oracle sequence mismatch for node {name}"
+      );
     }
 
     Ok(())

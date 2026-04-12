@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::o;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -15,6 +16,7 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::path::PathBuf;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
@@ -91,6 +93,38 @@ mod tests {
 
     assert_eq!(expected, root_seq, "Root sequence mismatch with Python v0");
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_ambiguous_r_leaf_dense_sequences_match_python() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("((A:0.05,B:0.05)AB:0.05,(C:0.05,D:0.05)CD:0.05)root:0.01;")?;
+    let aln = read_many_fasta_str(">A\nGCCC\n>B\nRCCC\n>C\nACCC\n>D\nACCC\n", &*NUC_ALPHABET)?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
+      index: 0,
+      gtr: jc69(JC69Params {
+        alphabet: AlphabetName::Nuc,
+        ..JC69Params::default()
+      })?,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    initialize_marginal(&graph, &partitions, &aln)?;
+
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_marginal(&graph, false, &partitions, |node, seq| {
+      actual.insert(node.name.clone().expect("node has name"), seq.to_string());
+      Ok(())
+    })?;
+
+    let expected = BTreeMap::from([(o!("root"), o!("ACCC")), (o!("AB"), o!("GCCC")), (o!("CD"), o!("ACCC"))]);
+
+    assert_eq!(expected, actual);
     Ok(())
   }
 

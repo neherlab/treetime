@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::traits::PartitionBranchOps;
+  use crate::representation::partition::traits::{ExactStateCache, PartitionBranchOps};
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
   use crate::seq::mutation::Sub;
@@ -217,6 +217,72 @@ mod tests {
 
     // test overall likelihood
     pretty_assert_ulps_eq!(-55.55428499726621, log_lh, epsilon = 1e-6);
+    Ok(())
+  }
+
+  #[test]
+  fn test_ancestral_reconstruction_marginal_sparse_include_leaves() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+    "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let expected = read_many_fasta_str(
+      indoc! {r#"
+      >A
+      ACATCGCCNNA--GAC
+      >AB
+      ACATCGCTGTA-TG--
+      >B
+      GCATCCCTGTA-NG--
+      >C
+      CCGGCGATGTATTG--
+      >CD
+      TCGGCGGTGTATTG--
+      >D
+      TCGGCCGTGTATTG--
+      >root
+      TCGGCGCTGTATTG--
+    "#},
+      &*NUC_ALPHABET,
+    )?
+    .into_iter()
+    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .collect::<BTreeMap<_, _>>();
+
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let partitions_marginal_sparse = [Arc::new(RwLock::new(PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::default(),
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+    update_marginal(&graph, &partitions_marginal_sparse)?;
+
+    let mut actual = BTreeMap::new();
+    ancestral_reconstruction_marginal(&graph, true, &partitions_marginal_sparse, |node, seq| {
+      actual.insert(node.name.clone(), seq.to_string());
+      Ok(())
+    })?;
+
+    assert_eq!(
+      json_write_str(&expected, JsonPretty(false))?,
+      json_write_str(&actual, JsonPretty(false))?
+    );
+
     Ok(())
   }
 
@@ -552,6 +618,90 @@ mod tests {
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
+    Ok(())
+  }
+
+  /// Verify that `child_canonical_state_from_parent_state()` uses the precedence
+  /// gap > unknown > sub > parent_state at a single position.
+  ///
+  /// This documents the precedence contract that the sparse marginal passes
+  /// must match. The in-pass child-state resolution in `process_node_backward`
+  /// and the forward division block of `process_node_forward` both derive each
+  /// child state from the same precedence chain; when they diverge from the
+  /// helper, the messages passed into `combine_messages` carry canonical
+  /// nucleotides at masked positions and the likelihood contribution is wrong.
+  #[rstest::rstest]
+  #[rustfmt::skip]
+  #[case::no_mask_no_sub_falls_back_to_parent(    false, false, false, b'A')]
+  #[case::sub_without_mask_returns_qry(           false, false, true,  b'G')]
+  #[case::gap_overrides_sub(                      true,  false, true,  b'-')]
+  #[case::unknown_overrides_sub(                  false, true,  true,  b'N')]
+  #[case::gap_overrides_parent_state(             true,  false, false, b'-')]
+  #[case::unknown_overrides_parent_state(         false, true,  false, b'N')]
+  #[case::gap_precedes_unknown(                   true,  true,  false, b'-')]
+  fn test_child_canonical_state_precedence(
+    #[case] has_gap: bool,
+    #[case] has_unknown: bool,
+    #[case] has_sub: bool,
+    #[case] expected_byte: u8,
+  ) -> Result<(), Report> {
+    use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+    use treetime_primitives::{AsciiChar, seq};
+
+    // Minimal two-node partition: root and one leaf (child). Position 0 is the
+    // one position under test; all other positions are canonical `A`.
+    let alphabet = Alphabet::default();
+    let a = AsciiChar::from_byte_unchecked(b'A');
+    let g = AsciiChar::from_byte_unchecked(b'G');
+
+    let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root");
+    let a_key = find_node_key_by_name(&graph, "A").expect("A");
+    let edge_key = graph
+      .get_edges()
+      .iter()
+      .find_map(|edge_ref| {
+        let edge = edge_ref.read_arc();
+        (edge.source() == root_key && edge.target() == a_key).then(|| edge.key())
+      })
+      .expect("root->A edge");
+
+    let root_seq = seq![a, a];
+    let child_seq = seq![a, a];
+    let mut child_node = SparseNodePartition::new(&child_seq, &alphabet)?;
+    if has_gap {
+      child_node.seq.gaps = vec![(0, 1)];
+    }
+    if has_unknown {
+      child_node.seq.unknown = vec![(0, 1)];
+    }
+
+    let mut edge_data = SparseEdgePartition::default();
+    if has_sub {
+      edge_data.subs.push(Sub::new(a, 0_usize, g)?);
+    }
+
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: alphabet.clone(),
+      length: 2,
+      nodes: btreemap! {
+        root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
+        a_key => child_node,
+      },
+      edges: btreemap! {
+        edge_key => edge_data,
+      },
+    };
+
+    // Parent state at pos 0 is `A`. The helper must apply precedence and
+    // return the expected character.
+    let mut cache = ExactStateCache::new();
+    let actual = partition.child_canonical_state_from_parent_state(a_key, edge_key, a, 0, &mut cache)?;
+
+    let expected = AsciiChar::from_byte_unchecked(expected_byte);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
