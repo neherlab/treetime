@@ -1,11 +1,11 @@
 use crate::representation::partition::traits::ExactStateCache;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
+use crate::representation::partition::traits::SequenceReconstructionCache;
 use crate::representation::partition::traits::graph_log_lh;
 use eyre::Report;
 use log::debug;
 use parking_lot::{Mutex, RwLock};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
@@ -46,15 +46,10 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
-  let caches: Vec<ExactStateCache> = partitions
-    .iter()
-    .map(|_| Arc::new(Mutex::new(BTreeMap::new())))
-    .collect();
-
-  marginal_backward(graph, partitions, &caches)?;
+  marginal_backward(graph, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
   debug!("Log likelihood: {log_lh}");
-  marginal_forward(graph, partitions, &caches)?;
+  marginal_forward(graph, partitions)?;
   Ok(log_lh)
 }
 
@@ -70,15 +65,16 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
+  let mut cache = SequenceReconstructionCache::new();
   graph.try_iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
       return Ok(());
     }
 
     let seq: Seq = if !partitions.is_empty() {
-      let mut partition = partitions[0].write_arc();
+      let partition = partitions[0].read_arc();
       partition
-        .reconstruct_node_sequence(&node, include_leaves)
+        .reconstruct_node_sequence(graph, &node, include_leaves, &mut cache)
         .unwrap_or_else(|| seq![])
     } else {
       seq![]
@@ -89,11 +85,7 @@ where
 }
 
 /// Backward pass: calculates ingroup profiles
-fn marginal_backward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-  caches: &[ExactStateCache],
-) -> Result<(), Report>
+fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -101,7 +93,7 @@ where
 {
   let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_backward(|node| {
-    if let Err(e) = run_marginal_backward(graph, partitions, caches, &node) {
+    if let Err(e) = run_marginal_backward(graph, partitions, &node) {
       let mut guard = error.lock();
       if guard.is_none() {
         *guard = Some(e);
@@ -116,7 +108,6 @@ where
 fn run_marginal_backward<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
-  caches: &[ExactStateCache],
   node: &GraphNodeBackward<N, E, ()>,
 ) -> Result<(), Report>
 where
@@ -124,19 +115,16 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
-  for (partition, cache) in partitions.iter().zip(caches.iter()) {
+  for partition in partitions {
     let mut partition = partition.write_arc();
-    partition.process_node_backward(graph, node, cache)?;
+    let mut cache = ExactStateCache::new();
+    partition.process_node_backward(graph, node, &mut cache)?;
   }
   Ok(())
 }
 
 /// Forward pass: calculates outgroup profiles
-fn marginal_forward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-  caches: &[ExactStateCache],
-) -> Result<(), Report>
+fn marginal_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -144,7 +132,7 @@ where
 {
   let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_forward(|node| {
-    if let Err(e) = run_marginal_forward(graph, partitions, caches, &node) {
+    if let Err(e) = run_marginal_forward(graph, partitions, &node) {
       let mut guard = error.lock();
       if guard.is_none() {
         *guard = Some(e);
@@ -159,7 +147,6 @@ where
 fn run_marginal_forward<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
-  caches: &[ExactStateCache],
   node: &GraphNodeForward<N, E, ()>,
 ) -> Result<(), Report>
 where
@@ -167,9 +154,10 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + HasLogLh + ?Sized,
 {
-  for (partition, cache) in partitions.iter().zip(caches.iter()) {
+  for partition in partitions {
     let mut partition = partition.write_arc();
-    partition.process_node_forward(graph, node, cache)?;
+    let mut cache = ExactStateCache::new();
+    partition.process_node_forward(graph, node, &mut cache)?;
   }
   Ok(())
 }

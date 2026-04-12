@@ -32,7 +32,6 @@ impl SparseNodePartition {
         fitch: FitchSeqDistribution {
           variable: btreemap! {},
           variable_indel: btreemap! {},
-          composition: Composition::new(alphabet.chars(), alphabet.gap()),
         },
       },
       profile: MarginalSparseSeqDistribution::default(),
@@ -56,7 +55,6 @@ impl SparseNodePartition {
     let seq_dis = FitchSeqDistribution {
       variable,
       variable_indel: btreemap! {},
-      composition: Composition::new(alphabet.chars(), alphabet.gap()),
     };
 
     let unknown = find_letter_ranges(seq, alphabet.unknown());
@@ -139,8 +137,6 @@ pub struct FitchSeqDistribution {
   pub variable: BTreeMap<usize, StateSet>,
 
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
-
-  pub composition: Composition,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

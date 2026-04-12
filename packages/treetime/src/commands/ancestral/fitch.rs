@@ -141,7 +141,6 @@ where
     let mut seq_dis = FitchSeqDistribution {
       variable: btreemap! {},
       variable_indel: btreemap! {},
-      composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
     };
 
     for pos in variable_positions {
@@ -307,7 +306,6 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
-          ..
         },
         ..
       } = &mut node_data.seq;
@@ -331,7 +329,6 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
-          ..
         },
       } = &mut node_data.seq;
 
@@ -500,16 +497,11 @@ where
       seq.fitch.variable = btreemap! {};
     }
 
-    seq.fitch.composition = seq.composition.clone();
-    for p in seq.fitch.variable.values() {
-      if let Some(state) = p.get_one_maybe() {
-        seq.fitch.composition.adjust_count(state, -1);
-      }
+    if node.is_root {
+      continue;
     }
 
-    if !node.is_root {
-      seq.sequence = seq![];
-    }
+    seq.sequence = seq![];
   }
 
   GraphTraversalContinuation::Continue

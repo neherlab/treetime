@@ -4,7 +4,7 @@ use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
@@ -14,8 +14,8 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AsciiChar, Seq};
 
-pub type ExactStateCache = Arc<Mutex<BTreeMap<(GraphNodeKey, usize), AsciiChar>>>;
-pub type CurrentStateCache = Arc<Mutex<BTreeMap<(GraphNodeKey, usize), AsciiChar>>>;
+pub type ExactStateCache = BTreeMap<(GraphNodeKey, usize), AsciiChar>;
+pub type CurrentStateCache = BTreeMap<(GraphNodeKey, usize), AsciiChar>;
 pub type SequenceReconstructionCache = BTreeMap<GraphNodeKey, Seq>;
 
 pub trait GraphNodePathLookup: Send + Sync {
@@ -24,6 +24,8 @@ pub trait GraphNodePathLookup: Send + Sync {
   fn target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report>;
 
   fn parent_of(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report>;
+
+  fn is_leaf(&self, node_key: GraphNodeKey) -> Result<bool, Report>;
 }
 
 impl<N, E, D> GraphNodePathLookup for Graph<N, E, D>
@@ -50,6 +52,13 @@ where
     }
     let (parent_node, edge) = self.exactly_one_parent_of(&node)?;
     Ok(Some((parent_node.read_arc().key(), edge.read_arc().key())))
+  }
+
+  fn is_leaf(&self, node_key: GraphNodeKey) -> Result<bool, Report> {
+    let node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
+    Ok(node.read_arc().is_leaf())
   }
 }
 
@@ -97,7 +106,7 @@ where
     &mut self,
     graph: &Graph<N, E, ()>,
     node: &GraphNodeBackward<N, E, ()>,
-    cache: &ExactStateCache,
+    cache: &mut ExactStateCache,
   ) -> Result<(), Report>;
 
   /// Process a node during forward pass (equivalent to run_marginal_*_forward)
@@ -105,14 +114,20 @@ where
     &mut self,
     graph: &Graph<N, E, ()>,
     node: &GraphNodeForward<N, E, ()>,
-    cache: &ExactStateCache,
+    cache: &mut ExactStateCache,
   ) -> Result<(), Report>;
 
   /// Extract ancestral sequence from node profile
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
 
   /// Reconstruct ancestral sequences for a specific node during tree traversal
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq>;
+  fn reconstruct_node_sequence(
+    &self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    cache: &mut SequenceReconstructionCache,
+  ) -> Option<Seq>;
 
   /// Get sequence length
   fn get_sequence_length(&self) -> usize;

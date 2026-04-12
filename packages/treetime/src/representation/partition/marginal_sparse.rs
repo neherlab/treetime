@@ -8,7 +8,10 @@ use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::PartitionCompressed;
-use crate::representation::partition::traits::{ExactStateCache, PartitionMarginal, PartitionMarginalOps};
+use crate::representation::partition::traits::{
+  CurrentStateCache, ExactStateCache, GraphNodePathLookup, PartitionMarginal, PartitionMarginalOps,
+  SequenceReconstructionCache,
+};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::{Sub, compose_substitutions};
@@ -23,7 +26,6 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AsciiChar, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
-use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
@@ -85,12 +87,13 @@ impl PartitionMarginalSparse {
   ) -> Result<Vec<Sub>, Report> {
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
-    let mut cache = BTreeMap::new();
+    let mut exact_cache = ExactStateCache::new();
+    let mut current_cache = CurrentStateCache::new();
     let mut subs = Vec::new();
 
     for pos in self.edge_candidate_positions(graph, edge_key)? {
-      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
-      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
+      let parent_state = self.node_state_at(graph, parent_key, pos, &mut exact_cache, &mut current_cache)?;
+      let child_state = self.node_state_at(graph, child_key, pos, &mut exact_cache, &mut current_cache)?;
 
       if parent_state == child_state {
         continue;
@@ -151,83 +154,230 @@ impl PartitionMarginalSparse {
     )
   }
 
-  /// Reconstruct one node state at one site from sparse data.
+  /// Reconstruct the exact Fitch-resolved state at one node and site.
   ///
-  /// This is the single-site version of `reconstruct_node_sequence()`: start
-  /// from the parent state, apply edge changes, mask unknowns, then apply the
-  /// node's current best state for variable sites.
-  ///
-  /// After marginal inference, `edge.subs` alone is not enough. The final state
-  /// also depends on the node's current marginal result.
-  fn node_state_at<N: GraphNode, E: GraphEdge, D: Send + Sync>(
+  /// This follows the canonical root sequence and the edge deltas only. It does
+  /// not consult the marginal MAP profile.
+  fn edge_state_from_parent(&self, edge_key: GraphEdgeKey, pos: usize, parent_state: AsciiChar) -> AsciiChar {
+    self.edges.get(&edge_key).map_or(parent_state, |edge_data| {
+      match edge_data
+        .indels
+        .iter()
+        .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
+      {
+        Some(indel) if indel.deletion => self.alphabet.gap(),
+        Some(indel) => indel.seq[pos - indel.range.0],
+        None => edge_data
+          .subs
+          .iter()
+          .find(|sub| sub.pos() == pos)
+          .map_or(parent_state, Sub::qry),
+      }
+    })
+  }
+
+  pub(crate) fn node_canonical_state_known_parent<G: GraphNodePathLookup + ?Sized>(
     &self,
-    graph: &Graph<N, E, D>,
+    graph: &G,
     node_key: GraphNodeKey,
+    parent: Option<(GraphNodeKey, GraphEdgeKey)>,
     pos: usize,
-    cache: &mut BTreeMap<(GraphNodeKey, usize), AsciiChar>,
+    cache: &mut ExactStateCache,
   ) -> Result<AsciiChar, Report> {
-    if let Some(state) = cache.get(&(node_key, pos)) {
-      return Ok(*state);
+    if let Some(state) = cache.get(&(node_key, pos)).copied() {
+      return Ok(state);
     }
 
-    let node = graph
-      .get_node(node_key)
-      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
-    let node = node.read_arc();
-    let node_data = self.nodes.get(&node_key);
-
-    // Compute base state from tree structure.
-    // Root must have partition data (populated by Fitch compression).
-    // Non-root nodes may be absent during topology changes.
-    let base_state = if node.is_root() {
-      let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
-      d.seq
+    let node_data = self
+      .nodes
+      .get(&node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} has no partition data"))?;
+    let state = if range_contains(&node_data.seq.gaps, pos) {
+      self.alphabet.gap()
+    } else if range_contains(&node_data.seq.unknown, pos) {
+      self.alphabet.unknown()
+    } else if let Some((parent_key, edge_key)) = parent {
+      let parent_state = self.node_canonical_state(graph, parent_key, pos, cache)?;
+      self.edge_state_from_parent(edge_key, pos, parent_state)
+    } else {
+      node_data
+        .seq
         .sequence
         .get(pos)
         .copied()
         .unwrap_or_else(|| self.alphabet.char(0))
-    } else {
-      let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
-      let parent_key = parent_node.read_arc().key();
-      let edge_key = edge.read_arc().key();
-      let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
-
-      // Apply edge changes if edge partition data exists
-      self.edges.get(&edge_key).map_or(parent_state, |edge_data| {
-        // Indels have highest precedence, then substitutions, then parent state
-        if let Some(indel) = edge_data
-          .indels
-          .iter()
-          .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
-        {
-          if indel.deletion {
-            self.alphabet.gap()
-          } else {
-            indel.seq[pos - indel.range.0]
-          }
-        } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
-          sub.qry()
-        } else {
-          parent_state
-        }
-      })
     };
-
-    // Variable sites have highest precedence, then unknown, then base state
-    let state = node_data.map_or(base_state, |d| {
-      if let Some(states) = d.profile.variable.get(&pos) {
-        self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0))
-      } else if range_contains(&d.seq.unknown, pos) {
-        self.alphabet.unknown()
-      } else {
-        base_state
-      }
-    });
 
     cache.insert((node_key, pos), state);
     Ok(state)
   }
 
+  pub(crate) fn child_canonical_state_from_parent_state(
+    &self,
+    child_key: GraphNodeKey,
+    edge_key: GraphEdgeKey,
+    parent_state: AsciiChar,
+    pos: usize,
+    cache: &mut ExactStateCache,
+  ) -> Result<AsciiChar, Report> {
+    if let Some(state) = cache.get(&(child_key, pos)).copied() {
+      return Ok(state);
+    }
+
+    let child_data = self
+      .nodes
+      .get(&child_key)
+      .ok_or_else(|| make_internal_report!("Node {child_key} has no partition data"))?;
+    let state = if range_contains(&child_data.seq.gaps, pos) {
+      self.alphabet.gap()
+    } else if range_contains(&child_data.seq.unknown, pos) {
+      self.alphabet.unknown()
+    } else {
+      self.edge_state_from_parent(edge_key, pos, parent_state)
+    };
+
+    cache.insert((child_key, pos), state);
+    Ok(state)
+  }
+
+  pub(crate) fn node_canonical_state<G: GraphNodePathLookup + ?Sized>(
+    &self,
+    graph: &G,
+    node_key: GraphNodeKey,
+    pos: usize,
+    cache: &mut ExactStateCache,
+  ) -> Result<AsciiChar, Report> {
+    let parent = graph.parent_of(node_key)?;
+    self.node_canonical_state_known_parent(graph, node_key, parent, pos, cache)
+  }
+
+  fn leaf_parsimony_state<G: GraphNodePathLookup + ?Sized>(
+    &self,
+    graph: &G,
+    node_key: GraphNodeKey,
+    pos: usize,
+    exact_cache: &mut ExactStateCache,
+  ) -> Result<AsciiChar, Report> {
+    let node_data = self
+      .nodes
+      .get(&node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} has no partition data"))?;
+    if range_contains(&node_data.seq.gaps, pos) {
+      return Ok(self.alphabet.gap());
+    }
+    if range_contains(&node_data.seq.unknown, pos) {
+      return Ok(self.alphabet.unknown());
+    }
+
+    // Sparse leaf semantics follow the exact parsimony-resolved state carried by
+    // the compressed tree, not the raw observed ambiguity code from the input
+    // FASTA. The ambiguity itself still shapes the leaf likelihood through the
+    // backward `dis` vector; downstream state-based consumers need the
+    // parsimony-resolved nucleotide that anchors those messages.
+    self.node_canonical_state(graph, node_key, pos, exact_cache)
+  }
+
+  fn reconstruct_leaf_parsimony_sequence<G: GraphNodePathLookup + ?Sized>(
+    &self,
+    graph: &G,
+    node_key: GraphNodeKey,
+    exact_cache: &mut ExactStateCache,
+  ) -> Result<Seq, Report> {
+    (0..self.length)
+      .map(|pos| self.leaf_parsimony_state(graph, node_key, pos, exact_cache))
+      .collect()
+  }
+
+  /// Reconstruct one node state at one site from sparse data.
+  ///
+  /// This starts from the exact Fitch-resolved state and then applies the
+  /// current marginal MAP profile when the position is explicit in the sparse
+  /// posterior.
+  fn node_state_at<G: GraphNodePathLookup + ?Sized>(
+    &self,
+    graph: &G,
+    node_key: GraphNodeKey,
+    pos: usize,
+    exact_cache: &mut ExactStateCache,
+    current_cache: &mut CurrentStateCache,
+  ) -> Result<AsciiChar, Report> {
+    if let Some(state) = current_cache.get(&(node_key, pos)).copied() {
+      return Ok(state);
+    }
+
+    let node_data = self
+      .nodes
+      .get(&node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} has no partition data"))?;
+    if graph.is_leaf(node_key)? {
+      let state = self.leaf_parsimony_state(graph, node_key, pos, exact_cache)?;
+      current_cache.insert((node_key, pos), state);
+      return Ok(state);
+    }
+    let base_state = if let Some((parent_key, edge_key)) = graph.parent_of(node_key)? {
+      let parent_state = self.node_canonical_state(graph, parent_key, pos, exact_cache)?;
+      self.child_canonical_state_from_parent_state(node_key, edge_key, parent_state, pos, exact_cache)?
+    } else {
+      self.node_canonical_state_known_parent(graph, node_key, None, pos, exact_cache)?
+    };
+    let state = node_data.profile.variable.get(&pos).map_or(base_state, |states| {
+      self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0))
+    });
+    current_cache.insert((node_key, pos), state);
+    Ok(state)
+  }
+
+  fn reconstruct_sequence_cached<G: GraphNodePathLookup + ?Sized>(
+    &self,
+    graph: &G,
+    node_key: GraphNodeKey,
+    cache: &mut SequenceReconstructionCache,
+  ) -> Result<Seq, Report> {
+    if let Some(seq) = cache.get(&node_key) {
+      return Ok(seq.clone());
+    }
+
+    let node_data = self
+      .nodes
+      .get(&node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} has no partition data"))?;
+    if graph.is_leaf(node_key)? {
+      let mut exact_cache = ExactStateCache::default();
+      let seq = self.reconstruct_leaf_parsimony_sequence(graph, node_key, &mut exact_cache)?;
+      cache.insert(node_key, seq.clone());
+      return Ok(seq);
+    }
+    let mut seq = if let Some((parent_key, edge_key)) = graph.parent_of(node_key)? {
+      let mut seq = self.reconstruct_sequence_cached(graph, parent_key, cache)?;
+      if let Some(edge_data) = self.edges.get(&edge_key) {
+        for sub in &edge_data.subs {
+          seq[sub.pos()] = sub.qry();
+        }
+        for indel in &edge_data.indels {
+          if indel.deletion {
+            seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+          } else {
+            seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+          }
+        }
+      }
+      seq
+    } else {
+      node_data.seq.sequence.clone()
+    };
+
+    for gap in &node_data.seq.gaps {
+      seq[gap.0..gap.1].fill(self.alphabet.gap());
+    }
+    for unknown in &node_data.seq.unknown {
+      seq[unknown.0..unknown.1].fill(self.alphabet.unknown());
+    }
+    for (&pos, states) in &node_data.profile.variable {
+      seq[pos] = self.alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
+    }
+    cache.insert(node_key, seq.clone());
+    Ok(seq)
+  }
 }
 
 impl HasLogLh for PartitionMarginalSparse {
@@ -402,7 +552,7 @@ where
     &mut self,
     graph: &Graph<N, E, ()>,
     node: &GraphNodeBackward<N, E, ()>,
-    cache: &ExactStateCache,
+    cache: &mut ExactStateCache,
   ) -> Result<(), Report> {
     marginal_passes::process_node_backward(self, graph, node, cache)
   }
@@ -411,7 +561,7 @@ where
     &mut self,
     graph: &Graph<N, E, ()>,
     node: &GraphNodeForward<N, E, ()>,
-    cache: &ExactStateCache,
+    cache: &mut ExactStateCache,
   ) -> Result<(), Report> {
     marginal_passes::process_node_forward(self, graph, node, cache)
   }
@@ -428,51 +578,18 @@ where
     }
   }
 
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq> {
+  fn reconstruct_node_sequence(
+    &self,
+    graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    cache: &mut SequenceReconstructionCache,
+  ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
       return None;
     }
 
-    let mut node_data = self.nodes.remove(&node.key)?;
-
-    let mut seq = if node.is_root {
-      node_data.seq.sequence.clone()
-    } else {
-      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
-      let parent_data = self.nodes.get(parent_key)?;
-      let edge_data = self.edges.get(edge_key)?;
-
-      let mut seq = parent_data.seq.sequence.clone();
-
-      for m in &edge_data.subs {
-        seq[m.pos()] = m.qry();
-      }
-
-      for indel in &edge_data.indels {
-        if indel.deletion {
-          seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
-        } else {
-          seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-        }
-      }
-
-      seq
-    };
-
-    let alphabet = &self.alphabet;
-    for r in &node_data.seq.unknown {
-      let ambig_char = alphabet.unknown();
-      seq[r.0..r.1].fill(ambig_char);
-    }
-
-    for (pos, states) in &node_data.profile.variable {
-      seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
-    }
-
-    node_data.seq.sequence = seq.clone();
-    self.nodes.insert(node.key, node_data);
-
-    Some(seq)
+    self.reconstruct_sequence_cached(graph, node.key, cache).ok()
   }
 
   fn get_sequence_length(&self) -> usize {

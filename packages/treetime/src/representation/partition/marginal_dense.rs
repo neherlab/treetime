@@ -7,7 +7,9 @@ use crate::make_report;
 use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::{ExactStateCache, PartitionMarginal, PartitionMarginalOps};
+use crate::representation::partition::traits::{
+  ExactStateCache, PartitionMarginal, PartitionMarginalOps, SequenceReconstructionCache,
+};
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::seq::mutation::Sub;
@@ -215,7 +217,7 @@ where
     &mut self,
     _graph: &Graph<N, E, ()>,
     node: &GraphNodeBackward<N, E, ()>,
-    _cache: &ExactStateCache,
+    _cache: &mut ExactStateCache,
   ) -> Result<(), Report> {
     let alphabet = &self.alphabet;
     let length = self.length;
@@ -301,7 +303,7 @@ where
     &mut self,
     graph: &Graph<N, E, ()>,
     node: &GraphNodeForward<N, E, ()>,
-    _cache: &ExactStateCache,
+    _cache: &mut ExactStateCache,
   ) -> Result<(), Report> {
     if !node.is_root {
       let mut dis: Option<Array2<f64>> = None;
@@ -350,7 +352,13 @@ where
     }
   }
 
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq> {
+  fn reconstruct_node_sequence(
+    &self,
+    _graph: &Graph<N, E, ()>,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    _cache: &mut SequenceReconstructionCache,
+  ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
       return None;
     }
