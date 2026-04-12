@@ -9,6 +9,7 @@ use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::make_error;
+use crate::representation::partition::traits::ExactStateCache;
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
@@ -101,7 +102,7 @@ where
 
     debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-    let contributions = collect_contributions(partitions, edge_key)?;
+    let contributions = collect_contributions(graph, partitions, edge_key)?;
     let distribution = compute_branch_length_distribution(
       &contributions,
       branch_length,
@@ -135,6 +136,7 @@ where
 }
 
 fn collect_contributions<N, E, P>(
+  graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   edge_key: GraphEdgeKey,
 ) -> Result<Vec<OptimizationContribution>, Report>
@@ -145,7 +147,12 @@ where
 {
   partitions
     .iter()
-    .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
+    .map(|partition| {
+      let mut exact_state_cache = ExactStateCache::new();
+      partition
+        .read_arc()
+        .create_edge_contribution(graph, edge_key, &mut exact_state_cache)
+    })
     .collect()
 }
 

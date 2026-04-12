@@ -498,9 +498,11 @@ impl PartitionBranchOps for PartitionMarginalSparse {
 impl PartitionOptimizeOps for PartitionMarginalSparse {
   fn create_edge_contribution(
     &self,
+    graph: &dyn GraphNodePathLookup,
     edge_key: GraphEdgeKey,
+    cache: &mut ExactStateCache,
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
-    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
+    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(graph, edge_key, self, cache)
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {

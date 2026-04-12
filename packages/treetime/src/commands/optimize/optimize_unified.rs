@@ -10,6 +10,7 @@ use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::{ExactStateCache, GraphNodePathLookup};
 use crate::representation::payload::ancestral::GraphAncestral;
 use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::brent::BrentOpt;
@@ -108,8 +109,13 @@ impl OptimizationContribution {
   ///
   /// Extracts variable positions and mutations from the sparse partition and
   /// computes site contributions for optimization.
-  pub fn from_sparse(edge_key: GraphEdgeKey, partition: &PartitionMarginalSparse) -> Result<Self, Report> {
-    let contribution = optimize_sparse::get_coefficients(edge_key, partition)?;
+  pub fn from_sparse(
+    graph: &dyn GraphNodePathLookup,
+    edge_key: GraphEdgeKey,
+    partition: &PartitionMarginalSparse,
+    cache: &mut ExactStateCache,
+  ) -> Result<Self, Report> {
+    let contribution = optimize_sparse::get_coefficients(graph, edge_key, partition, cache)?;
     Ok(OptimizationContribution::Sparse(contribution))
   }
 
@@ -562,16 +568,20 @@ where
 
   let one_mutation = 1.0 / total_length as f64;
   let indel_rate = estimate_indel_rate(graph, partitions);
-
   graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
     let mut branch_length = edge.branch_length().unwrap_or(0.0);
 
-    let contributions: Vec<OptimizationContribution> = partitions
-      .iter()
-      .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
+    let mut contributions = Vec::with_capacity(partitions.len());
+    for partition in partitions {
+      let mut exact_state_cache = ExactStateCache::new();
+      contributions.push(
+        partition
+          .read_arc()
+          .create_edge_contribution(graph, edge_key, &mut exact_state_cache)?,
+      );
+    }
 
     let indel_count: usize = partitions
       .iter()

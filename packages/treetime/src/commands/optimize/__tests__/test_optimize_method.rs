@@ -12,6 +12,7 @@ mod tests {
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::traits::ExactStateCache;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
@@ -191,7 +192,11 @@ mod tests {
     let edge_key = graph.get_edges()[0].read_arc().key();
     let contributions: Vec<OptimizationContribution> = partitions
       .iter()
-      .map(|p| p.read_arc().create_edge_contribution(edge_key))
+      .map(|p| {
+        let mut exact_state_cache = ExactStateCache::new();
+        p.read_arc()
+          .create_edge_contribution(graph, edge_key, &mut exact_state_cache)
+      })
       .collect::<Result<_, _>>()?;
 
     let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
@@ -212,7 +217,11 @@ mod tests {
     let edge_key = graph.get_edges()[0].read_arc().key();
     let contributions: Vec<OptimizationContribution> = partitions
       .iter()
-      .map(|p| p.read_arc().create_edge_contribution(edge_key))
+      .map(|p| {
+        let mut exact_state_cache = ExactStateCache::new();
+        p.read_arc()
+          .create_edge_contribution(graph, edge_key, &mut exact_state_cache)
+      })
       .collect::<Result<_, _>>()?;
 
     let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();

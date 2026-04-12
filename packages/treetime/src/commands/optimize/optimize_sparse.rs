@@ -26,8 +26,9 @@
 //!
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::{ExactStateCache, GraphNodePathLookup};
 use crate::seq::mutation::Sub;
-use eyre::{OptionExt, Report};
+use eyre::Report;
 use itertools::Itertools;
 use std::iter::zip;
 use treetime_graph::edge::GraphEdgeKey;
@@ -43,10 +44,14 @@ pub struct PartitionContribution {
 }
 
 pub fn get_coefficients(
+  graph: &dyn GraphNodePathLookup,
   edge_key: GraphEdgeKey,
   partition: &PartitionMarginalSparse,
+  cache: &mut ExactStateCache,
 ) -> Result<PartitionContribution, Report> {
   let edge = &partition.edges[&edge_key];
+  let parent_key = graph.source_node_key(edge_key)?;
+  let child_key = graph.target_node_key(edge_key)?;
 
   // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
   let variable_positions: Vec<usize> = edge
@@ -62,41 +67,34 @@ pub fn get_coefficients(
   let variable_states = variable_positions
     .iter()
     .map(|pos| -> Result<_, Report> {
-      // Check whether the position is in substitutions
-      if let Some(sub) = edge.subs.iter().find(|m| m.pos() == *pos) {
-        Ok((sub.reff(), sub.qry()))
-      } else {
-        let parent = edge
-          .msg_to_child
-          .variable
-          .get(pos)
-          .or_else(|| edge.msg_to_parent.variable.get(pos))
-          .ok_or_eyre("Unable to find msg_to_parent")?
-          .state;
-        let child = edge
-          .msg_to_parent
-          .variable
-          .get(pos)
-          .or_else(|| edge.msg_to_child.variable.get(pos))
-          .ok_or_eyre("Unable to find msg_to_child")?
-          .state;
-        Ok((parent, child))
-      }
+      let parent = partition.node_canonical_state(graph, parent_key, *pos, cache)?;
+      let child = partition.node_canonical_state(graph, child_key, *pos, cache)?;
+      Ok((parent, child))
     })
     .collect::<Result<Vec<_>, Report>>()?;
+
+  // Neutral contribution at positions whose reconstructed state is non-canonical
+  // (gap or unknown). The `fixed` map is keyed by canonical states only, so we
+  // substitute a flat weight of 1 at masked positions, mirroring the fallback in
+  // `process_node_forward` at marginal_passes.rs.
+  let neutral = ndarray::Array1::from_elem(partition.alphabet.n_canonical(), 1.0);
 
   let mut site_contributions: Vec<SiteContribution> = Vec::new();
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = edge.msg_to_child.variable.get(&pos) {
       &parent.dis
-    } else {
+    } else if partition.alphabet.is_canonical(parent_state) {
       &edge.msg_to_child.fixed[&parent_state]
+    } else {
+      &neutral
     };
 
     let child = if let Some(child) = edge.msg_to_parent.variable.get(&pos) {
       &child.dis
-    } else {
+    } else if partition.alphabet.is_canonical(child_state) {
       &edge.msg_to_parent.fixed[&child_state]
+    } else {
+      &neutral
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,

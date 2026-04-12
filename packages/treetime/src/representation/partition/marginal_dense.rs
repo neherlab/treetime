@@ -8,7 +8,7 @@ use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::{
-  ExactStateCache, PartitionMarginal, PartitionMarginalOps, SequenceReconstructionCache,
+  ExactStateCache, GraphNodePathLookup, PartitionMarginal, PartitionMarginalOps, SequenceReconstructionCache,
 };
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
@@ -135,7 +135,9 @@ impl PartitionBranchOps for PartitionMarginalDense {
 impl PartitionOptimizeOps for PartitionMarginalDense {
   fn create_edge_contribution(
     &self,
+    _graph: &dyn GraphNodePathLookup,
     edge_key: GraphEdgeKey,
+    _cache: &mut ExactStateCache,
   ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
     Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
   }

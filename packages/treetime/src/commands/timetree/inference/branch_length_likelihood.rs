@@ -2,6 +2,7 @@ use crate::commands::optimize::optimize_unified::{OptimizationContribution, eval
 use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::{ExactStateCache, GraphNodePathLookup};
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -11,6 +12,7 @@ use treetime_distribution::DistributionFunction;
 use treetime_graph::edge::GraphEdgeKey;
 
 pub fn collect_edge_contributions(
+  graph: &dyn GraphNodePathLookup,
   edge_key: GraphEdgeKey,
   dense_partitions: &[&PartitionMarginalDense],
   sparse_partitions: &[&PartitionMarginalSparse],
@@ -22,7 +24,13 @@ pub fn collect_edge_contributions(
   }
 
   for partition in sparse_partitions {
-    contributions.push(OptimizationContribution::from_sparse(edge_key, partition)?);
+    let mut exact_state_cache = ExactStateCache::new();
+    contributions.push(OptimizationContribution::from_sparse(
+      graph,
+      edge_key,
+      partition,
+      &mut exact_state_cache,
+    )?);
   }
 
   Ok(contributions)

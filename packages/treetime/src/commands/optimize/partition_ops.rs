@@ -1,5 +1,5 @@
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::representation::partition::traits::PartitionBranchOps;
+use crate::representation::partition::traits::{ExactStateCache, GraphNodePathLookup, PartitionBranchOps};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -12,7 +12,12 @@ use treetime_graph::edge::GraphEdgeKey;
 /// optimize-specific likelihood contribution computation.
 pub trait PartitionOptimizeOps: PartitionBranchOps {
   /// Return the precomputed likelihood contribution for one edge.
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
+  fn create_edge_contribution(
+    &self,
+    graph: &dyn GraphNodePathLookup,
+    edge_key: GraphEdgeKey,
+    cache: &mut ExactStateCache,
+  ) -> Result<OptimizationContribution, Report>;
 
   /// Return the number of indel events on one edge.
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize;
