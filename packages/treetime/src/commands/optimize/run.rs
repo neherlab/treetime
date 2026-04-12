@@ -169,7 +169,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     run_optimize_mixed(&graph, &mixed_partitions, *opt_method)?;
 
     // Identify zero-optimal internal edges BEFORE damping blends them with old values
-    let zero_optimal_edges = find_zero_optimal_internal_edges(&graph);
+    let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
 
     apply_damping(&graph, &old_branch_lengths, *damping, i);
 
@@ -261,7 +261,8 @@ where
   }
 }
 
-/// Collect internal edge keys whose branch length is exactly zero after optimization.
+/// Collect internal edge keys whose branch length is exactly zero after optimization,
+/// provided the edge carries no substitutions or indels on any sparse partition.
 ///
 /// These edges were identified as zero-optimal by `is_zero_branch_optimal()` during
 /// `run_optimize_mixed()`. Call this BEFORE `apply_damping()`, which would blend the
@@ -269,7 +270,14 @@ where
 ///
 /// Only internal (non-leaf-targeting) edges are candidates: collapsing a leaf edge
 /// would remove the leaf from the tree.
-pub(crate) fn find_zero_optimal_internal_edges(graph: &GraphAncestral) -> Vec<GraphEdgeKey> {
+///
+/// Edges that carry mutations are excluded: collapsing them would push substitutions
+/// onto child edges and potentially trigger an oscillation where merge_shared_mutation_branches
+/// re-creates the node, which then optimizes to zero again.
+pub(crate) fn find_zero_optimal_internal_edges(
+  graph: &GraphAncestral,
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
     .iter()
@@ -277,7 +285,18 @@ pub(crate) fn find_zero_optimal_internal_edges(graph: &GraphAncestral) -> Vec<Gr
       let edge = edge_ref.read_arc();
       let bl = edge.payload().read_arc().branch_length().unwrap_or(f64::NAN);
       let target_is_leaf = graph.is_leaf(edge.target());
-      (bl == 0.0 && !target_is_leaf).then_some(edge.key())
+      if bl != 0.0 || target_is_leaf {
+        return None;
+      }
+      let edge_key = edge.key();
+      let has_mutations = sparse_partitions.iter().any(|partition| {
+        let partition = partition.read_arc();
+        partition
+          .edges
+          .get(&edge_key)
+          .is_some_and(|e| !e.subs.is_empty() || !e.indels.is_empty())
+      });
+      (!has_mutations).then_some(edge_key)
     })
     .collect_vec()
 }
