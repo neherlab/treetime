@@ -8,7 +8,7 @@
 | ------------------------ | ------ | ------- | --------------- |
 | Fitch parsimony          | 1      | 6       | Unit            |
 | Marginal ML dense        | 1      | 5       | Unit            |
-| Marginal ML sparse       | 1      | 6       | Unit            |
+| Marginal ML sparse       | 1      | 13      | Unit            |
 | Dense/sparse equivalence | 2      | 2       | Unit + Property |
 | Idempotency              | 2      | 4       | Unit + Property |
 | Normalization            | 2      | 6       | Unit + Property |
@@ -21,7 +21,7 @@
 | Analytical               | 3      | 10      | Golden-master   |
 | Sparse composition       | 1      | 12      | Unit            |
 | Generator validation     | 4      | 15      | Property        |
-| **Total**                | **28** | **123** | Mixed           |
+| **Total**                | **28** | **130** | Mixed           |
 
 Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_marginal_analytical_support.rs`, `test_marginal_stability_support.rs`
 
@@ -64,14 +64,15 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **File:** [`test_marginal_sparse.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_sparse.rs)
 
-| Test                                                           | Purpose                                           |
-| -------------------------------------------------------------- | ------------------------------------------------- |
-| `test_ancestral_reconstruction_marginal_sparse`                | MAP sequences using Fitch compression + marginal  |
-| `test_marginal_sparse_probability_normalization`               | Variable and fixed distributions sum to 1.0       |
-| `test_marginal_sparse_update_is_idempotent`                    | Fixed-point test for sparse representation        |
-| `test_marginal_sparse_log_lh_root_invariance_reversible_model` | Root invariance with non-uniform GTR              |
-| `test_marginal_sparse_posterior_values_python_parity`          | Specific posterior values match Python v0         |
-| `test_total_likelihood_marginal_sparse_all_triplets`           | Law of total probability for sparse (64 triplets) |
+| Test                                                           | Purpose                                                               |
+| -------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `test_ancestral_reconstruction_marginal_sparse`                | MAP sequences using Fitch compression + marginal                      |
+| `test_marginal_sparse_probability_normalization`               | Variable and fixed distributions sum to 1.0                           |
+| `test_marginal_sparse_update_is_idempotent`                    | Fixed-point test for sparse representation                            |
+| `test_marginal_sparse_log_lh_root_invariance_reversible_model` | Root invariance with non-uniform GTR                                  |
+| `test_marginal_sparse_posterior_values_python_parity`          | Specific posterior values match Python v0                             |
+| `test_total_likelihood_marginal_sparse_all_triplets`           | Law of total probability for sparse (64 triplets)                     |
+| `test_child_canonical_state_precedence`                        | Child-state precedence: gap > unknown > sub > parent (7 rstest cases) |
 
 **Algorithm:** Fitch compression + marginal ML on variable positions
 
