@@ -14,10 +14,14 @@ use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 
 fn node_reference_state(partition: &PartitionMarginalSparse, node_key: GraphNodeKey, pos: usize) -> Option<AsciiChar> {
-  partition
-    .nodes
-    .get(&node_key)
-    .and_then(|node_data| node_data.seq.sequence.get(pos).copied())
+  partition.nodes.get(&node_key).and_then(|node_data| {
+    node_data
+      .seq
+      .fitch
+      .chosen_state
+      .get(&pos)
+      .copied()
+  })
 }
 
 fn node_reference_state_or(
@@ -83,29 +87,33 @@ where
         child_states[ci].insert(m.pos(), m.qry());
       }
       for (pos, p) in &edge_data.msg_from_child.variable {
-        let state = node_reference_state_or(partition, node.key, *pos, p.state);
-        variable_pos.entry(*pos).or_insert(state);
+        // if position in variable in child and we have not yet encountered it (no sub at this position), then state is the same as in the child.
+        variable_pos.entry(*pos).or_insert(p.state);
       }
       child_messages.push(edge_data.msg_from_child.clone());
     }
 
+    // collected child states of variable positions that are not yet determined
     let alphabet = &partition.alphabet;
     for (ci, (child_key, _)) in node.child_keys.iter().enumerate() {
       let states = &mut child_states[ci];
       let child_data = &partition.nodes[child_key];
-      for pos in variable_pos.keys() {
+      for (pos, parent_state) in variable_pos.iter() {
+        // we already know the state
         if states.contains_key(pos) {
           continue;
         }
-        if let Some(state) = node_reference_state(partition, *child_key, *pos) {
-          states.insert(*pos, state);
-        } else if range_contains(&child_data.seq.non_char, *pos) {
+
+        // not knowing the state implies no substitution at this position. can use the child state as the parent state.
+        if range_contains(&child_data.seq.non_char, *pos) {
           let state = if range_contains(&child_data.seq.gaps, *pos) {
             alphabet.gap()
           } else {
             alphabet.unknown()
           };
           states.insert(*pos, state);
+        } else{
+          states.insert(*pos, *parent_state);
         }
       }
     }
