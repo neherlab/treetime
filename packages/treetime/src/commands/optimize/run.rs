@@ -5,7 +5,7 @@ use crate::commands::optimize::args::{InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
-use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -34,6 +34,65 @@ use treetime_utils::make_error;
 pub struct TreetimeOptimizeParams {
   pub sample_from_profile: bool,
   pub fixed_pi: bool,
+}
+
+/// Normalize substitution rates across partitions after GTR inference.
+///
+/// Each inferred GTR model has a rate `mu` (expected substitutions per site per branch-length
+/// unit). When partitions differ in rate, we rescale so the length-weighted average mu is 1:
+///
+///   total_average = Σ(partition.length × partition.gtr.mu) / Σ(partition.length)
+///
+/// Each partition's `gtr.mu` is divided by `total_average`, and every branch length in the tree
+/// is multiplied by `total_average`. The product `mu × t` (expected substitutions) is preserved,
+/// but now the average rate across all partitions equals 1, making branch lengths directly
+/// interpretable as substitutions per site.
+fn normalize_partition_rates(
+  graph: &GraphAncestral,
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+) {
+  let total_length: usize = sparse_partitions.iter().map(|p| p.read_arc().length).sum::<usize>()
+    + dense_partitions.iter().map(|p| p.read_arc().length).sum::<usize>();
+
+  if total_length == 0 {
+    return;
+  }
+
+  let weighted_rate: f64 = sparse_partitions
+    .iter()
+    .map(|p| {
+      let p = p.read_arc();
+      p.length as f64 * p.gtr.mu
+    })
+    .sum::<f64>()
+    + dense_partitions
+      .iter()
+      .map(|p| {
+        let p = p.read_arc();
+        p.length as f64 * p.gtr.mu
+      })
+      .sum::<f64>();
+
+  let total_average = weighted_rate / total_length as f64;
+
+  if total_average == 0.0 {
+    return;
+  }
+
+  for partition in sparse_partitions {
+    partition.write_arc().gtr.mu /= total_average;
+  }
+  for partition in dense_partitions {
+    partition.write_arc().gtr.mu /= total_average;
+  }
+
+  for edge_ref in graph.get_edges() {
+    let mut edge = edge_ref.write_arc().payload().write_arc();
+    if let Some(bl) = edge.branch_length() {
+      edge.set_branch_length(Some(bl * total_average));
+    }
+  }
 }
 
 pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
@@ -128,6 +187,13 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   }
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+
+  // When GTR is inferred, normalize substitution rates so the length-weighted average mu equals 1
+  // and rescale branch lengths accordingly. This makes branch lengths interpretable as expected
+  // substitutions per site across all partitions, while preserving relative rates between partitions.
+  if *model_name == GtrModelName::Infer {
+    normalize_partition_rates(&graph, &sparse_partitions, &dense_partitions);
+  }
 
   match branch_length_initial_guess {
     InitialGuessMode::Auto => {
