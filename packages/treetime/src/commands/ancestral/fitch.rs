@@ -142,6 +142,7 @@ where
       variable: btreemap! {},
       variable_indel: btreemap! {},
       composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
+      chosen_state: btreemap! {},
     };
 
     for pos in variable_positions {
@@ -307,13 +308,16 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
+          chosen_state,
           ..
         },
         ..
       } = &mut node_data.seq;
 
       for (pos, states) in variable {
-        sequence[*pos] = states.get_one();
+        let chosen = states.get_one();
+        sequence[*pos] = chosen;
+        chosen_state.insert(*pos, chosen);
       }
       // process indels as majority rule at the root
       for (r, indel) in variable_indel.iter() {
@@ -331,6 +335,7 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel,
+          chosen_state,
           ..
         },
       } = &mut node_data.seq;
@@ -369,6 +374,7 @@ where
           // if parent is gap, but child isn't, we need to resolve variable states
           sequence[*pos] = states.get_one();
         }
+        chosen_state.insert(*pos, sequence[*pos]);
       }
 
       for &pos in parent.fitch.variable.keys() {

@@ -33,6 +33,7 @@ impl SparseNodePartition {
           variable: btreemap! {},
           variable_indel: btreemap! {},
           composition: Composition::new(alphabet.chars(), alphabet.gap()),
+          chosen_state: btreemap! {},
         },
       },
       profile: MarginalSparseSeqDistribution::default(),
@@ -57,6 +58,7 @@ impl SparseNodePartition {
       variable,
       variable_indel: btreemap! {},
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      chosen_state: btreemap! {},
     };
 
     let unknown = find_letter_ranges(seq, alphabet.unknown());
@@ -141,6 +143,9 @@ pub struct FitchSeqDistribution {
   pub variable_indel: BTreeMap<(usize, usize), Deletion>,
 
   pub composition: Composition,
+
+  /// The character chosen for each variable site during the Fitch forward pass
+  pub chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
