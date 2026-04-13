@@ -342,6 +342,14 @@ where
 /// Only internal (non-leaf-targeting) edges are candidates: collapsing a leaf edge
 /// would remove the leaf from the tree.
 ///
+/// Leaf edges with optimizer output `0.0` are intentionally not collected here.
+/// This matches v0 (`packages/legacy/treetime/treetime/treeanc.py`
+/// `prune_short_branches`, which explicitly skips terminals): `apply_damping()`
+/// blends the optimizer's zero with the previous positive value, producing a
+/// small positive leaf branch length that converges toward zero across iterations
+/// as the geometric damping weight decays. v0 also damps every non-root edge
+/// (`optimize_tree_marginal`, line 1342) and never collapses leaves.
+///
 /// Edges that carry mutations are excluded: collapsing them would push substitutions
 /// onto child edges and potentially trigger an oscillation where merge_shared_mutation_branches
 /// re-creates the node, which then optimizes to zero again.
