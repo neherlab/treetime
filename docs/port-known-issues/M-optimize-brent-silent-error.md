@@ -15,7 +15,7 @@ A failed per-edge optimization is indistinguishable from a successful no-op. The
 
 ## Impact
 
-Bracket mistakes, evaluation-domain errors, or solver failures leave edges at their previous length while the caller believes Brent optimization succeeded. This biases inferred branch lengths and makes downstream likelihood comparisons unreliable. The failure is silent -- no log message, no error propagation.
+Bracket mistakes, evaluation-domain errors, or solver failures leave edges at their previous length while the caller believes Brent optimization succeeded. This biases inferred branch lengths and makes downstream likelihood comparisons unreliable. The failure is silent: no log message, no error propagation.
 
 ## Approach
 

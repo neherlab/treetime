@@ -265,9 +265,9 @@ mod tests {
   /// zero on a multi-modal surface: the helper must return a positive mode
   /// (the better local max), not zero.
   ///
-  /// This is the same scenario the original boundary check was designed to
-  /// catch, but it now exercises the dispatch helper directly so that any
-  /// future refactor that drops the gate gets caught.
+  /// Exercises the dispatch helper directly on the
+  /// `positive_might_lose_to_zero` gate so that a refactor dropping the gate
+  /// fails this test.
   ///
   /// The precondition asserts the three features of the Dinh-Matsen
   /// counterexample that the reconciliation relies on:
@@ -432,11 +432,12 @@ mod tests {
   /// K80 sequences, `find_zero_optimal_internal_edges` must collect
   /// every internal edge as a collapse candidate. This closes the loop
   /// between "the post-dispatch reconciliation returns zero" and
-  /// "topology cleanup actually removes the edge". Without the
-  /// dispatch fix, NewtonLog and the Brent variants return tiny
-  /// positive values like $10^{-12}$, so the `bl == 0.0` predicate in
-  /// `find_zero_optimal_internal_edges` misses them entirely and the
-  /// topology stays unchanged.
+  /// "topology cleanup actually removes the edge". The four methods
+  /// that cannot evaluate at $t = 0$ (Brent, BrentSqrt, BrentLog,
+  /// NewtonLog) place a strictly positive lower bound on the bracket
+  /// (around $10^{-12}$) and rely on `reconcile_zero_boundary` to
+  /// produce exact zero so that the `bl == 0.0` predicate in
+  /// `find_zero_optimal_internal_edges` collects them.
   ///
   /// The 4-taxon rooted tree `((A,B)AB,(C,D)CD)root` has 2 internal
   /// edges (AB->root, CD->root) and 4 leaf edges (A,B,C,D). All 6
@@ -477,8 +478,8 @@ mod tests {
 
   /// Pin the observed `newton_inner` behavior on the Dinh-Matsen K80
   /// surface: the $t$-space inner solver does NOT return exactly $0.0$
-  /// from any reasonable starting point on this multi-modal
-  /// counterexample.
+  /// from any of the 12 starting points spanning $t \in [0.05, 0.90]$
+  /// on this multi-modal counterexample.
   ///
   /// # Context
   ///

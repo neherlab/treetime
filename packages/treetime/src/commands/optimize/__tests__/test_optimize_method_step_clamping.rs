@@ -71,9 +71,9 @@ mod tests {
     assert_abs_diff_eq!(bound, asymptote, epsilon = 1e-9);
   }
 
-  /// For s > 0, sqrt_step_lower_bound(s) is strictly greater than -1.0.
-  /// This ensures delta_t < 1.0, so Newton's step cannot exceed the span
-  /// between the current and zero branch length in t-space.
+  /// For s > 0 the bound is strictly greater than -1.0, so the t-space
+  /// delta after the step stays at most 1.0 subs/site (bound -1.0 would
+  /// permit delta_t > 1.0).
   #[rustfmt::skip]
   #[rstest]
   #[case::small( 0.01)]
@@ -85,7 +85,7 @@ mod tests {
     let bound = sqrt_step_lower_bound(s);
     assert!(
       bound > -1.0,
-      "At s={s}, corrected bound ({bound}) should be > -1.0"
+      "At s={s}, bound ({bound}) should be > -1.0"
     );
   }
 

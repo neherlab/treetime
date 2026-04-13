@@ -23,6 +23,29 @@ References:
 
 ---
 
+## Brent's Method for Branch Length Optimization
+
+Per-edge branch length optimization using Brent's derivative-free method via `argmin::BrentOpt`. Three parameterizations offer different objective surface smoothing:
+
+- **t-space** (`brent_inner`): bracket $[\text{min\_bl}, \text{upper}]$, cost function evaluates $-\ell(t)$. Baseline derivative-free method.
+- **sqrt(t)-space** (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. **Default method, matches v0 exactly.** Smooths the objective near $t = 0$, giving parabolic interpolation a better fit. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero.
+- **ln(t)-space** (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Smoothest objective surface of all parameterizations. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$).
+
+v1: [`packages/treetime/src/commands/optimize/method_brent.rs`](../../packages/treetime/src/commands/optimize/method_brent.rs).
+
+v0: `optimal_t_compressed()` at [`packages/legacy/treetime/treetime/gtr.py#L816-L920`](../../packages/legacy/treetime/treetime/gtr.py#L816-L920). Uses `scipy.optimize.minimize_scalar(method='brent')` in sqrt(t) space with bracket `[-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]`.
+
+Distinct from existing Brent entries for clock root optimization, coalescent Tc optimization, and polytomy resolution. Those are different optimization targets using the same `BrentOpt` solver.
+
+References:
+
+- Brent RP (1973). _Algorithms for Minimization without Derivatives_. Prentice-Hall.
+- Press et al. (2007). "Numerical Recipes." Section 10.3 (Brent's method).
+
+---
+
+> > > > > > > 8f098c08 (refactor(optimize): replace em-dash separators and document derivative tolerance budgets)
+
 ## Eigendecomposition-Based Likelihood
 
 Precomputes eigenvector coefficients for each edge, enabling efficient per-branch log-likelihood and derivative evaluation without repeated matrix exponential computation. For a GTR model with rate matrix Q = V _ diag(lambda) _ V^-1, the transition probabilities at branch length t factor as `P(t) = V * diag(exp(lambda_i * t)) * V^-1`. The key insight is that profile-eigenvector dot products (`msg.dot(V)` and `msg.dot(V_inv.T)`) are branch-length-independent and can be cached once per edge.

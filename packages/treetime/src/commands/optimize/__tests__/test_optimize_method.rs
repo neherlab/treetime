@@ -9,7 +9,7 @@ mod tests {
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
-    GRID_SEARCH_MIN_UPPER, OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
+    OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
     evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
@@ -21,6 +21,7 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
@@ -110,6 +111,9 @@ mod tests {
     };
     let dl_du_numerical = (eval_u(u + h) - eval_u(u - h)) / (2.0 * h);
 
+    // Central-difference first derivative: leading O(h^2) truncation at h = |u| * 1e-5
+    // dominates round-off ~ eps_machine / h. 1e-4 is the tightest tolerance that holds
+    // across the indel-heavy cases in this matrix.
     assert_abs_diff_eq!(dl_du_analytical, dl_du_numerical, epsilon = 1e-4);
   }
 
@@ -147,6 +151,11 @@ mod tests {
     };
     let d2l_du2_numerical = (eval_u(u + h) - 2.0 * eval_u(u) + eval_u(u - h)) / (h * h);
 
+    // Central-difference second derivative: round-off ~ 4 * eps_machine * |f| / h^2.
+    // At h = |u| * 1e-4 ~ 1e-5 with indel Hessian magnitude ~ 2e4 (k / t^2 at t=0.01,
+    // k=2), the round-off bound is ~ 4 * 2.2e-16 * 2e4 / 1e-10 ~ 4e-2. 1e-2 is the
+    // tightest tolerance that holds across the matrix; loosening further would mask
+    // a real numerical defect.
     assert_abs_diff_eq!(d2l_du2_analytical, d2l_du2_numerical, epsilon = 1e-2);
   }
 
@@ -185,6 +194,9 @@ mod tests {
     };
     let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
 
+    // Central-difference first derivative: leading O(h^2) truncation at h = s * 1e-5
+    // dominates round-off ~ eps_machine / h. 1e-4 is the tightest tolerance that holds
+    // across the indel-heavy cases in this matrix.
     assert_abs_diff_eq!(dl_ds_analytical, dl_ds_numerical, epsilon = 1e-4);
   }
 
@@ -222,6 +234,11 @@ mod tests {
     };
     let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
 
+    // Central-difference second derivative: round-off ~ 4 * eps_machine * |f| / h^2.
+    // At h = s * 1e-4 ~ 1e-5 with indel Hessian magnitude ~ 2e4 (k / t^2 at t=0.01,
+    // k=2), the round-off bound is ~ 4 * 2.2e-16 * 2e4 / 1e-10 ~ 4e-2. 1e-2 is the
+    // tightest tolerance that holds across the matrix; loosening further would mask
+    // a real numerical defect.
     assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
   }
 
@@ -253,7 +270,7 @@ mod tests {
   }
 
 
-  /// C1: Local optimality -- the combined log-likelihood at the reported
+  /// C1: Local optimality. The combined log-likelihood at the reported
   /// optimum must exceed the log-likelihood at nearby points.
   ///
   /// Uses the indel rate captured before optimization (same rate the
@@ -297,7 +314,7 @@ mod tests {
     Ok(())
   }
 
-  /// C2: Stationarity -- the implied Newton step at the optimum should be
+  /// C2: Stationarity. The implied Newton step at the optimum should be
   /// smaller than the Newton tolerance. Uses the optimizer's indel rate.
   #[rustfmt::skip]
   #[rstest]
@@ -331,7 +348,7 @@ mod tests {
     Ok(())
   }
 
-  /// C3: Cross-method agreement -- NewtonSqrt and Brent achieve similar
+  /// C3: Cross-method agreement. NewtonSqrt and Brent achieve similar
   /// combined log-likelihood values. Compares log-likelihood (not branch
   /// lengths) because the objective can be flat near the optimum.
   #[rustfmt::skip]
@@ -363,7 +380,7 @@ mod tests {
     Ok(())
   }
 
-  /// C3b: Cross-method agreement -- NewtonLog and Brent achieve similar
+  /// C3b: Cross-method agreement. NewtonLog and Brent achieve similar
   /// combined log-likelihood values.
   #[rustfmt::skip]
   #[rstest]
@@ -406,8 +423,6 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_all_six_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    use std::collections::BTreeMap;
-
     let methods = [
       ("Newton",     BranchOptMethod::Newton),
       ("NewtonSqrt", BranchOptMethod::NewtonSqrt),

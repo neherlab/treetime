@@ -537,20 +537,65 @@ Tests for the dense partition's soft Hamming distance used in `initial_guess_mix
 
 **File:** [`test_optimize_method.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method.rs)
 
-| Test                                                          | Cases | Purpose                                                |
-| ------------------------------------------------------------- | ----- | ------------------------------------------------------ |
-| `test_optimize_method_chain_rule_at_zero`                     | 1     | Chain rule sqrt at s=0: ds=0, d2s=2\*dl_dt             |
-| `test_optimize_method_chain_rule_analytical`                  | 1     | Chain rule sqrt at known analytical values             |
-| `test_optimize_method_chain_rule_numerical_first_derivative`  | 4     | First derivative matches numerical central difference  |
-| `test_optimize_method_chain_rule_numerical_second_derivative` | 4     | Second derivative matches numerical central difference |
-| `test_optimize_method_equivalence_no_indels`                  | 3     | All methods produce finite non-negative BLs            |
-| `test_optimize_method_local_optimality`                       | 2     | Combined LH at optimum exceeds nearby points           |
-| `test_optimize_method_stationarity`                           | 2     | Implied Newton step at optimum is below tolerance      |
-| `test_optimize_method_cross_method_lh_agreement`              | 3     | NewtonSqrt and Brent achieve similar LH                |
-| `test_optimize_method_brent_bracket_validity`                 | 1     | LH at optimum exceeds bracket endpoints                |
-| `test_optimize_method_newton_sqrt_improves_over_newton`       | 1     | NewtonSqrt LH >= Newton LH on Hessian-dominated case   |
-| `test_optimize_method_brent_positive_with_indels`             | 3     | Brent produces positive finite BLs with indels         |
-| `test_optimize_method_newton_sqrt_positive_with_indels`       | 3     | NewtonSqrt produces positive finite BLs with indels    |
+Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog) against 5 verification criteria:
+
+- **C1: Local optimality**: log-likelihood at optimum exceeds neighbors at 3 delta scales (0.1%, 1%, 10%)
+- **C2: Stationarity** (Newton-specific): implied Newton step at optimum is below tolerance
+- **C3: Cross-method log-likelihood agreement**: all 6 methods produce log-likelihood within 1e-3
+- **C4: Bracket validity** (Brent-specific): optimum log-likelihood exceeds bracket endpoints
+- **C5: Cross-conditioning ordering**: on indel-bearing edges: `lh_newton_log >= lh_newton_sqrt >= lh_newton`
+
+### Chain Rule Tests (sqrt and log transforms)
+
+| Test                                                              | Cases | Purpose                                             |
+| ----------------------------------------------------------------- | ----- | --------------------------------------------------- |
+| `test_optimize_method_chain_rule_at_zero`                         | 1     | Chain rule sqrt at s=0: ds=0, d2s=2\*dl_dt          |
+| `test_optimize_method_chain_rule_analytical`                      | 1     | Chain rule sqrt at known analytical values          |
+| `test_optimize_method_chain_rule_log_analytical`                  | 1     | Chain rule log at known analytical values           |
+| `test_optimize_method_chain_rule_log_small_t`                     | 1     | Chain rule log approaches zero for small t          |
+| `test_optimize_method_chain_rule_numerical_first_derivative`      | 4     | sqrt first derivative matches numerical difference  |
+| `test_optimize_method_chain_rule_numerical_second_derivative`     | 4     | sqrt second derivative matches numerical difference |
+| `test_optimize_method_chain_rule_log_numerical_first_derivative`  | 4     | log first derivative matches numerical difference   |
+| `test_optimize_method_chain_rule_log_numerical_second_derivative` | 4     | log second derivative matches numerical difference  |
+
+### Method Equivalence and Optimality (C1, C3)
+
+| Test                                                        | Cases | Purpose                                           |
+| ----------------------------------------------------------- | ----- | ------------------------------------------------- |
+| `test_optimize_method_equivalence_no_indels`                | 6     | All 6 methods produce finite non-negative BLs     |
+| `test_optimize_method_local_optimality`                     | 6     | C1: LH at optimum exceeds neighbors (all methods) |
+| `test_optimize_method_cross_method_lh_agreement`            | 3     | C3: NewtonSqrt and Brent LH agree within 1e-3     |
+| `test_optimize_method_cross_method_lh_agreement_newton_log` | 3     | C3: NewtonLog and Brent LH agree within 1e-3      |
+| `test_optimize_method_cross_method_all_six_lh_agreement`    | 3     | C3: All 6 methods agree within 1e-3 vs BrentSqrt  |
+
+### Newton Stationarity and Conditioning (C2, C5)
+
+| Test                                                      | Cases | Purpose                                              |
+| --------------------------------------------------------- | ----- | ---------------------------------------------------- |
+| `test_optimize_method_stationarity`                       | 3     | C2: Implied Newton step below tolerance (3 variants) |
+| `test_optimize_method_newton_sqrt_improves_over_newton`   | 1     | C5: NewtonSqrt LH >= Newton on indel case            |
+| `test_optimize_method_newton_log_improves_over_newton`    | 1     | C5: NewtonLog LH >= Newton on indel case             |
+| `test_optimize_method_newton_cross_conditioning_ordering` | 3     | C5: lh_log >= lh_sqrt >= lh_t (all indel counts)     |
+
+### Brent Bracket and Transform Validity (C4)
+
+| Test                                                             | Cases | Purpose                                             |
+| ---------------------------------------------------------------- | ----- | --------------------------------------------------- |
+| `test_optimize_method_brent_bracket_validity`                    | 3     | C4: Optimum LH exceeds bracket endpoints (3 Brents) |
+| `test_optimize_method_brent_cross_parameterization_lh_agreement` | 1     | Brent-t, Brent-sqrt, Brent-log agree within 1e-3    |
+| `test_optimize_method_brent_sqrt_transform_round_trip`           | 1     | sqrt transform produces local optimum in t-space    |
+| `test_optimize_method_brent_log_transform_round_trip`            | 1     | log transform produces local optimum in t-space     |
+
+### Indel Robustness
+
+| Test                                                    | Cases | Purpose                                            |
+| ------------------------------------------------------- | ----- | -------------------------------------------------- |
+| `test_optimize_method_brent_positive_with_indels`       | 9     | All 3 Brent variants x 3 indel counts: positive BL |
+| `test_optimize_method_newton_positive_with_indels`      | 3     | Newton-t produces positive finite BL with indels   |
+| `test_optimize_method_newton_sqrt_positive_with_indels` | 3     | NewtonSqrt produces positive finite BL with indels |
+| `test_optimize_method_newton_log_positive_with_indels`  | 3     | NewtonLog produces positive finite BL with indels  |
+
+> > > > > > > 8f098c08 (refactor(optimize): replace em-dash separators and document derivative tolerance budgets)
 
 ---
 
