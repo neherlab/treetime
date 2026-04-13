@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
 
@@ -12,8 +13,16 @@ mod tests {
     TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
   };
 
-  #[test]
-  fn test_dense_optimization_produces_valid_results() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_dense_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_only(&graph, &aln)?;
@@ -22,7 +31,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &partitions, method)?;
       let lh = update_marginal(&graph, &partitions)?;
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
@@ -55,8 +64,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_sparse_optimization_produces_valid_results() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_sparse_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_sparse_only(&graph, &aln)?;
@@ -65,7 +82,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &partitions, method)?;
       let lh = update_marginal(&graph, &partitions)?;
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }

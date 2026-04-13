@@ -5,14 +5,23 @@ mod tests {
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
   };
 
-  #[test]
-  fn test_dense_optimization_converges() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_dense_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_only(&graph, &aln)?;
@@ -21,7 +30,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &partitions, method)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }
@@ -55,8 +64,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_sparse_optimization_converges() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_sparse_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_sparse_only(&graph, &aln)?;
@@ -65,7 +82,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &partitions, method)?;
       let lh = update_marginal(&graph, &partitions)?;
       lh_history.push(lh);
     }

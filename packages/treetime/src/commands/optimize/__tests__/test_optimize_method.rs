@@ -25,6 +25,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
+  use helpers::*;
 
   /// At s=0, the first derivative is zero (chain rule factor 2s = 0) and
   /// the second derivative equals 2 * dl_dt (the only surviving term).
@@ -251,81 +252,6 @@ mod tests {
     Ok(())
   }
 
-  /// Set up dense+sparse partitions from simple_alignment() (which has
-  /// real substitutions between taxa) and inject indels on the first edge.
-  /// Returns (mixed_partitions, indel_rate_before_optimization).
-  ///
-  /// The indel rate is captured BEFORE optimization because
-  /// `run_optimize_mixed` computes the rate once from initial branch
-  /// lengths and uses it as a constant throughout. Test evaluations must
-  /// use the same rate for consistent verification.
-  fn setup_with_indels(
-    graph: &GraphAncestral,
-    n_indels: usize,
-  ) -> Result<(crate::commands::optimize::partition_ops::PartitionOptimizeVec, f64), Report> {
-    let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, &aln)?;
-
-    let first_edge_key = graph.get_edges()[0].read_arc().key();
-    let indels: Vec<InDel> = (0..n_indels)
-      .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()))
-      .collect();
-
-    for p in &dense_partitions {
-      p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
-    }
-    for p in &sparse_partitions {
-      p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
-    }
-
-    // Capture indel rate at the same point run_optimize_mixed will
-    let indel_rate = estimate_indel_rate(graph, &mixed_partitions);
-
-    Ok((mixed_partitions, indel_rate))
-  }
-
-  /// Evaluate combined (substitution + indel) log-likelihood at branch
-  /// length t for the first edge, using a fixed indel rate (the rate
-  /// the optimizer used, not the post-optimization rate).
-  fn eval_combined_first_edge(
-    graph: &GraphAncestral,
-    partitions: &[Arc<RwLock<dyn PartitionOptimizeOps>>],
-    indel_rate: f64,
-    t: f64,
-  ) -> Result<f64, Report> {
-    let edge_key = graph.get_edges()[0].read_arc().key();
-    let contributions: Vec<OptimizationContribution> = partitions
-      .iter()
-      .map(|p| p.read_arc().create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
-
-    let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
-
-    let sub_lh = evaluate_mixed_log_lh_only(&contributions, t);
-    let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, t).log_lh;
-    Ok(sub_lh + indel_lh)
-  }
-
-  /// Evaluate combined metrics at branch length t for the first edge,
-  /// using a fixed indel rate.
-  fn eval_metrics_first_edge(
-    graph: &GraphAncestral,
-    partitions: &[Arc<RwLock<dyn PartitionOptimizeOps>>],
-    indel_rate: f64,
-    t: f64,
-  ) -> Result<OptimizationMetrics, Report> {
-    let edge_key = graph.get_edges()[0].read_arc().key();
-    let contributions: Vec<OptimizationContribution> = partitions
-      .iter()
-      .map(|p| p.read_arc().create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
-
-    let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
-
-    let mut metrics = evaluate_mixed(&contributions, t);
-    metrics.add(&poisson_indel_log_lh(indel_count, indel_rate, t));
-    Ok(metrics)
-  }
 
   /// C1: Local optimality -- the combined log-likelihood at the reported
   /// optimum must exceed the log-likelihood at nearby points.
@@ -334,6 +260,7 @@ mod tests {
   /// optimizer used) for consistent evaluation.
   #[rustfmt::skip]
   #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[case::brent(      BranchOptMethod::Brent)]
@@ -346,7 +273,7 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = first_edge_bl(&graph);
     assert!(bl > 0.0 && bl.is_finite(), "Optimized BL must be positive and finite, got {bl}");
 
     let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
@@ -384,7 +311,7 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = first_edge_bl(&graph);
     let metrics = eval_metrics_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
 
     if metrics.second_derivative < 0.0 {
@@ -417,13 +344,13 @@ mod tests {
     let graph_brent: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, n_indels)?;
     run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent)?;
-    let bl_brent = graph_brent.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_brent = first_edge_bl(&graph_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
 
     let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
-    let bl_sqrt = graph_sqrt.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
     let lh_diff = (lh_brent - lh_sqrt).abs();
@@ -448,13 +375,13 @@ mod tests {
     let graph_brent: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, n_indels)?;
     run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent)?;
-    let bl_brent = graph_brent.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_brent = first_edge_bl(&graph_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
 
     let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
     run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
-    let bl_log = graph_log.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
 
     let lh_diff = (lh_brent - lh_log).abs();
@@ -467,6 +394,54 @@ mod tests {
     Ok(())
   }
 
+  /// C3c: Full cross-method log-likelihood agreement.
+  ///
+  /// All 6 methods produce combined log-likelihood values within tolerance when
+  /// run on the same input. Compares log-likelihood (not branch lengths) because
+  /// the objective can be flat near the optimum.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1(1)]
+  #[case::k2(2)]
+  #[case::k4(4)]
+  #[trace]
+  fn test_optimize_method_cross_method_all_six_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
+    use std::collections::BTreeMap;
+
+    let methods = [
+      ("Newton",     BranchOptMethod::Newton),
+      ("NewtonSqrt", BranchOptMethod::NewtonSqrt),
+      ("NewtonLog",  BranchOptMethod::NewtonLog),
+      ("Brent",      BranchOptMethod::Brent),
+      ("BrentSqrt",  BranchOptMethod::BrentSqrt),
+      ("BrentLog",   BranchOptMethod::BrentLog),
+    ];
+
+    let mut results: BTreeMap<&str, (f64, f64)> = BTreeMap::new();
+
+    for (name, method) in &methods {
+      let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+      let (partitions, rate) = setup_with_indels(&graph, n_indels)?;
+      run_optimize_mixed(&graph, &partitions, *method)?;
+      let bl = first_edge_bl(&graph);
+      let lh = eval_combined_first_edge(&graph, &partitions, rate, bl)?;
+      results.insert(name, (bl, lh));
+    }
+
+    // Use BrentSqrt as reference (v0-matching method, default)
+    let (_, lh_ref) = results["BrentSqrt"];
+
+    for (name, (bl, lh)) in &results {
+      let diff = (*lh - lh_ref).abs();
+      assert!(
+        diff < 1e-3,
+        "Method {name} lh ({lh}) differs from BrentSqrt lh ({lh_ref}) by {diff} > 1e-3, bl={bl}"
+      );
+    }
+
+    Ok(())
+  }
+
   /// C5b: NewtonLog achieves equal or better log-likelihood than Newton
   /// in t-space on the Hessian-dominated case.
   #[test]
@@ -474,23 +449,13 @@ mod tests {
     let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
-    let bl_newton = graph_newton.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_newton = first_edge_bl(&graph_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
     let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_log, rate_log) = setup_with_indels(&graph_log, 4)?;
     run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
-    let bl_log = graph_log.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
 
     assert!(bl_newton > 0.0 && bl_newton.is_finite());
@@ -512,23 +477,13 @@ mod tests {
     let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
-    let bl_newton = graph_newton.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_newton = first_edge_bl(&graph_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
     let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, 4)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
-    let bl_sqrt = graph_sqrt.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
     assert!(bl_newton > 0.0 && bl_newton.is_finite());
@@ -538,6 +493,55 @@ mod tests {
       lh_sqrt >= lh_newton - 1e-10,
       "NewtonSqrt lh ({lh_sqrt}) should be >= Newton lh ({lh_newton}), \
        bl_sqrt={bl_sqrt}, bl_newton={bl_newton}"
+    );
+
+    Ok(())
+  }
+
+  /// C5c: Cross-conditioning ordering for Newton variants on indel-bearing edges.
+  ///
+  /// Better-conditioned parameterizations find equal or better optima:
+  /// `lh_newton_log >= lh_newton_sqrt >= lh_newton` within tolerance.
+  ///
+  /// This documents the known Newton-t limitation: it is a correct implementation
+  /// of a limited algorithm, not a bug. If Newton-t produces better log-likelihood
+  /// than Newton-log, the implementation is wrong.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1(1)]
+  #[case::k2(2)]
+  #[case::k4(4)]
+  #[trace]
+  fn test_optimize_method_newton_cross_conditioning_ordering(#[case] n_indels: usize) -> Result<(), Report> {
+    let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, n_indels)?;
+    run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
+    let bl_newton = first_edge_bl(&graph_newton);
+    let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
+
+    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
+    run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
+    let bl_sqrt = first_edge_bl(&graph_sqrt);
+    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
+
+    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
+    let bl_log = first_edge_bl(&graph_log);
+    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+
+    // Verify ordering: lh_newton_log >= lh_newton_sqrt >= lh_newton
+    let tol = 1e-10;
+    assert!(
+      lh_sqrt >= lh_newton - tol,
+      "NewtonSqrt lh ({lh_sqrt}) should be >= Newton lh ({lh_newton}), \
+       bl_sqrt={bl_sqrt}, bl_newton={bl_newton}, k={n_indels}"
+    );
+    assert!(
+      lh_log >= lh_sqrt - tol,
+      "NewtonLog lh ({lh_log}) should be >= NewtonSqrt lh ({lh_sqrt}), \
+       bl_log={bl_log}, bl_sqrt={bl_sqrt}, k={n_indels}"
     );
 
     Ok(())
@@ -565,7 +569,7 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = first_edge_bl(&graph);
     assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "{method:?} BL must be finite, got {bl}");
     Ok(())
@@ -584,7 +588,7 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonLog)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = first_edge_bl(&graph);
     assert!(bl > 0.0, "NewtonLog BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "NewtonLog BL must be finite, got {bl}");
     Ok(())
@@ -603,9 +607,28 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonSqrt)?;
 
-    let bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap();
+    let bl = first_edge_bl(&graph);
     assert!(bl > 0.0, "NewtonSqrt BL with {n_indels} indels must be positive, got {bl}");
     assert!(bl.is_finite(), "NewtonSqrt BL must be finite, got {bl}");
+    Ok(())
+  }
+
+  /// Newton (t-space) produces positive, finite branch lengths with indels present.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::k1(1)]
+  #[case::k2(2)]
+  #[case::k4(4)]
+  #[trace]
+  fn test_optimize_method_newton_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+
+    let bl = first_edge_bl(&graph);
+    assert!(bl > 0.0, "Newton BL with {n_indels} indels must be positive, got {bl}");
+    assert!(bl.is_finite(), "Newton BL must be finite, got {bl}");
     Ok(())
   }
 
@@ -617,34 +640,19 @@ mod tests {
     let graph_t: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (parts_t, rate_t) = setup_with_indels(&graph_t, n_indels)?;
     run_optimize_mixed(&graph_t, &parts_t, BranchOptMethod::Brent)?;
-    let bl_t = graph_t.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_t = first_edge_bl(&graph_t);
     let lh_t = eval_combined_first_edge(&graph_t, &parts_t, rate_t, bl_t)?;
 
     let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (parts_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
     run_optimize_mixed(&graph_sqrt, &parts_sqrt, BranchOptMethod::BrentSqrt)?;
-    let bl_sqrt = graph_sqrt.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &parts_sqrt, rate_sqrt, bl_sqrt)?;
 
     let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (parts_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
     run_optimize_mixed(&graph_log, &parts_log, BranchOptMethod::BrentLog)?;
-    let bl_log = graph_log.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &parts_log, rate_log, bl_log)?;
 
     let diff_sqrt = (lh_t - lh_sqrt).abs();
@@ -778,12 +786,7 @@ mod tests {
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
-    let bl = graph.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap();
+    let bl = first_edge_bl(&graph);
     let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
 
     let lh_lower = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, lower)?;
@@ -799,5 +802,98 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    /// Set up dense+sparse partitions from simple_alignment() (which has
+    /// real substitutions between taxa) and inject indels on the first edge.
+    /// Returns (mixed_partitions, indel_rate_before_optimization).
+    ///
+    /// The indel rate is captured BEFORE optimization because
+    /// `run_optimize_mixed` computes the rate once from initial branch
+    /// lengths and uses it as a constant throughout. Test evaluations must
+    /// use the same rate for consistent verification.
+    pub(super) fn setup_with_indels(
+      graph: &GraphAncestral,
+      n_indels: usize,
+    ) -> Result<(crate::commands::optimize::partition_ops::PartitionOptimizeVec, f64), Report> {
+      let aln = simple_alignment()?;
+      let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, &aln)?;
+
+      let first_edge_key = graph.get_edges()[0].read_arc().key();
+      let indels: Vec<InDel> = (0..n_indels)
+        .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()))
+        .collect();
+
+      for p in &dense_partitions {
+        p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+      }
+      for p in &sparse_partitions {
+        p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+      }
+
+      // Capture indel rate at the same point run_optimize_mixed will
+      let indel_rate = estimate_indel_rate(graph, &mixed_partitions);
+
+      Ok((mixed_partitions, indel_rate))
+    }
+
+    /// Evaluate combined (substitution + indel) log-likelihood at branch
+    /// length t for the first edge, using a fixed indel rate (the rate
+    /// the optimizer used, not the post-optimization rate).
+    pub(super) fn eval_combined_first_edge(
+      graph: &GraphAncestral,
+      partitions: &[Arc<RwLock<dyn PartitionOptimizeOps>>],
+      indel_rate: f64,
+      t: f64,
+    ) -> Result<f64, Report> {
+      let edge_key = graph.get_edges()[0].read_arc().key();
+      let contributions: Vec<OptimizationContribution> = partitions
+        .iter()
+        .map(|p| p.read_arc().create_edge_contribution(edge_key))
+        .collect::<Result<_, _>>()?;
+
+      let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
+
+      let sub_lh = evaluate_mixed_log_lh_only(&contributions, t);
+      let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, t).log_lh;
+      Ok(sub_lh + indel_lh)
+    }
+
+    /// Evaluate combined metrics at branch length t for the first edge,
+    /// using a fixed indel rate.
+    pub(super) fn eval_metrics_first_edge(
+      graph: &GraphAncestral,
+      partitions: &[Arc<RwLock<dyn PartitionOptimizeOps>>],
+      indel_rate: f64,
+      t: f64,
+    ) -> Result<OptimizationMetrics, Report> {
+      let edge_key = graph.get_edges()[0].read_arc().key();
+      let contributions: Vec<OptimizationContribution> = partitions
+        .iter()
+        .map(|p| p.read_arc().create_edge_contribution(edge_key))
+        .collect::<Result<_, _>>()?;
+
+      let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
+
+      let mut metrics = evaluate_mixed(&contributions, t);
+      metrics.add(&poisson_indel_log_lh(indel_count, indel_rate, t));
+      Ok(metrics)
+    }
+
+    /// Branch length on the first edge after optimization, panicking if it
+    /// is missing or NaN. Captures the 5-line read chain that recurs across
+    /// tests in this file.
+    pub(super) fn first_edge_bl(graph: &GraphAncestral) -> f64 {
+      graph
+        .get_edges()[0]
+        .read_arc()
+        .payload()
+        .read_arc()
+        .branch_length()
+        .unwrap()
+    }
   }
 }

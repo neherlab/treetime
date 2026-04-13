@@ -24,6 +24,7 @@ mod tests {
   use maplit::btreemap;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
@@ -347,8 +348,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_optimize_loop_with_topology_cleanup_sparse() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_loop_with_topology_cleanup_sparse(#[case] method: BranchOptMethod) -> Result<(), Report> {
     // Tree with a zero-length internal branch that should be collapsed during optimization.
     // After Fitch compression + marginal, the optimizer should detect the zero-optimal
     // branch and the loop should collapse it.
@@ -400,7 +409,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
 
@@ -428,8 +437,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_optimize_loop_no_collapse_when_branches_nonzero() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_loop_no_collapse_when_branches_nonzero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     // All branches have genuine signal: no edges should be collapsed
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(
@@ -475,7 +492,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);
@@ -585,8 +602,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_optimize_loop_with_topology_cleanup_dense() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_loop_with_topology_cleanup_dense(#[case] method: BranchOptMethod) -> Result<(), Report> {
     // Dense-mode integration test: identical sequences A and B should cause
     // the AB internal edge to be collapsed during optimization.
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
@@ -633,7 +658,7 @@ mod tests {
       }
 
       let old_branch_lengths = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);

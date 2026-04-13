@@ -144,8 +144,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_damped_optimization_converges() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
@@ -159,7 +167,7 @@ mod tests {
       lh_history.push(lh);
 
       let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
       apply_damping(&graph, &old_bls, damping, i);
     }
 
@@ -212,8 +220,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_damped_optimization_does_not_regress() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
@@ -223,7 +239,7 @@ mod tests {
     let damping = 0.75;
     for i in 0..10 {
       let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
       apply_damping(&graph, &old_bls, damping, i);
       update_marginal(&graph, &dense_partitions)?;
       update_marginal(&graph, &sparse_partitions)?;

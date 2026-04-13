@@ -5,14 +5,23 @@ mod tests {
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     TREE_NEWICK, gap_free_alignment, get_branch_lengths, setup_dense_only, setup_sparse_only,
   };
 
-  #[test]
-  fn test_dense_sparse_log_lh_bounded_difference_after_optimization() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_dense_sparse_log_lh_bounded_difference_after_optimization(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
@@ -20,7 +29,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -31,7 +40,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 
@@ -59,8 +68,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_dense_sparse_branch_lengths_bounded_difference() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_dense_sparse_branch_lengths_bounded_difference(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
@@ -68,7 +85,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
       update_marginal(&graph_dense, &dense_partitions)?;
     }
 
@@ -79,7 +96,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
       update_marginal(&graph_sparse, &sparse_partitions)?;
     }
 

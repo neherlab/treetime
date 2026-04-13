@@ -197,8 +197,16 @@ mod tests {
 
   /// `run_optimize_mixed` assigns non-zero branch length when indels are present.
   /// Verifies both positivity and local optimality of the result.
-  #[test]
-  fn test_optimize_indel_run_optimize_nonzero_with_indels() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_indel_run_optimize_nonzero_with_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
@@ -211,7 +219,7 @@ mod tests {
     ];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+    run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -229,8 +237,16 @@ mod tests {
 
   /// Full pipeline regression: zero all BLs, inject indels into sparse partition only
   /// (production path), run initial_guess + optimize, verify escape from zero.
-  #[test]
-  fn test_optimize_indel_zero_bl_pipeline_escapes_zero() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
 
@@ -266,7 +282,7 @@ mod tests {
     // Run marginal + optimize
     update_marginal(&graph, &dense_partitions)?;
     update_marginal(&graph, &sparse_partitions)?;
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+    run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl_final = graph.get_edges()[0]
       .read_arc()
@@ -467,13 +483,21 @@ mod tests {
 
   // Min branch length clamping: when indels are present, the Newton loop
   // should not allow the branch length to reach zero.
-  #[test]
-  fn test_optimize_indel_min_branch_length_clamping() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimize_indel_min_branch_length_clamping(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
-    let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+    let _first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // Set a very small initial branch length to test clamping
     let edge_ref = &graph.get_edges()[0];
@@ -485,7 +509,7 @@ mod tests {
 
     update_marginal(&graph, &dense_partitions)?;
     update_marginal(&graph, &sparse_partitions)?;
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+    run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();
 

@@ -6,6 +6,7 @@ mod tests {
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_ulps_eq;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
 
@@ -13,8 +14,16 @@ mod tests {
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
 
-  #[test]
-  fn test_optimization_converges_with_valid_branch_lengths() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
 
@@ -24,7 +33,7 @@ mod tests {
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method)?;
       let lh = update_marginal(&graph, &dense_partitions)? + update_marginal(&graph, &sparse_partitions)?;
 
       lh_history.push(lh);
@@ -56,8 +65,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_second_optimization_produces_same_likelihood() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::newton(     BranchOptMethod::Newton)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::newton_log( BranchOptMethod::NewtonLog)]
+  #[case::brent(      BranchOptMethod::Brent)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::brent_log(  BranchOptMethod::BrentLog)]
+  #[trace]
+  fn test_second_optimization_produces_same_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
 
     // Run optimization on first graph
@@ -65,7 +82,7 @@ mod tests {
     let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &mixed_partitions1, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph1, &mixed_partitions1, method)?;
       update_marginal(&graph1, &dense_partitions1)?;
       update_marginal(&graph1, &sparse_partitions1)?;
     }
@@ -77,7 +94,7 @@ mod tests {
     let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &aln)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &mixed_partitions2, BranchOptMethod::Newton)?;
+      run_optimize_mixed(&graph2, &mixed_partitions2, method)?;
       update_marginal(&graph2, &dense_partitions2)?;
       update_marginal(&graph2, &sparse_partitions2)?;
     }
