@@ -18,6 +18,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use helpers::*;
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -25,7 +26,6 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-  use helpers::*;
 
   /// At s=0, the first derivative is zero (chain rule factor 2s = 0) and
   /// the second derivative equals 2 * dl_dt (the only surviving term).
@@ -267,7 +267,6 @@ mod tests {
 
     Ok(())
   }
-
 
   /// C1: Local optimality. The combined log-likelihood at the reported
   /// optimum must exceed the log-likelihood at nearby points.
@@ -1036,8 +1035,7 @@ mod tests {
     /// is missing or NaN. Captures the 5-line read chain that recurs across
     /// tests in this file.
     pub(super) fn first_edge_bl(graph: &GraphAncestral) -> f64 {
-      graph
-        .get_edges()[0]
+      graph.get_edges()[0]
         .read_arc()
         .payload()
         .read_arc()

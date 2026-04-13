@@ -11,10 +11,10 @@ use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::{make_error, make_internal_report};
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
+use crate::{make_error, make_internal_report};
 use eyre::Report;
 use ndarray::{Array1, Axis};
 use ordered_float::OrderedFloat;
@@ -183,16 +183,19 @@ impl OptimizationContribution {
       "zero_branch_length_derivative called without verifying all_sites_valid_at_zero"
     );
     match self {
+      // Use `dot` for the (n_sites, n_states) * (n_states,) reduction so the
+      // intermediate (n_sites, n_states) broadcast multiply does not allocate.
+      // BLAS-backed when ndarray's `blas` feature is enabled (it is).
       OptimizationContribution::Dense(contribution) => {
         let gtr = &contribution.gtr;
         let coefficients = &contribution.coefficients;
-        ((coefficients * &gtr.eigvals).sum_axis(Axis(1)) / coefficients.sum_axis(Axis(1))).sum()
+        (coefficients.dot(&gtr.eigvals) / coefficients.sum_axis(Axis(1))).sum()
       },
       OptimizationContribution::Sparse(contribution) => contribution
         .site_contributions
         .iter()
         .map(|coeff| {
-          coeff.multiplicity * ((&coeff.coefficients * &contribution.gtr.eigvals).sum() / coeff.coefficients.sum())
+          coeff.multiplicity * (coeff.coefficients.dot(&contribution.gtr.eigvals) / coeff.coefficients.sum())
         })
         .sum(),
     }
@@ -392,7 +395,9 @@ pub(crate) fn grid_search_inner(
       let log_lh = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, bl);
       OrderedFloat(log_lh)
     })
-    .ok_or_else(|| make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})"))?;
+    .ok_or_else(|| {
+      make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})")
+    })?;
 
   let zero_is_better = is_zero_better_than_grid_best(contributions, indel_count, indel_rate, best_positive);
   Ok(if zero_is_better { 0.0 } else { best_positive })

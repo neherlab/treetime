@@ -15,7 +15,7 @@ mod tests {
 
     // Indel contribution makes the second derivative negative even when the
     // substitution variance Var(lambda) is positive, so Newton actually runs.
-    let indel_count = 2usize;
+    let indel_count = 2_usize;
     let indel_rate = 10.0;
     // Floor matches min_branch_length_for_indels(2, one_mutation=0.001) so the
     // simulated loop preserves the Poisson indel domain (t > 0).
@@ -82,7 +82,7 @@ mod tests {
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
-    let indel_count = 2usize;
+    let indel_count = 2_usize;
     let indel_rate = 10.0;
     // Floor matches min_branch_length_for_indels(2, one_mutation=0.001) so the
     // simulated loop preserves the Poisson indel domain (t > 0).

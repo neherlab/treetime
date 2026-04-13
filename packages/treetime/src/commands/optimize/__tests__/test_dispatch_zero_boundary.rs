@@ -318,7 +318,8 @@ mod tests {
     // the extent argument is smaller than the $0.5$ floor. That range
     // contains the local max at $t \approx 0.2$.
     let branch_length_extent = 0.2;
-    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
+    let result =
+      reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
 
     assert!(
       result > 0.0,
@@ -421,7 +422,8 @@ mod tests {
     let indel_rate = 44.4;
     let one_mutation = 0.01;
 
-    let result = reconcile_zero_boundary(candidate, 0.2, &contributions, indel_count, indel_rate, one_mutation).unwrap();
+    let result =
+      reconcile_zero_boundary(candidate, 0.2, &contributions, indel_count, indel_rate, one_mutation).unwrap();
     assert!(
       result.to_bits() == candidate.to_bits(),
       "reconcile_zero_boundary must return candidate unchanged when indel_count > 0, got {result}"
@@ -627,7 +629,8 @@ mod tests {
     // input branch length, which would be 0.6 in this scenario.
     let candidate = 0.0;
     let branch_length_extent = 0.6;
-    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
+    let result =
+      reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
 
     assert!(
       result > 0.0,

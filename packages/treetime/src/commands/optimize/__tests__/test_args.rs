@@ -33,12 +33,7 @@ mod tests {
   /// the `default_value_t` would silently route CLI runs to the wrong optimizer.
   #[test]
   fn test_args_opt_method_default_is_brent_sqrt() {
-    let args = TreetimeOptimizeArgs::try_parse_from([
-      "treetime",
-      "--tree=/dev/null",
-      "--outdir=/dev/null",
-    ])
-    .unwrap();
+    let args = TreetimeOptimizeArgs::try_parse_from(["treetime", "--tree=/dev/null", "--outdir=/dev/null"]).unwrap();
     assert_eq!(BranchOptMethod::BrentSqrt, args.opt_method);
   }
 
