@@ -48,6 +48,68 @@ mod tests {
     Ok(())
   }
 
+  /// Per-branch GM comparison: walk each edge, look up the target node's name,
+  /// and check the optimized length against the v0-derived expected length
+  /// stored in `final_branch_lengths`. Branch-level checks catch regressions
+  /// that cancel out in the summed total checked by `test_gm_optimize`.
+  ///
+  /// Branches where v0 collapsed to "essentially zero" (below 1e-5 subs/site,
+  /// far below the smallest meaningful branch length 1/L) are skipped: v0's
+  /// `prune_short_branches` collapses any internal branch with
+  /// `bl < 0.1 * one_mutation && prob_t(parent, child, 0) > 0.1`, while v1's
+  /// optimize loop collapses only branches the optimizer drives to exact zero.
+  /// Comparing the two criteria on near-zero branches is out of scope for
+  /// this test; that divergence is tracked separately under the prune
+  /// command intentional-change docs.
+  ///
+  /// Currently expected to fail with the existing fixture: per-branch
+  /// divergences exceed 10% relative tolerance even after skipping
+  /// v0-collapsed branches. See
+  /// `docs/port-known-issues/M-optimize-gm-per-branch-divergence.md`.
+  #[ignore = "Per-branch divergence with v0 fixture exceeds 10% relative tolerance; tracked in M-optimize-gm-per-branch-divergence.md"]
+  #[rstest]
+  #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
+  fn test_gm_optimize_per_branch(#[case] case_name: &str) -> Result<(), Report> {
+    let inputs = load_gm_inputs();
+    let outputs = load_gm_outputs();
+    let case = &inputs[case_name];
+    let expected = &outputs[case_name];
+
+    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+      .parent()
+      .and_then(|p| p.parent())
+      .unwrap();
+
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
+
+    let v1_branch_lengths: std::collections::BTreeMap<String, f64> = result
+      .graph
+      .get_edges()
+      .iter()
+      .filter_map(|e| {
+        let edge = e.read_arc();
+        let bl = edge.payload().read_arc().branch_length()?;
+        let target_key = edge.target();
+        let node = result.graph.get_node(target_key)?;
+        let name = node.read_arc().payload().read_arc().name.clone()?;
+        Some((name, bl))
+      })
+      .collect();
+
+    for (name, &expected_bl) in &expected.final_branch_lengths {
+      let actual_bl = v1_branch_lengths
+        .get(name)
+        .copied()
+        .unwrap_or_else(|| panic!("missing branch length for node '{name}' in optimized graph"));
+      if expected_bl.abs() < 1e-5 {
+        continue;
+      }
+      assert_relative_eq!(actual_bl, expected_bl, max_relative = 0.10);
+    }
+
+    Ok(())
+  }
+
   // End-to-end: damped vs undamped on same dataset using BrentSqrt (v0-matching method).
   // Damped should converge and show fewer sign flips.
   #[rstest]
@@ -139,7 +201,6 @@ mod tests {
     #[derive(Deserialize)]
     pub struct GmOptimizeExpected {
       pub final_total_branch_length: f64,
-      #[allow(dead_code)]
       pub final_branch_lengths: BTreeMap<String, f64>,
     }
 
