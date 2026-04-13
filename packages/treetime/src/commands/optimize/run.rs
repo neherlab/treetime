@@ -195,23 +195,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     normalize_partition_rates(&graph, &sparse_partitions, &dense_partitions);
   }
 
-  match branch_length_initial_guess {
-    InitialGuessMode::Auto => {
-      initial_guess_mixed(&graph, &mixed_partitions, false)?;
-    },
-    InitialGuessMode::Always => {
-      initial_guess_mixed(&graph, &mixed_partitions, true)?;
-    },
-    InitialGuessMode::Never => {
-      if any_edge_missing_branch_length(&graph) {
-        return make_error!(
-          "--branch-length-initial-guess=never requires all edges to have finite branch lengths, \
-           but some edges have missing or NaN values. \
-           Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
-        );
-      }
-    },
-  }
+  apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess)?;
 
   let mut lh_prev = f64::MIN;
   for i in 0..*max_iter {
@@ -512,6 +496,39 @@ where
     .get_edges()
     .iter()
     .any(|edge_ref| is_branch_length_missing(edge_ref.read_arc().payload().read_arc().branch_length()))
+}
+
+/// Apply the initial-guess mode to the graph.
+///
+/// - `Auto`: estimate only edges with missing or invalid branch lengths.
+/// - `Always`: estimate all edges, overwriting existing values.
+/// - `Never`: keep input branch lengths; error if any edge lacks a usable
+///   value.
+///
+/// Extracted from `run_optimize` so the Never-mode rejection path is unit
+/// testable without standing up partitions and reading files.
+pub(crate) fn apply_initial_guess_mode<P>(
+  graph: &GraphAncestral,
+  mixed_partitions: &[Arc<RwLock<P>>],
+  mode: InitialGuessMode,
+) -> Result<(), Report>
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  match mode {
+    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false),
+    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true),
+    InitialGuessMode::Never => {
+      if any_edge_missing_branch_length(graph) {
+        return make_error!(
+          "--branch-length-initial-guess=never requires all edges to have finite branch lengths, \
+           but some edges have missing or NaN values. \
+           Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
+        );
+      }
+      Ok(())
+    },
+  }
 }
 
 fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>

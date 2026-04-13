@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::InitialGuessMode;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
-  use crate::commands::optimize::run::any_edge_missing_branch_length;
+  use crate::commands::optimize::run::{any_edge_missing_branch_length, apply_initial_guess_mode};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -138,15 +138,24 @@ mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_complete_tree() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
-    assert!(!any_edge_missing_branch_length(&graph));
+    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let before = get_branch_lengths(&graph);
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never)?;
+    let after = get_branch_lengths(&graph);
+    assert_eq!(before, after, "Never mode must leave branch lengths unchanged");
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_never_rejects_nan_tree() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
-    assert!(any_edge_missing_branch_length(&graph));
+    let (graph, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never);
+    let err = result.expect_err("Never mode must reject a tree with NaN branch lengths");
+    let msg = format!("{err:?}");
+    assert!(
+      msg.contains("--branch-length-initial-guess=never"),
+      "Never-mode error must mention the offending flag, got: {msg}"
+    );
     Ok(())
   }
 
