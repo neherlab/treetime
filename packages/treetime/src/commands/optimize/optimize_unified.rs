@@ -444,6 +444,16 @@ pub(crate) fn grid_search_inner(
 ///   either correct (and grid search would confirm) or unreachable,
 ///   so skipping the grid scan avoids wasted work in the common case.
 ///
+/// 3. **Exactly zero on a partition where zero is invalid.** When any
+///    site has $L_i(0) \leq 0$ or non-finite, the run_optimize_mixed
+///    caller already bumps a zero input to `one_mutation` to keep the
+///    optimizer in the well-defined domain. The optimizer can still
+///    return $0$ via step clamping; that result re-enters the invalid
+///    zero-evaluation domain and must be replaced. Route to grid search
+///    on this case as well; `grid_search_inner` returns its best
+///    positive candidate because `is_zero_better_than_grid_best` itself
+///    gates on `all_sites_valid_at_zero`.
+///
 /// For Newton and NewtonSqrt on monotone-decreasing surfaces (e.g.
 /// identical sequences) the helper is a no-op: the optimizer already
 /// reached zero through its own grid-search fallback, and the
@@ -456,15 +466,24 @@ pub(crate) fn reconcile_zero_boundary(
   indel_rate: f64,
   one_mutation: f64,
 ) -> f64 {
+  let all_valid_at_zero = contributions.iter().all(|c| c.all_sites_valid_at_zero());
+
   let positive_might_lose_to_zero =
     candidate > 0.0 && is_zero_better_than_grid_best(contributions, indel_count, indel_rate, candidate);
 
   let zero_might_lose_to_positive = candidate == 0.0
     && indel_count == 0
-    && contributions.iter().all(|c| c.all_sites_valid_at_zero())
+    && all_valid_at_zero
     && !contributions.iter().all(|c| c.has_unimodal_branch_likelihood());
 
-  if positive_might_lose_to_zero || zero_might_lose_to_positive {
+  // Optimizer returned 0.0 on a partition where zero is in the undefined
+  // evaluation domain (some site has L_i(0) <= 0 or non-finite). The caller
+  // bumped the input away from zero for exactly this reason; preserving the
+  // optimizer's clamped 0.0 would re-enter the invalid domain on the next
+  // marginal update.
+  let zero_invalid_passthrough = candidate == 0.0 && !all_valid_at_zero;
+
+  if positive_might_lose_to_zero || zero_might_lose_to_positive || zero_invalid_passthrough {
     grid_search_inner(
       branch_length_for_extent,
       contributions,

@@ -338,16 +338,16 @@ mod tests {
     );
   }
 
-  /// Gate condition: `reconcile_zero_boundary` must pass the candidate
-  /// through unchanged when any contribution has a degenerate site
-  /// ($L_i(0) \leq 0$ or non-finite). The pass-through is enforced by
-  /// `is_zero_better_than_grid_best`, which short-circuits on
+  /// Gate condition: `reconcile_zero_boundary` must pass a positive
+  /// candidate through unchanged when any contribution has a degenerate
+  /// site ($L_i(0) \leq 0$ or non-finite). The pass-through is enforced
+  /// by `is_zero_better_than_grid_best`, which short-circuits on
   /// `all_sites_valid_at_zero` before calling the log-likelihood
   /// evaluator (which would produce $\ln(0) = -\infty$ or similar).
   /// Without this gate, a degenerate contribution would crash the
   /// evaluator or return nonsense.
   #[test]
-  fn test_dispatch_zero_boundary_reconcile_degenerate_site_passes_through() {
+  fn test_dispatch_zero_boundary_reconcile_degenerate_site_positive_candidate_passes_through() {
     // Degenerate JC69 site: $L_i(0) = 0$ so the log-likelihood at zero
     // is undefined. The contribution otherwise passes JC69's unimodal
     // classification.
@@ -365,8 +365,44 @@ mod tests {
     let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, 0.001);
     assert!(
       result.to_bits() == candidate.to_bits(),
-      "reconcile_zero_boundary must return candidate unchanged when a site is degenerate, got {result}"
+      "reconcile_zero_boundary must return positive candidate unchanged when a site is degenerate, got {result}"
     );
+  }
+
+  /// Gate condition: `reconcile_zero_boundary` must NOT pass an exact
+  /// zero through when any contribution has a degenerate site. The
+  /// run_optimize_mixed caller bumps a zero input branch length to
+  /// `one_mutation` whenever `!all_sites_valid_at_zero`, precisely to
+  /// keep the next marginal update in a well-defined evaluation domain.
+  /// If the inner solver clamps back to zero, that result has the same
+  /// problem and must be replaced with a positive grid candidate.
+  ///
+  /// Without this gate the helper would silently restore the invalid
+  /// zero and the next marginal update would re-encounter $\ln(0)$ on
+  /// the degenerate site.
+  #[test]
+  fn test_dispatch_zero_boundary_reconcile_degenerate_site_zero_candidate_routes_to_grid() {
+    let gtr = jc69(JC69Params::default()).unwrap();
+    // Two-site partition: site 0 is degenerate at $t = 0$ (all-zero
+    // coefficients), site 1 is well-defined and prefers a positive
+    // branch length.
+    let coefficients = array![[0.0, 0.0, 0.0, 0.0], [0.5, 0.3, 0.1, 0.1]];
+    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contributions = [contribution];
+
+    assert!(
+      !contributions[0].all_sites_valid_at_zero(),
+      "precondition: degenerate contribution must fail all_sites_valid_at_zero"
+    );
+
+    let candidate = 0.0;
+    let one_mutation = 0.001;
+    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, one_mutation);
+    assert!(
+      result > 0.0,
+      "reconcile_zero_boundary must NOT preserve 0.0 when a site is degenerate at zero, got {result}"
+    );
+    assert!(result.is_finite(), "reconciled result must be finite, got {result}");
   }
 
   /// Gate condition: `reconcile_zero_boundary` must pass the candidate
