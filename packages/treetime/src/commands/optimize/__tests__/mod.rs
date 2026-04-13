@@ -1,3 +1,4 @@
+mod test_args;
 mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;
 pub mod test_convergence;
