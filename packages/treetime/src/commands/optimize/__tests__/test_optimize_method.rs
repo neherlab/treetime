@@ -21,7 +21,6 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
-  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
@@ -413,46 +412,56 @@ mod tests {
 
   /// C3c: Full cross-method log-likelihood agreement.
   ///
-  /// All 6 methods produce combined log-likelihood values within tolerance when
-  /// run on the same input. Compares log-likelihood (not branch lengths) because
-  /// the objective can be flat near the optimum.
+  /// Each non-reference method's combined log-likelihood must agree with
+  /// `BrentSqrt`'s within 1e-3 on the same input. Compares log-likelihood
+  /// (not branch lengths) because the objective can be flat near the optimum.
+  ///
+  /// Parameterized one case per (method, n_indels) so a regression in any
+  /// single method on any single indel count fails its own case rather than
+  /// short-circuiting on the first failure across a manual loop.
   #[rustfmt::skip]
   #[rstest]
-  #[case::k1(1)]
-  #[case::k2(2)]
-  #[case::k4(4)]
+  #[case::newton_k1(     BranchOptMethod::Newton,      1)]
+  #[case::newton_k2(     BranchOptMethod::Newton,      2)]
+  #[case::newton_k4(     BranchOptMethod::Newton,      4)]
+  #[case::newton_sqrt_k1(BranchOptMethod::NewtonSqrt,  1)]
+  #[case::newton_sqrt_k2(BranchOptMethod::NewtonSqrt,  2)]
+  #[case::newton_sqrt_k4(BranchOptMethod::NewtonSqrt,  4)]
+  #[case::newton_log_k1( BranchOptMethod::NewtonLog,   1)]
+  #[case::newton_log_k2( BranchOptMethod::NewtonLog,   2)]
+  #[case::newton_log_k4( BranchOptMethod::NewtonLog,   4)]
+  #[case::brent_k1(      BranchOptMethod::Brent,       1)]
+  #[case::brent_k2(      BranchOptMethod::Brent,       2)]
+  #[case::brent_k4(      BranchOptMethod::Brent,       4)]
+  #[case::brent_log_k1(  BranchOptMethod::BrentLog,    1)]
+  #[case::brent_log_k2(  BranchOptMethod::BrentLog,    2)]
+  #[case::brent_log_k4(  BranchOptMethod::BrentLog,    4)]
   #[trace]
-  fn test_optimize_method_cross_method_all_six_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let methods = [
-      ("Newton",     BranchOptMethod::Newton),
-      ("NewtonSqrt", BranchOptMethod::NewtonSqrt),
-      ("NewtonLog",  BranchOptMethod::NewtonLog),
-      ("Brent",      BranchOptMethod::Brent),
-      ("BrentSqrt",  BranchOptMethod::BrentSqrt),
-      ("BrentLog",   BranchOptMethod::BrentLog),
-    ];
+  fn test_optimize_method_cross_method_all_six_lh_agreement(
+    #[case] method: BranchOptMethod,
+    #[case] n_indels: usize,
+  ) -> Result<(), Report> {
+    // Reference: run BrentSqrt (the v0-matching default) on a fresh graph
+    // and capture its post-optimization log-likelihood at the first edge.
+    let lh_ref = {
+      let graph_ref: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+      let (partitions_ref, rate_ref) = setup_with_indels(&graph_ref, n_indels)?;
+      run_optimize_mixed(&graph_ref, &partitions_ref, BranchOptMethod::BrentSqrt)?;
+      let bl_ref = first_edge_bl(&graph_ref);
+      eval_combined_first_edge(&graph_ref, &partitions_ref, rate_ref, bl_ref)?
+    };
 
-    let mut results: BTreeMap<&str, (f64, f64)> = BTreeMap::new();
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (partitions, rate) = setup_with_indels(&graph, n_indels)?;
+    run_optimize_mixed(&graph, &partitions, method)?;
+    let bl = first_edge_bl(&graph);
+    let lh = eval_combined_first_edge(&graph, &partitions, rate, bl)?;
 
-    for (name, method) in &methods {
-      let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-      let (partitions, rate) = setup_with_indels(&graph, n_indels)?;
-      run_optimize_mixed(&graph, &partitions, *method)?;
-      let bl = first_edge_bl(&graph);
-      let lh = eval_combined_first_edge(&graph, &partitions, rate, bl)?;
-      results.insert(name, (bl, lh));
-    }
-
-    // Use BrentSqrt as reference (v0-matching method, default)
-    let (_, lh_ref) = results["BrentSqrt"];
-
-    for (name, (bl, lh)) in &results {
-      let diff = (*lh - lh_ref).abs();
-      assert!(
-        diff < 1e-3,
-        "Method {name} lh ({lh}) differs from BrentSqrt lh ({lh_ref}) by {diff} > 1e-3, bl={bl}"
-      );
-    }
+    let diff = (lh - lh_ref).abs();
+    assert!(
+      diff < 1e-3,
+      "{method:?} (n_indels={n_indels}) lh ({lh}) differs from BrentSqrt lh ({lh_ref}) by {diff} > 1e-3, bl={bl}"
+    );
 
     Ok(())
   }

@@ -24,31 +24,37 @@ mod tests {
   #[trace]
   fn test_optimization_converges_within_iterations(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
-
-    let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     let max_iter = 50;
 
-    let mut lh_history = Vec::with_capacity(max_iter);
-    lh_history.push(initial_lh);
+    // Reference: run BrentSqrt (the v0-matching default) on a fresh graph
+    // and capture its final undamped log-likelihood. Tying the per-method
+    // assertion to the reference ties this test to cross-method agreement
+    // rather than to a hand-chosen LH range that would silently drift.
+    let lh_ref = {
+      let graph_ref: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+      let (dp_ref, sp_ref, mp_ref) = setup_partitions(&graph_ref, &aln)?;
+      for _ in 0..max_iter {
+        run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt)?;
+      }
+      compute_total_lh(&graph_ref, &dp_ref, &sp_ref)?
+    };
+
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     for _ in 0..max_iter {
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
-      lh_history.push(lh);
     }
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
 
-    // The undamped alternating optimization (marginal reconstruction / branch length
-    // optimization) produces a stable 2-cycle. Oscillation is expected without damping -
-    // that is why the production code applies damping by default. This test verifies the
-    // undamped path (--damping=0.0) stays bounded rather than diverging.
-    // Both phases of the 2-cycle must stay within a tight LH range.
-    let final_lh = lh_history[lh_history.len() - 1];
+    // The undamped alternating optimization produces a stable 2-cycle. Each
+    // method must converge to within 1e-2 of the BrentSqrt reference's final
+    // log-likelihood. The 1e-2 tolerance accommodates the 2-cycle
+    // (sub-iteration variation) for all six methods on this toy alignment.
+    let lh_diff = (final_lh - lh_ref).abs();
     assert!(
-      final_lh > -73.5 && final_lh < -72.0,
-      "Final log-lh {final_lh:.6} outside expected range (-73.5, -72.0)"
+      lh_diff < 1e-2,
+      "{method:?} final lh {final_lh:.6} differs from BrentSqrt reference {lh_ref:.6} by {lh_diff:.6} > 1e-2"
     );
 
     Ok(())
