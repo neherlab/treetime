@@ -409,8 +409,9 @@ command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 ### Per-Edge Likelihood (v0 parity via different method)
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with
-Hamming distance bracket. v1 uses Newton's method with analytical derivatives
-in t-space, falling back to grid search. Both use eigendecomposition-based
+Hamming distance bracket. v1 offers six methods via `--opt-method`: Newton and
+Brent in three parameterizations ($t$, $\sqrt{t}$, $\ln(t)$). Default is
+`brent-sqrt` (matches v0). Both v0 and v1 use eigendecomposition-based
 likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
@@ -418,6 +419,10 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] Newton's method with clamped step (max 10 inner iterations, step in `[-1.0, bl]`, absolute tolerance floor 1e-8 subs/site)
 - [x] Newton's method in sqrt(t) space (`newton_sqrt_inner`, reduces indel Hessian singularity from O(1/t^2) to O(1/t))
 - [x] Newton's method in ln(t) space (`newton_log_inner`, eliminates indel Hessian singularity entirely, bounded curvature -mu\*t)
+- [x] Brent's method in t space (`brent_inner`, derivative-free via `argmin::BrentOpt`)
+- [x] Brent's method in sqrt(t) space (`brent_sqrt_inner`, default, matches v0 exactly)
+- [x] Brent's method in ln(t) space (`brent_log_inner`, smoothest objective surface)
+- [x] Per-edge optimization method selection (`--opt-method`: 6 methods, default `brent-sqrt`)
 - [x] Grid search fallback when second derivative >= 0 (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
@@ -432,7 +437,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
-- [ ] Damping in marginal loop (v0: `new*(1-d^i) + old*d^i` with d=0.75)
+- [x] Damping in marginal loop (`--damping`, default 0.75, matching v0: `new*(1-d^i) + old*d^i`)
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)

@@ -575,8 +575,6 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 | `test_optimize_method_newton_sqrt_positive_with_indels` | 3     | NewtonSqrt produces positive finite BL with indels |
 | `test_optimize_method_newton_log_positive_with_indels`  | 3     | NewtonLog produces positive finite BL with indels  |
 
-> > > > > > > 8f098c08 (refactor(optimize): replace em-dash separators and document derivative tolerance budgets)
-
 ---
 
 ## Dispatch Zero Boundary

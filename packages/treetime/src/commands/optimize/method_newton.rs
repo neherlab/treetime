@@ -23,6 +23,10 @@ pub(crate) const NEWTON_MAX_ITER: usize = 10;
 /// runs up to `NEWTON_MAX_ITER` Newton steps with the convergence criterion
 /// $|t_{\text{new}} - t_{\text{old}}| < \text{tol}(t)$, and returns the optimized
 /// branch length. Falls through to grid search if the Hessian becomes non-negative.
+///
+/// **Convergence tolerance:** Step-size in $t$-space. Relative 0.1% of current $t$
+/// with absolute floor 1e-8 subs/site: $\text{tol}(t) = \max(0.001 \cdot t, 10^{-8})$.
+/// The tolerance is the same in both parameterized space and $t$-space (identity map).
 pub(crate) fn newton_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -66,8 +70,10 @@ pub(crate) fn newton_inner(
 /// allowing Newton to make progress toward the combined (substitution + indel)
 /// optimum instead of stalling at the indel-only MLE.
 ///
-/// The convergence criterion is applied in $s$-space:
-/// $|s_{\text{new}} - s_{\text{old}}| < \text{tol}(s)$.
+/// **Convergence tolerance:** Step-size in $s$-space: $\text{tol}(s) = \max(0.0005 \cdot s, 10^{-8})$.
+/// Maps to tighter $t$-tolerance near zero because $ds/dt = 1/(2\sqrt{t})$ amplifies
+/// precision: a step $\Delta s$ in $s$-space corresponds to $\Delta t \approx 2s \cdot \Delta s$
+/// in $t$-space. At $s = 0.1$ ($t = 0.01$), tolerance 5e-5 in $s$ yields ~1e-5 in $t$.
 pub(crate) fn newton_sqrt_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
@@ -168,7 +174,10 @@ pub(crate) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
 /// - Upper bound $u - u_{\min}$: prevents $u_{\text{new}} < u_{\min}$
 /// - Lower bound $-\ln(1 + 1/t)$: limits $t$-space increase to 1.0 subs/site
 ///
-/// Convergence criterion: $|u_{\text{new}} - u_{\text{old}}| < \text{tol}(u)$.
+/// **Convergence tolerance:** Step-size in $u$-space: $\text{tol}(u) = \ln(1 + 0.001) \approx 0.001$.
+/// This is a natural relative tolerance in $t$-space because $dt/t \approx du$ for small steps.
+/// A step $\Delta u$ in $u$-space corresponds to $\Delta t \approx t \cdot \Delta u$ in $t$-space,
+/// so the same tolerance achieves ~0.1% relative precision regardless of $t$.
 pub(crate) fn newton_log_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,

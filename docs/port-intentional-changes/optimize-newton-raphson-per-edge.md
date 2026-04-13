@@ -1,6 +1,6 @@
-# Per-edge branch length optimization uses Newton-Raphson instead of Brent
+# Per-edge branch length optimization: 6-method selection
 
-v1 uses Newton-Raphson with analytical first and second derivatives for per-edge branch length optimization. v0 uses Brent's derivative-free method via `scipy.optimize.minimize_scalar`. Both operate on the same eigendecomposition-based likelihood function.
+v1 offers six per-edge branch length optimization methods via `--opt-method`, combining two algorithms (Newton-Raphson, Brent) with three parameterizations ($t$, $\sqrt{t}$, $\ln(t)$). The default `brent-sqrt` matches v0 exactly. v0 offers only Brent in $\sqrt{t}$ space.
 
 ## What v0 does
 
@@ -16,51 +16,64 @@ v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marg
 
 ## What v1 does
 
-v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)) offers three per-edge optimization methods selectable via `--opt-method`:
+v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)) offers six per-edge optimization methods selectable via `--opt-method`:
 
-1. **`newton-sqrt` (default).** Newton-Raphson in $\sqrt{t}$ space. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule to transform $t$-space derivatives. This reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$, improving conditioning on short branches with indels. Falls back to grid search when the $s$-space Hessian is non-negative.
+### Brent methods (derivative-free)
 
-2. **`newton`.** Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. The Newton step is clamped to `[-1.0, current_bl]`. Max 10 inner iterations, convergence at `|delta_bl| <= max(0.001 * bl, 1e-8)`. Falls back to grid search when the Hessian is non-negative.
+1. **`brent-sqrt` (default).** Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure (v1 returns the input branch length, v0 returns Hamming distance; tracked in `M-optimize-brent-silent-error.md`).
 
-3. **`brent`.** Brent's method via `argmin::BrentOpt`. Derivative-free, bracket-based. The bracket lower bound is `min_branch_length` (or 1e-12 when no indels); the upper bound is `max(1.5 * bl + one_mutation, 0.5)`.
+2. **`brent`.** Brent's method in $t$ space. Derivative-free, bracket-based. Included for completeness; `brent-sqrt` dominates for convergence speed near $t = 0$.
+
+3. **`brent-log`.** Brent's method in $\ln(t)$ space. The cost function evaluates $-\ell(e^u)$ and bracket endpoints transform as $\ln(\text{lower})$, $\ln(\text{upper})$. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$). Smoothest objective surface of all Brent variants.
+
+### Newton methods (analytical derivatives)
+
+The substitution Hessian is computed as the eigenvalue variance $E[\lambda^2] - E[\lambda]^2$, which loses precision via catastrophic cancellation when both terms are large and close. Affects all three Newton variants; tracked in `M-optimize-hessian-catastrophic-cancellation.md`.
+
+4. **`newton`.** Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. Baseline matching RAxML-NG/IQ-TREE. The Poisson indel Hessian ($-k/t^2$) can dominate on short branches with indels.
+
+5. **`newton-sqrt`.** Newton-Raphson in $\sqrt{t}$ space. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$. Reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$.
+
+6. **`newton-log`.** Newton-Raphson in $\ln(t)$ space. Reparameterizes as $u = \ln(t)$ and applies the chain rule: $d\ell/du = t \cdot d\ell/dt$, $d^2\ell/du^2 = t^2 \cdot d^2\ell/dt^2 + t \cdot d\ell/dt$. Eliminates the indel Hessian singularity entirely ($\ell''_{\text{indel}} = -\mu t$, bounded). Best conditioning of all Newton variants.
 
 All methods share:
 
-- **Grid search fallback** for non-concave regions (100 log-spaced points).
+- **Grid search fallback** for non-concave regions (Newton methods only, 100 log-spaced points).
 - **Zero-branch short-circuit** using the derivative-sign criterion at $t = 0$ for unimodal models (JC69, F81).
 
-## Why v1 changes this
+## Why v1 offers method selection
 
-**Analytical derivatives are available at negligible cost.** v1's eigenvalue-space coefficient caching (`k_c`) computes the likelihood as `sum_c k_c exp(lambda_c * t)`. The first and second derivatives with respect to `t` follow by multiplying `k_c` by `lambda_c` and `lambda_c^2` respectively, reusing the same `exp(lambda_c * t)` values. Brent's method would discard these derivatives and perform 3-6x more function evaluations to reach the same precision.
+**Different tradeoffs for different use cases.** The $\sqrt{t}$ and $\ln(t)$ parameterizations improve numerical conditioning on short branches and indel-bearing edges, but add transformation overhead. Pure $t$-space methods are simpler and sufficient for well-conditioned cases.
 
-**Newton-Raphson is the standard in phylogenetic ML software.** Both RAxML (Stamatakis, 2006; 2014) and IQ-TREE (Nguyen et al., 2015; Minh et al., 2020) use Newton-Raphson for per-branch optimization. IQ-TREE uses Brent as a fallback, matching v1's layered approach.
+**Newton-Raphson for analytical derivatives.** v1's eigenvalue-space coefficient caching (`k_c`) computes the likelihood as `sum_c k_c exp(lambda_c * t)`. The first and second derivatives follow by multiplying `k_c` by `lambda_c` and `lambda_c^2`, reusing the same exponentials. Newton achieves quadratic convergence near the optimum (3-5 iterations typical vs 10-30 function evaluations for Brent).
 
-**Quadratic convergence.** Near the optimum, Newton-Raphson doubles the number of correct digits per iteration. Typical convergence: 3-5 iterations per branch. Brent achieves superlinear convergence of order ~1.325 (successive parabolic interpolation), requiring 10-30 function evaluations. For the ~2N branches in a tree with N leaves, this difference compounds.
+**Brent for robustness.** Brent's method is derivative-free and guaranteed to converge within the bracket. It serves as both a reference implementation and a fallback for cases where Newton behaves poorly.
 
-**Unimodality for common models.** Dinh & Matsen (arXiv 1507.03647) prove the one-dimensional phylogenetic likelihood function has at most one stationary point under JC69, F81, and all binary models. For these models, Newton-Raphson converges to the global maximum from any starting point where the Hessian is negative. The grid search fallback handles the non-concave case that can arise under K80, HKY85, and GTR.
+**Default matches v0.** The `brent-sqrt` default ensures golden master tests pass and users get v0-equivalent behavior without configuration.
 
 ## Tradeoffs
 
-**Recovered: sqrt(t) reparameterization.** The default `newton-sqrt` method restores v0's sqrt(t) conditioning. The chain rule transformation is $O(1)$ per evaluation.
+**sqrt(t) reparameterization.** Available as `brent-sqrt` (default, matches v0 on the success path; see `M-optimize-brent-silent-error.md` for the divergent failure path) and `newton-sqrt`.
+
+**New: ln(t) reparameterization.** Available as `brent-log` and `newton-log`. Eliminates the indel Hessian singularity entirely. Not present in v0 or other phylogenetic tools for branch length optimization. Precedented by coalescent Tc optimization in this codebase ([packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62)).
 
 **Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 
-**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent fallback: if optimization fails, the branch length remains at its current value.
+**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: if optimization fails, the branch length remains at its current value.
 
-**Gained: method selection.** Users can choose between three methods via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
-
-**Gained: cheaper per-evaluation cost (Newton methods).** Each Newton iteration gets likelihood AND derivatives from the same eigenvalue exponentials. Brent needs one full likelihood evaluation per bracket refinement step with no derivative reuse.
+**Gained: method selection.** Users can choose between six methods via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
 
 ## Practical impact
 
-For end-users, the per-edge optimization method is invisible. Branch lengths converge to the same ML estimates (within numerical tolerance) regardless of whether Newton or Brent finds them, given the same GTR model and marginal profiles.
+For end-users, the per-edge optimization method is invisible. Branch lengths converge to the same ML estimates (within numerical tolerance) regardless of method, given the same GTR model and marginal profiles. All six methods produce log-likelihood values agreeing within 1e-3 on indel-bearing edges.
 
-The convergence issues previously reported for the optimize command (oscillation between iterations) stemmed from the undamped outer loop, not from the per-branch optimizer. v1 now applies the same exponential damping as v0 (`--damping`, default 0.75). Brent per-branch in v0 is orthogonal to this.
+Convergence behavior tracks v0: the outer loop applies exponential damping (`--damping`, default 0.75) so alternating reconstruction and per-branch optimization stay bounded against the 2-cycle that an undamped loop would produce.
 
 ## References
 
 - Brent RP (1973). _Algorithms for Minimization without Derivatives_. Prentice-Hall.
 - Dinh V, Matsen FA IV (2015). The shape of the one-dimensional phylogenetic likelihood function. arXiv 1507.03647.
+- Felsenstein J (2003). _Inferring Phylogenies_. Sinauer Associates. Chapter 16.
 - Stamatakis A (2006). RAxML-VI-HPC: maximum likelihood-based phylogenetic analyses with thousands of taxa and mixed models. Bioinformatics 22(21):2688-2690.
 - Stamatakis A (2014). RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312-1313.
 - Nguyen LT, Schmidt HA, von Haeseler A, Minh BQ (2015). IQ-TREE: A fast and effective stochastic algorithm for estimating maximum-likelihood phylogenies. Mol Biol Evol 32(1):268-274.

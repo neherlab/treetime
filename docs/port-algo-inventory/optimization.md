@@ -14,7 +14,7 @@ All variants fall back to a 100-point log-spaced grid search when the second der
 
 v1: [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs).
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket instead of Newton's method. v1's analytical derivatives avoid the derivative-free overhead of Brent but require correct second-derivative computation. See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details.
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces) selectable via `--opt-method`; `brent-sqrt` is the default and matches v0 on the success path. The Newton variants compute analytical derivatives from eigenvalue-space coefficient caching but rely on a numerically sensitive Hessian (see `M-optimize-hessian-catastrophic-cancellation.md`). See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details and [intentional change](../port-intentional-changes/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
 References:
 
@@ -43,8 +43,6 @@ References:
 - Press et al. (2007). "Numerical Recipes." Section 10.3 (Brent's method).
 
 ---
-
-> > > > > > > 8f098c08 (refactor(optimize): replace em-dash separators and document derivative tolerance budgets)
 
 ## Eigendecomposition-Based Likelihood
 
@@ -162,9 +160,9 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 
 ## File Index
 
-| File                                                                                                                   | Algorithms                                                         |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                           | Newton-Raphson, grid search, likelihood eval, damping, zero-detect |
-| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                 | Shared-mutation merging, edge collapsing                           |
-| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Greedy temporal polytomy resolution                                |
-| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                     | Interpolation (uniform, non-uniform)                               |
+| File                                                                                                                   | Algorithms                                                                |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                           | Newton-Raphson, Brent, grid search, likelihood eval, damping, zero-detect |
+| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                 | Shared-mutation merging, edge collapsing                                  |
+| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Greedy temporal polytomy resolution                                       |
+| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                     | Interpolation (uniform, non-uniform)                                      |

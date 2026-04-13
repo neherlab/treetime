@@ -2,7 +2,7 @@
 
 This document proposes improvements to the `optimize` command's convergence behavior and introduces user-selectable optimization methods. The goal is to match v0's convergence reliability, provide the same systematic method choice already available in the `clock` command, and address three documented known issues.
 
-The proposal is **not accepted** as a whole. P1, P3, P4, and P5 are implemented independently; P2, P6 remain unimplemented. P5 was implemented as part of the `--opt-method` feature (Newton, NewtonSqrt, Brent) with NewtonSqrt as default.
+The proposal is **not accepted** as a whole. P1, P3, P4, and P5 are implemented independently; P2, P6 remain unimplemented. P5 was implemented with 6 methods: `--opt-method` accepts `brent`, `brent-sqrt`, `brent-log`, `newton`, `newton-sqrt`, `newton-log`. Default is `brent-sqrt` (matches v0).
 
 ## Problem statement
 
@@ -131,8 +131,11 @@ Shea & Schmidt (arXiv 2401.06809) show that Newton with exact line search retain
 ### Per-Edge Optimization
 
 - [x] Newton-Raphson with analytical derivatives (`--opt-method newton`)
-- [x] Newton-Raphson in sqrt(t) space (`--opt-method newton-sqrt`, default)
-- [x] Brent as alternative method (`--opt-method brent`, P5 implemented)
+- [x] Newton-Raphson in sqrt(t) space (`--opt-method newton-sqrt`)
+- [x] Newton-Raphson in ln(t) space (`--opt-method newton-log`)
+- [x] Brent's method in t space (`--opt-method brent`)
+- [x] Brent's method in sqrt(t) space (`--opt-method brent-sqrt`, default, matches v0)
+- [x] Brent's method in ln(t) space (`--opt-method brent-log`)
 - [x] Grid search fallback (shared non-concave fallback for Newton methods)
 - [ ] Backtracking line search for Newton (P6)
 - [x] Zero branch length short-circuit (current)

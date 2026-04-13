@@ -32,6 +32,10 @@ pub(crate) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_muta
 /// unique maximum: at the lower bound the Poisson derivative dominates
 /// (positive, pushing right), and at the upper bound the substitution
 /// derivative dominates (negative, pushing left).
+///
+/// **Convergence tolerance:** BrentOpt uses machine epsilon scaled by the
+/// bracket width. The tolerance is applied directly in $t$-space. The default
+/// `argmin::BrentOpt` tolerance achieves ~15 significant digits.
 pub(crate) fn brent_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -69,8 +73,13 @@ pub(crate) fn brent_inner(
 /// This matches v0 exactly (`scipy.optimize.minimize_scalar(method='brent')`
 /// with `t**2` inside `_neg_prob`). The $\sqrt{t}$ transform smooths the
 /// objective near $t = 0$, giving Brent's parabolic interpolation a better
-/// fit than raw $t$-space. Tolerance $\epsilon_s$ in $s$-space maps to
-/// $t$-space precision $\approx 2 s^* \epsilon_s$, tighter near zero.
+/// fit than raw $t$-space.
+///
+/// **Convergence tolerance:** BrentOpt default tolerance in $s$-space.
+/// Maps to tighter $t$-tolerance near zero: $\Delta t \approx 2s \cdot \Delta s$.
+/// At $s = 0.1$ ($t = 0.01$), machine-epsilon precision in $s$ yields ~0.2x
+/// that precision in $t$. This is the same tightening-near-zero property as
+/// `newton_sqrt_inner`.
 pub(crate) fn brent_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -110,8 +119,13 @@ pub(crate) fn brent_sqrt_inner(
 ///
 /// The lower bound must be strictly positive to avoid $\ln(0)$; it is
 /// clamped to $\max(\text{min\_branch\_length}, 10^{-12})$ (same as other
-/// Brent variants). Tolerance $\epsilon_u$ in $u$-space is a natural
-/// relative tolerance ($dt/t \approx du$).
+/// Brent variants).
+///
+/// **Convergence tolerance:** BrentOpt default tolerance in $u$-space.
+/// This is a natural relative tolerance in $t$-space because $dt/t \approx du$.
+/// Machine-epsilon precision in $u$ achieves the same relative precision in $t$
+/// regardless of the absolute value of $t$. Same relative-tolerance property as
+/// `newton_log_inner`.
 pub(crate) fn brent_log_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
