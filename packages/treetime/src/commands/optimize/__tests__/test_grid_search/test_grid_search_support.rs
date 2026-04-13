@@ -14,7 +14,7 @@ pub mod tests {
   }
 
   pub fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {
-    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
+    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
 
     branch_lengths
       .iter()

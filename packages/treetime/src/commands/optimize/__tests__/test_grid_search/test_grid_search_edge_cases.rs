@@ -17,7 +17,7 @@ mod tests {
     let branch_length = 0.001;
     let one_mutation = 0.01; // 10x branch_length
 
-    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
 

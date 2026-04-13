@@ -1,8 +1,10 @@
 use crate::commands::optimize::optimize_unified::{
   GRID_SEARCH_MIN_UPPER, OptimizationContribution, evaluate_with_indels_log_lh_only,
 };
+use crate::{make_internal_report, make_report};
 use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::brent::BrentOpt;
+use eyre::Report;
 
 /// Maximum iterations for Brent's method.
 pub(crate) const BRENT_MAX_ITER: u64 = 50;
@@ -43,7 +45,7 @@ pub(crate) fn brent_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
   let cost_fn = BranchLengthCostFn {
@@ -54,14 +56,14 @@ pub(crate) fn brent_inner(
   };
 
   let solver = BrentOpt::new(lower, upper);
-  let result = Executor::new(&cost_fn, solver)
+  let res = Executor::new(&cost_fn, solver)
     .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run();
+    .run()
+    .map_err(|e| make_report!("brent_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
 
-  match result {
-    Ok(res) => res.state().best_param.unwrap_or(branch_length),
-    Err(_) => branch_length,
-  }
+  res.state().best_param.ok_or_else(|| {
+    make_internal_report!("brent_inner: solver succeeded but reported no best_param at branch_length={branch_length}")
+  })
 }
 
 /// Brent's method in $\sqrt{t}$ space.
@@ -87,7 +89,7 @@ pub(crate) fn brent_sqrt_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
   let cost_fn = BranchLengthCostFn {
@@ -98,17 +100,17 @@ pub(crate) fn brent_sqrt_inner(
   };
 
   let solver = BrentOpt::new(lower.sqrt(), upper.sqrt());
-  let result = Executor::new(&cost_fn, solver)
+  let res = Executor::new(&cost_fn, solver)
     .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run();
+    .run()
+    .map_err(|e| make_report!("brent_sqrt_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
 
-  match result {
-    Ok(res) => {
-      let s = res.state().best_param.unwrap_or_else(|| branch_length.sqrt());
-      s * s
-    },
-    Err(_) => branch_length,
-  }
+  let s = res.state().best_param.ok_or_else(|| {
+    make_internal_report!(
+      "brent_sqrt_inner: solver succeeded but reported no best_param at branch_length={branch_length}"
+    )
+  })?;
+  Ok(s * s)
 }
 
 /// Brent's method in $\ln(t)$ space.
@@ -133,7 +135,7 @@ pub(crate) fn brent_log_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
   let cost_fn = BranchLengthCostFn {
@@ -144,17 +146,17 @@ pub(crate) fn brent_log_inner(
   };
 
   let solver = BrentOpt::new(lower.ln(), upper.ln());
-  let result = Executor::new(&cost_fn, solver)
+  let res = Executor::new(&cost_fn, solver)
     .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run();
+    .run()
+    .map_err(|e| make_report!("brent_log_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
 
-  match result {
-    Ok(res) => {
-      let u = res.state().best_param.unwrap_or_else(|| branch_length.max(lower).ln());
-      u.exp()
-    },
-    Err(_) => branch_length,
-  }
+  let u = res.state().best_param.ok_or_else(|| {
+    make_internal_report!(
+      "brent_log_inner: solver succeeded but reported no best_param at branch_length={branch_length}"
+    )
+  })?;
+  Ok(u.exp())
 }
 
 /// Cost function for Brent optimization of branch length under a parameter

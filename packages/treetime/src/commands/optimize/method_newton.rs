@@ -2,6 +2,8 @@ use crate::commands::optimize::optimize_unified::{
   OptimizationContribution, OptimizationMetrics, evaluate_with_indels, grid_search_inner, newton_tolerance_log,
   newton_tolerance_sqrt, newton_tolerance_t,
 };
+use crate::make_internal_error;
+use eyre::Report;
 use num::clamp;
 
 /// Relative tolerance for Newton inner-loop convergence.
@@ -35,7 +37,7 @@ pub(crate) fn newton_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   if metrics.second_derivative < 0.0 {
     let mut bl = branch_length;
     let mut new_bl = (bl - clamp(metrics.derivative / metrics.second_derivative, -1.0, bl)).max(min_branch_length);
@@ -52,7 +54,7 @@ pub(crate) fn newton_inner(
         break;
       }
     }
-    new_bl
+    Ok(new_bl)
   } else {
     grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation)
   }
@@ -82,7 +84,7 @@ pub(crate) fn newton_sqrt_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   let mut s = branch_length.sqrt();
   let min_s = min_branch_length.sqrt();
 
@@ -110,7 +112,7 @@ pub(crate) fn newton_sqrt_inner(
     }
   }
 
-  new_s * new_s
+  Ok(new_s * new_s)
 }
 
 /// Lower bound on the Newton step $\delta_s$ in $\sqrt{t}$-space.
@@ -186,11 +188,12 @@ pub(crate) fn newton_log_inner(
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
-) -> f64 {
-  debug_assert!(
-    branch_length > 0.0,
-    "newton_log_inner requires branch_length > 0, got {branch_length}"
-  );
+) -> Result<f64, Report> {
+  if !branch_length.is_finite() || branch_length <= 0.0 {
+    return make_internal_error!(
+      "newton_log_inner: branch_length must be finite and strictly positive, got {branch_length}"
+    );
+  }
 
   let mut u = branch_length.ln();
   let u_min = min_branch_length.max(1e-12).ln();
@@ -226,5 +229,5 @@ pub(crate) fn newton_log_inner(
     }
   }
 
-  new_u.exp()
+  Ok(new_u.exp())
 }

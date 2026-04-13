@@ -703,7 +703,7 @@ mod tests {
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
-    let result = brent_sqrt_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation);
+    let result = brent_sqrt_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
     assert!(
       result >= 0.0,
       "brent_sqrt_inner result must be non-negative, got {result}"
@@ -750,7 +750,7 @@ mod tests {
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
-    let result = brent_log_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation);
+    let result = brent_log_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
     assert!(result > 0.0, "brent_log_inner result must be positive, got {result}");
     assert!(
       result.is_finite(),

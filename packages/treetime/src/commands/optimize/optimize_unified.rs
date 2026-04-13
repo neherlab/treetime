@@ -11,7 +11,7 @@ use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::make_error;
+use crate::{make_error, make_internal_report};
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
@@ -362,10 +362,17 @@ pub(crate) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64
 /// Log spacing provides uniform resolution per decade across the 3-4 orders of
 /// magnitude that branch lengths span in real phylogenies. A linear grid wastes
 /// resolution near zero while under-sampling the long-branch tail.
-pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Array1<f64> {
+///
+/// Errors when `one_mutation <= 0` produces non-positive grid bounds (which would
+/// make `geomspace` undefined).
+pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Result<Array1<f64>, Report> {
   let lower = 0.1 * one_mutation;
   let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
-  Array1::linspace(lower.ln(), upper.ln(), GRID_SEARCH_POINTS).mapv(f64::exp)
+  Array1::geomspace(lower, upper, GRID_SEARCH_POINTS).ok_or_else(|| {
+    make_internal_report!(
+      "grid_search_branch_lengths: geomspace requires strictly positive same-sign bounds, got lower={lower}, upper={upper} (branch_length={branch_length}, one_mutation={one_mutation})"
+    )
+  })
 }
 
 /// Grid search fallback for non-concave regions.
@@ -375,20 +382,20 @@ pub(crate) fn grid_search_inner(
   indel_count: usize,
   indel_rate: f64,
   one_mutation: f64,
-) -> f64 {
-  let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
+) -> Result<f64, Report> {
+  let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation)?;
 
   let best_positive = branch_lengths
     .iter()
-    .max_by_key(|&&bl| {
+    .copied()
+    .max_by_key(|&bl| {
       let log_lh = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, bl);
       OrderedFloat(log_lh)
     })
-    .copied()
-    .unwrap();
+    .ok_or_else(|| make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})"))?;
 
   let zero_is_better = is_zero_better_than_grid_best(contributions, indel_count, indel_rate, best_positive);
-  if zero_is_better { 0.0 } else { best_positive }
+  Ok(if zero_is_better { 0.0 } else { best_positive })
 }
 
 /// Reconcile a per-edge optimizer result against the boundary $t = 0$.
@@ -465,7 +472,7 @@ pub(crate) fn reconcile_zero_boundary(
   indel_count: usize,
   indel_rate: f64,
   one_mutation: f64,
-) -> f64 {
+) -> Result<f64, Report> {
   let all_valid_at_zero = contributions.iter().all(|c| c.all_sites_valid_at_zero());
 
   let positive_might_lose_to_zero =
@@ -492,7 +499,7 @@ pub(crate) fn reconcile_zero_boundary(
       one_mutation,
     )
   } else {
-    candidate
+    Ok(candidate)
   }
 }
 
@@ -633,7 +640,7 @@ where
           one_mutation,
         )
       },
-    };
+    }?;
 
     // Post-optimization boundary reconciliation. See `reconcile_zero_boundary`
     // for the full rationale. The input `branch_length` is used to size the
@@ -646,7 +653,7 @@ where
       indel_count,
       indel_rate,
       one_mutation,
-    );
+    )?;
 
     edge.set_branch_length(Some(new_branch_length));
     Ok(())

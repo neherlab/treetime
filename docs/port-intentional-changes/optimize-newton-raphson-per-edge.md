@@ -20,7 +20,7 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 ### Brent methods (derivative-free)
 
-1. **`brent-sqrt` (default).** Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure (v1 returns the input branch length, v0 returns Hamming distance; tracked in `M-optimize-brent-silent-error.md`).
+1. **`brent-sqrt` (default).** Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
 
 2. **`brent`.** Brent's method in $t$ space. Derivative-free, bracket-based. Included for completeness; `brent-sqrt` dominates for convergence speed near $t = 0$.
 
@@ -53,13 +53,13 @@ All methods share:
 
 ## Tradeoffs
 
-**sqrt(t) reparameterization.** Available as `brent-sqrt` (default, matches v0 on the success path; see `M-optimize-brent-silent-error.md` for the divergent failure path) and `newton-sqrt`.
+**sqrt(t) reparameterization.** Available as `brent-sqrt` (default, matches v0 on the success path; on solver failure v1 returns `Err(Report)` rather than v0's silent Hamming-distance fallback) and `newton-sqrt`.
 
 **New: ln(t) reparameterization.** Available as `brent-log` and `newton-log`. Eliminates the indel Hessian singularity entirely. Not present in v0 or other phylogenetic tools for branch length optimization. Precedented by coalescent Tc optimization in this codebase ([packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62)).
 
 **Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 
-**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: if optimization fails, the branch length remains at its current value.
+**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: solver failures propagate through `Result<f64, Report>` to `run_optimize_mixed`, which surfaces them to the caller. v1 prefers a loud error over v0's silent substitution because the silent fallback biased downstream branch lengths and made likelihood comparisons unreliable.
 
 **Gained: method selection.** Users can choose between six methods via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
 

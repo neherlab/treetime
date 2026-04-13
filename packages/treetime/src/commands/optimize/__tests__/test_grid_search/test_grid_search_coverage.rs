@@ -12,7 +12,7 @@ mod tests {
     // At branch_length=0 with L=1000, the grid must extend to at least 0.5
     // subs/site (GRID_SEARCH_MIN_UPPER), covering the biologically plausible range.
     let one_mutation = 1.0 / 1000.0; // L = 1000
-    let grid = grid_search_branch_lengths(0.0, one_mutation);
+    let grid = grid_search_branch_lengths(0.0, one_mutation).unwrap();
 
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
@@ -32,7 +32,7 @@ mod tests {
     // bound (1.5 * branch_length + one_mutation) should dominate.
     let one_mutation = 0.001;
     let branch_length = 1.0;
-    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
 
     let upper = grid[grid.len() - 1];
     let expected_upper = 1.5 * branch_length + one_mutation;
@@ -44,7 +44,7 @@ mod tests {
   fn test_grid_search_branch_lengths_is_log_spaced() {
     // Log-spaced grid has monotonically increasing spacing: the gap between
     // consecutive points grows as the branch length increases.
-    let grid = grid_search_branch_lengths(0.0, 0.001);
+    let grid = grid_search_branch_lengths(0.0, 0.001).unwrap();
 
     assert!(grid.len() == 100);
 
@@ -74,10 +74,10 @@ mod tests {
 
   #[test]
   fn test_grid_search_branch_lengths_has_correct_point_count() {
-    let grid = grid_search_branch_lengths(0.0, 0.001);
+    let grid = grid_search_branch_lengths(0.0, 0.001).unwrap();
     assert_eq!(grid.len(), 100);
 
-    let grid = grid_search_branch_lengths(0.5, 0.0001);
+    let grid = grid_search_branch_lengths(0.5, 0.0001).unwrap();
     assert_eq!(grid.len(), 100);
   }
 
@@ -132,7 +132,7 @@ mod tests {
   fn test_grid_search_branch_lengths_coverage_invariant(
     #[case] (branch_length, one_mutation): (f64, f64),
   ) {
-    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
 

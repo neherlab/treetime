@@ -318,7 +318,7 @@ mod tests {
     // the extent argument is smaller than the $0.5$ floor. That range
     // contains the local max at $t \approx 0.2$.
     let branch_length_extent = 0.2;
-    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation);
+    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
 
     assert!(
       result > 0.0,
@@ -362,7 +362,7 @@ mod tests {
     );
 
     let candidate = 0.01;
-    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, 0.001);
+    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, 0.001).unwrap();
     assert!(
       result.to_bits() == candidate.to_bits(),
       "reconcile_zero_boundary must return positive candidate unchanged when a site is degenerate, got {result}"
@@ -397,7 +397,7 @@ mod tests {
 
     let candidate = 0.0;
     let one_mutation = 0.001;
-    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, one_mutation);
+    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, 0, 0.0, one_mutation).unwrap();
     assert!(
       result > 0.0,
       "reconcile_zero_boundary must NOT preserve 0.0 when a site is degenerate at zero, got {result}"
@@ -421,7 +421,7 @@ mod tests {
     let indel_rate = 44.4;
     let one_mutation = 0.01;
 
-    let result = reconcile_zero_boundary(candidate, 0.2, &contributions, indel_count, indel_rate, one_mutation);
+    let result = reconcile_zero_boundary(candidate, 0.2, &contributions, indel_count, indel_rate, one_mutation).unwrap();
     assert!(
       result.to_bits() == candidate.to_bits(),
       "reconcile_zero_boundary must return candidate unchanged when indel_count > 0, got {result}"
@@ -545,7 +545,7 @@ mod tests {
     let one_mutation = 0.01;
     let metrics = evaluate_mixed(&contributions, t0);
 
-    let result = newton_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation);
+    let result = newton_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
     assert!(
       result > 0.0,
       "newton_inner from t0={t0} on the Dinh-Matsen K80 surface must return a positive value, got {result}. \
@@ -590,7 +590,7 @@ mod tests {
     let t0 = 0.6;
     let metrics = evaluate_mixed(&contributions, t0);
 
-    let result = newton_sqrt_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation);
+    let result = newton_sqrt_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
     assert!(
       result == 0.0,
       "reproduction: newton_sqrt_inner from t0={t0} on the Dinh-Matsen K80 surface must clamp to exactly 0 (else the reconcile zero-candidate gate is no longer necessary), got {result}"
@@ -627,7 +627,7 @@ mod tests {
     // input branch length, which would be 0.6 in this scenario.
     let candidate = 0.0;
     let branch_length_extent = 0.6;
-    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation);
+    let result = reconcile_zero_boundary(candidate, branch_length_extent, &contributions, 0, 0.0, one_mutation).unwrap();
 
     assert!(
       result > 0.0,
@@ -665,7 +665,7 @@ mod tests {
       "precondition: JC69 must be classified as unimodal"
     );
 
-    let result = reconcile_zero_boundary(0.0, 0.1, &contributions, 0, 0.0, 0.01);
+    let result = reconcile_zero_boundary(0.0, 0.1, &contributions, 0, 0.0, 0.01).unwrap();
     assert!(
       result == 0.0,
       "reconcile_zero_boundary must pass exact-zero through for unimodal models, got {result}"
@@ -681,7 +681,7 @@ mod tests {
   #[test]
   fn test_dispatch_zero_boundary_reconcile_exact_zero_indels_passes_through() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let result = reconcile_zero_boundary(0.0, 0.2, &contributions, 1, 44.4, 0.01);
+    let result = reconcile_zero_boundary(0.0, 0.2, &contributions, 1, 44.4, 0.01).unwrap();
     assert!(
       result == 0.0,
       "reconcile_zero_boundary must pass exact-zero through when indels are present, got {result}"

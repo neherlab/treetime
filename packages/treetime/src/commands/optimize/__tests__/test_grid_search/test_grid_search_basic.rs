@@ -18,7 +18,7 @@ mod tests {
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
     // Verify no other point in the grid has higher log-LH
-    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
+    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let best_log_lh = evaluate_mixed(&contributions, best_bl).log_lh;
 
     for &bl in &branch_lengths {
@@ -42,7 +42,7 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
 
@@ -78,7 +78,7 @@ mod tests {
 
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
-    let grid = grid_search_branch_lengths(branch_length, one_mutation);
+    let grid = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let upper = grid[grid.len() - 1];
 
     assert!(best_bl >= 0.0);

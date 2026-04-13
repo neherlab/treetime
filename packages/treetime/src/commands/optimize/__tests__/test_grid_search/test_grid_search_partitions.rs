@@ -20,7 +20,7 @@ mod tests {
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
     // Verify combined log-LH is maximized across the grid
-    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation);
+    let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
     let best_log_lh = evaluate_mixed(&contributions, best_bl).log_lh;
 
     for &bl in &branch_lengths {
