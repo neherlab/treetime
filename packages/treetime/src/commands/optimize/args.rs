@@ -67,9 +67,8 @@ pub enum BranchOptMethod {
 /// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
 /// TreeTime run), preserving those values lets Newton converge from a
 /// better starting position.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Default, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
-#[derive(Default)]
 pub enum InitialGuessMode {
   /// Estimate only edges with missing or invalid branch lengths, preserve
   /// valid input values. No-op when all edges have finite branch lengths.
@@ -164,6 +163,6 @@ pub struct TreetimeOptimizeArgs {
   /// - newton: Newton-Raphson in t space
   /// - newton-sqrt: Newton-Raphson in sqrt(t) space
   /// - newton-log: Newton-Raphson in ln(t) space (not yet implemented)
-  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::BrentSqrt)]
+  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
   pub opt_method: BranchOptMethod,
 }

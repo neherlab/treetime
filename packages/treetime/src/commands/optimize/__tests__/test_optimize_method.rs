@@ -4,13 +4,13 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::commands::optimize::args::BranchOptMethod;
-  use crate::commands::optimize::method_brent::{brent_log_inner, brent_sqrt_inner};
+  use crate::commands::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
   use crate::commands::optimize::method_newton::chain_rule_sqrt;
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
     GRID_SEARCH_MIN_UPPER, OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
-    evaluate_with_indels_log_lh_only, newton_tolerance, run_optimize_mixed,
+    evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance, run_optimize_mixed,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -576,13 +576,14 @@ mod tests {
     let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
 
     // Capture input branch length and compute bracket BEFORE optimization
-    // (production code computes the bracket from the input BL).
+    // (production code computes the bracket from the input BL). Calls the
+    // production helpers brent_bracket and min_branch_length_for_indels
+    // directly to avoid drift if either formula changes.
     let input_bl = graph.get_edges()[0].read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
     let total_length: usize = mixed_partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
     let one_mutation = 1.0 / total_length as f64;
-    let min_bl = one_mutation * 0.01; // indel_count > 0
-    let lower = min_bl.max(1e-12);
-    let upper = f64::max(1.5 * input_bl + one_mutation, GRID_SEARCH_MIN_UPPER);
+    let min_bl = min_branch_length_for_indels(4, one_mutation);
+    let (lower, upper) = brent_bracket(input_bl, min_bl, one_mutation);
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 

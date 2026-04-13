@@ -318,6 +318,18 @@ pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> boo
   derivative < 0.0
 }
 
+/// Lower bound on the per-edge branch length used by Newton/Brent dispatch.
+///
+/// On indel-bearing edges the Poisson log-likelihood derivative diverges at
+/// $t = 0$ (`-k/t^2`), so the optimizer must stay strictly positive. The
+/// `0.01 * one_mutation` floor is well below the smallest meaningful branch
+/// length ($1/L \sim 10^{-4}$ for $L = 10^4$) yet far enough from zero to
+/// keep the indel Hessian finite. On no-indel edges zero is admissible, so
+/// the floor is zero.
+pub(crate) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64) -> f64 {
+  if indel_count > 0 { one_mutation * 0.01 } else { 0.0 }
+}
+
 /// Log-spaced grid of candidate branch lengths for the grid search fallback.
 ///
 /// The grid lower bound is `0.1 * one_mutation` (smallest meaningful branch length).
@@ -425,33 +437,9 @@ where
 
     // Lower bound for Newton/Brent steps on indel-bearing edges. The Poisson derivative
     // diverges at t=0, so we must prevent the optimizer from landing exactly at zero.
-    let min_branch_length = if indel_count > 0 { one_mutation * 0.01 } else { 0.0 };
+    let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
 
     let new_branch_length = match method {
-      BranchOptMethod::Newton => {
-        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_inner(
-          branch_length,
-          &metrics,
-          &contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        )
-      },
-      BranchOptMethod::NewtonSqrt => {
-        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_sqrt_inner(
-          branch_length,
-          &metrics,
-          &contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        )
-      },
       BranchOptMethod::Brent => brent_inner(
         branch_length,
         &contributions,
@@ -476,6 +464,30 @@ where
         min_branch_length,
         one_mutation,
       ),
+      BranchOptMethod::Newton => {
+        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+        newton_inner(
+          branch_length,
+          &metrics,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        )
+      },
+      BranchOptMethod::NewtonSqrt => {
+        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+        newton_sqrt_inner(
+          branch_length,
+          &metrics,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        )
+      },
       BranchOptMethod::NewtonLog => {
         todo!("Optimization method {method:?} is not yet implemented")
       },

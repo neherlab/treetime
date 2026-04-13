@@ -8,7 +8,12 @@ use argmin::solver::brent::BrentOpt;
 pub(crate) const BRENT_MAX_ITER: u64 = 50;
 
 /// Brent bracket endpoints in $t$-space shared by all three parameterizations.
-fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
+///
+/// The lower bound is `min_branch_length.max(1e-12)`: the `1e-12` floor avoids
+/// $\ln(0)$ in the log-space cost function when the caller passes
+/// `min_branch_length = 0` (no-indel case). The upper bound matches the grid
+/// search range.
+pub(crate) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
   let lower = min_branch_length.max(1e-12);
   let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
   (lower, upper)
@@ -37,10 +42,11 @@ pub(crate) fn brent_inner(
 ) -> f64 {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
-  let cost_fn = BranchLengthCostFunction {
+  let cost_fn = BranchLengthCostFn {
     contributions,
     indel_count,
     indel_rate,
+    to_t: |t: f64| t,
   };
 
   let solver = BrentOpt::new(lower, upper);
@@ -75,10 +81,11 @@ pub(crate) fn brent_sqrt_inner(
 ) -> f64 {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
-  let cost_fn = SqrtCostFunction {
+  let cost_fn = BranchLengthCostFn {
     contributions,
     indel_count,
     indel_rate,
+    to_t: |s: f64| s * s,
   };
 
   let solver = BrentOpt::new(lower.sqrt(), upper.sqrt());
@@ -115,10 +122,11 @@ pub(crate) fn brent_log_inner(
 ) -> f64 {
   let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
 
-  let cost_fn = LogCostFunction {
+  let cost_fn = BranchLengthCostFn {
     contributions,
     indel_count,
     indel_rate,
+    to_t: f64::exp,
   };
 
   let solver = BrentOpt::new(lower.ln(), upper.ln());
@@ -135,61 +143,26 @@ pub(crate) fn brent_log_inner(
   }
 }
 
-/// Cost function for Brent optimization of branch length in $t$-space.
+/// Cost function for Brent optimization of branch length under a parameter
+/// transform $t = \text{to\_t}(p)$.
 ///
 /// Negates the combined (substitution + indel) log-likelihood because
-/// `BrentOpt` minimizes, but we want to maximize.
-struct BranchLengthCostFunction<'a> {
+/// `BrentOpt` minimizes, but we want to maximize. Specializing the transform:
+/// $t$-space uses the identity, $\sqrt{t}$-space uses $p \mapsto p^2$,
+/// $\ln(t)$-space uses $p \mapsto e^p$.
+struct BranchLengthCostFn<'a, F: Fn(f64) -> f64> {
   contributions: &'a [OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
+  to_t: F,
 }
 
-impl CostFunction for &BranchLengthCostFunction<'_> {
+impl<F: Fn(f64) -> f64> CostFunction for &BranchLengthCostFn<'_, F> {
   type Param = f64;
   type Output = f64;
 
-  fn cost(&self, t: &Self::Param) -> Result<Self::Output, Error> {
-    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, *t);
-    Ok(-log_lh)
-  }
-}
-
-/// Cost function for Brent optimization in $\sqrt{t}$ space.
-///
-/// Takes parameter $s$, evaluates $-\ell(s^2)$.
-struct SqrtCostFunction<'a> {
-  contributions: &'a [OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-}
-
-impl CostFunction for &SqrtCostFunction<'_> {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, s: &Self::Param) -> Result<Self::Output, Error> {
-    let t = s * s;
-    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t);
-    Ok(-log_lh)
-  }
-}
-
-/// Cost function for Brent optimization in $\ln(t)$ space.
-///
-/// Takes parameter $u$, evaluates $-\ell(e^u)$.
-struct LogCostFunction<'a> {
-  contributions: &'a [OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-}
-
-impl CostFunction for &LogCostFunction<'_> {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, u: &Self::Param) -> Result<Self::Output, Error> {
-    let t = u.exp();
+  fn cost(&self, p: &Self::Param) -> Result<Self::Output, Error> {
+    let t = (self.to_t)(*p);
     let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t);
     Ok(-log_lh)
   }
