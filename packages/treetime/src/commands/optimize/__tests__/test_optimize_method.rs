@@ -828,6 +828,131 @@ mod tests {
     Ok(())
   }
 
+  mod generators {
+    use proptest::prelude::*;
+    /// Strategy for `s = sqrt(t)` values used by `chain_rule_sqrt`.
+    /// Bounded above well below the catastrophic-cancellation regime of the
+    /// step-clamping invariants (production never sees `s` near these caps).
+    pub fn gen_s() -> impl Strategy<Value = f64> {
+      1e-6_f64..1e3_f64
+    }
+    /// Strategy for `t > 0` values used by `chain_rule_log`.
+    pub fn gen_t() -> impl Strategy<Value = f64> {
+      1e-10_f64..1e3_f64
+    }
+    /// Strategy for first-derivative magnitudes typical of substitution +
+    /// indel objectives at the per-edge scale.
+    pub fn gen_dl_dt() -> impl Strategy<Value = f64> {
+      -1e6_f64..1e6_f64
+    }
+    /// Strategy for second-derivative magnitudes (Hessians can swing widely
+    /// on indel-heavy short branches).
+    pub fn gen_d2l_dt2() -> impl Strategy<Value = f64> {
+      -1e8_f64..1e8_f64
+    }
+    /// Strategy for a non-zero scalar multiplier in the linearity invariant.
+    pub fn gen_scalar() -> impl Strategy<Value = f64> {
+      prop_oneof![-1e3_f64..-1e-3_f64, 1e-3_f64..1e3_f64]
+    }
+  }
+
+  use proptest::prelude::*;
+
+  proptest! {
+    /// `chain_rule_sqrt(s, dl_dt, d2l_dt2)` must equal the closed-form
+    /// (2*s*dl_dt, 4*s^2*d2l_dt2 + 2*dl_dt). Pinning the formula identity
+    /// catches any algebraic regression in the chain rule.
+    #[test]
+    fn test_prop_optimize_method_chain_rule_sqrt_formula(
+      s in generators::gen_s(),
+      dl_dt in generators::gen_dl_dt(),
+      d2l_dt2 in generators::gen_d2l_dt2(),
+    ) {
+      let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
+      let expected_dl_ds = 2.0 * s * dl_dt;
+      let expected_d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
+      let dl_tol = 1e-9 * expected_dl_ds.abs().max(1.0);
+      let d2l_tol = 1e-9 * expected_d2l_ds2.abs().max(1.0);
+      prop_assert!(
+        (dl_ds - expected_dl_ds).abs() <= dl_tol,
+        "dl_ds: got {dl_ds}, expected {expected_dl_ds}"
+      );
+      prop_assert!(
+        (d2l_ds2 - expected_d2l_ds2).abs() <= d2l_tol,
+        "d2l_ds2: got {d2l_ds2}, expected {expected_d2l_ds2}"
+      );
+    }
+
+    /// `chain_rule_sqrt` is linear in `(dl_dt, d2l_dt2)`: scaling both inputs
+    /// by `k` scales both outputs by `k`. This is the homogeneity invariant
+    /// of a linear transform.
+    #[test]
+    fn test_prop_optimize_method_chain_rule_sqrt_linear(
+      s in generators::gen_s(),
+      dl_dt in generators::gen_dl_dt(),
+      d2l_dt2 in generators::gen_d2l_dt2(),
+      k in generators::gen_scalar(),
+    ) {
+      let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, dl_dt, d2l_dt2);
+      let (dl_ds_k, d2l_ds2_k) = chain_rule_sqrt(s, k * dl_dt, k * d2l_dt2);
+      let dl_tol = 1e-9 * (k * dl_ds).abs().max(1.0);
+      let d2l_tol = 1e-9 * (k * d2l_ds2).abs().max(1.0);
+      prop_assert!(
+        (dl_ds_k - k * dl_ds).abs() <= dl_tol,
+        "linearity violated for dl_ds: {dl_ds_k} vs k*{dl_ds}"
+      );
+      prop_assert!(
+        (d2l_ds2_k - k * d2l_ds2).abs() <= d2l_tol,
+        "linearity violated for d2l_ds2: {d2l_ds2_k} vs k*{d2l_ds2}"
+      );
+    }
+
+    /// `chain_rule_log(t, dl_dt, d2l_dt2)` must equal the closed-form
+    /// (t*dl_dt, t^2*d2l_dt2 + t*dl_dt).
+    #[test]
+    fn test_prop_optimize_method_chain_rule_log_formula(
+      t in generators::gen_t(),
+      dl_dt in generators::gen_dl_dt(),
+      d2l_dt2 in generators::gen_d2l_dt2(),
+    ) {
+      let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
+      let expected_dl_du = t * dl_dt;
+      let expected_d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
+      let dl_tol = 1e-9 * expected_dl_du.abs().max(1.0);
+      let d2l_tol = 1e-9 * expected_d2l_du2.abs().max(1.0);
+      prop_assert!(
+        (dl_du - expected_dl_du).abs() <= dl_tol,
+        "dl_du: got {dl_du}, expected {expected_dl_du}"
+      );
+      prop_assert!(
+        (d2l_du2 - expected_d2l_du2).abs() <= d2l_tol,
+        "d2l_du2: got {d2l_du2}, expected {expected_d2l_du2}"
+      );
+    }
+
+    /// `chain_rule_log` is linear in `(dl_dt, d2l_dt2)`.
+    #[test]
+    fn test_prop_optimize_method_chain_rule_log_linear(
+      t in generators::gen_t(),
+      dl_dt in generators::gen_dl_dt(),
+      d2l_dt2 in generators::gen_d2l_dt2(),
+      k in generators::gen_scalar(),
+    ) {
+      let (dl_du, d2l_du2) = chain_rule_log(t, dl_dt, d2l_dt2);
+      let (dl_du_k, d2l_du2_k) = chain_rule_log(t, k * dl_dt, k * d2l_dt2);
+      let dl_tol = 1e-9 * (k * dl_du).abs().max(1.0);
+      let d2l_tol = 1e-9 * (k * d2l_du2).abs().max(1.0);
+      prop_assert!(
+        (dl_du_k - k * dl_du).abs() <= dl_tol,
+        "linearity violated for dl_du: {dl_du_k} vs k*{dl_du}"
+      );
+      prop_assert!(
+        (d2l_du2_k - k * d2l_du2).abs() <= d2l_tol,
+        "linearity violated for d2l_du2: {d2l_du2_k} vs k*{d2l_du2}"
+      );
+    }
+  }
+
   mod helpers {
     use super::*;
 

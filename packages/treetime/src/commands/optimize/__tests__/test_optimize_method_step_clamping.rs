@@ -148,4 +148,70 @@ mod tests {
     let asymptote = -1.0 / t;
     assert_abs_diff_eq!(bound, asymptote, epsilon = 1e-6);
   }
+
+  mod generators {
+    use proptest::prelude::*;
+    /// Strategy for non-negative `s` values used by `sqrt_step_lower_bound`.
+    /// Capped at 1e3 because the unit-`t`-increase invariant computes
+    /// `s_new^2 - s^2 ~ 1` and loses relative precision once `s^2` exceeds
+    /// `1e10` (catastrophic cancellation on the squared values). Production
+    /// code never sees `s` near this cap (`s` is `sqrt(branch_length)` and
+    /// branch lengths cap at `GRID_SEARCH_MIN_UPPER = 0.5` plus a soft
+    /// boundary, far below `s = 1e3`).
+    pub fn gen_s() -> impl Strategy<Value = f64> {
+      0.0_f64..1e3_f64
+    }
+    /// Strategy for strictly positive `t` values used by `log_step_lower_bound`.
+    pub fn gen_t() -> impl Strategy<Value = f64> {
+      1e-10_f64..1e6_f64
+    }
+  }
+
+  use proptest::prelude::*;
+
+  proptest! {
+    /// Sign invariant for `sqrt_step_lower_bound`: always non-positive on
+    /// the admissible domain `s >= 0`.
+    #[test]
+    fn test_prop_optimize_method_step_clamping_sqrt_non_positive(s in generators::gen_s()) {
+      let bound = sqrt_step_lower_bound(s);
+      prop_assert!(bound <= 0.0, "sqrt_step_lower_bound({s}) = {bound} should be <= 0");
+    }
+
+    /// Unit-`t`-increase invariant for `sqrt_step_lower_bound`: applying
+    /// the lower-bound step in s-space produces exactly delta_t = 1.0
+    /// (up to round-off).
+    #[test]
+    fn test_prop_optimize_method_step_clamping_sqrt_unit_t_increase(s in generators::gen_s()) {
+      let delta_s = sqrt_step_lower_bound(s);
+      let s_new = s - delta_s;
+      let delta_t = s_new * s_new - s * s;
+      prop_assert!(
+        (delta_t - 1.0).abs() < 1e-6,
+        "sqrt step from s={s} should yield delta_t = 1.0, got {delta_t}"
+      );
+    }
+
+    /// Sign invariant for `log_step_lower_bound`: always negative on the
+    /// admissible domain `t > 0`.
+    #[test]
+    fn test_prop_optimize_method_step_clamping_log_negative(t in generators::gen_t()) {
+      let bound = log_step_lower_bound(t);
+      prop_assert!(bound < 0.0, "log_step_lower_bound({t}) = {bound} should be < 0");
+    }
+
+    /// Unit-`t`-increase invariant for `log_step_lower_bound`: applying
+    /// the lower-bound step in u-space produces exactly delta_t = 1.0
+    /// (up to round-off).
+    #[test]
+    fn test_prop_optimize_method_step_clamping_log_unit_t_increase(t in generators::gen_t()) {
+      let delta_u = log_step_lower_bound(t);
+      let t_new = (t.ln() - delta_u).exp();
+      let delta_t = t_new - t;
+      prop_assert!(
+        (delta_t - 1.0).abs() < 1e-6,
+        "log step from t={t} should yield delta_t = 1.0, got {delta_t}"
+      );
+    }
+  }
 }
