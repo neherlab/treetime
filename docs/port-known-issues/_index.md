@@ -78,6 +78,8 @@ exactly.
 | Low            | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                     |
 | Low            | Optimize     | [Dense-sparse duplication in OptimizationContribution enum dispatch](L-optimize-eval-dense-sparse-duplication.md)                    |
 | Low            | Timetree     | [Reroot merge composition branch lacks direct assertion](L-timetree-reroot-merge-composition-untested.md)                            |
+| Low            | Timetree     | [Sparse reroot integration contract and end-to-end path not directly asserted](L-sparse-reroot-integration-test-missing.md)          |
+| Low            | GTR          | [Sparse GTR test oracle is internally consistent but not independently checked](L-sparse-gtr-test-oracle-weak.md)                    |
 | Medium         | Timetree     | [Timetree skips initial ML branch length optimization before time inference](M-timetree-missing-initial-branch-optimization.md)      |
 | Medium         | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                        |
 | Medium         | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)         |
