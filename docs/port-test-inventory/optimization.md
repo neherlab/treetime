@@ -265,6 +265,8 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 ## Dense/Sparse Equivalence
 
+> **Note**: All tests in this directory are parameterized across 6 `BranchOptMethod` variants: Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog.
+
 **Directory:** [`test_dense_sparse_equivalence/`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/)
 
 ### Initial Tests
@@ -313,6 +315,8 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 ## Convergence Control
 
+> **Note**: All tests in this directory are parameterized across 6 `BranchOptMethod` variants: Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog.
+
 **Directory:** [`test_convergence/`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/)
 
 ### Iterations Tests
@@ -353,6 +357,8 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 ---
 
 ## Outer-Loop Damping
+
+> **Note**: `test_damped_optimization_converges` and `test_damped_optimization_does_not_regress` are parameterized across 6 `BranchOptMethod` variants.
 
 **File:** [`test_damping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_damping.rs)
 
@@ -481,35 +487,9 @@ Tests that `initial_guess_mixed()` still follows the edge substitution formula a
 
 ---
 
-## Initial Guess Soft Hamming
-
-**File:** [`test_initial_guess_soft_hamming.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_soft_hamming.rs)
-
-Tests for the dense partition's soft Hamming distance used in `initial_guess_mixed()`. Validates that `edge_initial_differences()` computes `sum(1 - dot(pp, pc))` correctly across profile shapes.
-
-### Direct Numerical Tests
-
-| Test                                                 | Purpose                                            |
-| ---------------------------------------------------- | -------------------------------------------------- |
-| `test_sharp_matching_profiles_zero_differences`      | One-hot matching profiles: dot=1, diff=0           |
-| `test_sharp_mismatched_profiles_integer_differences` | One-hot mismatched profiles: dot=0, diff=1 each    |
-| `test_uniform_profiles_fractional_differences`       | Uniform 0.25: dot=0.25, diff=0.75 per position     |
-| `test_weakly_informative_same_dominant_state`        | Dominant 0.7 same state: dot=0.52, diff=0.48       |
-| `test_weakly_informative_different_dominant_state`   | Dominant 0.7 different states: dot=0.16, diff=0.84 |
-| `test_mixed_profiles_sum_of_contributions`           | Sum of sharp, uniform, and weak contributions      |
-| `test_gap_positions_excluded`                        | Gap ranges excluded from soft Hamming sum          |
-
-### Pipeline Integration Tests
-
-| Test                                              | Purpose                                            |
-| ------------------------------------------------- | -------------------------------------------------- |
-| `test_identical_sequences_hard_zero_soft_small`   | Identical sequences: hard=0, soft small positive   |
-| `test_divergent_sequences_soft_differs_from_hard` | Divergent sequences: soft and hard disagree        |
-| `test_differences_bounded_by_effective_length`    | 0 <= differences <= effective_length for all edges |
-
----
-
 ## Topology Cleanup in Loop
+
+> **Note**: `test_optimize_loop_with_topology_cleanup_sparse`, `test_optimize_loop_no_collapse_when_branches_nonzero`, and `test_optimize_loop_with_topology_cleanup_dense` are parameterized across 6 `BranchOptMethod` variants.
 
 **File:** [`test_topology_cleanup.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_topology_cleanup.rs)
 
