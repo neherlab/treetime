@@ -11,12 +11,14 @@ use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::gtr::gtr::GTR;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
-use ndarray::{Array1, Axis};
+use itertools::Either;
+use ndarray::{Array1, ArrayView1};
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -131,6 +133,42 @@ impl OptimizationContribution {
     }
   }
 
+  /// Iterate over this contribution's site patterns as (multiplicity, coefficients).
+  ///
+  /// Dense and sparse representations differ only in iteration: dense yields
+  /// `(1.0, row)` for each alignment position, sparse yields
+  /// `(multiplicity, coefficients)` for each compressed site pattern. Callers
+  /// that only need per-site coefficient vectors and their weights can consume
+  /// both representations through this iterator without dispatching on the
+  /// enum variant. The signature matches `evaluate_site_contributions` so the
+  /// same iteration contract is used everywhere.
+  pub fn sites(&self) -> impl Iterator<Item = (f64, ArrayView1<'_, f64>)> {
+    match self {
+      OptimizationContribution::Dense(contribution) => {
+        Either::Left(contribution.coefficients.outer_iter().map(|row| (1.0, row)))
+      },
+      OptimizationContribution::Sparse(contribution) => Either::Right(
+        contribution
+          .site_contributions
+          .iter()
+          .map(|sc| (sc.multiplicity, sc.coefficients.view())),
+      ),
+    }
+  }
+
+  /// The GTR model backing this contribution.
+  ///
+  /// Dense and sparse variants each carry their own `GTR` field; this accessor
+  /// provides a single interface so code that only reads model-level properties
+  /// (eigenvalues, `unimodal_branch_likelihood`) does not need to dispatch on
+  /// the variant.
+  pub fn gtr(&self) -> &GTR {
+    match self {
+      OptimizationContribution::Dense(contribution) => &contribution.gtr,
+      OptimizationContribution::Sparse(contribution) => &contribution.gtr,
+    }
+  }
+
   /// Check whether every site's likelihood at t=0 is positive and finite.
   ///
   /// The per-site likelihood at zero branch length is L_i(0) = sum_c k_{ic},
@@ -139,17 +177,10 @@ impl OptimizationContribution {
   /// in f64) for the zero-branch derivative to be well-defined. If any site
   /// fails, the shortcut declines to decide and falls back to full optimization.
   pub fn all_sites_valid_at_zero(&self) -> bool {
-    match self {
-      OptimizationContribution::Dense(contribution) => contribution
-        .coefficients
-        .sum_axis(Axis(1))
-        .iter()
-        .all(|&site_lh| site_lh > 0.0 && site_lh.is_finite()),
-      OptimizationContribution::Sparse(contribution) => contribution.site_contributions.iter().all(|coeff| {
-        let site_lh = coeff.coefficients.sum();
-        site_lh > 0.0 && site_lh.is_finite()
-      }),
-    }
+    self.sites().all(|(_, coefficients)| {
+      let site_lh = coefficients.sum();
+      site_lh > 0.0 && site_lh.is_finite()
+    })
   }
 
   /// Whether this contribution's model has proven unimodal branch-length likelihood.
@@ -158,10 +189,7 @@ impl OptimizationContribution {
   /// maximum on [0, infinity). When false, the derivative test only proves
   /// zero is a local maximum - a better positive-length maximum may exist.
   pub fn has_unimodal_branch_likelihood(&self) -> bool {
-    match self {
-      OptimizationContribution::Dense(contribution) => contribution.gtr.unimodal_branch_likelihood,
-      OptimizationContribution::Sparse(contribution) => contribution.gtr.unimodal_branch_likelihood,
-    }
+    self.gtr().unimodal_branch_likelihood
   }
 
   /// Derivative of log-likelihood with respect to branch length at t=0.
@@ -182,23 +210,11 @@ impl OptimizationContribution {
       self.all_sites_valid_at_zero(),
       "zero_branch_length_derivative called without verifying all_sites_valid_at_zero"
     );
-    match self {
-      // Use `dot` for the (n_sites, n_states) * (n_states,) reduction so the
-      // intermediate (n_sites, n_states) broadcast multiply does not allocate.
-      // BLAS-backed when ndarray's `blas` feature is enabled (it is).
-      OptimizationContribution::Dense(contribution) => {
-        let gtr = &contribution.gtr;
-        let coefficients = &contribution.coefficients;
-        (coefficients.dot(&gtr.eigvals) / coefficients.sum_axis(Axis(1))).sum()
-      },
-      OptimizationContribution::Sparse(contribution) => contribution
-        .site_contributions
-        .iter()
-        .map(|coeff| {
-          coeff.multiplicity * (coeff.coefficients.dot(&contribution.gtr.eigvals) / coeff.coefficients.sum())
-        })
-        .sum(),
-    }
+    let eigvals = &self.gtr().eigvals;
+    self
+      .sites()
+      .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(eigvals) / coefficients.sum())
+      .sum()
   }
 }
 
