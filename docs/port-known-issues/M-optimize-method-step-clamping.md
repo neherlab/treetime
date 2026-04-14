@@ -57,11 +57,11 @@ No change to `newton_inner` ($t$-space bounds are correct).
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md) -- file split puts Newton code in its own module
+- Depends on: M-optimize-method-scaffolding (done) -- file split puts Newton code in its own module
 - Depended on by: [M-optimize-method-dispatch](M-optimize-method-dispatch.md)
 - Related: [M-optimize-method-newton-log](M-optimize-method-newton-log.md) -- `newton_log_inner` uses the log-space bounds defined here
 
 ## Cross-references
 
-- Current `newton_sqrt_inner`: `optimize_unified.rs:404` (moves to Newton module after [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md))
-- Current `newton_inner`: `optimize_unified.rs:359`
+- Current `newton_sqrt_inner`: `packages/treetime/src/commands/optimize/method_newton.rs`
+- Current `newton_inner`: `packages/treetime/src/commands/optimize/method_newton.rs`

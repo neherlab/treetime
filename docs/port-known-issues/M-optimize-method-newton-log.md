@@ -46,7 +46,7 @@ Derivation: $dt/du = e^u = t$, so $d\ell/du = (d\ell/dt) \cdot t$. For the secon
 
 $s = \sqrt{t}$: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$.
 
-Implemented at `optimize_unified.rs:448` (moves to Newton module after [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md)).
+Implemented at `packages/treetime/src/commands/optimize/method_newton.rs`.
 
 ## Approach
 
@@ -101,12 +101,12 @@ Example analytical check at $t = 0.09$, $d\ell/dt = 10$, $d^2\ell/dt^2 = -100$:
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md) -- file split puts Newton code in its own module
+- Depends on: M-optimize-method-scaffolding (done) -- file split puts Newton code in its own module
 - Depended on by: [M-optimize-method-dispatch](M-optimize-method-dispatch.md)
 - Related: [M-optimize-method-step-clamping](M-optimize-method-step-clamping.md) -- defines the step clamping bounds used by the log-space inner loop
 
 ## Cross-references
 
-- Existing `chain_rule_sqrt`: `optimize_unified.rs:448` (moves to Newton module after [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md))
-- Existing `newton_sqrt_inner`: `optimize_unified.rs:404` (template for the log-space inner loop)
-- Existing `newton_tolerance`: `optimize_unified.rs:54`
+- Existing `chain_rule_sqrt`: `packages/treetime/src/commands/optimize/method_newton.rs`
+- Existing `newton_sqrt_inner`: `packages/treetime/src/commands/optimize/method_newton.rs`
+- Existing `newton_tolerance`: `packages/treetime/src/commands/optimize/optimize_unified.rs`

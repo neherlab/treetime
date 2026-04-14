@@ -6,7 +6,7 @@ After the scaffolding, Brent, Newton-log, and step-clamping issues are implement
 
 ## Context
 
-The 6 inner-loop functions and their locations (after [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md) splits the file):
+The 6 inner-loop functions and their locations (after M-optimize-method-scaffolding split the file):
 
 | Variant      | Function            | Module        |
 | :----------- | :------------------ | :------------ |

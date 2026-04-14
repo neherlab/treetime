@@ -46,11 +46,11 @@ Manual check after dispatch is wired: run `./dev/docker/run ./dev/dev r treetime
 
 ## Dependencies
 
-- Depends on: [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md) -- file split puts Brent code in its own module
+- Depends on: M-optimize-method-scaffolding (done) -- file split puts Brent code in its own module
 - Depended on by: [M-optimize-method-dispatch](M-optimize-method-dispatch.md)
 
 ## Cross-references
 
 - v0 implementation: `packages/legacy/treetime/treetime/gtr.py:842-892` (Brent in sqrt-space)
 - Coalescent Tc log-space precedent: `packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs:62`
-- Current `brent_inner`: `packages/treetime/src/commands/optimize/optimize_unified.rs:467` (moves to Brent module after [M-optimize-method-scaffolding](M-optimize-method-scaffolding.md))
+- Current `brent_inner`: `packages/treetime/src/commands/optimize/method_brent.rs`
