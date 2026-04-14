@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
-  use crate::commands::optimize::optimize_method::BranchOptMethod;
+  use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
   use crate::representation::payload::ancestral::GraphAncestral;

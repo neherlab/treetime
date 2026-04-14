@@ -1,7 +1,9 @@
+use crate::commands::optimize::args::BranchOptMethod;
+use crate::commands::optimize::method_brent::brent_inner;
+use crate::commands::optimize::method_newton::{NEWTON_ABS_TOL, NEWTON_REL_TOL, newton_inner, newton_sqrt_inner};
 use crate::commands::optimize::optimize_dense;
 use crate::commands::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
-use crate::commands::optimize::optimize_method::BranchOptMethod;
 use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
@@ -11,11 +13,9 @@ use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
-use argmin::core::{CostFunction, Error, Executor};
-use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use ndarray::{Array1, Axis};
-use num::clamp;
+use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
@@ -29,23 +29,7 @@ const GRID_SEARCH_POINTS: usize = 100;
 /// subs/site are rare in real phylogenies; the proportional upper
 /// bound `1.5 * branch_length + one_mutation` extends beyond this
 /// when the current estimate is already large.
-const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
-
-/// Relative tolerance for Newton inner-loop convergence.
-const NEWTON_REL_TOL: f64 = 0.001;
-
-/// Absolute tolerance floor for Newton inner-loop convergence (subs/site).
-/// Prevents the purely relative tolerance from degenerating to zero when
-/// the current branch length is zero or very small. The value 1e-8 is well
-/// below the smallest meaningful branch length (1/L ~ 1e-4 for L=10000)
-/// so it does not mask real convergence.
-const NEWTON_ABS_TOL: f64 = 1e-8;
-
-/// Maximum iterations for Newton inner loop.
-const NEWTON_MAX_ITER: usize = 10;
-
-/// Maximum iterations for Brent's method.
-const BRENT_MAX_ITER: u64 = 50;
+pub(crate) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
 /// Newton inner-loop convergence tolerance for branch length updates.
 ///
@@ -218,7 +202,7 @@ fn evaluate_mixed_impl(
 }
 
 /// Evaluate substitution + indel contributions for a given branch length.
-fn evaluate_with_indels(
+pub(crate) fn evaluate_with_indels(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -230,7 +214,7 @@ fn evaluate_with_indels(
 }
 
 /// Log-likelihood only (no derivatives) for substitution + indel contributions.
-fn evaluate_with_indels_log_lh_only(
+pub(crate) fn evaluate_with_indels_log_lh_only(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -350,173 +334,8 @@ pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) 
   Array1::linspace(lower.ln(), upper.ln(), GRID_SEARCH_POINTS).mapv(f64::exp)
 }
 
-/// Newton-Raphson inner loop in $t$-space.
-///
-/// Takes an initial `branch_length` and `metrics` (already evaluated at that point),
-/// runs up to `NEWTON_MAX_ITER` Newton steps with the convergence criterion
-/// $|t_{\text{new}} - t_{\text{old}}| < \text{tol}(t)$, and returns the optimized
-/// branch length. Falls through to grid search if the Hessian becomes non-negative.
-fn newton_inner(
-  branch_length: f64,
-  metrics: &OptimizationMetrics,
-  contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  min_branch_length: f64,
-  one_mutation: f64,
-) -> f64 {
-  if metrics.second_derivative < 0.0 {
-    let mut bl = branch_length;
-    let mut new_bl = (bl - clamp(metrics.derivative / metrics.second_derivative, -1.0, bl)).max(min_branch_length);
-
-    for _ in 0..NEWTON_MAX_ITER {
-      if (new_bl - bl).abs() <= newton_tolerance(bl) {
-        break;
-      }
-      let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, new_bl);
-      if new_metrics.second_derivative < 0.0 {
-        bl = new_bl;
-        new_bl = (bl - clamp(new_metrics.derivative / new_metrics.second_derivative, -1.0, bl)).max(min_branch_length);
-      } else {
-        break;
-      }
-    }
-    new_bl
-  } else {
-    grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation)
-  }
-}
-
-/// Newton-Raphson inner loop in $\sqrt{t}$ space.
-///
-/// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies the
-/// chain rule to transform $t$-space derivatives into $s$-space:
-///
-///   $d\ell/ds = 2s \cdot d\ell/dt$
-///   $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$
-///
-/// This reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$,
-/// allowing Newton to make progress toward the combined (substitution + indel)
-/// optimum instead of stalling at the indel-only MLE.
-///
-/// The convergence criterion is applied in $s$-space:
-/// $|s_{\text{new}} - s_{\text{old}}| < \text{tol}(s)$.
-fn newton_sqrt_inner(
-  branch_length: f64,
-  metrics: &OptimizationMetrics,
-  contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  min_branch_length: f64,
-  one_mutation: f64,
-) -> f64 {
-  let mut s = branch_length.sqrt();
-  let min_s = min_branch_length.sqrt();
-
-  // Transform initial metrics to s-space
-  let (ds, d2s) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
-
-  if d2s >= 0.0 {
-    return grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation);
-  }
-
-  let mut new_s = (s - clamp(ds / d2s, -1.0, s)).max(min_s);
-
-  for _ in 0..NEWTON_MAX_ITER {
-    if (new_s - s).abs() <= newton_tolerance(s) {
-      break;
-    }
-    let t = new_s * new_s;
-    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t);
-    let (ds_new, d2s_new) = chain_rule_sqrt(new_s, new_metrics.derivative, new_metrics.second_derivative);
-    if d2s_new < 0.0 {
-      s = new_s;
-      new_s = (s - clamp(ds_new / d2s_new, -1.0, s)).max(min_s);
-    } else {
-      break;
-    }
-  }
-
-  new_s * new_s
-}
-
-/// Transform $t$-space derivatives to $\sqrt{t}$-space via the chain rule.
-///
-/// Given $s = \sqrt{t}$:
-///   $d\ell/ds = 2s \cdot d\ell/dt$
-///   $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$
-pub(crate) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
-  let dl_ds = 2.0 * s * dl_dt;
-  let d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
-  (dl_ds, d2l_ds2)
-}
-
-/// Brent's method inner loop (derivative-free, bracket-based).
-///
-/// Wraps the combined (substitution + indel) log-likelihood in an
-/// `argmin::CostFunction` and runs `BrentOpt` to find the minimum of
-/// the negated log-likelihood within a bracket.
-///
-/// The bracket lower bound is `min_branch_length` (or a small epsilon when
-/// no indels are present), ensuring coverage of optima near zero. The upper
-/// bound matches the grid search range. For concave objectives (JC69/F81
-/// substitution + Poisson indel), the bracket is guaranteed to contain the
-/// unique maximum: at the lower bound the Poisson derivative dominates
-/// (positive, pushing right), and at the upper bound the substitution
-/// derivative dominates (negative, pushing left).
-fn brent_inner(
-  branch_length: f64,
-  contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  min_branch_length: f64,
-  one_mutation: f64,
-) -> f64 {
-  // Lower bound: smallest t where the objective is well-defined.
-  // When indels are present, min_branch_length > 0 (prevents Poisson
-  // singularity at t=0). When no indels, use a small epsilon.
-  let lower = min_branch_length.max(1e-12);
-  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
-
-  let cost_fn = BranchLengthCostFunction {
-    contributions,
-    indel_count,
-    indel_rate,
-  };
-
-  let solver = BrentOpt::new(lower, upper);
-  let result = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run();
-
-  match result {
-    Ok(res) => res.state().best_param.unwrap_or(branch_length),
-    Err(_) => branch_length,
-  }
-}
-
-/// Cost function for Brent optimization of branch length.
-///
-/// Negates the combined (substitution + indel) log-likelihood because
-/// `BrentOpt` minimizes, but we want to maximize.
-struct BranchLengthCostFunction<'a> {
-  contributions: &'a [OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-}
-
-impl CostFunction for &BranchLengthCostFunction<'_> {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, t: &Self::Param) -> Result<Self::Output, Error> {
-    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, *t);
-    Ok(-log_lh)
-  }
-}
-
 /// Grid search fallback for non-concave regions.
-fn grid_search_inner(
+pub(crate) fn grid_search_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indel_count: usize,
@@ -529,7 +348,7 @@ fn grid_search_inner(
     .iter()
     .max_by_key(|&&bl| {
       let log_lh = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, bl);
-      ordered_float::OrderedFloat(log_lh)
+      OrderedFloat(log_lh)
     })
     .copied()
     .unwrap();
@@ -641,6 +460,9 @@ where
         min_branch_length,
         one_mutation,
       ),
+      BranchOptMethod::BrentSqrt | BranchOptMethod::BrentLog | BranchOptMethod::NewtonLog => {
+        todo!("Optimization method {method:?} is not yet implemented")
+      },
     };
 
     edge.set_branch_length(Some(new_branch_length));

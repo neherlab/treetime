@@ -3,12 +3,13 @@ mod tests {
   use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
+  use crate::commands::optimize::args::BranchOptMethod;
+  use crate::commands::optimize::method_newton::chain_rule_sqrt;
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
-  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{
-    OptimizationContribution, OptimizationMetrics, chain_rule_sqrt, evaluate_mixed, evaluate_mixed_log_lh_only,
-    newton_tolerance, run_optimize_mixed,
+    OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, newton_tolerance,
+    run_optimize_mixed,
   };
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};

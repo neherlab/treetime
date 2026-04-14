@@ -6,9 +6,9 @@ mod tests {
   use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
+  use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_dense;
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
-  use crate::commands::optimize::optimize_method::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{
     OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best,
     is_zero_branch_optimal, run_optimize_mixed,

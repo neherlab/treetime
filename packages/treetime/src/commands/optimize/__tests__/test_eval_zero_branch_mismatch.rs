@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::optimize_method::BranchOptMethod;
+  use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};

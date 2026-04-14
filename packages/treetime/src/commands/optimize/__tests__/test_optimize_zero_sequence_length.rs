@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::optimize::optimize_method::BranchOptMethod;
+  use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};

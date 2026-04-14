@@ -1,10 +1,63 @@
 use crate::alphabet::alphabet::AlphabetName;
-use crate::commands::optimize::optimize_method::BranchOptMethod;
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+
+/// Per-edge branch length optimization method.
+///
+/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
+/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
+/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, SmartDefault, Serialize, Deserialize)]
+#[value(rename_all = "kebab-case")]
+pub enum BranchOptMethod {
+  /// Brent's method in $t$ space (derivative-free, bracket-based).
+  ///
+  /// Finds the maximum within a bracket derived from the grid search bounds.
+  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
+  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
+  Brent,
+
+  /// Brent's method in $\sqrt{t}$ space.
+  ///
+  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
+  /// reparameterization smooths the objective, giving parabolic interpolation
+  /// a better fit. Default method for golden master comparison against v0.
+  #[default]
+  BrentSqrt,
+
+  /// Brent's method in $\ln(t)$ space.
+  ///
+  /// Smoothest objective of all parameterizations, giving the best parabolic
+  /// interpolation. Requires a finite lower bound in log-space.
+  BrentLog,
+
+  /// Newton-Raphson in $t$ space.
+  ///
+  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
+  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
+  /// branches, causing the step-size convergence criterion to fire before
+  /// the combined gradient reaches zero.
+  Newton,
+
+  /// Newton-Raphson in $\sqrt{t}$ space.
+  ///
+  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
+  /// the chain rule to transform derivatives. Reduces the indel Hessian
+  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
+  /// cases ($t < 0.001$, $k > 10$).
+  NewtonSqrt,
+
+  /// Newton-Raphson in $\ln(t)$ space.
+  ///
+  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
+  /// bounded). Natural relative tolerance. Best conditioning of all Newton
+  /// variants.
+  NewtonLog,
+}
 
 /// Controls the initial branch length estimate that runs before Newton
 /// optimization.
@@ -104,10 +157,13 @@ pub struct TreetimeOptimizeArgs {
 
   /// Per-edge branch length optimization method.
   ///
-  /// - newton-sqrt: Newton-Raphson in sqrt(t) space (default, best
-  ///   conditioning for branches with indels)
+  /// Algorithm x parameterization:
+  /// - brent: Brent's method in t space (derivative-free)
+  /// - brent-sqrt: Brent's method in sqrt(t) space (default, matches v0)
+  /// - brent-log: Brent's method in ln(t) space
   /// - newton: Newton-Raphson in t space
-  /// - brent: Brent's derivative-free method
+  /// - newton-sqrt: Newton-Raphson in sqrt(t) space
+  /// - newton-log: Newton-Raphson in ln(t) space
   #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
   pub opt_method: BranchOptMethod,
 }
