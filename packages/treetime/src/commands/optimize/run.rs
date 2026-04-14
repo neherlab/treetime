@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-use crate::commands::optimize::args::{InitialGuessMode, TreetimeOptimizeArgs};
+use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
@@ -197,37 +197,16 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess)?;
 
-  let mut lh_prev = f64::MIN;
-  for i in 0..*max_iter {
-    let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-    let dense_lh = update_marginal(&graph, &dense_partitions)?;
-    let total_lh = sparse_lh + dense_lh;
-
-    debug!(
-      "Iteration {}: likelihood {} (sparse: {}, dense: {})",
-      i + 1,
-      float_to_significant_digits(total_lh, 7),
-      float_to_significant_digits(sparse_lh, 7),
-      float_to_significant_digits(dense_lh, 7)
-    );
-
-    if (total_lh - lh_prev).abs() < dp.abs() {
-      break;
-    }
-
-    let old_branch_lengths = save_branch_lengths(&graph);
-    run_optimize_mixed(&graph, &mixed_partitions, *opt_method)?;
-
-    // Identify zero-optimal internal edges BEFORE damping blends them with old values
-    let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
-
-    apply_damping(&graph, &old_branch_lengths, *damping, i);
-
-    // Collapse zero-optimal edges and merge shared mutations in resulting polytomies
-    prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges)?;
-
-    lh_prev = total_lh;
-  }
+  run_optimize_loop(
+    &mut graph,
+    &sparse_partitions,
+    &dense_partitions,
+    &mixed_partitions,
+    *max_iter,
+    *dp,
+    *damping,
+    *opt_method,
+  )?;
 
   // Annotate mutations from whichever partition type is active
   let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = if dense {
@@ -247,6 +226,103 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   write_graph(outdir, &graph)?;
   Ok(())
+}
+
+/// Iterative branch-length optimization with marginal reconstruction and topology cleanup.
+///
+/// This is the core of `run_optimize`: the I/O-free loop that runs after inputs are loaded
+/// and partitions are initialized. `run_optimize` sets up partitions and calls this; tests
+/// that exercise the loop should also call this directly rather than reimplementing the body.
+///
+/// Pre-conditions (enforced by callers, not re-checked here):
+///
+/// - `graph` has initial branch lengths (e.g. from [`apply_initial_guess_mode`]).
+/// - Sparse partitions have compressed sequences ([`compress_sequences`]).
+/// - Dense partitions have populated profiles ([`initialize_marginal`] + [`update_marginal`]).
+/// - `mixed_partitions` contains both partition families (see [`collect_optimize_partitions`]).
+/// - Each partition's `gtr` field is the final model (dummy GTRs have been replaced).
+///
+/// Per-iteration sequence:
+///
+/// 1. Run `update_marginal` on sparse and dense partitions; sum to a total log-likelihood.
+/// 2. Break if `|total_lh - lh_prev| < |dp|`. This also records `converged_at`.
+/// 3. Save current branch lengths ([`save_branch_lengths`]).
+/// 4. Per-edge branch-length update ([`run_optimize_mixed`]).
+/// 5. Identify internal edges the optimizer drove to exactly zero, BEFORE damping
+///    blends those zeros with the old branch lengths ([`find_zero_optimal_internal_edges`]).
+/// 6. Apply damping ([`apply_damping`]): convex combination of new and saved branch lengths.
+/// 7. Collapse zero-optimal internal edges and merge shared mutations in resulting
+///    polytomies ([`prune_and_merge_in_loop`]).
+///
+/// The returned [`OptimizeLoopResult`] surfaces the per-iteration likelihood history and
+/// the convergence point, which are useful for tests and diagnostics but unused by the
+/// production `run_optimize` wrapper.
+pub fn run_optimize_loop(
+  graph: &mut GraphAncestral,
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  mixed_partitions: &PartitionOptimizeVec,
+  max_iter: usize,
+  dp: f64,
+  damping: f64,
+  opt_method: BranchOptMethod,
+) -> Result<OptimizeLoopResult, Report> {
+  let mut lh_history: Vec<f64> = Vec::with_capacity(max_iter);
+  let mut converged_at: Option<usize> = None;
+  let mut lh_prev = f64::MIN;
+
+  for i in 0..max_iter {
+    let sparse_lh = update_marginal(graph, sparse_partitions)?;
+    let dense_lh = update_marginal(graph, dense_partitions)?;
+    let total_lh = sparse_lh + dense_lh;
+    lh_history.push(total_lh);
+
+    debug!(
+      "Iteration {}: likelihood {} (sparse: {}, dense: {})",
+      i + 1,
+      float_to_significant_digits(total_lh, 7),
+      float_to_significant_digits(sparse_lh, 7),
+      float_to_significant_digits(dense_lh, 7)
+    );
+
+    if (total_lh - lh_prev).abs() < dp.abs() {
+      converged_at = Some(i);
+      break;
+    }
+
+    let old_branch_lengths = save_branch_lengths(graph);
+    run_optimize_mixed(graph, mixed_partitions, opt_method)?;
+
+    // Identify zero-optimal internal edges BEFORE damping blends them with old values
+    let zero_optimal_edges = find_zero_optimal_internal_edges(graph, sparse_partitions);
+
+    apply_damping(graph, &old_branch_lengths, damping, i);
+
+    // Collapse zero-optimal edges and merge shared mutations in resulting polytomies
+    prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
+
+    lh_prev = total_lh;
+  }
+
+  Ok(OptimizeLoopResult {
+    lh_history,
+    converged_at,
+  })
+}
+
+/// Diagnostics from [`run_optimize_loop`].
+///
+/// Exposed primarily for tests; `run_optimize` discards it.
+#[derive(Clone, Debug, Default)]
+pub struct OptimizeLoopResult {
+  /// Total log-likelihood recorded at the start of each iteration, before that iteration's
+  /// branch-length update. Length equals the number of iterations actually executed
+  /// (including the final iteration that triggered the convergence break, if any).
+  pub lh_history: Vec<f64>,
+
+  /// Iteration index (0-based) at which `|ΔLH| < |dp|` first held and the loop broke.
+  /// `None` if the loop exhausted `max_iter` without meeting the criterion.
+  pub converged_at: Option<usize>,
 }
 
 pub(crate) fn collect_optimize_partitions(
