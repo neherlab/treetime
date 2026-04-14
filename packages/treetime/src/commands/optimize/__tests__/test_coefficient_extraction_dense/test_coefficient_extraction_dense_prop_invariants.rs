@@ -236,6 +236,13 @@ mod tests {
       // Uses a wider branch length range and larger step than the first derivative
       // test because the second central difference suffers from catastrophic
       // cancellation when h is too small relative to the function curvature.
+      //
+      // Tolerance 1e-4 is bounded by the second-difference formula itself: at
+      // `h = branch_length * 1e-3`, truncation error is `O(h^2) ~ 1e-6` and the
+      // rounding error `O(eps/h^2)` is `~1e-6` for `branch_length ~ 0.01`. The
+      // analytical Hessian is computed in the numerically stable Welford form
+      // (see `optimize_eval.rs`), so the residual discrepancy is dominated by
+      // the numerical finite-difference side, not the analytical side.
       #[test]
       fn test_prop_coefficient_dense_finite_difference_second_derivative(
         parent in generators::probability_vector(),
@@ -253,8 +260,115 @@ mod tests {
         let lh_minus = evaluate_dense_contribution(&contribution, branch_length - h).log_lh;
         let numerical_second = (lh_plus - 2.0 * lh_center + lh_minus) / (h * h);
 
-        prop_assert_relative_eq!(metrics.second_derivative, numerical_second, max_relative = 1e-2);
+        prop_assert_relative_eq!(metrics.second_derivative, numerical_second, max_relative = 1e-3);
       }
+
+      // Finite-difference verification of the analytical Hessian against the
+      // central difference of the analytical FIRST derivative. This is far
+      // more precise than the second difference of `log_lh` (which has
+      // `O(eps / h^2)` rounding error in the numerator): a first-derivative
+      // central difference has only `O(eps / h)` rounding error and `O(h^2)`
+      // truncation error. With `h = 1e-4` the rounding floor is `~eps / h
+      // ~ 1e-12` of the derivative magnitude, giving ~8-9 digits of
+      // agreement -- well inside tolerance `max_relative = 1e-5`.
+      //
+      // Tight relative agreement here directly rules out catastrophic
+      // cancellation in the analytical formula: the naive difference form
+      // would miss it by 3-5 orders of magnitude on near-stationarity
+      // inputs.
+      #[test]
+      fn test_prop_coefficient_dense_hessian_matches_d1_finite_difference(
+        parent in generators::probability_vector(),
+        child in generators::probability_vector(),
+        branch_length in 1e-3..1.0_f64,
+      ) {
+        let gtr = test_gtr();
+        let contribution = dense_contribution_from(&parent, &child, &gtr);
+
+        let metrics = evaluate_dense_contribution(&contribution, branch_length);
+
+        let h = 1e-4;
+        let d1_plus = evaluate_dense_contribution(&contribution, branch_length + h).derivative;
+        let d1_minus = evaluate_dense_contribution(&contribution, branch_length - h).derivative;
+        let numerical_second = (d1_plus - d1_minus) / (2.0 * h);
+
+        prop_assert_relative_eq!(metrics.second_derivative, numerical_second, max_relative = 1e-5);
+      }
+    }
+  }
+
+  // Regression guard for catastrophic cancellation in the Hessian formula.
+  //
+  // In the cancellation regime the posterior is concentrated at the nonzero
+  // eigenvalue class, so both `E[lambda^2]` and `E[lambda]^2` approach the
+  // same magnitude while their difference (the true variance) is small.
+  // With the naive `E[lambda^2] - E[lambda]^2` form this regime loses up to
+  // ~6 significant digits for `epsilon ~ 1e-6`; the centered (Welford) form
+  // preserves full double-precision accuracy.
+  //
+  // The construction sets `k = [1, 0, 0, epsilon]` directly (bypassing
+  // probability-vector coefficients so we can target the regime precisely).
+  // `eigh` returns eigenvalues in ascending order, so for JC69 the eigvals
+  // are `(-4/3, -4/3, -4/3, 0)` and this coefficient vector puts ~all
+  // posterior mass on the `lambda = -4/3` class (index 0), making both
+  // moments approach `16/9` while the variance is `O(epsilon)`.
+  mod cancellation_regime {
+    use super::*;
+    use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
+    use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
+    use approx::assert_abs_diff_eq;
+    use rstest::rstest;
+
+    #[rustfmt::skip]
+    #[rstest]
+    #[case::eps_1e_2(1e-2)]
+    #[case::eps_1e_3(1e-3)]
+    #[case::eps_1e_4(1e-4)]
+    #[case::eps_1e_5(1e-5)]
+    #[case::eps_1e_6(1e-6)]
+    #[case::eps_1e_8(1e-8)]
+    #[trace]
+    fn test_hessian_stable_in_cancellation_regime(#[case] epsilon: f64) {
+      let gtr = test_gtr();
+      let branch_length = 0.01;
+      // k[0] sits on the lambda = -4/3 eigenvalue class (index 0 after
+      // ascending sort); k[3] sits on the lambda = 0 class (index 3).
+      let site = SiteContribution {
+        multiplicity: 1.0,
+        coefficients: array![1.0, 0.0, 0.0, epsilon],
+      };
+      let contribution = PartitionContribution {
+        site_contributions: vec![site],
+        gtr,
+      };
+
+      let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+
+      // Closed-form expected variance for this configuration.
+      //
+      //   `S      = e^{-4 t / 3} + epsilon`
+      //   `w_0    = e^{-4 t / 3} / S`,  `w_3 = epsilon / S`,  `w_1 = w_2 = 0`
+      //   `mean   = w_0 * (-4/3)`
+      //   `var    = w_0 * (-4/3 - mean)^2 + w_3 * (0 - mean)^2`
+      let lambda = -4.0 / 3.0;
+      let exp_lt = (lambda * branch_length).exp();
+      let s = exp_lt + epsilon;
+      let w0 = exp_lt / s;
+      let w3 = epsilon / s;
+      let mean = w0 * lambda;
+      let expected = w0 * (lambda - mean).powi(2) + w3 * mean * mean;
+
+      // Cross-check the analytical Hessian against the central difference of
+      // the analytical first derivative. The first-derivative central
+      // difference has only `O(eps/h)` rounding error, so `h = 1e-6` gives
+      // ~`1e-10` precision -- well below the assertion tolerance.
+      let h = 1e-6;
+      let d1_plus = evaluate_sparse_contribution(&contribution, branch_length + h).derivative;
+      let d1_minus = evaluate_sparse_contribution(&contribution, branch_length - h).derivative;
+      let numerical = (d1_plus - d1_minus) / (2.0 * h);
+
+      assert_abs_diff_eq!(metrics.second_derivative, expected, epsilon = 1e-12);
+      assert_abs_diff_eq!(metrics.second_derivative, numerical, epsilon = 1e-8);
     }
   }
 }
