@@ -92,7 +92,7 @@ The two loops are **siblings** sharing an E-step, not parent/child. Running opti
 
 ```
 topology_cleanup/               ← shared module, no GTR, no ML
-  collapse_sparse_edge()        ← composition-correct (not union)
+  collapse_edge()               ← composition-correct (not union), sparse + dense
   prune_short_branches()
   merge_shared_mutation_branches()
 

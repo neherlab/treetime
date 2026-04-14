@@ -76,7 +76,7 @@
 
 ### R3 (high): Extract topology operations to shared module
 
-Move `merge_shared_mutation_branches()` and `collapse_sparse_edge()` to a shared module callable from both optimize and prune commands. Tracked: `L-optimize-prune-duplicate-collapse`.
+Edge collapse is now shared: `collapse_edge()` lives in `representation/algo/topology_cleanup/` and is called from both commands. `merge_shared_mutation_branches()` is still defined in `commands/prune/run.rs` and imported across commands; moving it into the same shared module is the remaining work. Tracked: `L-topology-cleanup-move-merge-shared-mutations`.
 
 ### ~~R4 (medium): Add `--merge-shared-mutations` to optimize command~~ DONE
 
@@ -88,14 +88,15 @@ For SARS-CoV-2-scale datasets. Priority depends on target dataset scale.
 
 ## Ledger cross-references
 
-| Issue                     | File                                              | Status |
-| ------------------------- | ------------------------------------------------- | ------ |
-| ~~Composition bug~~       | ~~`M-prune-collapse-uses-union-not-composition`~~ | Done   |
-| ~~No topology cleanup~~   | ~~`M-optimize-no-topology-cleanup-in-loop`~~      | Done   |
-| Shared module extraction  | `L-optimize-prune-duplicate-collapse`             | Open   |
-| Stochastic resolution     | `N-timetree-stochastic-polytomy-unimplemented`    | Open   |
-| Polytomy numerical issues | `N-timetree-polytomy-numerical-robustness`        | Open   |
-| Optimize loop extraction  | `L-optimize-loop-not-extracted`                   | Open   |
+| Issue                         | File                                              | Status |
+| ----------------------------- | ------------------------------------------------- | ------ |
+| ~~Composition bug~~           | ~~`M-prune-collapse-uses-union-not-composition`~~ | Done   |
+| ~~No topology cleanup~~       | ~~`M-optimize-no-topology-cleanup-in-loop`~~      | Done   |
+| ~~Shared collapse_edge~~      | ~~`L-optimize-prune-duplicate-collapse`~~         | Done   |
+| Shared merge_shared_mutations | `L-topology-cleanup-move-merge-shared-mutations`  | Open   |
+| Stochastic resolution         | `N-timetree-stochastic-polytomy-unimplemented`    | Open   |
+| Polytomy numerical issues     | `N-timetree-polytomy-numerical-robustness`        | Open   |
+| Optimize loop extraction      | `L-optimize-loop-not-extracted`                   | Open   |
 
 ## References
 

@@ -531,9 +531,6 @@ Tests that `initial_guess_mixed()` still follows the edge substitution formula a
 | `test_optimize_find_zero_optimal_internal_edges_skips_leaves`      | Leaf edges with bl=0 are not collected                     |
 | `test_optimize_find_zero_optimal_internal_edges_collects_internal` | Internal edges with bl=0 are collected                     |
 | `test_optimize_find_zero_optimal_internal_edges_multiple`          | Multiple zero-optimal internal edges collected             |
-| `test_optimize_collapse_edge_sparse_composes_subs`                 | Substitutions composed correctly on sparse collapse        |
-| `test_optimize_collapse_edge_dense_cleanup`                        | Stale dense partition data removed after collapse          |
-| `test_optimize_collapse_edge_branch_length_sum`                    | Branch lengths summed correctly (0 + child = child)        |
 | `test_optimize_prune_and_merge_empty_list`                         | Empty zero-edge list is a noop                             |
 | `test_optimize_prune_and_merge_collapses_and_merges`               | Collapse + shared mutation merge in one pass               |
 | `test_optimize_loop_with_topology_cleanup_sparse`                  | Full loop collapses zero-optimal branches (identical seqs) |
@@ -541,6 +538,20 @@ Tests that `initial_guess_mixed()` still follows the edge substitution formula a
 | `test_optimize_merge_then_marginal_finite_likelihood`              | Merge + update_marginal produces finite log-likelihood     |
 | `test_optimize_cascading_collapse_parent_child_both_zero`          | Parent-child both zero-optimal, guard handles removal      |
 | `test_optimize_loop_with_topology_cleanup_dense`                   | Dense-mode full loop with topology cleanup                 |
+
+Direct coverage for `collapse_edge()` lives with the shared implementation in
+[`test_collapse_edge.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs):
+
+| Test                                                      | Purpose                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `test_topology_collapse_edge_sparse_composes_subs`        | Substitutions composed correctly on sparse collapse                 |
+| `test_topology_collapse_edge_dense_cleanup`               | Stale dense partition data removed after collapse                   |
+| `test_topology_collapse_edge_branch_length_sum`           | Branch lengths summed correctly (non-zero collapsed + child)        |
+| `test_topology_collapse_edge_branch_length_sum_with_zero` | Branch lengths summed correctly (zero collapsed + child unchanged)  |
+| `test_topology_collapse_edge_indel_concatenation`         | Collapsed-edge indels prepended to child indels                     |
+| `test_topology_collapse_edge_reversion_cancels`           | Forward + reverse substitution at same position cancel to no change |
+| `test_topology_collapse_edge_no_partitions`               | Graph-only collapse with no partitions still rewires topology       |
+| `test_topology_collapse_edge_multiple_sparse_partitions`  | Multiple sparse partitions each receive composed substitutions      |
 
 ---
 

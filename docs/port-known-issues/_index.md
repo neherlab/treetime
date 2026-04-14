@@ -69,7 +69,8 @@ exactly.
 | Medium     | Mugration    | [Iterative GTR inference not implemented for mugration](M-mugration-iterative-gtr.md)                                                 |
 | Medium     | Optimize     | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)           |
 | Medium     | Optimize     | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md) |
-| Low        | Optimize     | [Duplicate edge-collapse implementations in prune and optimize](L-optimize-prune-duplicate-collapse.md)                               |
+| Low        | Core         | [Duplicate `write_graph()` across commands](L-core-duplicate-write-graph.md)                                                          |
+| Low        | Topology     | [Move `merge_shared_mutation_branches()` to shared topology_cleanup module](L-topology-cleanup-move-merge-shared-mutations.md)        |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                       |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                      |
 | Medium     | Optimize     | [Optimize iterative log-likelihood becomes `-inf`/NaN on larger datasets](M-optimize-iterative-log-likelihood-nan.md)                 |

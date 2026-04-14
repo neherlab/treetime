@@ -116,7 +116,7 @@ A->G on edge1, G->A on edge2  =>  no change (cancellation)
 
 Set-union would produce `{A->G, G->T}` (two entries at one position) or `{A->G, G->A}` (false double mutation). Both are incorrect.
 
-v1's `collapse_sparse_edge()` in [`packages/treetime/src/commands/prune/run.rs`](../../../packages/treetime/src/commands/prune/run.rs) uses `iterator_union()` from `treetime_utils::iterator::union` -- the wrong operation. A correct composition operation does not exist yet and must be implemented before topology cleanup can be integrated into the optimization loop. Tracked as `M-prune-collapse-uses-union-not-composition`.
+v1 composes substitutions correctly via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs). Both the prune and optimize commands delegate to this shared function.
 
 ## References
 
