@@ -94,7 +94,7 @@ where
     for (ci, (child_key, _)) in node.child_keys.iter().enumerate() {
       let states = &mut child_states[ci];
       let child_data = &partition.nodes[child_key];
-      for (pos, parent_state) in variable_pos.iter() {
+      for (pos, parent_state) in &variable_pos {
         // we already know the state
         if states.contains_key(pos) {
           continue;
