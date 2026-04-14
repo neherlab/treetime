@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
   use crate::commands::optimize::args::BranchOptMethod;
-  use crate::commands::optimize::optimize_unified::run_optimize_mixed;
-  use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
+  use crate::commands::optimize::run::{apply_damping, run_optimize_loop, save_branch_lengths};
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -155,38 +153,36 @@ mod tests {
   #[trace]
   fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let max_iter = 20;
     let damping = 0.75;
-    let mut lh_history = Vec::with_capacity(max_iter);
-
-    for i in 0..max_iter {
-      let lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
-      lh_history.push(lh);
-
-      let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      apply_damping(&graph, &old_bls, damping, i);
-    }
-
-    let lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
-    lh_history.push(lh);
-
-    // Production convergence criterion: |ΔLH| < dp reached within max_iter.
-    // The production loop (run_optimize) breaks when this condition holds.
+    // Production convergence criterion: |ΔLH| < dp. `run_optimize_loop` breaks on this,
+    // matching `run_optimize`'s production behavior.
     let dp = 1e-2;
-    let deltas: Vec<f64> = lh_history.windows(2).map(|w| w[1] - w[0]).collect();
-    let converged_at = deltas.iter().position(|d| d.abs() < dp);
+
+    let result = run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      max_iter,
+      dp,
+      damping,
+      method,
+    )?;
+
     assert!(
-      converged_at.is_some(),
+      result.converged_at.is_some(),
       "Damped optimization did not reach |ΔLH| < {dp} within {max_iter} iterations"
     );
 
     // Final log-likelihood must be within a tight range around the observed fixed point.
-    // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41.
-    let final_lh = *lh_history.last().unwrap();
+    // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Use the post-loop
+    // marginal pass so `final_lh` reflects the state after the last branch-length update,
+    // not the pre-update measurement recorded in `lh_history`.
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     assert!(
       final_lh > -73.0 && final_lh < -72.0,
       "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
@@ -199,6 +195,7 @@ mod tests {
     // (from ±0.647 undamped to ±0.002 damped) but does not eliminate the 2-cycle.
     // Re-enable after fixing the outer-loop convergence.
     //
+    // let deltas: Vec<f64> = result.lh_history.windows(2).map(|w| w[1] - w[0]).collect();
     // let sign_flips = deltas.windows(2).filter(|w| w[0].signum() != w[1].signum()).count();
     // assert!(
     //   sign_flips <= max_iter / 3,
@@ -231,19 +228,25 @@ mod tests {
   #[trace]
   fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
 
-    let damping = 0.75;
-    for i in 0..10 {
-      let old_bls = save_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      apply_damping(&graph, &old_bls, damping, i);
-      update_marginal(&graph, &dense_partitions)?;
-      update_marginal(&graph, &sparse_partitions)?;
-    }
+    // Force all 10 iterations (never break on convergence) so the non-regression check
+    // exercises the full damping trajectory rather than possibly stopping after two
+    // near-identical likelihoods.
+    let dp = 0.0;
+    run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      10,
+      dp,
+      0.75,
+      method,
+    )?;
 
     // Strict non-regression: damped optimization must not degrade likelihood.
     // Damping blends new and old branch lengths as a convex combination,

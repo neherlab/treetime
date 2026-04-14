@@ -174,8 +174,8 @@ mod tests {
     use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
     use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
     use crate::commands::optimize::args::BranchOptMethod;
-    use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
-    use crate::commands::optimize::run::{apply_damping, collect_optimize_partitions, save_branch_lengths};
+    use crate::commands::optimize::optimize_unified::initial_guess_mixed;
+    use crate::commands::optimize::run::{collect_optimize_partitions, run_optimize_loop};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::representation::partition::marginal_dense::PartitionMarginalDense;
     use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -235,7 +235,7 @@ mod tests {
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
       let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let mut graph: GraphAncestral = nwk_read_file(&tree_path)?;
 
       let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
         index: 0,
@@ -264,26 +264,21 @@ mod tests {
       initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
       let dp = 1e-2;
-      let mut lh_history = Vec::with_capacity(case.max_iter + 1);
-      let mut converged_at = None;
-      let mut lh_prev = f64::MIN;
+      let result = run_optimize_loop(
+        &mut graph,
+        &sparse_partitions,
+        &dense_partitions,
+        &mixed_partitions,
+        case.max_iter,
+        dp,
+        case.damping,
+        method,
+      )?;
 
-      for i in 0..case.max_iter {
-        let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-        let dense_lh = update_marginal(&graph, &dense_partitions)?;
-        let total_lh = sparse_lh + dense_lh;
-        lh_history.push(total_lh);
-
-        if (total_lh - lh_prev).abs() < dp && converged_at.is_none() {
-          converged_at = Some(i);
-        }
-
-        let old_bls = save_branch_lengths(&graph);
-        run_optimize_mixed(&graph, &mixed_partitions, method)?;
-        apply_damping(&graph, &old_bls, case.damping, i);
-        lh_prev = total_lh;
-      }
-
+      // Append a trailing likelihood measurement so `lh_history.last()` reflects the state
+      // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
+      // at the START of each iteration, before that iteration's update).
+      let mut lh_history = result.lh_history;
       let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
       let dense_lh = update_marginal(&graph, &dense_partitions)?;
       lh_history.push(sparse_lh + dense_lh);
@@ -291,7 +286,7 @@ mod tests {
       Ok(OptimizeResult {
         graph,
         lh_history,
-        converged_at,
+        converged_at: result.converged_at,
       })
     }
   }
