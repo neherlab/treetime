@@ -74,7 +74,6 @@ exactly.
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                      |
 | Low        | Optimize     | [Optimize loop not extracted from I/O wrapper](L-optimize-loop-not-extracted.md)                                                      |
 | Low        | Optimize     | [Dense-sparse duplication in OptimizationContribution enum dispatch](L-optimize-eval-dense-sparse-duplication.md)                     |
-| Medium     | Optimize     | [Analytical Hessian loses precision via catastrophic cancellation](M-optimize-hessian-catastrophic-cancellation.md)                   |
 | Medium     | Optimize     | [Optimize iterative log-likelihood becomes `-inf`/NaN on larger datasets](M-optimize-iterative-log-likelihood-nan.md)                 |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)           |
 | Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)              |

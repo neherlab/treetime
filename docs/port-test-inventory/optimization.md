@@ -80,6 +80,22 @@
 | `test_coefficients_likelihood_decreases_for_mismatch_at_zero` | Mismatch lower LH than match       |
 | `test_coefficients_support_positive_branch_length`            | Valid metrics at positive branches |
 
+### Property Invariants
+
+**File:** [`test_coefficient_extraction_dense_prop_invariants.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs)
+
+| Test                                                               | Purpose                                                                                          |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `test_coefficient_boundary_disjoint_support_zero_at_t0`            | Disjoint-support singular boundary at t=0                                                        |
+| `test_prop_coefficient_nonneg_site_lh_at_zero`                     | Site likelihood positive for overlapping probability vectors                                     |
+| `test_prop_coefficient_multiplicity_linearity`                     | Sparse multiplicity factor acts linearly on all metrics                                          |
+| `test_prop_coefficient_dense_sparse_equivalence`                   | `n` identical dense rows equal one sparse site with multiplicity `n`                             |
+| `test_prop_coefficient_additivity`                                 | Multi-site metrics equal sum of per-site metrics                                                 |
+| `test_prop_coefficient_dense_finite_difference_derivative`         | Analytical first derivative matches central difference of `log_lh`                               |
+| `test_prop_coefficient_dense_finite_difference_second_derivative`  | Analytical Hessian matches second difference of `log_lh` (tolerance bounded by FD rounding)      |
+| `test_prop_coefficient_dense_hessian_matches_d1_finite_difference` | Analytical Hessian matches central difference of analytical first derivative (Welford stability) |
+| `test_hessian_stable_in_cancellation_regime`                       | Hessian preserves precision when posterior is concentrated on one eigenvalue class               |
+
 ### Support
 
 **File:** [`test_coefficient_extraction_dense_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs)
