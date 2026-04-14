@@ -99,7 +99,6 @@ exactly.
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                    |
 | Negligible | Optimize     | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                               |
 | Negligible | Optimize     | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                                |
-| Negligible | Optimize     | [Indel rate estimation bypassed in Never mode on all-zero-BL trees](N-optimize-indel-rate-never-mode-zero-bl.md)                      |
 | Negligible | Optimize     | [Multi-modal surface counterexample with $\ell'(0) < 0$ not constructed](N-optimize-multimodal-counterexample-unreproduced.md)        |
 | Negligible | Optimize     | [Grid search resolution (100 points) is unverified](N-optimize-grid-search-resolution-unverified.md)                                  |
 | Negligible | Optimize     | [Grid search upper bound caps at 0.5 subs/site](N-optimize-grid-search-upper-bound-capped.md)                                         |

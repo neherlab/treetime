@@ -402,7 +402,7 @@ command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 - [x] `optimize` command with `--tree`, `--aln`, `--outdir`
 - [x] Mixed dense and sparse partition setup (one of each, from same alignment)
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
-- [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing)
+- [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output annotated Newick and Nexus trees
 - [x] GTR parameters written to JSON
 

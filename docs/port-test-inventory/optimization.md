@@ -464,20 +464,26 @@ Direct unit tests for the extracted `run_optimize_loop()` function, which is the
 
 **File:** [`test_initial_guess_mode.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs)
 
-Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), overwrite (always), and error on missing (never).
+Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), overwrite (always), and error on missing (never). Never mode also rejects zero-branch-length edges that carry indels, where the Poisson indel log-likelihood is undefined ($-\infty$ at $t = 0$).
 
-| Test                                                    | Purpose                                                      |
-| ------------------------------------------------------- | ------------------------------------------------------------ |
-| `test_initial_guess_mode_default_is_auto`               | Default variant is Auto                                      |
-| `test_initial_guess_mode_detects_nan_from_newick`       | Detects NaN branch lengths from bio crate newick parser      |
-| `test_initial_guess_mode_detects_explicit_nan`          | Detects explicit `Some(NaN)` as missing                      |
-| `test_initial_guess_mode_no_missing_when_all_finite`    | Reports no missing when all edges have finite lengths        |
-| `test_initial_guess_mode_auto_preserves_valid_lengths`  | Auto mode does not overwrite valid finite branch lengths     |
-| `test_initial_guess_mode_auto_fills_nan_from_newick`    | Auto mode fills NaN edges with finite non-negative values    |
-| `test_initial_guess_mode_auto_fills_only_missing_edges` | Auto mode fills one NaN edge, preserves all others exactly   |
-| `test_initial_guess_mode_always_overwrites_all`         | Always mode overwrites existing branch lengths               |
-| `test_initial_guess_mode_never_accepts_complete_tree`   | Never mode accepts tree with all finite branch lengths       |
-| `test_initial_guess_mode_never_rejects_nan_tree`        | Never mode detects NaN tree as having missing branch lengths |
+| Test                                                            | Purpose                                                                 |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `test_initial_guess_mode_default_is_auto`                       | Default variant is Auto                                                 |
+| `test_initial_guess_mode_detects_nan_from_newick`               | Detects NaN branch lengths from bio crate newick parser                 |
+| `test_initial_guess_mode_detects_explicit_nan`                  | Detects explicit `Some(NaN)` as missing                                 |
+| `test_initial_guess_mode_no_missing_when_all_finite`            | Reports no missing when all edges have finite lengths                   |
+| `test_initial_guess_mode_auto_preserves_valid_lengths`          | Auto mode does not overwrite valid finite branch lengths                |
+| `test_initial_guess_mode_auto_fills_nan_from_newick`            | Auto mode fills NaN edges with finite non-negative values               |
+| `test_initial_guess_mode_auto_fills_only_missing_edges`         | Auto mode fills one NaN edge, preserves all others exactly              |
+| `test_initial_guess_mode_always_overwrites_all`                 | Always mode overwrites existing branch lengths                          |
+| `test_initial_guess_mode_never_accepts_complete_tree`           | Never mode accepts tree with all finite branch lengths                  |
+| `test_initial_guess_mode_never_rejects_nan_tree`                | Never mode detects NaN tree as having missing branch lengths            |
+| `test_initial_guess_mode_never_accepts_zero_bl_without_indels`  | Never mode accepts all-zero branch lengths when no indels are present   |
+| `test_initial_guess_mode_never_rejects_zero_bl_with_indels`     | Never mode rejects zero branch length on an indel-bearing edge          |
+| `test_initial_guess_mode_never_accepts_positive_bl_with_indels` | Never mode accepts positive branch lengths on indel-bearing edges       |
+| `test_any_indel_edge_has_zero_bl_false_without_indels`          | Helper returns false when no indels are present                         |
+| `test_any_indel_edge_has_zero_bl_false_with_positive_bl`        | Helper returns false when indel-bearing edge has positive branch length |
+| `test_any_indel_edge_has_zero_bl_true_with_indel_and_zero_bl`   | Helper returns true when an indel-bearing edge has zero branch length   |
 
 ### Indel Zero-BL Tests
 
