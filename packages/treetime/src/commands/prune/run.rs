@@ -3,12 +3,14 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69, write_gtr_json};
 use crate::make_error;
+use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
+use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::payload::sparse::SparseNodePartition;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{Sub, compose_substitutions};
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -210,9 +212,10 @@ fn prune_internal_nodes(
     .flatten()
     .collect();
 
+  let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing internal edge: {edge_key}");
-    collapse_sparse_edge(graph, partitions, edge_key)
+    collapse_edge(graph, partitions, no_dense, edge_key)
   })
 }
 
@@ -253,11 +256,12 @@ pub(super) fn collapse_sparse_edges_from_leaf_recursive(
   edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
+  let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
 
   loop {
     let parent_node_key = graph.get_source_node_key(current_edge_key)?;
 
-    collapse_sparse_edge(graph, partitions, current_edge_key)?;
+    collapse_edge(graph, partitions, no_dense, current_edge_key)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
       graph.parent_inbound_edge(parent_node_key)?
@@ -276,38 +280,6 @@ pub(super) fn collapse_sparse_edges_from_leaf_recursive(
 
 fn should_collapse_parent(graph: &GraphAncestral, node_key: GraphNodeKey) -> bool {
   graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
-}
-
-fn collapse_sparse_edge(
-  graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  edge_key: GraphEdgeKey,
-) -> Result<(), Report> {
-  let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
-  let removed_edge = removed_edge.payload().read_arc();
-
-  for new_edge in new_edges {
-    let new_edge_key = new_edge.read_arc().key();
-    let mut new_edge = new_edge.write_arc().payload().write_arc();
-
-    // Sum branch lengths
-    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length(), new_edge.branch_length()) {
-      new_edge.set_branch_length(Some(bl1 + bl2));
-    }
-
-    // Compose substitutions and merge indels: parent edge (removed) + child edge
-    for partition in partitions {
-      let mut partition = partition.write_arc();
-      let removed_edge_data = partition.edges[&edge_key].clone();
-      let child_edge = partition.edges.entry(new_edge_key).or_default();
-      child_edge.subs = compose_substitutions(&removed_edge_data.subs, &child_edge.subs)?;
-      let mut merged_indels = removed_edge_data.indels;
-      merged_indels.append(&mut child_edge.indels);
-      child_edge.indels = merged_indels;
-    }
-  }
-
-  Ok(())
 }
 
 /// Merge sibling branches in polytomies that share identical substitutions.

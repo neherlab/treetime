@@ -7,11 +7,11 @@ use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOp
 use crate::commands::prune::run::merge_shared_mutation_branches;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
+use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
-use crate::seq::mutation::compose_substitutions;
 use eyre::Report;
 use itertools::{Itertools, chain, izip};
 use log::debug;
@@ -440,63 +440,6 @@ pub(crate) fn find_zero_optimal_internal_edges(
     .collect_vec()
 }
 
-/// Collapse a single zero-optimal internal edge, updating both sparse and dense partition data.
-///
-/// Graph topology: the target node is removed and its children become children of the
-/// source node. Edge keys for the former children are preserved (graph reuses them).
-///
-/// Sparse partitions: substitutions on the removed edge are composed with each child
-/// edge's substitutions. Indels are concatenated (parent-first).
-///
-/// Dense partitions: stale node/edge entries are removed. Messages will be recomputed
-/// by `update_marginal()` in the next iteration.
-pub(crate) fn collapse_edge_for_optimize(
-  graph: &mut GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  edge_key: GraphEdgeKey,
-) -> Result<(), Report> {
-  let target_node_key = graph.get_target_node_key(edge_key)?;
-
-  let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
-  let removed_edge = removed_edge.payload().read_arc();
-
-  for new_edge in &new_edges {
-    let new_edge_key = new_edge.read_arc().key();
-    let mut new_edge_payload = new_edge.write_arc().payload().write_arc();
-
-    // Sum branch lengths: collapsed edge (0.0) + child edge = child edge unchanged
-    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length(), new_edge_payload.branch_length()) {
-      new_edge_payload.set_branch_length(Some(bl1 + bl2));
-    }
-
-    // Compose substitutions for sparse partitions
-    for partition in sparse_partitions {
-      let mut partition = partition.write_arc();
-      let removed_data = partition.edges.get(&edge_key).cloned().unwrap_or_default();
-      let child_edge = partition.edges.entry(new_edge_key).or_default();
-      child_edge.subs = compose_substitutions(&removed_data.subs, &child_edge.subs)?;
-      let mut merged_indels = removed_data.indels;
-      merged_indels.append(&mut child_edge.indels);
-      child_edge.indels = merged_indels;
-    }
-  }
-
-  // Clean up stale partition data for the removed node and edge
-  for partition in sparse_partitions {
-    let mut partition = partition.write_arc();
-    partition.nodes.remove(&target_node_key);
-    partition.edges.remove(&edge_key);
-  }
-  for partition in dense_partitions {
-    let mut partition = partition.write_arc();
-    partition.nodes.remove(&target_node_key);
-    partition.edges.remove(&edge_key);
-  }
-
-  Ok(())
-}
-
 /// Collapse zero-optimal internal edges and merge shared mutations in resulting polytomies.
 ///
 /// Analogous to v0's `prune_short_branches()` inside the optimization loop:
@@ -532,7 +475,7 @@ pub(crate) fn prune_and_merge_in_loop(
     if graph.get_edge(edge_key).is_none() {
       continue;
     }
-    collapse_edge_for_optimize(graph, sparse_partitions, dense_partitions, edge_key)?;
+    collapse_edge(graph, sparse_partitions, dense_partitions, edge_key)?;
     collapsed += 1;
   }
 

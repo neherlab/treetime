@@ -6,19 +6,17 @@ mod tests {
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
   use crate::commands::optimize::run::{
-    apply_damping, collapse_edge_for_optimize, collect_optimize_partitions, find_zero_optimal_internal_edges,
-    prune_and_merge_in_loop, save_branch_lengths,
+    apply_damping, collect_optimize_partitions, find_zero_optimal_internal_edges, prune_and_merge_in_loop,
+    save_branch_lengths,
   };
   use crate::commands::prune::run::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -102,153 +100,6 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse);
     assert_eq!(edges.len(), 2);
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_collapse_edge_sparse_composes_subs() -> Result<(), Report> {
-    // Tree: root -> I (bl=0.0) -> A, B
-    // I has sub A0T; A has sub G5C; B has no subs
-    // After collapse: root -> A has {A0T, G5C}, root -> B has {A0T}
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
-
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
-
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: 100,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    populate_test_nodes(&mut partition, &graph);
-
-    partition.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      ia_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'G', 5, b'C')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(ib_key, SparseEdgePartition::default());
-
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-
-    // Save node key before collapse (node will be removed from graph)
-    let i_node_key = find_node_key_by_name(&graph, "I").unwrap();
-
-    collapse_edge_for_optimize(&mut graph, &sparse, &dense, ri_key)?;
-    graph.build()?;
-
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2);
-
-    // Check substitution composition
-    let p = sparse[0].read_arc();
-    for edge in graph.get_edges() {
-      let edge = edge.read_arc();
-      let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
-      let edge_data = &p.edges[&edge.key()];
-      match target_name.as_deref() {
-        Some("A") => assert_eq!(edge_data.subs.len(), 2, "A: parent sub + own sub"),
-        Some("B") => assert_eq!(edge_data.subs.len(), 1, "B: parent sub only"),
-        other => unreachable!("unexpected target node: {other:?}"),
-      }
-    }
-
-    // Stale entries removed
-    assert!(!p.nodes.contains_key(&i_node_key));
-    assert!(!p.edges.contains_key(&ri_key));
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_collapse_edge_dense_cleanup() -> Result<(), Report> {
-    // Dense partition: stale node/edge entries should be removed after collapse
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
-
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let i_key = find_node_key_by_name(&graph, "I").unwrap();
-
-    let mut dense_partition = PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: 10,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
-    // Add dummy entries for all nodes/edges to verify cleanup
-    for node in graph.get_nodes() {
-      let key = node.read_arc().key();
-      dense_partition.nodes.insert(
-        key,
-        DenseNodePartition {
-          seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::default(),
-        },
-      );
-    }
-    for edge in graph.get_edges() {
-      let key = edge.read_arc().key();
-      dense_partition.edges.insert(key, DenseEdgePartition::default());
-    }
-
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense = vec![Arc::new(RwLock::new(dense_partition))];
-
-    collapse_edge_for_optimize(&mut graph, &sparse, &dense, ri_key)?;
-    graph.build()?;
-
-    let d = dense[0].read_arc();
-    assert!(!d.nodes.contains_key(&i_key), "removed node should be cleaned up");
-    assert!(!d.edges.contains_key(&ri_key), "removed edge should be cleaned up");
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimize_collapse_edge_branch_length_sum() -> Result<(), Report> {
-    // Collapsed edge has bl=0.0, child edge has bl=0.1
-    // After collapse: child edge bl = 0.0 + 0.1 = 0.1 (unchanged)
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
-
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-
-    collapse_edge_for_optimize(&mut graph, &sparse, &dense, ri_key)?;
-    graph.build()?;
-
-    for edge in graph.get_edges() {
-      let edge = edge.read_arc();
-      let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
-      let bl = edge.payload().read_arc().branch_length();
-
-      match target_name.as_deref() {
-        Some("A") => assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-8),
-        Some("B") => assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-8),
-        other => unreachable!("unexpected target node: {other:?}"),
-      }
-    }
-
     Ok(())
   }
 
