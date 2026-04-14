@@ -407,6 +407,21 @@ Fixtures in `__fixtures__/`:
 
 ---
 
+## Run Optimize Loop Contract
+
+**File:** [`test_run_optimize_loop.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs)
+
+Direct unit tests for the extracted `run_optimize_loop()` function, which is the in-memory core of `run_optimize()`. The related integration suites (`test_gm_optimize`, `test_damping`) exercise the same function via higher-level setup; these tests pin down the function's own contract.
+
+| Test                                                  | Purpose                                                   |
+| ----------------------------------------------------- | --------------------------------------------------------- |
+| `test_run_optimize_loop_records_lh_per_iteration`     | `lh_history` has one entry per executed iteration         |
+| `test_run_optimize_loop_breaks_on_convergence`        | Breaks and records `converged_at` when `\|ΔLH\| < \|dp\|` |
+| `test_run_optimize_loop_zero_max_iter_is_noop`        | `max_iter = 0` runs the body zero times                   |
+| `test_run_optimize_loop_undamped_improves_likelihood` | Undamped coordinate-ascent variant monotonically improves |
+
+---
+
 ## Optimization Metrics
 
 **File:** [`test_optimization_metrics.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimization_metrics.rs)
