@@ -5,10 +5,13 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::InitialGuessMode;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
-  use crate::commands::optimize::run::{any_edge_missing_branch_length, apply_initial_guess_mode};
+  use crate::commands::optimize::run::{
+    any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
+  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
@@ -19,12 +22,17 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::Seq;
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
 
   /// Bio crate newick parser returns `f32::NAN` for branches without
   /// a `:length` suffix, stored as `Some(NaN)` after cast.
   const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
+
+  /// All-zero branch length tree: used to exercise the Never-mode
+  /// rejection of zero-branch-length indel-bearing edges.
+  const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 
   #[test]
   fn test_initial_guess_mode_default_is_auto() {
@@ -159,6 +167,83 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_initial_guess_mode_never_accepts_zero_bl_without_indels() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let before = get_branch_lengths(&graph);
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never)?;
+    let after = get_branch_lengths(&graph);
+    assert_eq!(
+      before, after,
+      "Never mode must accept all-zero branch lengths when no indels are present"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_initial_guess_mode_never_rejects_zero_bl_with_indels() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    inject_indel_on_first_edge(&graph, &partitions)?;
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never);
+    let err = result.expect_err("Never mode must reject zero branch length on an indel-bearing edge");
+    let msg = format!("{err:?}");
+    assert!(
+      msg.contains("--branch-length-initial-guess=never"),
+      "Never-mode error must mention the offending flag, got: {msg}"
+    );
+    assert!(
+      msg.contains("indel"),
+      "Never-mode error must explain the indel-specific rejection, got: {msg}"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_initial_guess_mode_never_accepts_positive_bl_with_indels() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    inject_indel_on_first_edge(&graph, &partitions)?;
+    let before = get_branch_lengths(&graph);
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never)?;
+    let after = get_branch_lengths(&graph);
+    assert_eq!(
+      before, after,
+      "Never mode must accept positive branch lengths on indel-bearing edges"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_any_indel_edge_has_zero_bl_false_without_indels() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    assert!(
+      !any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      "Without any indels, no indel-bearing zero-BL edges should be detected"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_any_indel_edge_has_zero_bl_false_with_positive_bl() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    inject_indel_on_first_edge(&graph, &partitions)?;
+    assert!(
+      !any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      "Positive branch length on indel-bearing edge must not trigger the zero-BL check"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_any_indel_edge_has_zero_bl_true_with_indel_and_zero_bl() -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    inject_indel_on_first_edge(&graph, &partitions)?;
+    assert!(
+      any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      "Zero branch length on an indel-bearing edge must be detected"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -168,6 +253,21 @@ mod tests {
         .iter()
         .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(f64::NAN))
         .collect()
+    }
+
+    /// Attach a single 3-base deletion indel to the partition's entry for
+    /// the first graph edge. Marginal initialization populates the edge
+    /// map, so the entry always exists by the time this helper is called.
+    pub fn inject_indel_on_first_edge(
+      graph: &GraphAncestral,
+      partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+    ) -> Result<(), Report> {
+      let edge_key = graph.get_edges()[0].read_arc().key();
+      for partition in partitions {
+        let mut partition = partition.write_arc();
+        partition.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)];
+      }
+      Ok(())
     }
 
     pub fn setup_dense_with_marginal(

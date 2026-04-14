@@ -517,12 +517,46 @@ where
     .any(|edge_ref| is_branch_length_missing(edge_ref.read_arc().payload().read_arc().branch_length()))
 }
 
+/// Whether any edge that carries indels has a zero branch length.
+///
+/// The Poisson indel log-likelihood $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$
+/// is $-\infty$ at $t = 0$ when $k > 0$, so a zero branch length on an
+/// indel-bearing edge makes the optimization objective ill-defined. In
+/// addition, `estimate_indel_rate()` returns $\hat\mu = \sum k_e / \sum t_e$;
+/// when every indel-bearing edge has $t_e = 0$ the numerator is positive and
+/// the denominator is zero, so the estimator falls back to $\hat\mu = 0$ and
+/// `poisson_indel_log_lh()` short-circuits to zero for every subsequent
+/// evaluation, silently dropping the indel contribution from the likelihood
+/// throughout optimization.
+///
+/// The `Auto` and `Always` paths bootstrap such edges to positive branch
+/// lengths in `initial_guess_mixed()` before entering `run_optimize_mixed()`.
+/// The `Never` path skips `initial_guess_mixed()` entirely, so it must reject
+/// this configuration at validation time instead.
+pub(crate) fn any_indel_edge_has_zero_branch_length<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> bool
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  graph.get_edges().iter().any(|edge_ref| {
+    let edge = edge_ref.read_arc();
+    let bl = edge.payload().read_arc().branch_length().unwrap_or(0.0);
+    if bl != 0.0 {
+      return false;
+    }
+    let edge_key = edge.key();
+    partitions
+      .iter()
+      .any(|partition| partition.read_arc().edge_indel_count(edge_key) > 0)
+  })
+}
+
 /// Apply the initial-guess mode to the graph.
 ///
 /// - `Auto`: estimate only edges with missing or invalid branch lengths.
 /// - `Always`: estimate all edges, overwriting existing values.
 /// - `Never`: keep input branch lengths; error if any edge lacks a usable
-///   value.
+///   value (None/NaN) or has zero branch length while carrying indels (the
+///   Poisson indel log-likelihood diverges at $t = 0$ when $k > 0$).
 ///
 /// Extracted from `run_optimize` so the Never-mode rejection path is unit
 /// testable without standing up partitions and reading files.
@@ -543,6 +577,14 @@ where
           "--branch-length-initial-guess=never requires all edges to have finite branch lengths, \
            but some edges have missing or NaN values. \
            Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
+        );
+      }
+      if any_indel_edge_has_zero_branch_length(graph, mixed_partitions) {
+        return make_error!(
+          "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
+           but some indel-bearing edges have branch length zero. \
+           The Poisson indel log-likelihood diverges at t=0 when k>0, so zero is not a valid input there. \
+           Use 'auto' or 'always' to bootstrap these edges, or provide positive branch lengths"
         );
       }
       Ok(())
