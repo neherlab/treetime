@@ -2,7 +2,7 @@ use crate::commands::clock::clock_set::ClockSet;
 use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
 use crate::commands::clock::date_constraints::DateConstraintNode;
 use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
-use crate::representation::payload::ancestral::{EdgeAncestral, NodeAncestral};
+use crate::representation::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -141,6 +141,12 @@ impl NodeToNwk for NodeTimetree {
 impl NodeToGraphviz for NodeTimetree {
   fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
     self.base.name()
+  }
+}
+
+impl HasBranchMutations for NodeTimetree {
+  fn set_branch_mutations(&mut self, mutations: Option<String>) {
+    self.base.set_branch_mutations(mutations);
   }
 }
 

@@ -24,6 +24,7 @@ use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
+use crate::representation::payload::ancestral::annotate_branch_mutations;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use eyre::{Report, WrapErr};
@@ -413,10 +414,21 @@ fn build_covariation_clock_params(
 fn write_outputs(
   args: &TreetimeTimetreeArgs,
   graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
 ) -> Result<(), Report> {
+  // Populate the `mutations` comment on every branch from the current partition
+  // state before tree serialization. v0 emits `[&mutations="..."]` on every
+  // node in the Nexus tree (CLI_io.py:167-199); v1 now matches that via the
+  // `NodeAncestral.mutations` field which `NodeTimetree.nwk_comments()`
+  // inherits from its base payload. Partitions must have completed marginal
+  // reconstruction before this call so that `edge_subs()` reads the final
+  // state rather than stale Fitch parsimony data.
+  if !partitions.is_empty() {
+    annotate_branch_mutations(graph, partitions).wrap_err("Failed to annotate branch mutations for tree output")?;
+  }
+
   let out_base = args.outdir.join("timetree");
   nwk_write_file(out_base.with_extension("nwk"), graph, &NwkWriteOptions::default())
     .wrap_err("Failed to write Newick output")?;
