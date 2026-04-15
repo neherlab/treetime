@@ -14,7 +14,6 @@ use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use itertools::Either;
@@ -22,7 +21,9 @@ use ndarray::{Array1, ArrayView1};
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
 /// Number of points in the grid search fallback.
 const GRID_SEARCH_POINTS: usize = 100;
@@ -529,12 +530,14 @@ pub(crate) fn reconcile_zero_boundary(
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
 /// For each edge, it collects contributions from all partitions and optimizes the branch
 /// length using the selected method.
-pub fn run_optimize_mixed<P>(
-  graph: &GraphAncestral,
+pub fn run_optimize_mixed<N, E, P>(
+  graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
 ) -> Result<(), Report>
 where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
   let total_length: usize = partitions
@@ -697,12 +700,14 @@ where
 /// When `overwrite_valid` is false, edges that already have a finite branch
 /// length are skipped, preserving calibrated input values while filling in
 /// edges with missing (`None`) or invalid (`NaN`) branch lengths.
-pub fn initial_guess_mixed<P>(
-  graph: &GraphAncestral,
+pub fn initial_guess_mixed<N, E, P>(
+  graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   overwrite_valid: bool,
 ) -> Result<(), Report>
 where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
   let total_length: usize = partitions
