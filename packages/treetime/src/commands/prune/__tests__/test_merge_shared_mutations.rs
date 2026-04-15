@@ -40,7 +40,7 @@ mod tests {
     };
 
     // Build root reference sequence consistent with edge subs.
-    // Set each position to the sub's ref character so that edge_subs_from_graph()
+    // Set each position to the sub's ref character so that edge_subs()
     // produces the same mutations as the stored subs.
     let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, _, subs) in edge_mutations {
@@ -51,7 +51,7 @@ mod tests {
       }
     }
 
-    // Populate node entries so edge_subs_from_graph() can reconstruct states
+    // Populate node entries so edge_subs() can reconstruct states
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
       let mut node_part = SparseNodePartition::empty(&partition.alphabet);

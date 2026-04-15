@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::make_internal_error;
+use crate::make_internal_report;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -13,6 +14,57 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 
+/// Minimal graph-structure abstraction used by per-branch partition operations.
+///
+/// Exists so that `PartitionBranchOps` can serve any phylogenetic graph payload
+/// (ancestral, timetree, etc.) without binding to a concrete `Graph<N, E, D>`.
+/// Only the operations actually needed by branch-level computations are exposed:
+/// resolving an edge to its endpoints and walking one step toward the root.
+/// Trait-object safe so `&dyn BranchTopology` can flow through dynamic dispatch
+/// while callers keep their concrete `&Graph<N, E, D>` thanks to unsized
+/// coercion.
+pub trait BranchTopology: Send + Sync {
+  /// Return `(parent_node_key, child_node_key)` for one edge.
+  fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report>;
+
+  /// Return `Some((parent_node_key, parent_edge_key))` for a non-root node,
+  /// or `None` when the node is the root. Errors when the node has more than
+  /// one parent (the algorithm only supports trees).
+  fn node_parent(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report>;
+}
+
+impl<N, E, D> BranchTopology for Graph<N, E, D>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    let edge = edge.read_arc();
+    Ok((edge.source(), edge.target()))
+  }
+
+  fn node_parent(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    let node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
+    let node = node.read_arc();
+    let inbound = node.inbound();
+    match inbound.len() {
+      0 => Ok(None),
+      1 => {
+        let parent_edge_key = inbound[0];
+        let parent_node_key = self.get_source_node_key(parent_edge_key)?;
+        Ok(Some((parent_node_key, parent_edge_key)))
+      },
+      n => make_internal_error!("Node {node_key} has {n} parents; only trees are supported"),
+    }
+  }
+}
+
 /// Derive branch mutations and effective lengths from the current partition state.
 ///
 /// Both dense and sparse partitions implement this: dense partitions compare
@@ -22,6 +74,10 @@ use treetime_primitives::Seq;
 /// Post-marginal consumers (GTR inference, prune, output) should use this
 /// trait instead of reading `SparseEdgePartition.subs` directly, which
 /// reflects Fitch parsimony data and becomes stale after marginal inference.
+///
+/// The graph is accepted as `&dyn BranchTopology` so the same partition trait
+/// serves ancestral, timetree, and any future payloads that share the sparse
+/// or dense representation.
 pub trait PartitionBranchOps: Send + Sync {
   /// Return the sequence length represented by this partition.
   fn sequence_length(&self) -> usize;
@@ -33,11 +89,11 @@ pub trait PartitionBranchOps: Send + Sync {
   /// For dense partitions, takes the MAP state (argmax of the node posterior)
   /// at the parent and child endpoints. Non-canonical states and gap positions
   /// are excluded in both cases.
-  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
+  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
-  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report>;
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report>;
 }
 
 pub trait PartitionMarginal {}

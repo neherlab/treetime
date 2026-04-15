@@ -1,6 +1,7 @@
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::PartitionBranchOps;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use parking_lot::RwLock;
@@ -28,7 +29,7 @@ where
 
 /// Count mutations from sparse partition data for GTR inference.
 ///
-/// Uses `PartitionMarginalSparse::edge_subs_from_graph()` to derive mutations
+/// Uses `PartitionBranchOps::edge_subs()` to derive mutations
 /// from the current partition state rather than reading stale Fitch-era `subs`.
 /// Before marginal inference, this returns the same mutations as Fitch parsimony.
 /// After marginal inference, it returns MAP-derived mutations that reflect the
@@ -72,7 +73,7 @@ where
       Ti[i] += branch_length * node_composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    let subs = partition.edge_subs_from_graph(graph, edge_key)?;
+    let subs = partition.edge_subs(graph, edge_key)?;
     for m in &subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry())?;

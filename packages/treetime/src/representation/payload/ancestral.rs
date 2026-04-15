@@ -14,6 +14,16 @@ use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteO
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 
+/// Populate the Newick/Nexus branch-mutations comment on a node payload.
+///
+/// Implemented by any tree-node payload that carries branch mutation
+/// annotations (currently `NodeAncestral` directly, and `NodeTimetree` via
+/// its inner `NodeAncestral`). Lets `annotate_branch_mutations()` stay
+/// generic over the concrete graph payload used by a given command.
+pub trait HasBranchMutations {
+  fn set_branch_mutations(&mut self, mutations: Option<String>);
+}
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeAncestral {
   pub name: Option<String>,
@@ -23,6 +33,12 @@ pub struct NodeAncestral {
   /// before tree output. Format: "A55G,T93C" (1-based positions).
   #[serde(skip_serializing_if = "Option::is_none")]
   pub mutations: Option<String>,
+}
+
+impl HasBranchMutations for NodeAncestral {
+  fn set_branch_mutations(&mut self, mutations: Option<String>) {
+    self.mutations = mutations;
+  }
 }
 
 impl NodeFromNwk for NodeAncestral {
@@ -123,12 +139,26 @@ impl EdgeToGraphviz for EdgeAncestral {
 /// across all partitions and stores the formatted string on the child node.
 /// Mutations are sorted by position and formatted as "A55G,T93C" (1-based).
 ///
+/// Generic over the graph payload: any graph whose node type implements
+/// `HasBranchMutations` (currently `NodeAncestral`, and `NodeTimetree` via
+/// its inner `NodeAncestral`) can be annotated. The partition slice is
+/// `&[Arc<RwLock<P>>]` with `P: PartitionBranchOps + ?Sized`, which accepts
+/// both plain `dyn PartitionBranchOps` trait objects and richer trait
+/// objects that include `PartitionBranchOps` in their super-trait set
+/// (e.g. `dyn PartitionTimetreeAll<N, E>`).
+///
 /// Call this after reconstruction and before Newick/Nexus output to fill
 /// the `mutations` field in `NodeAncestral::nwk_comments()`.
-pub fn annotate_branch_mutations(
-  graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<dyn PartitionBranchOps>>],
-) -> Result<(), Report> {
+pub fn annotate_branch_mutations<N, E, D, P>(
+  graph: &Graph<N, E, D>,
+  partitions: &[Arc<RwLock<P>>],
+) -> Result<(), Report>
+where
+  N: GraphNode + HasBranchMutations,
+  E: GraphEdge,
+  D: Send + Sync,
+  P: PartitionBranchOps + ?Sized,
+{
   for edge in graph.get_edges() {
     let edge = edge.read_arc();
     let edge_key = edge.key();
@@ -149,7 +179,7 @@ pub fn annotate_branch_mutations(
     };
 
     let child = graph.get_node(child_key).expect("Child node must exist");
-    child.read_arc().payload().write_arc().mutations = mutations;
+    child.read_arc().payload().write_arc().set_branch_mutations(mutations);
   }
 
   Ok(())

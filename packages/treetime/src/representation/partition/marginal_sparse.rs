@@ -5,18 +5,18 @@ use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_passes;
+use crate::representation::partition::traits::BranchTopology;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::mem;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
@@ -73,55 +73,20 @@ impl PartitionMarginalSparse {
     self.length
   }
 
-  /// Return current nucleotide changes for one edge, generic over graph type.
-  ///
-  /// This is the generic implementation used by both `PartitionBranchOps::edge_subs()`
-  /// (which constrains to `GraphAncestral`) and direct callers that have other graph
-  /// types (e.g. GTR inference in the timetree context with `Graph<NodeTimetree, ...>`).
-  pub fn edge_subs_from_graph<N: GraphNode, E: GraphEdge, D: Send + Sync>(
-    &self,
-    graph: &Graph<N, E, D>,
-    edge_key: GraphEdgeKey,
-  ) -> Result<Vec<Sub>, Report> {
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
-    let mut cache = BTreeMap::new();
-    let mut subs = Vec::new();
-
-    for pos in self.edge_candidate_positions(graph, edge_key)? {
-      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
-      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
-
-      if parent_state == child_state {
-        continue;
-      }
-
-      // Gaps and unknowns are not nucleotide substitutions.
-      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
-        continue;
-      }
-
-      subs.push(Sub::new(parent_state, pos, child_state)?);
-    }
-
-    Ok(subs)
-  }
-
   /// Return positions that can change the reconstructed mutation set for one edge.
   ///
   /// In sparse mode, only a small set of sites can change the branch result:
   /// sites changed on this edge, or sites where the parent or child has a
   /// non-default marginal state. Everything else stays the same on both ends.
-  fn edge_candidate_positions<N: GraphNode, E: GraphEdge, D: Send + Sync>(
+  fn edge_candidate_positions(
     &self,
-    graph: &Graph<N, E, D>,
+    graph: &dyn BranchTopology,
     edge_key: GraphEdgeKey,
   ) -> Result<Vec<usize>, Report> {
     let Some(edge) = self.edges.get(&edge_key) else {
       return Ok(vec![]);
     };
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
 
     // Nodes may be absent when called during topology changes (e.g. after
     // merge_sibling_pair creates a new node before marginal reconstruction
@@ -159,9 +124,9 @@ impl PartitionMarginalSparse {
   ///
   /// After marginal inference, `edge.subs` alone is not enough. The final state
   /// also depends on the node's current marginal result.
-  fn node_state_at<N: GraphNode, E: GraphEdge, D: Send + Sync>(
+  fn node_state_at(
     &self,
-    graph: &Graph<N, E, D>,
+    graph: &dyn BranchTopology,
     node_key: GraphNodeKey,
     pos: usize,
     cache: &mut BTreeMap<(GraphNodeKey, usize), AsciiChar>,
@@ -170,47 +135,43 @@ impl PartitionMarginalSparse {
       return Ok(*state);
     }
 
-    let node = graph
-      .get_node(node_key)
-      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
-    let node = node.read_arc();
     let node_data = self.nodes.get(&node_key);
 
     // Compute base state from tree structure.
     // Root must have partition data (populated by Fitch compression).
     // Non-root nodes may be absent during topology changes.
-    let base_state = if node.is_root() {
-      let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
-      d.seq
-        .sequence
-        .get(pos)
-        .copied()
-        .unwrap_or_else(|| self.alphabet.char(0))
-    } else {
-      let (parent_node, edge) = graph.exactly_one_parent_of(&node)?;
-      let parent_key = parent_node.read_arc().key();
-      let edge_key = edge.read_arc().key();
-      let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
+    let base_state = match graph.node_parent(node_key)? {
+      None => {
+        let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
+        d.seq
+          .sequence
+          .get(pos)
+          .copied()
+          .unwrap_or_else(|| self.alphabet.char(0))
+      },
+      Some((parent_key, parent_edge_key)) => {
+        let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
 
-      // Apply edge changes if edge partition data exists
-      self.edges.get(&edge_key).map_or(parent_state, |edge_data| {
-        // Indels have highest precedence, then substitutions, then parent state
-        if let Some(indel) = edge_data
-          .indels
-          .iter()
-          .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
-        {
-          if indel.deletion {
-            self.alphabet.gap()
+        // Apply edge changes if edge partition data exists
+        self.edges.get(&parent_edge_key).map_or(parent_state, |edge_data| {
+          // Indels have highest precedence, then substitutions, then parent state
+          if let Some(indel) = edge_data
+            .indels
+            .iter()
+            .find(|indel| indel.range.0 <= pos && pos < indel.range.1)
+          {
+            if indel.deletion {
+              self.alphabet.gap()
+            } else {
+              indel.seq[pos - indel.range.0]
+            }
+          } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
+            sub.qry()
           } else {
-            indel.seq[pos - indel.range.0]
+            parent_state
           }
-        } else if let Some(sub) = edge_data.subs.iter().find(|sub| sub.pos() == pos) {
-          sub.qry()
-        } else {
-          parent_state
-        }
-      })
+        })
+      },
     };
 
     // Variable sites have highest precedence, then unknown, then base state
@@ -321,13 +282,32 @@ impl PartitionBranchOps for PartitionMarginalSparse {
     self.length
   }
 
-  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    self.edge_subs_from_graph(graph, edge_key)
+  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
+    let mut cache = BTreeMap::new();
+    let mut subs = Vec::new();
+
+    for pos in self.edge_candidate_positions(graph, edge_key)? {
+      let parent_state = self.node_state_at(graph, parent_key, pos, &mut cache)?;
+      let child_state = self.node_state_at(graph, child_key, pos, &mut cache)?;
+
+      if parent_state == child_state {
+        continue;
+      }
+
+      // Gaps and unknowns are not nucleotide substitutions.
+      if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
+        continue;
+      }
+
+      subs.push(Sub::new(parent_state, pos, child_state)?);
+    }
+
+    Ok(subs)
   }
 
-  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_non_char = &self.nodes[&parent_key].seq.non_char;
     let child_non_char = &self.nodes[&child_key].seq.non_char;
 

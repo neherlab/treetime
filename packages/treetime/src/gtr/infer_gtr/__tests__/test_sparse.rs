@@ -58,7 +58,7 @@ mod tests {
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
     // Expected values reflect MAP-derived mutations from marginal posteriors
-    // (not stale Fitch substitutions). After marginal inference, edge_subs_from_graph()
+    // (not stale Fitch substitutions). After marginal inference, edge_subs()
     // compares MAP states between parent and child, which can differ from Fitch
     // assignments at ambiguous positions.
     let counts_expected = MutationCounts {

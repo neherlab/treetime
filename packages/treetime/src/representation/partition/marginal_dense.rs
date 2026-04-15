@@ -5,10 +5,10 @@ use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
 use crate::representation::partition::marginal_helpers::logsumexp_normalize;
+use crate::representation::partition::traits::BranchTopology;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
-use crate::representation::payload::ancestral::GraphAncestral;
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -78,9 +78,8 @@ impl PartitionBranchOps for PartitionMarginalDense {
   ///
   /// `initial_guess_mixed()` calls this to count discrete substitutions for
   /// initial branch length estimation.
-  fn edge_subs(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
+  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_gaps = &self.nodes[&parent_key].seq.gaps;
     let child_gaps = &self.nodes[&child_key].seq.gaps;
 
@@ -112,9 +111,8 @@ impl PartitionBranchOps for PartitionMarginalDense {
     Ok(subs)
   }
 
-  fn edge_effective_length(&self, graph: &GraphAncestral, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    let parent_key = graph.get_source_node_key(edge_key)?;
-    let child_key = graph.get_target_node_key(edge_key)?;
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_gaps = &self.nodes[&parent_key].seq.gaps;
     let child_gaps = &self.nodes[&child_key].seq.gaps;
 
