@@ -54,12 +54,12 @@ The Poisson log-likelihood $\ell(t)$ is strictly concave in $t$ for $k > 0$ (the
 
 ### Implementation
 
-v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../../packages/treetime/src/commands/optimize/optimize_indel.rs) (Poisson log-likelihood and rate estimation), [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs) (Newton integration).
+v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../../packages/treetime/src/commands/optimize/optimize_indel.rs) (Poisson log-likelihood and rate estimation), [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs) (Newton integration), [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) (timetree branch-length distribution grid).
 
 ### Related known issues
 
 - ~~Grid search zero-comparison ignores indel likelihood~~ **FIXED**
-- [Timetree branch length distribution ignores indels](../../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md)
+- ~~Timetree branch length distribution ignores indels~~ **FIXED**
 
 ### Cross-references
 

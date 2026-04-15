@@ -452,8 +452,8 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] `PartitionOptimizeOps` trait implemented by both dense and sparse partitions
 - [x] `collect_edge_contributions()` gathers contributions for one edge across partition types
-- [x] `compute_branch_length_distribution()` evaluates log-likelihood on grid, converts to time-domain distribution
-- [x] `evaluate_mixed_log_lh_only()` for grid evaluation without derivatives
+- [x] `compute_branch_length_distribution()` evaluates log-likelihood (substitution + Poisson indel) on grid, converts to time-domain distribution
+- [x] `evaluate_with_indels_log_lh_only()` for grid evaluation without derivatives (matches `run_optimize_mixed()`'s edge evaluator)
 
 ### Branch Length Modes (v0 has 3 modes, v1 implements marginal only)
 

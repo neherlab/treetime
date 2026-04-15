@@ -16,8 +16,9 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 
 ## Implementation
 
-- `optimize_indel.rs`: Poisson log-likelihood, derivatives, global rate estimation
+- `optimize_indel.rs`: Poisson log-likelihood, derivatives, global rate estimation (generic over any `Graph<N, E, ()>` whose edges implement `HasBranchLength`)
 - `optimize_unified.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
+- `timetree/inference/branch_length_likelihood.rs` and `timetree/inference/runner.rs`: the timetree branch-length distribution grid uses the same `evaluate_with_indels_log_lh_only()` evaluator, with `indel_rate` estimated once per pass and `indel_count` computed per edge
 - `partition_ops.rs`: `edge_indel_count()` trait method
 
 ## Convergence note
@@ -43,10 +44,6 @@ Three approaches were evaluated:
 3. **Poisson indel count** (chosen) - single rate, each indel event has equal weight. Negligible computational cost. Integrates directly into Newton step via additive log-likelihood term.
 
 The primary goal is preventing zero-length assignment on branches with only indel evidence, not reconstructing the indel process. The Poisson model achieves this with minimal implementation and computational cost.
-
-## Related known issues
-
-- [Timetree branch length distribution ignores indels](../port-known-issues/N-timetree-branch-length-distribution-ignores-indels.md)
 
 ## v0 handling
 

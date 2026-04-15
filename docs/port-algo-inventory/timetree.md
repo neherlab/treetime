@@ -22,7 +22,7 @@ Computes per-edge time distributions from partition contributions, clock rate, a
 
 v1: [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs).
 
-- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L31-L63](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L31-L63): converts branch length grid to time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
+- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `run_optimize_mixed()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
 ---
 

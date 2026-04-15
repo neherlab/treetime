@@ -169,6 +169,21 @@ Helper module with `set_leaf_time()` and `set_edge_branch_dist()`.
 | `test_input_mode_gamma_scales_time_length`                     | `time_length = branch_length / (clock_rate * gamma)` |
 | `test_input_mode_gamma_default_matches_no_gamma`               | Default gamma=1.0 behavior                           |
 
+### Branch-length likelihood grid
+
+**File:** [`test_branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_branch_length_likelihood.rs)
+
+Direct tests of `compute_branch_length_distribution()`. Empty contribution slices isolate the Poisson indel term; non-empty slices are already exercised by the `test_gm_runner_*` path end-to-end.
+
+| Test                                                                  | Purpose                                                                    |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `test_branch_length_likelihood_no_indels_flat_distribution`           | `indel_rate == 0` produces flat distribution (prob == 1 at every sample)   |
+| `test_branch_length_likelihood_indel_rate_only_matches_poisson_shape` | `k == 0, mu > 0` follows `exp(-mu (t - t_min))` (shape + peak at grid min) |
+| `test_branch_length_likelihood_indel_mle_peak`                        | `k > 0, mu > 0` peaks at Poisson MLE `t_mle = k/mu`                        |
+| `test_branch_length_likelihood_indel_mle_peak_with_gamma`             | Gamma compresses the time-domain peak to `t_mle / (clock_rate * gamma)`    |
+| `test_branch_length_likelihood_zero_indels_matches_substitution_only` | Explicit no-op check when `indel_count == 0` and `indel_rate == 0`         |
+| `test_branch_length_likelihood_rejects_nonpositive_clock_rate`        | Error path: negative clock rate is rejected before the grid is constructed |
+
 ---
 
 ### Golden-Master Runner Tests
