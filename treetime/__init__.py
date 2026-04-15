@@ -1,4 +1,4 @@
-version = '0.11.5'
+version = '0.12.0'
 
 
 ## Here we define an error class for TreeTime errors, MissingData, UnknownMethod and NotReady errors

@@ -1,3 +1,8 @@
+# 0.12.0
+
+- fix `treetime clock` not writing `molecular_clock.txt` with the rate estimate, despite documentation listing it among output files. Also fix copy-paste message in `treetime timetree` that said "Inferred sequence evolution model" for the molecular clock file. Reported by @1ucyb [issue #574](https://github.com/neherlab/treetime/issues/574), fixed by @ivan-aksamentov [PR #575](https://github.com/neherlab/treetime/pull/575)
+- drop Python 3.7 from supported versions
+
 # 0.11.5
 
 - fix `fill_overhangs` filling terminal gaps with `N` (asparagine) instead of `X` (ambiguous) for amino acid sequences by @jbloom [issue #522](https://github.com/neherlab/treetime/issues/522) [PR #523](https://github.com/neherlab/treetime/pull/523)
