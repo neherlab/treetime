@@ -83,6 +83,8 @@ def save_molecular_clock(outdir, date2dist, suffix=''):
     fname = outdir + f'molecular_clock{suffix}.txt'
     with open(fname, 'w', encoding='utf-8') as ofile:
         ofile.write(str(date2dist) + '\n')
+    print('\n--- molecular clock model (saved as %s):\n' % fname)
+    print(date2dist)
     return fname
 
 
@@ -522,9 +524,7 @@ def run_timetree(myTree, params, outdir, tree_suffix='', prune_short=True, metho
         print('\nInferred sequence evolution model (saved as %s):' % fname)
         print(myTree.gtr)
 
-    fname = save_molecular_clock(outdir, myTree.date2dist, suffix=tree_suffix)
-    print('\nInferred sequence evolution model (saved as %s):' % fname)
-    print(myTree.date2dist)
+    save_molecular_clock(outdir, myTree.date2dist, suffix=tree_suffix)
 
     basename = get_basename(params, outdir)
     if coalescent in ['skyline', 'opt', 'const']:
@@ -997,10 +997,7 @@ def estimate_clock_model(params):
 
     d2d = utils.DateConversion.from_regression(myTree.clock_model)
 
-    fname = save_molecular_clock(outdir, d2d)
-    print('\n--- wrote molecular clock model to\n\t%s\n' % fname)
-
-    print('\n', d2d)
+    save_molecular_clock(outdir, d2d)
     print(
         fill(
             'The R^2 value indicates the fraction of variation in'
