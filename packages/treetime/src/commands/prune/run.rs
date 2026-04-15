@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69, write_gtr_json};
+use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::make_error;
 use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -438,8 +439,19 @@ struct ChildPartitionData {
 /// Creates a new node N between parent P and children A, B:
 /// - Edge P → N carries the shared mutations
 /// - Edges N → A and N → B carry only the remaining unique mutations
-/// - Branch length of P → N = total_shared_mutations / total_alignment_length
+/// - Branch length of P → N is the Jukes-Cantor corrected evolutionary
+///   distance from the pooled p-distance `total_shared_mutations / total_alignment_length`
+///   (see [`jukes_cantor_distance`])
 /// - Branch lengths of N → A, N → B = max(0, original - new_edge_bl)
+///
+/// # Model assumption
+///
+/// The `prune` command initialises all partitions with JC69 (`run_prune()`),
+/// so applying the Jukes-Cantor correction is exact. When this function is
+/// reused from `optimize` under a non-JC69 model, JC69 remains a strictly
+/// better approximation than the raw p-distance because any symmetric
+/// substitution process underestimates true evolutionary distance by the
+/// same mechanism (back-mutations and parallel substitutions).
 fn merge_sibling_pair(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
@@ -484,10 +496,21 @@ fn merge_sibling_pair(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  // Compute new branch length: shared_mutations / alignment_length
+  // Compute new branch length from the pooled p-distance across partitions.
+  // The raw Hamming ratio shared/length underestimates evolutionary distance
+  // because multiple substitutions at the same site can revert or mask earlier
+  // ones. The Jukes-Cantor 1969 correction inverts the JC substitution model
+  // to recover expected substitutions per site from observed differences.
+  //
+  // Pooling across partitions assumes they share an alphabet size, which holds
+  // for every current caller: `prune` hardcodes JC69 over a single alphabet,
+  // and `optimize` reuses this path with a single partition set under one
+  // model name. `n_states` is read from the first partition accordingly.
   let total_alignment_length: usize = partitions.iter().map(|p| p.read_arc().length).sum();
   let new_edge_bl = if total_alignment_length > 0 {
-    pair.total_shared as f64 / total_alignment_length as f64
+    let p = pair.total_shared as f64 / total_alignment_length as f64;
+    let n_states = partitions[0].read_arc().alphabet.n_canonical();
+    jukes_cantor_distance(p, n_states)
   } else {
     0.0
   };
