@@ -7,8 +7,7 @@ v1 produces fewer output files than v0. Several output types are not implemented
 - `dates.tsv` - node date estimates in tabular format
   (see [Node dates output unimplemented](N-timetree-node-dates-output-unimplemented.md))
 - `ancestral_sequences.fasta` - reconstructed ancestral sequences
-- `branch_mutations.txt` - mutations mapped to branches
-  (see [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md))
+- `branch_mutations.txt` - mutations mapped to branches in tabular form (Nexus `[&mutations=...]` annotations are emitted; only the separate tabular file is missing)
 - `molecular_clock.txt` - clock model summary (v1 has `timetree.json` with more detail)
 - `divergence_tree.nexus` - tree with divergence (not time) branch lengths
 - `sequence_evolution_model.txt` - GTR model details (v1 has `gtr.json`)

@@ -83,7 +83,6 @@ exactly.
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                          |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)                    |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                  |
-| Medium     | Timetree     | [Nexus output missing mutation annotations](M-timetree-nexus-missing-mutations.md)                                                    |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                            |
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                                   |
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                         |
