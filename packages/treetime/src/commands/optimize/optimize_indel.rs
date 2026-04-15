@@ -1,10 +1,11 @@
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::representation::payload::ancestral::GraphAncestral;
 use parking_lot::RwLock;
 use statrs::function::factorial::ln_factorial;
 use std::sync::Arc;
-use treetime_graph::edge::HasBranchLength;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNode;
 
 /// Poisson indel log-likelihood contribution for one edge.
 ///
@@ -44,8 +45,13 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> OptimizationMetrics {
 ///
 /// where $k_e$ is the indel count on edge $e$ and $t_e$ is the branch length.
 /// Returns 0 when there are no indels or total branch length is zero.
-pub fn estimate_indel_rate<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> f64
+///
+/// Generic over the graph's node and edge payload types: any graph whose
+/// edges expose `HasBranchLength` can be used (ancestral, timetree, ...).
+pub fn estimate_indel_rate<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> f64
 where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
   let mut total_indels: usize = 0;

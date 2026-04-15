@@ -1,4 +1,4 @@
-use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_mixed_log_lh_only};
+use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_with_indels_log_lh_only};
 use crate::make_error;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -28,8 +28,23 @@ pub fn collect_edge_contributions(
   Ok(contributions)
 }
 
+/// Compute the branch-length likelihood distribution used for time inference.
+///
+/// The grid likelihood includes both the substitution contribution (from
+/// `contributions`) and the Poisson indel contribution (from `indel_count` and
+/// `indel_rate`). For datasets without indels (`indel_rate == 0`), the Poisson
+/// term is a no-op and the distribution reduces to the substitution likelihood.
+///
+/// Keeping the timetree grid consistent with the per-edge Newton evaluator in
+/// `run_optimize_mixed()` is required for branches whose only evolutionary
+/// signal is an indel event: otherwise the distribution peaks at zero while
+/// the optimizer correctly assigns positive length (see
+/// `docs/algorithms/optimize.md` and
+/// `docs/port-intentional-changes/optimize-indel-contribution-to-likelihood.md`).
 pub fn compute_branch_length_distribution(
   contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
   current_branch_length: f64,
   one_mutation: f64,
   n_grid_points: usize,
@@ -47,7 +62,11 @@ pub fn compute_branch_length_distribution(
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points, clock_rate);
 
-  let log_lh = grid.mapv(|branch_len| evaluate_mixed_log_lh_only(contributions, branch_len));
+  // `create_simple_grid` always returns strictly positive branch lengths
+  // (`min_bl = one_mutation * 0.1 > 0`), satisfying the `t > 0` precondition
+  // of `poisson_indel_log_lh` when `indel_count > 0`.
+  let log_lh =
+    grid.mapv(|branch_len| evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len));
   let max_log_lh = log_lh.max()?;
 
   let normalized_prob = (&log_lh - *max_log_lh).exp();

@@ -1,5 +1,6 @@
 use crate::commands::clock::clock_model::ClockModel;
 use crate::commands::clock::clock_traits::ClockNode;
+use crate::commands::optimize::optimize_indel::estimate_indel_rate;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -86,12 +87,18 @@ where
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
+  // Global indel rate used by every edge's Poisson indel contribution. Matches
+  // the rate estimated in `run_optimize_mixed()`; when no edge carries an
+  // indel, the rate is zero and the Poisson term drops out of the grid.
+  let indel_rate = estimate_indel_rate(graph, partitions);
+
   info!(
     "Computing branch distributions from {} partition(s) with {} total sites",
     partitions.len(),
     total_sites
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
+  debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
@@ -102,8 +109,14 @@ where
     debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
     let contributions = collect_contributions(partitions, edge_key)?;
+    let indel_count: usize = partitions
+      .iter()
+      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+      .sum();
     let distribution = compute_branch_length_distribution(
       &contributions,
+      indel_count,
+      indel_rate,
       branch_length,
       one_mutation,
       BRANCH_GRID_SIZE,
