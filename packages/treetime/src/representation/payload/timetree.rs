@@ -283,3 +283,161 @@ impl TimetreeEdge for EdgeTimetree {
     self.gamma = gamma;
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use crate::alphabet::alphabet::Alphabet;
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::representation::partition::traits::PartitionBranchOps;
+  use crate::representation::payload::ancestral::annotate_branch_mutations;
+  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::seq::mutation::Sub;
+  use eyre::Report;
+  use maplit::btreemap;
+  use parking_lot::RwLock;
+  use pretty_assertions::assert_eq;
+  use std::sync::Arc;
+  use treetime_io::nex::{NexWriteOptions, nex_write_str};
+  use treetime_io::nwk::{NodeToNwk, nwk_read_str};
+  use treetime_primitives::AsciiChar;
+
+  fn c(b: u8) -> AsciiChar {
+    AsciiChar::from_byte_unchecked(b)
+  }
+
+  fn make_test_partition(
+    graph: &GraphTimetree,
+    length: usize,
+    edge_subs: &[(usize, Vec<Sub>)],
+  ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
+    let alphabet = Alphabet::default();
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: alphabet.clone(),
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
+
+    // Build reference sequence consistent with sub ref chars so node_state_at
+    // returns the expected parent state at each mutated position.
+    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
+    for (_, subs) in edge_subs {
+      for s in subs {
+        if s.pos() < length {
+          ref_seq[s.pos()] = s.reff();
+        }
+      }
+    }
+
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      let mut node_part = SparseNodePartition::empty(&alphabet);
+      node_part.seq.sequence = ref_seq.clone();
+      partition.nodes.insert(key, node_part);
+    }
+
+    let edges = graph.get_edges();
+    for (idx, subs) in edge_subs {
+      if let Some(edge) = edges.get(*idx) {
+        let edge_key = edge.read_arc().key();
+        partition.edges.insert(
+          edge_key,
+          SparseEdgePartition {
+            subs: subs.clone(),
+            ..SparseEdgePartition::default()
+          },
+        );
+      }
+    }
+
+    Ok(Arc::new(RwLock::new(partition)))
+  }
+
+  /// `annotate_branch_mutations` must accept a `GraphTimetree` and write the
+  /// formatted mutation string into `NodeTimetree.base.mutations`.
+  #[test]
+  fn test_timetree_annotate_branch_mutations_populates_base_field() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(
+      &graph,
+      100,
+      &[(
+        0,
+        vec![
+          Sub::new(c(b'A'), 54_usize, c(b'G'))?,
+          Sub::new(c(b'T'), 92_usize, c(b'C'))?,
+        ],
+      )],
+    )?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let leaf = graph.get_leaves()[0].read_arc();
+    let payload = leaf.payload().read_arc();
+    assert_eq!(payload.base.mutations, Some("A55G,T93C".to_owned()));
+    Ok(())
+  }
+
+  /// `NodeTimetree.nwk_comments()` must expose both the mutations inherited
+  /// from the base payload and the timetree date, matching v0's Nexus output
+  /// shape `[&mutations="...",date="..."]`.
+  #[test]
+  fn test_timetree_nwk_comments_include_mutations_and_date() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 54_usize, c(b'G'))?])])?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    let leaf = graph.get_leaves()[0].read_arc();
+    {
+      // Set the date on the leaf so nwk_comments() emits it alongside mutations.
+      leaf.payload().write_arc().time = Some(2003.84);
+    }
+
+    let payload = leaf.payload().read_arc();
+    let comments = payload.nwk_comments();
+    assert_eq!(comments.get("mutations").map(String::as_str), Some("A55G"));
+    assert_eq!(comments.get("date").map(String::as_str), Some("2003.84"));
+    Ok(())
+  }
+
+  /// The serialized Nexus output for a timetree must carry both the mutations
+  /// and date annotations on branches, matching the v0 output shape. This is
+  /// the end-to-end shape the known issue targets.
+  #[test]
+  fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?;
+    let partition = make_test_partition(
+      &graph,
+      100,
+      &[(
+        0,
+        vec![
+          Sub::new(c(b'A'), 54_usize, c(b'G'))?,
+          Sub::new(c(b'T'), 92_usize, c(b'C'))?,
+        ],
+      )],
+    )?;
+    let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = vec![partition];
+    annotate_branch_mutations(&graph, &branch_ops)?;
+
+    for leaf in graph.get_leaves() {
+      leaf.read_arc().payload().write_arc().time = Some(2003.84);
+    }
+
+    let nexus = nex_write_str(&graph, &NexWriteOptions::default())?;
+    assert!(
+      nexus.contains(r#"mutations="A55G,T93C""#),
+      "Nexus output missing mutations annotation; got:\n{nexus}"
+    );
+    assert!(
+      nexus.contains(r#"date="2003.84""#),
+      "Nexus output missing date annotation; got:\n{nexus}"
+    );
+    Ok(())
+  }
+}

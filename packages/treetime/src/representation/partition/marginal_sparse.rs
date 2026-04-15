@@ -78,11 +78,7 @@ impl PartitionMarginalSparse {
   /// In sparse mode, only a small set of sites can change the branch result:
   /// sites changed on this edge, or sites where the parent or child has a
   /// non-default marginal state. Everything else stays the same on both ends.
-  fn edge_candidate_positions(
-    &self,
-    graph: &dyn BranchTopology,
-    edge_key: GraphEdgeKey,
-  ) -> Result<Vec<usize>, Report> {
+  fn edge_candidate_positions(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<usize>, Report> {
     let Some(edge) = self.edges.get(&edge_key) else {
       return Ok(vec![]);
     };
