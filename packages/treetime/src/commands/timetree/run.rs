@@ -6,6 +6,10 @@ use crate::commands::clock::clock_output::write_clock_model;
 use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
+use crate::commands::optimize::args::BranchOptMethod;
+use crate::commands::optimize::optimize_unified::run_optimize_mixed;
+use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
 use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_skyline};
@@ -109,6 +113,22 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     },
   };
 
+  // ML branch-length optimization pre-step (v0: optimize_tree(max_iter=1))
+  //
+  // v0 calls optimize_tree(infer_gtr=True, max_iter=1) before rerooting,
+  // then optimize_tree(max_iter=1) again after rerooting + clock filter.
+  // Both calls run marginal reconstruction followed by one round of per-edge
+  // Brent optimization, seeding time inference with ML-optimized branch
+  // lengths rather than raw input values.
+  if let Some(aln) = aln.as_deref() {
+    if args.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
+      info!("### ML branch-length optimization (pre-reroot)");
+      initialize_marginal(&graph, &partitions, aln)?;
+      optimize_branch_lengths_pre_step(&graph, &partitions)
+        .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
+    }
+  }
+
   // First reroot: use non-covariation params (pre-filter, matching v0)
   if !args.keep_root {
     info!("First reroot (pre-ancestral)");
@@ -135,8 +155,10 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
         info!("Using input branch lengths for timetree inference");
       },
       BranchLengthMode::Marginal => {
-        info!("Running initial ancestral reconstruction");
-        initialize_marginal(&graph, &partitions, aln)?;
+        info!("### ML branch-length optimization (post-reroot)");
+        update_marginal(&graph, &partitions)?;
+        optimize_branch_lengths_pre_step(&graph, &partitions)
+          .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
     }
   }
@@ -409,6 +431,45 @@ fn build_covariation_clock_params(
     variance_offset: 0.0,
     variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),
   }))
+}
+
+/// Run one pass of ML branch-length optimization on timetree partitions.
+///
+/// v0: `optimize_tree(max_iter=1)` calls `optimize_tree_marginal(max_iter=1,
+/// damping=0.75)`, which does per-edge Brent optimization in sqrt(t) space
+/// with damped updates followed by marginal reconstruction. At iteration 0
+/// with damping=0.75, the update blends 25% optimized + 75% old branch
+/// lengths (`damping_factor = 0.75^1 = 0.75`).
+///
+/// Requires marginal profiles to be populated (via `initialize_marginal` or
+/// `update_marginal`) before calling.
+fn optimize_branch_lengths_pre_step(
+  graph: &GraphTimetree,
+  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+) -> Result<(), Report> {
+  // v0 default damping (treeanc.py:1298)
+  let damping = 0.75;
+
+  let old_branch_lengths = save_branch_lengths(graph);
+
+  #[allow(trivial_casts)]
+  let opt_partitions: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
+    .iter()
+    .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
+    .collect();
+
+  run_optimize_mixed(graph, &opt_partitions, BranchOptMethod::BrentSqrt)
+    .wrap_err("ML branch-length optimization pre-step failed")?;
+
+  // Blend optimized branch lengths with old values (iteration=0):
+  // bl = bl_optimized * (1 - 0.75^1) + bl_old * 0.75^1
+  //    = bl_optimized * 0.25 + bl_old * 0.75
+  apply_damping(graph, &old_branch_lengths, damping, 0);
+
+  // Re-run marginal reconstruction with damped branch lengths
+  update_marginal(graph, partitions)?;
+
+  Ok(())
 }
 
 fn write_outputs(
