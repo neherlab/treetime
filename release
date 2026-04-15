@@ -63,10 +63,10 @@ main() {
   done
   printf "✅\n"
 
-  printf "Pre-check: working tree is clean... "
-  if ! git -C "${THIS_DIR}" diff --quiet \
-    || ! git -C "${THIS_DIR}" diff --cached --quiet; then
-    printf "\nWorking tree has uncommitted changes. Commit or stash before releasing.\n" >&2
+  printf "Pre-check: working tree is clean (except changelog.md)... "
+  if ! git -C "${THIS_DIR}" diff --quiet -- ':!changelog.md' \
+    || ! git -C "${THIS_DIR}" diff --cached --quiet -- ':!changelog.md'; then
+    printf "\nWorking tree has uncommitted changes outside changelog.md. Commit or stash before releasing.\n" >&2
     exit 1
   fi
   printf "✅\n"
