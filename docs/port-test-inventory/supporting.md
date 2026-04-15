@@ -696,19 +696,20 @@ Tests for `compose_substitutions()` (`#compose_substitutions`) defined in `seq::
 | `test_collapse_edge_branch_length_some_plus_none`                            | Some + None preserves Some                         |
 | `test_collapse_edge_branch_length_both_none`                                 | Both None stays None                               |
 
-**File:** [`test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs) - 12 tests
+**File:** [`test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs) - 13 tests
 
-| Test                                                     | Purpose                                           |
-| -------------------------------------------------------- | ------------------------------------------------- |
-| `test_merge_no_polytomy`                                 | Binary tree unchanged                             |
-| `test_merge_polytomy_no_shared_mutations`                | No shared mutations, tree unchanged               |
-| `test_merge_polytomy_two_siblings_share_all_mutations`   | Identical mutation sets merged under new node     |
-| `test_merge_polytomy_partial_overlap`                    | Partial overlap: shared moved, unique retained    |
-| `test_merge_greedy_picks_best_pair`                      | Pair with most shared mutations selected first    |
-| `test_merge_branch_length_adjustment`                    | New edge bl = shared/length, children adjusted    |
-| `test_merge_branch_length_clamp_to_zero`                 | Child bl clamped to zero when smaller than new bl |
-| `test_merge_multiple_partitions`                         | Shared mutations computed per-partition           |
-| `test_merge_repeated_until_exhausted`                    | Multiple merge rounds for independent pairs       |
-| `test_merge_empty_partitions`                            | No partitions, no merges                          |
-| `test_merge_preserves_tree_structure_for_non_polytomies` | Binary subtrees unaffected                        |
-| `test_merge_single_mutation_shared`                      | Minimal case: single shared mutation              |
+| Test                                                      | Purpose                                               |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| `test_merge_no_polytomy`                                  | Binary tree unchanged                                 |
+| `test_merge_polytomy_no_shared_mutations`                 | No shared mutations, tree unchanged                   |
+| `test_merge_polytomy_two_siblings_share_all_mutations`    | Identical mutation sets merged under new node         |
+| `test_merge_polytomy_partial_overlap`                     | Partial overlap: shared moved, unique retained        |
+| `test_merge_greedy_picks_best_pair`                       | Pair with most shared mutations selected first        |
+| `test_merge_branch_length_adjustment`                     | New edge bl = JC69-corrected distance, child adjusted |
+| `test_merge_branch_length_clamp_to_zero`                  | Child bl clamped to zero when smaller than new bl     |
+| `test_merge_multiple_partitions`                          | Shared mutations computed per-partition               |
+| `test_merge_repeated_until_exhausted`                     | Multiple merge rounds for independent pairs           |
+| `test_merge_empty_partitions`                             | No partitions, no merges                              |
+| `test_merge_preserves_tree_structure_for_non_polytomies`  | Binary subtrees unaffected                            |
+| `test_merge_single_mutation_shared`                       | Minimal case: single shared mutation                  |
+| `test_merge_branch_length_jc_correction_differs_from_raw` | Regression guard: JC69 correction applied, not raw p  |

@@ -27,7 +27,8 @@
 | Site-specific GTR unit+validation  | 1      | 5       | Unit          |
 | Site-specific GTR golden-master    | 1      | 9       | Golden-master |
 | Site-specific GTR inference        | 1      | 2       | Unit          |
-| **Total**                          | **22** | **166** | Mixed         |
+| Jukes-Cantor distance correction   | 1      | 18      | Mixed         |
+| **Total**                          | **23** | **184** | Mixed         |
 
 Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
 
@@ -328,6 +329,26 @@ Verifies mutation count invariants across dense and sparse paths.
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `test_write_gtr_json_filename` (3 cases)           | Qualifier produces correct filename: `None` -> `gtr.json`, `Some("sparse")` -> `gtr_sparse.json`, `Some("dense")` -> `gtr_dense.json` |
 | `test_write_gtr_json_both_partitions_no_overwrite` | Both sparse and dense qualifiers produce separate files without overwriting                                                           |
+
+---
+
+## Jukes-Cantor Distance Correction
+
+**File:** [`jc_distance.rs`](../../packages/treetime/src/gtr/jc_distance.rs)
+
+Covers [`jukes_cantor_distance(p, n_states)`](../../packages/treetime/src/gtr/jc_distance.rs#L50), which inverts the JC69 substitution model to map an observed p-distance to an evolutionary distance. Consumed by [`merge_sibling_pair()`](../../packages/treetime/src/commands/prune/run.rs#L483) in the prune merge-shared-mutations step.
+
+| Test                                                           | Purpose                                                        |
+| -------------------------------------------------------------- | -------------------------------------------------------------- |
+| `test_jukes_cantor_distance_zero_p_returns_zero`               | `p = 0` returns exactly `0` for any alphabet                   |
+| `test_jukes_cantor_distance_negative_p_clamped_to_zero`        | Negative `p` defensively clamps to 0, never NaN                |
+| `test_jukes_cantor_distance_known_values` (6 cases)            | Analytical values for $k \in \{4, 20\}$ at representative $p$  |
+| `test_jukes_cantor_distance_saturation_is_finite` (5)          | Saturation and beyond produce finite positive distances        |
+| `test_jukes_cantor_distance_saturation_cap_order_of_magnitude` | Saturation cap lies in expected bracket for $k \in \{4, 20\}$  |
+| `test_jukes_cantor_distance_always_at_least_p`                 | Property: $d(p) \ge p$ across the valid range                  |
+| `test_jukes_cantor_distance_monotonic_in_p`                    | Property: $d$ is non-decreasing in $p$                         |
+| `test_jukes_cantor_distance_small_p_approaches_p`              | Taylor behaviour: $d \to p$ as $p \to 0$                       |
+| `test_jukes_cantor_distance_issue_documented_error`            | Correction sizes match the 7% / 22% figures at $p = 0.1, 0.25$ |
 
 ---
 
