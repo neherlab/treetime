@@ -319,8 +319,10 @@ where
     for child_edge_key in &node.child_edge_keys {
       let child_edge_data = self.edges.get_mut(child_edge_key).unwrap();
 
-      // this normalization isn't strictly necessary
-      let mut dis = &node_data.profile.dis / &child_edge_data.msg_from_child.dis;
+      // Guard against zero divisor: clamp to smallest positive normal f64.
+      // Matches the stabilization pattern in discrete.rs:206.
+      let safe_child = child_edge_data.msg_from_child.dis.mapv(|v| v.max(f64::MIN_POSITIVE));
+      let mut dis = &node_data.profile.dis / &safe_child;
       let delta_ll = normalize_inplace(&mut dis);
       child_edge_data.msg_to_child = DenseSeqDis {
         dis,
@@ -379,12 +381,27 @@ fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
   seq
 }
 
+/// Normalize each row of a probability matrix to sum to 1 and return the total
+/// log-likelihood (sum of ln(row_sum) across all rows).
+///
+/// When a row sums to zero or is non-finite, falls back to a uniform distribution
+/// for that row and contributes NEG_INFINITY to the log-likelihood. This matches
+/// the degenerate-row semantics of `logsumexp_normalize`.
 fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
+  let n_cols = dis.ncols() as f64;
+  let mut log_lh = 0.0;
   for (ri, mut row) in dis.outer_iter_mut().enumerate() {
-    row /= norm[ri];
+    let n = norm[ri];
+    if n > 0.0 && n.is_finite() {
+      row /= n;
+      log_lh += n.ln();
+    } else {
+      row.fill(1.0 / n_cols);
+      log_lh += f64::NEG_INFINITY;
+    }
   }
-  norm.mapv(f64::ln).sum()
+  log_lh
 }
 
 /// Normalize a log-probability matrix to probability matrix.
@@ -542,6 +559,73 @@ mod tests {
     assert!(
       log_lh == f64::NEG_INFINITY,
       "log_lh should be NEG_INFINITY, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_inplace_normal_rows() {
+    let mut dis = array![[1.0, 2.0, 3.0, 4.0], [4.0, 3.0, 2.0, 1.0]];
+    let log_lh = normalize_inplace(&mut dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis.row(0), array![0.1, 0.2, 0.3, 0.4], epsilon = 1e-10);
+    assert_abs_diff_eq!(dis.row(1), array![0.4, 0.3, 0.2, 0.1], epsilon = 1e-10);
+    assert_abs_diff_eq!(log_lh, 10.0_f64.ln() + 10.0_f64.ln(), epsilon = 1e-10);
+  }
+
+  #[test]
+  fn test_normalize_inplace_zero_row_returns_uniform() {
+    let mut dis = array![[0.0, 0.0, 0.0, 0.0]];
+    let log_lh = normalize_inplace(&mut dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY for all-zero row, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_inplace_mixed_zero_and_normal_rows() {
+    let mut dis = array![[0.0, 0.0, 0.0, 0.0], [2.0, 4.0, 2.0, 2.0]];
+    let log_lh = normalize_inplace(&mut dis);
+
+    assert_valid_rows(&dis);
+    // Zero row becomes uniform
+    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    // Normal row is normalized
+    assert_abs_diff_eq!(dis.row(1), array![0.2, 0.4, 0.2, 0.2], epsilon = 1e-10);
+    // log_lh is NEG_INFINITY because one row was degenerate
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY when any row is zero, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_inplace_nan_row_returns_uniform() {
+    let mut dis = array![[f64::NAN, f64::NAN, f64::NAN, f64::NAN]];
+    let log_lh = normalize_inplace(&mut dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY for NaN row, got {log_lh}"
+    );
+  }
+
+  #[test]
+  fn test_normalize_inplace_inf_row_returns_uniform() {
+    let mut dis = array![[f64::INFINITY, 0.0, 0.0, 0.0]];
+    let log_lh = normalize_inplace(&mut dis);
+
+    assert_valid_rows(&dis);
+    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    assert!(
+      log_lh == f64::NEG_INFINITY,
+      "log_lh should be NEG_INFINITY for inf row, got {log_lh}"
     );
   }
 }

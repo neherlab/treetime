@@ -418,6 +418,7 @@ Direct unit tests for the extracted `run_optimize_loop()` function, which is the
 | `test_run_optimize_loop_records_lh_per_iteration`     | `lh_history` has one entry per executed iteration         |
 | `test_run_optimize_loop_breaks_on_convergence`        | Breaks and records `converged_at` when `\|ΔLH\| < \|dp\|` |
 | `test_run_optimize_loop_zero_max_iter_is_noop`        | `max_iter = 0` runs the body zero times                   |
+| `test_run_optimize_loop_all_likelihoods_finite`       | All likelihoods finite (guards against forward-pass NaN)  |
 | `test_run_optimize_loop_undamped_improves_likelihood` | Undamped coordinate-ascent variant monotonically improves |
 
 ---

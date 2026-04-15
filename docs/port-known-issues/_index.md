@@ -73,7 +73,6 @@ exactly.
 | Low        | Topology     | [Move `merge_shared_mutation_branches()` to shared topology_cleanup module](L-topology-cleanup-move-merge-shared-mutations.md)        |
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                       |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                      |
-| Medium     | Optimize     | [Optimize iterative log-likelihood becomes `-inf`/NaN on larger datasets](M-optimize-iterative-log-likelihood-nan.md)                 |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)           |
 | Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)              |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                         |
@@ -87,7 +86,6 @@ exactly.
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                         |
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                  |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                 |
-| Negligible | Ancestral    | [Dense normalize_inplace produces NaN for all-zero probability rows](N-dense-normalize-inplace-zero-row.md)                           |
 | Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                                          |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                       |
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                       |

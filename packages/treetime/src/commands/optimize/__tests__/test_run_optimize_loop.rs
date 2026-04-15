@@ -88,6 +88,33 @@ mod tests {
     Ok(())
   }
 
+  // All log-likelihood values recorded during the optimization loop must be finite.
+  // This guards against NaN/inf from forward-pass division by zero or degenerate
+  // normalization. The defect was: unguarded numerator/divisor in the forward pass
+  // produced NaN when the divisor contained zeros, poisoning all subsequent iterations.
+  #[test]
+  fn test_run_optimize_loop_all_likelihoods_finite() -> Result<(), Report> {
+    let aln = simple_alignment()?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let result = run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      10,
+      0.0,
+      0.75,
+      BranchOptMethod::BrentSqrt,
+    )?;
+
+    for (i, &lh) in result.lh_history.iter().enumerate() {
+      assert!(lh.is_finite(), "Iteration {i}: log-likelihood must be finite, got {lh}");
+    }
+    Ok(())
+  }
+
   // Running the loop with `damping = 0.0` and `dp = 0.0` should monotonically
   // improve (or maintain) the likelihood: `apply_damping` is a no-op under zero
   // damping, `prune_and_merge_in_loop` cannot fire on this toy tree (no internal

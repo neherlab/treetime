@@ -31,15 +31,15 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **File:** [`test_fitch.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_fitch.rs)
 
-| Test                                              | Purpose                                            |
-| ------------------------------------------------- | -------------------------------------------------- |
-| `test_ancestral_reconstruction_fitch`             | MAP sequences at internal nodes                    |
-| `test_ancestral_reconstruction_fitch_with_leaves` | Same with leaf sequences included                  |
+| Test                                                       | Purpose                                                     |
+| ---------------------------------------------------------- | ----------------------------------------------------------- |
+| `test_ancestral_reconstruction_fitch`                      | MAP sequences at internal nodes                             |
+| `test_ancestral_reconstruction_fitch_with_leaves`          | Same with leaf sequences included                           |
 | `test_compress_sequences_retains_internal_exact_sequences` | Internal exact sequences remain available after compression |
-| `test_fitch_internals`                            | Substitution and indel mutations on edges          |
-| `test_fitch_complex_gaps`                         | Overlapping deletions and variable insertions      |
-| `test_fitch_polytomy`                             | Multifurcation with 3 children                     |
-| `test_fitch_backward_state`                       | Intermediate state between backward/forward passes |
+| `test_fitch_internals`                                     | Substitution and indel mutations on edges                   |
+| `test_fitch_complex_gaps`                                  | Overlapping deletions and variable insertions               |
+| `test_fitch_polytomy`                                      | Multifurcation with 3 children                              |
+| `test_fitch_backward_state`                                | Intermediate state between backward/forward passes          |
 
 **Algorithm:** Fitch maximum parsimony (backward pass, forward pass, gap tracking)
 
@@ -160,13 +160,13 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **File:** [`test_marginal_consistency.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs)
 
-| Test                                                                     | Purpose                                                   |
-| ------------------------------------------------------------------------ | --------------------------------------------------------- |
-| `test_marginal_dense_sparse_log_lh_consistency_gap_free`                 | Dense and sparse log-likelihoods match (gap-free, JC69)   |
-| `test_marginal_sparse_varpos_matches_dense_profile_gap_free`             | Sparse variable-position distributions match dense rows   |
-| `test_marginal_dense_sparse_ambiguous_character_expectations_documented` | Log-likelihood agreement with ambiguity codes             |
+| Test                                                                     | Purpose                                                                 |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `test_marginal_dense_sparse_log_lh_consistency_gap_free`                 | Dense and sparse log-likelihoods match (gap-free, JC69)                 |
+| `test_marginal_sparse_varpos_matches_dense_profile_gap_free`             | Sparse variable-position distributions match dense rows                 |
+| `test_marginal_dense_sparse_ambiguous_character_expectations_documented` | Log-likelihood agreement with ambiguity codes                           |
 | `test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`     | Dense and sparse reconstruct the same exact state for partial ambiguity |
-| `test_marginal_posteriors_sum_to_one_skewed_gtr`                         | Normalization under extreme GTR (pi=[0.9,0.06,0.02,0.02]) |
+| `test_marginal_posteriors_sum_to_one_skewed_gtr`                         | Normalization under extreme GTR (pi=[0.9,0.06,0.02,0.02])               |
 
 ---
 
@@ -338,8 +338,13 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_normalize_from_log_mixed_finite_neg_inf_within_row` | Mixed finite/-inf within a row: only finite states get probability |
 | `test_normalize_from_log_large_negative_values`           | Numerical stability: offset -1000 matches reference                |
 | `test_normalize_from_log_three_states`                    | All-NEG_INFINITY fallback with 3 states: uniform 1/3               |
+| `test_normalize_inplace_normal_rows`                      | Normal rows: correct normalization and log-likelihood              |
+| `test_normalize_inplace_zero_row_returns_uniform`         | All-zero row: uniform fallback, log_lh=-inf                        |
+| `test_normalize_inplace_mixed_zero_and_normal_rows`       | Zero row + normal row: per-row handling, log_lh=-inf               |
+| `test_normalize_inplace_nan_row_returns_uniform`          | NaN row: uniform fallback, log_lh=-inf                             |
+| `test_normalize_inplace_inf_row_returns_uniform`          | Inf row: uniform fallback, log_lh=-inf                             |
 
-**Algorithm:** 2D logsumexp normalization matching v0's `normalize_profile(log=True)`. Guards all-`-inf` rows with uniform fallback, consistent with sparse path's `logsumexp_normalize`.
+**Algorithm:** 2D logsumexp normalization matching v0's `normalize_profile(log=True)`. Guards all-`-inf` rows with uniform fallback, consistent with sparse path's `logsumexp_normalize`. `normalize_inplace` guards zero-sum and non-finite rows with the same uniform fallback.
 
 ---
 

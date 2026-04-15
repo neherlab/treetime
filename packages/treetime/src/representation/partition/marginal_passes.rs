@@ -4,6 +4,7 @@ use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
 use eyre::Report;
 use maplit::btreemap;
+use ndarray::Array1;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
@@ -289,23 +290,33 @@ where
       } else {
         &seq_info.profile.fixed[&pstate]
       };
-      let dis = numerator / divisor;
+      // Guard against zero divisor: clamp to smallest positive normal f64.
+      // Matches the stabilization pattern in discrete.rs:206.
+      let safe_divisor = divisor.mapv(|v| v.max(f64::MIN_POSITIVE));
+      let dis = numerator / &safe_divisor;
       let norm = dis.sum();
-      delta_ll += norm.ln();
-      seq_dis.variable.insert(
-        pos,
-        VarPos {
-          dis: dis / norm,
-          state: pstate,
-        },
-      );
+      let dis = if norm > 0.0 && norm.is_finite() {
+        delta_ll += norm.ln();
+        dis / norm
+      } else {
+        delta_ll += f64::NEG_INFINITY;
+        Array1::from_elem(dis.len(), 1.0 / dis.len() as f64)
+      };
+      seq_dis.variable.insert(pos, VarPos { dis, state: pstate });
       seq_dis.fixed_counts.adjust_count(pstate, -1);
     }
     for (s, p) in &seq_info.profile.fixed {
-      let dis = p / &child_dis.fixed[s];
+      let safe_fixed = child_dis.fixed[s].mapv(|v| v.max(f64::MIN_POSITIVE));
+      let dis = p / &safe_fixed;
       let norm = dis.sum();
-      delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
-      seq_dis.fixed.insert(*s, dis / norm);
+      let dis = if norm > 0.0 && norm.is_finite() {
+        delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
+        dis / norm
+      } else {
+        delta_ll += f64::NEG_INFINITY;
+        Array1::from_elem(dis.len(), 1.0 / dis.len() as f64)
+      };
+      seq_dis.fixed.insert(*s, dis);
     }
     seq_dis.log_lh += delta_ll;
     let mut updated_edge_data = child_edge_data;
