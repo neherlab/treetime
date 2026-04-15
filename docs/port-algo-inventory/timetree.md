@@ -16,6 +16,17 @@ Reference: Pearl (1988). "Probabilistic Reasoning in Intelligent Systems." Morga
 
 ---
 
+## ML Branch-Length Pre-Step
+
+Before time inference, the timetree pipeline runs one pass of per-edge ML branch-length optimization to seed the belief propagation with better branch lengths than raw input values. This matches v0's `optimize_tree(max_iter=1)` calls (Sagulenko, Puller & Neher 2018, pipeline description).
+
+v1: `optimize_branch_lengths_pre_step()` in [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs), called twice: before and after rerooting.
+v0: `optimize_tree(max_iter=1)` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py) at lines 243 and 266.
+
+The pre-step reuses `run_optimize_mixed()` from the optimize command infrastructure via trait object coercion (`PartitionTimetreeAll` extends `PartitionOptimizeOps`). Uses `BrentSqrt` method (matching v0's Brent in sqrt(t) space).
+
+---
+
 ## Branch Length Distributions
 
 Computes per-edge time distributions from partition contributions, clock rate, and gamma rate multiplier. This is a TreeTime-specific transformation that converts the branch-length likelihood (from sequence data) into a time-domain distribution suitable for belief propagation.

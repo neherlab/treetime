@@ -180,6 +180,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Alphabet always maps gap to unknown profile (matching v0 `nuc_nogap` behavior)
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
+- [x] ML branch-length optimization pre-step (v0: `optimize_tree(max_iter=1)` before and after rerooting)
 - [ ] Tree inference from alignment path is `todo!`
 
 ### Time Distribution Propagation

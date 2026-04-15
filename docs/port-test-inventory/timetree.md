@@ -226,6 +226,15 @@ Contains `DatasetOutputs` struct, `OUTPUTS` lazy static, `load_dates_for_dataset
 
 Validates against v0 marginal dense golden values. Same datasets disabled as poisson plus `ebola_20`.
 
+#### ML Branch-Length Pre-Optimization
+
+**File:** `test_gm_runner_pre_optimize.rs`
+
+| Test                                                 | Cases | Datasets      | Purpose                                                |
+| ---------------------------------------------------- | ----- | ------------- | ------------------------------------------------------ |
+| `test_gm_runner_pre_optimize_changes_branch_lengths` | 1     | `flu_h3n2_20` | Verifies Brent optimization modifies at least one BL   |
+| `test_gm_runner_pre_optimize_pipeline_succeeds`      | 1     | `flu_h3n2_20` | Full pipeline with pre-step produces finite node times |
+
 #### Coalescent Integration
 
 **File:** `test_runner_coalescent.rs`
@@ -369,7 +378,7 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `coalescent/__tests__/mod.rs`               | `test_events`, `test_gm_coalescent`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline` |
 | `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                          |
-| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_support`, `test_runner_coalescent`                                |
+| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_pre_optimize`, `test_gm_runner_support`, `test_runner_coalescent` |
 | `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                |
 | `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                              |
 | `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                      |
