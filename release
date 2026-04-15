@@ -80,13 +80,10 @@ main() {
   fi
   printf "✅\n"
 
-  printf "Pre-check: up to date with origin/master... "
+  printf "Pre-check: not behind origin/master... "
   git -C "${THIS_DIR}" fetch origin --quiet
-  local local_sha remote_sha
-  local_sha=$(git -C "${THIS_DIR}" rev-parse HEAD)
-  remote_sha=$(git -C "${THIS_DIR}" rev-parse origin/master)
-  if [[ "${local_sha}" != "${remote_sha}" ]]; then
-    printf "\nLocal master is not up to date with origin/master. Push or pull first.\n" >&2
+  if ! git -C "${THIS_DIR}" merge-base --is-ancestor origin/master HEAD; then
+    printf "\nLocal master is behind or has diverged from origin/master. Pull first.\n" >&2
     exit 1
   fi
   printf "✅\n"
