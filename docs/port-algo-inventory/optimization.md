@@ -130,9 +130,9 @@ v1: Not implemented in the optimize loop. The prune command has `--prune-short` 
 
 ## Shared-Mutation Polytomy Merging
 
-Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node with `branch_length = #shared_mutations / alignment_length`. Shared mutations move to the new parent edge; remaining unique mutations stay on child edges.
+Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node whose branch length is the Jukes-Cantor 1969 correction of the pooled p-distance `#shared_mutations / alignment_length` (see [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs)). Shared mutations move to the new parent edge; remaining unique mutations stay on child edges. See [the corresponding intentional change](../port-intentional-changes/prune-merge-jukes-cantor-branch-length.md) for the rationale for correcting the raw ratio specified in `docs/algorithms/optimize.md`.
 
-v1: [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs) `merge_shared_mutation_branches()`. Available as `--merge-shared-mutations` on the prune command. Not integrated into the optimize loop.
+v1: [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
 
 v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrain pathogen pipelines.
 
