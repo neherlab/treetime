@@ -25,6 +25,8 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 
 The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from current branch lengths at each optimization round. On the first iteration, branch lengths come from `initial_guess_mixed` which bootstraps indel-only edges to `one_mutation` (a small value). This makes the denominator artificially small and the rate estimate artificially high, biasing branches shorter on the first iteration. The bias self-corrects on subsequent iterations as branch lengths converge.
 
+**Update**: investigation of [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) confirmed that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat\mu \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat\mu$ proportionally across all edges. Proposed fix: compute $\hat\mu$ once before the loop and cache it. See [optimize-convergence-and-robustness](../port-proposals/optimize-convergence-and-robustness.md) P6.
+
 ## Double-counting caveat
 
 The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_indel_count()` across all partitions. When dense and sparse partitions represent the same alignment, this produces the correct count only if one partition type has zero indels. Currently, Fitch reconstruction populates indels on sparse partitions only. If indel detection is added for dense partitions, partition-aware deduplication is needed to avoid doubling the count and the Poisson curvature.

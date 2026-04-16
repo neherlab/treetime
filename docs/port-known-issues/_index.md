@@ -74,6 +74,7 @@ exactly.
 | Low        | GTR          | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                       |
 | Low        | GTR          | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                      |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)           |
+| Medium     | Optimize     | [Optimize outer loop enters persistent likelihood 2-cycle (sparse)](M-optimize-sparse-em-2-cycle.md)                                  |
 | Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)              |
 | Medium     | Timetree     | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                         |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)          |

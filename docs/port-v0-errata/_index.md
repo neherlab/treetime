@@ -20,8 +20,9 @@ Evidence standard (at least two):
 
 ## Summary
 
-| Domain     | Erratum                                                                                       | v0 impact                                   | v1 status |
-| ---------- | --------------------------------------------------------------------------------------------- | ------------------------------------------- | --------- |
-| GTR        | [TN93 model ignores kappa parameters](tn93-alphabet-mismatch.md)                              | TN93 behaves as JC69                        | Correct   |
-| Confidence | [date_uncertainty_due_to_rate default interval typo](confidence-interval-default-typo.md)     | Dead code path (callers pass explicit args) | Correct   |
-| Coalescent | [total_LH uses fixed multiplicity=2 for all edges](coalescent-total-lh-fixed-multiplicity.md) | Tc optimization wrong for polytomies        | Correct   |
+| Domain     | Erratum                                                                                       | v0 impact                                                  | v1 status |
+| ---------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------- |
+| GTR        | [TN93 model ignores kappa parameters](tn93-alphabet-mismatch.md)                              | TN93 behaves as JC69                                       | Correct   |
+| Confidence | [date_uncertainty_due_to_rate default interval typo](confidence-interval-default-typo.md)     | Dead code path (callers pass explicit args)                | Correct   |
+| Coalescent | [total_LH uses fixed multiplicity=2 for all edges](coalescent-total-lh-fixed-multiplicity.md) | Tc optimization wrong for polytomies                       | Correct   |
+| Optimize   | [optimize_tree_marginal uses signed convergence check](optimize-signed-convergence-check.md)  | Conflates convergence with failure (dead path in practice) | Improved  |
