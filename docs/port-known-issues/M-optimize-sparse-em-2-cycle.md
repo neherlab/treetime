@@ -115,6 +115,19 @@ Build current `dev` and run the reproduction command. Verify: likelihood 2-cycle
 - **Revert-on-decrease**: unit test verifying branch lengths are restored to previous iteration when likelihood decreases.
 - **Convergence on indel-free dataset**: flu/h3n2/20 converges within 10 iterations.
 
+## v1 status
+
+**Fixed.** All four changes implemented:
+
+1. `estimate_indel_rate` restored in `initial_guess_mixed()` [packages/treetime/src/commands/optimize/optimize_unified.rs#L718](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L718)
+2. Three-condition convergence check (`ConvergenceReason::Converged`, `Oscillating`, `Worsened`) in `run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L260](../../packages/treetime/src/commands/optimize/run.rs#L260)
+3. `DAMPING_FLOOR = 0.01` in `apply_damping()` [packages/treetime/src/commands/optimize/run.rs#L383](../../packages/treetime/src/commands/optimize/run.rs#L383)
+4. Defaults aligned with v0: `max_iter=10`, `dp=0.1` [packages/treetime/src/commands/optimize/args.rs#L129-L134](../../packages/treetime/src/commands/optimize/args.rs#L129-L134)
+
+Diagnostic `eprintln!` blocks were already absent at implementation time.
+
+Verified on sc2/2844 (the original reproduction dataset, sparse JC69, converges within 50 iterations), flu/h3n2/20 (sparse JC69, converges within 10 iterations), and the toy tree test suite (10 unit tests covering all three conditions, damping floor, and branch length revert).
+
 ## Related
 
 - [M-optimize-gm-per-branch-divergence](M-optimize-gm-per-branch-divergence.md) -- per-branch v0 parity; non-convergence may contribute

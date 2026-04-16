@@ -3,6 +3,7 @@ mod test_coefficient_extraction_dense;
 mod test_coefficient_extraction_sparse;
 pub mod test_convergence;
 mod test_convergence_conditions;
+mod test_convergence_sc2;
 mod test_damping;
 mod test_dense_edge_subs;
 mod test_dense_sparse_equivalence;

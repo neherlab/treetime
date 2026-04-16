@@ -5,8 +5,7 @@ mod tests {
   };
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::run::{
-    ConvergenceReason, DAMPING_FLOOR, apply_damping, restore_branch_lengths, run_optimize_loop,
-    save_branch_lengths,
+    ConvergenceReason, DAMPING_FLOOR, apply_damping, restore_branch_lengths, run_optimize_loop, save_branch_lengths,
   };
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
@@ -231,7 +230,10 @@ mod tests {
     )?;
 
     assert_eq!(result.lh_history.len(), 2);
-    assert!(result.stopped_at.is_none(), "Should exhaust max_iter=2 without stopping");
+    assert!(
+      result.stopped_at.is_none(),
+      "Should exhaust max_iter=2 without stopping"
+    );
     Ok(())
   }
 

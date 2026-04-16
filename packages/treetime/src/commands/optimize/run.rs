@@ -336,10 +336,7 @@ pub fn run_optimize_loop(
     lh_prev = total_lh;
   }
 
-  Ok(OptimizeLoopResult {
-    lh_history,
-    stopped_at,
-  })
+  Ok(OptimizeLoopResult { lh_history, stopped_at })
 }
 
 /// Why the optimization loop stopped early (before exhausting `max_iter`).
