@@ -104,6 +104,49 @@ References:
 
 ---
 
+## Three-Condition Convergence Check
+
+The optimize outer loop uses three orthogonal stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)), where $\mathrm{LH}_i$ is the log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold:
+
+- **Converged**: $|\mathrm{LH}_i - \mathrm{LH}_{i-1}| < \mathit{dp}$ (standard monotone convergence)
+- **Oscillating**: $|\mathrm{LH}_i - \mathrm{LH}_{i-2}| < \mathit{dp}$ (detects 2-cycles from the sparse variable/fixed reclassification; requires $i \ge 2$)
+- **Worsened**: $\mathrm{LH}_i < \text{best\_LH}$ (restores branch lengths from the best-observed state and stops; analogous to IQ-TREE's per-round monotonicity check)
+
+The damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. A NaN/Inf guard breaks immediately on numerical instability.
+
+v1 defaults: `max_iter=10`, `dp=0.1`, matching v0's `optimize_tree_marginal()`.
+
+v0: uses a signed check (`deltaLH < LHtol`) which conflates convergence with worsening. See [v0 erratum](../port-v0-errata/optimize-signed-convergence-check.md).
+
+Background: the sparse representation classifies alignment positions as variable or fixed each iteration. The discrete reclassification produces a non-monotone objective, violating the EM monotone convergence guarantee (Wu 1983, https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full). See [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) for root cause analysis.
+
+References:
+
+- Minh et al. (2020). "IQ-TREE 2." Mol. Biol. Evol. 37(5):1530-1534. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7182206/ (per-round monotonicity check with rollback)
+
+---
+
+## Edge Collapse (Topology Cleanup)
+
+Canonical edge-collapse operation for zero-length or near-zero-length internal edges. Reparents children to the grandparent, updates branch lengths (summing parent and child), and cleans up stale partition entries for both sparse (sub composition) and dense representations. Shared across the optimize and prune commands.
+
+v1: `collapse_edge()` in [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs).
+
+v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
+
+---
+
+## Forward-Pass Zero-Divisor Clamping
+
+The sparse and dense forward-pass marginal divisions can produce zero divisors when a child's message assigns zero probability to all states. Clamp divisors to `f64::MIN_POSITIVE` in both paths to prevent NaN propagation. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows, matching `logsumexp_normalize` degenerate-row semantics.
+
+v1 sparse: [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs).
+v1 dense: [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs).
+
+v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
+
+---
+
 ## Zero-Length Branch Detection (Derivative Sign)
 
 Determines if zero is the optimal branch length by evaluating the sign of `d/dt log L(0)`. For independent sites with eigendecomposition-based likelihood `L_i(t) = sum_c k_{ic} exp(lambda_c t)`, the per-site derivative at zero is `(sum_c k_{ic} lambda_c) / (sum_c k_{ic})`. If the total derivative (summed over sites) is negative, the likelihood decreases as `t` increases from zero, making zero a local maximum.
@@ -160,9 +203,11 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 
 ## File Index
 
-| File                                                                                                                   | Algorithms                                                                |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                           | Newton-Raphson, Brent, grid search, likelihood eval, damping, zero-detect |
-| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                 | Shared-mutation merging, edge collapsing                                  |
-| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Greedy temporal polytomy resolution                                       |
-| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                     | Interpolation (uniform, non-uniform)                                      |
+| File                                                                                                                               | Algorithms                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
+| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                             | Shared-mutation merging                                                                |
+| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/)             | Greedy temporal polytomy resolution                                                    |
+| [`packages/treetime/src/representation/algo/topology_cleanup/`](../../packages/treetime/src/representation/algo/topology_cleanup/) | Edge collapse (shared)                                                                 |
+| [`packages/treetime/src/representation/partition/`](../../packages/treetime/src/representation/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
+| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                 | Interpolation (uniform, non-uniform)                                                   |
