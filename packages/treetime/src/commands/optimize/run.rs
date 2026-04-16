@@ -245,7 +245,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 /// Per-iteration sequence:
 ///
 /// 1. Run `update_marginal` on sparse and dense partitions; sum to a total log-likelihood.
-/// 2. Break if `|total_lh - lh_prev| < |dp|`. This also records `converged_at`.
+/// 2. Check three stopping conditions (converged, oscillating, worsened).
 /// 3. Save current branch lengths ([`save_branch_lengths`]).
 /// 4. Per-edge branch-length update ([`run_optimize_mixed`]).
 /// 5. Identify internal edges the optimizer drove to exactly zero, BEFORE damping
@@ -268,8 +268,13 @@ pub fn run_optimize_loop(
   opt_method: BranchOptMethod,
 ) -> Result<OptimizeLoopResult, Report> {
   let mut lh_history: Vec<f64> = Vec::with_capacity(max_iter);
-  let mut converged_at: Option<usize> = None;
-  let mut lh_prev = f64::MIN;
+  let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
+  let mut lh_prev = f64::NEG_INFINITY;
+  let mut lh_prev_prev = f64::NEG_INFINITY;
+
+  // Best-observed state for revert on the worsened condition.
+  let mut best_lh = f64::NEG_INFINITY;
+  let mut best_branch_lengths: Vec<f64> = Vec::new();
 
   for i in 0..max_iter {
     let sparse_lh = update_marginal(graph, sparse_partitions)?;
@@ -285,8 +290,34 @@ pub fn run_optimize_loop(
       float_to_significant_digits(dense_lh, 7)
     );
 
+    // Track best-observed state for potential revert.
+    if total_lh > best_lh {
+      best_lh = total_lh;
+      best_branch_lengths = save_branch_lengths(graph);
+    }
+
+    // Three orthogonal stopping conditions, checked in order of specificity.
+    //
+    // 1. Converged: successive likelihoods within dp (standard EM criterion).
     if (total_lh - lh_prev).abs() < dp.abs() {
-      converged_at = Some(i);
+      stopped_at = Some((i, ConvergenceReason::Converged));
+      break;
+    }
+
+    // 2. Oscillating: two-step likelihoods within dp (detects 2-cycles where
+    //    consecutive differences exceed dp but the period-2 amplitude is small).
+    //    Requires at least 2 prior measurements (i >= 2).
+    if i >= 2 && (total_lh - lh_prev_prev).abs() < dp.abs() {
+      stopped_at = Some((i, ConvergenceReason::Oscillating));
+      break;
+    }
+
+    // 3. Worsened: likelihood decreased from the best-observed value.
+    //    Revert branch lengths to the best state before returning.
+    //    Requires i >= 2 to allow the initial transient.
+    if i >= 2 && total_lh < lh_prev && lh_prev >= best_lh {
+      restore_branch_lengths(graph, &best_branch_lengths);
+      stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
     }
 
@@ -301,13 +332,28 @@ pub fn run_optimize_loop(
     // Collapse zero-optimal edges and merge shared mutations in resulting polytomies
     prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
 
+    lh_prev_prev = lh_prev;
     lh_prev = total_lh;
   }
 
   Ok(OptimizeLoopResult {
     lh_history,
-    converged_at,
+    stopped_at,
   })
+}
+
+/// Why the optimization loop stopped early (before exhausting `max_iter`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConvergenceReason {
+  /// Successive likelihoods differ by less than `dp`: $|LH_i - LH_{i-1}| < dp$.
+  Converged,
+  /// Two-step likelihoods differ by less than `dp`: $|LH_i - LH_{i-2}| < dp$.
+  /// Detects 2-cycles where consecutive differences exceed `dp` but the
+  /// period-2 amplitude is small.
+  Oscillating,
+  /// Likelihood decreased from the best observed value. Branch lengths have
+  /// been reverted to the best-observed state before returning.
+  Worsened,
 }
 
 /// Diagnostics from [`run_optimize_loop`].
@@ -320,9 +366,9 @@ pub struct OptimizeLoopResult {
   /// (including the final iteration that triggered the convergence break, if any).
   pub lh_history: Vec<f64>,
 
-  /// Iteration index (0-based) at which `|ΔLH| < |dp|` first held and the loop broke.
-  /// `None` if the loop exhausted `max_iter` without meeting the criterion.
-  pub converged_at: Option<usize>,
+  /// Iteration index (0-based) and reason the loop stopped early.
+  /// `None` if the loop exhausted `max_iter` without meeting any stopping criterion.
+  pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
 pub(crate) fn collect_optimize_partitions(
@@ -356,13 +402,46 @@ where
     .collect_vec()
 }
 
+/// Restore previously saved branch lengths to all edges in graph traversal order.
+///
+/// Inverse of [`save_branch_lengths`]. The saved vector must have been produced
+/// from the same graph (same edge count and order). Used by the worsened-condition
+/// revert in [`run_optimize_loop`].
+pub(crate) fn restore_branch_lengths<N, E, D>(graph: &Graph<N, E, D>, saved: &[f64])
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  debug_assert_eq!(
+    graph.get_edges().len(),
+    saved.len(),
+    "restore_branch_lengths: edge count changed between save and restore"
+  );
+  for (edge_ref, &bl) in izip!(graph.get_edges(), saved) {
+    edge_ref.write_arc().payload().write_arc().set_branch_length(Some(bl));
+  }
+}
+
+/// Minimum fraction of the old branch length retained at any iteration.
+///
+/// Without a floor, exponential damping $d^{i+1}$ decays to effectively zero
+/// at high iteration counts (e.g. $0.75^{20} \approx 0.003$). On datasets where
+/// the sparse variable/fixed position boundary oscillates, fully undamped late
+/// iterations amplify the discrete jump. The floor ensures at least 1% of the
+/// old value is retained, bridging the discontinuity at all iteration counts.
+pub(crate) const DAMPING_FLOOR: f64 = 0.01;
+
 /// Blend optimized branch lengths with saved old values using exponential damping.
 ///
 /// At iteration `i` (0-based), each branch length becomes:
-///   bl = bl_optimized * (1 - damping^(i+1)) + bl_old * damping^(i+1)
+///   bl = bl_optimized * (1 - damping_factor) + bl_old * damping_factor
+///
+/// where `damping_factor = max(damping^(i+1), DAMPING_FLOOR)`.
 ///
 /// When `damping == 0.0`, damping_factor = 0 and the optimized value is kept unchanged.
-/// Early iterations take conservative steps; later iterations approach the full update.
+/// Early iterations take conservative steps; later iterations approach the full update
+/// but never go below the `DAMPING_FLOOR` weight on the old value.
 pub(crate) fn apply_damping<N, E, D>(graph: &Graph<N, E, D>, old_branch_lengths: &[f64], damping: f64, iteration: usize)
 where
   N: GraphNode,
@@ -377,7 +456,7 @@ where
     old_branch_lengths.len(),
     "apply_damping: edge count changed between save and apply"
   );
-  let damping_factor = pow(damping, iteration + 1);
+  let damping_factor = pow(damping, iteration + 1).max(DAMPING_FLOOR);
   let new_weight = 1.0 - damping_factor;
   for (edge_ref, &old_bl) in izip!(graph.get_edges(), old_branch_lengths) {
     let mut edge = edge_ref.write_arc().payload().write_arc();

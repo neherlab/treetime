@@ -720,7 +720,7 @@ where
   }
 
   let one_mutation = 1.0 / total_length as f64;
-  let indel_rate = 0.0; //estimate_indel_rate(graph, partitions);
+  let indel_rate = estimate_indel_rate(graph, partitions);
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();

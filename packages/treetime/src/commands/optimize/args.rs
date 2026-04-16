@@ -126,11 +126,13 @@ pub struct TreetimeOptimizeArgs {
   pub outdir: PathBuf,
 
   /// Maximum number of iterations
-  #[clap(long, default_value_t = 20)]
+  #[clap(long, default_value_t = 10)]
   pub max_iter: usize,
 
-  /// Small allowable difference in the likelihood between iterations to determine if the loop should terminate
-  #[clap(long, default_value_t = 1e-2)]
+  /// Likelihood convergence threshold. The loop stops when successive
+  /// likelihoods differ by less than this value, or when a 2-cycle with
+  /// amplitude below this value is detected.
+  #[clap(long, default_value_t = 0.1)]
   pub dp: f64,
 
   /// Damping factor for outer-loop branch length updates.
