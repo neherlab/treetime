@@ -5,7 +5,8 @@ mod tests {
   };
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::run::{
-    ConvergenceReason, DAMPING_FLOOR, apply_damping, restore_branch_lengths, run_optimize_loop, save_branch_lengths,
+    ConvergenceReason, DAMPING_FLOOR, apply_damping, collect_optimize_partitions, restore_branch_lengths,
+    run_optimize_loop, save_branch_lengths,
   };
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
@@ -15,8 +16,6 @@ mod tests {
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
-
-  // --- Damping floor tests ---
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
   // The floor ensures the old-value weight never drops below DAMPING_FLOOR.
@@ -73,8 +72,6 @@ mod tests {
     Ok(())
   }
 
-  // --- restore_branch_lengths tests ---
-
   // Round-trip: save, modify, restore, verify identical to original.
   #[test]
   fn test_convergence_conditions_restore_branch_lengths_roundtrip() -> Result<(), Report> {
@@ -103,8 +100,6 @@ mod tests {
     }
     Ok(())
   }
-
-  // --- Convergence condition integration tests ---
 
   // The convergence check fires when successive likelihoods are within dp.
   // On a toy tree with damping, the loop should converge within a few iterations.
@@ -167,12 +162,7 @@ mod tests {
           "Trigger LH ({trigger_lh:.6}) should be less than best LH ({best_lh:.6})"
         );
       },
-      other => {
-        // On some toy trees, the undamped loop may not worsen. This is acceptable
-        // if it exhausted max_iter or stopped for another reason. The key property
-        // (worsened reverts to best) is still covered by the damping floor test.
-        panic!("Expected Worsened on undamped toy tree, got {other:?}");
-      },
+      other => panic!("Expected Worsened on undamped toy tree, got {other:?}"),
     }
     Ok(())
   }
@@ -246,8 +236,6 @@ mod tests {
     // Use the setup but only dense partitions (sparse empty)
     let (dense_partitions, _sparse_partitions, _mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    // Build dense-only mixed partitions
-    use crate::commands::optimize::run::collect_optimize_partitions;
     let empty_sparse = vec![];
     let mixed = collect_optimize_partitions(&dense_partitions, &empty_sparse);
 

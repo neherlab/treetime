@@ -18,7 +18,7 @@ mod tests {
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
-  /// This is the dataset that exhibited a persistent likelihood 2-cycle before the fix.
+  /// This dataset exhibits a persistent likelihood 2-cycle without the three-condition convergence check.
   /// The loop alternated between ~-143156 and ~-143157 from iteration ~15 onward,
   /// exhausting all max_iter iterations. With the three-condition convergence check,
   /// damping floor, restored indel rate estimation, and v0-aligned defaults, the loop

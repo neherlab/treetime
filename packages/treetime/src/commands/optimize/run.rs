@@ -290,6 +290,12 @@ pub fn run_optimize_loop(
       float_to_significant_digits(dense_lh, 7)
     );
 
+    // NaN/Inf from numerical instability silently bypasses all convergence
+    // checks (NaN < x is false for all x under IEEE 754). Break immediately.
+    if !total_lh.is_finite() {
+      break;
+    }
+
     // Track best-observed state for potential revert.
     if total_lh > best_lh {
       best_lh = total_lh;
@@ -313,10 +319,16 @@ pub fn run_optimize_loop(
     }
 
     // 3. Worsened: likelihood decreased from the best-observed value.
-    //    Revert branch lengths to the best state before returning.
+    //    Revert branch lengths to the best state and re-run marginal
+    //    reconstruction so partition posteriors are consistent with the
+    //    restored branch lengths before returning.
+    //    The `lh_prev >= best_lh` guard prevents firing during normal
+    //    non-monotone transients where the overall trend is upward.
     //    Requires i >= 2 to allow the initial transient.
     if i >= 2 && total_lh < lh_prev && lh_prev >= best_lh {
       restore_branch_lengths(graph, &best_branch_lengths);
+      update_marginal(graph, sparse_partitions)?;
+      update_marginal(graph, dense_partitions)?;
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
     }
@@ -329,8 +341,12 @@ pub fn run_optimize_loop(
 
     apply_damping(graph, &old_branch_lengths, damping, i);
 
-    // Collapse zero-optimal edges and merge shared mutations in resulting polytomies
-    prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
+    // Collapse zero-optimal edges and merge shared mutations in resulting polytomies.
+    // Topology changes invalidate the saved best_branch_lengths (edge count/order changed).
+    let topology_changed = prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
+    if topology_changed {
+      best_lh = f64::NEG_INFINITY;
+    }
 
     lh_prev_prev = lh_prev;
     lh_prev = total_lh;

@@ -186,9 +186,9 @@ mod tests {
       "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
     );
 
-    // The three-condition convergence check (converged, oscillating, worsened) handles
-    // the 2-cycle that was previously observed here. The loop now stops via the oscillating
-    // or converged condition before sign flips accumulate.
+    // The three-condition convergence check (converged, oscillating, worsened) detects
+    // the 2-cycle on this toy tree. The loop stops via the oscillating or converged
+    // condition before sign flips accumulate.
 
     Ok(())
   }

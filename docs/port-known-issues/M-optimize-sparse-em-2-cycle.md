@@ -109,7 +109,7 @@ Build current `dev` and run the reproduction command. Verify: likelihood 2-cycle
 
 ### Regression tests
 
-- **Convergence on sc2/2844**: integration test running `run_optimize_loop` (sparse, JC69, `--branch-length-initial-guess always`, max_iter=50), assert `converged_at.is_some()`.
+- **Convergence on sc2/2844**: integration test running `run_optimize_loop` (sparse, JC69, `--branch-length-initial-guess always`, max_iter=50), assert `stopped_at.is_some()`.
 - **Damping floor**: unit test verifying `apply_damping` retains nonzero old-value weight at iteration 1000.
 - **Oscillation detection**: unit test with synthetic likelihood sequence exhibiting a 2-cycle, verify the oscillation condition triggers.
 - **Revert-on-decrease**: unit test verifying branch lengths are restored to previous iteration when likelihood decreases.
