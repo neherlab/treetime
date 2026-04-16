@@ -12,6 +12,8 @@
 | Grid search                      | 3      | 8       | 1             | Unit     |
 | Dense/sparse equivalence         | 4      | 8       | 1             | Unit     |
 | Convergence control              | 3      | 8       | 1             | Unit     |
+| Convergence conditions           | 1      | 10      | 0             | Unit     |
+| Convergence on real datasets     | 1      | 2       | 0             | Unit     |
 | Optimization metrics             | 1      | 7       | 0             | Unit     |
 | Zero branch optimal              | 1      | 13      | 0             | Unit     |
 | Initial guess GTR messages       | 1      | 2       | 0             | Unit     |
@@ -24,7 +26,7 @@
 | Optimization method              | 1      | 28      | 0             | Unit     |
 | Optimization method step clamp   | 1      | 23      | 0             | Unit     |
 | Dispatch zero boundary           | 1      | 34      | 0             | Unit     |
-| **Total**                        | **36** | **219** | **5**         |          |
+| **Total**                        | **38** | **231** | **5**         |          |
 
 ---
 
@@ -413,13 +415,45 @@ Fixtures in `__fixtures__/`:
 
 Direct unit tests for the extracted `run_optimize_loop()` function, which is the in-memory core of `run_optimize()`. The related integration suites (`test_gm_optimize`, `test_damping`) exercise the same function via higher-level setup; these tests pin down the function's own contract.
 
-| Test                                                  | Purpose                                                   |
-| ----------------------------------------------------- | --------------------------------------------------------- |
-| `test_run_optimize_loop_records_lh_per_iteration`     | `lh_history` has one entry per executed iteration         |
-| `test_run_optimize_loop_breaks_on_convergence`        | Breaks and records `converged_at` when `\|ΔLH\| < \|dp\|` |
-| `test_run_optimize_loop_zero_max_iter_is_noop`        | `max_iter = 0` runs the body zero times                   |
-| `test_run_optimize_loop_all_likelihoods_finite`       | All likelihoods finite (guards against forward-pass NaN)  |
-| `test_run_optimize_loop_undamped_improves_likelihood` | Undamped coordinate-ascent variant monotonically improves |
+| Test                                              | Purpose                                                  |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| `test_run_optimize_loop_records_lh_per_iteration` | `lh_history` has one entry per executed iteration        |
+| `test_run_optimize_loop_breaks_on_convergence`    | Breaks and records `stopped_at` with `Converged`         |
+| `test_run_optimize_loop_zero_max_iter_is_noop`    | `max_iter = 0` runs the body zero times                  |
+| `test_run_optimize_loop_all_likelihoods_finite`   | All likelihoods finite (guards against forward-pass NaN) |
+| `test_run_optimize_loop_improves_likelihood`      | Damped loop improves likelihood from initial state       |
+
+---
+
+## Convergence Conditions
+
+**File:** [`test_convergence_conditions.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_conditions.rs)
+
+Tests for the three-condition convergence check, damping floor, and restore_branch_lengths. Added as part of the sparse EM 2-cycle fix (M-optimize-sparse-em-2-cycle).
+
+| Test                                                                   | Cases | Purpose                                                |
+| ---------------------------------------------------------------------- | ----- | ------------------------------------------------------ |
+| `test_convergence_conditions_damping_floor_at_high_iteration`          | 3     | DAMPING_FLOOR weight at iterations 100/500/1000        |
+| `test_convergence_conditions_damping_uses_exponential_below_crossover` | 1     | Exponential decay used below crossover (iteration 5)   |
+| `test_convergence_conditions_restore_branch_lengths_roundtrip`         | 1     | Save/modify/restore/verify identical                   |
+| `test_convergence_conditions_converged_reason`                         | 1     | Converged or Oscillating on damped toy tree            |
+| `test_convergence_conditions_worsened_reverts_to_best`                 | 1     | Worsened fires on undamped toy tree, trigger LH < best |
+| `test_convergence_conditions_oscillation_detection`                    | 1     | Early stop with large dp                               |
+| `test_convergence_conditions_exhausts_max_iter`                        | 1     | max_iter=2 exhausted without stopping                  |
+| `test_convergence_conditions_dense_only_converges`                     | 1     | Dense-only regression check                            |
+
+---
+
+## Convergence on Real Datasets
+
+**File:** [`test_convergence_sc2.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_sc2.rs)
+
+Integration tests verifying convergence on real datasets. Added as part of the sparse EM 2-cycle fix (M-optimize-sparse-em-2-cycle).
+
+| Test                                                | Purpose                                                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `test_convergence_sc2_sparse_converges_on_sc2_2844` | Regression: sc2/2844 converges (ignored: blocked by M-optimize-iterative-log-likelihood-nan) |
+| `test_convergence_sc2_flu_h3n2_20_converges`        | flu/h3n2/20 sparse convergence within 10 iterations                                          |
 
 ---
 

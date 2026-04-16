@@ -438,7 +438,10 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
 - [x] Early stop when absolute likelihood change is below `--dp`
+- [x] Oscillation detection: stop when 2-step likelihood difference is below `--dp`
+- [x] Worsened detection: stop and revert to best branch lengths when likelihood decreases from peak
 - [x] Damping in marginal loop (`--damping`, default 0.75, matching v0: `new*(1-d^i) + old*d^i`)
+- [x] Damping floor (`DAMPING_FLOOR = 0.01`) prevents fully undamped late iterations
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)

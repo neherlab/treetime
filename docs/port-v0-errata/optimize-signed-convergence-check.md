@@ -49,7 +49,7 @@ Under these conditions, $\Delta\text{LH} < 0$ does not occur in normal operation
 
 ## v1 status
 
-v1 uses `(total_lh - lh_prev).abs() < dp.abs()` at [packages/treetime/src/commands/optimize/run.rs#L288](../../packages/treetime/src/commands/optimize/run.rs#L288) in `run_optimize_loop` ([packages/treetime/src/commands/optimize/run.rs#L260](../../packages/treetime/src/commands/optimize/run.rs#L260)). This correctly tests convergence (small absolute change) but does not detect or handle likelihood decrease. The planned fix replaces this with a three-condition check: converged (small absolute change), oscillating (small 2-step change), or worsened (revert to best-observed state and stop). See [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) fix #2.
+Implemented. `run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L260](../../packages/treetime/src/commands/optimize/run.rs#L260) uses a three-condition check via `ConvergenceReason` enum: converged (small absolute change), oscillating (small 2-step change detecting 2-cycles), or worsened (revert to best-observed branch lengths and stop). See [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md).
 
 ## References
 
