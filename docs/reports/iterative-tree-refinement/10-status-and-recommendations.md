@@ -96,7 +96,7 @@ For SARS-CoV-2-scale datasets. Priority depends on target dataset scale.
 | Shared merge_shared_mutations | `L-topology-cleanup-move-merge-shared-mutations`  | Open   |
 | Stochastic resolution         | `N-timetree-stochastic-polytomy-unimplemented`    | Open   |
 | Polytomy numerical issues     | `N-timetree-polytomy-numerical-robustness`        | Open   |
-| Optimize loop extraction      | `L-optimize-loop-not-extracted`                   | Open   |
+| ~~Optimize loop extraction~~  | ~~`L-optimize-loop-not-extracted`~~               | Done   |
 
 ## References
 

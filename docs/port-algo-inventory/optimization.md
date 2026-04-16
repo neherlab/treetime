@@ -14,7 +14,7 @@ All variants fall back to a 100-point log-spaced grid search when the second der
 
 v1: [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs).
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces) selectable via `--opt-method`; `brent-sqrt` is the default and matches v0 on the success path. The Newton variants compute analytical derivatives from eigenvalue-space coefficient caching but rely on a numerically sensitive Hessian (see `M-optimize-hessian-catastrophic-cancellation.md`). See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details and [intentional change](../port-intentional-changes/optimize-newton-raphson-per-edge.md) for the per-method rationale.
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces) selectable via `--opt-method`; `brent-sqrt` is the default and matches v0 on the success path. The Newton variants compute analytical derivatives from eigenvalue-space coefficient caching. The Hessian (posterior variance of eigenvalues) uses the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$ to avoid catastrophic cancellation in the two-moment form. See [feature inventory](../port-feature-inventory/_index.md#7-branch-length-optimization) for parity details and [intentional change](../port-intentional-changes/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
 References:
 

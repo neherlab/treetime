@@ -28,7 +28,7 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 ### Newton methods (analytical derivatives)
 
-The substitution Hessian is computed as the eigenvalue variance $E[\lambda^2] - E[\lambda]^2$, which loses precision via catastrophic cancellation when both terms are large and close. Affects all three Newton variants; tracked in `M-optimize-hessian-catastrophic-cancellation.md`.
+The substitution Hessian (posterior variance of eigenvalues) is computed in the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$, which avoids the catastrophic cancellation of the two-moment form $E[\lambda^2] - E[\lambda]^2$ when the posterior is tightly peaked.
 
 4. **`newton`.** Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. Baseline matching RAxML-NG/IQ-TREE. The Poisson indel Hessian ($-k/t^2$) can dominate on short branches with indels.
 

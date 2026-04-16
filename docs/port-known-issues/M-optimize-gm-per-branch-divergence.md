@@ -66,7 +66,7 @@ compromise but introduces a new threshold parameter.
 
 - `docs/port-intentional-changes/command-prune-standalone.md` (v1 prune as
   a standalone command, not in the optimize loop)
-- `docs/port-known-issues/L-optimize-prune-duplicate-collapse.md`
+- [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs) (shared `collapse_edge()`)
 - `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`
   and `prune_and_merge_in_loop`
 - `packages/legacy/treetime/treetime/treeanc.py` `prune_short_branches` (line 1475)
