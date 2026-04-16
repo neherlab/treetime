@@ -74,4 +74,4 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 35. Varadhan, R., and C. Roland. 2008. "Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm." _Scand. J. Stat._ 35(2):335-353. https://doi.org/10.1111/j.1467-9469.2007.00585.x
 
-36. Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://doi.org/10.1214/aos/1176346060
+36. Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full (DOI: https://doi.org/10.1214/aos/1176346060)

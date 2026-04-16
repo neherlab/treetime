@@ -145,7 +145,7 @@ The **resolution threshold** (0.05 for polytomy resolution) and the **pruning cr
 ## References
 
 - Dempster, A. P., N. M. Laird, and D. B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _JRSS:B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x
-- Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://doi.org/10.1214/aos/1176346060
+- Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full (DOI: https://doi.org/10.1214/aos/1176346060)
 - Meng, X.-L., and D. B. Rubin. 1993. "Maximum Likelihood Estimation via the ECM Algorithm." _Biometrika_ 80(2):267-278. https://doi.org/10.1093/biomet/80.2.267
 - Young, D. M. 1954. "Iterative Methods for Solving Partial Difference Equations." _Trans. Amer. Math. Soc._ 76(1):92-111. https://doi.org/10.1090/S0002-9947-1954-0059635-7
 - Tseng, P. 2001. "Convergence of a Block Coordinate Descent Method." _J. Optim. Theory Appl._ 109(3):475-494. https://doi.org/10.1023/A:1017501703105

@@ -11,7 +11,7 @@ The phylogenetic likelihood has ancestral states at internal nodes as latent var
 - **E-step**: compute posterior distribution of ancestral states (marginal reconstruction via backward + forward pruning pass)
 - **M-step**: update branch lengths given expected sufficient statistics (per-edge optimization)
 
-<a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)] established the EM algorithm with monotone likelihood increase guarantee. <a id="cite-2"></a>[Wu 1983](https://doi.org/10.1214/aos/1176346060) [[2](#ref-2)] corrected convergence proofs and extended beyond exponential families.
+<a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)] established the EM algorithm with monotone likelihood increase guarantee. <a id="cite-2"></a>[Wu 1983](https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full) [[2](#ref-2)] corrected convergence proofs and extended beyond exponential families.
 
 <a id="cite-3"></a>[Meng and Rubin 1993](https://doi.org/10.1093/biomet/80.2.267) [[3](#ref-3)] introduced ECM (Expectation-Conditional Maximization): replacing the single M-step with sequential conditional maximizations while preserving monotone convergence. TreeTime's alternating reconstruction + branch optimization + damping follows this ECM pattern.
 
@@ -54,7 +54,7 @@ Whether these would accelerate TreeTime's outer loop is unknown. The primary bot
 ## References
 
 1. <a id="ref-1"></a> Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _JRSS:B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-1)
-2. <a id="ref-2"></a> Wu, C. F. Jeff. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://doi.org/10.1214/aos/1176346060 [↩](#cite-2)
+2. <a id="ref-2"></a> Wu, C. F. Jeff. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full (DOI: https://doi.org/10.1214/aos/1176346060) [↩](#cite-2)
 3. <a id="ref-3"></a> Meng, Xiao-Li, and Donald B. Rubin. 1993. "Maximum Likelihood Estimation via the ECM Algorithm: A General Framework." _Biometrika_ 80(2):267-278. https://doi.org/10.1093/biomet/80.2.267 [↩](#cite-3)
 4. <a id="ref-4"></a> Meng, Xiao-Li, and Donald B. Rubin. 1994. "On the Global and Componentwise Rates of Convergence of the EM Algorithm." _Lin. Alg. Appl._ 199:413-425. https://doi.org/10.1016/0024-3795(94)90363-8 [↩](#cite-4)
 5. <a id="ref-5"></a> Sullivan, Jack, Zaid Abdo, Peter Joyce, and David L. Swofford. 2005. "Evaluating the Performance of a Successive-Approximations Approach to Parameter Optimization in Maximum-Likelihood Phylogeny Estimation." _Mol. Biol. Evol._ 22(6):1386-1392. https://doi.org/10.1080/10635150590905966 [↩](#cite-5)

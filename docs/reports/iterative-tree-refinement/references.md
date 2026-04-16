@@ -80,7 +80,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 38. Minin, V. N., E. Bloomquist, and M. A. Suchard. 2008. "Smooth Skyride through a Rough Skyline: Bayesian Coalescent-Based Inference of Population Dynamics." _Mol. Biol. Evol._ 25(7):1459-1471. https://doi.org/10.1093/molbev/msn090
 
-39. Minh, B. Q., H. A. Schmidt, O. Chernomor, D. Schrempf, M. D. Woodhams, A. von Haeseler, and R. Lanfear. 2020. "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." _Mol. Biol. Evol._ 37(5):1530-1534. https://doi.org/10.1093/molbev/msaa015
+39. Minh, B. Q., H. A. Schmidt, O. Chernomor, D. Schrempf, M. D. Woodhams, A. von Haeseler, and R. Lanfear. 2020. "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." _Mol. Biol. Evol._ 37(5):1530-1534. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7182206/ (DOI: https://doi.org/10.1093/molbev/msaa015)
 
 40. Neher, R. A., and O. Hallatschek. 2013. "Genealogies of Rapidly Adapting Populations." _Proc. Natl. Acad. Sci. USA_ 110(2):437-442. https://doi.org/10.1073/pnas.1213113110
 
@@ -136,7 +136,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 66. Wright, S. J. 2015. "Coordinate Descent Algorithms." _Math. Program._ 151(1):3-34. https://doi.org/10.1007/s10107-015-0892-3
 
-67. Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://doi.org/10.1214/aos/1176346060
+67. Wu, C. F. J. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full (DOI: https://doi.org/10.1214/aos/1176346060)
 
 68. Yang, Z. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites." _J. Mol. Evol._ 39:306-314. https://doi.org/10.1007/BF00160154
 
