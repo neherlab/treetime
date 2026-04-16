@@ -9,7 +9,7 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 | Args                                          | flu/h3n2/20 | flu/h3n2/200 | flu/h3n2/500 | ebola/20 | zika/20 | rsv/a/20 | tb/20 | dengue/500 | lassa/L/20 | mpox/clade-ii/20 |
 | --------------------------------------------- | ----------- | ------------ | ------------ | -------- | ------- | -------- | ----- | ---------- | ---------- | ---------------- |
 | (default)                                     | OK          | OK           | OK           | OK       | OK      | OK       | OK    | OK         | OK         | OK               |
-| `--coalescent=10`                             | OK          | OK           | -            | OK       | OK      | -        | -     | -          | -          | -                |
+| `--coalescent=10`                             | OK          | OK           | -            | OK       | HANG    | -        | -     | -          | -          | -                |
 | `--coalescent=0.1`                            | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
 | `--coalescent=1000`                           | OK          | -            | -            | -        | -       | -        | -     | -          | -          | -                |
 | `--coalescent-skyline`                        | OK          | OK           | -            | OK       | -       | -        | -     | -          | -          | -                |
@@ -47,10 +47,11 @@ Rows are exact CLI args added to base command. Empty row = default (no extra arg
 
 ### Issue references
 
-| ID      | Issue file                                                                                  |
-| ------- | ------------------------------------------------------------------------------------------- |
-| conf    | Confidence interval related flags (`--confidence`, `--clock-std-dev`)                       |
-| neg-err | Proper error on negative clock rate (data lacks temporal signal)                            |
+| ID      | Issue file                                                                         |
+| ------- | ---------------------------------------------------------------------------------- |
+| conf    | Confidence interval related flags (`--confidence`, `--clock-std-dev`)              |
+| neg-err | Proper error on negative clock rate (data lacks temporal signal)                   |
+| HANG    | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md) |
 
 ## Base Command
 

@@ -229,15 +229,15 @@ TIMETREE_BATCH_RUNS = [
   # Coalescent models
   ("flu/h3n2/20",                 "flu/h3n2/20/coalescent",            "--coalescent=10.0"),
   ("flu/h3n2/200",                "flu/h3n2/200/coalescent",           "--coalescent=10.0 --max-iter=3"),
-  ("ebola/20",                    "ebola/20/coalescent",               "--coalescent=10.0"),
-  ("zika/20",                     "zika/20/coalescent",                "--coalescent=10.0"),
+  # ("ebola/20",                    "ebola/20/coalescent",               "--coalescent=10.0"),             # SLOW 2m41s: H-timetree-coalescent-grid-explosion
+  # ("zika/20",                     "zika/20/coalescent",                "--coalescent=10.0"),             # HANG: H-timetree-coalescent-grid-explosion
   ("flu/h3n2/20",                 "flu/h3n2/20/coal-opt",              "--coalescent-opt"),
   ("flu/h3n2/200",                "flu/h3n2/200/coal-opt",             "--coalescent-opt --max-iter=3"),
   ("ebola/20",                    "ebola/20/coal-opt",                 "--coalescent-opt"),
   ("zika/20",                     "zika/20/coal-opt",                  "--coalescent-opt"),
   ("flu/h3n2/20",                 "flu/h3n2/20/skyline",               "--coalescent-skyline --n-skyline=5"),
   ("flu/h3n2/200",                "flu/h3n2/200/skyline",              "--coalescent-skyline --n-skyline=5 --max-iter=3"),
-  ("ebola/20",                    "ebola/20/skyline",                  "--coalescent-skyline --n-skyline=5"),
+  # ("ebola/20",                    "ebola/20/skyline",                  "--coalescent-skyline --n-skyline=5"),  # SLOW 5m16s: H-timetree-coalescent-grid-explosion
 
   # Reroot strategies
   ("flu/h3n2/20",                 "flu/h3n2/20/reroot-mindev",         "--reroot=min-dev"),

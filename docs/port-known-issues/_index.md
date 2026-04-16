@@ -54,6 +54,7 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                                 |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                    |
 | Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                                    |
 | Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                                     |
 | Negligible | Clock        | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                              |
