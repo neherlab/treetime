@@ -56,7 +56,7 @@ Two factors worsen the 2-cycle but do not cause it:
 
 Run B converges because overestimated initial branch lengths force slow descent through damped iterations. By the time the optimizer nears the optimum, damping is still ~1.3% ($0.75^{15}$), bridging the discrete jump.
 
-**Unjustified v1 default mismatch.** v0 uses `max_iter=10` and `LHtol=0.1` in `optimize_tree_marginal()` (`#optimize_tree_marginal`) [packages/legacy/treetime/treetime/treeanc.py#L1297-L1298](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1298). v1 uses `max_iter=20` and `dp=0.01` [packages/treetime/src/commands/optimize/args.rs#L129-L134](../../packages/treetime/src/commands/optimize/args.rs#L129-L134). No documented reason for the divergence. v1's tighter threshold and higher iteration count push the loop into the undamped regime.
+**Unjustified v1 default mismatch (fixed).** v0 uses `max_iter=10` and `LHtol=0.1` in `optimize_tree_marginal()` (`#optimize_tree_marginal`) [packages/legacy/treetime/treetime/treeanc.py#L1297-L1298](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1298). v1 originally used `max_iter=20` and `dp=0.01` with no documented reason for the divergence. The tighter threshold and higher iteration count pushed the loop into the undamped regime. v1 now matches v0: `max_iter=10`, `dp=0.1`.
 
 Note: v0's convergence check is signed (`deltaLH < LHtol`), accepting any likelihood decrease as convergence. v1 uses absolute value. The signed check masks non-convergence as an accidental side effect. See [optimize-signed-convergence-check](../port-v0-errata/optimize-signed-convergence-check.md) for the erratum.
 
@@ -131,7 +131,6 @@ Verified on sc2/2844 (the original reproduction dataset, sparse JC69, converges 
 ## Related
 
 - [M-optimize-gm-per-branch-divergence](M-optimize-gm-per-branch-divergence.md) -- per-branch v0 parity; non-convergence may contribute
-- [M-optimize-iterative-log-likelihood-nan](M-optimize-iterative-log-likelihood-nan.md) -- NaN on larger datasets; sparse forward-pass instability
 - [M-gtr-sparse-composition-stale-after-marginal](M-gtr-sparse-composition-stale-after-marginal.md) -- stale Fitch composition in GTR inference
 - [optimize-signed-convergence-check](../port-v0-errata/optimize-signed-convergence-check.md) -- v0 erratum: signed convergence check conflates convergence with failure
 - [optimize-convergence-and-robustness](../port-proposals/optimize-convergence-and-robustness.md) -- proposal for deeper architectural improvements (variable-set stabilization, evaluator fixes, convergence acceleration)

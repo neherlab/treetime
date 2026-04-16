@@ -23,8 +23,8 @@ v1 adds a dedicated `treetime optimize` subcommand ([packages/treetime/src/comma
 | `--model`    | `infer`    | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
 | `--alphabet` | auto       | Nucleotide or amino acid alphabet                          |
 | `--dense`    | auto       | Force dense sequence representation                        |
-| `--max-iter` | 20         | Maximum outer iterations                                   |
-| `--dp`       | 0.01       | Convergence tolerance (log-likelihood delta)               |
+| `--max-iter` | 10         | Maximum outer iterations                                   |
+| `--dp`       | 0.1        | Convergence tolerance (log-likelihood delta)               |
 | `--outdir`   | (required) | Output directory                                           |
 
 ### Algorithm

@@ -15,7 +15,7 @@ mod tests {
   // never fire, but the worsened check may stop the loop early once the
   // likelihood begins to decrease.
   #[test]
-  fn test_run_optimize_loop_records_lh_per_iteration() -> Result<(), Report> {
+  fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;

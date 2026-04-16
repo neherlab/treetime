@@ -139,10 +139,12 @@ pub struct TreetimeOptimizeArgs {
   ///
   /// Controls how aggressively new branch lengths replace old ones during
   /// iterative optimization. At each iteration i, the update is:
-  ///   bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)
+  ///   bl = bl_new * (1 - d) + bl_old * d
+  /// where d = max(damping^(i+1), 0.01). The 1% floor prevents fully
+  /// undamped late iterations on non-monotone objectives.
   ///
   /// Higher values are more conservative (slower convergence, less oscillation).
-  /// Set to 0.0 to disable damping (full Newton update each iteration).
+  /// Set to 0.0 to disable damping (full update each iteration, no floor).
   /// Must be in [0.0, 1.0).
   #[clap(long, default_value_t = 0.75)]
   pub damping: f64,

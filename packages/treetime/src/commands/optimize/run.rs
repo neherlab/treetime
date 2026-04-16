@@ -291,8 +291,10 @@ pub fn run_optimize_loop(
     );
 
     // NaN/Inf from numerical instability silently bypasses all convergence
-    // checks (NaN < x is false for all x under IEEE 754). Break immediately.
+    // checks (NaN < x is false for all x under IEEE 754). Record the failure
+    // so callers can distinguish numerical breakdown from normal termination.
     if !total_lh.is_finite() {
+      stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
     }
 
@@ -367,6 +369,9 @@ pub enum ConvergenceReason {
   /// Likelihood decreased from the best observed value. Branch lengths have
   /// been reverted to the best-observed state before returning.
   Worsened,
+  /// Log-likelihood became NaN or infinite, indicating numerical instability
+  /// in the marginal reconstruction. Branch lengths reflect the last finite state.
+  NumericalFailure,
 }
 
 /// Diagnostics from [`run_optimize_loop`].

@@ -450,10 +450,10 @@ Tests for the three-condition convergence check, damping floor, and restore_bran
 
 Integration tests verifying convergence on real datasets. Added as part of the sparse EM 2-cycle fix (M-optimize-sparse-em-2-cycle).
 
-| Test                                                | Purpose                                                                                      |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `test_convergence_sc2_sparse_converges_on_sc2_2844` | Regression: sc2/2844 converges (ignored: blocked by M-optimize-iterative-log-likelihood-nan) |
-| `test_convergence_sc2_flu_h3n2_20_converges`        | flu/h3n2/20 sparse convergence within 10 iterations                                          |
+| Test                                                | Purpose                                              |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `test_convergence_sc2_sparse_converges_on_sc2_2844` | Regression: sc2/2844 sparse convergence (slow, ~60s) |
+| `test_convergence_sc2_flu_h3n2_20_converges`        | flu/h3n2/20 sparse convergence within 10 iterations  |
 
 ---
 

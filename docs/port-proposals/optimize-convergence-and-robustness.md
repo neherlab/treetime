@@ -200,7 +200,7 @@ The optimizer convergence work progressed through three phases:
 
 1. **Initial convergence fixes**: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping was initially considered sufficient.
 
-2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 ([M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults (`max_iter=20`, `dp=0.01`) diverge from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason. Peer review identified that v0's signed convergence check is a defect (see [errata](../port-v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
+2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 ([M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../port-v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 
 3. **Immediate fix** ([M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
 
@@ -208,7 +208,6 @@ The optimizer convergence work progressed through three phases:
 
 - [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) -- the immediate bug fix
 - [M-optimize-gm-per-branch-divergence](../port-known-issues/M-optimize-gm-per-branch-divergence.md) -- per-branch v0 parity
-- [M-optimize-iterative-log-likelihood-nan](../port-known-issues/M-optimize-iterative-log-likelihood-nan.md) -- NaN in sparse forward pass
 - [M-gtr-sparse-composition-stale-after-marginal](../port-known-issues/M-gtr-sparse-composition-stale-after-marginal.md) -- stale Fitch composition
 - [optimize-signed-convergence-check](../port-v0-errata/optimize-signed-convergence-check.md) -- v0 erratum: signed convergence check
 - [optimize-indel-model-alternatives](optimize-indel-model-alternatives.md) -- alternative indel models (orthogonal)
