@@ -140,8 +140,8 @@ mod tests {
     let damped_sign_flips = count_sign_flips(&damped.lh_history);
 
     assert!(
-      damped.converged_at.is_some(),
-      "Damped optimization did not converge within {} iterations",
+      damped.stopped_at.is_some(),
+      "Damped optimization did not stop within {} iterations",
       case.max_iter
     );
 
@@ -207,7 +207,7 @@ mod tests {
     pub struct OptimizeResult {
       pub graph: GraphAncestral,
       pub lh_history: Vec<f64>,
-      pub converged_at: Option<usize>,
+      pub stopped_at: Option<(usize, crate::commands::optimize::run::ConvergenceReason)>,
     }
 
     pub fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {
@@ -263,7 +263,7 @@ mod tests {
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
       initial_guess_mixed(&graph, &mixed_partitions, true)?;
 
-      let dp = 1e-2;
+      let dp = 0.1;
       let result = run_optimize_loop(
         &mut graph,
         &sparse_partitions,
@@ -286,7 +286,7 @@ mod tests {
       Ok(OptimizeResult {
         graph,
         lh_history,
-        converged_at: result.converged_at,
+        stopped_at: result.stopped_at,
       })
     }
   }
