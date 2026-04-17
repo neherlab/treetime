@@ -75,8 +75,20 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 
 ## Related
 
+### Known issues
+
+- [M-io-sequence-name-matching-unreliable](../port-known-issues/M-io-sequence-name-matching-unreliable.md) -- config file could include explicit name mappings
+- [M-io-sequence-attachment-quadratic](../port-known-issues/M-io-sequence-attachment-quadratic.md) -- name index would improve attachment performance
+- [N-io-large-dataset-memory-constraint](../port-known-issues/N-io-large-dataset-memory-constraint.md) -- config could specify lazy loading options
 - [N-optimize-multi-alignment-input](../port-known-issues/N-optimize-multi-alignment-input.md) -- optimize accepts only a single alignment
 - [N-io-multi-segment-genome-input](../port-known-issues/N-io-multi-segment-genome-input.md) -- multi-segment genome input not wired
+
+### Proposals
+
+- [unified-input-format-support](unified-input-format-support.md) -- alternative input path via Auspice/MAT/PhyloXML
+
+### Design documents
+
 - [docs/algorithms/sequence_evolution.md](../algorithms/sequence_evolution.md) -- source: "For flu, genomes come in segments"
 - [docs/algorithms/optimize.md](../algorithms/optimize.md) -- source: "we might need a config file format"
 

@@ -14,3 +14,16 @@ The optimize command takes one `--aln` argument. The design document (`docs/algo
 ## Workaround
 
 Concatenate alignments before running optimize (loses per-partition model control).
+
+## Related
+
+### Known issues
+
+- [M-io-sequence-name-matching-unreliable](M-io-sequence-name-matching-unreliable.md) -- name matching affects multi-alignment attachment
+- [M-io-sequence-attachment-quadratic](M-io-sequence-attachment-quadratic.md) -- attachment performance with multiple alignments
+- [N-io-multi-segment-genome-input](N-io-multi-segment-genome-input.md) -- related multi-input limitation
+
+### Proposals
+
+- [config-file-multi-partition](../port-proposals/config-file-multi-partition.md) -- configuration file format for multiple alignments
+- [unified-input-format-support](../port-proposals/unified-input-format-support.md) -- alternative input via formats with embedded sequences
