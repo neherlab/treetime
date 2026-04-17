@@ -37,14 +37,11 @@ where
 
   // assign divergence to each node
   graph.par_iter_breadth_first_forward(|mut node| {
-    let div = node
-      .get_exactly_one_parent()
-      .map(|(parent, edge)| {
-        let branch_length = edge.read_arc().branch_length().unwrap_or_default();
-        let parent_div = parent.read_arc().div();
-        parent_div + branch_length
-      })
-      .unwrap_or(0.0);
+    let div = node.get_exactly_one_parent().map_or(0.0, |(parent, edge)| {
+      let branch_length = edge.read_arc().branch_length().unwrap_or_default();
+      let parent_div = parent.read_arc().div();
+      parent_div + branch_length
+    });
     node.payload.set_div(div);
     GraphTraversalContinuation::Continue
   });

@@ -155,7 +155,7 @@ impl BitSet128 {
   }
 
   pub fn last(&self) -> Option<AsciiChar> {
-    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked((127 - self.bits.leading_zeros()) as u8))
+    (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.ilog2() as u8))
   }
 
   pub fn get_one_maybe(&self) -> Option<AsciiChar> {

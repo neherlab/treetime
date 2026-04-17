@@ -49,7 +49,7 @@ impl ValidationConsole {
   pub fn print_header(test_cases_count: usize, algorithms_count: usize) {
     let total_tests = test_cases_count * algorithms_count;
     println!("## Execution\n");
-    println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n",);
+    println!("Running {test_cases_count} test cases with {algorithms_count} algorithms ({total_tests} total)\n");
   }
 
   /// Print progress table header

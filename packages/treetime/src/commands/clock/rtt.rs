@@ -30,14 +30,11 @@ pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockMo
   let divs = SkipMap::new();
 
   graph.par_iter_breadth_first_forward(|node| {
-    let div = node
-      .get_exactly_one_parent()
-      .map(|(parent, edge)| {
-        let branch_length = edge.read_arc().branch_length().unwrap_or_default();
-        let parent_div = parent.read_arc().div;
-        parent_div + branch_length
-      })
-      .unwrap_or(0.0);
+    let div = node.get_exactly_one_parent().map_or(0.0, |(parent, edge)| {
+      let branch_length = edge.read_arc().branch_length().unwrap_or_default();
+      let parent_div = parent.read_arc().div;
+      parent_div + branch_length
+    });
 
     let is_leaf = node.is_leaf;
 
