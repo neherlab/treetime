@@ -8,6 +8,7 @@ use ndarray::{Array1, Array2, ArrayView1};
 use std::collections::BTreeMap;
 use std::iter::zip;
 use treetime_primitives::AsciiChar;
+use treetime_utils::array::ndarray::{is_max_above, max_or};
 use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;
@@ -65,8 +66,7 @@ pub fn combine_messages(
       *count -= 1.0;
     }
 
-    let max_prob = dis.iter().copied().fold(0.0_f64, f64::max);
-    if max_prob < (1.0 - EPS) || !all_states_equal {
+    if !is_site_resolved(&dis, EPS) || !all_states_equal {
       seq_dis.fixed_counts.adjust_count(state, -1);
       seq_dis.variable.insert(pos, VarPos { dis, state });
     }
@@ -86,25 +86,33 @@ pub fn combine_messages(
   Ok(seq_dis)
 }
 
-/// Normalize a log-probability vector using the logsumexp trick.
+/// Fused LSE + softmax: returns `(softmax(x), LSE(x))` from unnormalized log-probabilities.
 ///
-/// Subtracts the maximum log-value before exponentiating to prevent underflow
-/// when combining many small probabilities. Returns the normalized probability
-/// vector and log(sum(exp(log_vec))).
+/// Naive `exp()` of log-probabilities overflows or underflows for large magnitudes.
+/// The LSE shift (`exp(x - max)`) keeps all exponents in a safe range. LSE and
+/// softmax share the intermediate `exp(x - max)` in a single fused pass. Direct
+/// division `exp(x - max) / sum` preserves tighter sum-to-one than the decomposed
+/// `exp(x - LSE(x))` form, which would introduce an extra `ln` to `exp` round-trip.
 ///
-/// When all entries are -inf (all states have zero probability), returns a
-/// uniform distribution with log_norm = NEG_INFINITY.
+/// Degenerate input (all -inf): returns uniform distribution, LSE = -inf.
 pub fn logsumexp_normalize(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64) {
-  let max_val = log_vec.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+  // LSE shift constant: subtract max before exp to prevent overflow
+  let max_val = max_or(&log_vec, f64::NEG_INFINITY);
 
+  // All states have zero probability: fall back to uniform
   if !max_val.is_finite() {
     let n = log_vec.len();
     return (Array1::from_elem(n, 1.0 / n as f64), f64::NEG_INFINITY);
   }
 
+  // Shared intermediate: exp(x - max) used by both LSE and softmax
   let shifted = log_vec.mapv(|v| (v - max_val).exp());
   let shifted_sum = shifted.sum();
+
+  // LSE(x) = max + ln(sum(exp(x - max)))
   let log_norm = max_val + shifted_sum.ln();
+
+  // softmax(x) = exp(x - max) / sum(exp(x - max))
   let normalized = shifted / shifted_sum;
 
   (normalized, log_norm)
@@ -212,6 +220,12 @@ pub fn propagate_raw_per_site(
   }
 
   message
+}
+
+/// Whether a posterior is dominated by a single state (peak probability >= 1 - epsilon),
+/// meaning the site can be demoted from variable to fixed in the sparse representation.
+fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
+  is_max_above(dis, 1.0 - epsilon)
 }
 
 #[cfg(test)]

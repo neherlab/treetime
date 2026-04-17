@@ -1,7 +1,7 @@
 use crate::commands::mugration::discrete_marginal::{discrete_marginal_backward, run_discrete_marginal};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative};
 use crate::gtr::infer_gtr::dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
 use crate::make_report;
 use crate::representation::partition::discrete::PartitionDiscrete;
@@ -136,9 +136,7 @@ where
   let root_key = root.read_arc().key();
   let root_profile = &partition.nodes[&root_key].profile;
   let mut root_state = Array1::zeros(n_states);
-  let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
-  let max_prob = root_profile.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  if max_prob > uniform_threshold {
+  if is_profile_informative(&root_profile.view(), n_states) {
     if let Some(root_idx) = argmax_first(&root_profile.view()) {
       root_state[root_idx] = 1.0;
     }

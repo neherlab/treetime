@@ -1,6 +1,6 @@
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative};
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_report;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
@@ -155,10 +155,8 @@ where
     let root_key = root.read_arc().key();
     let root_profile = &partition.nodes[&root_key].profile.dis;
     let mut counts = Array1::zeros(n_states);
-    let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
     for row in root_profile.rows() {
-      let max_val = row.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-      if max_val > uniform_threshold {
+      if is_profile_informative(&row, n_states) {
         let state =
           argmax_first(&row).ok_or_else(|| make_internal_report!("Empty profile row in root marginal distribution"))?;
         counts[state] += 1.0;

@@ -1,10 +1,10 @@
 use crate::gtr::gtr::avg_transition;
 use eyre::Report;
 use log::warn;
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2, ArrayView1, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use treetime_utils::array::ndarray::outer;
+use treetime_utils::array::ndarray::{is_max_above, outer};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -159,4 +159,10 @@ pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Res
 
 pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
+}
+
+/// Whether a profile is peaked above the uniform baseline (carries phylogenetic signal).
+pub fn is_profile_informative(profile: &ArrayView1<'_, f64>, n_states: usize) -> bool {
+  let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
+  is_max_above(profile, uniform_threshold)
 }
