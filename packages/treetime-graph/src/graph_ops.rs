@@ -7,6 +7,10 @@ use std::sync::Arc;
 use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 use treetime_utils::{make_error, make_internal_report, make_report};
 
+#[allow(
+  clippy::multiple_inherent_impl,
+  reason = "split across files by concern; see graph.rs for the primary impl"
+)]
 impl<N, E, D> Graph<N, E, D>
 where
   N: GraphNode,

@@ -212,6 +212,10 @@ where
   }
 }
 
+#[allow(
+  clippy::multiple_inherent_impl,
+  reason = "split across files by concern; see graph.rs for the primary impl"
+)]
 impl<N, E, D> Graph<N, E, D>
 where
   N: GraphNode,
