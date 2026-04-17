@@ -5,6 +5,7 @@ use ndarray::{
   Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, ShapeError,
   Zip, s, stack,
 };
+use ndarray_stats::QuantileExt;
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand::Rng;
 use ndarray_rand::rand::distributions::Uniform;
@@ -177,6 +178,24 @@ pub fn argmax_first<T: PartialOrd>(arr: &ArrayView<T, Ix1>) -> Option<usize> {
     }
   }
   Some(max_idx)
+}
+
+/// Maximum element, or `default` for empty arrays.
+#[inline]
+pub fn max_or<S: Data<Elem = f64>>(arr: &ArrayBase<S, Ix1>, default: f64) -> f64 {
+  arr.max().map_or(default, |&max| max)
+}
+
+/// Minimum element, or `default` for empty arrays.
+#[inline]
+pub fn min_or<S: Data<Elem = f64>>(arr: &ArrayBase<S, Ix1>, default: f64) -> f64 {
+  arr.min().map_or(default, |&min| min)
+}
+
+/// Whether the maximum element is >= threshold. Returns false for empty arrays.
+#[inline]
+pub fn is_max_above<S: Data<Elem = f64>>(arr: &ArrayBase<S, Ix1>, threshold: f64) -> bool {
+  arr.max().is_ok_and(|&max| max >= threshold)
 }
 
 /// Element-wise minimum of two arrays
