@@ -584,6 +584,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] PartitionMarginalDense (full probability vectors at all positions)
 - [x] PartitionMarginalSparse (variable positions only)
 - [x] Partition traits (PartitionMarginal, PartitionMarginalOps, PartitionCompressed, HasLogLh)
+- [ ] Codon-position partitioning (1st/2nd/3rd position splits, requires GFF annotation input, probabilistic methods only)
 
 ### Payloads
 
