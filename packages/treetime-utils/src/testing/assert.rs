@@ -140,6 +140,31 @@ pub fn format_array(s: impl AsRef<str>) -> String {
 }
 
 #[macro_export]
+macro_rules! pretty_assert_array_eq {
+  ($lhs:expr, $rhs:expr $(,)?) => {{
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if lhs != rhs {
+      pretty_assertions::assert_eq!(
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
+      );
+    }
+  }};
+  ($lhs:expr, $rhs:expr, $msg:literal $(, $arg:expr)* $(,)?) => {{
+    let lhs = &$lhs;
+    let rhs = &$rhs;
+    if lhs != rhs {
+      pretty_assertions::assert_eq!(
+        $crate::testing::assert::format_array(format!("{lhs:#?}")),
+        $crate::testing::assert::format_array(format!("{rhs:#?}")),
+        $msg $(, $arg)*
+      );
+    }
+  }};
+}
+
+#[macro_export]
 macro_rules! assert_error {
   ($result:expr, $expected_message:expr) => {{
     let error = match $result {
