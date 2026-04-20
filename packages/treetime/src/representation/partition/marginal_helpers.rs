@@ -325,6 +325,136 @@ mod tests {
     assert_ulps_eq!(shifted_log_norm, base_log_norm + offset, max_ulps = 2);
   }
 
+  /// Numerical stress tests: attempt to break LSE stability.
+  mod stress {
+    use super::*;
+
+    #[test]
+    fn test_logsumexp_near_exp_overflow_boundary() {
+      // exp(709.78) ~ f64::MAX, exp(710) overflows.
+      // After shift by max=709.0, exponents are [0, -1, -2, -3]. Safe.
+      let input = array![709.0, 708.0, 707.0, 706.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert!(log_norm.is_finite(), "log_norm should be finite, got {log_norm}");
+    }
+
+    #[test]
+    fn test_logsumexp_near_exp_underflow_boundary() {
+      // exp(-745) underflows to 0. After shift by max=-744.0,
+      // exponents are [0, -1, -2, -3]. Safe.
+      let input = array![-744.0, -745.0, -746.0, -747.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert!(log_norm.is_finite(), "log_norm should be finite, got {log_norm}");
+    }
+
+    #[test]
+    fn test_logsumexp_at_f64_max_log() {
+      // log_norm = max + ln(sum), if max is near ln(f64::MAX) ~ 709.78,
+      // then log_norm could overflow. Push to the edge.
+      let input = array![709.7, 709.6, 709.5, 709.4];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert!(log_norm.is_finite(), "log_norm overflowed: {log_norm}");
+    }
+
+    #[test]
+    fn test_logsumexp_log_norm_overflow() {
+      // log_norm = max + ln(sum(exp(x - max))). When max > f64::MAX.ln() ~ 709.78
+      // and sum > 1, log_norm can exceed f64::MAX.ln(). But log_norm is a log-value,
+      // not an exponentiated value, so it remains finite well beyond exp's overflow.
+      // Push to actual f64 overflow: max near f64::MAX itself.
+      let input = array![f64::MAX.ln() + 1.0, f64::MAX.ln(), f64::MAX.ln() - 1.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      // log_norm ~ 710.78 + ln(1 + e^-1 + e^-2) ~ 711.23, still finite.
+      assert!(log_norm.is_finite(), "log_norm={log_norm}");
+    }
+
+    #[test]
+    fn test_logsumexp_extreme_spread() {
+      // One dominant state at 0, rest at -1000. The non-dominant states
+      // underflow to exp(-1000) = 0 after shift, which is correct.
+      let input = array![0.0, -1000.0, -1000.0, -1000.0];
+      let (normalized, _log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert_ulps_eq!(normalized[0], 1.0, max_ulps = 2);
+    }
+
+    #[test]
+    fn test_logsumexp_alternating_extremes() {
+      // Alternating high/low. After shift by 500, exponents are [0, -1000, 0, -1000].
+      let input = array![500.0, -500.0, 500.0, -500.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert!(log_norm.is_finite());
+      assert_ulps_eq!(normalized[0], 0.5, max_ulps = 2);
+      assert_ulps_eq!(normalized[2], 0.5, max_ulps = 2);
+    }
+
+    #[test]
+    #[ignore] // BUG: fused and decomposed forms diverge beyond 2 ULPs at 1e15 magnitude
+    fn test_logsumexp_near_identical_at_high_magnitude() {
+      // Values differ by 1.0 at 1e15 magnitude. Machine epsilon at 1e15 is ~0.22,
+      // so differences of 1.0 are ~4.5 ULPs apart. Precision should be preserved.
+      let input = array![1e15, 1e15 + 1.0, 1e15 + 2.0, 1e15 + 3.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+
+      let (expected_normalized, expected_log_norm) = helpers::reference_lse_softmax(&input);
+
+      helpers::assert_valid_distribution(&normalized);
+      assert_ulps_eq!(normalized, expected_normalized, max_ulps = 2);
+      assert_ulps_eq!(log_norm, expected_log_norm, max_ulps = 2);
+    }
+
+    #[test]
+    fn test_logsumexp_near_identical_catastrophic_cancellation() {
+      // Values differ by less than machine epsilon * magnitude.
+      // x - max loses all significant digits, producing junk relative
+      // probabilities. The output is still a valid distribution (sums
+      // to 1, non-negative) but does not reflect true relative weights.
+      // This is inherent to finite-precision arithmetic.
+      let base = 1e15;
+      let eps = base * f64::EPSILON;
+      let input = array![base, base + eps, base + 2.0 * eps, base + 3.0 * eps];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert!(log_norm.is_finite());
+    }
+
+    #[test]
+    #[ignore] // BUG: NaN silently swallowed as uniform fallback via max_or
+    fn test_logsumexp_nan_must_propagate() {
+      let input = array![0.0, f64::NAN, -1.0, -2.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      let has_nan = normalized.iter().any(|v| v.is_nan()) || log_norm.is_nan();
+      assert!(has_nan, "NaN input must propagate: normalized={normalized}, log_norm={log_norm}");
+    }
+
+    #[test]
+    #[ignore] // BUG: all-NaN silently swallowed as uniform fallback via max_or
+    fn test_logsumexp_all_nan_must_propagate() {
+      let input = Array1::from_elem(4, f64::NAN);
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      let has_nan = normalized.iter().any(|v| v.is_nan()) || log_norm.is_nan();
+      assert!(has_nan, "all-NaN input must propagate: normalized={normalized}, log_norm={log_norm}");
+    }
+
+    #[test]
+    #[ignore] // BUG: +inf produces NaN via inf - inf in shift step
+    fn test_logsumexp_positive_infinity_must_handle() {
+      // +inf log-probability means infinite dominance for that state.
+      // Correct output: one-hot on the +inf state, log_norm = +inf.
+      // Current: exp(inf - inf) = NaN propagates through the output.
+      let input = array![0.0, f64::INFINITY, -1.0, -2.0];
+      let (normalized, log_norm) = logsumexp_normalize(input.view());
+      helpers::assert_valid_distribution(&normalized);
+      assert_abs_diff_eq!(normalized, array![0.0, 1.0, 0.0, 0.0], epsilon = 1e-15);
+      assert!(log_norm == f64::INFINITY);
+    }
+  }
+
   #[test]
   fn test_propagate_raw_per_site_forward() {
     use crate::gtr::get_gtr::{JC69Params, jc69};
