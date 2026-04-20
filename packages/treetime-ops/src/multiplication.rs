@@ -1,17 +1,14 @@
 use crate::ScaledArray;
 use crate::traits::MultiplyAlgo;
 use ndarray::Array1;
+use treetime_utils::array::ndarray::max_or;
 
 /// Threshold below which we normalize to prevent underflow.
 /// This is much smaller than 1.0 to avoid unnecessary normalizations.
 const UNDERFLOW_THRESHOLD: f64 = 1e-100;
 
-fn array_max(arr: &Array1<f64>) -> f64 {
-  arr.iter().copied().fold(f64::NEG_INFINITY, f64::max)
-}
-
 fn normalize_and_extract_scale(arr: &Array1<f64>) -> ScaledArray {
-  let max_val = array_max(arr);
+  let max_val = max_or(arr, f64::NEG_INFINITY);
   let log_scale = if max_val > 0.0 && max_val.is_finite() {
     max_val.ln()
   } else {
@@ -50,7 +47,7 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArr
   let mut accumulated_log_scale = 0.0;
 
   // Initial check
-  let max_val = array_max(&product);
+  let max_val = max_or(&product, f64::NEG_INFINITY);
   if max_val <= 0.0 || !max_val.is_finite() {
     return ScaledArray::empty(n);
   }
@@ -58,7 +55,7 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArr
   for dist in distributions.iter().skip(1) {
     product = &product * *dist;
 
-    let max_val = array_max(&product);
+    let max_val = max_or(&product, f64::NEG_INFINITY);
     if max_val <= 0.0 || !max_val.is_finite() {
       return ScaledArray::empty(n);
     }
@@ -71,7 +68,7 @@ pub fn multiply_many_lazy_normalize(distributions: &[&Array1<f64>]) -> ScaledArr
   }
 
   // Final normalization to ensure invariant max = 1.0
-  let max_val = array_max(&product);
+  let max_val = max_or(&product, f64::NEG_INFINITY);
   if max_val <= 0.0 || !max_val.is_finite() {
     return ScaledArray::empty(n);
   }
@@ -103,7 +100,7 @@ pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   let mut accumulated_log_scale = 0.0;
   let mut normalized_result = distributions[0].clone();
 
-  let max_val = array_max(&normalized_result);
+  let max_val = max_or(&normalized_result, f64::NEG_INFINITY);
   if max_val <= 0.0 || !max_val.is_finite() {
     return ScaledArray::empty(n);
   }
@@ -113,7 +110,7 @@ pub fn multiply_many(distributions: &[&Array1<f64>]) -> ScaledArray {
   for dist in distributions.iter().skip(1) {
     normalized_result = &normalized_result * *dist;
 
-    let max_val = array_max(&normalized_result);
+    let max_val = max_or(&normalized_result, f64::NEG_INFINITY);
     if max_val <= 0.0 || !max_val.is_finite() {
       return ScaledArray::empty(n);
     }
@@ -141,7 +138,7 @@ pub fn multiply_many_naive(distributions: &[&Array1<f64>]) -> ScaledArray {
     result = &result * *dist;
   }
 
-  let max_val = array_max(&result);
+  let max_val = max_or(&result, f64::NEG_INFINITY);
   let log_scale = if max_val > 0.0 && max_val.is_finite() {
     max_val.ln()
   } else {
