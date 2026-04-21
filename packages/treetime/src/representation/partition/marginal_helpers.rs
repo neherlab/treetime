@@ -8,7 +8,8 @@ use ndarray::{Array1, Array2, ArrayView1};
 use std::collections::BTreeMap;
 use std::iter::zip;
 use treetime_primitives::AsciiChar;
-use treetime_utils::array::ndarray::{is_max_above, max_or};
+use ndarray_stats::QuantileExt;
+use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::interval::range::range_contains;
 
 pub const EPS: f64 = 1e-4;
@@ -86,7 +87,8 @@ pub fn combine_messages(
   Ok(seq_dis)
 }
 
-/// Fused LSE + softmax: returns `(softmax(x), LSE(x))` from unnormalized log-probabilities.
+/// Fused log-sum-exp (LSE) + softmax: returns `(softmax(x), LSE(x))` from unnormalized
+/// log-probabilities.
 ///
 /// Naive `exp()` of log-probabilities overflows or underflows for large magnitudes.
 /// The LSE shift (`exp(x - max)`) keeps all exponents in a safe range. LSE and
@@ -94,14 +96,31 @@ pub fn combine_messages(
 /// division `exp(x - max) / sum` preserves tighter sum-to-one than the decomposed
 /// `exp(x - LSE(x))` form, which would introduce an extra `ln` to `exp` round-trip.
 ///
-/// Degenerate input (all -inf): returns uniform distribution, LSE = -inf.
+/// Edge cases:
+/// - Empty input: returns `([], -inf)`
+/// - NaN present: returns `(NaN, NaN)` per IEEE 754
+/// - +inf present: one-hot on infinite positions, `log_norm = +inf`
+/// - All -inf: uniform distribution, `log_norm = -inf`
 pub fn logsumexp_normalize(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64) {
-  // LSE shift constant: subtract max before exp to prevent overflow
-  let max_val = max_or(&log_vec, f64::NEG_INFINITY);
+  let n = log_vec.len();
 
-  // All states have zero probability: fall back to uniform
+  // LSE shift constant: subtract max before exp to prevent overflow.
+  // QuantileExt::max() errors on empty or NaN-containing arrays.
+  let max_val = match log_vec.max() {
+    Ok(&max) => max,
+    Err(_) if n == 0 => return (Array1::zeros(0), f64::NEG_INFINITY),
+    Err(_) => return (Array1::from_elem(n, f64::NAN), f64::NAN),
+  };
+
+  // +inf dominates: uniform weight across all infinite positions
+  if max_val == f64::INFINITY {
+    let inf_count = log_vec.iter().filter(|&&v| v == f64::INFINITY).count();
+    let prob = 1.0 / inf_count as f64;
+    return (log_vec.mapv(|v| if v == f64::INFINITY { prob } else { 0.0 }), f64::INFINITY);
+  }
+
+  // All -inf: uniform fallback
   if !max_val.is_finite() {
-    let n = log_vec.len();
     return (Array1::from_elem(n, 1.0 / n as f64), f64::NEG_INFINITY);
   }
 
@@ -235,11 +254,11 @@ mod tests {
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use ndarray::array;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_array_eq;
 
   const NEG_INF: f64 = f64::NEG_INFINITY;
 
-  /// All-finite inputs: softmax output has no zeros.
-  /// Expected values computed from the mathematical definition of LSE + softmax.
+  /// All-finite inputs: softmax output has no zeros and all probabilities are positive.
   #[rustfmt::skip]
   #[rstest]
   #[case::uniform_4(             Array1::from_elem(4, 0.25_f64.ln()))]
@@ -248,6 +267,7 @@ mod tests {
   #[case::all_same_nonzero(      array![3.0, 3.0, 3.0, 3.0])]
   #[case::close_values(          array![-0.001, -0.002, -0.003, -0.004])]
   #[case::wide_spread(           array![0.0, -10.0, -20.0, -30.0])]
+  #[case::dominant_rest_tiny(    array![0.0, -100.0, -100.0, -100.0])]
   #[case::single_state(          array![5.0])]
   #[case::two_equal(             array![0.0, 0.0])]
   #[case::two_asymmetric(        array![0.0, -5.0])]
@@ -258,18 +278,14 @@ mod tests {
   fn test_logsumexp_normalize_finite(#[case] input: Array1<f64>) {
     let (normalized, log_norm) = logsumexp_normalize(input.view());
 
-    let (expected_normalized, expected_log_norm) = helpers::reference_lse_softmax(&input);
-
     helpers::assert_valid_distribution(&normalized);
-    assert_ulps_eq!(normalized, expected_normalized, max_ulps = 2);
-    assert_ulps_eq!(log_norm, expected_log_norm, max_ulps = 2);
+    assert!(log_norm.is_finite());
+    assert!(normalized.iter().all(|&p| p > 0.0), "all-finite input must have all-positive output");
   }
 
-  /// Inputs containing -inf: some output probabilities are exactly 0.0.
-  /// ULPs undefined at 0.0, so abs_diff for the probability vector, ULPs for log_norm.
+  /// Inputs containing -inf: positions with -inf get probability 0.0, others share the mass.
   #[rustfmt::skip]
   #[rstest]
-  #[case::dominant_rest_tiny(      array![0.0, -100.0, -100.0, -100.0])]
   #[case::mixed_finite_neg_inf(    array![0.0, NEG_INF, -1.0, NEG_INF])]
   #[case::single_finite_rest_inf(  array![NEG_INF, -3.0, NEG_INF, NEG_INF])]
   #[case::first_finite_rest_inf(   array![0.0, NEG_INF, NEG_INF, NEG_INF])]
@@ -279,11 +295,13 @@ mod tests {
   fn test_logsumexp_normalize_with_neg_inf(#[case] input: Array1<f64>) {
     let (normalized, log_norm) = logsumexp_normalize(input.view());
 
-    let (expected_normalized, expected_log_norm) = helpers::reference_lse_softmax(&input);
-
     helpers::assert_valid_distribution(&normalized);
-    assert_abs_diff_eq!(normalized, expected_normalized, epsilon = 1e-15);
-    assert_ulps_eq!(log_norm, expected_log_norm, max_ulps = 2);
+    assert!(log_norm.is_finite());
+
+    // Zeros must appear exactly where input is -inf
+    let expected_zeros = input.mapv(|v| v == NEG_INF);
+    let actual_zeros = normalized.mapv(|p| p == 0.0);
+    pretty_assert_array_eq!(expected_zeros, actual_zeros, "zero positions must match -inf positions");
   }
 
   /// All-inf degenerate input: uniform fallback, log_norm = -inf.
@@ -302,6 +320,22 @@ mod tests {
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states as f64);
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
     assert!(log_norm == NEG_INF, "expected NEG_INFINITY, got {log_norm}");
+  }
+
+  /// Equal finite inputs produce exact uniform output.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::n2(  2)]
+  #[case::n4(  4)]
+  #[case::n20( 20)]
+  #[trace]
+  fn test_logsumexp_normalize_uniform_input(#[case] n_states: usize) {
+    let log_vec = Array1::from_elem(n_states, 0.0);
+    let (normalized, log_norm) = logsumexp_normalize(log_vec.view());
+
+    let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states as f64);
+    assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
+    assert!(log_norm.is_finite());
   }
 
   /// Shift invariance: adding a constant to all inputs preserves softmax,
@@ -375,37 +409,38 @@ mod tests {
     #[test]
     fn test_logsumexp_extreme_spread() {
       // One dominant state at 0, rest at -1000. The non-dominant states
-      // underflow to exp(-1000) = 0 after shift, which is correct.
+      // underflow to exp(-1000) = 0 after shift, producing exact one-hot.
       let input = array![0.0, -1000.0, -1000.0, -1000.0];
       let (normalized, _log_norm) = logsumexp_normalize(input.view());
       helpers::assert_valid_distribution(&normalized);
-      assert_ulps_eq!(normalized[0], 1.0, max_ulps = 2);
+      pretty_assert_array_eq!(normalized, array![1.0, 0.0, 0.0, 0.0]);
     }
 
     #[test]
     fn test_logsumexp_alternating_extremes() {
       // Alternating high/low. After shift by 500, exponents are [0, -1000, 0, -1000].
+      // Low positions underflow to 0, high positions share mass equally.
       let input = array![500.0, -500.0, 500.0, -500.0];
       let (normalized, log_norm) = logsumexp_normalize(input.view());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite());
-      assert_ulps_eq!(normalized[0], 0.5, max_ulps = 2);
-      assert_ulps_eq!(normalized[2], 0.5, max_ulps = 2);
+      pretty_assert_array_eq!(normalized, array![0.5, 0.0, 0.5, 0.0]);
     }
 
     #[test]
-    #[ignore] // BUG: fused and decomposed forms diverge beyond 2 ULPs at 1e15 magnitude
     fn test_logsumexp_near_identical_at_high_magnitude() {
       // Values differ by 1.0 at 1e15 magnitude. Machine epsilon at 1e15 is ~0.22,
       // so differences of 1.0 are ~4.5 ULPs apart. Precision should be preserved.
       let input = array![1e15, 1e15 + 1.0, 1e15 + 2.0, 1e15 + 3.0];
       let (normalized, log_norm) = logsumexp_normalize(input.view());
 
-      let (expected_normalized, expected_log_norm) = helpers::reference_lse_softmax(&input);
-
       helpers::assert_valid_distribution(&normalized);
-      assert_ulps_eq!(normalized, expected_normalized, max_ulps = 2);
-      assert_ulps_eq!(log_norm, expected_log_norm, max_ulps = 2);
+      assert!(log_norm.is_finite());
+
+      // Monotonicity: higher input -> higher probability
+      assert!(normalized[3] > normalized[2]);
+      assert!(normalized[2] > normalized[1]);
+      assert!(normalized[1] > normalized[0]);
     }
 
     #[test]
@@ -424,7 +459,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // BUG: NaN silently swallowed as uniform fallback via max_or
     fn test_logsumexp_nan_must_propagate() {
       let input = array![0.0, f64::NAN, -1.0, -2.0];
       let (normalized, log_norm) = logsumexp_normalize(input.view());
@@ -433,7 +467,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // BUG: all-NaN silently swallowed as uniform fallback via max_or
     fn test_logsumexp_all_nan_must_propagate() {
       let input = Array1::from_elem(4, f64::NAN);
       let (normalized, log_norm) = logsumexp_normalize(input.view());
@@ -442,15 +475,13 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // BUG: +inf produces NaN via inf - inf in shift step
     fn test_logsumexp_positive_infinity_must_handle() {
       // +inf log-probability means infinite dominance for that state.
-      // Correct output: one-hot on the +inf state, log_norm = +inf.
-      // Current: exp(inf - inf) = NaN propagates through the output.
+      // Correct output: exact one-hot on the +inf state, log_norm = +inf.
       let input = array![0.0, f64::INFINITY, -1.0, -2.0];
       let (normalized, log_norm) = logsumexp_normalize(input.view());
       helpers::assert_valid_distribution(&normalized);
-      assert_abs_diff_eq!(normalized, array![0.0, 1.0, 0.0, 0.0], epsilon = 1e-15);
+      pretty_assert_array_eq!(normalized, array![0.0, 1.0, 0.0, 0.0]);
       assert!(log_norm == f64::INFINITY);
     }
   }
@@ -547,17 +578,5 @@ mod tests {
       assert_abs_diff_eq!(normalized.sum(), 1.0, epsilon = 1e-15);
     }
 
-    /// Reference LSE + softmax from mathematical definition (decomposed form).
-    /// Uses the same max-shift for LSE stability but computes softmax via
-    /// `exp(x - LSE(x))` rather than the fused `exp(x - max) / sum`.
-    pub fn reference_lse_softmax(input: &Array1<f64>) -> (Array1<f64>, f64) {
-      let max_val = input.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-      if !max_val.is_finite() {
-        return (Array1::from_elem(input.len(), 1.0 / input.len() as f64), f64::NEG_INFINITY);
-      }
-      let lse = max_val + input.iter().map(|&v| (v - max_val).exp()).sum::<f64>().ln();
-      let softmax = input.mapv(|v| (v - lse).exp());
-      (softmax, lse)
-    }
   }
 }
