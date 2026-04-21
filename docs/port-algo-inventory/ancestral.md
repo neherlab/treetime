@@ -99,6 +99,53 @@ Reference: Pupko, Pe'er, Shamir & Graur (2000). "A fast algorithm for joint reco
 
 ---
 
+## Branch Mutation Annotation
+
+After ancestral reconstruction (Fitch or marginal), branch mutations are extracted from partition data and attached to tree nodes for Newick/Nexus output. The annotation pipeline is shared across all commands that output annotated trees (ancestral, timetree, optimize).
+
+v1: [`packages/treetime/src/representation/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/representation/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
+v0: annotation is inline in `treeanc.py` tree-writing methods.
+
+### Algorithm
+
+For each edge in the tree, `annotate_branch_mutations()` calls `PartitionBranchOps::edge_subs()` on every partition, collects all substitutions, sorts them by position, and writes the formatted comma-separated string (e.g. `"A55G,T93C"`, 1-based positions) into the child node's `mutations` field. This field is emitted as a `mutations="..."` NHX comment in Newick/Nexus output.
+
+Both dense and sparse `edge_subs()` implementations apply the same filtering: only canonical nucleotide substitutions where parent and child states differ are reported. Gaps, unknowns, and ambiguity codes are excluded.
+
+### Dense `edge_subs()`
+
+[`packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112`](../../packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112)
+
+Iterates every alignment position (0..L where L = number of rows in the profile matrix). At each position, takes the MAP state (`argmax_first()` of the posterior profile) for both parent and child. Skips positions that fall within either endpoint's original gap ranges (`DenseSeqInfo.gaps`), because gap positions receive uniform profiles under `treat_gap_as_unknown` and their argmax would return an arbitrary canonical state.
+
+### Sparse `edge_subs()`
+
+[`packages/treetime/src/representation/partition/marginal_sparse.rs#L281-L303`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L281-L303)
+
+Iterates only candidate positions: the sorted, deduplicated union of the edge's Fitch substitution positions, the parent's variable sites, and the child's variable sites ([`edge_candidate_positions()`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L81-L111)). At each candidate position, resolves parent and child states via `node_state_at()` ([`marginal_sparse.rs#L123-L186`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L123-L186)), which walks from the root applying edge substitutions and indels, then overrides with the variable-site posterior argmax when present.
+
+The candidate set is complete: any position where parent and child could differ must appear as a variable site on at least one endpoint or as a Fitch substitution on the edge.
+
+### Dense vs sparse equivalence
+
+Both implementations produce the same mutation set for the same reconstruction. Dense scans all L positions but most comparisons are equal (no-op). Sparse scans only the variable-site union, which for conserved alignments (>90% invariant) is a small fraction of L.
+
+### Call sites
+
+- [`packages/treetime/src/commands/ancestral/run.rs#L142`](../../packages/treetime/src/commands/ancestral/run.rs#L142) and [`#L192`](../../packages/treetime/src/commands/ancestral/run.rs#L192): ancestral command (both dense and sparse paths)
+- [`packages/treetime/src/commands/timetree/run.rs#L490`](../../packages/treetime/src/commands/timetree/run.rs#L490): timetree command
+- [`packages/treetime/src/commands/optimize/run.rs#L225`](../../packages/treetime/src/commands/optimize/run.rs#L225): optimize command
+
+### Key functions
+
+- `annotate_branch_mutations()` (`#annotate_branch_mutations`): generic over graph payload, iterates edges and partitions, writes formatted mutation string to child node
+- `PartitionBranchOps::edge_subs()` (`#edge_subs`): trait method implemented by both `PartitionMarginalDense` and `PartitionMarginalSparse`
+- `edge_candidate_positions()` (`#edge_candidate_positions`): sparse-only, computes union of Fitch subs + parent/child variable sites
+- `node_state_at()` (`#node_state_at`): sparse-only, resolves a node's state at a position by walking the tree from root, applying edge changes, and checking variable-site overrides
+- `HasBranchMutations::set_branch_mutations()` (`#set_branch_mutations`): trait implemented by `NodeAncestral` and `NodeTimetree` (via delegation to inner `NodeAncestral`)
+
+---
+
 ## File Index
 
 | File                                                                                                                                             | Algorithms                                                                       |
@@ -110,3 +157,5 @@ Reference: Pupko, Pe'er, Shamir & Graur (2000). "A fast algorithm for joint reco
 | [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
 | [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs)   | Sparse message passing                                                           |
 | [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
+| [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
+| [`packages/treetime/src/representation/partition/traits.rs`](../../packages/treetime/src/representation/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |
