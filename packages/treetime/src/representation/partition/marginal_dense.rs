@@ -4,7 +4,6 @@ use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
-use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::BranchTopology;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
@@ -22,6 +21,7 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
+use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_intersection::range_intersection;
@@ -386,7 +386,7 @@ fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
 ///
 /// When a row sums to zero or is non-finite, falls back to a uniform distribution
 /// for that row and contributes NEG_INFINITY to the log-likelihood. This matches
-/// the degenerate-row semantics of `logsumexp_normalize`.
+/// the degenerate-row semantics of `softmax_with_log_norm`.
 fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
   let n_cols = dis.ncols() as f64;
@@ -413,7 +413,7 @@ fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
   let mut total_log_lh = 0.0;
 
   for (mut out_row, log_row) in izip!(dis.rows_mut(), log_dis.rows()) {
-    let (normalized, log_norm) = logsumexp_normalize(log_row);
+    let (normalized, log_norm) = softmax_with_log_norm(log_row);
     out_row.assign(&normalized);
     total_log_lh += log_norm;
   }

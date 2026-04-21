@@ -2,7 +2,6 @@ use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::representation::discrete_states::DiscreteStates;
-use crate::representation::partition::marginal_helpers::logsumexp_normalize;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
@@ -12,6 +11,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 
 #[derive(Clone, Debug)]
 pub struct PartitionDiscrete {
@@ -244,7 +244,7 @@ fn normalize_inplace_1d(arr: &mut Array1<f64>) -> Result<f64, Report> {
 }
 
 fn normalize_from_log_1d(log_arr: &Array1<f64>) -> Result<(Array1<f64>, f64), Report> {
-  let (arr, log_lh) = logsumexp_normalize(log_arr.view());
+  let (arr, log_lh) = softmax_with_log_norm(log_arr.view());
   if !log_lh.is_finite() {
     return make_internal_error!(
       "Cannot normalize invalid log profile: all states have zero probability, log_profile={log_arr:?}"

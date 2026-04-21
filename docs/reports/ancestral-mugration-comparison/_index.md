@@ -143,7 +143,7 @@ Pipeline:
 - `GTR` struct and `GTR::new()` constructor ([packages/treetime/src/gtr/gtr.rs](../../../packages/treetime/src/gtr/gtr.rs))
 - `infer_gtr_impl()` from `gtr/infer_gtr/common` -- core GTR inference algorithm, called by ancestral (via `infer_gtr_dense` / `infer_gtr_sparse`) and by mugration (via `gtr_refinement.rs`)
 - `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L128](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L128))
-- `logsumexp_normalize()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` ([packages/treetime/src/representation/partition/discrete.rs#L82](../../../packages/treetime/src/representation/partition/discrete.rs#L82))
+- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` ([packages/treetime/src/representation/partition/discrete.rs#L82](../../../packages/treetime/src/representation/partition/discrete.rs#L82))
 
 ### Ancestral only
 
@@ -233,12 +233,12 @@ Both commands implement the same Felsenstein pruning algorithm (backward: leaves
 
 ### Backward pass differences
 
-| Step           | ancestral (dense)                                                                            | mugration                                                     |
-| :------------- | :------------------------------------------------------------------------------------------- | :------------------------------------------------------------ |
-| Leaf profile   | 2D one-hot from sequence per position                                                        | 1D one-hot from observed trait (or uniform if missing)        |
-| Internal node  | Product of child messages per position, normalize                                            | Product of child messages in log space, `logsumexp_normalize` |
-| Root weighting | Per-position: `profile * pi`                                                                 | Single: `profile * pi`                                        |
-| Edge message   | $\text{msg\_from\_child}[j] = \sum_i \text{msg\_to\_parent}[i] \cdot P_{ij}(t)$ per position | Same formula, 1D                                              |
+| Step           | ancestral (dense)                                                                            | mugration                                                       |
+| :------------- | :------------------------------------------------------------------------------------------- | :-------------------------------------------------------------- |
+| Leaf profile   | 2D one-hot from sequence per position                                                        | 1D one-hot from observed trait (or uniform if missing)          |
+| Internal node  | Product of child messages per position, normalize                                            | Product of child messages in log space, `softmax_with_log_norm` |
+| Root weighting | Per-position: `profile * pi`                                                                 | Single: `profile * pi`                                          |
+| Edge message   | $\text{msg\_from\_child}[j] = \sum_i \text{msg\_to\_parent}[i] \cdot P_{ij}(t)$ per position | Same formula, 1D                                                |
 
 ### Forward pass differences
 

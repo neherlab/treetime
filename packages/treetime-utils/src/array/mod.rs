@@ -2,3 +2,4 @@
 mod __tests__;
 pub mod ndarray;
 pub mod serde;
+pub mod softmax_with_log_norm;

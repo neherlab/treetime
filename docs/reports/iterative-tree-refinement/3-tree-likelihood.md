@@ -101,7 +101,7 @@ Each site likelihood is computed normally (it is a sum of s terms, not a product
 
 Within a single site, the conditional likelihood vector entries can also underflow for deep trees with many nodes. The remedy is **scaling**: multiply each node's conditional likelihood vector by a scaling factor to keep values in a representable range, then account for the scaling factors in the final log-likelihood. This technique was introduced by Felsenstein (1981) and is standard in all ML phylogenetic software.
 
-v1 code: The sparse representation in v1 uses log-space arithmetic with `logsumexp` normalization in [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../../packages/treetime/src/representation/partition/marginal_helpers.rs). The `logsumexp_normalize()` function handles numerical stability for the backward and forward passes.
+v1 code: The sparse representation in v1 uses log-space arithmetic with `logsumexp` normalization in [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../../packages/treetime/src/representation/partition/marginal_helpers.rs). The `softmax_with_log_norm()` function handles numerical stability for the backward and forward passes.
 
 ### Sparse vs dense representation
 

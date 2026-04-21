@@ -138,7 +138,7 @@ v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/tr
 
 ## Forward-Pass Zero-Divisor Clamping
 
-The sparse and dense forward-pass marginal divisions can produce zero divisors when a child's message assigns zero probability to all states. Clamp divisors to `f64::MIN_POSITIVE` in both paths to prevent NaN propagation. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows, matching `logsumexp_normalize` degenerate-row semantics.
+The sparse and dense forward-pass marginal divisions can produce zero divisors when a child's message assigns zero probability to all states. Clamp divisors to `f64::MIN_POSITIVE` in both paths to prevent NaN propagation. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows, matching `softmax_with_log_norm` degenerate-row semantics.
 
 v1 sparse: [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs).
 v1 dense: [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs).

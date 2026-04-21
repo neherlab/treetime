@@ -5,11 +5,11 @@ use ndarray::{
   Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, RemoveAxis, ShapeBuilder, ShapeError,
   Zip, s, stack,
 };
-use ndarray_stats::QuantileExt;
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand::Rng;
 use ndarray_rand::rand::distributions::Uniform;
 use ndarray_rand::rand::distributions::uniform::SampleUniform;
+use ndarray_stats::QuantileExt;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
 use num_traits::{Bounded, Float, NumCast, One, Zero};

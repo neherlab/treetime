@@ -1,7 +1,9 @@
 use crate::commands::mugration::discrete_marginal::{discrete_marginal_backward, run_discrete_marginal};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative};
+use crate::gtr::infer_gtr::common::{
+  InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative,
+};
 use crate::gtr::infer_gtr::dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
 use crate::make_report;
 use crate::representation::partition::discrete::PartitionDiscrete;
