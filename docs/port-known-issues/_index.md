@@ -54,7 +54,15 @@ exactly.
 
 | Severity   | Scope        | Issue                                                                                                                                 |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| High       | Ancestral    | [Ancestral joint method default panics](H-ancestral-joint-default-panics.md)                                                          |
+| High       | Clock        | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                       |
+| High       | Clock        | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                 |
+| High       | Clock        | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                             |
+| High       | Homoplasy    | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                            |
+| High       | Optimize     | [Optimize loop likelihood excludes indel term](H-optimize-loop-lh-excludes-indel.md)                                                  |
 | High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                    |
+| High       | Timetree     | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)            |
+| High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                        |
 | Medium     | Timetree     | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                                    |
 | Medium     | Clock        | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                                     |
 | Negligible | Clock        | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                              |
@@ -120,10 +128,27 @@ exactly.
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                     |
 | Negligible | Timetree     | [Auspice JSON output incomplete](N-timetree-auspice-json-incomplete.md)                                                               |
 | Negligible | Timetree     | [Unnamed root after reroot](N-timetree-unnamed-root-after-reroot.md)                                                                  |
-| Negligible | Timetree     | [No tree inference from alignment](N-timetree-tree-inference-unimplemented.md)                                                        |
 | Negligible | Timetree     | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                               |
 | Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                     |
 | Medium     | Timetree     | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                         |
+| Medium     | Timetree     | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)           |
+| Medium     | Timetree     | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)              |
+| Medium     | Timetree     | [build_branch_distributions is a public todo!() stub](M-timetree-branch-distributions-todo-stub.md)                                   |
+| Medium     | Timetree     | [resolve_polytomies_with_options ignores merge_compressed parameter](M-timetree-polytomy-merge-compressed-ignored.md)                 |
+| Medium     | Timetree     | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                           |
+| Medium     | Alphabet     | [AlphabetConfig validation misses unknown-inside-ambiguous check](M-alphabet-validate-unknown-in-ambiguous.md)                        |
+| Medium     | Ancestral    | [Sparse ancestral does not re-run marginal after GTR inference](M-ancestral-sparse-no-rerun-after-gtr-inference.md)                   |
+| Medium     | Ancestral    | [Stdin FASTA path reads one record and truncates multi-record alignments](M-ancestral-stdin-fasta-truncation.md)                      |
+| Medium     | CLI          | [RTT chart gather_points swaps normal and outlier series](M-cli-rtt-chart-partition-inversion.md)                                     |
+| Medium     | CLI          | [RTT chart aborts clock command on non-TTY output](M-cli-rtt-chart-non-tty-abort.md)                                                  |
+| Medium     | Clock        | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                           |
+| Medium     | Clock        | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                    |
+| Medium     | Discrete     | [DiscreteNodeData::missing(0) produces inf-filled profile](M-discrete-missing-zero-states-inf.md)                                     |
+| Medium     | GTR          | [GTR::new() panics on invalid dimensions](M-gtr-new-panics-on-invalid-dimensions.md)                                                  |
+| Medium     | GTR          | [GTR site-rate property tests excluded from build](M-gtr-site-rates-tests-excluded.md)                                                |
+| Medium     | Mugration    | [Mugration fixed_pi capture happens before pseudo-count smoothing](M-mugration-fixed-pi-timing.md)                                    |
+| Medium     | Mugration    | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                   |
+| Medium     | Optimize     | [evaluate_site_contributions does not guard against negative branch lengths](M-optimize-negative-bl-in-evaluate.md)                   |
 | Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                |
 
 ## Cross-references
