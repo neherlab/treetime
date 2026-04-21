@@ -23,6 +23,7 @@ mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Marginal sparse tests ---
@@ -54,9 +55,11 @@ mod tests {
       length: case.sequence_length(),
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    sparse_partition.write_arc().extract_root_sequence(&graph);
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;

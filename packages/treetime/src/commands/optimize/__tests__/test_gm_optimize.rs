@@ -189,6 +189,7 @@ mod tests {
     use std::sync::Arc;
     use treetime_io::fasta::read_many_fasta;
     use treetime_io::nwk::nwk_read_file;
+    use treetime_primitives::seq;
 
     #[derive(Clone, Deserialize)]
     pub struct GmOptimizeCase {
@@ -242,6 +243,7 @@ mod tests {
         gtr: jc69(JC69Params::default())?,
         alphabet: alphabet_sparse,
         length: get_common_length(&aln)?,
+        root_sequence: seq![],
         nodes: btreemap! {},
         edges: btreemap! {},
       }))];
@@ -256,6 +258,9 @@ mod tests {
       }))];
 
       compress_sequences(&graph, &sparse_partitions, &aln)?;
+      for p in &sparse_partitions {
+        p.write_arc().extract_root_sequence(&graph);
+      }
       initialize_marginal(&graph, &dense_partitions, &aln)?;
       update_marginal(&graph, &sparse_partitions)?;
       update_marginal(&graph, &dense_partitions)?;

@@ -19,6 +19,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
+  use treetime_primitives::seq;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -29,11 +30,15 @@ mod tests {
   }
 
   fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
+    if partition.root_sequence.is_empty() {
+      partition.root_sequence = ref_seq.clone();
+    }
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
       partition.nodes.entry(key).or_insert_with(|| {
         let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
+        node_part.seq.sequence = ref_seq.clone();
         node_part
       });
     }
@@ -47,6 +52,7 @@ mod tests {
       length,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     })
   }
 

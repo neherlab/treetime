@@ -95,10 +95,14 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
+    for p in &partitions_for_compress {
+      p.write_arc().extract_root_sequence(&graph);
+    }
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None);
@@ -208,6 +212,7 @@ mod tests {
       gtr,
       alphabet: alphabet.clone(),
       length: 16,
+      root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
       nodes: btreemap! {
         root_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet)?,
         a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet)?,
@@ -226,11 +231,6 @@ mod tests {
         },
       },
     };
-
-    // Manually set root sequence
-    if let Some(n) = sparse_partition.nodes.get_mut(&root_key) {
-      n.seq.sequence = seq![AsciiChar::from_byte_unchecked(b'A'); 16];
-    }
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
     let changes = RerootChanges {
@@ -306,6 +306,7 @@ mod tests {
       gtr,
       alphabet: alphabet.clone(),
       length: 8,
+      root_sequence: root_seq.clone(),
       nodes: btreemap! {
         root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
         a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet)?,
@@ -371,10 +372,14 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
+    for p in &partitions_for_compress {
+      p.write_arc().extract_root_sequence(&graph);
+    }
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None);

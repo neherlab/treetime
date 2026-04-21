@@ -19,6 +19,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_primitives::seq;
   use treetime_utils::make_report;
 
   /// Resolve the workspace root directory by walking up from the crate's manifest directory.
@@ -522,6 +523,7 @@ mod tests {
       length,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;

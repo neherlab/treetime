@@ -33,6 +33,7 @@ use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::nwk_read_str;
+use treetime_primitives::seq;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::global::global_init;
 
@@ -299,11 +300,13 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
     gtr: jc69(JC69Params::default())?,
     alphabet,
     length: config.sequence_length,
+    root_sequence: seq![],
     nodes: btreemap! {},
     edges: btreemap! {},
   }));
 
   compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+  sparse_partition.write_arc().extract_root_sequence(&graph);
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];

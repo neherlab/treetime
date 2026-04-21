@@ -15,6 +15,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::seq;
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
@@ -43,9 +44,13 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     update_marginal(&graph, &sparse_partitions)?;
 
     // Infer GTR from data (matches production flow)
@@ -103,9 +108,13 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     update_marginal(&graph, &sparse_partitions)?;
 
     for partition in &sparse_partitions {

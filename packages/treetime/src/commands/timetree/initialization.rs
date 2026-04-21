@@ -25,6 +25,7 @@ use std::sync::Arc;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
+use treetime_primitives::seq;
 
 pub struct InputData {
   pub graph: GraphTimetree,
@@ -105,11 +106,13 @@ pub fn initialize_partitions(
       gtr: initial_gtr,
       alphabet,
       length,
+      root_sequence: seq![],
       nodes: btreemap! {},
       edges: btreemap! {},
     }));
 
     crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
+    sparse_partition.write_arc().extract_root_sequence(graph);
 
     // For Infer: Fitch compression populated mutation counts, infer real GTR
     if model_name == GtrModelName::Infer {

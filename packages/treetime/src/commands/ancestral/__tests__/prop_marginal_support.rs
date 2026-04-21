@@ -12,6 +12,7 @@ pub mod tests {
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
 
   /// Run marginal ancestral reconstruction using dense representation.
   ///
@@ -87,9 +88,13 @@ pub mod tests {
       length,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &partitions, &input.alignment)?;
+    for p in &partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     let log_lh = update_marginal(&graph, &partitions)?;
     Ok((log_lh, partitions))
   }

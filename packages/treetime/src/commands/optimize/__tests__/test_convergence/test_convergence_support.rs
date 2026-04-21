@@ -16,6 +16,7 @@ pub mod tests {
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_primitives::seq;
 
   pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -68,9 +69,13 @@ pub mod tests {
       length: get_common_length(aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(graph, &sparse_partitions, aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(graph);
+    }
     initialize_marginal(graph, &dense_partitions, aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

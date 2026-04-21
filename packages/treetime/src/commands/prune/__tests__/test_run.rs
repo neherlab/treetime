@@ -23,6 +23,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_primitives::AsciiChar;
+  use treetime_primitives::seq;
   use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
@@ -32,11 +33,15 @@ mod tests {
   /// Populate partition node entries for all graph nodes with dummy reference sequences.
   /// Required for `edge_subs()` to work (it accesses node data to reconstruct states).
   fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
+    if partition.root_sequence.is_empty() {
+      partition.root_sequence = ref_seq.clone();
+    }
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
       partition.nodes.entry(key).or_insert_with(|| {
         let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
+        node_part.seq.sequence = ref_seq.clone();
         node_part
       });
     }
@@ -58,6 +63,7 @@ mod tests {
         length: 100, // dummy length
         nodes: btreemap! {},
         edges: btreemap! {},
+        root_sequence: seq![],
       };
 
       populate_test_nodes(&mut partition, &graph);
@@ -103,6 +109,7 @@ mod tests {
         length: 100,
         nodes: btreemap! {},
         edges: btreemap! {},
+        root_sequence: seq![],
       };
 
       populate_test_nodes(&mut partition, &graph);
@@ -627,6 +634,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     // Root -> internal has mutations at positions 0, 1
@@ -714,6 +722,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     // Parent edge: A->G at pos 0
@@ -783,6 +792,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     // Parent edge: A->G at pos 0
@@ -851,6 +861,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
     partition1.edges.insert(
       root_internal_edge_key,
@@ -877,6 +888,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
     partition2.edges.insert(
       root_internal_edge_key,
@@ -1234,6 +1246,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     populate_test_nodes(&mut partition, &graph);
@@ -1324,6 +1337,7 @@ mod tests {
       length: 100,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());

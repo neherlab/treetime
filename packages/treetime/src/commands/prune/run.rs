@@ -28,6 +28,7 @@ use treetime_io::fasta::read_many_fasta;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
+use treetime_primitives::seq;
 use treetime_utils::iterator::difference::iterator_difference;
 use treetime_utils::iterator::intersection::iterator_intersection;
 
@@ -76,11 +77,15 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
       gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
       alphabet,
       length: get_common_length(&aln)?,
+      root_sequence: seq![],
       nodes: btreemap! {},
       edges: btreemap! {},
     }))];
 
     compress_sequences(&graph, &partitions, &aln)?;
+    for partition in &partitions {
+      partition.write_arc().extract_root_sequence(&graph);
+    }
 
     // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here

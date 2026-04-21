@@ -28,6 +28,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
 
   fn extract_branch_lengths(graph: &GraphTimetree) -> Vec<f64> {
     graph
@@ -58,9 +59,11 @@ mod tests {
       length: case.sequence_length(),
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    sparse_partition.write_arc().extract_root_sequence(&graph);
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
       vec![sparse_partition];
@@ -117,9 +120,11 @@ mod tests {
       length: case.sequence_length(),
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    sparse_partition.write_arc().extract_root_sequence(&graph);
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
       vec![sparse_partition];

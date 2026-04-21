@@ -25,6 +25,7 @@ mod tests {
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
+  use treetime_primitives::seq;
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -124,9 +125,11 @@ mod tests {
       length: get_common_length(aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(graph, &partitions, aln)?;
+    partitions[0].write_arc().extract_root_sequence(graph);
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partitions))
   }
@@ -197,9 +200,11 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+    partitions_marginal_sparse[0].write_arc().extract_root_sequence(&graph);
 
     let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
 
@@ -300,6 +305,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &partitions, &aln)?;
@@ -472,6 +478,7 @@ mod tests {
             length: get_common_length(&aln)?,
             nodes: btreemap! {},
             edges: btreemap! {},
+            root_sequence: seq![],
           }))];
 
           compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
@@ -519,9 +526,11 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &partitions, &aln)?;
+    partitions[0].write_arc().extract_root_sequence(&graph);
     update_marginal(&graph, &partitions)?;
 
     let actual_by_edge = {

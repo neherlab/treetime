@@ -20,6 +20,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -51,6 +52,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
@@ -100,6 +102,7 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;

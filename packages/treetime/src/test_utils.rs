@@ -17,6 +17,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node::Named;
 use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::nwk_read_str;
+use treetime_primitives::seq;
 
 /// Default nucleotide alphabet for test helpers.
 pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -56,9 +57,13 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
     length: get_common_length(&aln)?,
     nodes: btreemap! {},
     edges: btreemap! {},
+    root_sequence: seq![],
   }))];
 
   compress_sequences(&graph, &partitions, &aln)?;
+  for p in &partitions {
+    p.write_arc().extract_root_sequence(&graph);
+  }
   update_marginal(&graph, &partitions)
 }
 

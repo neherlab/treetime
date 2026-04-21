@@ -27,6 +27,7 @@ use treetime_graph::node::GraphNode;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_primitives::seq;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -126,6 +127,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
       gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
       alphabet: alphabet.clone(),
       length: get_common_length(&aln)?,
+      root_sequence: seq![],
       nodes: btreemap! {},
       edges: btreemap! {},
     }]
@@ -134,6 +136,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     .collect_vec();
 
     compress_sequences(&graph, &partitions, &aln)?;
+    for partition in &partitions {
+      partition.write_arc().extract_root_sequence(&graph);
+    }
 
     // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here

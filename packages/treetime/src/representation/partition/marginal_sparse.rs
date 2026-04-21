@@ -16,7 +16,7 @@ use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::mem;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
@@ -33,6 +33,7 @@ pub struct PartitionMarginalSparse {
   pub gtr: GTR,
   pub alphabet: Alphabet,
   pub length: usize,
+  pub root_sequence: Seq,
   pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
   pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
 }
@@ -71,6 +72,31 @@ impl PartitionMarginalSparse {
   #[allow(clippy::same_name_method)]
   pub fn get_sequence_length(&self) -> usize {
     self.length
+  }
+
+  /// Extract root sequence from the root node and clear internal node sequences.
+  ///
+  /// After Fitch compression, every node carries a full resolved sequence. Only
+  /// the root sequence is needed for downstream reconstruction (node_state_at,
+  /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
+  /// sequences saves memory and removes stale data that would otherwise persist
+  /// across reroots.
+  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>)
+  where
+    N: GraphNode,
+    E: GraphEdge,
+  {
+    let root_key = graph
+      .get_exactly_one_root()
+      .expect("Tree must have exactly one root")
+      .read_arc()
+      .key();
+    self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
+    for (key, node_data) in &mut self.nodes {
+      if *key != root_key && !graph.is_leaf(*key) {
+        node_data.seq.sequence = seq![];
+      }
+    }
   }
 
   /// Return positions that can change the reconstructed mutation set for one edge.
@@ -137,14 +163,11 @@ impl PartitionMarginalSparse {
     // Root must have partition data (populated by Fitch compression).
     // Non-root nodes may be absent during topology changes.
     let base_state = match graph.node_parent(node_key)? {
-      None => {
-        let d = node_data.ok_or_else(|| make_internal_report!("Root node {node_key} has no partition data"))?;
-        d.seq
-          .sequence
-          .get(pos)
-          .copied()
-          .unwrap_or_else(|| self.alphabet.char(0))
-      },
+      None => self
+        .root_sequence
+        .get(pos)
+        .copied()
+        .unwrap_or_else(|| self.alphabet.char(0)),
       Some((parent_key, parent_edge_key)) => {
         let parent_state = self.node_state_at(graph, parent_key, pos, cache)?;
 
@@ -402,7 +425,7 @@ where
     let mut node_data = self.nodes.remove(&node.key)?;
 
     let mut seq = if node.is_root {
-      node_data.seq.sequence.clone()
+      self.root_sequence.clone()
     } else {
       let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
       let parent_data = self.nodes.get(parent_key)?;

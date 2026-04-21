@@ -19,6 +19,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -88,9 +89,13 @@ mod tests {
       length: get_common_length(aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(graph, &partitions, aln)?;
+    for p in &partitions {
+      p.write_arc().extract_root_sequence(graph);
+    }
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)

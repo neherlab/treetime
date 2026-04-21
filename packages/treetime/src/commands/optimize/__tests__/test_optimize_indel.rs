@@ -30,6 +30,7 @@ mod tests {
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
+  use treetime_primitives::seq;
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
   fn inject_indels_on_first_edge(
@@ -90,9 +91,13 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(graph);
+    }
     initialize_marginal(graph, &dense_partitions, &aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

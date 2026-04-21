@@ -24,6 +24,7 @@ use treetime_graph::node::GraphNode;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_primitives::seq;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]
@@ -105,6 +106,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
           alphabet,
           length: get_common_length(&aln)?,
+          root_sequence: seq![],
           nodes: btreemap! {},
           edges: btreemap! {},
         }]
@@ -114,6 +116,9 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
         if !partitions_marginal_sparse.is_empty() {
           compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+          for partition in &partitions_marginal_sparse {
+            partition.write_arc().extract_root_sequence(&graph);
+          }
 
           // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
           // FIXME: spaghetti code: dummy gtr is replaced by real gtr here

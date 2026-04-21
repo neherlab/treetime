@@ -18,6 +18,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
 
   // Regression: run_optimize_mixed must not produce -inf/NaN when entering
   // with branch_length=0 and mismatched certain states. Before the fix,
@@ -64,9 +65,13 @@ mod tests {
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     initialize_marginal(&graph, &dense_partitions, &aln)?;
     update_marginal(&graph, &sparse_partitions)?;
 

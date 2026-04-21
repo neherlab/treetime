@@ -22,6 +22,7 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
   use treetime_utils::make_report;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -127,10 +128,14 @@ mod tests {
       length: get_common_length(aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     }));
     let partitions = [Arc::clone(&partition)];
 
     compress_sequences(graph, &partitions, aln)?;
+    for p in &partitions {
+      p.write_arc().extract_root_sequence(graph);
+    }
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partition))
   }

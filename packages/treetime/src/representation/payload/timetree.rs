@@ -313,15 +313,6 @@ mod tests {
     edge_subs: &[(usize, Vec<Sub>)],
   ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
     let alphabet = Alphabet::default();
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: alphabet.clone(),
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
     // Build reference sequence consistent with sub ref chars so node_state_at
     // returns the expected parent state at each mutated position.
     let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -332,6 +323,16 @@ mod tests {
         }
       }
     }
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: alphabet.clone(),
+      length,
+      root_sequence: ref_seq.clone(),
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    };
 
     for node in graph.get_nodes() {
       let key = node.read_arc().key();

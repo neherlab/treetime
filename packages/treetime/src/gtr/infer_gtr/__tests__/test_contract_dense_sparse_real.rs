@@ -50,6 +50,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::seq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -145,8 +146,10 @@ mod tests {
         length: get_common_length(&aln)?,
         nodes: btreemap! {},
         edges: btreemap! {},
+        root_sequence: seq![],
       }));
       compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+      partition.write_arc().extract_root_sequence(&graph);
       update_marginal(&graph, std::slice::from_ref(&partition))?;
       infer_gtr_sparse(&partition, &graph)?
     };

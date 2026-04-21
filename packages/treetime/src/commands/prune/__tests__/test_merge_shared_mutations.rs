@@ -16,6 +16,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
+  use treetime_primitives::seq;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -37,6 +38,7 @@ mod tests {
       length,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
 
     // Build root reference sequence consistent with edge subs.
@@ -50,6 +52,8 @@ mod tests {
         }
       }
     }
+
+    partition.root_sequence = ref_seq.clone();
 
     // Populate node entries so edge_subs() can reconstruct states
     for node in graph.get_nodes() {
@@ -388,10 +392,11 @@ mod tests {
       length: 200,
       nodes: btreemap! {},
       edges: btreemap! {},
+      root_sequence: seq![],
     };
-    // Populate nodes for p2 with a reference sequence matching the sub ref chars
     let mut p2_ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
     p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
+    p2_inner.root_sequence = p2_ref_seq.clone();
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
       let mut node_part = SparseNodePartition::empty(&p2_inner.alphabet);
