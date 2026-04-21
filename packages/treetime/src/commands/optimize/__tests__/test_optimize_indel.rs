@@ -8,7 +8,7 @@ mod tests {
   };
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_dense;
-  use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
+  use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
     OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best,
     is_zero_branch_optimal, run_optimize_mixed,
@@ -136,6 +136,38 @@ mod tests {
       .sum();
     let expected_rate = 2.0 / total_bl;
     assert_abs_diff_eq!(rate, expected_rate, epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_indel_total_log_lh_matches_manual_sum() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+    graph.get_edges()[0]
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(0.1));
+
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+
+    let expected_total_lh: f64 = graph
+      .get_edges()
+      .iter()
+      .map(|edge_ref| {
+        let edge_key = edge_ref.read_arc().key();
+        let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        let indel_count = if edge_key == first_edge_key { 2 } else { 0 };
+        poisson_indel_log_lh(indel_count, indel_rate, branch_length).log_lh
+      })
+      .sum();
+
+    assert_abs_diff_eq!(total_lh, expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
 

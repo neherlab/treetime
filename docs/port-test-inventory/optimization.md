@@ -531,6 +531,26 @@ Fixtures in `__fixtures__/`:
 
 ---
 
+## Indel Objective and Zero-BL Handling
+
+**File:** [`test_optimize_indel.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_indel.rs)
+
+Focused regression coverage for the Poisson indel term, zero-branch-length bootstrapping, and indel-aware optimization behavior.
+
+| Test                                                     | Purpose                                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `test_optimize_indel_estimate_rate_no_indels`            | Global indel rate is zero when no edges carry indels                     |
+| `test_optimize_indel_estimate_rate_with_indels`          | Global indel rate equals total indels divided by total branch length     |
+| `test_optimize_indel_total_log_lh_matches_manual_sum`    | Tree-level Poisson indel objective matches manual per-edge summation     |
+| `test_optimize_indel_initial_guess_nonzero_with_indels`  | Indel-only signal produces positive initial branch length                |
+| `test_optimize_indel_initial_guess_zero_bl_tree_with_indels` | Zero-BL trees bootstrap away from zero when indels are present       |
+| `test_optimize_indel_run_optimize_nonzero_with_indels`   | All 6 optimize methods produce positive finite BL on indel-bearing edge  |
+| `test_optimize_indel_zero_bl_pipeline_escapes_zero`      | Initial guess plus optimize escapes zero in the sparse production path   |
+| `test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels` | Zero-boundary shortcut rejects zero when Poisson term is active |
+| `test_optimize_indel_grid_zero_comparison_allows_zero_without_indels` | Zero-boundary shortcut preserves substitution-only behavior      |
+
+---
+
 ## Run Optimize Loop Contract
 
 **Test:** [`packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs)
@@ -539,11 +559,12 @@ Fixtures in `__fixtures__/`:
 
 | Test                                              | Purpose                                                  |
 | ------------------------------------------------- | -------------------------------------------------------- |
-| `test_run_optimize_loop_records_lh_per_iteration` | `lh_history` has one entry per executed iteration        |
-| `test_run_optimize_loop_breaks_on_convergence`    | Breaks and records `stopped_at` with `Converged`         |
-| `test_run_optimize_loop_zero_max_iter_is_noop`    | `max_iter = 0` runs the body zero times                  |
-| `test_run_optimize_loop_all_likelihoods_finite`   | All likelihoods finite (guards against forward-pass NaN) |
-| `test_run_optimize_loop_improves_likelihood`      | Damped loop improves likelihood from initial state       |
+| `test_run_optimize_loop_records_lh_history`                         | `lh_history` has one entry per executed iteration                    |
+| `test_run_optimize_loop_records_joint_likelihood_with_sparse_indels` | `lh_history` records substitution + indel objective on indel runs |
+| `test_run_optimize_loop_breaks_on_convergence`                      | Breaks and records `stopped_at` with `Converged`                     |
+| `test_run_optimize_loop_zero_max_iter_is_noop`                      | `max_iter = 0` runs the body zero times                              |
+| `test_run_optimize_loop_all_likelihoods_finite`                     | All likelihoods finite (guards against forward-pass NaN)             |
+| `test_run_optimize_loop_improves_likelihood`                        | Damped loop improves likelihood from initial state                   |
 
 ---
 

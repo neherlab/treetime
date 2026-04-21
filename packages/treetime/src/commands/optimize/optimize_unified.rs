@@ -540,17 +540,33 @@ where
   E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
-  let total_length: usize = partitions
-    .iter()
-    .map(|partition| partition.read_arc().sequence_length())
-    .sum();
+  let total_length = total_sequence_length(partitions);
+  if total_length == 0 {
+    return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
+  }
+
+  let indel_rate = estimate_indel_rate(graph, partitions);
+  run_optimize_mixed_with_indel_rate(graph, partitions, method, indel_rate)
+}
+
+pub(crate) fn run_optimize_mixed_with_indel_rate<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+  method: BranchOptMethod,
+  indel_rate: f64,
+) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  P: PartitionOptimizeOps + ?Sized,
+{
+  let total_length = total_sequence_length(partitions);
 
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
   let one_mutation = 1.0 / total_length as f64;
-  let indel_rate = estimate_indel_rate(graph, partitions);
 
   graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
     let edge_key = edge_ref.read_arc().key();
@@ -682,6 +698,16 @@ where
     edge.set_branch_length(Some(new_branch_length));
     Ok(())
   })
+}
+
+fn total_sequence_length<P>(partitions: &[Arc<RwLock<P>>]) -> usize
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  partitions
+    .iter()
+    .map(|partition| partition.read_arc().sequence_length())
+    .sum()
 }
 
 /// Initial estimation of branch lengths for mixed partitions.

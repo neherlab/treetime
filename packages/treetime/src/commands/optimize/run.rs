@@ -2,7 +2,8 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
-use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
+use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
+use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_with_indel_rate};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
@@ -246,10 +247,12 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 ///
 /// Per-iteration sequence:
 ///
-/// 1. Run `update_marginal` on sparse and dense partitions; sum to a total log-likelihood.
+/// 1. Run `update_marginal` on sparse and dense partitions, estimate one indel rate for the
+///    current tree, and sum the joint substitution + indel log-likelihood.
 /// 2. Check three stopping conditions (converged, oscillating, worsened).
 /// 3. Save current branch lengths ([`save_branch_lengths`]).
-/// 4. Per-edge branch-length update ([`run_optimize_mixed`]).
+/// 4. Per-edge branch-length update with that same indel rate
+///    ([`run_optimize_mixed_with_indel_rate`]).
 /// 5. Identify internal edges the optimizer drove to exactly zero, BEFORE damping
 ///    blends those zeros with the old branch lengths ([`find_zero_optimal_internal_edges`]).
 /// 6. Apply damping ([`apply_damping`]): convex combination of new and saved branch lengths.
@@ -279,37 +282,37 @@ pub fn run_optimize_loop(
   let mut best_branch_lengths: Vec<f64> = Vec::new();
 
   for i in 0..max_iter {
-    let sparse_lh = update_marginal(graph, sparse_partitions)?;
-    let dense_lh = update_marginal(graph, dense_partitions)?;
-    let total_lh = sparse_lh + dense_lh;
-    lh_history.push(total_lh);
+    let iteration_lh = compute_iteration_likelihood(graph, sparse_partitions, dense_partitions, mixed_partitions)?;
+    lh_history.push(iteration_lh.total_lh);
 
     debug!(
-      "Iteration {}: likelihood {} (sparse: {}, dense: {})",
+      "Iteration {}: likelihood {} (sparse: {}, dense: {}, indel: {}, rate: {})",
       i + 1,
-      float_to_significant_digits(total_lh, 7),
-      float_to_significant_digits(sparse_lh, 7),
-      float_to_significant_digits(dense_lh, 7)
+      float_to_significant_digits(iteration_lh.total_lh, 7),
+      float_to_significant_digits(iteration_lh.sparse_lh, 7),
+      float_to_significant_digits(iteration_lh.dense_lh, 7),
+      float_to_significant_digits(iteration_lh.indel_lh, 7),
+      float_to_significant_digits(iteration_lh.indel_rate, 7)
     );
 
     // NaN/Inf from numerical instability silently bypasses all convergence
     // checks (NaN < x is false for all x under IEEE 754). Record the failure
     // so callers can distinguish numerical breakdown from normal termination.
-    if !total_lh.is_finite() {
+    if !iteration_lh.total_lh.is_finite() {
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
     }
 
     // Track best-observed state for potential revert.
-    if total_lh > best_lh {
-      best_lh = total_lh;
+    if iteration_lh.total_lh > best_lh {
+      best_lh = iteration_lh.total_lh;
       best_branch_lengths = save_branch_lengths(graph);
     }
 
     // Three orthogonal stopping conditions, checked in order of specificity.
     //
     // 1. Converged: successive likelihoods within dp (standard EM criterion).
-    if (total_lh - lh_prev).abs() < dp.abs() {
+    if (iteration_lh.total_lh - lh_prev).abs() < dp.abs() {
       stopped_at = Some((i, ConvergenceReason::Converged));
       break;
     }
@@ -317,7 +320,7 @@ pub fn run_optimize_loop(
     // 2. Oscillating: two-step likelihoods within dp (detects 2-cycles where
     //    consecutive differences exceed dp but the period-2 amplitude is small).
     //    Requires at least 2 prior measurements (i >= 2).
-    if i >= 2 && (total_lh - lh_prev_prev).abs() < dp.abs() {
+    if i >= 2 && (iteration_lh.total_lh - lh_prev_prev).abs() < dp.abs() {
       stopped_at = Some((i, ConvergenceReason::Oscillating));
       break;
     }
@@ -329,7 +332,7 @@ pub fn run_optimize_loop(
     //    The `lh_prev >= best_lh` guard prevents firing during normal
     //    non-monotone transients where the overall trend is upward.
     //    Requires i >= 2 to allow the initial transient.
-    if i >= 2 && total_lh < lh_prev && lh_prev >= best_lh {
+    if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       restore_branch_lengths(graph, &best_branch_lengths);
       update_marginal(graph, sparse_partitions)?;
       update_marginal(graph, dense_partitions)?;
@@ -338,7 +341,7 @@ pub fn run_optimize_loop(
     }
 
     let old_branch_lengths = save_branch_lengths(graph);
-    run_optimize_mixed(graph, mixed_partitions, opt_method)?;
+    run_optimize_mixed_with_indel_rate(graph, mixed_partitions, opt_method, iteration_lh.indel_rate)?;
 
     // Identify zero-optimal internal edges BEFORE damping blends them with old values
     let zero_optimal_edges = find_zero_optimal_internal_edges(graph, sparse_partitions);
@@ -353,10 +356,40 @@ pub fn run_optimize_loop(
     }
 
     lh_prev_prev = lh_prev;
-    lh_prev = total_lh;
+    lh_prev = iteration_lh.total_lh;
   }
 
   Ok(OptimizeLoopResult { lh_history, stopped_at })
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct OptimizeIterationLikelihood {
+  sparse_lh: f64,
+  dense_lh: f64,
+  indel_lh: f64,
+  total_lh: f64,
+  indel_rate: f64,
+}
+
+fn compute_iteration_likelihood(
+  graph: &GraphAncestral,
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  mixed_partitions: &PartitionOptimizeVec,
+) -> Result<OptimizeIterationLikelihood, Report> {
+  let sparse_lh = update_marginal(graph, sparse_partitions)?;
+  let dense_lh = update_marginal(graph, dense_partitions)?;
+  let indel_rate = estimate_indel_rate(graph, mixed_partitions);
+  let indel_lh = total_indel_log_lh(graph, mixed_partitions, indel_rate);
+  let total_lh = sparse_lh + dense_lh + indel_lh;
+
+  Ok(OptimizeIterationLikelihood {
+    sparse_lh,
+    dense_lh,
+    indel_lh,
+    total_lh,
+    indel_rate,
+  })
 }
 
 /// Why the optimization loop stopped early (before exhausting `max_iter`).

@@ -74,6 +74,34 @@ where
   }
 }
 
+/// Sum the Poisson indel log-likelihood over all edges in the graph.
+///
+/// Uses the same `edge_indel_count()` aggregation and `poisson_indel_log_lh()`
+/// evaluator as the per-edge branch-length optimizer, but evaluated at the
+/// tree's current branch lengths. For an indel-bearing edge at zero branch
+/// length, the Poisson log-likelihood is $-\infty$.
+pub fn total_indel_log_lh<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>], indel_rate: f64) -> f64
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  P: PartitionOptimizeOps + ?Sized,
+{
+  graph
+    .get_edges()
+    .iter()
+    .map(|edge_ref| {
+      let edge_key = edge_ref.read_arc().key();
+      let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
+      if indel_count > 0 && branch_length <= 0.0 {
+        f64::NEG_INFINITY
+      } else {
+        poisson_indel_log_lh(indel_count, indel_rate, branch_length).log_lh
+      }
+    })
+    .sum()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

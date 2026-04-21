@@ -12,18 +12,21 @@ The Poisson model adds $\log P(k \mid \mu t)$ to the edge log-likelihood, where 
 
 ## Impact
 
-Low for most datasets. Indels are rare in typical viral phylogenetics. The effect is visible on branches where the only signal of divergence is an indel event. For standard datasets (flu, ebola, zika), the indel rate is zero and the contribution is a no-op.
+Low for most datasets. Indels are rare in typical viral phylogenetics. The effect is visible on branches where the only signal of divergence is an indel event, and on optimize-loop convergence diagnostics for indel-bearing runs. The contribution is a no-op only when all partitions report zero indels.
 
 ## Implementation
 
 - `optimize_indel.rs`: Poisson log-likelihood, derivatives, global rate estimation (generic over any `Graph<N, E, ()>` whose edges implement `HasBranchLength`)
 - `optimize_unified.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
+- `run.rs`: `run_optimize_loop()` records the joint substitution + indel objective and passes one per-iteration `indel_rate` to both tree-level evaluation and per-edge optimization
 - `timetree/inference/branch_length_likelihood.rs` and `timetree/inference/runner.rs`: the timetree branch-length distribution grid uses the same `evaluate_with_indels_log_lh_only()` evaluator, with `indel_rate` estimated once per pass and `indel_count` computed per edge
 - `partition_ops.rs`: `edge_indel_count()` trait method
 
 ## Convergence note
 
 The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from current branch lengths at each optimization round. On the first iteration, branch lengths come from `initial_guess_mixed` which bootstraps indel-only edges to `one_mutation` (a small value). This makes the denominator artificially small and the rate estimate artificially high, biasing branches shorter on the first iteration. The bias self-corrects on subsequent iterations as branch lengths converge.
+
+`run_optimize_loop()` now uses the same per-iteration $\hat{\mu}$ both for the recorded outer-loop likelihood and for `run_optimize_mixed()`. This removes the previous objective mismatch where edge optimization included indels but `LH`, convergence checks, and rollback logic ignored them.
 
 **Update**: investigation of [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) confirmed that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat\mu \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat\mu$ proportionally across all edges. Proposed fix: compute $\hat\mu$ once before the loop and cache it. See [optimize-convergence-and-robustness](../port-proposals/optimize-convergence-and-robustness.md) P6.
 

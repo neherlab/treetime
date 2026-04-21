@@ -46,6 +46,8 @@ Two factors worsen the 2-cycle but do not cause it:
 
 ## Contributing code issues
 
+**Outer-loop objective mismatch (fixed).** `run_optimize_loop()` previously recorded only the substitution likelihood from `update_marginal()`, while `run_optimize_mixed()` optimized branch lengths against the substitution plus Poisson indel objective. On indel-bearing runs this made `LH`, convergence checks, rollback, and `lh_history` disagree with the scalar actually optimized per edge. v1 now computes one per-iteration `indel_rate`, adds `total_indel_log_lh()` to the recorded outer-loop objective, and passes that same rate into `run_optimize_mixed_with_indel_rate()`.
+
 **Commented-out `estimate_indel_rate()` (`#estimate_indel_rate`) in `initial_guess_mixed()` (`#initial_guess_mixed`).** PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) replaced the call with `let indel_rate = 0.0;` at [packages/treetime/src/commands/optimize/optimize_unified.rs#L718](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L718). Three experimental runs on sc2/2844 show restoring the call is the only variant that converges:
 
 | Run              | `initial_guess_mixed`        | `run_optimize_mixed`           | Converges?    | Final LH        | 2-cycle amplitude |

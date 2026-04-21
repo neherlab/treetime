@@ -62,7 +62,7 @@ References:
 
 ## Poisson Indel Contribution
 
-Adds a Poisson indel log-likelihood term to per-edge branch length optimization. For $k$ observed indel events on a branch of length $t$ with global rate $\mu$: $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. The rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from the tree at each optimization round.
+Adds a Poisson indel log-likelihood term to branch length optimization. For $k$ observed indel events on a branch of length $t$ with global rate $\mu$: $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. The rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from the tree once per optimize pass and reused both for the tree-level objective (`total_indel_log_lh()`) and for per-edge updates (`run_optimize_mixed_with_indel_rate()`).
 
 v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs).
 
@@ -106,7 +106,7 @@ References:
 
 ## Three-Condition Convergence Check
 
-The optimize outer loop uses three orthogonal stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)), where $\mathrm{LH}_i$ is the log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold:
+The optimize outer loop uses three orthogonal stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)), where $\mathrm{LH}_i$ is the joint log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold. In indel-bearing runs, $\mathrm{LH}_i$ includes both substitution likelihood from `update_marginal()` and the tree-level Poisson indel contribution from `total_indel_log_lh()` evaluated with the same per-pass `indel_rate` used by the edge optimizer:
 
 - **Converged**: $|\mathrm{LH}_i - \mathrm{LH}_{i-1}| < \mathit{dp}$ (standard monotone convergence)
 - **Oscillating**: $|\mathrm{LH}_i - \mathrm{LH}_{i-2}| < \mathit{dp}$ (detects 2-cycles from the sparse variable/fixed reclassification; requires $i \ge 2$)
