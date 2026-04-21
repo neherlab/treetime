@@ -292,6 +292,38 @@ impl PartitionRerootOps for PartitionMarginalSparse {
       edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
     }
 
+    // Derive root sequence for the new root from the old root sequence.
+    // Walk inverted edges (listed in old_root->new_root order). After sub
+    // inversion, each sub's ref() holds the new-root-ward state (was the
+    // original child qry). Applying ref() at each position advances the
+    // sequence one step toward the new root.
+    if !changes.inverted_edge_keys.is_empty() {
+      let mut new_root_seq = self.root_sequence.clone();
+      for edge_key in &changes.inverted_edge_keys {
+        if let Some(edge_data) = self.edges.get(edge_key) {
+          for sub in &edge_data.subs {
+            if sub.pos() < new_root_seq.len() {
+              new_root_seq[sub.pos()] = sub.reff();
+            }
+          }
+          for indel in &edge_data.indels {
+            if indel.range.0 < new_root_seq.len() && indel.range.1 <= new_root_seq.len() {
+              // After inversion, deletion flag is flipped. To go in the
+              // original (old_root->new_root) direction:
+              // - current deletion (was insertion): child had `seq`
+              // - current insertion (was deletion): child had gaps
+              if indel.deletion {
+                new_root_seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+              } else {
+                new_root_seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+              }
+            }
+          }
+        }
+      }
+      self.root_sequence = new_root_seq;
+    }
+
     Ok(())
   }
 }

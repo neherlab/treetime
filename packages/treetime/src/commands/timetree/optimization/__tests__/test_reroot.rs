@@ -348,6 +348,18 @@ mod tests {
     );
     assert_eq!(inverted_sub.pos(), 2, "Position should remain unchanged");
 
+    // Verify root_sequence is updated: original root had G at pos 2,
+    // child A had T. After reroot to A, new root_sequence should have T at pos 2.
+    let expected_new_root_seq = {
+      let mut s = root_seq;
+      s[2] = c(b'T');
+      s
+    };
+    assert_eq!(
+      sparse_partition.root_sequence, expected_new_root_seq,
+      "root_sequence should reflect the new root's state after edge inversion"
+    );
+
     Ok(())
   }
 
