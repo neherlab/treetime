@@ -4,19 +4,21 @@
 
 ## Summary
 
-| Category            | Files  | Tests   | Type                 |
-| ------------------- | ------ | ------- | -------------------- |
-| Coalescent model    | 8      | 52      | Unit + Golden-master |
-| Belief propagation  | 4 + 1  | 17      | Unit + Golden-master |
-| Convergence         | 2      | 5       | Unit + Integration   |
-| Output (confidence) | 1      | 11      | Unit                 |
-| Clock filter        | 1      | 4       | Unit                 |
-| Relaxed clock       | 1      | 11      | Unit                 |
-| Polytomy resolution | 1      | 8       | Unit                 |
-| Rerooting           | 1      | 4       | Integration          |
-| **Total**           | **20** | **110** | Mixed                |
+| Category                                                   | Type                 |
+| ---------------------------------------------------------- | -------------------- |
+| [Coalescent model](#coalescent-model-tests)                | Unit + Golden-master |
+| [Total log-likelihood](#total-log-likelihood)              | Unit + Golden-master |
+| [Time coordinate](#time-coordinate)                        | Unit                 |
+| [Belief propagation](#belief-propagation--inference-tests) | Unit + Golden-master |
+| [Convergence](#convergence-tests)                          | Unit + Integration   |
+| [Output (confidence)](#output-tests)                       | Unit                 |
+| [Output (Auspice)](#auspice-output)                        | Unit                 |
+| [Clock filter](#clock-filter)                              | Unit                 |
+| [Relaxed clock](#relaxed-clock)                            | Unit                 |
+| [Polytomy resolution](#polytomy-resolution)                | Unit                 |
+| [Rerooting](#rerooting)                                    | Integration          |
 
-Test counts include parameterized case expansions (each `#[case]` is one execution).
+Parameterized tests use `#[case]` expansions via rstest.
 
 ---
 
@@ -58,27 +60,23 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 | `test_collect_tree_events_sorted`              | Events are time-sorted       |
 | `test_collect_tree_events_simultaneous_events` | Multiple events at same time |
 
-**Algorithm:** Event collection from tree topology and dates
-
 ---
 
 ### Lineage Dynamics
 
 **File:** [`test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs)
 
-| Test                                            | Purpose                               |
-| ----------------------------------------------- | ------------------------------------- |
-| `test_piecewise_constant_eval`                  | Step function evaluation (duplicate)  |
-| `test_piecewise_constant_eval_many`             | Batch evaluation (duplicate)          |
-| `test_lineage_count_simple_tree`                | Lineage count from simple tree events |
-| `test_lineage_count_single_event`               | Single event                          |
-| `test_lineage_count_empty_events`               | Error handling for empty input        |
-| `test_lineage_count_aggregation`                | Multiple events at same time          |
-| `test_lineage_count_decreasing_then_increasing` | Complex event sequence                |
-| `test_lineage_count_breakpoints`                | Breakpoint extraction                 |
-| `test_lineage_count_negative_deltas`            | Merger events                         |
-
-**Algorithm:** Lineage count dynamics from tree events. File also contains 2 piecewise constant tests.
+| Test                                            | Purpose                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| `test_piecewise_constant_eval`                  | Step function evaluation (duplicate of piecewise_constant_fn) |
+| `test_piecewise_constant_eval_many`             | Batch evaluation (duplicate of piecewise_constant_fn)         |
+| `test_lineage_count_simple_tree`                | Lineage count from simple tree events                         |
+| `test_lineage_count_single_event`               | Single event                                                  |
+| `test_lineage_count_empty_events`               | Error handling for empty input                                |
+| `test_lineage_count_aggregation`                | Multiple events at same time                                  |
+| `test_lineage_count_decreasing_then_increasing` | Complex event sequence                                        |
+| `test_lineage_count_breakpoints`                | Breakpoint extraction                                         |
+| `test_lineage_count_negative_deltas`            | Merger events                                                 |
 
 ---
 
@@ -103,12 +101,10 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 
 **File:** [`test_optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs)
 
-| Test                                                 | Cases | Purpose                                               |
-| ---------------------------------------------------- | ----- | ----------------------------------------------------- |
-| `test_optimize_tc_converges`                         | 1     | Basic convergence                                     |
-| `test_optimize_tc_convergence_from_different_starts` | 3     | Convergence from (0.1, 1.0), (0.1, 10.0), (1.0, 10.0) |
-
-4 test executions total. `#[rstest]` with 3 `#[case]` annotations.
+| Test                                                 | Purpose                                               |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| `test_optimize_tc_converges`                         | Basic convergence                                     |
+| `test_optimize_tc_convergence_from_different_starts` | Convergence from (0.1, 1.0), (0.1, 10.0), (1.0, 10.0) |
 
 ---
 
@@ -123,19 +119,53 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 | `test_optimize_skyline_log_tc_in_reasonable_range` | Regularization keeps log(Tc) bounded |
 | `test_optimize_skyline_larger_tree`                | 8-leaf tree with 10 grid points      |
 
-**Algorithm:** Skyline (piecewise constant Tc) optimization
-
 ---
 
 ### Golden-Master Coalescent
 
 **File:** [`test_gm_coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs)
 
-| Test                 | Cases | Datasets and Tc values                                                                                                                                                               |
-| -------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `test_gm_coalescent` | 16    | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
+| Test                 | Datasets and Tc values                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test_gm_coalescent` | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
 
-16 test executions. `#[rstest]` with 16 `#[case]` annotations. Tolerance: 1e-5 max absolute error. Fixtures: `__fixtures__/gm_coalescent_*.json`.
+Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/).
+
+---
+
+## Total Log-Likelihood
+
+**File:** [`test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
+
+| Test                                           | Purpose                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| `test_total_lh_returns_finite_value`           | Coalescent total LH is finite                                |
+| `test_total_lh_negative_for_reasonable_tc`     | Coalescent log-likelihood is negative for non-trivial trees  |
+| `test_total_lh_finite_for_tc` (4 cases)        | LH finite across range of Tc values (0.1, 1, 10, 100)        |
+| `test_total_lh_differs_across_tc_values`       | Different Tc values produce different LH                     |
+| `test_total_lh_monotonic_near_optimum`         | LH peaks near optimal Tc                                     |
+| `test_total_lh_matches_optimize_tc_likelihood` | compute_coalescent_total_lh matches optimize_tc output       |
+| `test_total_lh_with_formula_distribution`      | Constant Formula distribution matches Distribution::constant |
+
+**File:** [`test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
+
+| Test                        | Purpose                                                            |
+| --------------------------- | ------------------------------------------------------------------ |
+| `test_gm_total_lh_binary`   | Golden master: binary tree total LH matches v0 at four Tc values   |
+| `test_gm_total_lh_polytomy` | Golden master: polytomy tree total LH matches v0 at four Tc values |
+
+---
+
+## Time Coordinate
+
+**File:** [`time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs) (inline `#[cfg(test)]`)
+
+| Test                             | Purpose                                                       |
+| -------------------------------- | ------------------------------------------------------------- |
+| `test_calendar_to_tbp_roundtrip` | CalendarTime -> Tbp -> CalendarTime roundtrip preserves value |
+| `test_tbp_at_present_is_zero`    | Present time converts to Tbp(0)                               |
+| `test_tbp_arithmetic`            | Tbp subtraction and addition produce correct values           |
+| `test_calendar_time_max`         | CalendarTime::max returns the later time                      |
 
 ---
 
@@ -154,8 +184,6 @@ Test counts include parameterized case expansions (each `#[case]` is one executi
 | `test_backward_pass_skips_bad_branch_children`                        | `bad_branch` flag handling                       |
 | `test_backward_pass_bad_branch_equivalent_to_removal`                 | `bad_branch` matches tree without that leaf      |
 
-Helper module with `set_leaf_time()` and `set_edge_branch_dist()`.
-
 ---
 
 ### Runner (Input Mode)
@@ -169,20 +197,18 @@ Helper module with `set_leaf_time()` and `set_edge_branch_dist()`.
 | `test_input_mode_gamma_scales_time_length`                     | `time_length = branch_length / (clock_rate * gamma)` |
 | `test_input_mode_gamma_default_matches_no_gamma`               | Default gamma=1.0 behavior                           |
 
-### Branch-length likelihood grid
+### Branch-Length Likelihood Grid
 
 **File:** [`test_branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_branch_length_likelihood.rs)
 
-Direct tests of `compute_branch_length_distribution()`. Empty contribution slices isolate the Poisson indel term; non-empty slices are already exercised by the `test_gm_runner_*` path end-to-end.
-
-| Test                                                                  | Purpose                                                                    |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `test_branch_length_likelihood_no_indels_flat_distribution`           | `indel_rate == 0` produces flat distribution (prob == 1 at every sample)   |
-| `test_branch_length_likelihood_indel_rate_only_matches_poisson_shape` | `k == 0, mu > 0` follows `exp(-mu (t - t_min))` (shape + peak at grid min) |
-| `test_branch_length_likelihood_indel_mle_peak`                        | `k > 0, mu > 0` peaks at Poisson MLE `t_mle = k/mu`                        |
-| `test_branch_length_likelihood_indel_mle_peak_with_gamma`             | Gamma compresses the time-domain peak to `t_mle / (clock_rate * gamma)`    |
-| `test_branch_length_likelihood_zero_indels_matches_substitution_only` | Explicit no-op check when `indel_count == 0` and `indel_rate == 0`         |
-| `test_branch_length_likelihood_rejects_nonpositive_clock_rate`        | Error path: negative clock rate is rejected before the grid is constructed |
+| Test                                                                  | Purpose                                                            | Notes            |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------- |
+| `test_branch_length_likelihood_no_indels_flat_distribution`           | `indel_rate == 0` produces flat distribution                       |                  |
+| `test_branch_length_likelihood_indel_rate_only_matches_poisson_shape` | `k == 0, mu > 0` follows `exp(-mu (t - t_min))`                    | **1e-2** epsilon |
+| `test_branch_length_likelihood_indel_mle_peak`                        | `k > 0, mu > 0` peaks at Poisson MLE `t_mle = k/mu`                |                  |
+| `test_branch_length_likelihood_indel_mle_peak_with_gamma`             | Gamma compresses the time-domain peak                              |                  |
+| `test_branch_length_likelihood_zero_indels_matches_substitution_only` | Explicit no-op check when `indel_count == 0` and `indel_rate == 0` |                  |
+| `test_branch_length_likelihood_rejects_nonpositive_clock_rate`        | Error path: negative clock rate rejected                           |                  |
 
 ---
 
@@ -192,58 +218,48 @@ Direct tests of `compute_branch_length_distribution()`. Empty contribution slice
 
 #### Support
 
-**File:** `test_gm_runner_support.rs` - shared fixtures and helpers, no tests.
-
-Contains `DatasetOutputs` struct, `OUTPUTS` lazy static, `load_dates_for_dataset()`, `load_alignment_for_dataset()`. Loaded from `__fixtures__/gm_runner_inputs.json` and `__fixtures__/gm_runner_outputs.json`.
+**File:** [`test_gm_runner_support.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs) - shared fixtures and helpers, no tests.
 
 #### Poisson Mode
 
-**File:** `test_gm_runner_poisson.rs`
+**File:** [`test_gm_runner_poisson.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs)
 
-| Test                     | Cases | Datasets (enabled)        | Tolerance |
-| ------------------------ | ----- | ------------------------- | --------- |
-| `test_gm_runner_poisson` | 2     | `ebola_20`, `flu_h3n2_20` | 3e-1      |
-
-6 datasets disabled: `dengue_20`, `lassa_L_20`, `mpox_clade_ii_20`, `rsv_a_20`, `tb_20` (zero-length branches), `zika_20` (date column mismatch).
+| Test                     | Datasets              | Tolerance | Notes                                                                      |
+| ------------------------ | --------------------- | --------- | -------------------------------------------------------------------------- |
+| `test_gm_runner_poisson` | ebola_20, flu_h3n2_20 | **3e-1**  | 6 datasets disabled (see [\_index.md](_index.md#commented-out-test-cases)) |
 
 #### Dense Marginal
 
-**File:** `test_gm_runner_marginal_dense.rs`
+**File:** [`test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs)
 
-| Test                            | Cases | Datasets (enabled) | Tolerance |
-| ------------------------------- | ----- | ------------------ | --------- |
-| `test_gm_runner_marginal_dense` | 1     | `flu_h3n2_20`      | 9e-1      |
-
-`ebola_20` disabled (gap character). Same 6 datasets disabled as poisson.
+| Test                            | Datasets    | Tolerance | Notes                                                                    |
+| ------------------------------- | ----------- | --------- | ------------------------------------------------------------------------ |
+| `test_gm_runner_marginal_dense` | flu_h3n2_20 | **9e-1**  | **ignored**: golden master datasets not yet passing. 7 datasets disabled |
 
 #### Sparse Marginal
 
-**File:** `test_gm_runner_marginal_sparse.rs`
+**File:** [`test_gm_runner_marginal_sparse.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs)
 
-| Test                             | Cases | Datasets (enabled) | Tolerance |
-| -------------------------------- | ----- | ------------------ | --------- |
-| `test_gm_runner_marginal_sparse` | 1     | `flu_h3n2_20`      | 9e-1      |
-
-Validates against v0 marginal dense golden values. Same datasets disabled as poisson plus `ebola_20`.
+| Test                             | Datasets    | Tolerance | Notes               |
+| -------------------------------- | ----------- | --------- | ------------------- |
+| `test_gm_runner_marginal_sparse` | flu_h3n2_20 | **9e-1**  | 6 datasets disabled |
 
 #### ML Branch-Length Pre-Optimization
 
-**File:** `test_gm_runner_pre_optimize.rs`
+**File:** [`test_gm_runner_pre_optimize.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_pre_optimize.rs)
 
-| Test                                                 | Cases | Datasets      | Purpose                                                |
-| ---------------------------------------------------- | ----- | ------------- | ------------------------------------------------------ |
-| `test_gm_runner_pre_optimize_changes_branch_lengths` | 1     | `flu_h3n2_20` | Verifies Brent optimization modifies at least one BL   |
-| `test_gm_runner_pre_optimize_pipeline_succeeds`      | 1     | `flu_h3n2_20` | Full pipeline with pre-step produces finite node times |
+| Test                                                 | Purpose                                                |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| `test_gm_runner_pre_optimize_changes_branch_lengths` | Verifies Brent optimization modifies at least one BL   |
+| `test_gm_runner_pre_optimize_pipeline_succeeds`      | Full pipeline with pre-step produces finite node times |
 
 #### Coalescent Integration
 
-**File:** `test_runner_coalescent.rs`
+**File:** [`test_runner_coalescent.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs)
 
-| Test                               | Cases | Tc values      | Purpose                                        |
-| ---------------------------------- | ----- | -------------- | ---------------------------------------------- |
-| `test_runner_coalescent_completes` | 3     | 0.1, 1.0, 10.0 | Pipeline completes without panic, finite times |
-
-Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
+| Test                               | Datasets                        | Notes                                               |
+| ---------------------------------- | ------------------------------- | --------------------------------------------------- |
+| `test_runner_coalescent_completes` | flu_h3n2_20 (Tc 0.1, 1.0, 10.0) | **ignored**: golden master datasets not yet passing |
 
 ---
 
@@ -268,34 +284,65 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 ## Output Tests
 
-**File:** [`test_confidence.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence.rs)
+### Confidence Extraction
 
-| Test                                                                 | Purpose                                  |
-| -------------------------------------------------------------------- | ---------------------------------------- |
-| `test_extract_confidence_intervals_includes_unnamed_nodes`           | Unnamed nodes included with empty name   |
-| `test_extract_confidence_intervals_skips_nodes_without_time`         | Nodes without time excluded              |
-| `test_extract_confidence_intervals_uses_date_as_fallback`            | Date used when no distribution           |
-| `test_extract_confidence_intervals_with_distribution`                | 90% HPD from distribution                |
-| `test_extract_confidence_intervals_sorted_by_key`                    | Sorted by GraphNodeKey (insertion order) |
-| `test_combine_confidence_no_contributions`                           | Baseline only                            |
-| `test_combine_confidence_single_contribution`                        | One contribution                         |
-| `test_combine_confidence_quadrature`                                 | Quadrature sum of deviations             |
-| `test_extract_confidence_intervals_clamps_when_date_outside_rate_ci` | Postcondition clamp: date above rate CI  |
-| `test_extract_confidence_intervals_clamps_when_date_below_rate_ci`   | Postcondition clamp: date below rate CI  |
-| `test_combine_confidence_clipped_to_limits`                          | Clipping to baseline limits              |
+**File:** [`test_confidence_extract.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_extract.rs)
+
+| Test                                                                 | Purpose                                            | Notes            |
+| -------------------------------------------------------------------- | -------------------------------------------------- | ---------------- |
+| `test_extract_confidence_intervals_includes_unnamed_nodes`           | Unnamed nodes included with empty name             |                  |
+| `test_extract_confidence_intervals_skips_nodes_without_time`         | Nodes without time excluded                        |                  |
+| `test_extract_confidence_intervals_uses_date_as_fallback`            | Date used when no distribution                     |                  |
+| `test_extract_confidence_intervals_with_distribution`                | 90% HPD from distribution                          |                  |
+| `test_extract_confidence_intervals_sorted_by_key`                    | Sorted by GraphNodeKey (insertion order)           |                  |
+| `test_extract_confidence_intervals_rate_only`                        | Rate susceptibility dates produce z-score based CI |                  |
+| `test_extract_confidence_intervals_combined_wider_than_either`       | Quadrature combination wider than either source    |                  |
+| `test_extract_confidence_intervals_clamps_when_date_outside_rate_ci` | Postcondition clamp: date above rate CI            | **1e-3** epsilon |
+| `test_extract_confidence_intervals_clamps_when_date_below_rate_ci`   | Postcondition clamp: date below rate CI            | **1e-3** epsilon |
+| `test_extract_confidence_intervals_skewed_distribution_hpd`          | HPD region for skewed distribution                 |                  |
+
+### Confidence Combination
+
+**File:** [`test_confidence_combine.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_combine.rs)
+
+| Test                                          | Purpose                      |
+| --------------------------------------------- | ---------------------------- |
+| `test_combine_confidence_no_contributions`    | Baseline only                |
+| `test_combine_confidence_single_contribution` | One contribution             |
+| `test_combine_confidence_quadrature`          | Quadrature sum of deviations |
+| `test_combine_confidence_clipped_to_limits`   | Clipping to baseline limits  |
+
+### Rate Uncertainty
+
+**File:** [`test_confidence_rate.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_rate.rs)
+
+| Test                                                            | Purpose                                             |
+| --------------------------------------------------------------- | --------------------------------------------------- |
+| `test_quantile_to_zscore` (7 cases)                             | Probit function maps quantiles to z-scores          |
+| `test_date_uncertainty_due_to_rate` (5 cases)                   | Date uncertainty from rate susceptibility           |
+| `test_determine_rate_std_explicit_clock_std_dev`                | Explicit --clock-std-dev passed through             |
+| `test_determine_rate_std_rejects_negative`                      | Negative --clock-std-dev rejected                   |
+| `test_determine_rate_std_rejects_zero`                          | Zero --clock-std-dev rejected                       |
+| `test_determine_rate_std_none_without_covariation`              | None returned when no covariation                   |
+| `test_determine_rate_std_from_covariance_matrix`                | Rate std derived from covariance matrix             |
+| `test_determine_rate_std_none_for_fixed_clock_with_covariation` | None returned for fixed clock even with covariation |
+
+### Auspice Output
 
 **File:** [`test_auspice.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_auspice.rs)
 
-| Test                                             | Purpose                                   |
-| ------------------------------------------------ | ----------------------------------------- |
-| `test_auspice_metadata_structure`                | v2 metadata: panels, colorings, defaults  |
-| `test_auspice_root_node_attributes`              | Root node: div=0, num_date, bad_branch    |
-| `test_auspice_divergence_from_node_payload`      | div read from NodeTimetree.div            |
-| `test_auspice_bad_branch_attribute`              | Yes/No encoding of bad_branch flag        |
-| `test_auspice_confidence_intervals_by_key`       | CI lookup by GraphNodeKey                 |
-| `test_auspice_unnamed_node_gets_ci_by_key`       | Unnamed node gets CI via key-based lookup |
-| `test_auspice_node_without_time_has_no_num_date` | No num_date when time is None             |
-| `test_auspice_output_file_is_valid_json`         | File exists and parses as AuspiceTree     |
+| Test                                             | Purpose                                           |
+| ------------------------------------------------ | ------------------------------------------------- |
+| `test_auspice_metadata_structure`                | v2 metadata: panels, colorings, defaults          |
+| `test_auspice_root_node_attributes`              | Root node: div=0, num_date, bad_branch            |
+| `test_auspice_divergence_from_node_payload`      | div read from NodeTimetree.div                    |
+| `test_auspice_bad_branch_attribute`              | Yes/No encoding of bad_branch flag                |
+| `test_auspice_confidence_intervals_by_key`       | CI lookup by GraphNodeKey                         |
+| `test_auspice_unnamed_node_gets_ci_by_key`       | Unnamed node gets CI via key-based lookup         |
+| `test_auspice_node_without_time_has_no_num_date` | No num_date when time is None                     |
+| `test_auspice_rejects_nan_div`                   | NaN div produces error mentioning node name       |
+| `test_auspice_rejects_infinite_time`             | Infinite time produces error mentioning node name |
+| `test_auspice_output_file_is_valid_json`         | File exists and parses as AuspiceTree             |
 
 ---
 
@@ -311,8 +358,6 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_clock_filter_detects_outlier`        | Extreme deviation detected             |
 | `test_clock_filter_iqd_calculation`        | IQD computation                        |
 | `test_clock_filter_respects_threshold`     | Higher threshold allows more deviation |
-
-**Algorithm:** IQD-based outlier detection
 
 ---
 
@@ -334,8 +379,6 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_relaxed_clock_root_has_branch_penalty`                 | Root uses branch penalty                    |
 | `test_relaxed_clock_childless_root_gamma_equals_one`         | Analytical: gamma=1.0 for childless root    |
 
-**Algorithm:** Per-branch rate variation
-
 ---
 
 ### Polytomy Resolution
@@ -352,8 +395,6 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 | `test_resolve_polytomies_new_node_has_correct_time`            | New node time between parent/children |
 | `test_resolve_polytomies_large_polytomy`                       | 5-way polytomy requires 3 merges      |
 | `test_prepare_tree_after_topology_change_preserves_leaf_state` | Leaf constraints preserved            |
-
-**Algorithm:** Converting n-way splits to binary
 
 ---
 
@@ -374,14 +415,14 @@ Uses `flu_h3n2_20` dataset. Helper `build_timetree_setup()` in same file.
 
 Each `__tests__/mod.rs` contains only `mod` declarations.
 
-| Directory                                   | Module declarations                                                                                                                                                            |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `coalescent/__tests__/mod.rs`               | `test_events`, `test_gm_coalescent`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline` |
-| `inference/__tests__/mod.rs`                | `test_backward_pass`, `test_gm_runner`, `test_runner`                                                                                                                          |
-| `inference/__tests__/test_gm_runner/mod.rs` | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_pre_optimize`, `test_gm_runner_support`, `test_runner_coalescent` |
-| `convergence/__tests__/mod.rs`              | `test_metrics`, `test_pipeline`                                                                                                                                                |
-| `output/__tests__/mod.rs`                   | `test_confidence`                                                                                                                                                              |
-| `optimization/__tests__/mod.rs`             | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                      |
+| Directory                                                                                                                              | Module declarations                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`coalescent/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/mod.rs)                             | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
+| [`inference/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/mod.rs)                               | `test_backward_pass`, `test_branch_length_likelihood`, `test_gm_runner`, `test_runner`                                                                                                                                         |
+| [`inference/__tests__/test_gm_runner/mod.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/mod.rs) | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_pre_optimize`, `test_gm_runner_support`, `test_runner_coalescent`                                                 |
+| [`convergence/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/mod.rs)                           | `test_metrics`, `test_pipeline`                                                                                                                                                                                                |
+| [`output/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/mod.rs)                                     | `test_auspice`, `test_confidence_combine`, `test_confidence_extract`, `test_confidence_rate`                                                                                                                                   |
+| [`optimization/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/mod.rs)                         | `test_clock_filter`, `test_polytomy`, `test_relaxed_clock`, `test_reroot`                                                                                                                                                      |
 
 ---
 
@@ -390,8 +431,8 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 1. **Golden-master datasets disabled**: Multiple datasets disabled due to zero-length branches:
    `dengue_20`, `lassa_L_20`, `mpox_clade_ii_20`, `rsv_a_20`, `tb_20`, `zika_20`
 
-2. **Tolerance variations**: Root node dominates max diff in Poisson mode tests. Non-root nodes typically agree within 1e-2.
+2. **Tolerance variations**: Root node dominates max diff in Poisson mode tests. Non-root nodes agree within 1e-2.
 
 3. **Dense marginal**: `ebola_20` disabled due to gap character handling in alphabet.
 
-4. **Duplicate tests**: `test_lineage_dynamics.rs` contains 2 piecewise constant tests that duplicate those in `test_piecewise_constant_fn.rs`.
+4. **Duplicate tests**: [`test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).

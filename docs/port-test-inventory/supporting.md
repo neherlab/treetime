@@ -4,20 +4,19 @@
 
 ## Summary
 
-| Crate               | Module                                   | Files  | Tests   | Type                |
-| ------------------- | ---------------------------------------- | ------ | ------- | ------------------- |
-| treetime-primitives | BitSet128, AsciiChar, Seq                | 3      | 80      | Unit, Parameterized |
-| treetime-utils      | interval, iterator, datetime, fmt, array | 12     | 112     | Unit, Parameterized |
-| treetime-io         | dates_csv, concat                        | 2      | 12      | Unit, Parameterized |
-| treetime-grid       | Grid, GridFn, interp                     | 3      | 16      | Unit, Parameterized |
-| treetime-cli        | convert (auspice, usher, mutation)       | 4      | 16      | Unit, Parameterized |
-| treetime (alphabet) | Alphabet, AlphabetConfig                 | 2      | 120     | Unit, Parameterized |
-| treetime (io)       | FASTA, Newick                            | 2      | 26      | Unit                |
-| treetime (seq)      | composition, div, char_ranges            | 3      | 48      | Unit, Parameterized |
-| treetime (graph)    | traversal, collapse                      | 2      | 16      | Unit                |
-| treetime (repr)     | compose_substitutions                    | 1      | 11      | Unit, Parameterized |
-| treetime (prune)    | prune, collapse, merge                   | 2      | 50      | Unit                |
-| **Total**           |                                          | **36** | **507** |                     |
+| Crate                                       | Module                                                                 | Type                |
+| ------------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
+| [treetime-primitives](#treetime-primitives) | BitSet128, AsciiChar, Seq                                              | Unit, Parameterized |
+| [treetime-utils](#treetime-utils)           | interval, iterator, datetime, fmt, array                               | Unit, Parameterized |
+| [treetime-io](#treetime-io)                 | dates_csv, discrete_states_csv, nwk_providers, concat, parse_delimited | Unit, Parameterized |
+| [treetime-grid](#treetime-grid)             | Grid, GridFn, interp                                                   | Unit, Parameterized |
+| [treetime-cli](#treetime-cli)               | convert (auspice, usher, mutation)                                     | Unit, Parameterized |
+| [treetime (alphabet)](#alphabet)            | Alphabet, AlphabetConfig                                               | Unit, Parameterized |
+| [treetime (io)](#io)                        | FASTA, Newick                                                          | Unit                |
+| [treetime (seq)](#sequence-operations)      | composition, div, char_ranges, mutation                                | Unit, Parameterized |
+| [treetime (graph)](#graph)                  | traversal, collapse, edge                                              | Unit                |
+| [treetime (repr)](#representation)          | compose_substitutions, discrete_states, marginal_helpers, payloads     | Unit, Parameterized |
+| [treetime (prune)](#commands-prune)         | prune, collapse, merge                                                 | Unit                |
 
 ---
 
@@ -27,7 +26,7 @@
 
 **File:** [`test_bitset128.rs`](../../packages/treetime-primitives/src/__tests__/test_bitset128.rs)
 
-31 unit tests, 39 parameterized tests (9-10 cases each).
+Unit and parameterized tests for all BitSet128 operations.
 
 | Test                                            | Purpose                           |
 | ----------------------------------------------- | --------------------------------- |
@@ -341,6 +340,32 @@
 | `test_date_read_ok`        | Parse dates to year fractions (12 cases) |
 | `test_read_dates_from_str` | Parse TSV metadata file                  |
 
+### discrete_states_csv
+
+**File:** [`test_discrete_states_csv.rs`](../../packages/treetime-io/src/__tests__/test_discrete_states_csv.rs)
+
+| Test                                                        | Purpose                                               |
+| ----------------------------------------------------------- | ----------------------------------------------------- |
+| `test_discrete_states_csv_delimiter_handling` (2 cases)     | TSV and CSV delimiters parse correctly                |
+| `test_discrete_states_csv_name_column_detection` (4 cases)  | Default and custom name column headers detected       |
+| `test_discrete_states_csv_value_column_selection` (2 cases) | Explicit value column selected among multiple columns |
+| `test_discrete_states_csv_header_normalization`             | Headers with `#` delimiters normalized correctly      |
+| `test_discrete_states_csv_custom_parser`                    | Custom value parser (f64 parsing) works               |
+| `test_discrete_states_csv_whitespace_trimming`              | Whitespace in names and values trimmed                |
+
+### nwk_providers
+
+**File:** [`test_nwk_providers.rs`](../../packages/treetime-io/src/__tests__/test_nwk_providers.rs)
+
+| Test                                        | Purpose                                                                    |
+| ------------------------------------------- | -------------------------------------------------------------------------- |
+| `test_comment_provider_empty`               | Empty CommentProviders produces same output as default nwk_write_str       |
+| `test_comment_provider_single`              | Single provider adds NHX-style comment to one node                         |
+| `test_comment_provider_multiple`            | Multiple providers append separate comment blocks                          |
+| `test_comment_provider_precedence`          | Later provider overwrites earlier provider for same key                    |
+| `test_comment_provider_overwrites_payload`  | Provider comments overwrite payload comments for same key, preserve others |
+| `test_comment_provider_serializes_comments` | Provider comments serialize into Newick comment format                     |
+
 ### concat
 
 **File:** [`test_concat.rs`](../../packages/treetime-io/src/__tests__/test_concat.rs)
@@ -356,6 +381,28 @@
 | `test_concatenate_with_delimiter_first_empty_no_newline`          | First reader empty                     |
 | `test_concatenate_with_delimiter_second_empty_no_newline`         | Second reader empty                    |
 | `test_concatenate_with_delimiter_both_empty`                      | Both readers empty                     |
+
+### parse_delimited
+
+**File:** [`parse_delimited.rs`](../../packages/treetime-io/src/parse_delimited.rs) (inline `#[cfg(test)]`)
+
+| Test                                                         | Purpose                                          |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| `test_parse_delimited_str_comma_delimiter`                   | Comma-separated values parsed                    |
+| `test_parse_delimited_str_semicolon_delimiter`               | Semicolon-separated values parsed                |
+| `test_parse_delimited_str_pipe_delimiter`                    | Pipe-separated values parsed                     |
+| `test_parse_delimited_str_newline_delimiter`                 | Newline-separated values parsed                  |
+| `test_parse_delimited_str_whitespace_in_names`               | Whitespace preserved within elements             |
+| `test_parse_delimited_str_empty_string_produces_empty_vec`   | Empty input produces empty result                |
+| `test_parse_delimited_str_single_element_no_delimiter`       | Single element without delimiter parsed          |
+| `test_parse_delimited_str_empty_elements_between_delimiters` | Empty elements between consecutive delimiters    |
+| `test_parse_delimited_str_trailing_delimiter`                | Trailing delimiter behavior                      |
+| `test_parse_delimited_str_leading_delimiter`                 | Leading delimiter produces leading empty element |
+| `test_parse_delimited_str_only_delimiters`                   | Only-delimiter input behavior                    |
+| `test_parse_delimited_str_tab_delimiter`                     | Tab-separated values parsed                      |
+| `test_parse_delimited_str_space_delimiter`                   | Space-separated values parsed                    |
+| `test_parse_delimited_str_unicode_content`                   | Unicode content preserved                        |
+| `test_parse_delimited_str_mixed_whitespace_content`          | Mixed whitespace content preserved               |
 
 ---
 
@@ -452,7 +499,7 @@
 
 ### Alphabet
 
-**File:** [`test_alphabet.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet.rs) - 86 test executions (plain + rstest cases)
+**File:** [`test_alphabet.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet.rs)
 
 | Test                                             | Purpose                                      |
 | ------------------------------------------------ | -------------------------------------------- |
@@ -505,7 +552,7 @@
 | `test_alphabet_char_index_roundtrip`             | Char-to-index-to-char roundtrip              |
 | `test_alphabet_set_to_char_canonical_roundtrip`  | Char-to-set-to-char roundtrip                |
 
-**File:** [`test_alphabet_config.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs) - 34 test executions (plain + rstest cases)
+**File:** [`test_alphabet_config.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs)
 
 | Test                                                                    | Purpose                                           |
 | ----------------------------------------------------------------------- | ------------------------------------------------- |
@@ -534,7 +581,7 @@
 
 ### I/O
 
-**File:** [`test_fasta.rs`](../../packages/treetime/src/io/__tests__/test_fasta.rs) - 18 tests
+**File:** [`test_fasta.rs`](../../packages/treetime/src/io/__tests__/test_fasta.rs)
 
 | Test                                                                  | Purpose                                       |
 | --------------------------------------------------------------------- | --------------------------------------------- |
@@ -557,7 +604,7 @@
 | `test_fasta_reader_dedent_aa`                                         | Multiple amino acid records                   |
 | `test_fasta_reader_multiline_and_skewed_indentation`                  | Case folding, multiline, indentation handling |
 
-**File:** [`test_nwk.rs`](../../packages/treetime/src/io/__tests__/test_nwk.rs) - 8 tests
+**File:** [`test_nwk.rs`](../../packages/treetime/src/io/__tests__/test_nwk.rs)
 
 | Test                                      | Purpose                              |
 | ----------------------------------------- | ------------------------------------ |
@@ -572,7 +619,7 @@
 
 ### Sequence Operations
 
-**File:** [`test_composition.rs`](../../packages/treetime/src/seq/__tests__/test_composition.rs) - 8 tests
+**File:** [`test_composition.rs`](../../packages/treetime/src/seq/__tests__/test_composition.rs)
 
 | Test                                          | Purpose                              |
 | --------------------------------------------- | ------------------------------------ |
@@ -585,7 +632,7 @@
 | `test_composition_add_deletion`               | Deletion updates gap counts          |
 | `test_composition_add_insertion`              | Insertion updates char counts        |
 
-**File:** [`test_div.rs`](../../packages/treetime/src/seq/__tests__/test_div.rs) - 7 tests
+**File:** [`test_div.rs`](../../packages/treetime/src/seq/__tests__/test_div.rs)
 
 | Test                       | Purpose                              |
 | -------------------------- | ------------------------------------ |
@@ -597,7 +644,7 @@
 | `test_deep_tree`           | 20-level deep tree divergence        |
 | `test_zero_branch_lengths` | Zero branch lengths handled          |
 
-**File:** [`test_find_char_ranges.rs`](../../packages/treetime/src/seq/__tests__/test_find_char_ranges.rs) - 33 rstest cases across 4 functions
+**File:** [`test_find_char_ranges.rs`](../../packages/treetime/src/seq/__tests__/test_find_char_ranges.rs)
 
 | Test                                       | Purpose                                  |
 | ------------------------------------------ | ---------------------------------------- |
@@ -606,9 +653,23 @@
 | `test_find_gap_ranges` (7 cases)           | Gap range detection                      |
 | `test_find_undetermined_ranges` (12 cases) | Combined N+gap range detection and merge |
 
+**File:** [`test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
+
+| Test                                                            | Purpose                                          |
+| --------------------------------------------------------------- | ------------------------------------------------ |
+| `test_mutation_compose_substitutions_both_empty`                | Empty parent and child produce empty result      |
+| `test_mutation_compose_substitutions_parent_empty`              | Empty parent passes child through                |
+| `test_mutation_compose_substitutions_child_empty`               | Empty child passes parent through                |
+| `test_mutation_compose_substitutions_non_overlapping`           | Disjoint positions merge sorted                  |
+| `test_mutation_compose_substitutions_chain`                     | A->G + G->T = A->T at same position              |
+| `test_mutation_compose_substitutions_cancellation`              | A->G + G->A = no mutation                        |
+| `test_mutation_compose_substitutions_mixed`                     | Chain, passthrough, and cancellation in one call |
+| `test_mutation_compose_substitutions_output_sorted_by_position` | Interleaved positions verify merge order         |
+| `test_mutation_compose_substitutions_all_cancel`                | All positions cancel, empty result               |
+
 ### Graph
 
-**File:** [`graph.rs`](../../packages/treetime/src/graph/__tests__/graph.rs) - 15 tests
+**File:** [`graph.rs`](../../packages/treetime/src/graph/__tests__/graph.rs)
 
 | Test                                                  | Purpose                                |
 | ----------------------------------------------------- | -------------------------------------- |
@@ -628,7 +689,7 @@
 | `test_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
 | `test_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
 
-**File:** [`test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs) - 1 test
+**File:** [`test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
 
 | Test           | Purpose                                |
 | -------------- | -------------------------------------- |
@@ -636,9 +697,7 @@
 
 ### Representation
 
-**File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs) - 11 tests (7 plain + 4 rstest cases)
-
-Tests for `compose_substitutions()` (`#compose_substitutions`) defined in `seq::mutation`, exercised through the representation test file.
+**File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
 
 | Test                                                   | Purpose                                     |
 | ------------------------------------------------------ | ------------------------------------------- |
@@ -651,52 +710,103 @@ Tests for `compose_substitutions()` (`#compose_substitutions`) defined in `seq::
 | `test_compose_substitutions_mixed`                     | Chain, keep, add, cancel combined           |
 | `test_compose_substitutions_single_position` (4 cases) | Single-position chain and cancel variants   |
 
+**File:** [`discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs) (inline `#[cfg(test)]`)
+
+| Test                                            | Purpose                                                  |
+| ----------------------------------------------- | -------------------------------------------------------- |
+| `test_from_values_sorts_and_deduplicates`       | from_values sorts, deduplicates, excludes missing marker |
+| `test_get_index_returns_none_for_missing`       | Missing marker returns None index                        |
+| `test_get_index_returns_correct_index`          | Indices match sorted order                               |
+| `test_get_name_returns_correct_name`            | Names match sorted order                                 |
+| `test_is_missing`                               | Missing marker detected, non-missing values not flagged  |
+| `test_get_index_returns_none_for_unknown_value` | Unknown value returns None                               |
+| `test_empty_values`                             | Empty input produces empty DiscreteStates                |
+| `test_missing_marker`                           | Custom missing marker stored and returned                |
+
+**File:** [`marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
+
+| Test                                   | Purpose                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| `test_propagate_raw_per_site_forward`  | Forward propagation with per-site rates matches individual expQt_with_rate |
+| `test_propagate_raw_per_site_backward` | Backward propagation (transpose) with per-site rates matches individual    |
+
+**File:** [`ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs) (inline `#[cfg(test)]`)
+
+| Test                                                       | Purpose                                              |
+| ---------------------------------------------------------- | ---------------------------------------------------- |
+| `test_annotate_branch_mutations_formats_1_based_positions` | Mutations formatted with 1-based positions           |
+| `test_annotate_branch_mutations_empty_partitions`          | Empty partition list produces no mutations           |
+| `test_annotate_branch_mutations_no_mutations_on_edge`      | Edge with no subs produces None                      |
+| `test_annotate_branch_mutations_sorts_by_position`         | Multiple mutations sorted by position                |
+| `test_annotate_branch_mutations_multi_partition_merge`     | Mutations from multiple partitions merged and sorted |
+
+**File:** [`discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs) (inline `#[cfg(test)]`)
+
+| Test                                         | Purpose                                             |
+| -------------------------------------------- | --------------------------------------------------- |
+| `test_from_observed_creates_one_hot_profile` | Observed index creates one-hot profile              |
+| `test_missing_creates_uniform_profile`       | Missing creates uniform profile                     |
+| `test_default_node_data`                     | Default node data has empty profile and zero log_lh |
+| `test_default_edge_data`                     | Default edge data has empty arrays and zero log_lh  |
+
+**File:** [`timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs) (inline `#[cfg(test)]`)
+
+| Test                                                           | Purpose                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
+| `test_timetree_annotate_branch_mutations_populates_base_field` | annotate_branch_mutations writes to NodeTimetree.base.mutations |
+| `test_timetree_nwk_comments_include_mutations_and_date`        | nwk_comments includes both mutations and date annotations       |
+| `test_timetree_nexus_output_includes_mutations_and_date`       | Nexus serialization carries mutations and date annotations      |
+
 ### Commands: Prune
 
-**File:** [`test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs) - 38 tests
+**File:** [`test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
 
-| Test                                                                         | Purpose                                            |
-| ---------------------------------------------------------------------------- | -------------------------------------------------- |
-| `test_prune_nodes_basic`                                                     | Basic zero-length edge pruning                     |
-| `test_prune_nodes_with_threshold`                                            | Threshold preserves edges above limit              |
-| `test_prune_nodes_preserves_large_edges`                                     | Large edges unaffected by threshold                |
-| `test_prune_nodes_empty_graph`                                               | Empty graph handled without error                  |
-| `test_prune_nodes_handles_none_weights`                                      | None-weight edges handled                          |
-| `test_prune_nodes_preserves_terminal_nodes`                                  | Terminal nodes never collapsed                     |
-| `test_prune_nodes_complex_tree`                                              | Multi-level short edge collapse                    |
-| `test_prune_nodes_prune_empty_preserves_leaves`                              | Empty-edge leaves preserved                        |
-| `test_prune_nodes_prune_empty_internal_nodes`                                | Empty internal edges collapsed                     |
-| `test_prune_nodes_prune_empty_none_mutations`                                | Unknown mutations preserved (not treated as empty) |
-| `test_prune_nodes_prune_empty_simple_leaf_case`                              | Single leaf with no muts preserved                 |
-| `test_prune_nodes_combined_prune_short_and_empty`                            | Short and empty pruning combined                   |
-| `test_prune_nodes_prune_short_threshold_exact`                               | Exact threshold boundary preserved                 |
-| `test_prune_nodes_prune_short_threshold_below`                               | Below-threshold leaves preserved                   |
-| `test_prune_nodes_prune_empty_complex_tree`                                  | Complex tree empty-edge collapse                   |
-| `test_prune_nodes_prune_both_disabled`                                       | No pruning when both options off                   |
-| `test_collapse_sparse_edges_from_leaf_recursive_basic`                       | Recursive leaf path removal                        |
-| `test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children` | Stops at node with remaining children              |
-| `test_collapse_sparse_edges_from_leaf_recursive_stops_at_root`               | Stops at root node                                 |
-| `test_collapse_sparse_edges_from_leaf_recursive_invalid_edge_key_errors`     | Invalid edge key errors                            |
-| `test_create_test_edge_num_muts_none_vs_some_zero`                           | None vs Some(0) mutation distinction               |
-| `test_prune_nodes_single_named_leaf`                                         | Single named leaf removal                          |
-| `test_prune_nodes_multiple_named_leaves`                                     | Multiple named leaves removal                      |
-| `test_prune_nodes_nonexistent_name_is_noop`                                  | Nonexistent name is no-op                          |
-| `test_prune_nodes_named_internal_node`                                       | Named internal node collapsed                      |
-| `test_prune_nodes_mixed_internal_and_leaf_names`                             | Mixed internal and leaf removal                    |
-| `test_prune_nodes_empty_names_set_is_noop`                                   | Empty names set is no-op                           |
-| `test_prune_nodes_all_leaves_preserves_root`                                 | Removing all leaves keeps root                     |
-| `test_prune_nodes_deep_nested_leaf_removal`                                  | Deep nested leaf removal with collapse             |
-| `test_collapse_edge_mutation_union_non_overlapping`                          | Non-overlapping mutations merged on collapse       |
-| `test_collapse_edge_mutation_union_overlapping_same_mutation`                | Identical mutations deduplicated                   |
-| `test_collapse_edge_mutation_union_different_mutations_same_position`        | Different mutations at same position kept          |
-| `test_collapse_edge_mutation_union_multiple_partitions`                      | Per-partition mutation merge                       |
-| `test_collapse_edge_branch_length_sum_both_some`                             | Both branch lengths summed                         |
-| `test_collapse_edge_branch_length_sum_precision`                             | Small branch length sum precision                  |
-| `test_collapse_edge_branch_length_none_plus_some`                            | None + Some stays None                             |
-| `test_collapse_edge_branch_length_some_plus_none`                            | Some + None preserves Some                         |
-| `test_collapse_edge_branch_length_both_none`                                 | Both None stays None                               |
+| Test                                                                         | Purpose                                                      |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_prune_nodes_basic`                                                     | Basic zero-length edge pruning                               |
+| `test_prune_nodes_with_threshold`                                            | Threshold preserves edges above limit                        |
+| `test_prune_nodes_preserves_large_edges`                                     | Large edges unaffected by threshold                          |
+| `test_prune_nodes_empty_graph`                                               | Empty graph handled without error                            |
+| `test_prune_nodes_handles_none_weights`                                      | None-weight edges handled                                    |
+| `test_prune_nodes_preserves_terminal_nodes`                                  | Terminal nodes never collapsed                               |
+| `test_prune_nodes_complex_tree`                                              | Multi-level short edge collapse                              |
+| `test_prune_nodes_prune_empty_preserves_leaves`                              | Empty-edge leaves preserved                                  |
+| `test_prune_nodes_prune_empty_internal_nodes`                                | Empty internal edges collapsed                               |
+| `test_prune_nodes_prune_empty_none_mutations`                                | Unknown mutations preserved (not treated as empty)           |
+| `test_prune_nodes_prune_empty_simple_leaf_case`                              | Single leaf with no muts preserved                           |
+| `test_prune_nodes_combined_prune_short_and_empty`                            | Short and empty pruning combined                             |
+| `test_prune_nodes_prune_short_threshold_exact`                               | Exact threshold boundary preserved                           |
+| `test_prune_nodes_prune_short_threshold_below`                               | Below-threshold leaves preserved                             |
+| `test_prune_nodes_prune_empty_complex_tree`                                  | Complex tree empty-edge collapse                             |
+| `test_prune_nodes_prune_both_disabled`                                       | No pruning when both options off                             |
+| `test_collapse_sparse_edges_from_leaf_recursive_basic`                       | Recursive leaf path removal                                  |
+| `test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children` | Stops at node with remaining children                        |
+| `test_collapse_sparse_edges_from_leaf_recursive_stops_at_root`               | Stops at root node                                           |
+| `test_collapse_sparse_edges_from_leaf_recursive_invalid_edge_key_errors`     | Invalid edge key errors                                      |
+| `test_create_test_edge_num_muts_none_vs_some_zero`                           | None vs Some(0) mutation distinction                         |
+| `test_prune_nodes_single_named_leaf`                                         | Single named leaf removal                                    |
+| `test_prune_nodes_multiple_named_leaves`                                     | Multiple named leaves removal                                |
+| `test_prune_nodes_nonexistent_name_is_noop`                                  | Nonexistent name is no-op                                    |
+| `test_prune_nodes_named_internal_node`                                       | Named internal node collapsed                                |
+| `test_prune_nodes_mixed_internal_and_leaf_names`                             | Mixed internal and leaf removal                              |
+| `test_prune_nodes_empty_names_set_is_noop`                                   | Empty names set is no-op                                     |
+| `test_prune_nodes_all_leaves_preserves_root`                                 | Removing all leaves keeps root                               |
+| `test_prune_nodes_deep_nested_leaf_removal`                                  | Deep nested leaf removal with collapse                       |
+| `test_collapse_edge_mutation_union_non_overlapping`                          | Non-overlapping mutations merged on collapse                 |
+| `test_collapse_edge_mutation_union_overlapping_same_mutation`                | Identical mutations deduplicated                             |
+| `test_collapse_edge_mutation_union_different_mutations_same_position`        | Different mutations at same position kept                    |
+| `test_collapse_edge_mutation_union_multiple_partitions`                      | Per-partition mutation merge                                 |
+| `test_collapse_edge_branch_length_sum_both_some`                             | Both branch lengths summed                                   |
+| `test_collapse_edge_branch_length_sum_precision`                             | Small branch length sum precision                            |
+| `test_collapse_edge_branch_length_none_plus_some`                            | None + Some stays None                                       |
+| `test_collapse_edge_branch_length_some_plus_none`                            | Some + None preserves Some                                   |
+| `test_collapse_edge_branch_length_both_none`                                 | Both None stays None                                         |
+| `test_collapse_edge_compose_non_overlapping`                                 | Non-overlapping subs preserved through edge collapse         |
+| `test_collapse_edge_compose_chain`                                           | Chain composition (A->G + G->T = A->T) through edge collapse |
+| `test_collapse_edge_compose_cancellation`                                    | Cancellation (A->G + G->A = none) through edge collapse      |
+| `test_collapse_edge_compose_multiple_partitions`                             | Composition applied independently per partition              |
 
-**File:** [`test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs) - 13 tests
+**File:** [`test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs)
 
 | Test                                                      | Purpose                                               |
 | --------------------------------------------------------- | ----------------------------------------------------- |

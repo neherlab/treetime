@@ -4,33 +4,34 @@
 
 ## Summary
 
-| Category                           | Files  | Tests   | Type          |
-| ---------------------------------- | ------ | ------- | ------------- |
-| Model construction (golden-master) | 1      | 33      | Golden-master |
-| Matrix exponentiation properties   | 1      | 8       | Property      |
-| Eigendecomposition properties      | 1      | 3       | Property      |
-| Q matrix properties                | 1      | 8       | Property      |
-| Numerical stability                | 1      | 4       | Property      |
-| Branch length edge cases           | 1      | 5       | Unit          |
-| Extreme parameter edge cases       | 1      | 7       | Unit          |
-| Parameterized edge cases           | 1      | 3       | Parameterized |
-| Model hierarchy                    | 2      | 9       | Unit          |
-| GTR output (write_gtr_json)        | 1      | 4       | Unit          |
-| Generator validation               | 1      | 7       | Property      |
-| GTR inference (dense golden)       | 1      | 13      | Golden-master |
-| GTR inference (dense unit)         | 1      | 5       | Unit          |
-| GTR inference (sparse)             | 1      | 2       | Unit          |
-| Inference contracts                | 1      | 15      | Parameterized |
-| Dense-sparse cross-validation      | 1      | 7       | Integration   |
-| Common functions                   | 1      | 6       | Unit          |
-| Site-specific GTR properties       | 1      | 19      | Property      |
-| Site-specific GTR unit+validation  | 1      | 5       | Unit          |
-| Site-specific GTR golden-master    | 1      | 9       | Golden-master |
-| Site-specific GTR inference        | 1      | 2       | Unit          |
-| Jukes-Cantor distance correction   | 1      | 18      | Mixed         |
-| **Total**                          | **23** | **184** | Mixed         |
+| Category                                                              | Type            |
+| --------------------------------------------------------------------- | --------------- |
+| [Model construction (golden-master)](#golden-master-model-tests)      | Golden-master   |
+| [Matrix exponentiation properties](#matrix-exponentiation-properties) | Property        |
+| [Eigendecomposition properties](#eigendecomposition-properties)       | Property        |
+| [Q matrix properties](#q-matrix-properties)                           | Property        |
+| [Numerical stability](#numerical-stability-properties)                | Property        |
+| [Branch length edge cases](#numerical-edge-cases)                     | Unit            |
+| [Extreme parameter edge cases](#numerical-edge-cases)                 | Unit            |
+| [Parameterized edge cases](#numerical-edge-cases)                     | Parameterized   |
+| [Model hierarchy](#model-hierarchy-tests)                             | Unit            |
+| [GTR output (write_gtr_json)](#gtr-output-tests)                      | Unit            |
+| [Generator validation](#generator-validation)                         | Property        |
+| [GTR inference (dense golden)](#gtr-inference-tests---dense)          | Golden-master   |
+| [GTR inference (dense unit)](#gtr-inference-tests---dense)            | Unit            |
+| [GTR inference (sparse)](#gtr-inference-tests---sparse)               | Unit            |
+| [Inference contracts](#inference-contract-tests)                      | Parameterized   |
+| [Dense-sparse cross-validation](#dense-sparse-cross-validation)       | Integration     |
+| [Common functions](#common-functions)                                 | Unit            |
+| [Site-specific GTR properties](#site-specific-gtr-tests)              | Property        |
+| [Site-specific GTR unit+validation](#site-specific-gtr-tests)         | Unit            |
+| [Site-specific GTR golden-master](#site-specific-gtr-tests)           | Golden-master   |
+| [Site-specific GTR inference](#site-specific-gtr-inference-tests)     | Unit            |
+| [Site-rate variation (inline)](#site-rate-variation)                  | Unit + Property |
+| [Site-rate variation properties](#site-rate-variation-property-tests) | Property + Unit |
+| [Jukes-Cantor distance correction](#jukes-cantor-distance-correction) | Mixed           |
 
-Property tests run 256 random cases each (64 for generators). Total executions: ~6400.
+Property tests use proptest with random inputs. Generator tests use smaller sample sizes.
 
 ---
 
@@ -40,18 +41,18 @@ Property tests run 256 random cases each (64 for generators). Total executions: 
 
 Validates Rust v1 GTR model construction against Python v0 reference outputs.
 
-| Test                 | Model | Cases | Parameters                                                            |
-| -------------------- | ----- | ----- | --------------------------------------------------------------------- |
-| `test_gm_gtr_jc69`   | JC69  | 3     | default, mu_0_5, mu_2_0                                               |
-| `test_gm_gtr_k80`    | K80   | 6     | default, kappa_0_5, kappa_1_0, kappa_2_0, kappa_5_0, mu_0_5_kappa_2_0 |
-| `test_gm_gtr_f81`    | F81   | 4     | default, custom_pi, asymmetric_pi, mu_2_0                             |
-| `test_gm_gtr_hky85`  | HKY85 | 4     | default, kappa_2_0, custom_pi, custom_all                             |
-| `test_gm_gtr_t92`    | T92   | 5     | default, high_gc, low_gc, kappa_2_0, custom_all                       |
-| `test_gm_gtr_tn93`   | TN93  | 6     | default, kappa1_0_5, kappa2_2_0, both_kappa, custom_pi, full_custom   |
-| `test_gm_gtr_custom` | GTR   | 5     | uniform_rates, ts_tv_bias, asymmetric_pi, mu_scaling, random          |
+| Test                 | Model | Parameters                                                            |
+| -------------------- | ----- | --------------------------------------------------------------------- |
+| `test_gm_gtr_jc69`   | JC69  | default, mu_0_5, mu_2_0                                               |
+| `test_gm_gtr_k80`    | K80   | default, kappa_0_5, kappa_1_0, kappa_2_0, kappa_5_0, mu_0_5_kappa_2_0 |
+| `test_gm_gtr_f81`    | F81   | default, custom_pi, asymmetric_pi, mu_2_0                             |
+| `test_gm_gtr_hky85`  | HKY85 | default, kappa_2_0, custom_pi, custom_all                             |
+| `test_gm_gtr_t92`    | T92   | default, high_gc, low_gc, kappa_2_0, custom_all                       |
+| `test_gm_gtr_tn93`   | TN93  | default, kappa1_0_5, kappa2_2_0, both_kappa, custom_pi, full_custom   |
+| `test_gm_gtr_custom` | GTR   | uniform_rates, ts_tv_bias, asymmetric_pi, mu_scaling, random          |
 
 **Tolerance:** 1e-14 (machine precision)
-**Fixtures:** `__fixtures__/gm_gtr_inputs.json`, `__fixtures__/gm_gtr_outputs.json`
+**Fixtures:** [`gm_gtr_inputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json), [`gm_gtr_outputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json)
 
 ---
 
@@ -59,18 +60,18 @@ Validates Rust v1 GTR model construction against Python v0 reference outputs.
 
 **File:** [`test_prop_gtr_expqt.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_expqt.rs)
 
-Verifies P(t) = exp(Qt) mathematical invariants (256 cases each).
+Verifies P(t) = exp(Qt) mathematical invariants.
 
-| Property                                            | Invariant                           |
-| --------------------------------------------------- | ----------------------------------- |
-| `test_prop_gtr_expqt_stochastic_columns`            | sum_i P[i,j](t) = 1 for all j       |
-| `test_prop_gtr_expqt_nonnegative`                   | P[i,j](t) >= 0                      |
-| `test_prop_gtr_expqt_bounded`                       | P[i,j](t) <= 1                      |
-| `test_prop_gtr_expqt_zero_is_identity`              | P(0) = I                            |
-| `test_prop_gtr_expqt_equilibrium_limit`             | lim(t->inf) P[i,j](t) = pi[i]       |
-| `test_prop_gtr_expqt_semigroup`                     | P(s+t) = P(s) \* P(t)               |
-| `test_prop_gtr_expqt_stationary_preserved`          | P(t) \* pi = pi                     |
-| `test_prop_gtr_expqt_evolve_transpose_of_propagate` | Forward/backward transpose relation |
+| Property                                            | Invariant                             |
+| --------------------------------------------------- | ------------------------------------- |
+| `test_prop_gtr_expqt_stochastic_columns`            | sum_i P\[i,j\]\(t\) = 1 for all j     |
+| `test_prop_gtr_expqt_nonnegative`                   | P\[i,j\]\(t\) >= 0                    |
+| `test_prop_gtr_expqt_bounded`                       | P\[i,j\]\(t\) <= 1                    |
+| `test_prop_gtr_expqt_zero_is_identity`              | P\(0\) = I                            |
+| `test_prop_gtr_expqt_equilibrium_limit`             | lim\(t->inf\) P\[i,j\]\(t\) = pi\[i\] |
+| `test_prop_gtr_expqt_semigroup`                     | P(s+t) = P(s) \* P(t)                 |
+| `test_prop_gtr_expqt_stationary_preserved`          | P(t) \* pi = pi                       |
+| `test_prop_gtr_expqt_evolve_transpose_of_propagate` | Forward/backward transpose relation   |
 
 ---
 
@@ -78,7 +79,7 @@ Verifies P(t) = exp(Qt) mathematical invariants (256 cases each).
 
 **File:** [`test_prop_gtr_eigen.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_eigen.rs)
 
-Verifies eigendecomposition invariants (256 cases each).
+Verifies eigendecomposition invariants.
 
 | Property                                                           | Invariant              |
 | ------------------------------------------------------------------ | ---------------------- |
@@ -92,7 +93,7 @@ Verifies eigendecomposition invariants (256 cases each).
 
 **File:** [`test_prop_gtr_q.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_q.rs)
 
-Verifies rate matrix Q invariants (256 cases each).
+Verifies rate matrix Q invariants.
 
 | Property                              | Invariant                   |
 | ------------------------------------- | --------------------------- |
@@ -111,7 +112,7 @@ Verifies rate matrix Q invariants (256 cases each).
 
 **File:** [`test_prop_gtr_numerical.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_numerical.rs)
 
-Verifies no NaN/Inf and valid outputs (256 cases each).
+Verifies no NaN/Inf and valid outputs.
 
 | Property                                                 | Purpose                     |
 | -------------------------------------------------------- | --------------------------- |
@@ -140,25 +141,25 @@ Verifies no NaN/Inf and valid outputs (256 cases each).
 
 **File:** [`test_gtr_numerical_edge_extreme_parameters.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_extreme_parameters.rs)
 
-| Test                                    | Parameter | Edge Value                    |
-| --------------------------------------- | --------- | ----------------------------- |
-| `test_gtr_k80_kappa_near_zero`          | kappa     | 0.01 (transitions suppressed) |
-| `test_gtr_k80_kappa_large`              | kappa     | 100.0 (transitions dominant)  |
-| `test_gtr_hky85_skewed_pi`              | pi        | [0.97, 0.01, 0.01, 0.01]      |
-| `test_gtr_hky85_nearly_uniform_pi`      | pi        | [0.24, 0.26, 0.25, 0.25]      |
-| `test_gtr_hky85_uniform_pi_matches_k80` | pi        | [0.25, 0.25, 0.25, 0.25]      |
-| `test_gtr_mu_very_small`                | mu        | 0.001 (slow evolution)        |
-| `test_gtr_mu_large`                     | mu        | 10.0 (fast evolution)         |
+| Test                                    | Parameter | Edge Value                    | Notes            |
+| --------------------------------------- | --------- | ----------------------------- | ---------------- |
+| `test_gtr_k80_kappa_near_zero`          | kappa     | 0.01 (transitions suppressed) |                  |
+| `test_gtr_k80_kappa_large`              | kappa     | 100.0 (transitions dominant)  |                  |
+| `test_gtr_hky85_skewed_pi`              | pi        | [0.97, 0.01, 0.01, 0.01]      |                  |
+| `test_gtr_hky85_nearly_uniform_pi`      | pi        | [0.24, 0.26, 0.25, 0.25]      |                  |
+| `test_gtr_hky85_uniform_pi_matches_k80` | pi        | [0.25, 0.25, 0.25, 0.25]      | **1e-3** epsilon |
+| `test_gtr_mu_very_small`                | mu        | 0.001 (slow evolution)        |                  |
+| `test_gtr_mu_large`                     | mu        | 10.0 (fast evolution)         |                  |
 
 ### Parameterized Edge Cases
 
 **File:** [`test_gtr_numerical_edge_parameterized.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_parameterized.rs)
 
-| Test                                 | Parameter Range         | Cases |
-| ------------------------------------ | ----------------------- | ----- |
-| `test_gtr_expqt_branch_length_range` | 0.0 to 1000.0           | 7     |
-| `test_gtr_k80_kappa_range`           | 0.001 to 500.0          | 6     |
-| `test_gtr_extreme_w_values`          | W entries 0.01 to 100.0 | 1     |
+| Test                                 | Parameter Range         |
+| ------------------------------------ | ----------------------- |
+| `test_gtr_expqt_branch_length_range` | 0.0 to 1000.0           |
+| `test_gtr_k80_kappa_range`           | 0.001 to 500.0          |
+| `test_gtr_extreme_w_values`          | W entries 0.01 to 100.0 |
 
 ---
 
@@ -197,7 +198,7 @@ JC69 ----> K80 ----> HKY85 ----> TN93 ----> GTR
 
 **File:** [`generators.rs`](../../packages/treetime/src/gtr/__tests__/generators.rs)
 
-Validates that proptest generators produce valid outputs (64 cases each).
+Validates that proptest generators produce valid outputs.
 
 | Property                                             | Invariant                         |
 | ---------------------------------------------------- | --------------------------------- |
@@ -209,18 +210,6 @@ Validates that proptest generators produce valid outputs (64 cases each).
 | `test_prop_generators_arb_profile_nuc_valid`         | Profile rows sum to 1             |
 | `test_prop_generators_arb_gtr_nuc_valid`             | GTR model passes basic invariants |
 
-Generators (not tests):
-
-| Generator         | Generates                         |
-| ----------------- | --------------------------------- |
-| `arb_pi_nuc`      | Nucleotide equilibrium freqs      |
-| `arb_pi_aa`       | Amino acid equilibrium freqs      |
-| `arb_w_nuc`       | Nucleotide exchangeability matrix |
-| `arb_w_aa`        | Amino acid exchangeability matrix |
-| `arb_branch_len`  | Log-uniform branch lengths        |
-| `arb_profile_nuc` | Probability profiles              |
-| `arb_gtr_nuc`     | Valid nucleotide GTR models       |
-
 ---
 
 ## GTR Inference Tests - Dense
@@ -229,10 +218,10 @@ Generators (not tests):
 
 **File:** [`test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
 
-| Test                                | Cases | Datasets                                                                                                   |
-| ----------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
-| `test_gm_infer_gtr_dense_synthetic` | 6     | simple_4taxa, star_topology, caterpillar, multiple_mutations, varying_branch_lengths, large_branchy_uneven |
-| `test_gm_infer_gtr_dense_real`      | 7     | dengue_20, ebola_20, flu_h3n2_20, rsv_a_20, lassa_L_50, mpox_clade_ii_20, tb_20                            |
+| Test                                | Datasets                                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `test_gm_infer_gtr_dense_synthetic` | simple_4taxa, star_topology, caterpillar, multiple_mutations, varying_branch_lengths, large_branchy_uneven |
+| `test_gm_infer_gtr_dense_real`      | dengue_20, ebola_20, flu_h3n2_20, rsv_a_20, lassa_L_50, mpox_clade_ii_20, tb_20                            |
 
 **Tolerances:**
 
@@ -270,23 +259,23 @@ Generators (not tests):
 
 Verifies mutation count invariants across dense and sparse paths.
 
-| Test                                                  | Purpose                                    |
-| ----------------------------------------------------- | ------------------------------------------ |
-| `test_nij_orientation_dense`                          | A->C: nij[C,A] >> nij[A,C] (dense)         |
-| `test_nij_orientation_sparse`                         | A->C: nij[C,A] = 1, nij[A,C] = 0           |
-| `test_ti_scaling_sparse`                              | Ti proportional to branch length (2 cases) |
-| `test_ti_scaling_dense`                               | Ti proportional to branch length (2 cases) |
-| `test_dense_sparse_consistency`                       | Dense ~ sparse for unambiguous sequences   |
-| `test_root_state_dense`                               | Root reflects ancestral composition        |
-| `test_root_state_sparse`                              | Root reflects Fitch consensus              |
-| `test_nij_orientation_multiple_mutations_sparse`      | Multiple mutation directions correct       |
-| `test_nij_accumulation_dense`                         | nij accumulates across edges               |
-| `test_ti_proportional_to_composition_sparse`          | Ti proportional to state frequency         |
-| `test_dense_sparse_nij_direction_agreement`           | Both agree on dominant mutation cell       |
-| `test_root_state_total_equals_alignment_length_dense` | sum(root_state) = seq_length               |
-| `test_nij_diagonal_zero`                              | nij[i,i] = 0 (dense and sparse)            |
-| `test_nij_non_negative`                               | nij[i,j] >= 0 (dense and sparse)           |
-| `test_ti_non_negative`                                | Ti[i] >= 0 (dense and sparse)              |
+| Test                                                  | Purpose                                  | Notes                                   |
+| ----------------------------------------------------- | ---------------------------------------- | --------------------------------------- |
+| `test_nij_orientation_dense`                          | A->C: nij[C,A] >> nij[A,C] (dense)       |                                         |
+| `test_nij_orientation_sparse`                         | A->C: nij[C,A] = 1, nij[A,C] = 0         |                                         |
+| `test_ti_scaling_sparse` (2 cases)                    | Ti proportional to branch length         |                                         |
+| `test_ti_scaling_dense` (2 cases)                     | Ti proportional to branch length         |                                         |
+| `test_dense_sparse_consistency`                       | Dense ~ sparse for unambiguous sequences | **1e-1** nij diff, **1e-2** ti rel diff |
+| `test_root_state_dense`                               | Root reflects ancestral composition      |                                         |
+| `test_root_state_sparse`                              | Root reflects Fitch consensus            |                                         |
+| `test_nij_orientation_multiple_mutations_sparse`      | Multiple mutation directions correct     |                                         |
+| `test_nij_accumulation_dense`                         | nij accumulates across edges             |                                         |
+| `test_ti_proportional_to_composition_sparse`          | Ti proportional to state frequency       |                                         |
+| `test_dense_sparse_nij_direction_agreement`           | Both agree on dominant mutation cell     |                                         |
+| `test_root_state_total_equals_alignment_length_dense` | sum(root_state) = seq_length             |                                         |
+| `test_nij_diagonal_zero`                              | nij[i,i] = 0 (dense and sparse)          |                                         |
+| `test_nij_non_negative`                               | nij[i,j] >= 0 (dense and sparse)         |                                         |
+| `test_ti_non_negative`                                | Ti[i] >= 0 (dense and sparse)            |                                         |
 
 ---
 
@@ -294,9 +283,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 **File:** [`test_contract_dense_sparse_real.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs)
 
-| Test                                  | Cases | Datasets                                                                        |
-| ------------------------------------- | ----- | ------------------------------------------------------------------------------- |
-| `test_contract_dense_sparse_real_gtr` | 7     | flu_h3n2_20, ebola_20, rsv_a_20, dengue_20, tb_20, lassa_L_50, mpox_clade_ii_20 |
+| Test                                  | Datasets                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `test_contract_dense_sparse_real_gtr` | flu_h3n2_20, ebola_20, rsv_a_20, dengue_20, tb_20, lassa_L_50, mpox_clade_ii_20 |
 
 **Thresholds:**
 
@@ -325,10 +314,10 @@ Verifies mutation count invariants across dense and sparse paths.
 
 **File:** [`test_write_gtr_json.rs`](../../packages/treetime/src/gtr/__tests__/test_write_gtr_json.rs)
 
-| Test                                               | Purpose                                                                                                                               |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `test_write_gtr_json_filename` (3 cases)           | Qualifier produces correct filename: `None` -> `gtr.json`, `Some("sparse")` -> `gtr_sparse.json`, `Some("dense")` -> `gtr_dense.json` |
-| `test_write_gtr_json_both_partitions_no_overwrite` | Both sparse and dense qualifiers produce separate files without overwriting                                                           |
+| Test                                               | Purpose                                                 |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| `test_write_gtr_json_filename` (3 cases)           | Qualifier produces correct filename                     |
+| `test_write_gtr_json_both_partitions_no_overwrite` | Both sparse and dense qualifiers produce separate files |
 
 ---
 
@@ -336,61 +325,51 @@ Verifies mutation count invariants across dense and sparse paths.
 
 **File:** [`jc_distance.rs`](../../packages/treetime/src/gtr/jc_distance.rs)
 
-Covers [`jukes_cantor_distance(p, n_states)`](../../packages/treetime/src/gtr/jc_distance.rs#L50), which inverts the JC69 substitution model to map an observed p-distance to an evolutionary distance. Consumed by [`merge_sibling_pair()`](../../packages/treetime/src/commands/prune/run.rs#L483) in the prune merge-shared-mutations step.
-
-| Test                                                           | Purpose                                                        |
-| -------------------------------------------------------------- | -------------------------------------------------------------- |
-| `test_jukes_cantor_distance_zero_p_returns_zero`               | `p = 0` returns exactly `0` for any alphabet                   |
-| `test_jukes_cantor_distance_negative_p_clamped_to_zero`        | Negative `p` defensively clamps to 0, never NaN                |
-| `test_jukes_cantor_distance_known_values` (6 cases)            | Analytical values for $k \in \{4, 20\}$ at representative $p$  |
-| `test_jukes_cantor_distance_saturation_is_finite` (5)          | Saturation and beyond produce finite positive distances        |
-| `test_jukes_cantor_distance_saturation_cap_order_of_magnitude` | Saturation cap lies in expected bracket for $k \in \{4, 20\}$  |
-| `test_jukes_cantor_distance_always_at_least_p`                 | Property: $d(p) \ge p$ across the valid range                  |
-| `test_jukes_cantor_distance_monotonic_in_p`                    | Property: $d$ is non-decreasing in $p$                         |
-| `test_jukes_cantor_distance_small_p_approaches_p`              | Taylor behaviour: $d \to p$ as $p \to 0$                       |
-| `test_jukes_cantor_distance_issue_documented_error`            | Correction sizes match the 7% / 22% figures at $p = 0.1, 0.25$ |
-
----
-
-## Support Files (no tests)
-
-**File:** [`prop_support.rs`](../../packages/treetime/src/gtr/__tests__/prop_support.rs) - Proptest assertion helpers (`prop_assert_columns_sum_to`, `prop_assert_rows_sum_to`, `prop_assert_detailed_balance`)
-
-**File:** [`test_gtr_numerical_edge_support.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs) - Stochastic matrix assertion helper (`assert_stochastic_matrix`)
+| Test                                                           | Purpose                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_jukes_cantor_distance_zero_p_returns_zero`               | `p = 0` returns exactly `0` for any alphabet                 |
+| `test_jukes_cantor_distance_negative_p_clamped_to_zero`        | Negative `p` defensively clamps to 0                         |
+| `test_jukes_cantor_distance_known_values` (6 cases)            | Analytical values for k in {4, 20} at representative p       |
+| `test_jukes_cantor_distance_saturation_is_finite` (5 cases)    | Saturation and beyond produce finite positive distances      |
+| `test_jukes_cantor_distance_saturation_cap_order_of_magnitude` | Saturation cap lies in expected bracket                      |
+| `test_jukes_cantor_distance_always_at_least_p`                 | Property: d(p) >= p across the valid range                   |
+| `test_jukes_cantor_distance_monotonic_in_p`                    | Property: d is non-decreasing in p                           |
+| `test_jukes_cantor_distance_small_p_approaches_p`              | Taylor behaviour: d -> p as p -> 0                           |
+| `test_jukes_cantor_distance_issue_documented_error`            | Correction sizes match the 7% / 22% figures at p = 0.1, 0.25 |
 
 ---
 
 ## Site-Specific GTR Tests
 
-### Property Tests (19)
+### Property Tests
 
 **File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
 
-| Test                                                        | Purpose                                              |
-| ----------------------------------------------------------- | ---------------------------------------------------- |
-| `test_prop_gtr_site_specific_expqt_column_stochastic`       | P_a(t) columns sum to 1 per site                     |
-| `test_prop_gtr_site_specific_expqt_identity_at_zero`        | P_a(0) = I per site                                  |
-| `test_prop_gtr_site_specific_expqt_nonnegative`             | P_a(t) entries non-negative                          |
-| `test_prop_gtr_site_specific_expqt_semigroup`               | P_a(s+t) = P_a(s) \* P_a(t) per site                 |
-| `test_prop_gtr_site_specific_expqt_convergence`             | P_a(t) -> pi_a as t -> infinity                      |
-| `test_prop_gtr_site_specific_propagate_profile_valid`       | propagate_profile output finite and non-negative     |
-| `test_prop_gtr_site_specific_evolve_valid`                  | evolve output finite and non-negative                |
-| `test_prop_gtr_site_specific_equilibrium_fixed_point`       | evolve(pi, t) = pi (equilibrium is fixed point)      |
-| `test_prop_gtr_site_specific_interpolation_accuracy`        | Interpolated expQt within 1e-2 of direct computation |
-| `test_prop_gtr_site_specific_average_rate_positive`         | Per-site average rate is positive                    |
-| `test_prop_gtr_site_specific_expqt_bounded`                 | P_a(t) entries bounded by 1                          |
-| `test_prop_gtr_site_specific_stationary_preserved`          | P_a(t) @ pi_a = pi_a (right eigenvector)             |
-| `test_prop_gtr_site_specific_evolve_transpose_of_propagate` | evolve = profile @ P^T, propagate = profile @ P      |
-| `test_prop_gtr_site_specific_no_nan`                        | No NaN in expQt                                      |
-| `test_prop_gtr_site_specific_no_inf`                        | No Inf in expQt                                      |
-| `test_prop_gtr_site_specific_evolve_preserves_probability`  | evolve preserves row sums                            |
-| `test_prop_gtr_site_specific_approx_column_stochastic`      | Interpolation preserves column stochasticity         |
-| `test_prop_gtr_site_specific_approx_nonnegative`            | Interpolation preserves non-negativity               |
-| `test_prop_gtr_site_specific_approx_equilibrium`            | Interpolation preserves equilibrium                  |
+| Test                                                        | Purpose                                              | Notes              |
+| ----------------------------------------------------------- | ---------------------------------------------------- | ------------------ |
+| `test_prop_gtr_site_specific_expqt_column_stochastic`       | P_a(t) columns sum to 1 per site                     |                    |
+| `test_prop_gtr_site_specific_expqt_identity_at_zero`        | P_a(0) = I per site                                  |                    |
+| `test_prop_gtr_site_specific_expqt_nonnegative`             | P_a(t) entries non-negative                          |                    |
+| `test_prop_gtr_site_specific_expqt_semigroup`               | P_a(s+t) = P_a(s) \* P_a(t) per site                 |                    |
+| `test_prop_gtr_site_specific_expqt_convergence`             | P_a(t) -> pi_a as t -> infinity                      |                    |
+| `test_prop_gtr_site_specific_propagate_profile_valid`       | propagate_profile output finite and non-negative     |                    |
+| `test_prop_gtr_site_specific_evolve_valid`                  | evolve output finite and non-negative                |                    |
+| `test_prop_gtr_site_specific_equilibrium_fixed_point`       | evolve(pi, t) = pi (equilibrium is fixed point)      |                    |
+| `test_prop_gtr_site_specific_interpolation_accuracy`        | Interpolated expQt within 1e-2 of direct computation | **1e-2** tolerance |
+| `test_prop_gtr_site_specific_average_rate_positive`         | Per-site average rate is positive                    |                    |
+| `test_prop_gtr_site_specific_expqt_bounded`                 | P_a(t) entries bounded by 1                          |                    |
+| `test_prop_gtr_site_specific_stationary_preserved`          | P_a(t) @ pi_a = pi_a (right eigenvector)             |                    |
+| `test_prop_gtr_site_specific_evolve_transpose_of_propagate` | evolve = profile @ P^T, propagate = profile @ P      |                    |
+| `test_prop_gtr_site_specific_no_nan`                        | No NaN in expQt                                      |                    |
+| `test_prop_gtr_site_specific_no_inf`                        | No Inf in expQt                                      |                    |
+| `test_prop_gtr_site_specific_evolve_preserves_probability`  | evolve preserves row sums                            |                    |
+| `test_prop_gtr_site_specific_approx_column_stochastic`      | Interpolation preserves column stochasticity         |                    |
+| `test_prop_gtr_site_specific_approx_nonnegative`            | Interpolation preserves non-negativity               |                    |
+| `test_prop_gtr_site_specific_approx_equilibrium`            | Interpolation preserves equilibrium                  |                    |
 
-### Unit + Validation Tests (5)
+### Unit + Validation Tests
 
-**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
+**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs) (same file)
 
 | Test                                                | Purpose                                       |
 | --------------------------------------------------- | --------------------------------------------- |
@@ -400,32 +379,76 @@ Covers [`jukes_cantor_distance(p, n_states)`](../../packages/treetime/src/gtr/jc
 | `test_gtr_site_specific_rejects_negative_mu`        | Constructor rejects negative mu               |
 | `test_gtr_site_specific_rejects_dimension_mismatch` | Constructor rejects mu length mismatch        |
 
-### Golden-Master Tests (9 runs from 4 functions)
+### Golden-Master Tests
 
 **File:** [`test_gm_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs)
 
-| Test                                         | Cases | Tolerance | Purpose                                            |
-| -------------------------------------------- | ----: | --------: | -------------------------------------------------- |
-| `test_gm_gtr_site_specific_expqt`            |     3 |     1e-10 | Eigenvalues and expQt against v0 oracle            |
-| `test_gm_gtr_site_specific_propagate_evolve` |     2 |     1e-10 | propagate_profile and evolve against v0 oracle     |
-| `test_gm_gtr_site_specific_infer`            |     1 |      1e-3 | Inference pi and W ratios against v0 oracle        |
-| `test_gm_gtr_site_specific_approximate`      |     3 |      1e-8 | Interpolated expQt against v0 interpolation oracle |
-
-**Fixture files:** `gm_gtr_site_specific_inputs.json`, `gm_gtr_site_specific_outputs.json`, `gm_gtr_site_specific_capture`
+| Test                                         | Tolerance | Purpose                                            | Notes                         |
+| -------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------- |
+| `test_gm_gtr_site_specific_expqt`            | 1e-10     | Eigenvalues and expQt against v0 oracle            |                               |
+| `test_gm_gtr_site_specific_propagate_evolve` | 1e-10     | propagate_profile and evolve against v0 oracle     |                               |
+| `test_gm_gtr_site_specific_infer`            | **1e-3**  | Inference pi and W ratios against v0 oracle        | Circular inference distortion |
+| `test_gm_gtr_site_specific_approximate`      | 1e-8      | Interpolated expQt against v0 interpolation oracle |                               |
 
 ---
 
-## Site-Specific GTR Inference Tests (2)
+## Site-Specific GTR Inference Tests
 
 **File:** [`test_site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_site_specific.rs)
 
-| Test                                                | Purpose                                                 |
-| --------------------------------------------------- | ------------------------------------------------------- |
-| `test_infer_gtr_site_specific_recovers_parameters`  | Inference from synthetic data recovers W and pi at 1e-3 |
-| `test_infer_gtr_site_specific_produces_valid_model` | Inferred model produces valid P(t) matrices             |
+| Test                                                | Purpose                                         | Notes                          |
+| --------------------------------------------------- | ----------------------------------------------- | ------------------------------ |
+| `test_infer_gtr_site_specific_recovers_parameters`  | Inference from synthetic data recovers W and pi | **1e-3** pi, **1e-2** W ratios |
+| `test_infer_gtr_site_specific_produces_valid_model` | Inferred model produces valid P(t) matrices     |                                |
+
+---
+
+## Site-Rate Variation
+
+**File:** [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs) (inline `#[cfg(test)]`)
+
+| Test                                                      | Purpose                                                        | Notes               |
+| --------------------------------------------------------- | -------------------------------------------------------------- | ------------------- |
+| `test_discrete_gamma_rates_mean_one` (7 cases)            | Discrete gamma rates have mean 1.0 across alpha/K combinations |                     |
+| `test_discrete_gamma_rates_single_category`               | Single category returns [1.0]                                  |                     |
+| `test_discrete_gamma_rates_sorted_ascending`              | Rates are sorted ascending                                     |                     |
+| `test_discrete_gamma_rates_all_positive`                  | All rates positive                                             |                     |
+| `test_discrete_gamma_rates_high_alpha_approaches_uniform` | Large alpha produces near-uniform rates                        |                     |
+| `test_discrete_gamma_rates_low_alpha_wide_spread`         | Small alpha produces wide rate spread (ratio > 50)             |                     |
+| `test_discrete_gamma_rates_invalid_alpha`                 | Invalid alpha values rejected with error                       |                     |
+| `test_discrete_gamma_rates_invalid_categories`            | Zero categories rejected                                       |                     |
+| `test_discrete_gamma_rates_reference_alpha_1_k4`          | Reference values for alpha=1 K=4 match Yang 1994               |                     |
+| `test_prop_discrete_gamma_rates_mean_one`                 | Property: mean is 1.0 across random alpha/K                    | **ignored** (flaky) |
+| `test_prop_discrete_gamma_rates_positive_sorted`          | Property: rates positive and sorted                            | **ignored** (flaky) |
+
+---
+
+## Site-Rate Variation Property Tests
+
+**File:** [`test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
+
+| Test                                              | Purpose                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------- |
+| `test_prop_expqt_with_rate_one_equals_expqt`      | expQt_with_rate(t, 1.0) equals expQt(t)                             |
+| `test_prop_expqt_with_rate_column_stochastic`     | expQt_with_rate produces column-stochastic matrices                 |
+| `test_prop_expqt_with_rate_non_negative`          | expQt_with_rate entries are non-negative                            |
+| `test_prop_expqt_with_rate_semigroup`             | P(r*s) * P(r*t) = P(r*(s+t)) semigroup property                     |
+| `test_prop_propagate_uniform_rates_equals_scalar` | propagate_profile with uniform site_rates equals scalar propagation |
+| `test_prop_evolve_uniform_rates_equals_scalar`    | evolve with uniform site_rates equals scalar evolution              |
+| `test_prop_propagate_per_site_matches_individual` | Per-site propagate matches row-wise individual expQt_with_rate      |
+| `test_prop_evolve_per_site_matches_individual`    | Per-site evolve matches row-wise individual expQt_with_rate         |
+| `test_prop_propagate_per_site_identity_at_zero`   | Per-site propagate at t=0 is identity                               |
+| `test_prop_evolve_per_site_equilibrium`           | Per-site evolve at large t converges to equilibrium (pi)            |
+| `test_higher_rate_more_divergence`                | Higher site rate produces more divergence                           |
+| `test_rate_zero_is_identity`                      | Rate 0 produces identity matrix                                     |
+| `test_site_rates_lifecycle`                       | set_site_rates / has_site_rates / clear_site_rates lifecycle        |
 
 ---
 
 ## Shared Test Support
+
+**File:** [`prop_support.rs`](../../packages/treetime/src/gtr/__tests__/prop_support.rs) - Proptest assertion helpers (`prop_assert_columns_sum_to`, `prop_assert_rows_sum_to`, `prop_assert_detailed_balance`)
+
+**File:** [`test_gtr_numerical_edge_support.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs) - Stochastic matrix assertion helper (`assert_stochastic_matrix`)
 
 **File:** [`site_specific_support.rs`](../../packages/treetime/src/gtr/__tests__/site_specific_support.rs) - `simulate_counts()`, `value_to_array2()`, `value_to_array3()`

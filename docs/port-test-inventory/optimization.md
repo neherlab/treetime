@@ -4,29 +4,37 @@
 
 ## Summary
 
-| Category                         | Files  | Tests   | Support Files | Type     |
-| -------------------------------- | ------ | ------- | ------------- | -------- |
-| Coefficient extraction (dense)   | 5      | 13      | 1             | Unit     |
-| Coefficient extraction (sparse)  | 7      | 19      | 0             | Unit     |
-| Newton-Raphson convergence       | 2      | 5       | 1             | Unit     |
-| Grid search                      | 3      | 8       | 1             | Unit     |
-| Dense/sparse equivalence         | 4      | 8       | 1             | Unit     |
-| Convergence control              | 3      | 8       | 1             | Unit     |
-| Convergence conditions           | 1      | 10      | 0             | Unit     |
-| Convergence on real datasets     | 1      | 2       | 0             | Unit     |
-| Optimization metrics             | 1      | 7       | 0             | Unit     |
-| Zero branch optimal              | 1      | 13      | 0             | Unit     |
-| Initial guess GTR messages       | 1      | 2       | 0             | Unit     |
-| Initial guess formula            | 1      | 4       | 0             | Unit     |
-| Initial guess soft Hamming       | 1      | 10      | 0             | Unit     |
-| Topology cleanup in loop         | 1      | 15      | 0             | Unit     |
-| Indel contribution (inline)      | 1      | 8       | 0             | Unit     |
-| Indel contribution (integration) | 1      | 11      | 0             | Unit     |
-| Indel contribution (property)    | 1      | 3       | 0             | Property |
-| Optimization method              | 1      | 28      | 0             | Unit     |
-| Optimization method step clamp   | 1      | 23      | 0             | Unit     |
-| Dispatch zero boundary           | 1      | 34      | 0             | Unit     |
-| **Total**                        | **38** | **231** | **5**         |          |
+| Category                                                                                | Type            |
+| --------------------------------------------------------------------------------------- | --------------- |
+| [Coefficient extraction (dense)](#coefficient-extraction---dense)                       | Unit + Property |
+| [Coefficient extraction (dense invariants)](#coefficient-extraction---dense-invariants) | Parameterized   |
+| [Coefficient extraction (sparse)](#coefficient-extraction---sparse)                     | Unit            |
+| [Newton-Raphson convergence](#newton-raphson-convergence)                               | Unit            |
+| [Grid search](#grid-search)                                                             | Unit            |
+| [Dense/sparse equivalence](#densesparse-equivalence)                                    | Unit            |
+| [Convergence control](#convergence-control)                                             | Unit            |
+| [Convergence conditions](#convergence-conditions)                                       | Unit            |
+| [Convergence on real datasets](#convergence-on-real-datasets)                           | Unit            |
+| [Optimization metrics](#optimization-metrics)                                           | Unit            |
+| [Zero branch optimal](#zero-branch-optimal)                                             | Unit            |
+| [Initial guess mode](#initial-guess-mode)                                               | Unit            |
+| [Initial guess indel zero-BL](#initial-guess-indel-zero-bl)                             | Unit            |
+| [Initial guess GTR messages](#initial-guess-gtr-messages)                               | Unit            |
+| [Initial guess formula](#initial-guess-formula)                                         | Unit            |
+| [Initial guess gaps](#initial-guess-gaps)                                               | Unit            |
+| [Dense edge subs](#dense-edge-subs)                                                     | Unit            |
+| [Eval zero-branch mismatch](#eval-zero-branch-mismatch)                                 | Unit            |
+| [Topology cleanup in loop](#topology-cleanup-in-loop)                                   | Unit            |
+| [Indel contribution (inline)](#indel-contribution-inline)                               | Unit            |
+| [Indel contribution (integration)](#indel-contribution-integration)                     | Unit + Property |
+| [Optimization method](#optimization-method)                                             | Unit            |
+| [Optimization method step clamping](#optimization-method-step-clamping)                 | Unit            |
+| [Dispatch zero boundary](#dispatch-zero-boundary)                                       | Unit            |
+| [Outer-loop damping](#outer-loop-damping)                                               | Unit            |
+| [v0 parity (golden master)](#v0-parity-and-damped-vs-undamped-golden-master)            | Golden-master   |
+| [Run optimize loop contract](#run-optimize-loop-contract)                               | Unit            |
+| [CLI args](#cli-args)                                                                   | Unit            |
+| [Zero sequence length](#zero-sequence-length)                                           | Unit            |
 
 ---
 
@@ -86,23 +94,38 @@
 
 **File:** [`test_coefficient_extraction_dense_prop_invariants.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs)
 
-| Test                                                               | Purpose                                                                                          |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `test_coefficient_boundary_disjoint_support_zero_at_t0`            | Disjoint-support singular boundary at t=0                                                        |
-| `test_prop_coefficient_nonneg_site_lh_at_zero`                     | Site likelihood positive for overlapping probability vectors                                     |
-| `test_prop_coefficient_multiplicity_linearity`                     | Sparse multiplicity factor acts linearly on all metrics                                          |
-| `test_prop_coefficient_dense_sparse_equivalence`                   | `n` identical dense rows equal one sparse site with multiplicity `n`                             |
-| `test_prop_coefficient_additivity`                                 | Multi-site metrics equal sum of per-site metrics                                                 |
-| `test_prop_coefficient_dense_finite_difference_derivative`         | Analytical first derivative matches central difference of `log_lh`                               |
-| `test_prop_coefficient_dense_finite_difference_second_derivative`  | Analytical Hessian matches second difference of `log_lh` (tolerance bounded by FD rounding)      |
-| `test_prop_coefficient_dense_hessian_matches_d1_finite_difference` | Analytical Hessian matches central difference of analytical first derivative (Welford stability) |
-| `test_hessian_stable_in_cancellation_regime`                       | Hessian preserves precision when posterior is concentrated on one eigenvalue class               |
+| Test                                                               | Purpose                                                                            | Notes                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | --------------------- |
+| `test_coefficient_boundary_disjoint_support_zero_at_t0`            | Disjoint-support singular boundary at t=0                                          |                       |
+| `test_prop_coefficient_nonneg_site_lh_at_zero`                     | Site likelihood positive for overlapping probability vectors                       |                       |
+| `test_prop_coefficient_multiplicity_linearity`                     | Sparse multiplicity factor acts linearly on all metrics                            |                       |
+| `test_prop_coefficient_dense_sparse_equivalence`                   | `n` identical dense rows equal one sparse site with multiplicity `n`               |                       |
+| `test_prop_coefficient_additivity`                                 | Multi-site metrics equal sum of per-site metrics                                   |                       |
+| `test_prop_coefficient_dense_finite_difference_derivative`         | Analytical first derivative matches central difference of `log_lh`                 |                       |
+| `test_prop_coefficient_dense_finite_difference_second_derivative`  | Analytical Hessian matches second difference of `log_lh`                           | **1e-3** max_relative |
+| `test_prop_coefficient_dense_hessian_matches_d1_finite_difference` | Analytical Hessian matches central difference of analytical first derivative       |                       |
+| `test_hessian_stable_in_cancellation_regime`                       | Hessian preserves precision when posterior is concentrated on one eigenvalue class |                       |
 
 ### Support
 
 **File:** [`test_coefficient_extraction_dense_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs)
 
 Helper file. Provides `make_dense_seq_dis()`. No tests.
+
+---
+
+## Coefficient Extraction - Dense Invariants
+
+**File:** [`test_coefficient_extraction_dense_invariants.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_invariants.rs)
+
+Parameterized invariant tests using rstest.
+
+| Test                                                  | Purpose                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------ |
+| `test_coefficient_invariant_nonneg_site_lh_at_zero`   | Coefficient sum non-negative at t=0 for valid probability messages |
+| `test_coefficient_invariant_multiplicity_linearity`   | Sparse contribution with multiplicity m equals m times single-site |
+| `test_coefficient_invariant_dense_sparse_equivalence` | m identical dense rows equal one sparse site with multiplicity m   |
+| `test_coefficient_invariant_additivity`               | Two independent sites' log-likelihood equals sum of individual     |
 
 ---
 
@@ -341,11 +364,11 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 **File:** [`test_convergence_iterations.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_iterations.rs)
 
-| Test                                                 | Purpose                                                   |
-| ---------------------------------------------------- | --------------------------------------------------------- |
-| `test_optimization_converges_within_iterations`      | Bounded oscillation: undamped LH stays within tight range |
-| `test_optimization_improves_or_maintains_likelihood` | Strict non-regression: final LH >= initial LH             |
-| `test_optimization_produces_valid_branch_lengths`    | Branch lengths valid after opt                            |
+| Test                                                 | Purpose                                                   | Notes                         |
+| ---------------------------------------------------- | --------------------------------------------------------- | ----------------------------- |
+| `test_optimization_converges_within_iterations`      | Bounded oscillation: undamped LH stays within tight range |                               |
+| `test_optimization_improves_or_maintains_likelihood` | Strict non-regression: final LH >= initial LH             |                               |
+| `test_optimization_produces_valid_branch_lengths`    | Branch lengths valid after opt                            | **1e-2** cross-method LH diff |
 
 ### Edge Cases Tests
 
@@ -380,15 +403,15 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 **File:** [`test_damping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_damping.rs)
 
-| Test                                                     | Cases | Purpose                                                                           |
-| -------------------------------------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `test_save_branch_lengths_captures_all_edges`            | 1     | Verifies save_branch_lengths reads all edges                                      |
-| `test_apply_damping_zero_is_noop`                        | 1     | damping=0.0 leaves optimized values unchanged                                     |
-| `test_apply_damping_weights_match_v0`                    | 5     | Blend weights match v0 formula at iterations 0-9                                  |
-| `test_apply_damping_blends_correctly`                    | 1     | Verifies bl = new*w_new + old*w_old                                               |
-| `test_apply_damping_new_weight_increases_with_iteration` | 1     | New weight monotonically increases over iterations                                |
-| `test_damped_optimization_converges`                     | 1     | Production convergence criterion, sign-flip oscillation detection, tail stability |
-| `test_damped_optimization_does_not_regress`              | 1     | Strict non-regression: final LH >= initial LH                                     |
+| Test                                                     | Purpose                                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `test_save_branch_lengths_captures_all_edges`            | Verifies save_branch_lengths reads all edges                                      |
+| `test_apply_damping_zero_is_noop`                        | damping=0.0 leaves optimized values unchanged                                     |
+| `test_apply_damping_weights_match_v0` (5 cases)          | Blend weights match v0 formula at iterations 0-9                                  |
+| `test_apply_damping_blends_correctly`                    | Verifies bl = new*w_new + old*w_old                                               |
+| `test_apply_damping_new_weight_increases_with_iteration` | New weight monotonically increases over iterations                                |
+| `test_damped_optimization_converges`                     | Production convergence criterion, sign-flip oscillation detection, tail stability |
+| `test_damped_optimization_does_not_regress`              | Strict non-regression: final LH >= initial LH                                     |
 
 ---
 
@@ -396,15 +419,15 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 **File:** [`test_gm_optimize.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs)
 
-| Test                                  | Cases | Purpose                                                        |
-| ------------------------------------- | ----- | -------------------------------------------------------------- |
-| `test_gm_optimize`                    | 1     | v0/v1 total branch length parity within 5% (flu/h3n2/20, JC69) |
-| `test_gm_optimize_damped_vs_undamped` | 1     | Damping does not increase oscillation on real dataset          |
+| Test                                  | Purpose                                                        | Notes                                          |
+| ------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
+| `test_gm_optimize`                    | v0/v1 total branch length parity within 5% (flu/h3n2/20, JC69) | **ignored**: per-branch divergence exceeds 10% |
+| `test_gm_optimize_damped_vs_undamped` | Damping does not increase oscillation on real dataset          |                                                |
 
 Fixtures in `__fixtures__/`:
 
-- `gm_optimize_inputs.json` - shared test parameters
-- `gm_optimize_outputs.json` - v0 reference captured by `gm_optimize_capture`
+- [`gm_optimize_inputs.json`](../../packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_inputs.json) - shared test parameters
+- [`gm_optimize_outputs.json`](../../packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_outputs.json) - v0 reference captured by `gm_optimize_capture`
 - `gm_optimize_capture` - Python capture script for v0 TreeAnc.optimize_tree_marginal
 
 ---
@@ -412,8 +435,6 @@ Fixtures in `__fixtures__/`:
 ## Run Optimize Loop Contract
 
 **File:** [`test_run_optimize_loop.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs)
-
-Direct unit tests for the extracted `run_optimize_loop()` function, which is the in-memory core of `run_optimize()`. The related integration suites (`test_gm_optimize`, `test_damping`) exercise the same function via higher-level setup; these tests pin down the function's own contract.
 
 | Test                                              | Purpose                                                  |
 | ------------------------------------------------- | -------------------------------------------------------- |
@@ -429,26 +450,22 @@ Direct unit tests for the extracted `run_optimize_loop()` function, which is the
 
 **File:** [`test_convergence_conditions.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_conditions.rs)
 
-Tests for the three-condition convergence check, damping floor, and restore_branch_lengths. Added as part of the sparse EM 2-cycle fix (M-optimize-sparse-em-2-cycle).
-
-| Test                                                                   | Cases | Purpose                                                |
-| ---------------------------------------------------------------------- | ----- | ------------------------------------------------------ |
-| `test_convergence_conditions_damping_floor_at_high_iteration`          | 3     | DAMPING_FLOOR weight at iterations 100/500/1000        |
-| `test_convergence_conditions_damping_uses_exponential_below_crossover` | 1     | Exponential decay used below crossover (iteration 5)   |
-| `test_convergence_conditions_restore_branch_lengths_roundtrip`         | 1     | Save/modify/restore/verify identical                   |
-| `test_convergence_conditions_converged_reason`                         | 1     | Converged or Oscillating on damped toy tree            |
-| `test_convergence_conditions_worsened_reverts_to_best`                 | 1     | Worsened fires on undamped toy tree, trigger LH < best |
-| `test_convergence_conditions_oscillation_detection`                    | 1     | Early stop with large dp                               |
-| `test_convergence_conditions_exhausts_max_iter`                        | 1     | max_iter=2 exhausted without stopping                  |
-| `test_convergence_conditions_dense_only_converges`                     | 1     | Dense-only regression check                            |
+| Test                                                                    | Purpose                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------ |
+| `test_convergence_conditions_damping_floor_at_high_iteration` (3 cases) | DAMPING_FLOOR weight at iterations 100/500/1000        |
+| `test_convergence_conditions_damping_uses_exponential_below_crossover`  | Exponential decay used below crossover (iteration 5)   |
+| `test_convergence_conditions_restore_branch_lengths_roundtrip`          | Save/modify/restore/verify identical                   |
+| `test_convergence_conditions_converged_reason`                          | Converged or Oscillating on damped toy tree            |
+| `test_convergence_conditions_worsened_reverts_to_best`                  | Worsened fires on undamped toy tree, trigger LH < best |
+| `test_convergence_conditions_oscillation_detection`                     | Early stop with large dp                               |
+| `test_convergence_conditions_exhausts_max_iter`                         | max_iter=2 exhausted without stopping                  |
+| `test_convergence_conditions_dense_only_converges`                      | Dense-only regression check                            |
 
 ---
 
 ## Convergence on Real Datasets
 
 **File:** [`test_convergence_sc2.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_sc2.rs)
-
-Integration tests verifying convergence on real datasets. Added as part of the sparse EM 2-cycle fix (M-optimize-sparse-em-2-cycle).
 
 | Test                                                | Purpose                                              |
 | --------------------------------------------------- | ---------------------------------------------------- |
@@ -499,8 +516,6 @@ Integration tests verifying convergence on real datasets. Added as part of the s
 
 **File:** [`test_initial_guess_mode.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs)
 
-Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), overwrite (always), and error on missing (never). Never mode also rejects zero-branch-length edges that carry indels, where the Poisson indel log-likelihood is undefined ($-\infty$ at $t = 0$).
-
 | Test                                                            | Purpose                                                                 |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `test_initial_guess_mode_default_is_auto`                       | Default variant is Auto                                                 |
@@ -520,7 +535,9 @@ Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), ove
 | `test_any_indel_edge_has_zero_bl_false_with_positive_bl`        | Helper returns false when indel-bearing edge has positive branch length |
 | `test_any_indel_edge_has_zero_bl_true_with_indel_and_zero_bl`   | Helper returns true when an indel-bearing edge has zero branch length   |
 
-### Indel Zero-BL Tests
+---
+
+## Initial Guess Indel Zero-BL
 
 **File:** [`test_initial_guess_indel_zero_bl.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_indel_zero_bl.rs)
 
@@ -535,8 +552,6 @@ Tests for `InitialGuessMode` dispatch: NaN detection, selective fill (auto), ove
 
 **File:** [`test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
 
-Regression tests verifying that `initial_guess_mixed()` reads edge messages computed with the real GTR model, not stale JC69 messages from the dummy initialization pass.
-
 | Test                                             | Purpose                                                       |
 | ------------------------------------------------ | ------------------------------------------------------------- |
 | `test_stale_jc69_messages_bias_initial_guess`    | Stale JC69 messages produce different branch lengths than F81 |
@@ -548,14 +563,52 @@ Regression tests verifying that `initial_guess_mixed()` reads edge messages comp
 
 **File:** [`test_initial_guess_formula.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs)
 
-Tests that `initial_guess_mixed()` still follows the edge substitution formula after marginal reconstruction, and that dense and sparse stay aligned on ambiguity-sensitive sparse reference-state paths.
-
 | Test                                                                                 | Purpose                                                                                  |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `test_initial_guess_formula_sparse`                                                  | Sparse branch length equals substitution count over effective length                     |
 | `test_initial_guess_formula_dense`                                                   | Dense branch length equals substitution count over effective length                      |
 | `test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency`            | Dense and sparse initial branch lengths match on partial ambiguity                       |
 | `test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency` | Dense and sparse optimize contributions agree in value and gradient on partial ambiguity |
+
+---
+
+## Initial Guess Gaps
+
+**File:** [`test_initial_guess_gaps.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gaps.rs)
+
+| Test                                           | Purpose                                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `test_sparse_effective_length_no_gaps`         | Sparse effective length equals full length with no gaps                     |
+| `test_dense_effective_length_no_gaps`          | Dense effective length equals full length with no gaps                      |
+| `test_sparse_effective_length_shared_gaps`     | Shared gaps reduce sparse effective length by gap count                     |
+| `test_dense_effective_length_shared_gaps`      | Shared gaps reduce dense effective length by gap count                      |
+| `test_sparse_effective_length_one_leaf_gapped` | One-leaf gaps reduce effective length on that edge only                     |
+| `test_dense_edge_subs_excludes_gap_positions`  | Dense edge_subs excludes gap positions from substitutions                   |
+| `test_initial_guess_sparse_gap_adjusted_rate`  | Initial guess adjusts branch length rate proportionally to effective length |
+
+---
+
+## Dense Edge Subs
+
+**File:** [`test_dense_edge_subs.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs)
+
+| Test                                                                 | Purpose                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `test_dense_edge_subs_no_false_mutation_from_uniform_outgroup`       | Uniform outgroup message does not create false substitutions                    |
+| `test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages` | Edge messages disagreeing with posteriors do not mask real substitutions        |
+| `test_dense_edge_subs_match_reconstructed_branch_differences`        | Dense edge_subs match parent-child MAP sequence differences after full marginal |
+| `test_dense_edge_subs_excludes_gap_positions_with_posteriors`        | Gap positions excluded from dense edge_subs even when posteriors differ         |
+| `test_dense_edge_subs_is_canonical_filter_present`                   | is_canonical filter validates only canonical states appear in substitutions     |
+
+---
+
+## Eval Zero-Branch Mismatch
+
+**File:** [`test_eval_zero_branch_mismatch.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_eval_zero_branch_mismatch.rs)
+
+| Test                                    | Purpose                                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `test_eval_zero_branch_mismatch_no_nan` | run_optimize_mixed does not produce -inf/NaN with zero BL and mismatched certain states |
 
 ---
 
@@ -596,6 +649,52 @@ Direct coverage for `collapse_edge()` lives with the shared implementation in
 
 ---
 
+## Indel Contribution (Inline)
+
+**File:** [`optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs) (inline `#[cfg(test)]`)
+
+| Test                                                        | Purpose                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| `test_optimize_indel_poisson_zero_rate`                     | Poisson metrics are all zero when mu=0                            |
+| `test_optimize_indel_poisson_zero_indels`                   | k=0 gives log_lh=-mu\*t, derivative=-mu, second_derivative=0      |
+| `test_optimize_indel_poisson_log_lh_value`                  | Specific log-likelihood value for k=2, mu=10, t=0.1               |
+| `test_optimize_indel_poisson_derivative`                    | Analytical derivative and second derivative match expected values |
+| `test_optimize_indel_poisson_mle_at_optimum`                | Derivative is zero at MLE t=k/mu                                  |
+| `test_optimize_indel_poisson_derivative_positive_near_zero` | Derivative is large positive near t=0 for k>0                     |
+| `test_optimize_indel_poisson_second_derivative_negative`    | Second derivative negative for k>0 (log-concave)                  |
+| `test_optimize_indel_statrs_ln_factorial`                   | statrs ln_factorial agrees with direct computation                |
+
+---
+
+## Indel Contribution (Integration)
+
+**File:** [`test_optimize_indel.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_indel.rs)
+
+| Test                                                                  | Purpose                                                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `test_optimize_indel_estimate_rate_no_indels`                         | estimate_indel_rate returns 0 with no indels                                   |
+| `test_optimize_indel_estimate_rate_with_indels`                       | estimate_indel_rate returns total_indels / total_branch_length                 |
+| `test_optimize_indel_initial_guess_nonzero_with_indels`               | initial_guess assigns positive BL when indels present on identical sequences   |
+| `test_optimize_indel_initial_guess_zero_bl_tree_with_indels`          | initial_guess bootstraps positive BL on zero-BL tree with indels               |
+| `test_optimize_indel_run_optimize_nonzero_with_indels` (6 methods)    | run_optimize_mixed assigns positive BL with indels for each optimizer          |
+| `test_optimize_indel_zero_bl_pipeline_escapes_zero` (6 methods)       | Full pipeline escapes zero BL with indels for each optimizer                   |
+| `test_optimize_indel_poisson_concavity` (5 cases)                     | Poisson second derivative negative for k>0                                     |
+| `test_optimize_indel_poisson_mle_derivative_zero` (5 cases)           | Poisson derivative zero at MLE t=k/mu                                          |
+| `test_optimize_indel_poisson_mle_is_maximum` (6 cases)                | Poisson log-likelihood at MLE exceeds any other point                          |
+| `test_optimize_indel_poisson_numerical_derivative`                    | Numerical derivative matches analytical derivative                             |
+| `test_optimize_indel_zero_branch_no_indels_unchanged`                 | is_zero_branch_optimal returns true with no indels and negative sub derivative |
+| `test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels`   | Grid search rejects zero when indels present                                   |
+| `test_optimize_indel_grid_zero_comparison_allows_zero_without_indels` | Grid search allows zero without indels when subs prefer it                     |
+| `test_optimize_indel_newton_converges_to_poisson_mle` (4 cases)       | Newton step from nearby point converges toward Poisson MLE                     |
+| `test_optimize_indel_min_branch_length_clamping` (6 methods)          | Optimizer clamps BL above zero when indels present                             |
+| `test_optimize_indel_evaluate_with_indels_shifts_log_lh` (4 cases)    | Indel term shifts combined log-likelihood from substitution-only value         |
+| `test_prop_optimize_indel_concavity`                                  | Property: second derivative always negative for k>0                            |
+| `test_prop_optimize_indel_mle_derivative`                             | Property: derivative is zero at MLE                                            |
+| `test_prop_optimize_indel_derivative_positive_near_zero`              | Property: derivative positive near t=0 for k>0                                 |
+| `test_prop_optimize_indel_numerical_derivative`                       | Property: numerical derivative matches analytical                              |
+
+---
+
 ## Optimization Method
 
 **File:** [`test_optimize_method.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method.rs)
@@ -610,53 +709,53 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ### Chain Rule Tests (sqrt and log transforms)
 
-| Test                                                              | Cases | Purpose                                             |
-| ----------------------------------------------------------------- | ----- | --------------------------------------------------- |
-| `test_optimize_method_chain_rule_at_zero`                         | 1     | Chain rule sqrt at s=0: ds=0, d2s=2\*dl_dt          |
-| `test_optimize_method_chain_rule_analytical`                      | 1     | Chain rule sqrt at known analytical values          |
-| `test_optimize_method_chain_rule_log_analytical`                  | 1     | Chain rule log at known analytical values           |
-| `test_optimize_method_chain_rule_log_small_t`                     | 1     | Chain rule log approaches zero for small t          |
-| `test_optimize_method_chain_rule_numerical_first_derivative`      | 4     | sqrt first derivative matches numerical difference  |
-| `test_optimize_method_chain_rule_numerical_second_derivative`     | 4     | sqrt second derivative matches numerical difference |
-| `test_optimize_method_chain_rule_log_numerical_first_derivative`  | 4     | log first derivative matches numerical difference   |
-| `test_optimize_method_chain_rule_log_numerical_second_derivative` | 4     | log second derivative matches numerical difference  |
+| Test                                                                        | Purpose                                             | Notes            |
+| --------------------------------------------------------------------------- | --------------------------------------------------- | ---------------- |
+| `test_optimize_method_chain_rule_at_zero`                                   | Chain rule sqrt at s=0: ds=0, d2s=2\*dl_dt          |                  |
+| `test_optimize_method_chain_rule_analytical`                                | Chain rule sqrt at known analytical values          |                  |
+| `test_optimize_method_chain_rule_log_analytical`                            | Chain rule log at known analytical values           |                  |
+| `test_optimize_method_chain_rule_log_small_t`                               | Chain rule log approaches zero for small t          |                  |
+| `test_optimize_method_chain_rule_numerical_first_derivative` (4 cases)      | sqrt first derivative matches numerical difference  |                  |
+| `test_optimize_method_chain_rule_numerical_second_derivative` (4 cases)     | sqrt second derivative matches numerical difference | **1e-2** epsilon |
+| `test_optimize_method_chain_rule_log_numerical_first_derivative` (4 cases)  | log first derivative matches numerical difference   |                  |
+| `test_optimize_method_chain_rule_log_numerical_second_derivative` (4 cases) | log second derivative matches numerical difference  | **1e-2** epsilon |
 
 ### Method Equivalence and Optimality (C1, C3)
 
-| Test                                                        | Cases | Purpose                                           |
-| ----------------------------------------------------------- | ----- | ------------------------------------------------- |
-| `test_optimize_method_equivalence_no_indels`                | 6     | All 6 methods produce finite non-negative BLs     |
-| `test_optimize_method_local_optimality`                     | 6     | C1: LH at optimum exceeds neighbors (all methods) |
-| `test_optimize_method_cross_method_lh_agreement`            | 3     | C3: NewtonSqrt and Brent LH agree within 1e-3     |
-| `test_optimize_method_cross_method_lh_agreement_newton_log` | 3     | C3: NewtonLog and Brent LH agree within 1e-3      |
-| `test_optimize_method_cross_method_all_six_lh_agreement`    | 3     | C3: All 6 methods agree within 1e-3 vs BrentSqrt  |
+| Test                                                                  | Purpose                                           | Notes    |
+| --------------------------------------------------------------------- | ------------------------------------------------- | -------- |
+| `test_optimize_method_equivalence_no_indels` (6 cases)                | All 6 methods produce finite non-negative BLs     |          |
+| `test_optimize_method_local_optimality` (6 cases)                     | C1: LH at optimum exceeds neighbors (all methods) |          |
+| `test_optimize_method_cross_method_lh_agreement` (3 cases)            | C3: NewtonSqrt and Brent LH agree within 1e-3     | **1e-3** |
+| `test_optimize_method_cross_method_lh_agreement_newton_log` (3 cases) | C3: NewtonLog and Brent LH agree within 1e-3      | **1e-3** |
+| `test_optimize_method_cross_method_all_six_lh_agreement` (3 cases)    | C3: All 6 methods agree within 1e-3 vs BrentSqrt  | **1e-3** |
 
 ### Newton Stationarity and Conditioning (C2, C5)
 
-| Test                                                      | Cases | Purpose                                              |
-| --------------------------------------------------------- | ----- | ---------------------------------------------------- |
-| `test_optimize_method_stationarity`                       | 3     | C2: Implied Newton step below tolerance (3 variants) |
-| `test_optimize_method_newton_sqrt_improves_over_newton`   | 1     | C5: NewtonSqrt LH >= Newton on indel case            |
-| `test_optimize_method_newton_log_improves_over_newton`    | 1     | C5: NewtonLog LH >= Newton on indel case             |
-| `test_optimize_method_newton_cross_conditioning_ordering` | 3     | C5: lh_log >= lh_sqrt >= lh_t (all indel counts)     |
+| Test                                                                | Purpose                                              |
+| ------------------------------------------------------------------- | ---------------------------------------------------- |
+| `test_optimize_method_stationarity` (3 cases)                       | C2: Implied Newton step below tolerance (3 variants) |
+| `test_optimize_method_newton_sqrt_improves_over_newton`             | C5: NewtonSqrt LH >= Newton on indel case            |
+| `test_optimize_method_newton_log_improves_over_newton`              | C5: NewtonLog LH >= Newton on indel case             |
+| `test_optimize_method_newton_cross_conditioning_ordering` (3 cases) | C5: lh_log >= lh_sqrt >= lh_t (all indel counts)     |
 
 ### Brent Bracket and Transform Validity (C4)
 
-| Test                                                             | Cases | Purpose                                             |
-| ---------------------------------------------------------------- | ----- | --------------------------------------------------- |
-| `test_optimize_method_brent_bracket_validity`                    | 3     | C4: Optimum LH exceeds bracket endpoints (3 Brents) |
-| `test_optimize_method_brent_cross_parameterization_lh_agreement` | 1     | Brent-t, Brent-sqrt, Brent-log agree within 1e-3    |
-| `test_optimize_method_brent_sqrt_transform_round_trip`           | 1     | sqrt transform produces local optimum in t-space    |
-| `test_optimize_method_brent_log_transform_round_trip`            | 1     | log transform produces local optimum in t-space     |
+| Test                                                             | Purpose                                             |
+| ---------------------------------------------------------------- | --------------------------------------------------- |
+| `test_optimize_method_brent_bracket_validity` (3 cases)          | C4: Optimum LH exceeds bracket endpoints (3 Brents) |
+| `test_optimize_method_brent_cross_parameterization_lh_agreement` | Brent-t, Brent-sqrt, Brent-log agree within 1e-3    |
+| `test_optimize_method_brent_sqrt_transform_round_trip`           | sqrt transform produces local optimum in t-space    |
+| `test_optimize_method_brent_log_transform_round_trip`            | log transform produces local optimum in t-space     |
 
 ### Indel Robustness
 
-| Test                                                    | Cases | Purpose                                            |
-| ------------------------------------------------------- | ----- | -------------------------------------------------- |
-| `test_optimize_method_brent_positive_with_indels`       | 9     | All 3 Brent variants x 3 indel counts: positive BL |
-| `test_optimize_method_newton_positive_with_indels`      | 3     | Newton-t produces positive finite BL with indels   |
-| `test_optimize_method_newton_sqrt_positive_with_indels` | 3     | NewtonSqrt produces positive finite BL with indels |
-| `test_optimize_method_newton_log_positive_with_indels`  | 3     | NewtonLog produces positive finite BL with indels  |
+| Test                                                              | Purpose                                            |
+| ----------------------------------------------------------------- | -------------------------------------------------- |
+| `test_optimize_method_brent_positive_with_indels` (9 cases)       | All 3 Brent variants x 3 indel counts: positive BL |
+| `test_optimize_method_newton_positive_with_indels` (3 cases)      | Newton-t produces positive finite BL with indels   |
+| `test_optimize_method_newton_sqrt_positive_with_indels` (3 cases) | NewtonSqrt produces positive finite BL with indels |
+| `test_optimize_method_newton_log_positive_with_indels` (3 cases)  | NewtonLog produces positive finite BL with indels  |
 
 ---
 
@@ -666,43 +765,35 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ### End-to-end dispatch
 
-| Test                                                                  | Cases | Purpose                                                                               |
-| --------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------- |
-| `test_dispatch_zero_boundary_k80_identical_sequences`                 | 6     | All 6 methods return $t = 0$ on K80 identical sequences (end-to-end)                  |
-| `test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero`      | 4     | BrentSqrt reaches $t = 0$ on every non-unimodal nucleotide model (K80/HKY85/T92/TN93) |
-| `test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero` | 1     | `is_zero_branch_optimal` fires for JC69 identical sequences (pre-dispatch path)       |
+| Test                                                                  | Purpose                                                      |
+| --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_dispatch_zero_boundary_k80_identical_sequences`                 | All 6 methods return t=0 on K80 identical sequences          |
+| `test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero`      | BrentSqrt reaches t=0 on every non-unimodal nucleotide model |
+| `test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero` | `is_zero_branch_optimal` fires for JC69 identical sequences  |
 
 ### Reconcile helper contract
 
-| Test                                                                           | Cases | Purpose                                                                                     |
-| ------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------- |
-| `test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode` | 1     | Positive candidate worse than zero on multi-modal surface -> grid returns the positive mode |
-| `test_dispatch_zero_boundary_reconcile_exact_zero_finds_positive_mode`         | 1     | Exact-zero candidate on multi-modal surface -> grid returns the positive mode               |
-| `test_dispatch_zero_boundary_reconcile_degenerate_site_passes_through`         | 1     | Degenerate site short-circuits via `all_sites_valid_at_zero` gate                           |
-| `test_dispatch_zero_boundary_reconcile_indel_count_positive_passes_through`    | 1     | `indel_count > 0` short-circuits via Poisson $-\infty$ at zero                              |
-| `test_dispatch_zero_boundary_reconcile_exact_zero_unimodal_passes_through`     | 1     | Unimodal model skips grid verification on exact-zero candidate                              |
-| `test_dispatch_zero_boundary_reconcile_exact_zero_indels_passes_through`       | 1     | Exact-zero candidate with indels skips grid verification                                    |
+| Test                                                                           | Purpose                                                                       |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode` | Positive candidate worse than zero -> grid returns the positive mode          |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_finds_positive_mode`         | Exact-zero candidate on multi-modal surface -> grid returns the positive mode |
+| `test_dispatch_zero_boundary_reconcile_degenerate_site_passes_through`         | Degenerate site short-circuits via `all_sites_valid_at_zero` gate             |
+| `test_dispatch_zero_boundary_reconcile_indel_count_positive_passes_through`    | `indel_count > 0` short-circuits via Poisson at zero                          |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_unimodal_passes_through`     | Unimodal model skips grid verification on exact-zero candidate                |
+| `test_dispatch_zero_boundary_reconcile_exact_zero_indels_passes_through`       | Exact-zero candidate with indels skips grid verification                      |
 
 ### Downstream topology cleanup
 
-| Test                                                                       | Cases | Purpose                                                                                |
-| -------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
-| `test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges` | 4     | `find_zero_optimal_internal_edges` collects both internal edges after K80 optimization |
+| Test                                                                                 | Purpose                                                                                |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges` (4 cases) | `find_zero_optimal_internal_edges` collects both internal edges after K80 optimization |
 
 ### Inner-solver reproductions
 
-| Test                                                                                 | Cases | Purpose                                                                                         |
-| ------------------------------------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------- |
-| `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80` | 12    | Pin: `newton_inner` returns a positive value from 12 starting points on the Dinh-Matsen surface |
-| `test_dispatch_zero_boundary_newton_sqrt_inner_clamps_to_zero_on_dinh_matsen_k80`    | 1     | Reproduction: `newton_sqrt_inner` from $t_0 = 0.6$ returns exactly $0$ on the same surface      |
-
-The end-to-end group drives `run_optimize_mixed` with identical leaf sequences and asserts every edge reaches $t = 0$. For non-unimodal models (K80/HKY85/T92/TN93) this exercises the post-dispatch reconciliation path; for JC69 it exercises the pre-dispatch derivative-sign shortcut. Both code paths converge on the same answer.
-
-The reconcile helper contract tests verify each entry condition of `reconcile_zero_boundary`: positive-candidate-worse-than-zero and exact-zero both route to `grid_search_inner` when the model is non-unimodal, all sites are valid at zero, and no indels are present; all other combinations pass the candidate through unchanged.
-
-The topology cleanup test closes the loop between the post-dispatch reconciliation and `find_zero_optimal_internal_edges`: the four methods that cannot evaluate exactly at zero (Brent, BrentSqrt, BrentLog, NewtonLog) must all produce zero-length internal edges that the cleanup collects.
-
-The two inner-solver reproductions together justify the helper's exact-zero gate. On the Dinh and Matsen 2017 K80 $\kappa = 3$ counterexample (Section 5, eq 5.1-5.2), $t$-space Newton is safe (never clamps to zero across 12 starting points) but sqrt-space Newton clamps at $t_0 = 0.6$ because the chain rule flips the sign of the local Hessian. Without the exact-zero gate, the sqrt-space clamping would feed `find_zero_optimal_internal_edges()` a false zero.
+| Test                                                                                 | Purpose                                                                             |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80` | Pin: `newton_inner` returns positive from 12 starting points on Dinh-Matsen surface |
+| `test_dispatch_zero_boundary_newton_sqrt_inner_clamps_to_zero_on_dinh_matsen_k80`    | Reproduction: `newton_sqrt_inner` from t0=0.6 returns exactly 0 on the same surface |
 
 ---
 
@@ -710,15 +801,38 @@ The two inner-solver reproductions together justify the helper's exact-zero gate
 
 **File:** [`test_optimize_method_step_clamping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method_step_clamping.rs)
 
-| Test                                                                      | Cases | Purpose                                                                    |
-| ------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------- |
-| `test_optimize_method_step_clamping_sqrt_at_zero`                         | 1     | At s=0 the bound equals -1.0 (coincides with t-space)                      |
-| `test_optimize_method_step_clamping_sqrt_analytical`                      | 4     | Known analytical values at representative s values                         |
-| `test_optimize_method_step_clamping_sqrt_always_negative`                 | 7     | Bound is always negative for non-negative s                                |
-| `test_optimize_method_step_clamping_sqrt_produces_unit_t_increase`        | 6     | Applying the bound step yields delta_t = 1.0                               |
-| `test_optimize_method_step_clamping_sqrt_large_s_asymptote`               | 1     | For large s, bound approaches -1/(2s)                                      |
-| `test_optimize_method_step_clamping_sqrt_strictly_greater_than_minus_one` | 4     | For s > 0 the bound is strictly greater than -1.0 (delta_t bounded by 1.0) |
-| `test_optimize_method_step_clamping_log_analytical`                       | 4     | Known analytical values at representative t values                         |
-| `test_optimize_method_step_clamping_log_always_negative`                  | 6     | Bound is always negative for positive t                                    |
-| `test_optimize_method_step_clamping_log_produces_unit_t_increase`         | 6     | Applying the bound step in u-space yields delta_t = 1.0                    |
-| `test_optimize_method_step_clamping_log_large_t_asymptote`                | 1     | For large t, bound approaches -1/t                                         |
+| Test                                                                                | Purpose                                                 |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `test_optimize_method_step_clamping_sqrt_at_zero`                                   | At s=0 the bound equals -1.0 (coincides with t-space)   |
+| `test_optimize_method_step_clamping_sqrt_analytical` (4 cases)                      | Known analytical values at representative s values      |
+| `test_optimize_method_step_clamping_sqrt_always_negative` (7 cases)                 | Bound is always negative for non-negative s             |
+| `test_optimize_method_step_clamping_sqrt_produces_unit_t_increase` (6 cases)        | Applying the bound step yields delta_t = 1.0            |
+| `test_optimize_method_step_clamping_sqrt_large_s_asymptote`                         | For large s, bound approaches -1/(2s)                   |
+| `test_optimize_method_step_clamping_sqrt_strictly_greater_than_minus_one` (4 cases) | For s > 0 the bound is strictly greater than -1.0       |
+| `test_optimize_method_step_clamping_log_analytical` (4 cases)                       | Known analytical values at representative t values      |
+| `test_optimize_method_step_clamping_log_always_negative` (6 cases)                  | Bound is always negative for positive t                 |
+| `test_optimize_method_step_clamping_log_produces_unit_t_increase` (6 cases)         | Applying the bound step in u-space yields delta_t = 1.0 |
+| `test_optimize_method_step_clamping_log_large_t_asymptote`                          | For large t, bound approaches -1/t                      |
+
+---
+
+## CLI Args
+
+**File:** [`test_args.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_args.rs)
+
+| Test                                               | Purpose                                                 |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| `test_args_opt_method_kebab_case_parses` (6 cases) | Each BranchOptMethod kebab-case variant parses from CLI |
+| `test_args_opt_method_default_is_brent_sqrt`       | Default --opt-method is BrentSqrt                       |
+| `test_args_opt_method_rejects_unknown`             | Unknown --opt-method value rejected at parse time       |
+
+---
+
+## Zero Sequence Length
+
+**File:** [`test_optimize_zero_sequence_length.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_zero_sequence_length.rs)
+
+| Test                                                     | Purpose                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| `test_optimize_zero_sequence_length_run_optimize_error`  | run_optimize_mixed returns error for zero-length partitions  |
+| `test_optimize_zero_sequence_length_initial_guess_error` | initial_guess_mixed returns error for zero-length partitions |

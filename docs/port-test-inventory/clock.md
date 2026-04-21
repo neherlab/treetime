@@ -4,15 +4,14 @@
 
 ## Summary
 
-| Category         | Files | Tests  | Type                                    |
-| ---------------- | ----- | ------ | --------------------------------------- |
-| Clock regression | 1     | 1      | Unit                                    |
-| Date constraints | 1     | 14     | Unit                                    |
-| Rerooting        | 1     | 4      | Unit                                    |
-| Clock filter     | 1     | 2      | Unit                                    |
-| Find best root   | 1     | 9      | Unit                                    |
-| Dengue/100       | 1     | 2      | Integration (assertion + golden master) |
-| **Total**        | **6** | **32** |                                         |
+| Category                                   | Type                        |
+| ------------------------------------------ | --------------------------- |
+| [Clock regression](#clock-regression)      | Unit                        |
+| [Date constraints](#date-constraints)      | Unit                        |
+| [Rerooting](#rerooting)                    | Unit                        |
+| [Clock filter](#clock-filter)              | Unit                        |
+| [Find best root](#find-best-root)          | Unit                        |
+| [Dengue/100 pipeline](#dengue100-pipeline) | Integration + Golden-master |
 
 ---
 

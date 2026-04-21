@@ -4,24 +4,23 @@
 
 ## Summary
 
-| Category                      | Crate                 | Files  | Tests   | Type |
-| ----------------------------- | --------------------- | ------ | ------- | ---- |
-| Distribution core             | treetime-distribution | 2      | 6       | Unit |
-| Distribution ops - multiply   | treetime-distribution | 1      | 6       | Unit |
-| Distribution ops - divide     | treetime-distribution | 1      | 10      | Unit |
-| Distribution ops - convolve   | treetime-distribution | 1      | 19      | Unit |
-| Distribution ops - negation   | treetime-distribution | 1      | 9       | Unit |
-| Distribution ops - scalar     | treetime-distribution | 1      | 11      | Unit |
-| Distribution ops - bounds     | treetime-distribution | 1      | 57      | Unit |
-| Scaled distributions          | treetime-distribution | 4      | 29      | Unit |
-| Gaussian product (root)       | treetime-distribution | 1      | 10      | Unit |
-| Quantile (root)               | treetime-distribution | 1      | 10      | Unit |
-| Gaussian analytical           | treetime-analytical   | 1      | 12      | Unit |
-| Exponential (inline)          | treetime-analytical   | 1      | 9       | Unit |
-| Gaussian-exponential (inline) | treetime-analytical   | 1      | 3       | Unit |
-| Array multiplication          | treetime-ops          | 1      | 7       | Unit |
-| Convolution (inline)          | treetime-ops          | 1      | 3       | Unit |
-| **Total**                     | -                     | **20** | **197** | Unit |
+| Category                                                                | Crate                 | Type |
+| ----------------------------------------------------------------------- | --------------------- | ---- |
+| [Distribution core](#distribution-core)                                 | treetime-distribution | Unit |
+| [Distribution ops - multiply](#distribution-operations---multiply)      | treetime-distribution | Unit |
+| [Distribution ops - divide](#distribution-operations---divide)          | treetime-distribution | Unit |
+| [Distribution ops - convolve](#distribution-operations---convolve)      | treetime-distribution | Unit |
+| [Distribution ops - negation](#distribution-operations---negation)      | treetime-distribution | Unit |
+| [Distribution ops - scalar](#distribution-operations---scalar-multiply) | treetime-distribution | Unit |
+| [Distribution ops - bounds](#distribution-operations---time-bounds)     | treetime-distribution | Unit |
+| [Scaled distributions](#scaled-distributions)                           | treetime-distribution | Unit |
+| [Gaussian product](#root-level-tests)                                   | treetime-distribution | Unit |
+| [Quantile](#root-level-tests)                                           | treetime-distribution | Unit |
+| [Gaussian analytical](#treetime-analytical)                             | treetime-analytical   | Unit |
+| [Exponential](#exponential-inline-tests)                                | treetime-analytical   | Unit |
+| [Gaussian-exponential](#gaussian-exponential-inline-tests)              | treetime-analytical   | Unit |
+| [Array multiplication](#treetime-ops)                                   | treetime-ops          | Unit |
+| [Convolution](#convolution-inline-tests)                                | treetime-ops          | Unit |
 
 ---
 
@@ -155,9 +154,7 @@
 
 **File:** [`test_time_bounds.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs)
 
-4 parameterized rstest functions (41 cases) + 16 plain tests = 57 total test cases.
-
-**Parameterized: `test_distribution_time_bounds_union`** (10 cases)
+**Parameterized: `test_distribution_time_bounds_union`**
 
 | Case                          | Purpose                        |
 | ----------------------------- | ------------------------------ |
@@ -172,7 +169,7 @@
 | `same_point`                  | Same point identity            |
 | `negative_and_positive`       | Negative and positive ranges   |
 
-**Parameterized: `test_distribution_time_bounds_intersection`** (13 cases)
+**Parameterized: `test_distribution_time_bounds_intersection`**
 
 | Case                          | Purpose                         |
 | ----------------------------- | ------------------------------- |
@@ -190,7 +187,7 @@
 | `same_point`                  | Same point = point bounds       |
 | `different_points`            | Different points returns None   |
 
-**Parameterized: `test_distribution_time_bounds_contains`** (10 cases)
+**Parameterized: `test_distribution_time_bounds_contains`**
 
 | Case                         | Purpose                        |
 | ---------------------------- | ------------------------------ |
@@ -205,7 +202,7 @@
 | `inner_extends_right`        | Right extension not contained  |
 | `function_contains_function` | Wider function contains narrow |
 
-**Parameterized: `test_distribution_time_bounds_overlaps`** (8 cases)
+**Parameterized: `test_distribution_time_bounds_overlaps`**
 
 | Case                  | Purpose                          |
 | --------------------- | -------------------------------- |

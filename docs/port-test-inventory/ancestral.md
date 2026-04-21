@@ -4,26 +4,27 @@
 
 ## Summary
 
-| Category                 | Files  | Tests   | Type            |
-| ------------------------ | ------ | ------- | --------------- |
-| Fitch parsimony          | 1      | 7       | Unit            |
-| Marginal ML dense        | 1      | 5       | Unit            |
-| Marginal ML sparse       | 1      | 6       | Unit            |
-| Dense/sparse equivalence | 2      | 2       | Unit + Property |
-| Idempotency              | 2      | 4       | Unit + Property |
-| Normalization            | 2      | 6       | Unit + Property |
-| Root invariance          | 1      | 4       | Property + Unit |
-| Python parity            | 1      | 8       | Unit            |
-| Consistency              | 1      | 5       | Unit            |
-| Branch length            | 2      | 12      | Unit            |
-| Topology                 | 3      | 13      | Unit            |
-| Stability                | 3      | 16      | Unit            |
-| Analytical               | 3      | 10      | Golden-master   |
-| Sparse composition       | 1      | 12      | Unit            |
-| Generator validation     | 4      | 15      | Property        |
-| **Total**                | **28** | **125** | Mixed           |
+| Category                                                    | Type            |
+| ----------------------------------------------------------- | --------------- |
+| [Fitch parsimony](#fitch-parsimony)                         | Unit            |
+| [Marginal ML dense](#marginal-ml---dense)                   | Unit            |
+| [Marginal ML sparse](#marginal-ml---sparse)                 | Unit            |
+| [Dense/sparse equivalence](#densesparse-equivalence)        | Unit + Property |
+| [Idempotency](#idempotency-tests)                           | Unit + Property |
+| [Normalization](#normalization-tests)                       | Unit + Property |
+| [Root invariance](#root-invariance-tests)                   | Property + Unit |
+| [Python parity](#python-v0-parity-tests)                    | Unit            |
+| [Consistency](#consistency-tests)                           | Unit            |
+| [Branch length](#branch-length-tests)                       | Unit            |
+| [Topology](#topology-tests)                                 | Unit            |
+| [Stability](#stability-tests-edge-cases)                    | Unit            |
+| [Analytical](#analytical-verification-tests)                | Golden-master   |
+| [Softmax with log-norm](#softmax-with-log-norm-tests)       | Unit            |
+| [Dense normalize-from-log](#dense-normalize-from-log-tests) | Unit            |
+| [Sparse composition](#substitution-composition-tests)       | Unit            |
+| [Generator validation](#property-test-generator-validation) | Property        |
 
-Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_marginal_analytical_support.rs`, `test_marginal_stability_support.rs`
+Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs), [`test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs), [`test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)
 
 ---
 
@@ -82,10 +83,10 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Files:** [`test_marginal_dense_sparse_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_example.rs), [`test_marginal_dense_sparse_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs)
 
-| Test                                                      | Purpose                                               | Type     |
-| --------------------------------------------------------- | ----------------------------------------------------- | -------- |
-| `test_marginal_dense_sparse_example_gap_free_consistency` | Dense and sparse log-likelihoods agree on fixed input | Unit     |
-| `test_prop_marginal_dense_sparse_gap_free_consistency`    | Dense and sparse agree across 30 random inputs        | Property |
+| Test                                                      | Purpose                                               | Type                  |
+| --------------------------------------------------------- | ----------------------------------------------------- | --------------------- |
+| `test_marginal_dense_sparse_example_gap_free_consistency` | Dense and sparse log-likelihoods agree on fixed input | Unit                  |
+| `test_prop_marginal_dense_sparse_gap_free_consistency`    | Dense and sparse agree across 30 random inputs        | Property, **ignored** |
 
 **Purpose:** Cross-validate sparse optimization against dense reference
 **Known issue:** ~2.5% of random GTR configs show divergence up to 7.6e-6 relative difference
@@ -128,12 +129,12 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **File:** [`test_marginal_root_invariance_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs)
 
-| Test                                                     | Purpose                                                 | Type     |
-| -------------------------------------------------------- | ------------------------------------------------------- | -------- |
-| `test_prop_marginal_dense_log_lh_root_invariance`        | Log-likelihood invariant under rerooting (30 cases)     | Property |
-| `test_prop_marginal_sparse_log_lh_root_invariance`       | Same for sparse (tolerance 1e-1 due to Fitch ambiguity) | Property |
-| `test_reroot_at_internal_node_preserves_topology`        | Rerooting helper preserves leaves and topology          | Unit     |
-| `test_reroot_at_internal_node_different_rootings_differ` | Different indices produce different rootings            | Unit     |
+| Test                                                     | Purpose                                             | Type                         |
+| -------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
+| `test_prop_marginal_dense_log_lh_root_invariance`        | Log-likelihood invariant under rerooting (30 cases) | Property                     |
+| `test_prop_marginal_sparse_log_lh_root_invariance`       | Same for sparse                                     | Property, **1e-1** tolerance |
+| `test_reroot_at_internal_node_preserves_topology`        | Rerooting helper preserves leaves and topology      | Unit                         |
+| `test_reroot_at_internal_node_different_rootings_differ` | Different indices produce different rootings        | Unit                         |
 
 **Invariant:** Felsenstein's pulley principle for reversible models. Helper tests are in `mod helpers::tests` within the same file.
 
@@ -174,7 +175,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Files:** [`test_marginal_branch_length_equilibrium.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_equilibrium.rs), [`test_marginal_branch_length_monotonicity.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_monotonicity.rs)
 
-### Equilibrium Convergence (7 tests)
+### Equilibrium Convergence
 
 | Test                                                  | Purpose                                                    |
 | ----------------------------------------------------- | ---------------------------------------------------------- |
@@ -186,7 +187,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_branch_length_sensitivity_near_zero`            | Numerical stability at t=1e-8                              |
 | `test_dense_sparse_consistency_across_branch_lengths` | Dense/sparse match across [0.01, 0.1, 0.5, 1.0, 5.0, 20.0] |
 
-### Monotonicity (5 tests)
+### Monotonicity
 
 | Test                                                        | Purpose                                                       |
 | ----------------------------------------------------------- | ------------------------------------------------------------- |
@@ -202,7 +203,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Files:** [`test_marginal_topology_caterpillar.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_caterpillar.rs), [`test_marginal_topology_deep_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_deep_tree.rs), [`test_marginal_topology_polytomy.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_polytomy.rs)
 
-### Caterpillar Trees (5 tests)
+### Caterpillar Trees
 
 | Test                                             | Purpose                                                    |
 | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -212,7 +213,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_caterpillar_tree_varied_sequences`         | All-different sequences (AAAA, CCCC, GGGG, TTTT, ACGT)     |
 | `test_caterpillar_tree_asymmetric_branches`      | Branch lengths [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.8] |
 
-### Deep Trees (4 tests)
+### Deep Trees
 
 | Test                                                  | Purpose                                   |
 | ----------------------------------------------------- | ----------------------------------------- |
@@ -221,7 +222,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_deep_caterpillar_tree_dense_sparse_consistency` | Dense/sparse match on 10-leaf tree        |
 | `test_deep_tree_extreme_branches`                     | Extreme branch lengths [1e-8, 0.001, 5.0] |
 
-### Polytomies (4 tests)
+### Polytomies
 
 | Test                                     | Purpose                         |
 | ---------------------------------------- | ------------------------------- |
@@ -236,7 +237,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Files:** [`test_marginal_stability_extreme_branches.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_extreme_branches.rs), [`test_marginal_stability_near_zero_pi.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_near_zero_pi.rs), [`test_marginal_stability_rapid_transitions.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_rapid_transitions.rs)
 
-### Extreme Branches (6 tests)
+### Extreme Branches
 
 | Test                                      | Scenario                     |
 | ----------------------------------------- | ---------------------------- |
@@ -247,7 +248,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_extreme_asymmetric_branches_dense`  | t1=1e-10, t2=10.0            |
 | `test_extreme_asymmetric_branches_sparse` | Same for sparse              |
 
-### Near-Zero Pi (4 tests)
+### Near-Zero Pi
 
 | Test                                          | Scenario                                           |
 | --------------------------------------------- | -------------------------------------------------- |
@@ -256,7 +257,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_near_zero_pi_with_dominant_state_dense` | Same pi, observes dominant state A                 |
 | `test_extremely_skewed_pi_dense`              | pi=[0.9997,0.0001,0.0001,0.0001]                   |
 
-### Rapid Transitions (6 tests)
+### Rapid Transitions
 
 | Test                                      | Scenario                                 |
 | ----------------------------------------- | ---------------------------------------- |
@@ -273,7 +274,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Files:** [`test_marginal_analytical_two_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_two_taxon.rs), [`test_marginal_analytical_three_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_three_taxon.rs), [`test_marginal_analytical_star_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_star_tree.rs)
 
-### Two-Taxon (5 tests)
+### Two-Taxon
 
 | Test                                              | Scenario                          |
 | ------------------------------------------------- | --------------------------------- |
@@ -283,14 +284,14 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_two_taxon_analytical_multiple_positions`    | 3-position alignment              |
 | `test_two_taxon_analytical_asymmetric_branches`   | t1=0.01, t2=1.0                   |
 
-### Three-Taxon (2 tests)
+### Three-Taxon
 
 | Test                                          | Scenario                                                 |
 | --------------------------------------------- | -------------------------------------------------------- |
 | `test_three_taxon_single_position_exhaustive` | Manual summation over all 16 internal state combinations |
 | `test_three_taxon_all_combinations`           | All 64 single-position state triplets verified           |
 
-### Star Tree (3 tests)
+### Star Tree
 
 | Test                                          | Scenario                 |
 | --------------------------------------------- | ------------------------ |
@@ -378,7 +379,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 
 **Directory:** [`prop_generators/`](../../packages/treetime/src/commands/ancestral/__tests__/prop_generators/)
 
-### alignment.rs (4 tests)
+### alignment.rs
 
 | Test                                              | Purpose                                          |
 | ------------------------------------------------- | ------------------------------------------------ |
@@ -387,14 +388,14 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_prop_alignment_arb_alignment_structure`     | Alignment has correct taxa names and count       |
 | `test_prop_alignment_arb_alignment_no_gaps_chars` | Gap-free alignment contains only ACGT            |
 
-### branch_length.rs (2 tests)
+### branch_length.rs
 
 | Test                                                 | Purpose                            |
 | ---------------------------------------------------- | ---------------------------------- |
 | `test_prop_branch_length_arb_branch_length_positive` | Branch lengths >= 0.001 and finite |
 | `test_prop_branch_length_arb_branch_length_bounded`  | Branch lengths <= 2.0              |
 
-### input.rs (3 tests)
+### input.rs
 
 | Test                                                          | Purpose                                          |
 | ------------------------------------------------------------- | ------------------------------------------------ |
@@ -402,7 +403,7 @@ Support files (helpers only, no tests): `prop_marginal_support.rs`, `test_margin
 | `test_prop_input_arb_marginal_input_taxa_match`               | All alignment taxa appear in Newick              |
 | `test_prop_input_arb_marginal_input_parseable_and_taxa_exact` | Parsed tree leaves match alignment taxa exactly  |
 
-### tree.rs (6 tests)
+### tree.rs
 
 | Test                                                       | Purpose                                       |
 | ---------------------------------------------------------- | --------------------------------------------- |
