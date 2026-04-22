@@ -8,6 +8,7 @@ mod tests {
   use eyre::Report;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
+  use treetime_analytical::{GaussianParams, gaussian_product_params};
 
   const GAUSSIAN_GRID_HALF_WIDTH_SIGMAS: f64 = 5.0;
 
@@ -221,8 +222,6 @@ mod tests {
 
   #[test]
   fn test_gaussian_analytical_formula() {
-    use treetime_analytical::{GaussianParams, gaussian_product_params};
-
     let params = vec![
       GaussianParams {
         mu: -1.0,
