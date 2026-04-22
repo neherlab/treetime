@@ -3,6 +3,7 @@ mod tests {
   use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use std::collections::BTreeMap;
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::Named;
@@ -142,7 +143,7 @@ mod tests {
     let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     // Collect branch lengths by finding edges to specific nodes
-    let mut branch_lengths = std::collections::BTreeMap::new();
+    let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
       let edge_ref = edge.read_arc();
       let target_key = edge_ref.target();

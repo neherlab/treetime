@@ -4,6 +4,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
 
   use helpers::{load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case};
 
@@ -38,7 +39,7 @@ mod tests {
     assert_eq!(expected_n_states, actual_n_states);
 
     let expected_trait_assignments = expected.trait_assignments.clone();
-    let actual_trait_assignments: std::collections::BTreeMap<String, String> =
+    let actual_trait_assignments: BTreeMap<String, String> =
       actual.trait_assignments().iter().map(|(k, v)| (k.clone(), v.clone())).collect();
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
 

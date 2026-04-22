@@ -6,6 +6,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::{Named, Outlier, TimeConstraint};
@@ -13,7 +14,7 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  fn setup_dates(graph: &GraphTimetree, dates: &std::collections::BTreeMap<String, f64>) {
+  fn setup_dates(graph: &GraphTimetree, dates: &BTreeMap<String, f64>) {
     for n in graph.get_leaves() {
       let name = n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned());
       if let Some(name) = name {

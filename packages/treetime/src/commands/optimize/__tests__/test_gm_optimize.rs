@@ -4,6 +4,7 @@ mod tests {
   use approx::assert_relative_eq;
   use eyre::Report;
   use rstest::rstest;
+  use std::collections::BTreeMap;
 
   use crate::commands::optimize::args::BranchOptMethod;
   use std::path::Path;
@@ -82,7 +83,7 @@ mod tests {
 
     let result = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
 
-    let v1_branch_lengths: std::collections::BTreeMap<String, f64> = result
+    let v1_branch_lengths: BTreeMap<String, f64> = result
       .graph
       .get_edges()
       .iter()
