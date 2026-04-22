@@ -53,8 +53,9 @@ impl Composition {
   where
     I: IntoIterator<Item = AsciiChar>,
   {
-    let counts = sequence.into_iter().counts();
-    self.counts.extend(counts);
+    for (c, n) in sequence.into_iter().counts() {
+      *self.counts.entry(c).or_default() += n;
+    }
   }
 
   /// Reflect sequence mutation in the composition counts
