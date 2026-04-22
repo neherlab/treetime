@@ -158,7 +158,7 @@ where
     let root_profile = &partition.nodes[&root_key].profile.dis;
     let mut counts = Array1::zeros(n_states);
     for row in root_profile.rows() {
-      if is_profile_informative(&row, n_states) {
+      if is_profile_informative(row, n_states) {
         let state =
           argmax_first(&row).ok_or_else(|| make_internal_report!("Empty profile row in root marginal distribution"))?;
         counts[state] += 1.0;

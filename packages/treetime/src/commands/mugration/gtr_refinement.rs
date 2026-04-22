@@ -138,7 +138,7 @@ where
   let root_key = root.read_arc().key();
   let root_profile = &partition.nodes[&root_key].profile;
   let mut root_state = Array1::zeros(n_states);
-  if is_profile_informative(&root_profile.view(), n_states) {
+  if is_profile_informative(root_profile.view(), n_states) {
     if let Some(root_idx) = argmax_first(&root_profile.view()) {
       root_state[root_idx] = 1.0;
     }

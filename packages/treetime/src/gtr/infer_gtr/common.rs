@@ -162,7 +162,7 @@ pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
 }
 
 /// Whether a profile is peaked above the uniform baseline (carries phylogenetic signal).
-pub fn is_profile_informative(profile: &ArrayView1<'_, f64>, n_states: usize) -> bool {
+pub fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
   let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
-  is_max_above(profile, uniform_threshold)
+  is_max_above(&profile, uniform_threshold)
 }
