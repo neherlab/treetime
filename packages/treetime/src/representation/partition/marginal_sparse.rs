@@ -66,22 +66,8 @@ impl PartitionCompressed for PartitionMarginalSparse {
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
     &mut self.edges
   }
-}
 
-impl PartitionMarginalSparse {
-  #[allow(clippy::same_name_method)]
-  pub fn get_sequence_length(&self) -> usize {
-    self.length
-  }
-
-  /// Extract root sequence from the root node and clear internal node sequences.
-  ///
-  /// After Fitch compression, every node carries a full resolved sequence. Only
-  /// the root sequence is needed for downstream reconstruction (node_state_at,
-  /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
-  /// sequences saves memory and removes stale data that would otherwise persist
-  /// across reroots.
-  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
+  fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
   where
     N: GraphNode,
     E: GraphEdge,
@@ -94,6 +80,13 @@ impl PartitionMarginalSparse {
       }
     }
     Ok(())
+  }
+}
+
+impl PartitionMarginalSparse {
+  #[allow(clippy::same_name_method)]
+  pub fn get_sequence_length(&self) -> usize {
+    self.length
   }
 
   /// Return positions that can change the reconstructed mutation set for one edge.
@@ -158,7 +151,7 @@ impl PartitionMarginalSparse {
 
     debug_assert!(
       !self.root_sequence.is_empty(),
-      "root_sequence is empty: call extract_root_sequence() after compress_sequences()"
+      "root_sequence is empty: compress_sequences() was not called or finalize_fitch() failed"
     );
 
     let base_state = match graph.node_parent(node_key)? {

@@ -4,13 +4,13 @@ Severity: medium
 
 ## Problem
 
-`capture_ancestral_states()` snapshots ancestral sequences for convergence tracking via `extract_ancestral_sequence()`. After `extract_root_sequence()` clears internal node sequences, `extract_ancestral_sequence()` returns empty `Seq` for non-root internal nodes. Both pre- and post-iteration snapshots are empty, so `count_sequence_changes()` returns 0, and the refinement loop may declare convergence prematurely.
+`capture_ancestral_states()` snapshots ancestral sequences for convergence tracking via `extract_ancestral_sequence()`. After `compress_sequences()` finalizes sparse partitions (clearing internal node sequences and storing the root sequence off-tree), `extract_ancestral_sequence()` returns empty `Seq` for non-root internal nodes. Both pre- and post-iteration snapshots are empty, so `count_sequence_changes()` returns 0, and the refinement loop may declare convergence prematurely.
 
 ## Affected paths
 
 - `packages/treetime/src/commands/timetree/refinement.rs`: `capture_ancestral_states` at lines 51 and 92
 - `packages/treetime/src/commands/timetree/convergence/sequence_changes.rs`: `capture_ancestral_states` reads `extract_ancestral_sequence` per internal node
-- `packages/treetime/src/representation/partition/marginal_sparse.rs`: `extract_ancestral_sequence` returns empty when `seq.sequence` is cleared
+- `packages/treetime/src/representation/partition/marginal_sparse.rs`: `extract_ancestral_sequence` returns empty when `seq.sequence` is cleared by `finalize_fitch`
 
 ## Context
 

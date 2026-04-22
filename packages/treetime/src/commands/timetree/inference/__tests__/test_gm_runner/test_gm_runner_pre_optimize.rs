@@ -63,7 +63,6 @@ mod tests {
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
-    sparse_partition.write_arc().extract_root_sequence(&graph)?;
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
       vec![sparse_partition];
@@ -124,7 +123,6 @@ mod tests {
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
-    sparse_partition.write_arc().extract_root_sequence(&graph)?;
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
       vec![sparse_partition];

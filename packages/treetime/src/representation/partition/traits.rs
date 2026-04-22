@@ -154,6 +154,18 @@ pub trait PartitionCompressed: Sync + Send {
   fn edge_mut(&mut self, key: &GraphEdgeKey) -> &mut SparseEdgePartition {
     self.edges_mut().get_mut(key).expect("Edge not found")
   }
+
+  /// Post-Fitch finalization hook called at the end of `compress_sequences`.
+  ///
+  /// Default is a no-op. `PartitionMarginalSparse` overrides this to extract
+  /// the root sequence off-tree and clear internal node sequences.
+  fn finalize_fitch<N, E>(&mut self, _graph: &Graph<N, E, ()>) -> Result<(), Report>
+  where
+    N: GraphNode,
+    E: GraphEdge,
+  {
+    Ok(())
+  }
 }
 
 pub trait HasLogLh {

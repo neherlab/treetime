@@ -56,7 +56,6 @@ mod tests {
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-    partition.write_arc().extract_root_sequence(&graph)?;
     update_marginal(&graph, std::slice::from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
@@ -107,7 +106,6 @@ mod tests {
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-    partition.write_arc().extract_root_sequence(&graph)?;
     update_marginal(&graph, std::slice::from_ref(&partition))?;
 
     let counts = get_mutation_counts_sparse(&graph, &partition)?;

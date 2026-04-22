@@ -537,6 +537,9 @@ where
   fitch_backward(graph, partitions);
   fitch_forward(graph, partitions)?;
   fitch_cleanup(graph, partitions);
+  for partition in partitions {
+    partition.write_arc().finalize_fitch(graph)?;
+  }
   Ok(())
 }
 

@@ -133,9 +133,6 @@ mod tests {
     let partitions = [Arc::clone(&partition)];
 
     compress_sequences(graph, &partitions, aln)?;
-    for p in &partitions {
-      p.write_arc().extract_root_sequence(graph)?;
-    }
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partition))
   }
