@@ -104,8 +104,14 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       let edge_data = &p.edges[&edge.key()];
       match target_name.as_deref() {
-        Some("A") => assert_eq!(edge_data.subs.len(), 2, "A: collapsed-edge sub + own sub"),
-        Some("B") => assert_eq!(edge_data.subs.len(), 1, "B: collapsed-edge sub only"),
+        Some("A") => {
+          // Composed: collapsed-edge A0T + child-edge G5C
+          assert_eq!(edge_data.subs, vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]);
+        }
+        Some("B") => {
+          // Only the collapsed-edge sub A0T propagated (B had no own subs)
+          assert_eq!(edge_data.subs, vec![sub(b'A', 0, b'T')]);
+        }
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -393,13 +399,21 @@ mod tests {
     collapse_edge(&mut graph, &sparse, &dense, ri_key)?;
     graph.build()?;
 
-    for (i, partition) in sparse.iter().enumerate() {
-      let p = partition.read_arc();
-      for edge in graph.get_edges() {
-        let edge = edge.read_arc();
-        let data = &p.edges[&edge.key()];
-        assert_eq!(data.subs.len(), 1, "partition {i}: each child should inherit 1 sub");
-      }
+    // Partition 0: collapsed-edge sub is A0T
+    let p0 = sparse[0].read_arc();
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let data = &p0.edges[&edge.key()];
+      assert_eq!(data.subs, vec![sub(b'A', 0, b'T')], "partition 0: each child inherits A0T");
+    }
+    drop(p0);
+
+    // Partition 1: collapsed-edge sub is G5C
+    let p1 = sparse[1].read_arc();
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let data = &p1.edges[&edge.key()];
+      assert_eq!(data.subs, vec![sub(b'G', 5, b'C')], "partition 1: each child inherits G5C");
     }
 
     Ok(())
