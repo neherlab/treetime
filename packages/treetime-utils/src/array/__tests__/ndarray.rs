@@ -6,8 +6,8 @@ mod tests {
 
   use crate::array::ndarray::*;
   use crate::pretty_assert_ulps_eq;
-  use ndarray::{Array0, Array1, Array2, Axis, arr0, array};
   use eyre::Report;
+  use ndarray::{Array0, Array1, Array2, Axis, arr0, array};
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;

@@ -3,8 +3,8 @@ mod tests {
   use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use std::collections::BTreeMap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::Named;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};

@@ -405,10 +405,8 @@ where
   E: EdgeOptimizeOps,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
-    let graph_node_keys: BTreeSet<GraphNodeKey> =
-      graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
-    let graph_edge_keys: BTreeSet<GraphEdgeKey> =
-      graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
+    let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
+    let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
     // Add missing nodes with empty partition data
     for &key in &graph_node_keys {

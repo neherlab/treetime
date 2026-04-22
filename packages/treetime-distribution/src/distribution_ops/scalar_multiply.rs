@@ -24,9 +24,7 @@ pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
       let amplitude = Y::multiply(r.amplitude(), Y::from_plain(scalar));
       Ok(Distribution::range((r.start(), r.end()), amplitude))
     },
-    Distribution::Empty => {
-      Ok(Distribution::empty())
-    },
+    Distribution::Empty => Ok(Distribution::empty()),
     Distribution::Formula(_) => {
       panic!("Scalar multiplication not implemented for Formula distributions")
     },

@@ -8,11 +8,11 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::IndexSet;
-  use std::iter::once;
   use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use std::iter::once;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{o, vec_of_owned};
 

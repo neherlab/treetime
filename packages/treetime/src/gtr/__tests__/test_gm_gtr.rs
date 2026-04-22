@@ -168,10 +168,10 @@ mod tests {
   mod helpers {
     use crate::gtr::gtr::GTR;
     use approx::assert_abs_diff_eq;
-    use std::fs::read_to_string;
     use indexmap::IndexMap;
     use ndarray::{Array1, Array2};
     use serde::Deserialize;
+    use std::fs::read_to_string;
     use treetime_utils::array::ndarray::sorted;
     use treetime_utils::array::serde::{array1_from_vec, array2_from_vec, option_array1_from_vec};
 
