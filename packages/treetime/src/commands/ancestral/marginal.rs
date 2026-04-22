@@ -2,7 +2,7 @@ use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
 use crate::representation::partition::traits::graph_log_lh;
 use eyre::Report;
-use log::debug;
+use log::trace;
 use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
@@ -46,7 +46,7 @@ where
 {
   marginal_backward(graph, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
-  debug!("Log likelihood: {log_lh}");
+  trace!("Marginal log likelihood (substitution): {log_lh}");
   marginal_forward(graph, partitions)?;
   Ok(log_lh)
 }
