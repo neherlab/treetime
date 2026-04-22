@@ -200,14 +200,13 @@ fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::seq::composition::Composition;
   use approx::assert_abs_diff_eq;
   use ndarray::array;
 
   #[test]
   fn test_propagate_raw_per_site_forward() {
-    use crate::gtr::get_gtr::{JC69Params, jc69};
-
     let a = AsciiChar::from_byte_unchecked(b'A');
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
@@ -244,8 +243,6 @@ mod tests {
 
   #[test]
   fn test_propagate_raw_per_site_backward() {
-    use crate::gtr::get_gtr::{JC69Params, jc69};
-
     let a = AsciiChar::from_byte_unchecked(b'A');
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
