@@ -21,6 +21,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use maplit::btreemap;
 use parking_lot::RwLock;
+use std::slice::from_ref;
 use std::sync::Arc;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
@@ -111,7 +112,7 @@ pub fn initialize_partitions(
       edges: btreemap! {},
     }));
 
-    crate::commands::ancestral::fitch::compress_sequences(graph, std::slice::from_ref(&sparse_partition), aln_data)?;
+    crate::commands::ancestral::fitch::compress_sequences(graph, from_ref(&sparse_partition), aln_data)?;
 
     // For Infer: Fitch compression populated mutation counts, infer real GTR
     if model_name == GtrModelName::Infer {
@@ -140,7 +141,7 @@ pub fn initialize_partitions(
     if model_name == GtrModelName::Infer {
       let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
       dense_partition.write_arc().attach_sequences(graph, aln_data)?;
-      update_marginal(graph, std::slice::from_ref(&dense_partition))?;
+      update_marginal(graph, from_ref(&dense_partition))?;
       let gtr = get_gtr_dense(&model_name, &dense_partition, graph)
         .wrap_err("When inferring GTR model from dense partition")?;
       dense_partition.write_arc().gtr = gtr;

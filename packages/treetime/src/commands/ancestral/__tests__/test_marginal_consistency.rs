@@ -18,6 +18,7 @@ mod tests {
   use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use std::collections::BTreeMap;
+  use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -334,8 +335,8 @@ mod tests {
 
     assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense_sequences = reconstruct_named_sequences(&graph, std::slice::from_ref(&dense_partition))?;
-    let sparse_sequences = reconstruct_named_sequences(&graph, std::slice::from_ref(&sparse_partition))?;
+    let dense_sequences = reconstruct_named_sequences(&graph, from_ref(&dense_partition))?;
+    let sparse_sequences = reconstruct_named_sequences(&graph, from_ref(&sparse_partition))?;
     assert_eq!(dense_sequences, sparse_sequences);
 
     let dense_branch_subs = edge_subs_by_edge_name(&graph, &*dense_partition.read_arc())?;

@@ -17,6 +17,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -55,8 +56,8 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
+    compress_sequences(&graph, from_ref(&partition), &aln)?;
+    update_marginal(&graph, from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
     // Expected values reflect MAP-derived mutations from marginal posteriors
@@ -105,8 +106,8 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
+    compress_sequences(&graph, from_ref(&partition), &aln)?;
+    update_marginal(&graph, from_ref(&partition))?;
 
     let counts = get_mutation_counts_sparse(&graph, &partition)?;
     let actual = infer_gtr_impl(

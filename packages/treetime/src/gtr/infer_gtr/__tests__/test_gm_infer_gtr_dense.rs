@@ -24,6 +24,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
+  use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
@@ -142,7 +143,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), aln)?;
+    initialize_marginal(&graph, from_ref(&partition), aln)?;
     Ok((graph, partition))
   }
 
@@ -170,7 +171,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
+    initialize_marginal(&graph, from_ref(&partition), &aln)?;
     Ok((graph, partition))
   }
 

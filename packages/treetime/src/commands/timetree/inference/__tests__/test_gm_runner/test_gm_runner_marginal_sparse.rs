@@ -21,6 +21,7 @@ mod tests {
   use maplit::btreemap;
   use parking_lot::RwLock;
   use rstest::rstest;
+  use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::seq;
@@ -58,7 +59,7 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;

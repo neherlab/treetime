@@ -5,6 +5,7 @@ mod tests {
   use crate::interval::range_intersection::range_intersection;
   use crate::interval::range_union::range_union;
   use rstest::rstest;
+  use std::slice::from_ref;
 
   #[rstest]
   fn test_range_properties_union_distribution_over_intersection() {
@@ -62,7 +63,7 @@ mod tests {
     let universe = vec![(0, 20)]; // Universal set
 
     // A ∪ ¬A
-    let actual = range_union(&[set_a.clone(), range_complement(&universe, std::slice::from_ref(&set_a))]);
+    let actual = range_union(&[set_a.clone(), range_complement(&universe, from_ref(&set_a))]);
 
     assert_eq!(actual, universe);
   }

@@ -47,6 +47,7 @@ mod tests {
   use parking_lot::RwLock;
   use rstest::rstest;
   use std::path::PathBuf;
+  use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
@@ -130,7 +131,7 @@ mod tests {
         nodes: btreemap! {},
         edges: btreemap! {},
       }));
-      initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
+      initialize_marginal(&graph, from_ref(&partition), &aln)?;
       infer_gtr_dense(&partition, &graph)?
     };
 
@@ -148,8 +149,8 @@ mod tests {
         edges: btreemap! {},
         root_sequence: seq![],
       }));
-      compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
-      update_marginal(&graph, std::slice::from_ref(&partition))?;
+      compress_sequences(&graph, from_ref(&partition), &aln)?;
+      update_marginal(&graph, from_ref(&partition))?;
       infer_gtr_sparse(&partition, &graph)?
     };
 

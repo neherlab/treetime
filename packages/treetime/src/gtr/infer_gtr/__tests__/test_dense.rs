@@ -18,6 +18,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
+  use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
@@ -47,7 +48,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), aln)?;
+    initialize_marginal(&graph, from_ref(&partition), aln)?;
     Ok((graph, partition))
   }
 

@@ -16,6 +16,7 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
+  use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
@@ -513,7 +514,7 @@ mod tests {
       edges: btreemap! {},
     }));
 
-    let dense_log_lh = initialize_marginal(&graph, std::slice::from_ref(&dense_partition), &aln)?;
+    let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?;
 
     // Sparse partition
     let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
@@ -526,8 +527,8 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
-    let sparse_log_lh = update_marginal(&graph, std::slice::from_ref(&sparse_partition))?;
+    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+    let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?;
 
     // Log-likelihoods should match for clean sequences
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
