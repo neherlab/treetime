@@ -9,9 +9,10 @@ use crate::testing::runners::runner::TestRunner;
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
 use ndarray::Array1;
+use std::marker::PhantomData;
 use std::time::Instant;
 
-pub struct ConvolutionRunner<S: ConvolutionTestSuite>(std::marker::PhantomData<S>);
+pub struct ConvolutionRunner<S: ConvolutionTestSuite>(PhantomData<S>);
 
 impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
   type TestCase = S::TestCase;

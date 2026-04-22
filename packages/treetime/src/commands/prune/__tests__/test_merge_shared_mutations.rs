@@ -14,6 +14,7 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -79,7 +80,7 @@ mod tests {
   }
 
   /// Find the new internal node (unnamed, non-root, non-leaf).
-  fn find_unnamed_internal_nodes(graph: &GraphAncestral) -> Vec<treetime_graph::node::GraphNodeKey> {
+  fn find_unnamed_internal_nodes(graph: &GraphAncestral) -> Vec<GraphNodeKey> {
     graph
       .get_nodes()
       .iter()

@@ -21,6 +21,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
@@ -609,7 +610,7 @@ mod tests {
     fn get_reconstructed_seq<'a>(
       graph: &GraphAncestral,
       seqs_by_name: &'a BTreeMap<String, Seq>,
-      node_key: treetime_graph::node::GraphNodeKey,
+      node_key: GraphNodeKey,
     ) -> &'a Seq {
       let node = graph.get_node(node_key).expect("node should exist");
       let node = node.read_arc();

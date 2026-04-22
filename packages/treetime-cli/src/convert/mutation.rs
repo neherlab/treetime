@@ -2,6 +2,7 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::str::from_utf8;
 use treetime::make_error;
 
 pub type MutationList = Vec<Mutation>;
@@ -40,7 +41,7 @@ impl Mutation {
       return make_error!("Invalid alternative character in mutation: '{s}'");
     }
 
-    let position_str = std::str::from_utf8(&bytes[1..bytes.len() - 1])
+    let position_str = from_utf8(&bytes[1..bytes.len() - 1])
       .map_err(|e| treetime::make_report!("Invalid UTF-8 in mutation '{s}': {e}"))?;
     let position = position_str
       .parse::<usize>()

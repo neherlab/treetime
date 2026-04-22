@@ -17,11 +17,12 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::vec_of_owned;
 
   /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
-  fn get_node_name(graph: &GraphAncestral, key: treetime_graph::node::GraphNodeKey) -> String {
+  fn get_node_name(graph: &GraphAncestral, key: GraphNodeKey) -> String {
     let node = graph.get_node(key).expect("node exists");
     node
       .read_arc()

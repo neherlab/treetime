@@ -3,6 +3,7 @@ use eyre::Result;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::sync::Arc;
 
 const FORMULA_GRID_SIZE: usize = 200;
@@ -89,8 +90,8 @@ impl<Y: YAxisPolicy> Clone for DistributionFormula<Y> {
   }
 }
 
-impl<Y: YAxisPolicy> std::fmt::Debug for DistributionFormula<Y> {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<Y: YAxisPolicy> fmt::Debug for DistributionFormula<Y> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str("DistributionFormula")
   }
 }
