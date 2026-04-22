@@ -69,7 +69,7 @@ mod tests {
   #[case::half_century                                (iso("1950-07-02T12:00:00.000Z"),  1950.5000000000)]
   #[case::quarter_century                             (iso("2025-04-01T12:00:00.000Z"),  2025.2479452054)]
   #[case::three_quarters_century                      (iso("2075-09-30T12:00:00.000Z"),  2075.7465753424)]
-  #[case::hapl_millennium                             (iso("2500-12-31T12:00:00.000Z"),  2500.9986301369)]
+  #[case::half_millennium                              (iso("2500-12-31T12:00:00.000Z"),  2500.9986301369)]
   #[case::halfway_non_leap_year                       (iso("2023-07-02T12:00:00.000Z"),  2023.5000000000)]
   //
   #[case::leap_year_2024_day_before                   (iso("2024-02-28T12:00:00.000Z"),  2024.15983606553)]
