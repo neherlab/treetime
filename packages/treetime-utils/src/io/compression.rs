@@ -30,7 +30,6 @@ use xz2::read::XzDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use xz2::write::XzEncoder;
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(target_arch = "wasm32"))]
 use zstd::Decoder as ZstdDecoder;
 #[cfg(not(target_arch = "wasm32"))]
 use zstd::Encoder as ZstdEncoder;
