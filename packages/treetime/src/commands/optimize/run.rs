@@ -299,6 +299,11 @@ pub fn run_optimize_loop(
     // checks (NaN < x is false for all x under IEEE 754). Record the failure
     // so callers can distinguish numerical breakdown from normal termination.
     if !iteration_lh.total_lh.is_finite() {
+      if best_branch_lengths.len() == graph.get_edges().len() {
+        restore_branch_lengths(graph, &best_branch_lengths);
+        update_marginal(graph, sparse_partitions)?;
+        update_marginal(graph, dense_partitions)?;
+      }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
     }

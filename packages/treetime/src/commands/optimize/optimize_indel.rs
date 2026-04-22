@@ -20,7 +20,11 @@ use treetime_graph::node::GraphNode;
 /// When $k > 0$ and $t \to 0^+$: $d\ell/dt \to +\infty$, forcing the optimum away from zero.
 pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> OptimizationMetrics {
   if mu == 0.0 {
-    return OptimizationMetrics::default();
+    return if k == 0 {
+      OptimizationMetrics::default()
+    } else {
+      OptimizationMetrics::new(f64::NEG_INFINITY, 0.0, 0.0)
+    };
   }
 
   if k == 0 {
@@ -110,7 +114,7 @@ mod tests {
   #[test]
   fn test_optimize_indel_poisson_zero_rate() {
     let metrics = poisson_indel_log_lh(3, 0.0, 0.1);
-    assert_abs_diff_eq!(metrics.log_lh, 0.0, epsilon = 1e-15);
+    assert!(metrics.log_lh.is_infinite() && metrics.log_lh.is_sign_negative());
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.second_derivative, 0.0, epsilon = 1e-15);
   }
