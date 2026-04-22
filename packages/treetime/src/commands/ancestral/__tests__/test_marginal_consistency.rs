@@ -15,7 +15,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
@@ -487,8 +487,6 @@ mod tests {
   /// divergence beyond the existing dense-sparse gap.
   #[test]
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
-    use ndarray::Array1;
-
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let seq_len = get_common_length(&aln)?;
@@ -516,8 +514,6 @@ mod tests {
   /// G3b: Dense with uniform per-site rates matches dense with scalar mu.
   #[test]
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
-    use ndarray::Array1;
-
     let aln = gap_free_alignment()?;
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let seq_len = get_common_length(&aln)?;
