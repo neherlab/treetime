@@ -72,13 +72,13 @@ mod non_wasm {
 
   const TTY_WARNING: &str = r#"Reading from standard input which is a TTY (e.g. an interactive terminal). This is likely not what you meant. Instead:
 
- - if you want to read fasta from the output of another program, try:
+ - if you want to read from the output of another program, try:
 
-    cat /path/to/file | nextclade <your other flags>
+    cat /path/to/file | treetime <your other flags>
 
  - if you want to read from file(s), don't forget to provide a path:
 
-    nextclade /path/to/file
+    treetime /path/to/file
 "#;
 
   pub fn warn_if_tty() {
