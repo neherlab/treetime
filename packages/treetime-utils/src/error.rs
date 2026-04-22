@@ -32,7 +32,7 @@ pub fn keep_ok<T, E>(results: &[Result<T, E>]) -> impl Iterator<Item = &T> {
 macro_rules! make_error {
   ($($arg:tt)*) => {
     {
-      Err(eyre::eyre!(std::format!($($arg)*)))
+      Err(eyre::eyre!(format!($($arg)*)))
     }
   };
 }
@@ -54,8 +54,8 @@ pub use make_report;
 macro_rules! make_internal_error {
   ($($arg:tt)*) => {
     {
-      let msg_external = std::format!($($arg)*);
-      let msg = std::format!("{msg_external}. This is an internal error. Please report it to developers.");
+      let msg_external = format!($($arg)*);
+      let msg = format!("{msg_external}. This is an internal error. Please report it to developers.");
       Err(eyre::eyre!(msg))
     }
   };
@@ -67,8 +67,8 @@ pub use make_internal_error;
 macro_rules! make_internal_report {
   ($($arg:tt)*) => {
     {
-      let msg_external = std::format!($($arg)*);
-      let msg = std::format!("{msg_external}. This is an internal error. Please report it to developers.");
+      let msg_external = format!($($arg)*);
+      let msg = format!("{msg_external}. This is an internal error. Please report it to developers.");
       eyre::eyre!(msg)
     }
   };
