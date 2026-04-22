@@ -61,7 +61,7 @@ mod tests {
   fn test_distance_zero_to_uniform() {
     let actual = distance(&array![0.0, 0.0, 0.0, 0.0], &array![0.25, 0.25, 0.25, 0.25]);
     let expected = 0.5;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-8);
   }
 
   #[test]
@@ -71,7 +71,7 @@ mod tests {
       &array![0.16031624, 0.24247873, 0.3087257, 0.28847933],
     );
     let expected = 0.11414514039292292;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-8);
   }
 
   #[test]
@@ -81,7 +81,7 @@ mod tests {
       &array![0.14968981, 0.24040983, 0.31181279, 0.29808757],
     );
     let expected = 0.014800329884495377;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-8);
   }
 
   #[test]
@@ -91,7 +91,7 @@ mod tests {
       &array![0.14878922, 0.24051699, 0.31239221, 0.29830159],
     );
     let expected = 1.59484629332816e-05;
-    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-5);
+    pretty_assert_ulps_eq!(actual, expected, epsilon = 1e-8);
   }
 
   #[test]
