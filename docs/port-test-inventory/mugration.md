@@ -18,7 +18,13 @@
 
 ## Golden Master (v0 parity)
 
-**File:** [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)
+**Test:** [`packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
+- [`packages/treetime/src/commands/mugration/input.rs`](../../packages/treetime/src/commands/mugration/input.rs)
+- [`packages/treetime/src/commands/mugration/output.rs`](../../packages/treetime/src/commands/mugration/output.rs)
 
 | Test                                      | Datasets                                   | Notes                                                                            |
 | ----------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------- |
@@ -31,7 +37,9 @@
 
 ## Structural / Unit
 
-**File:** [`test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs)
+**Test:** [`packages/treetime/src/commands/mugration/__tests__/test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs)
+
+**Impl:** [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
 
 | Test                                                                    | Purpose                                                       |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -56,7 +64,9 @@
 
 ## Algorithm Invariants
 
-**File:** [`test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs) (same file)
+**Test:** [`packages/treetime/src/commands/mugration/__tests__/test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs) (same file)
+
+**Impl:** [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
 
 | Test                                           | Purpose                                            |
 | ---------------------------------------------- | -------------------------------------------------- |
@@ -68,7 +78,9 @@
 
 ## Discrete Marginal
 
-**File:** [`test_discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs)
+**Test:** [`packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs)
+
+**Impl:** [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs)
 
 | Test                                                                               | Purpose                                          |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -82,7 +94,9 @@
 
 ## Comment Output
 
-**File:** [`test_comment_output.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_comment_output.rs)
+**Test:** [`packages/treetime/src/commands/mugration/__tests__/test_comment_output.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_comment_output.rs)
+
+**Impl:** [`packages/treetime/src/commands/mugration/comment_provider.rs`](../../packages/treetime/src/commands/mugration/comment_provider.rs)
 
 | Test                                               | Purpose                                         |
 | -------------------------------------------------- | ----------------------------------------------- |
@@ -92,7 +106,9 @@
 
 ## Brent Optimizer
 
-**File:** [`gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs)
 
 | Test                                            | Purpose                            |
 | ----------------------------------------------- | ---------------------------------- |
@@ -105,7 +121,9 @@
 
 ## Partition / Discrete
 
-**File:** [`discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs)
 
 | Test                                                   | Purpose                                     |
 | ------------------------------------------------------ | ------------------------------------------- |

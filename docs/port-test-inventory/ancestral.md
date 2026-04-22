@@ -24,13 +24,15 @@
 | [Sparse composition](#substitution-composition-tests)       | Unit            |
 | [Generator validation](#property-test-generator-validation) | Property        |
 
-Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs), [`test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs), [`test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)
+Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)
 
 ---
 
 ## Fitch Parsimony
 
-**File:** [`test_fitch.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_fitch.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_fitch.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_fitch.rs)
+
+**Impl:** [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)
 
 | Test                                                       | Purpose                                                     |
 | ---------------------------------------------------------- | ----------------------------------------------------------- |
@@ -48,7 +50,12 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Marginal ML - Dense
 
-**File:** [`test_marginal_dense.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
 
 | Test                                                          | Purpose                                            |
 | ------------------------------------------------------------- | -------------------------------------------------- |
@@ -64,7 +71,12 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Marginal ML - Sparse
 
-**File:** [`test_marginal_sparse.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_sparse.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_sparse.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_sparse.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                                           | Purpose                                           |
 | -------------------------------------------------------------- | ------------------------------------------------- |
@@ -81,7 +93,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Dense/Sparse Equivalence
 
-**Files:** [`test_marginal_dense_sparse_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_example.rs), [`test_marginal_dense_sparse_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_example.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                                      | Purpose                                               | Type                  |
 | --------------------------------------------------------- | ----------------------------------------------------- | --------------------- |
@@ -95,7 +113,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Idempotency Tests
 
-**Files:** [`test_marginal_idempotency_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_example.rs), [`test_marginal_idempotency_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_prop.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_example.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_idempotency_prop.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                       | Purpose                                                           | Type     |
 | ------------------------------------------ | ----------------------------------------------------------------- | -------- |
@@ -110,7 +134,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Normalization Tests
 
-**Files:** [`test_marginal_normalization_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_example.rs), [`test_marginal_normalization_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_prop.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_example.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_example.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_normalization_prop.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                                    | Purpose                                          | Type     |
 | ------------------------------------------------------- | ------------------------------------------------ | -------- |
@@ -127,7 +157,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Root Invariance Tests
 
-**File:** [`test_marginal_root_invariance_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                                     | Purpose                                             | Type                         |
 | -------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
@@ -142,7 +178,14 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Python v0 Parity Tests
 
-**File:** [`test_python_parity.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_python_parity.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_python_parity.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_python_parity.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                            | Purpose                                                        |
 | ----------------------------------------------- | -------------------------------------------------------------- |
@@ -159,7 +202,14 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Consistency Tests
 
-**File:** [`test_marginal_consistency.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 | Test                                                                     | Purpose                                                                 |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
@@ -173,7 +223,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Branch Length Tests
 
-**Files:** [`test_marginal_branch_length_equilibrium.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_equilibrium.rs), [`test_marginal_branch_length_monotonicity.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_monotonicity.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_equilibrium.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_equilibrium.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_monotonicity.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_branch_length/test_marginal_branch_length_monotonicity.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 ### Equilibrium Convergence
 
@@ -201,7 +257,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Topology Tests
 
-**Files:** [`test_marginal_topology_caterpillar.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_caterpillar.rs), [`test_marginal_topology_deep_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_deep_tree.rs), [`test_marginal_topology_polytomy.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_polytomy.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_caterpillar.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_caterpillar.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_deep_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_deep_tree.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_polytomy.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_topology/test_marginal_topology_polytomy.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 ### Caterpillar Trees
 
@@ -235,7 +297,13 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Stability Tests (Edge Cases)
 
-**Files:** [`test_marginal_stability_extreme_branches.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_extreme_branches.rs), [`test_marginal_stability_near_zero_pi.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_near_zero_pi.rs), [`test_marginal_stability_rapid_transitions.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_rapid_transitions.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_extreme_branches.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_extreme_branches.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_near_zero_pi.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_near_zero_pi.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_rapid_transitions.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_rapid_transitions.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
 
 ### Extreme Branches
 
@@ -272,7 +340,12 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Analytical Verification Tests
 
-**Files:** [`test_marginal_analytical_two_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_two_taxon.rs), [`test_marginal_analytical_three_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_three_taxon.rs), [`test_marginal_analytical_star_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_star_tree.rs)
+**Test:** [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_two_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_two_taxon.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_three_taxon.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_three_taxon.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_star_tree.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_star_tree.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
+- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
 
 ### Two-Taxon
 
@@ -305,7 +378,9 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Softmax with Log-Norm Tests
 
-**File:** [`softmax_with_log_norm.rs`](../../packages/treetime-utils/src/array/softmax_with_log_norm.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime-utils/src/array/softmax_with_log_norm.rs`](../../packages/treetime-utils/src/array/softmax_with_log_norm.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime-utils/src/array/softmax_with_log_norm.rs`](../../packages/treetime-utils/src/array/softmax_with_log_norm.rs)
 
 | Test                                         | Purpose                                                |
 | -------------------------------------------- | ------------------------------------------------------ |
@@ -322,7 +397,9 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Dense Normalize-from-Log Tests
 
-**File:** [`marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
 
 | Test                                                      | Purpose                                                            |
 | --------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -346,7 +423,9 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Substitution Composition Tests
 
-**File:** [`test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
+**Test:** [`packages/treetime/src/seq/__tests__/test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
+
+**Impl:** [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
 
 | Test                                                            | Purpose                                          |
 | --------------------------------------------------------------- | ------------------------------------------------ |
@@ -364,7 +443,12 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ### Prune integration tests for composition
 
-**File:** [`test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+**Test:** [`packages/treetime/src/commands/prune/__tests__/test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs)
+- [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
 
 | Test                                             | Purpose                                                      |
 | ------------------------------------------------ | ------------------------------------------------------------ |
@@ -418,11 +502,11 @@ Support files (helpers only, no tests): [`prop_marginal_support.rs`](../../packa
 
 ## Support Files (No Tests)
 
-| File                                                                                                                                                           | Purpose                                                                              |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [`prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs)                                                | `run_dense_marginal()`, `run_sparse_marginal()` for property tests                   |
-| [`test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs) | Analytical likelihood formulas and `run_dense_marginal_get_log_lh()`                 |
-| [`test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)    | `assert_dense_profile_stable()`, `assert_sparse_profile_stable()`, partition runners |
+| File                                                                                                                                                                                                                                       | Purpose                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [`packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs)                                                                         | `run_dense_marginal()`, `run_sparse_marginal()` for property tests                   |
+| [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs) | Analytical likelihood formulas and `run_dense_marginal_get_log_lh()`                 |
+| [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)     | `assert_dense_profile_stable()`, `assert_sparse_profile_stable()`, partition runners |
 
 ---
 

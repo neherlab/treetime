@@ -60,7 +60,14 @@ Additional timetree-only: `mpox/clade-ii/20`
 
 ## Timetree Validation
 
-**File:** [`examples/timetree_validation.rs`](../../packages/treetime/examples/timetree_validation.rs)
+**Test:** [`packages/treetime/examples/timetree_validation.rs`](../../packages/treetime/examples/timetree_validation.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
+- [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs)
+- [`packages/treetime/src/commands/timetree/inference/forward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs)
+- [`packages/treetime/src/commands/timetree/utils.rs`](../../packages/treetime/src/commands/timetree/utils.rs)
 
 Golden-master comparison of v1 timetree inference against v0 Python outputs. Runs full timetree pipeline on `flu/h3n2/20` dataset and compares node dates, branch lengths, clock rate, and coalescent contributions.
 
@@ -78,7 +85,9 @@ Three execution modes:
 
 ## Coalescent Validation
 
-**File:** [`examples/coalescent_validation.rs`](../../packages/treetime/examples/coalescent_validation.rs)
+**Test:** [`packages/treetime/examples/coalescent_validation.rs`](../../packages/treetime/examples/coalescent_validation.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs)
 
 Golden-master comparison of v1 coalescent model contributions against v0 Python golden outputs. Tests piecewise constant and skyline coalescent on multiple datasets with varying Tc parameters.
 
@@ -106,34 +115,44 @@ Support library for math operation validation. Provides test suites, runners, an
 
 ### Metrics Tests
 
-**File:** [`pointwise.rs`](../../packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs) (inline)
+**Test:** [`packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs`](../../packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs) (inline)
+
+**Impl:** [`packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs`](../../packages/treetime-validation/src/testing/metrics/pointwise/pointwise.rs)
 
 | Test                     | Purpose                            |
 | ------------------------ | ---------------------------------- |
 | `test_perfect_agreement` | Zero error on identical inputs     |
 | `test_constant_offset`   | Detects systematic constant offset |
 
-**File:** [`spatial.rs`](../../packages/treetime-validation/src/testing/metrics/spatial/spatial.rs) (inline)
+**Test:** [`packages/treetime-validation/src/testing/metrics/spatial/spatial.rs`](../../packages/treetime-validation/src/testing/metrics/spatial/spatial.rs) (inline)
+
+**Impl:** [`packages/treetime-validation/src/testing/metrics/spatial/spatial.rs`](../../packages/treetime-validation/src/testing/metrics/spatial/spatial.rs)
 
 | Test                                    | Purpose                         |
 | --------------------------------------- | ------------------------------- |
 | `test_perfect_agreement`                | Zero spatial error on identical |
 | `test_cumulative_error_systematic_bias` | Detects systematic spatial bias |
 
-**File:** [`metrics.rs`](../../packages/treetime-validation/src/testing/metrics/metrics.rs) (inline)
+**Test:** [`packages/treetime-validation/src/testing/metrics/metrics.rs`](../../packages/treetime-validation/src/testing/metrics/metrics.rs) (inline)
+
+**Impl:** [`packages/treetime-validation/src/testing/metrics/metrics.rs`](../../packages/treetime-validation/src/testing/metrics/metrics.rs)
 
 | Test                                  | Purpose                             |
 | ------------------------------------- | ----------------------------------- |
 | `test_comprehensive_metrics_creation` | Default metrics config construction |
 | `test_metrics_with_custom_config`     | Custom threshold metrics config     |
 
-**File:** [`statistics.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/statistics.rs) (inline)
+**Test:** [`packages/treetime-validation/src/testing/metrics/distribution/statistics.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/statistics.rs) (inline)
+
+**Impl:** [`packages/treetime-validation/src/testing/metrics/distribution/statistics.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/statistics.rs)
 
 | Test                       | Purpose                       |
 | -------------------------- | ----------------------------- |
 | `test_statistical_metrics` | KS statistic, mean, std tests |
 
-**File:** [`histograms.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/histograms.rs) (inline)
+**Test:** [`packages/treetime-validation/src/testing/metrics/distribution/histograms.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/histograms.rs) (inline)
+
+**Impl:** [`packages/treetime-validation/src/testing/metrics/distribution/histograms.rs`](../../packages/treetime-validation/src/testing/metrics/distribution/histograms.rs)
 
 | Test                      | Purpose                      |
 | ------------------------- | ---------------------------- |

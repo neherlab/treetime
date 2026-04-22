@@ -26,7 +26,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Piecewise Constant Function
 
-**File:** [`test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/piecewise_constant_fn.rs)
 
 | Test                                | Purpose                                    |
 | ----------------------------------- | ------------------------------------------ |
@@ -37,7 +39,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Piecewise Linear Function
 
-**File:** [`test_piecewise_linear_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_linear_fn.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_linear_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_linear_fn.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/piecewise_linear_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/piecewise_linear_fn.rs)
 
 | Test                                           | Purpose                               |
 | ---------------------------------------------- | ------------------------------------- |
@@ -51,7 +55,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Event Collection
 
-**File:** [`test_events.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_events.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_events.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_events.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/events.rs`](../../packages/treetime/src/commands/timetree/coalescent/events.rs)
 
 | Test                                           | Purpose                      |
 | ---------------------------------------------- | ---------------------------- |
@@ -64,7 +70,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Lineage Dynamics
 
-**File:** [`test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs)
 
 | Test                                            | Purpose                                                       |
 | ----------------------------------------------- | ------------------------------------------------------------- |
@@ -82,7 +90,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Integration (Merger Rates)
 
-**File:** [`test_integration.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/integration.rs`](../../packages/treetime/src/commands/timetree/coalescent/integration.rs)
 
 | Test                                                         | Purpose                                     |
 | ------------------------------------------------------------ | ------------------------------------------- |
@@ -99,7 +109,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Tc Optimization
 
-**File:** [`test_optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs)
 
 | Test                                                 | Purpose                                               |
 | ---------------------------------------------------- | ----------------------------------------------------- |
@@ -110,7 +122,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Skyline Optimization
 
-**File:** [`test_skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs)
 
 | Test                                               | Purpose                              |
 | -------------------------------------------------- | ------------------------------------ |
@@ -123,7 +137,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Golden-Master Coalescent
 
-**File:** [`test_gm_coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs)
 
 | Test                 | Datasets and Tc values                                                                                                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -135,7 +151,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ## Total Log-Likelihood
 
-**File:** [`test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs)
 
 | Test                                           | Purpose                                                      |
 | ---------------------------------------------- | ------------------------------------------------------------ |
@@ -147,7 +165,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 | `test_total_lh_matches_optimize_tc_likelihood` | compute_coalescent_total_lh matches optimize_tc output       |
 | `test_total_lh_with_formula_distribution`      | Constant Formula distribution matches Distribution::constant |
 
-**File:** [`test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs)
 
 | Test                        | Purpose                                                            |
 | --------------------------- | ------------------------------------------------------------------ |
@@ -158,7 +178,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ## Time Coordinate
 
-**File:** [`time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs)
 
 | Test                             | Purpose                                                       |
 | -------------------------------- | ------------------------------------------------------------- |
@@ -173,7 +195,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Backward Pass
 
-**File:** [`test_backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_backward_pass.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_backward_pass.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs)
 
 | Test                                                                  | Purpose                                          |
 | --------------------------------------------------------------------- | ------------------------------------------------ |
@@ -188,7 +212,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Runner (Input Mode)
 
-**File:** [`test_runner.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_runner.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_runner.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_runner.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                                                           | Purpose                                              |
 | -------------------------------------------------------------- | ---------------------------------------------------- |
@@ -199,7 +225,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Branch-Length Likelihood Grid
 
-**File:** [`test_branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_branch_length_likelihood.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_branch_length_likelihood.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs)
 
 | Test                                                                  | Purpose                                                            | Notes            |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------- |
@@ -218,11 +246,17 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 #### Support
 
-**File:** [`test_gm_runner_support.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs) - shared fixtures and helpers, no tests.
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs) - shared fixtures and helpers, no tests.
 
 #### Poisson Mode
 
-**File:** [`test_gm_runner_poisson.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs)
+- [`packages/treetime/src/commands/timetree/inference/forward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs)
+- [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                     | Datasets              | Tolerance | Notes                                                                      |
 | ------------------------ | --------------------- | --------- | -------------------------------------------------------------------------- |
@@ -230,7 +264,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 #### Dense Marginal
 
-**File:** [`test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                            | Datasets    | Tolerance | Notes                                                                    |
 | ------------------------------- | ----------- | --------- | ------------------------------------------------------------------------ |
@@ -238,7 +274,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 #### Sparse Marginal
 
-**File:** [`test_gm_runner_marginal_sparse.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                             | Datasets    | Tolerance | Notes               |
 | -------------------------------- | ----------- | --------- | ------------------- |
@@ -246,7 +284,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 #### ML Branch-Length Pre-Optimization
 
-**File:** [`test_gm_runner_pre_optimize.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_pre_optimize.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_pre_optimize.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_pre_optimize.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                                                 | Purpose                                                |
 | ---------------------------------------------------- | ------------------------------------------------------ |
@@ -255,7 +295,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 #### Coalescent Integration
 
-**File:** [`test_runner_coalescent.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs)
+**Test:** [`packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
 
 | Test                               | Datasets                        | Notes                                               |
 | ---------------------------------- | ------------------------------- | --------------------------------------------------- |
@@ -265,7 +307,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ## Convergence Tests
 
-**File:** [`test_metrics.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/test_metrics.rs)
+**Test:** [`packages/treetime/src/commands/timetree/convergence/__tests__/test_metrics.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/test_metrics.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/convergence/metrics.rs`](../../packages/treetime/src/commands/timetree/convergence/metrics.rs)
 
 | Test                                                     | Purpose                                        |
 | -------------------------------------------------------- | ---------------------------------------------- |
@@ -274,7 +318,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 | `test_metrics_optimizer_stops_at_max_iterations`         | Max iteration limit                            |
 | `test_metrics_optimizer_n_resolved_prevents_convergence` | Polytomy resolution prevents early convergence |
 
-**File:** [`test_pipeline.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/test_pipeline.rs)
+**Test:** [`packages/treetime/src/commands/timetree/convergence/__tests__/test_pipeline.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/test_pipeline.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)
 
 | Test                                 | Purpose                                                                       | Type        |
 | ------------------------------------ | ----------------------------------------------------------------------------- | ----------- |
@@ -286,7 +332,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Confidence Extraction
 
-**File:** [`test_confidence_extract.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_extract.rs)
+**Test:** [`packages/treetime/src/commands/timetree/output/__tests__/test_confidence_extract.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_extract.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs)
 
 | Test                                                                 | Purpose                                            | Notes            |
 | -------------------------------------------------------------------- | -------------------------------------------------- | ---------------- |
@@ -303,7 +351,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Confidence Combination
 
-**File:** [`test_confidence_combine.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_combine.rs)
+**Test:** [`packages/treetime/src/commands/timetree/output/__tests__/test_confidence_combine.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_combine.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs)
 
 | Test                                          | Purpose                      |
 | --------------------------------------------- | ---------------------------- |
@@ -314,7 +364,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Rate Uncertainty
 
-**File:** [`test_confidence_rate.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_rate.rs)
+**Test:** [`packages/treetime/src/commands/timetree/output/__tests__/test_confidence_rate.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_confidence_rate.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs)
 
 | Test                                                            | Purpose                                             |
 | --------------------------------------------------------------- | --------------------------------------------------- |
@@ -329,7 +381,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Auspice Output
 
-**File:** [`test_auspice.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_auspice.rs)
+**Test:** [`packages/treetime/src/commands/timetree/output/__tests__/test_auspice.rs`](../../packages/treetime/src/commands/timetree/output/__tests__/test_auspice.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/output/auspice.rs`](../../packages/treetime/src/commands/timetree/output/auspice.rs)
 
 | Test                                             | Purpose                                           |
 | ------------------------------------------------ | ------------------------------------------------- |
@@ -350,7 +404,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Clock Filter
 
-**File:** [`test_clock_filter.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_clock_filter.rs)
+**Test:** [`packages/treetime/src/commands/timetree/optimization/__tests__/test_clock_filter.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_clock_filter.rs)
+
+**Impl:** [`packages/treetime/src/commands/clock/clock_filter.rs`](../../packages/treetime/src/commands/clock/clock_filter.rs)
 
 | Test                                       | Purpose                                |
 | ------------------------------------------ | -------------------------------------- |
@@ -363,7 +419,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Relaxed Clock
 
-**File:** [`test_relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_relaxed_clock.rs)
+**Test:** [`packages/treetime/src/commands/timetree/optimization/__tests__/test_relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_relaxed_clock.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs)
 
 | Test                                                         | Purpose                                     |
 | ------------------------------------------------------------ | ------------------------------------------- |
@@ -383,7 +441,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Polytomy Resolution
 
-**File:** [`test_polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs)
+**Test:** [`packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs)
 
 | Test                                                           | Purpose                               |
 | -------------------------------------------------------------- | ------------------------------------- |
@@ -400,7 +460,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ### Rerooting
 
-**File:** [`test_reroot.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_reroot.rs)
+**Test:** [`packages/treetime/src/commands/timetree/optimization/__tests__/test_reroot.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_reroot.rs)
+
+**Impl:** [`packages/treetime/src/commands/timetree/optimization/reroot.rs`](../../packages/treetime/src/commands/timetree/optimization/reroot.rs)
 
 | Test                                                 | Purpose                         | Type        |
 | ---------------------------------------------------- | ------------------------------- | ----------- |
@@ -435,4 +497,4 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 3. **Dense marginal**: `ebola_20` disabled due to gap character handling in alphabet.
 
-4. **Duplicate tests**: [`test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).
+4. **Duplicate tests**: [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).

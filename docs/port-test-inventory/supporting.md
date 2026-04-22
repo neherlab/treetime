@@ -24,7 +24,9 @@
 
 ### BitSet128
 
-**File:** [`test_bitset128.rs`](../../packages/treetime-primitives/src/__tests__/test_bitset128.rs)
+**Test:** [`packages/treetime-primitives/src/__tests__/test_bitset128.rs`](../../packages/treetime-primitives/src/__tests__/test_bitset128.rs)
+
+**Impl:** [`packages/treetime-primitives/src/bitset128.rs`](../../packages/treetime-primitives/src/bitset128.rs)
 
 Unit and parameterized tests for all BitSet128 operations.
 
@@ -103,7 +105,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### AsciiChar
 
-**File:** [`test_ascii_char.rs`](../../packages/treetime-primitives/src/__tests__/test_ascii_char.rs)
+**Test:** [`packages/treetime-primitives/src/__tests__/test_ascii_char.rs`](../../packages/treetime-primitives/src/__tests__/test_ascii_char.rs)
+
+**Impl:** [`packages/treetime-primitives/src/seq_char.rs`](../../packages/treetime-primitives/src/seq_char.rs)
 
 | Test                               | Purpose                          |
 | ---------------------------------- | -------------------------------- |
@@ -117,7 +121,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Seq
 
-**File:** [`test_seq.rs`](../../packages/treetime-primitives/src/__tests__/test_seq.rs)
+**Test:** [`packages/treetime-primitives/src/__tests__/test_seq.rs`](../../packages/treetime-primitives/src/__tests__/test_seq.rs)
+
+**Impl:** [`packages/treetime-primitives/src/seq.rs`](../../packages/treetime-primitives/src/seq.rs)
 
 | Test                                  | Purpose                 |
 | ------------------------------------- | ----------------------- |
@@ -131,7 +137,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interval/range_complement
 
-**File:** [`range_complement.rs`](../../packages/treetime-utils/src/interval/range_complement.rs) (inline)
+**Test:** [`packages/treetime-utils/src/interval/range_complement.rs`](../../packages/treetime-utils/src/interval/range_complement.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/interval/range_complement.rs`](../../packages/treetime-utils/src/interval/range_complement.rs)
 
 | Test                                           | Purpose                         |
 | ---------------------------------------------- | ------------------------------- |
@@ -144,7 +152,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interval/range_difference
 
-**File:** [`range_difference.rs`](../../packages/treetime-utils/src/interval/range_difference.rs) (inline)
+**Test:** [`packages/treetime-utils/src/interval/range_difference.rs`](../../packages/treetime-utils/src/interval/range_difference.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/interval/range_difference.rs`](../../packages/treetime-utils/src/interval/range_difference.rs)
 
 | Test                                            | Purpose                       |
 | ----------------------------------------------- | ----------------------------- |
@@ -159,7 +169,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interval/range_intersection
 
-**File:** [`range_intersection.rs`](../../packages/treetime-utils/src/interval/range_intersection.rs) (inline)
+**Test:** [`packages/treetime-utils/src/interval/range_intersection.rs`](../../packages/treetime-utils/src/interval/range_intersection.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/interval/range_intersection.rs`](../../packages/treetime-utils/src/interval/range_intersection.rs)
 
 | Test                                                                 | Purpose                            |
 | -------------------------------------------------------------------- | ---------------------------------- |
@@ -184,7 +196,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interval/range_union
 
-**File:** [`range_union.rs`](../../packages/treetime-utils/src/interval/range_union.rs) (inline)
+**Test:** [`packages/treetime-utils/src/interval/range_union.rs`](../../packages/treetime-utils/src/interval/range_union.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/interval/range_union.rs`](../../packages/treetime-utils/src/interval/range_union.rs)
 
 | Test                                                  | Purpose                       |
 | ----------------------------------------------------- | ----------------------------- |
@@ -206,7 +220,13 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interval/range_properties
 
-**File:** [`range_properties.rs`](../../packages/treetime-utils/src/interval/range_properties.rs) (inline)
+**Test:** [`packages/treetime-utils/src/interval/range_properties.rs`](../../packages/treetime-utils/src/interval/range_properties.rs) (inline)
+
+**Impl:**
+
+- [`packages/treetime-utils/src/interval/range_complement.rs`](../../packages/treetime-utils/src/interval/range_complement.rs)
+- [`packages/treetime-utils/src/interval/range_intersection.rs`](../../packages/treetime-utils/src/interval/range_intersection.rs)
+- [`packages/treetime-utils/src/interval/range_union.rs`](../../packages/treetime-utils/src/interval/range_union.rs)
 
 | Test                                                         | Purpose                                   |
 | ------------------------------------------------------------ | ----------------------------------------- |
@@ -219,7 +239,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### iterator/mean_by_key
 
-**File:** [`mean_by_key.rs`](../../packages/treetime-utils/src/iterator/mean_by_key.rs) (inline)
+**Test:** [`packages/treetime-utils/src/iterator/mean_by_key.rs`](../../packages/treetime-utils/src/iterator/mean_by_key.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/iterator/mean_by_key.rs`](../../packages/treetime-utils/src/iterator/mean_by_key.rs)
 
 | Test                                      | Purpose                     |
 | ----------------------------------------- | --------------------------- |
@@ -245,7 +267,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### datetime/parse_uncertain_date
 
-**File:** [`parse_uncertain_date.rs`](../../packages/treetime-utils/src/datetime/__tests__/parse_uncertain_date.rs)
+**Test:** [`packages/treetime-utils/src/datetime/__tests__/parse_uncertain_date.rs`](../../packages/treetime-utils/src/datetime/__tests__/parse_uncertain_date.rs)
+
+**Impl:** [`packages/treetime-utils/src/datetime/parse_uncertain_date.rs`](../../packages/treetime-utils/src/datetime/parse_uncertain_date.rs)
 
 | Test                              | Purpose                                         |
 | --------------------------------- | ----------------------------------------------- |
@@ -254,7 +278,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### datetime/format_to_regex
 
-**File:** [`format_to_regex.rs`](../../packages/treetime-utils/src/datetime/format_to_regex.rs) (inline)
+**Test:** [`packages/treetime-utils/src/datetime/format_to_regex.rs`](../../packages/treetime-utils/src/datetime/format_to_regex.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/datetime/format_to_regex.rs`](../../packages/treetime-utils/src/datetime/format_to_regex.rs)
 
 | Test                                  | Purpose                             |
 | ------------------------------------- | ----------------------------------- |
@@ -263,7 +289,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### datetime/year_fraction
 
-**File:** [`year_fraction.rs`](../../packages/treetime-utils/src/datetime/year_fraction.rs) (inline)
+**Test:** [`packages/treetime-utils/src/datetime/year_fraction.rs`](../../packages/treetime-utils/src/datetime/year_fraction.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/datetime/year_fraction.rs`](../../packages/treetime-utils/src/datetime/year_fraction.rs)
 
 | Test                         | Purpose                                        |
 | ---------------------------- | ---------------------------------------------- |
@@ -271,7 +299,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### fmt/string
 
-**File:** [`string.rs`](../../packages/treetime-utils/src/fmt/__tests__/string.rs)
+**Test:** [`packages/treetime-utils/src/fmt/__tests__/string.rs`](../../packages/treetime-utils/src/fmt/__tests__/string.rs)
+
+**Impl:** [`packages/treetime-utils/src/fmt/string.rs`](../../packages/treetime-utils/src/fmt/string.rs)
 
 | Test                                 | Purpose                                  |
 | ------------------------------------ | ---------------------------------------- |
@@ -285,7 +315,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### fmt/float
 
-**File:** [`float.rs`](../../packages/treetime-utils/src/fmt/float.rs) (inline)
+**Test:** [`packages/treetime-utils/src/fmt/float.rs`](../../packages/treetime-utils/src/fmt/float.rs) (inline)
+
+**Impl:** [`packages/treetime-utils/src/fmt/float.rs`](../../packages/treetime-utils/src/fmt/float.rs)
 
 | Test                               | Purpose                                   |
 | ---------------------------------- | ----------------------------------------- |
@@ -300,7 +332,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### array/ndarray
 
-**File:** [`ndarray.rs`](../../packages/treetime-utils/src/array/__tests__/ndarray.rs)
+**Test:** [`packages/treetime-utils/src/array/__tests__/ndarray.rs`](../../packages/treetime-utils/src/array/__tests__/ndarray.rs)
+
+**Impl:** [`packages/treetime-utils/src/array/ndarray.rs`](../../packages/treetime-utils/src/array/ndarray.rs)
 
 | Test                                         | Purpose                           |
 | -------------------------------------------- | --------------------------------- |
@@ -332,7 +366,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### dates_csv
 
-**File:** [`test_dates_csv.rs`](../../packages/treetime-io/src/__tests__/test_dates_csv.rs)
+**Test:** [`packages/treetime-io/src/__tests__/test_dates_csv.rs`](../../packages/treetime-io/src/__tests__/test_dates_csv.rs)
+
+**Impl:** [`packages/treetime-io/src/dates_csv.rs`](../../packages/treetime-io/src/dates_csv.rs)
 
 | Test                       | Purpose                                  |
 | -------------------------- | ---------------------------------------- |
@@ -342,7 +378,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### discrete_states_csv
 
-**File:** [`test_discrete_states_csv.rs`](../../packages/treetime-io/src/__tests__/test_discrete_states_csv.rs)
+**Test:** [`packages/treetime-io/src/__tests__/test_discrete_states_csv.rs`](../../packages/treetime-io/src/__tests__/test_discrete_states_csv.rs)
+
+**Impl:** [`packages/treetime-io/src/discrete_states_csv.rs`](../../packages/treetime-io/src/discrete_states_csv.rs)
 
 | Test                                                        | Purpose                                               |
 | ----------------------------------------------------------- | ----------------------------------------------------- |
@@ -355,7 +393,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### nwk_providers
 
-**File:** [`test_nwk_providers.rs`](../../packages/treetime-io/src/__tests__/test_nwk_providers.rs)
+**Test:** [`packages/treetime-io/src/__tests__/test_nwk_providers.rs`](../../packages/treetime-io/src/__tests__/test_nwk_providers.rs)
+
+**Impl:** [`packages/treetime-io/src/nwk.rs`](../../packages/treetime-io/src/nwk.rs)
 
 | Test                                        | Purpose                                                                    |
 | ------------------------------------------- | -------------------------------------------------------------------------- |
@@ -368,7 +408,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### concat
 
-**File:** [`test_concat.rs`](../../packages/treetime-io/src/__tests__/test_concat.rs)
+**Test:** [`packages/treetime-io/src/__tests__/test_concat.rs`](../../packages/treetime-io/src/__tests__/test_concat.rs)
+
+**Impl:** [`packages/treetime-io/src/concat.rs`](../../packages/treetime-io/src/concat.rs)
 
 | Test                                                              | Purpose                                |
 | ----------------------------------------------------------------- | -------------------------------------- |
@@ -384,7 +426,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### parse_delimited
 
-**File:** [`parse_delimited.rs`](../../packages/treetime-io/src/parse_delimited.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime-io/src/parse_delimited.rs`](../../packages/treetime-io/src/parse_delimited.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime-io/src/parse_delimited.rs`](../../packages/treetime-io/src/parse_delimited.rs)
 
 | Test                                                         | Purpose                                          |
 | ------------------------------------------------------------ | ------------------------------------------------ |
@@ -410,7 +454,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Grid
 
-**File:** [`grid.rs`](../../packages/treetime-grid/src/__tests__/grid.rs)
+**Test:** [`packages/treetime-grid/src/__tests__/grid.rs`](../../packages/treetime-grid/src/__tests__/grid.rs)
+
+**Impl:** [`packages/treetime-grid/src/grid.rs`](../../packages/treetime-grid/src/grid.rs)
 
 | Test                       | Purpose                                       |
 | -------------------------- | --------------------------------------------- |
@@ -418,7 +464,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### GridFn
 
-**File:** [`grid_fn.rs`](../../packages/treetime-grid/src/__tests__/grid_fn.rs)
+**Test:** [`packages/treetime-grid/src/__tests__/grid_fn.rs`](../../packages/treetime-grid/src/__tests__/grid_fn.rs)
+
+**Impl:** [`packages/treetime-grid/src/grid_fn.rs`](../../packages/treetime-grid/src/grid_fn.rs)
 
 | Test                                     | Purpose                                    |
 | ---------------------------------------- | ------------------------------------------ |
@@ -435,7 +483,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### interp_nonuniform
 
-**File:** [`interp_nonuniform.rs`](../../packages/treetime-grid/src/interp_nonuniform.rs) (inline)
+**Test:** [`packages/treetime-grid/src/interp_nonuniform.rs`](../../packages/treetime-grid/src/interp_nonuniform.rs) (inline)
+
+**Impl:** [`packages/treetime-grid/src/interp_nonuniform.rs`](../../packages/treetime-grid/src/interp_nonuniform.rs)
 
 | Test                                         | Purpose                                |
 | -------------------------------------------- | -------------------------------------- |
@@ -451,7 +501,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### convert/auspice
 
-**File:** [`auspice.rs`](../../packages/treetime-cli/src/convert/__tests__/auspice.rs)
+**Test:** [`packages/treetime-cli/src/convert/__tests__/auspice.rs`](../../packages/treetime-cli/src/convert/__tests__/auspice.rs)
+
+**Impl:** [`packages/treetime-cli/src/convert/auspice.rs`](../../packages/treetime-cli/src/convert/auspice.rs)
 
 | Test                                      | Purpose                            |
 | ----------------------------------------- | ---------------------------------- |
@@ -463,7 +515,13 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### convert/convert
 
-**File:** [`convert.rs`](../../packages/treetime-cli/src/convert/__tests__/convert.rs)
+**Test:** [`packages/treetime-cli/src/convert/__tests__/convert.rs`](../../packages/treetime-cli/src/convert/__tests__/convert.rs)
+
+**Impl:**
+
+- [`packages/treetime-cli/src/convert/convert.rs`](../../packages/treetime-cli/src/convert/convert.rs)
+- [`packages/treetime-cli/src/convert/auspice.rs`](../../packages/treetime-cli/src/convert/auspice.rs)
+- [`packages/treetime-cli/src/convert/usher.rs`](../../packages/treetime-cli/src/convert/usher.rs)
 
 | Test                                         | Purpose                            |
 | -------------------------------------------- | ---------------------------------- |
@@ -473,7 +531,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### convert/usher
 
-**File:** [`usher.rs`](../../packages/treetime-cli/src/convert/__tests__/usher.rs)
+**Test:** [`packages/treetime-cli/src/convert/__tests__/usher.rs`](../../packages/treetime-cli/src/convert/__tests__/usher.rs)
+
+**Impl:** [`packages/treetime-cli/src/convert/usher.rs`](../../packages/treetime-cli/src/convert/usher.rs)
 
 | Test                                       | Purpose                            |
 | ------------------------------------------ | ---------------------------------- |
@@ -482,7 +542,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### convert/mutation
 
-**File:** [`mutation.rs`](../../packages/treetime-cli/src/convert/mutation.rs) (inline)
+**Test:** [`packages/treetime-cli/src/convert/mutation.rs`](../../packages/treetime-cli/src/convert/mutation.rs) (inline)
+
+**Impl:** [`packages/treetime-cli/src/convert/mutation.rs`](../../packages/treetime-cli/src/convert/mutation.rs)
 
 | Test                        | Purpose                                   |
 | --------------------------- | ----------------------------------------- |
@@ -499,7 +561,12 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Alphabet
 
-**File:** [`test_alphabet.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet.rs)
+**Test:** [`packages/treetime/src/alphabet/__tests__/test_alphabet.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/alphabet/alphabet.rs`](../../packages/treetime/src/alphabet/alphabet.rs)
+- [`packages/treetime/src/alphabet/alphabet_config.rs`](../../packages/treetime/src/alphabet/alphabet_config.rs)
 
 | Test                                             | Purpose                                      |
 | ------------------------------------------------ | -------------------------------------------- |
@@ -552,7 +619,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_alphabet_char_index_roundtrip`             | Char-to-index-to-char roundtrip              |
 | `test_alphabet_set_to_char_canonical_roundtrip`  | Char-to-set-to-char roundtrip                |
 
-**File:** [`test_alphabet_config.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs)
+**Test:** [`packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs`](../../packages/treetime/src/alphabet/__tests__/test_alphabet_config.rs)
+
+**Impl:** [`packages/treetime/src/alphabet/alphabet_config.rs`](../../packages/treetime/src/alphabet/alphabet_config.rs)
 
 | Test                                                                    | Purpose                                           |
 | ----------------------------------------------------------------------- | ------------------------------------------------- |
@@ -581,7 +650,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### I/O
 
-**File:** [`test_fasta.rs`](../../packages/treetime/src/io/__tests__/test_fasta.rs)
+**Test:** [`packages/treetime/src/io/__tests__/test_fasta.rs`](../../packages/treetime/src/io/__tests__/test_fasta.rs)
+
+**Impl:** [`packages/treetime-io/src/fasta.rs`](../../packages/treetime-io/src/fasta.rs)
 
 | Test                                                                  | Purpose                                       |
 | --------------------------------------------------------------------- | --------------------------------------------- |
@@ -604,7 +675,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_fasta_reader_dedent_aa`                                         | Multiple amino acid records                   |
 | `test_fasta_reader_multiline_and_skewed_indentation`                  | Case folding, multiline, indentation handling |
 
-**File:** [`test_nwk.rs`](../../packages/treetime/src/io/__tests__/test_nwk.rs)
+**Test:** [`packages/treetime/src/io/__tests__/test_nwk.rs`](../../packages/treetime/src/io/__tests__/test_nwk.rs)
+
+**Impl:** [`packages/treetime-io/src/nwk.rs`](../../packages/treetime-io/src/nwk.rs)
 
 | Test                                      | Purpose                              |
 | ----------------------------------------- | ------------------------------------ |
@@ -619,7 +692,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Sequence Operations
 
-**File:** [`test_composition.rs`](../../packages/treetime/src/seq/__tests__/test_composition.rs)
+**Test:** [`packages/treetime/src/seq/__tests__/test_composition.rs`](../../packages/treetime/src/seq/__tests__/test_composition.rs)
+
+**Impl:** [`packages/treetime/src/seq/composition.rs`](../../packages/treetime/src/seq/composition.rs)
 
 | Test                                          | Purpose                              |
 | --------------------------------------------- | ------------------------------------ |
@@ -632,7 +707,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_composition_add_deletion`               | Deletion updates gap counts          |
 | `test_composition_add_insertion`              | Insertion updates char counts        |
 
-**File:** [`test_div.rs`](../../packages/treetime/src/seq/__tests__/test_div.rs)
+**Test:** [`packages/treetime/src/seq/__tests__/test_div.rs`](../../packages/treetime/src/seq/__tests__/test_div.rs)
+
+**Impl:** [`packages/treetime/src/seq/div.rs`](../../packages/treetime/src/seq/div.rs)
 
 | Test                       | Purpose                              |
 | -------------------------- | ------------------------------------ |
@@ -644,7 +721,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_deep_tree`           | 20-level deep tree divergence        |
 | `test_zero_branch_lengths` | Zero branch lengths handled          |
 
-**File:** [`test_find_char_ranges.rs`](../../packages/treetime/src/seq/__tests__/test_find_char_ranges.rs)
+**Test:** [`packages/treetime/src/seq/__tests__/test_find_char_ranges.rs`](../../packages/treetime/src/seq/__tests__/test_find_char_ranges.rs)
+
+**Impl:** [`packages/treetime/src/seq/find_char_ranges.rs`](../../packages/treetime/src/seq/find_char_ranges.rs)
 
 | Test                                       | Purpose                                  |
 | ------------------------------------------ | ---------------------------------------- |
@@ -653,7 +732,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_find_gap_ranges` (7 cases)           | Gap range detection                      |
 | `test_find_undetermined_ranges` (12 cases) | Combined N+gap range detection and merge |
 
-**File:** [`test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
+**Test:** [`packages/treetime/src/seq/__tests__/test_mutation.rs`](../../packages/treetime/src/seq/__tests__/test_mutation.rs)
+
+**Impl:** [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
 
 | Test                                                            | Purpose                                          |
 | --------------------------------------------------------------- | ------------------------------------------------ |
@@ -669,7 +750,13 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Graph
 
-**File:** [`graph.rs`](../../packages/treetime/src/graph/__tests__/graph.rs)
+**Test:** [`packages/treetime/src/graph/__tests__/graph.rs`](../../packages/treetime/src/graph/__tests__/graph.rs)
+
+**Impl:**
+
+- [`packages/treetime-graph/src/graph.rs`](../../packages/treetime-graph/src/graph.rs)
+- [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs)
+- [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)
 
 | Test                                                  | Purpose                                |
 | ----------------------------------------------------- | -------------------------------------- |
@@ -689,7 +776,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
 | `test_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
 
-**File:** [`test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
+**Test:** [`packages/treetime/src/graph/__tests__/test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
+
+**Impl:** [`packages/treetime-graph/src/edge.rs`](../../packages/treetime-graph/src/edge.rs)
 
 | Test           | Purpose                                |
 | -------------- | -------------------------------------- |
@@ -697,7 +786,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Representation
 
-**File:** [`test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
+**Test:** [`packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
+
+**Impl:** [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
 
 | Test                                                   | Purpose                                     |
 | ------------------------------------------------------ | ------------------------------------------- |
@@ -710,7 +801,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_compose_substitutions_mixed`                     | Chain, keep, add, cancel combined           |
 | `test_compose_substitutions_single_position` (4 cases) | Single-position chain and cancel variants   |
 
-**File:** [`discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs)
 
 | Test                                            | Purpose                                                  |
 | ----------------------------------------------- | -------------------------------------------------------- |
@@ -723,14 +816,18 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_empty_values`                             | Empty input produces empty DiscreteStates                |
 | `test_missing_marker`                           | Custom missing marker stored and returned                |
 
-**File:** [`marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs)
 
 | Test                                   | Purpose                                                                    |
 | -------------------------------------- | -------------------------------------------------------------------------- |
 | `test_propagate_raw_per_site_forward`  | Forward propagation with per-site rates matches individual expQt_with_rate |
 | `test_propagate_raw_per_site_backward` | Backward propagation (transpose) with per-site rates matches individual    |
 
-**File:** [`ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs)
 
 | Test                                                       | Purpose                                              |
 | ---------------------------------------------------------- | ---------------------------------------------------- |
@@ -740,7 +837,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_annotate_branch_mutations_sorts_by_position`         | Multiple mutations sorted by position                |
 | `test_annotate_branch_mutations_multi_partition_merge`     | Mutations from multiple partitions merged and sorted |
 
-**File:** [`discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs)
 
 | Test                                         | Purpose                                             |
 | -------------------------------------------- | --------------------------------------------------- |
@@ -749,7 +848,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_default_node_data`                     | Default node data has empty profile and zero log_lh |
 | `test_default_edge_data`                     | Default edge data has empty arrays and zero log_lh  |
 
-**File:** [`timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs)
 
 | Test                                                           | Purpose                                                         |
 | -------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -759,7 +860,9 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Commands: Prune
 
-**File:** [`test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+**Test:** [`packages/treetime/src/commands/prune/__tests__/test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+
+**Impl:** [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs)
 
 | Test                                                                         | Purpose                                                      |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -806,7 +909,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_collapse_edge_compose_cancellation`                                    | Cancellation (A->G + G->A = none) through edge collapse      |
 | `test_collapse_edge_compose_multiple_partitions`                             | Composition applied independently per partition              |
 
-**File:** [`test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs)
+**Test:** [`packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs)
+
+**Impl:** [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs)
 
 | Test                                                      | Purpose                                               |
 | --------------------------------------------------------- | ----------------------------------------------------- |

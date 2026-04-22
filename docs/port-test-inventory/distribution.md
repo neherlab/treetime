@@ -30,7 +30,9 @@
 
 **Directory:** [`distribution_core/__tests__/`](../../packages/treetime-distribution/src/distribution_core/__tests__/)
 
-**File:** [`test_distribution.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_distribution.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_core/__tests__/test_distribution.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_distribution.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_core/distribution.rs`](../../packages/treetime-distribution/src/distribution_core/distribution.rs)
 
 | Test                                        | Purpose                        |
 | ------------------------------------------- | ------------------------------ |
@@ -39,7 +41,9 @@
 | `test_distribution_normalize`               | Normalize to max=1             |
 | `test_distribution_normalize_empty_on_zero` | Zero values normalize to Empty |
 
-**File:** [`test_function.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_core/function.rs`](../../packages/treetime-distribution/src/distribution_core/function.rs)
 
 | Test                                          | Purpose                          |
 | --------------------------------------------- | -------------------------------- |
@@ -52,7 +56,9 @@
 
 **Directory:** [`distribution_ops/__tests__/`](../../packages/treetime-distribution/src/distribution_ops/__tests__/)
 
-**File:** [`test_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs)
 
 | Test                                                            | Purpose                                      |
 | --------------------------------------------------------------- | -------------------------------------------- |
@@ -67,7 +73,9 @@
 
 ### Distribution Operations - Divide
 
-**File:** [`test_divide.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/divide.rs`](../../packages/treetime-distribution/src/distribution_ops/divide.rs)
 
 | Test                                               | Purpose                            |
 | -------------------------------------------------- | ---------------------------------- |
@@ -86,7 +94,9 @@
 
 ### Distribution Operations - Convolve
 
-**File:** [`test_convolve.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/convolve.rs`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs)
 
 | Test                                                   | Purpose                          |
 | ------------------------------------------------------ | -------------------------------- |
@@ -114,7 +124,9 @@
 
 ### Distribution Operations - Negation
 
-**File:** [`test_negation.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_negation.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_negation.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_negation.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/negate.rs`](../../packages/treetime-distribution/src/distribution_ops/negate.rs)
 
 | Test                           | Purpose                          |
 | ------------------------------ | -------------------------------- |
@@ -132,7 +144,9 @@
 
 ### Distribution Operations - Scalar Multiply
 
-**File:** [`test_scalar_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_scalar_multiply.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_scalar_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_scalar_multiply.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/scalar_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/scalar_multiply.rs)
 
 | Test                                                                 | Purpose                        |
 | -------------------------------------------------------------------- | ------------------------------ |
@@ -152,7 +166,9 @@
 
 ### Distribution Operations - Time Bounds
 
-**File:** [`test_time_bounds.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_time_bounds.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/time_bounds.rs`](../../packages/treetime-distribution/src/distribution_ops/time_bounds.rs)
 
 **Parameterized: `test_distribution_time_bounds_union`**
 
@@ -242,7 +258,9 @@
 
 **Directory:** [`distribution_scaled/__tests__/`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/)
 
-**File:** [`test_distribution_scaled.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_distribution_scaled.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_scaled/__tests__/test_distribution_scaled.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_distribution_scaled.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_scaled/scaled.rs`](../../packages/treetime-distribution/src/distribution_scaled/scaled.rs)
 
 | Test                                             | Purpose                             |
 | ------------------------------------------------ | ----------------------------------- |
@@ -254,7 +272,9 @@
 | `test_scaled_distribution_renormalize`           | Renormalize preserves scale         |
 | `test_scaled_distribution_from_parts`            | Construct from parts                |
 
-**File:** [`test_multiply.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_multiply.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_scaled/__tests__/test_multiply.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_multiply.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_scaled/multiply.rs`](../../packages/treetime-distribution/src/distribution_scaled/multiply.rs)
 
 | Test                                                                    | Purpose                          |
 | ----------------------------------------------------------------------- | -------------------------------- |
@@ -271,7 +291,9 @@
 | `test_scaled_distribution_multiply_many_mixed_types_fallback`           | Mixed types use fallback path    |
 | `test_scaled_distribution_multiply_many_different_grids_fallback`       | Different grids use fallback     |
 
-**File:** [`test_divide.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_divide.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_scaled/__tests__/test_divide.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_divide.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_scaled/divide.rs`](../../packages/treetime-distribution/src/distribution_scaled/divide.rs)
 
 | Test                                                      | Purpose                      |
 | --------------------------------------------------------- | ---------------------------- |
@@ -281,7 +303,9 @@
 | `test_scaled_distribution_divide_inverse_of_multiply`     | (a\*b)/b recovers a          |
 | `test_scaled_distribution_divide_preserves_normalization` | Quotient inner max = 1       |
 
-**File:** [`test_convolve.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_convolve.rs)
+**Test:** [`packages/treetime-distribution/src/distribution_scaled/__tests__/test_convolve.rs`](../../packages/treetime-distribution/src/distribution_scaled/__tests__/test_convolve.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_scaled/convolve.rs`](../../packages/treetime-distribution/src/distribution_scaled/convolve.rs)
 
 | Test                                                        | Purpose                         |
 | ----------------------------------------------------------- | ------------------------------- |
@@ -295,7 +319,13 @@
 
 ### Root-Level Tests
 
-**File:** [`test_gaussian_product.rs`](../../packages/treetime-distribution/src/__tests__/test_gaussian_product.rs)
+**Test:** [`packages/treetime-distribution/src/__tests__/test_gaussian_product.rs`](../../packages/treetime-distribution/src/__tests__/test_gaussian_product.rs)
+
+**Impl:**
+
+- [`packages/treetime-distribution/src/distribution_scaled/scaled.rs`](../../packages/treetime-distribution/src/distribution_scaled/scaled.rs)
+- [`packages/treetime-distribution/src/distribution_scaled/multiply.rs`](../../packages/treetime-distribution/src/distribution_scaled/multiply.rs)
+- [`packages/treetime-distribution/src/distribution_scaled/convolve.rs`](../../packages/treetime-distribution/src/distribution_scaled/convolve.rs)
 
 | Test                                               | Purpose                          |
 | -------------------------------------------------- | -------------------------------- |
@@ -310,7 +340,9 @@
 | `test_gaussian_product_matches_analytical`         | Numerical matches analytical     |
 | `test_gaussian_normalization_preserved`            | Amplitude tracking via log_scale |
 
-**File:** [`test_quantile.rs`](../../packages/treetime-distribution/src/__tests__/test_quantile.rs)
+**Test:** [`packages/treetime-distribution/src/__tests__/test_quantile.rs`](../../packages/treetime-distribution/src/__tests__/test_quantile.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_core/distribution.rs`](../../packages/treetime-distribution/src/distribution_core/distribution.rs)
 
 | Test                                          | Purpose                         |
 | --------------------------------------------- | ------------------------------- |
@@ -331,7 +363,9 @@
 
 **Directory:** [`__tests__/`](../../packages/treetime-analytical/src/__tests__/)
 
-**File:** [`gaussian.rs`](../../packages/treetime-analytical/src/__tests__/gaussian.rs)
+**Test:** [`packages/treetime-analytical/src/__tests__/gaussian.rs`](../../packages/treetime-analytical/src/__tests__/gaussian.rs)
+
+**Impl:** [`packages/treetime-analytical/src/gaussian.rs`](../../packages/treetime-analytical/src/gaussian.rs)
 
 | Test                                         | Purpose                        |
 | -------------------------------------------- | ------------------------------ |
@@ -352,7 +386,9 @@
 
 ### Exponential (inline tests)
 
-**File:** [`exponential.rs`](../../packages/treetime-analytical/src/exponential.rs)
+**Test:** [`packages/treetime-analytical/src/exponential.rs`](../../packages/treetime-analytical/src/exponential.rs)
+
+**Impl:** [`packages/treetime-analytical/src/exponential.rs`](../../packages/treetime-analytical/src/exponential.rs)
 
 | Test                                          | Purpose                        |
 | --------------------------------------------- | ------------------------------ |
@@ -368,7 +404,9 @@
 
 ### Gaussian-Exponential (inline tests)
 
-**File:** [`gaussian_exponential.rs`](../../packages/treetime-analytical/src/gaussian_exponential.rs)
+**Test:** [`packages/treetime-analytical/src/gaussian_exponential.rs`](../../packages/treetime-analytical/src/gaussian_exponential.rs)
+
+**Impl:** [`packages/treetime-analytical/src/gaussian_exponential.rs`](../../packages/treetime-analytical/src/gaussian_exponential.rs)
 
 | Test                                               | Purpose                      |
 | -------------------------------------------------- | ---------------------------- |
@@ -382,7 +420,9 @@
 
 **Directory:** [`__tests__/`](../../packages/treetime-ops/src/__tests__/)
 
-**File:** [`multiplication.rs`](../../packages/treetime-ops/src/__tests__/multiplication.rs)
+**Test:** [`packages/treetime-ops/src/__tests__/multiplication.rs`](../../packages/treetime-ops/src/__tests__/multiplication.rs)
+
+**Impl:** [`packages/treetime-ops/src/multiplication.rs`](../../packages/treetime-ops/src/multiplication.rs)
 
 | Test                                                  | Purpose                       |
 | ----------------------------------------------------- | ----------------------------- |
@@ -396,7 +436,9 @@
 
 ### Convolution (inline tests)
 
-**File:** [`convolution.rs`](../../packages/treetime-ops/src/convolution.rs)
+**Test:** [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)
+
+**Impl:** [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)
 
 | Test                               | Purpose                         |
 | ---------------------------------- | ------------------------------- |

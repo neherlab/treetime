@@ -37,7 +37,12 @@ Property tests use proptest with random inputs. Generator tests use smaller samp
 
 ## Golden-Master Model Tests
 
-**File:** [`test_gm_gtr.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gm_gtr.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Validates Rust v1 GTR model construction against Python v0 reference outputs.
 
@@ -58,7 +63,9 @@ Validates Rust v1 GTR model construction against Python v0 reference outputs.
 
 ## Matrix Exponentiation Properties
 
-**File:** [`test_prop_gtr_expqt.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_expqt.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_expqt.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_expqt.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Verifies P(t) = exp(Qt) mathematical invariants.
 
@@ -77,7 +84,9 @@ Verifies P(t) = exp(Qt) mathematical invariants.
 
 ## Eigendecomposition Properties
 
-**File:** [`test_prop_gtr_eigen.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_eigen.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_eigen.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_eigen.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Verifies eigendecomposition invariants.
 
@@ -91,7 +100,12 @@ Verifies eigendecomposition invariants.
 
 ## Q Matrix Properties
 
-**File:** [`test_prop_gtr_q.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_q.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_q.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_q.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
 
 Verifies rate matrix Q invariants.
 
@@ -110,7 +124,9 @@ Verifies rate matrix Q invariants.
 
 ## Numerical Stability Properties
 
-**File:** [`test_prop_gtr_numerical.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_numerical.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_numerical.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_numerical.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Verifies no NaN/Inf and valid outputs.
 
@@ -127,7 +143,12 @@ Verifies no NaN/Inf and valid outputs.
 
 ### Branch Length
 
-**File:** [`test_gtr_numerical_edge_branch_length.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_branch_length.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_branch_length.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_branch_length.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
 
 | Test                                 | Scenario  | Expected                        |
 | ------------------------------------ | --------- | ------------------------------- |
@@ -139,7 +160,12 @@ Verifies no NaN/Inf and valid outputs.
 
 ### Extreme Parameters
 
-**File:** [`test_gtr_numerical_edge_extreme_parameters.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_extreme_parameters.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_extreme_parameters.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_extreme_parameters.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
 
 | Test                                    | Parameter | Edge Value                    | Notes            |
 | --------------------------------------- | --------- | ----------------------------- | ---------------- |
@@ -153,7 +179,12 @@ Verifies no NaN/Inf and valid outputs.
 
 ### Parameterized Edge Cases
 
-**File:** [`test_gtr_numerical_edge_parameterized.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_parameterized.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_parameterized.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_parameterized.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
 
 | Test                                 | Parameter Range         |
 | ------------------------------------ | ----------------------- |
@@ -165,7 +196,12 @@ Verifies no NaN/Inf and valid outputs.
 
 ## Model Hierarchy Tests
 
-**File:** [`test_gtr_hierarchy_model_relationships.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_model_relationships.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_model_relationships.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_model_relationships.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Verifies nested model relationships:
 
@@ -184,7 +220,12 @@ JC69 ----> K80 ----> HKY85 ----> TN93 ----> GTR
 | `test_gtr_hky85_equals_tn93_equal_transitions` | HKY85 = TN93 | kappa1 = 0.5, kappa2 = 1 |
 | `test_gtr_tn93_equals_gtr_with_structured_w`   | TN93 = GTR   | W with TN93 structure    |
 
-**File:** [`test_gtr_hierarchy_additional_verification.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_additional_verification.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_additional_verification.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/test_gtr_hierarchy_additional_verification.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
+- [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 | Test                                  | Verification                     |
 | ------------------------------------- | -------------------------------- |
@@ -196,7 +237,9 @@ JC69 ----> K80 ----> HKY85 ----> TN93 ----> GTR
 
 ## Generator Validation
 
-**File:** [`generators.rs`](../../packages/treetime/src/gtr/__tests__/generators.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/generators.rs`](../../packages/treetime/src/gtr/__tests__/generators.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 Validates that proptest generators produce valid outputs.
 
@@ -216,7 +259,9 @@ Validates that proptest generators produce valid outputs.
 
 ### Golden-Master
 
-**File:** [`test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
+
+**Impl:** [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
 
 | Test                                | Datasets                                                                                                   |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -230,7 +275,12 @@ Validates that proptest generators produce valid outputs.
 
 ### Unit Tests
 
-**File:** [`test_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_dense.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_dense.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                                 | Purpose                                     |
 | ------------------------------------ | ------------------------------------------- |
@@ -244,7 +294,12 @@ Validates that proptest generators produce valid outputs.
 
 ## GTR Inference Tests - Sparse
 
-**File:** [`test_sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                              | Purpose                                      |
 | --------------------------------- | -------------------------------------------- |
@@ -255,7 +310,12 @@ Validates that proptest generators produce valid outputs.
 
 ## Inference Contract Tests
 
-**File:** [`test_contract.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_contract.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
+- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
 
 Verifies mutation count invariants across dense and sparse paths.
 
@@ -281,7 +341,12 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Dense-Sparse Cross-Validation
 
-**File:** [`test_contract_dense_sparse_real.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
+- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
 
 | Test                                  | Datasets                                                                        |
 | ------------------------------------- | ------------------------------------------------------------------------------- |
@@ -297,7 +362,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Common Functions
 
-**File:** [`test_common.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_common.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_common.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_common.rs)
+
+**Impl:** [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                              | Purpose                                  |
 | --------------------------------- | ---------------------------------------- |
@@ -312,7 +379,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## GTR Output Tests
 
-**File:** [`test_write_gtr_json.rs`](../../packages/treetime/src/gtr/__tests__/test_write_gtr_json.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_write_gtr_json.rs`](../../packages/treetime/src/gtr/__tests__/test_write_gtr_json.rs)
+
+**Impl:** [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)
 
 | Test                                               | Purpose                                                 |
 | -------------------------------------------------- | ------------------------------------------------------- |
@@ -323,7 +392,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Jukes-Cantor Distance Correction
 
-**File:** [`jc_distance.rs`](../../packages/treetime/src/gtr/jc_distance.rs)
+**Test:** [`packages/treetime/src/gtr/jc_distance.rs`](../../packages/treetime/src/gtr/jc_distance.rs)
+
+**Impl:** [`packages/treetime/src/gtr/jc_distance.rs`](../../packages/treetime/src/gtr/jc_distance.rs)
 
 | Test                                                           | Purpose                                                      |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -343,7 +414,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ### Property Tests
 
-**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)
 
 | Test                                                        | Purpose                                              | Notes              |
 | ----------------------------------------------------------- | ---------------------------------------------------- | ------------------ |
@@ -369,7 +442,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ### Unit + Validation Tests
 
-**File:** [`test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs) (same file)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_specific.rs) (same file)
+
+**Impl:** [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)
 
 | Test                                                | Purpose                                       |
 | --------------------------------------------------- | --------------------------------------------- |
@@ -381,7 +456,12 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ### Golden-Master Tests
 
-**File:** [`test_gm_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs`](../../packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)
+- [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs)
 
 | Test                                         | Tolerance | Purpose                                            | Notes                         |
 | -------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------- |
@@ -394,7 +474,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Site-Specific GTR Inference Tests
 
-**File:** [`test_site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_site_specific.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_site_specific.rs)
+
+**Impl:** [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs)
 
 | Test                                                | Purpose                                         | Notes                          |
 | --------------------------------------------------- | ----------------------------------------------- | ------------------------------ |
@@ -405,7 +487,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Site-Rate Variation
 
-**File:** [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/gtr/site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/gtr/site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)
 
 | Test                                                      | Purpose                                                        | Notes               |
 | --------------------------------------------------------- | -------------------------------------------------------------- | ------------------- |
@@ -425,7 +509,9 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Site-Rate Variation Property Tests
 
-**File:** [`test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
+
+**Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 
 | Test                                              | Purpose                                                             |
 | ------------------------------------------------- | ------------------------------------------------------------------- |
@@ -447,8 +533,8 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Shared Test Support
 
-**File:** [`prop_support.rs`](../../packages/treetime/src/gtr/__tests__/prop_support.rs) - Proptest assertion helpers (`prop_assert_columns_sum_to`, `prop_assert_rows_sum_to`, `prop_assert_detailed_balance`)
+**Test:** [`packages/treetime/src/gtr/__tests__/prop_support.rs`](../../packages/treetime/src/gtr/__tests__/prop_support.rs) - Proptest assertion helpers (`prop_assert_columns_sum_to`, `prop_assert_rows_sum_to`, `prop_assert_detailed_balance`)
 
-**File:** [`test_gtr_numerical_edge_support.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs) - Stochastic matrix assertion helper (`assert_stochastic_matrix`)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_support.rs) - Stochastic matrix assertion helper (`assert_stochastic_matrix`)
 
-**File:** [`site_specific_support.rs`](../../packages/treetime/src/gtr/__tests__/site_specific_support.rs) - `simulate_counts()`, `value_to_array2()`, `value_to_array3()`
+**Test:** [`packages/treetime/src/gtr/__tests__/site_specific_support.rs`](../../packages/treetime/src/gtr/__tests__/site_specific_support.rs) - `simulate_counts()`, `value_to_array2()`, `value_to_array3()`
