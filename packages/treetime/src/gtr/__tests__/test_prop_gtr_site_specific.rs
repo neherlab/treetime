@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::gtr::gtr::{GTR, GTRParams};
   use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
   use ndarray::prelude::*;
   use proptest::prelude::*;
@@ -534,8 +535,6 @@ mod tests {
   /// When all sites have the same pi, site-specific model matches standard GTR.
   #[test]
   fn test_gtr_site_specific_uniform_matches_standard() {
-    use crate::gtr::gtr::{GTR, GTRParams};
-
     let pi = array![0.1, 0.2, 0.3, 0.4];
     let W = {
       let mut w = Array2::<f64>::ones([4, 4]);
