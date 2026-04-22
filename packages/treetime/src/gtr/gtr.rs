@@ -70,7 +70,7 @@ pub fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> 
 #[allow(clippy::type_complexity)]
 pub(super) fn eig_single_site(
   W: &Array2<f64>,
-  pi: &Array1<f64>,
+  pi: ArrayView1<'_, f64>,
 ) -> Result<(Array1<f64>, Array2<f64>, Array2<f64>), Report> {
   // W must have zero diagonal (off-diagonal rates only)
   assert!(abs(W.diag().sum()) < 1e-10);
@@ -82,7 +82,7 @@ pub(super) fn eig_single_site(
 
   // Set diagonal so rows sum to zero: S[i,i] = -sum_{j != i} W[i,j] * pi[j]
   // This corresponds to the row-stochastic Q convention internally
-  let diag = -(W * pi).sum_axis(Axis(1));
+  let diag = -W.dot(&pi);
   sym_Q.diag_mut().assign(&diag);
 
   // Symmetric eigendecomposition: S = U * Lambda * U'  where U is orthogonal
@@ -193,9 +193,11 @@ pub struct GTR {
   /// Whether the one-dimensional branch-length likelihood $L(t)$ is guaranteed
   /// unimodal on $(0, \infty)$ for this model.
   ///
-  /// Dinh & Matsen (2017) prove that models with a single distinct nonzero
-  /// eigenvalue (JC69, F81, binary symmetric) have at most one stationary point
-  /// (Corollary 3.1). With one distinct nonzero eigenvalue, the per-site
+  /// Dinh V, Matsen FA IV (2017). "The shape of the one-dimensional phylogenetic
+  /// likelihood function." Ann Appl Probab 27(2):1264-1286. DOI: 10.1214/16-AAP1228.
+  ///
+  /// Corollary 3.1 proves that models with a single distinct nonzero eigenvalue
+  /// (JC69, F81, binary symmetric) have at most one stationary point. With one distinct nonzero eigenvalue, the per-site
   /// characteristic polynomial factors into linear terms with real roots,
   /// satisfying the condition of Theorem 3.1. For these models, a negative
   /// derivative at $t = 0$ guarantees zero is the global maximum on
@@ -270,7 +272,7 @@ impl GTR {
     let W = W / average_rate;
 
     // Precompute eigendecomposition for efficient exp(Q*t)
-    let (eigvals, v, v_inv) = eig_single_site(&W, &pi)?;
+    let (eigvals, v, v_inv) = eig_single_site(&W, pi.view())?;
 
     // A 2-state rate matrix has exactly one nonzero eigenvalue, so L(t) is
     // unimodal (Dinh & Matsen 2017, Corollary 3.1). JC69/F81 constructors

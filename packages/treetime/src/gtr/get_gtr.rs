@@ -186,7 +186,9 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
   let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
-  // JC69 has one distinct nonzero eigenvalue: L(t) is unimodal (Dinh & Matsen 2017, Corollary 3.1)
+  // JC69 has one distinct nonzero eigenvalue: L(t) is unimodal.
+  // Dinh V, Matsen FA IV (2017). "The shape of the one-dimensional phylogenetic likelihood
+  // function." Ann Appl Probab 27(2):1264-1286. DOI: 10.1214/16-AAP1228, Corollary 3.1.
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
@@ -248,7 +250,8 @@ pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
   let mut gtr = GTR::new(GTRParams { n_states, mu, W, pi })?;
-  // F81 has one distinct nonzero eigenvalue: L(t) is unimodal (Dinh & Matsen 2017, Corollary 3.1)
+  // F81 has one distinct nonzero eigenvalue: L(t) is unimodal.
+  // Dinh & Matsen (2017), DOI: 10.1214/16-AAP1228, Corollary 3.1.
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }

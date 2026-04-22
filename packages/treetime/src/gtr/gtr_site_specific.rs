@@ -41,8 +41,9 @@ pub struct GTRSiteSpecificParams {
 /// For computational efficiency, an optional interpolation mode pre-computes exp(Q*t)
 /// on a grid of t values and uses linear interpolation during tree traversal.
 ///
-/// Reference: Puller et al (2020). "TreeTime: Maximum-likelihood phylodynamic analysis."
-/// Virus Evolution, 6(1), veaa066.
+/// Reference: Puller V, Sagulenko P, Neher RA (2020). "Efficient inference, potential,
+/// and limitations of site-specific substitution models." Virus Evolution, 6(2), veaa066.
+/// DOI: 10.1093/ve/veaa066
 #[derive(Clone, Debug)]
 #[allow(clippy::partial_pub_fields)]
 pub struct GTRSiteSpecific {
@@ -170,8 +171,7 @@ impl GTRSiteSpecific {
     let mut v_inv = Array3::zeros((n_states, n_states, seq_len));
 
     for a in 0..seq_len {
-      let pi_a = pi.column(a).to_owned();
-      let (ev, evec, evec_inv) = eig_single_site(&W, &pi_a)?;
+      let (ev, evec, evec_inv) = eig_single_site(&W, pi.column(a))?;
       eigvals.column_mut(a).assign(&ev);
       v.slice_mut(s![.., .., a]).assign(&evec);
       v_inv.slice_mut(s![.., .., a]).assign(&evec_inv);

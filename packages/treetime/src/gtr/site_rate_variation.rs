@@ -37,6 +37,7 @@ use treetime_utils::make_error;
 ///
 /// Yang Z (1994). "Maximum likelihood phylogenetic estimation from DNA sequences
 /// with variable rates over sites: approximate methods." J Mol Evol 39:306-314.
+/// DOI: 10.1007/BF00160154
 pub fn discrete_gamma_rates(alpha: f64, n_categories: usize) -> Result<Array1<f64>, Report> {
   if alpha < 0.15 {
     return make_error!(
