@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::__tests__::generators::tests::generators::{arb_branch_len, arb_gtr_nuc, arb_profile_nuc};
+  use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, Array2};
   use proptest::prelude::*;
@@ -193,8 +194,6 @@ mod tests {
   /// Higher site rate produces more divergence from initial state
   #[test]
   fn test_higher_rate_more_divergence() {
-    use crate::gtr::get_gtr::{JC69Params, jc69};
-
     let gtr = jc69(JC69Params::default()).unwrap();
     let t = 0.5;
 
@@ -213,8 +212,6 @@ mod tests {
   /// Rate 0 means no evolution (identity matrix)
   #[test]
   fn test_rate_zero_is_identity() {
-    use crate::gtr::get_gtr::{JC69Params, jc69};
-
     let gtr = jc69(JC69Params::default()).unwrap();
     let p = gtr.expQt_with_rate(1.0, 0.0);
     pretty_assert_abs_diff_eq!(p, Array2::eye(4), epsilon = 1e-14);
@@ -223,8 +220,6 @@ mod tests {
   /// set_site_rates / clear_site_rates / has_site_rates lifecycle
   #[test]
   fn test_site_rates_lifecycle() {
-    use crate::gtr::get_gtr::{JC69Params, jc69};
-
     let mut gtr = jc69(JC69Params::default()).unwrap();
     assert!(!gtr.has_site_rates());
 
