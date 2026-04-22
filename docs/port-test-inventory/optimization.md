@@ -799,19 +799,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 | `test_optimize_cascading_collapse_parent_child_both_zero`          | Parent-child both zero-optimal, guard handles removal      |
 | `test_optimize_loop_with_topology_cleanup_dense`                   | Dense-mode full loop with topology cleanup                 |
 
-Direct coverage for `collapse_edge()` lives with the shared implementation in
-[`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs):
-
-| Test                                                      | Purpose                                                             |
-| --------------------------------------------------------- | ------------------------------------------------------------------- |
-| `test_topology_collapse_edge_sparse_composes_subs`        | Substitutions composed correctly on sparse collapse                 |
-| `test_topology_collapse_edge_dense_cleanup`               | Stale dense partition data removed after collapse                   |
-| `test_topology_collapse_edge_branch_length_sum`           | Branch lengths summed correctly (non-zero collapsed + child)        |
-| `test_topology_collapse_edge_branch_length_sum_with_zero` | Branch lengths summed correctly (zero collapsed + child unchanged)  |
-| `test_topology_collapse_edge_indel_concatenation`         | Collapsed-edge indels prepended to child indels                     |
-| `test_topology_collapse_edge_reversion_cancels`           | Forward + reverse substitution at same position cancel to no change |
-| `test_topology_collapse_edge_no_partitions`               | Graph-only collapse with no partitions still rewires topology       |
-| `test_topology_collapse_edge_multiple_sparse_partitions`  | Multiple sparse partitions each receive composed substitutions      |
+Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology Cleanup / Edge Collapse](representation.md#topology-cleanup--edge-collapse) (8 tests).
 
 ---
 

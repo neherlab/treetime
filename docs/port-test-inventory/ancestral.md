@@ -4,25 +4,25 @@
 
 ## Summary
 
-| Category                                                    | Type            |
-| ----------------------------------------------------------- | --------------- |
-| [Fitch parsimony](#fitch-parsimony)                         | Unit            |
-| [Marginal ML dense](#marginal-ml---dense)                   | Unit            |
-| [Marginal ML sparse](#marginal-ml---sparse)                 | Unit            |
-| [Dense/sparse equivalence](#densesparse-equivalence)        | Unit + Property |
-| [Idempotency](#idempotency-tests)                           | Unit + Property |
-| [Normalization](#normalization-tests)                       | Unit + Property |
-| [Root invariance](#root-invariance-tests)                   | Property + Unit |
-| [Python parity](#python-v0-parity-tests)                    | Unit            |
-| [Consistency](#consistency-tests)                           | Unit            |
-| [Branch length](#branch-length-tests)                       | Unit            |
-| [Topology](#topology-tests)                                 | Unit            |
-| [Stability](#stability-tests-edge-cases)                    | Unit            |
-| [Analytical](#analytical-verification-tests)                | Golden-master   |
-| [Softmax with log-norm](#softmax-with-log-norm-tests)       | Unit            |
-| [Dense normalize-from-log](#dense-normalize-from-log-tests) | Unit            |
-| [Sparse composition](#substitution-composition-tests)       | Unit            |
-| [Generator validation](#property-test-generator-validation) | Property        |
+| Category                                                                  | Type                                           |
+| ------------------------------------------------------------------------- | ---------------------------------------------- |
+| [Fitch parsimony](#fitch-parsimony)                                       | Unit                                           |
+| [Marginal ML dense](#marginal-ml---dense)                                 | Unit                                           |
+| [Marginal ML sparse](#marginal-ml---sparse)                               | Unit                                           |
+| [Dense/sparse equivalence](#densesparse-equivalence)                      | Unit + Property                                |
+| [Idempotency](#idempotency-tests)                                         | Unit + Property                                |
+| [Normalization](#normalization-tests)                                     | Unit + Property                                |
+| [Root invariance](#root-invariance-tests)                                 | Property + Unit                                |
+| [Python parity](#python-v0-parity-tests)                                  | Unit                                           |
+| [Consistency](#consistency-tests)                                         | Unit                                           |
+| [Branch length](#branch-length-tests)                                     | Unit                                           |
+| [Topology](#topology-tests)                                               | Unit                                           |
+| [Stability](#stability-tests-edge-cases)                                  | Unit                                           |
+| [Analytical](#analytical-verification-tests)                              | Golden-master                                  |
+| [Softmax with log-norm](#softmax-with-log-norm-tests)                     | Unit                                           |
+| [Dense normalize-from-log](representation.md#normalize-from-log-dense-2d) | Unit (see [Representation](representation.md)) |
+| [Sparse composition](#substitution-composition-tests)                     | Unit                                           |
+| [Generator validation](#property-test-generator-validation)               | Property                                       |
 
 Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/prop_marginal_support.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)
 
@@ -397,27 +397,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 
 ## Dense Normalize-from-Log Tests
 
-**Test:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-
-| Test                                                      | Purpose                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------------------ |
-| `test_normalize_from_log_equal_probs`                     | Equal log-probs produce uniform distribution, finite log_lh        |
-| `test_normalize_from_log_descending`                      | Unequal log-probs: analytically verified output and norm           |
-| `test_normalize_from_log_all_neg_inf_single_row`          | All-NEG_INFINITY single row: uniform 1/4, log_lh=-inf              |
-| `test_normalize_from_log_all_neg_inf_multiple_rows`       | All-NEG_INFINITY across 3 rows: uniform fallback each              |
-| `test_normalize_from_log_mixed_neg_inf_and_finite_rows`   | Degenerate row 0 + normal row 1: row-level fallback, log_lh=-inf   |
-| `test_normalize_from_log_mixed_finite_neg_inf_within_row` | Mixed finite/-inf within a row: only finite states get probability |
-| `test_normalize_from_log_large_negative_values`           | Numerical stability: offset -1000 matches reference                |
-| `test_normalize_from_log_three_states`                    | All-NEG_INFINITY fallback with 3 states: uniform 1/3               |
-| `test_normalize_inplace_normal_rows`                      | Normal rows: correct normalization and log-likelihood              |
-| `test_normalize_inplace_zero_row_returns_uniform`         | All-zero row: uniform fallback, log_lh=-inf                        |
-| `test_normalize_inplace_mixed_zero_and_normal_rows`       | Zero row + normal row: per-row handling, log_lh=-inf               |
-| `test_normalize_inplace_nan_row_returns_uniform`          | NaN row: uniform fallback, log_lh=-inf                             |
-| `test_normalize_inplace_inf_row_returns_uniform`          | Inf row: uniform fallback, log_lh=-inf                             |
-
-**Algorithm:** 2D logsumexp normalization matching v0's `normalize_profile(log=True)`. Guards all-`-inf` rows with uniform fallback, consistent with sparse path's `logsumexp_normalize`. `normalize_inplace` guards zero-sum and non-finite rows with the same uniform fallback.
+Moved to [Representation Tests: Normalize from Log (Dense 2D)](representation.md#normalize-from-log-dense-2d) and [Normalize Inplace (Dense 2D)](representation.md#normalize-inplace-dense-2d).
 
 ---
 

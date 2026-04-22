@@ -15,7 +15,7 @@
 | [treetime (io)](#io)                        | FASTA, Newick                                                          | Unit                |
 | [treetime (seq)](#sequence-operations)      | composition, div, char_ranges, mutation                                | Unit, Parameterized |
 | [treetime (graph)](#graph)                  | traversal, collapse, edge                                              | Unit                |
-| [treetime (repr)](#representation)          | compose_substitutions, discrete_states, marginal_helpers, payloads     | Unit, Parameterized |
+| [treetime (repr)](representation.md)        | compose_substitutions, discrete_states, marginal_helpers, payloads     | Unit, Parameterized |
 | [treetime (prune)](#commands-prune)         | prune, collapse, merge                                                 | Unit                |
 
 ---
@@ -783,80 +783,6 @@ Unit and parameterized tests for all BitSet128 operations.
 | Test           | Purpose                                |
 | -------------- | -------------------------------------- |
 | `edge_inverts` | Edge inversion swaps source and target |
-
-### Representation
-
-**Test:** [`packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
-
-**Impl:** [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
-
-| Test                                                   | Purpose                                     |
-| ------------------------------------------------------ | ------------------------------------------- |
-| `test_compose_substitutions_empty_both`                | Empty parent and child yields empty         |
-| `test_compose_substitutions_empty_parent`              | Empty parent preserves child subs           |
-| `test_compose_substitutions_empty_child`               | Empty child preserves parent subs           |
-| `test_compose_substitutions_no_overlap`                | Non-overlapping positions merged            |
-| `test_compose_substitutions_chain`                     | Same-position subs compose (A->G->T = A->T) |
-| `test_compose_substitutions_cancellation`              | Reverse sub cancels (A->G->A = none)        |
-| `test_compose_substitutions_mixed`                     | Chain, keep, add, cancel combined           |
-| `test_compose_substitutions_single_position` (4 cases) | Single-position chain and cancel variants   |
-
-**Test:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs)
-
-| Test                                            | Purpose                                                  |
-| ----------------------------------------------- | -------------------------------------------------------- |
-| `test_from_values_sorts_and_deduplicates`       | from_values sorts, deduplicates, excludes missing marker |
-| `test_get_index_returns_none_for_missing`       | Missing marker returns None index                        |
-| `test_get_index_returns_correct_index`          | Indices match sorted order                               |
-| `test_get_name_returns_correct_name`            | Names match sorted order                                 |
-| `test_is_missing`                               | Missing marker detected, non-missing values not flagged  |
-| `test_get_index_returns_none_for_unknown_value` | Unknown value returns None                               |
-| `test_empty_values`                             | Empty input produces empty DiscreteStates                |
-| `test_missing_marker`                           | Custom missing marker stored and returned                |
-
-**Test:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs)
-
-| Test                                   | Purpose                                                                    |
-| -------------------------------------- | -------------------------------------------------------------------------- |
-| `test_propagate_raw_per_site_forward`  | Forward propagation with per-site rates matches individual expQt_with_rate |
-| `test_propagate_raw_per_site_backward` | Backward propagation (transpose) with per-site rates matches individual    |
-
-**Test:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs)
-
-| Test                                                       | Purpose                                              |
-| ---------------------------------------------------------- | ---------------------------------------------------- |
-| `test_annotate_branch_mutations_formats_1_based_positions` | Mutations formatted with 1-based positions           |
-| `test_annotate_branch_mutations_empty_partitions`          | Empty partition list produces no mutations           |
-| `test_annotate_branch_mutations_no_mutations_on_edge`      | Edge with no subs produces None                      |
-| `test_annotate_branch_mutations_sorts_by_position`         | Multiple mutations sorted by position                |
-| `test_annotate_branch_mutations_multi_partition_merge`     | Mutations from multiple partitions merged and sorted |
-
-**Test:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs)
-
-| Test                                         | Purpose                                             |
-| -------------------------------------------- | --------------------------------------------------- |
-| `test_from_observed_creates_one_hot_profile` | Observed index creates one-hot profile              |
-| `test_missing_creates_uniform_profile`       | Missing creates uniform profile                     |
-| `test_default_node_data`                     | Default node data has empty profile and zero log_lh |
-| `test_default_edge_data`                     | Default edge data has empty arrays and zero log_lh  |
-
-**Test:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs)
-
-| Test                                                           | Purpose                                                         |
-| -------------------------------------------------------------- | --------------------------------------------------------------- |
-| `test_timetree_annotate_branch_mutations_populates_base_field` | annotate_branch_mutations writes to NodeTimetree.base.mutations |
-| `test_timetree_nwk_comments_include_mutations_and_date`        | nwk_comments includes both mutations and date annotations       |
-| `test_timetree_nexus_output_includes_mutations_and_date`       | Nexus serialization carries mutations and date annotations      |
 
 ### Commands: Prune
 

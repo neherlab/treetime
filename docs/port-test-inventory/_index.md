@@ -11,7 +11,8 @@
 | [Clock Inference](clock.md)                | Regression, date constraints, rerooting, best root, filtering, pipeline                                                   |
 | [Mugration](mugration.md)                  | Discrete marginal, golden master, iterative refinement, confidence                                                        |
 | [Distribution Operations](distribution.md) | Core, multiply, divide, convolve, negation, scalar, bounds, scaled, Gaussian, quantile                                    |
-| [Supporting Crates](supporting.md)         | BitSet128, Alphabet, FASTA, Newick, sequence ops, graph, representation, prune, CLI convert                               |
+| [Representation](representation.md)        | Substitution composition, normalization, discrete states, topology cleanup, payloads                                      |
+| [Supporting Crates](supporting.md)         | BitSet128, Alphabet, FASTA, Newick, sequence ops, graph, prune, CLI convert                                               |
 | [Validation & Smoke](validation.md)        | CLI smoke tests, timetree/coalescent validation examples, metrics                                                         |
 
 ---

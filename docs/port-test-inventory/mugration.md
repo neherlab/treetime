@@ -4,15 +4,15 @@
 
 ## Summary
 
-| Category                                              | Type          |
-| ----------------------------------------------------- | ------------- |
-| [Golden master (v0 parity)](#golden-master-v0-parity) | Golden-master |
-| [Structural / unit](#structural--unit)                | Unit          |
-| [Algorithm invariants](#algorithm-invariants)         | Unit          |
-| [Discrete marginal](#discrete-marginal)               | Unit          |
-| [Comment output](#comment-output)                     | Unit          |
-| [Brent optimizer](#brent-optimizer)                   | Unit          |
-| [Partition / discrete](#partition--discrete)          | Unit          |
+| Category                                                        | Type                                           |
+| --------------------------------------------------------------- | ---------------------------------------------- |
+| [Golden master (v0 parity)](#golden-master-v0-parity)           | Golden-master                                  |
+| [Structural / unit](#structural--unit)                          | Unit                                           |
+| [Algorithm invariants](#algorithm-invariants)                   | Unit                                           |
+| [Discrete marginal](#discrete-marginal)                         | Unit                                           |
+| [Comment output](#comment-output)                               | Unit                                           |
+| [Brent optimizer](#brent-optimizer)                             | Unit                                           |
+| [Partition / discrete](representation.md#normalize-discrete-1d) | Unit (see [Representation](representation.md)) |
 
 ---
 
@@ -121,18 +121,4 @@
 
 ## Partition / Discrete
 
-**Test:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs)
-
-| Test                                                   | Purpose                                     |
-| ------------------------------------------------------ | ------------------------------------------- |
-| `test_new_partition`                                   | Constructor defaults                        |
-| `test_get_reconstructed_trait`                         | Argmax state extraction                     |
-| `test_get_confidence`                                  | Confidence profile access                   |
-| `test_get_log_lh`                                      | Log-likelihood access                       |
-| `test_argmax_first_1d`                                 | Deterministic tie-breaking                  |
-| `test_normalize_inplace_1d_zero_sum_returns_error`     | Zero-sum normalization returns error        |
-| `test_normalize_from_log_1d_all_neg_inf_returns_error` | All-neg-inf log normalization returns error |
-| `test_normalize_inplace_1d_valid_input`                | Valid normalization sums to 1               |
-| `test_normalize_from_log_1d_valid_input`               | Valid log normalization sums to 1           |
+Moved to [Representation Tests: Normalize (Discrete 1D)](representation.md#normalize-discrete-1d).
