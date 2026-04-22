@@ -104,6 +104,7 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 - Pros: eliminates feedback between total BL and indel rate in the stable regime
 - Cons: changes the optimization objective. Under the current model, $\hat{\mu}$ is defined from current branch lengths and varies between iterations. Caching freezes it, optimizing under a different (fixed-rate) model. In practice the rate converges along with branch lengths, so the fixed-rate model is accurate at convergence. But the path to convergence differs.
 - Note: this is a model change, not neutral hardening.
+- Rejected storage location: storing the indel rate on the GTR struct (suggested as a way to make it visible during marginal passes) conflates the substitution model with the indel counting process. The GTR struct parameterizes a Markov chain (rate matrix, equilibrium frequencies, eigendecomposition); the indel rate parameterizes an independent Poisson process on branch lengths. A partition-level field or dedicated `IndelModel` struct is preferable if persistence is needed.
 
 **P5. SQUAREM acceleration.** Replace exponential damping with squared polynomial extrapolation (Varadhan and Roland 2008).
 
