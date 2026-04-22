@@ -12,7 +12,7 @@ use treetime_primitives::AsciiChar;
 use treetime_utils::error::to_eyre_error;
 
 static NUC_MUT_RE: LazyLock<Regex> = LazyLock::new(|| {
-  Regex::new(r"((?P<ref>[A-Z-])(?P<pos>\d{1,10})(?P<qry>[A-Z-]))").expect("NUC_MUT_RE regex compilation")
+  Regex::new(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").expect("NUC_MUT_RE regex compilation")
 });
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
@@ -135,7 +135,7 @@ impl FromStr for Sub {
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
           let qry = AsciiChar::try_new(qry.as_str().bytes().next().unwrap())
             .wrap_err_with(|| format!("When parsing qry character in '{s}'"))?;
-          Ok(Self { pos, qry, reff })
+          Sub::new(reff, pos, qry)
         },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
       };
