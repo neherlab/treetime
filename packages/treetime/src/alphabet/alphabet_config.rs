@@ -139,7 +139,7 @@ impl AlphabetConfig {
       return make_error!("Ambiguous set contains 'gap' character: {msg}");
     }
 
-    if ambiguous_keys.contains(*gap) {
+    if ambiguous_keys.contains(*unknown) {
       let msg = ambiguous.keys().map(quote).join(", ");
       return make_error!("Ambiguous set contains 'unknown' character: {msg}");
     }
