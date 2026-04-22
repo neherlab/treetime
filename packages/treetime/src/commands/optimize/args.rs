@@ -109,15 +109,17 @@ pub struct TreetimeOptimizeArgs {
 
   /// GTR model to use
   ///
-  /// '--model infer' will infer a model from the data.
-  ///
-  /// TODO: Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
+  /// '--model infer' will infer a model from the data. Alternatively, specify the model
+  /// type. If the specified model requires additional options, use '--gtr-params' to
+  /// specify those.
   #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
   pub model_name: GtrModelName,
 
-  /// Use dense representation of sequences on the tree, useful if branches are long.
+  /// Use dense representation of sequences on the tree
   ///
-  /// TODO: explain this better
+  /// Dense mode stores full probability vectors at every alignment position for each
+  /// node. Sparse mode stores only variable positions. Dense is more accurate when
+  /// branches are long and many sites change, but uses more memory.
   #[clap(long)]
   pub dense: Option<bool>,
 
