@@ -97,6 +97,7 @@ exactly.
 | Medium     | Timetree     | [Skyline coalescent uses Nelder-Mead instead of SLSQP](M-timetree-skyline-nelder-mead-optimizer.md)                                   |
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                         |
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                  |
+| Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                     |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                 |
 | Negligible | Clock        | [assign_dates fails for small trees](N-clock-small-trees.md)                                                                          |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                       |

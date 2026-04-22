@@ -81,22 +81,19 @@ impl PartitionMarginalSparse {
   /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
   /// sequences saves memory and removes stale data that would otherwise persist
   /// across reroots.
-  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>)
+  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
   where
     N: GraphNode,
     E: GraphEdge,
   {
-    let root_key = graph
-      .get_exactly_one_root()
-      .expect("Tree must have exactly one root")
-      .read_arc()
-      .key();
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
     self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
     for (key, node_data) in &mut self.nodes {
       if *key != root_key && !graph.is_leaf(*key) {
         node_data.seq.sequence = seq![];
       }
     }
+    Ok(())
   }
 
   /// Return positions that can change the reconstructed mutation set for one edge.
@@ -159,9 +156,11 @@ impl PartitionMarginalSparse {
 
     let node_data = self.nodes.get(&node_key);
 
-    // Compute base state from tree structure.
-    // Root must have partition data (populated by Fitch compression).
-    // Non-root nodes may be absent during topology changes.
+    debug_assert!(
+      !self.root_sequence.is_empty(),
+      "root_sequence is empty: call extract_root_sequence() after compress_sequences()"
+    );
+
     let base_state = match graph.node_parent(node_key)? {
       None => self
         .root_sequence
@@ -239,10 +238,12 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         .insert(info.parent_side_edge_key, SparseEdgePartition::default());
     }
 
-    // Handle edge merge: compose mutations from two edges
+    // Handle edge merge: compose mutations from two edges.
+    // When the removed node is the old root (trivial root removal), update
+    // root_sequence using the parent_edge subs before discarding them.
+    // The parent_edge goes from the new-root side toward the removed node:
+    // sub.reff() = new-root-side state, sub.qry() = removed-node state.
     if let Some(info) = &changes.edge_merge {
-      self.nodes.remove(&info.removed_node_key);
-
       let parent_edge = self
         .edges
         .remove(&info.parent_edge_key)
@@ -252,10 +253,27 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         .remove(&info.child_edge_key)
         .ok_or_else(|| make_internal_report!("Child edge {:?} must exist for merge", info.child_edge_key))?;
 
-      // Compose substitutions: parent then child
+      if changes.inverted_edge_keys.is_empty() {
+        for sub in &parent_edge.subs {
+          if sub.pos() < self.root_sequence.len() {
+            self.root_sequence[sub.pos()] = sub.reff();
+          }
+        }
+        for indel in &parent_edge.indels {
+          if indel.range.0 < self.root_sequence.len() && indel.range.1 <= self.root_sequence.len() {
+            if indel.deletion {
+              self.root_sequence[indel.range.0..indel.range.1].fill(self.alphabet.gap());
+            } else {
+              self.root_sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+            }
+          }
+        }
+      }
+
+      self.nodes.remove(&info.removed_node_key);
+
       let merged_subs = compose_substitutions(&parent_edge.subs, &child_edge.subs)?;
 
-      // Compose indels: concatenate (parent indels first, then child indels)
       let mut merged_indels = parent_edge.indels;
       merged_indels.extend(child_edge.indels);
 

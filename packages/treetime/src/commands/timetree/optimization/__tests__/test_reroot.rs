@@ -101,7 +101,7 @@ mod tests {
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
     for p in &partitions_for_compress {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
 
     let clock_params = ClockParams::default();
@@ -364,6 +364,156 @@ mod tests {
   }
 
   #[test]
+  fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let gtr = jc69(JC69Params::default())?;
+
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let edge_to_a_key = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        e.source() == root_key && e.target() == a_key
+      })
+      .map(|e| e.read_arc().key())
+      .ok_or_else(|| make_report!("Edge to A not found"))?;
+
+    let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
+    let indel = InDel::del((2, 4), seq![c(b'G'), c(b'T')]);
+
+    let mut sparse_partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 8,
+      root_sequence: root_seq.clone(),
+      nodes: btreemap! {
+        root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![c(b'A'); 8], &alphabet)?,
+      },
+      edges: btreemap! {
+        edge_to_a_key => SparseEdgePartition {
+          subs: vec![],
+          indels: vec![indel],
+          msg_to_parent: MarginalSparseSeqDistribution::default(),
+          msg_to_child: MarginalSparseSeqDistribution::default(),
+          msg_from_child: MarginalSparseSeqDistribution::default(),
+          transmission: None,
+        },
+      },
+    };
+
+    let changes = RerootChanges {
+      inverted_edge_keys: vec![edge_to_a_key],
+      ..RerootChanges::default()
+    };
+
+    sparse_partition.apply_reroot(&changes)?;
+
+    // Original: root has "ACGTACGT", edge to A has deletion at [2,4) (G,T -> gap).
+    // After inversion the indel becomes an insertion. Going from old root to new
+    // root in original direction, the child had gaps at [2,4).
+    let mut expected = root_seq;
+    expected[2] = alphabet.gap();
+    expected[3] = alphabet.gap();
+    assert_eq!(
+      sparse_partition.root_sequence, expected,
+      "root_sequence should have gaps at positions 2-3 after indel-based reroot"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
+    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let gtr = jc69(JC69Params::default())?;
+
+    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
+    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("AB not found"))?;
+    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+
+    let edge_root_ab = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        e.source() == root_key && e.target() == ab_key
+      })
+      .map(|e| e.read_arc().key())
+      .ok_or_else(|| make_report!("Edge root->AB not found"))?;
+    let edge_ab_a = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        e.source() == ab_key && e.target() == a_key
+      })
+      .map(|e| e.read_arc().key())
+      .ok_or_else(|| make_report!("Edge AB->A not found"))?;
+
+    let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
+    let sub1 = Sub::new(c(b'A'), 0_usize, c(b'G'))?; // root->AB: A0G
+    let sub2 = Sub::new(c(b'G'), 0_usize, c(b'T'))?; // AB->A: G0T (cumulative at pos 0)
+    let sub3 = Sub::new(c(b'C'), 1_usize, c(b'A'))?; // AB->A: C1A
+
+    let mut sparse_partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 8,
+      root_sequence: root_seq.clone(),
+      nodes: btreemap! {
+        root_key => SparseNodePartition::new(&root_seq, &alphabet)?,
+        ab_key => SparseNodePartition::new(&seq![c(b'A'); 8], &alphabet)?,
+        a_key => SparseNodePartition::new(&seq![c(b'A'); 8], &alphabet)?,
+      },
+      edges: btreemap! {
+        edge_root_ab => SparseEdgePartition {
+          subs: vec![sub1],
+          indels: vec![],
+          msg_to_parent: MarginalSparseSeqDistribution::default(),
+          msg_to_child: MarginalSparseSeqDistribution::default(),
+          msg_from_child: MarginalSparseSeqDistribution::default(),
+          transmission: None,
+        },
+        edge_ab_a => SparseEdgePartition {
+          subs: vec![sub2, sub3],
+          indels: vec![],
+          msg_to_parent: MarginalSparseSeqDistribution::default(),
+          msg_to_child: MarginalSparseSeqDistribution::default(),
+          msg_from_child: MarginalSparseSeqDistribution::default(),
+          transmission: None,
+        },
+      },
+    };
+
+    // Reroot from root through AB to A: two inverted edges
+    let changes = RerootChanges {
+      inverted_edge_keys: vec![edge_root_ab, edge_ab_a],
+      ..RerootChanges::default()
+    };
+
+    sparse_partition.apply_reroot(&changes)?;
+
+    // Original path: root(ACGTACGT) -> AB (pos0: A->G) -> A (pos0: G->T, pos1: C->A)
+    // New root = A: pos0 = T, pos1 = A, rest unchanged from root
+    let mut expected = root_seq;
+    expected[0] = c(b'T');
+    expected[1] = c(b'A');
+    assert_eq!(
+      sparse_partition.root_sequence, expected,
+      "root_sequence should reflect cumulative subs across multi-hop reroot"
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn test_reroot_tree_sparse_flow_does_not_panic() -> Result<(), Report> {
     // Regression test: verify reroot_tree completes without panicking
     // when keep_root=false (reroot enabled) with sparse partitions
@@ -390,7 +540,7 @@ mod tests {
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
     for p in &partitions_for_compress {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
 
     let clock_params = ClockParams::default();

@@ -117,7 +117,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         if !partitions_marginal_sparse.is_empty() {
           compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
           for partition in &partitions_marginal_sparse {
-            partition.write_arc().extract_root_sequence(&graph);
+            partition.write_arc().extract_root_sequence(&graph)?;
           }
 
           // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr

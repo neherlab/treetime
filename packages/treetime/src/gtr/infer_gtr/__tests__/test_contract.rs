@@ -77,6 +77,7 @@ mod tests {
       root_sequence: seq![],
     }));
     compress_sequences(&graph, std::slice::from_ref(&partition), aln)?;
+    partition.write_arc().extract_root_sequence(&graph)?;
     update_marginal(&graph, std::slice::from_ref(&partition))?;
     Ok((graph, partition))
   }

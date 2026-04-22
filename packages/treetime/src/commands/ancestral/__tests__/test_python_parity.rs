@@ -527,6 +527,7 @@ mod tests {
     }));
 
     compress_sequences(&graph, std::slice::from_ref(&sparse_partition), &aln)?;
+    sparse_partition.write_arc().extract_root_sequence(&graph)?;
     let sparse_log_lh = update_marginal(&graph, std::slice::from_ref(&sparse_partition))?;
 
     // Log-likelihoods should match for clean sequences
