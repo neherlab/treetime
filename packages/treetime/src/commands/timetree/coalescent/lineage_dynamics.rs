@@ -5,6 +5,7 @@ use itertools::Itertools;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
+use std::iter::once;
 use treetime_utils::make_error;
 
 /// Computes k(t) distribution from tree events in TBP coordinates.
@@ -35,7 +36,7 @@ pub fn compute_lineage_count_distribution(events: &[(Tbp, i32)]) -> Result<Piece
     .unzip();
 
   let breakpoints = Array1::from_vec(breakpoints);
-  let values = std::iter::once(0.0).chain(values).collect_vec();
+  let values = once(0.0).chain(values).collect_vec();
   let values = Array1::from_vec(values);
 
   Ok(PiecewiseConstantFn::new(breakpoints, values))

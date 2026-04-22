@@ -3,6 +3,7 @@ use crate::testing::framework::test_case::TestCase;
 use crate::testing::plots::utils::expand_range;
 use eyre::Report;
 use plotters::prelude::*;
+use std::iter::once;
 
 pub fn plot_spatial_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
@@ -79,7 +80,7 @@ where
         .map(|(&x, &y)| (x, y)),
       GREEN.stroke_width(2),
     ))?;
-    chart.draw_series(std::iter::once(PathElement::new(
+    chart.draw_series(once(PathElement::new(
       vec![(x_min, 0.0), (x_max, 0.0)],
       BLACK.stroke_width(1),
     )))?;

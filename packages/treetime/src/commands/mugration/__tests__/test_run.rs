@@ -8,6 +8,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::IndexSet;
+  use std::iter::once;
   use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::array;
@@ -20,7 +21,7 @@ mod tests {
     let unique_values: IndexSet<String> = [o!("usa"), o!("germany"), o!("france"), o!("italy")]
       .into_iter()
       .collect();
-    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let weights_keys: IndexSet<String> = once(o!("usa")).collect();
     let missing_data = "?";
     let threshold = 0.5;
 
@@ -34,12 +35,12 @@ mod tests {
   #[test]
   fn test_run_validate_weight_coverage_accepts_at_threshold() {
     let unique_values: IndexSet<String> = [o!("usa"), o!("germany")].into_iter().collect();
-    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let weights_keys: IndexSet<String> = once(o!("usa")).collect();
     let missing_data = "?";
     let threshold = 0.5;
 
     let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
-    let expected_missing: IndexSet<String> = std::iter::once(o!("germany")).collect();
+    let expected_missing: IndexSet<String> = once(o!("germany")).collect();
     assert_eq!(expected_missing, coverage.missing_values);
     assert_abs_diff_eq!(0.5, coverage.missing_ratio, epsilon = 1e-10);
   }
@@ -47,7 +48,7 @@ mod tests {
   #[test]
   fn test_run_validate_weight_coverage_excludes_missing_data_marker() {
     let unique_values: IndexSet<String> = [o!("usa"), o!("?")].into_iter().collect();
-    let weights_keys: IndexSet<String> = std::iter::once(o!("usa")).collect();
+    let weights_keys: IndexSet<String> = once(o!("usa")).collect();
     let missing_data = "?";
     let threshold = 0.5;
 
