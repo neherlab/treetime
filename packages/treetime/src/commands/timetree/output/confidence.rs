@@ -14,6 +14,7 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
+use std::f64::consts::SQRT_2;
 use std::path::Path;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -336,7 +337,7 @@ pub(crate) fn quantile_to_zscore(p: f64) -> f64 {
   if p * (1.0 - p) == 0.0 {
     return 0.0;
   }
-  std::f64::consts::SQRT_2 * erf_inv(2.0 * p - 1.0)
+  SQRT_2 * erf_inv(2.0 * p - 1.0)
 }
 
 /// Save per-edge gamma values for later restoration.
