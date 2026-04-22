@@ -11,7 +11,7 @@ mod tests {
   use crate::commands::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::commands::optimize::optimize_unified::{
     OptimizationContribution, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best,
-    is_zero_branch_optimal, run_optimize_mixed,
+    is_zero_branch_optimal, run_optimize_mixed, run_optimize_mixed_with_indel_rate,
   };
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -168,6 +168,88 @@ mod tests {
       .sum();
 
     assert_abs_diff_eq!(total_lh, expected_total_lh, epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_indel_total_log_lh_zero_branch_length_with_indels_is_neg_infinity() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+    graph.get_edges()[0]
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(0.0));
+
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+
+    assert!(total_lh.is_infinite() && total_lh.is_sign_negative());
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_indel_total_log_lh_zero_branch_length_without_indels_is_finite() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    graph.get_edges()[0]
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(0.0));
+
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+
+    assert!(total_lh.is_finite(), "Expected finite total indel LH, got {total_lh}");
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_indel_run_optimize_mixed_with_fixed_rate_uses_supplied_indel_rate() -> Result<(), Report> {
+    let graph_low: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions_low, sparse_partitions_low, mixed_partitions_low) = setup_identical_partitions(&graph_low)?;
+    let graph_high: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions_high, sparse_partitions_high, mixed_partitions_high) =
+      setup_identical_partitions(&graph_high)?;
+
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    inject_indels_on_first_edge(&graph_low, &dense_partitions_low, &sparse_partitions_low, &indels);
+    inject_indels_on_first_edge(&graph_high, &dense_partitions_high, &sparse_partitions_high, &indels);
+
+    for edge_ref in graph_low.get_edges() {
+      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+    }
+    for edge_ref in graph_high.get_edges() {
+      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+    }
+
+    run_optimize_mixed_with_indel_rate(&graph_low, &mixed_partitions_low, BranchOptMethod::Newton, 1.0)?;
+    run_optimize_mixed_with_indel_rate(&graph_high, &mixed_partitions_high, BranchOptMethod::Newton, 8.0)?;
+
+    let optimized_bl_low = graph_low.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+    let optimized_bl_high = graph_high.get_edges()[0]
+      .read_arc()
+      .payload()
+      .read_arc()
+      .branch_length()
+      .unwrap();
+
+    assert!(
+      optimized_bl_low > optimized_bl_high,
+      "Expected larger supplied indel rate to shrink the optimized branch length, got low-rate={optimized_bl_low} high-rate={optimized_bl_high}"
+    );
     Ok(())
   }
 
