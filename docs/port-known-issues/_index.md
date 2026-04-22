@@ -113,6 +113,7 @@ exactly.
 | Negligible | Optimize     | [Grid search upper bound caps at 0.5 subs/site](N-optimize-grid-search-upper-bound-capped.md)                                         |
 | Negligible | Optimize     | [`reconcile_zero_boundary` grid extent argument is unverified](N-optimize-reconcile-grid-extent-unverified.md)                        |
 | Negligible | Optimize     | [Optimize pre-step uses default Brent tolerance instead of v0's coarse tolerance](N-optimize-pre-step-coarse-tolerance.md)            |
+| Negligible | Optimize     | [Optimize writes gtr.json before rate normalization](N-optimize-gtr-json-before-normalization.md)                                     |
 | Negligible | Timetree     | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                               |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                            |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                            |
