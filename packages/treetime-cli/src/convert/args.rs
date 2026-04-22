@@ -77,7 +77,7 @@ pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<Tre
     Some("graph.json") => Some(TreeFormat::PhyloGraph),
     Some("mat.json") => Some(TreeFormat::MatPb),
     Some("mat.pb") => Some(TreeFormat::MatPb),
-    Some("nex | nexus") => Some(TreeFormat::Nexus),
+    Some("nex" | "nexus") => Some(TreeFormat::Nexus),
     Some("nwk" | "newick") => Some(TreeFormat::Newick),
     Some("phylo.xml") => Some(TreeFormat::Phyloxml),
     _ => None,
