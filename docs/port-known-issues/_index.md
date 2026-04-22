@@ -59,7 +59,6 @@ exactly.
 | High       | Clock        | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                 |
 | High       | Clock        | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                             |
 | High       | Homoplasy    | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                            |
-| High       | Optimize     | [Optimize loop likelihood excludes indel term](H-optimize-loop-lh-excludes-indel.md)                                                  |
 | High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                    |
 | High       | Timetree     | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)            |
 | High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                        |
