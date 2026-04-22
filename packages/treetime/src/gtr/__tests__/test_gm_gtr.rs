@@ -7,6 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use eyre::Report;
   use rstest::rstest;
+  use std::fs::read_to_string;
 
   use helpers::{compare_gtr, load_gm_gtr_inputs, load_gm_gtr_outputs};
 
@@ -274,7 +275,7 @@ mod tests {
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
+      let content = read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 
@@ -283,7 +284,7 @@ mod tests {
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
+      let content = read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 

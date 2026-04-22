@@ -5,8 +5,8 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::prelude::*;
-
   use rstest::rstest;
+  use std::fs::read_to_string;
 
   use crate::gtr::__tests__::site_specific_support::{simulate_counts, value_to_array2, value_to_array3};
   use helpers::{load_gm_inputs, load_gm_outputs};
@@ -263,7 +263,7 @@ mod tests {
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_inputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
+      let content = read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
 
@@ -272,7 +272,7 @@ mod tests {
         "{}/src/gtr/__tests__/__fixtures__/gm_gtr_site_specific_outputs.json",
         env!("CARGO_MANIFEST_DIR")
       );
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
+      let content = read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read: {path}"));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {path}: {e}"))
     }
   }

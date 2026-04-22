@@ -185,6 +185,7 @@ mod tests {
     use parking_lot::RwLock;
     use serde::Deserialize;
     use std::collections::BTreeMap;
+    use std::fs::read_to_string;
     use std::path::Path;
     use std::sync::Arc;
     use treetime_io::fasta::read_many_fasta;
@@ -214,14 +215,14 @@ mod tests {
     pub fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {
       let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/commands/optimize/__tests__/__fixtures__/gm_optimize_inputs.json");
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
+      let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
     pub fn load_gm_outputs() -> BTreeMap<String, GmOptimizeExpected> {
       let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/commands/optimize/__tests__/__fixtures__/gm_optimize_outputs.json");
-      let content = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
+      let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
       serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 

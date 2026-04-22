@@ -3,6 +3,7 @@ mod tests {
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::Report;
+  use std::fs::read_to_string;
   use std::path::PathBuf;
 
   #[test]
@@ -25,7 +26,7 @@ mod tests {
     run_timetree_estimation(&args)?;
 
     // Verify tracelog was written and contains data
-    let csv_content = std::fs::read_to_string(&tracelog_path)?;
+    let csv_content = read_to_string(&tracelog_path)?;
     let lines: Vec<&str> = csv_content.lines().collect();
     assert!(lines.len() >= 2, "Tracelog must have header + at least 1 data row");
 
