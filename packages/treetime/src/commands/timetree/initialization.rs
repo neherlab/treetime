@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::get_common_length;
+use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::update_marginal;
 use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
@@ -112,7 +112,7 @@ pub fn initialize_partitions(
       edges: btreemap! {},
     }));
 
-    crate::commands::ancestral::fitch::compress_sequences(graph, from_ref(&sparse_partition), aln_data)?;
+    compress_sequences(graph, from_ref(&sparse_partition), aln_data)?;
 
     // For Infer: Fitch compression populated mutation counts, infer real GTR
     if model_name == GtrModelName::Infer {

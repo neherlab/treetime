@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use Value;
 use std::collections::BTreeMap;
 
 /// (Incomplete) representation of PhyloXML format, according to schema at http://www.phyloxml.org/1.20/phyloxml.xsd
@@ -6,7 +7,7 @@ use std::collections::BTreeMap;
 pub struct Phyloxml {
   pub phylogeny: Vec<PhyloxmlPhylogeny>,
   #[serde(flatten)]
-  pub other: BTreeMap<String, serde_json::Value>,
+  pub other: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,7 +40,7 @@ pub struct PhyloxmlPhylogeny {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub property: Vec<PhyloxmlProperty>,
   #[serde(flatten)]
-  pub other: BTreeMap<String, serde_json::Value>,
+  pub other: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,7 +80,7 @@ pub struct PhyloxmlClade {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub clade: Vec<PhyloxmlClade>,
   #[serde(flatten)]
-  pub other: BTreeMap<String, serde_json::Value>,
+  pub other: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,7 +102,7 @@ pub struct PhyloxmlTaxonomy {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub uri: Option<PhyloxmlUri>,
   #[serde(flatten)]
-  pub other: BTreeMap<String, serde_json::Value>,
+  pub other: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -123,7 +124,7 @@ pub struct PhyloxmlSequence {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub domain_architecture: Option<PhyloxmlDomainArchitecture>,
   #[serde(flatten)]
-  pub other: BTreeMap<String, serde_json::Value>,
+  pub other: BTreeMap<String, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

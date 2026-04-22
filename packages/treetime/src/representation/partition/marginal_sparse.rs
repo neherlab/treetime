@@ -14,7 +14,7 @@ use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, Spar
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -405,9 +405,9 @@ where
   E: EdgeOptimizeOps,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
-    let graph_node_keys: std::collections::BTreeSet<GraphNodeKey> =
+    let graph_node_keys: BTreeSet<GraphNodeKey> =
       graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
-    let graph_edge_keys: std::collections::BTreeSet<GraphEdgeKey> =
+    let graph_edge_keys: BTreeSet<GraphEdgeKey> =
       graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
     // Add missing nodes with empty partition data

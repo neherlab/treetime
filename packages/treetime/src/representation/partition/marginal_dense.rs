@@ -13,7 +13,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -147,9 +147,9 @@ where
   E: EdgeOptimizeOps,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
-    let graph_node_keys: std::collections::BTreeSet<GraphNodeKey> =
+    let graph_node_keys: BTreeSet<GraphNodeKey> =
       graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
-    let graph_edge_keys: std::collections::BTreeSet<GraphEdgeKey> =
+    let graph_edge_keys: BTreeSet<GraphEdgeKey> =
       graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
     // Add missing nodes with default partition data (backward pass will recompute)
