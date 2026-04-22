@@ -18,17 +18,17 @@ pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
     },
     Distribution::Point(p) => {
       let amplitude = Y::multiply(p.amplitude(), Y::from_plain(scalar));
-      Ok(Distribution::point(p.t(), amplitude)) //
+      Ok(Distribution::point(p.t(), amplitude))
     },
     Distribution::Range(r) => {
       let amplitude = Y::multiply(r.amplitude(), Y::from_plain(scalar));
-      Ok(Distribution::range((r.start(), r.end()), amplitude)) //
+      Ok(Distribution::range((r.start(), r.end()), amplitude))
     },
     Distribution::Empty => {
-      Ok(Distribution::empty()) //
+      Ok(Distribution::empty())
     },
     Distribution::Formula(_) => {
-      panic!("Scalar multiplication not implemented for Formula distributions") //
+      panic!("Scalar multiplication not implemented for Formula distributions")
     },
   }
 }
