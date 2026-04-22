@@ -17,7 +17,7 @@ pub use treetime_io;
 pub use treetime_primitives;
 pub use treetime_utils::{
   make_error, make_internal_error, make_internal_report, make_report, o, pretty_assert_abs_diff_eq,
-  pretty_assert_ulps_eq, vec_of_owned, vec_u8,
+  pretty_assert_neg_inf, pretty_assert_ulps_eq, vec_of_owned, vec_u8,
 };
 
 #[cfg(test)]

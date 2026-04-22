@@ -97,6 +97,7 @@ Test assertion macros wrapping `pretty_assertions` and `approx`:
 - `pretty_assert_eq!()` - formatted equality assertion with newline normalization
 - `pretty_assert_ulps_eq!()` - ULP-based float comparison with pretty diff output
 - `pretty_assert_abs_diff_eq!()` - absolute difference float comparison
+- `pretty_assert_neg_inf!()` - exact scalar `f64` negative-infinity assertion without direct float equality
 - `assert_error!()` - assert error message content
 
 ## Memory Allocator

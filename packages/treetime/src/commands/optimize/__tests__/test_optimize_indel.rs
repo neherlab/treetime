@@ -15,6 +15,7 @@ mod tests {
   };
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::pretty_assert_neg_inf;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -188,7 +189,7 @@ mod tests {
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
     let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
 
-    assert!(total_lh.is_infinite() && total_lh.is_sign_negative());
+    pretty_assert_neg_inf!(total_lh);
     Ok(())
   }
 

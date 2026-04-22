@@ -109,12 +109,13 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::pretty_assert_neg_inf;
   use approx::assert_abs_diff_eq;
 
   #[test]
   fn test_optimize_indel_poisson_zero_rate() {
     let metrics = poisson_indel_log_lh(3, 0.0, 0.1);
-    assert!(metrics.log_lh.is_infinite() && metrics.log_lh.is_sign_negative());
+    pretty_assert_neg_inf!(metrics.log_lh);
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.second_derivative, 0.0, epsilon = 1e-15);
   }

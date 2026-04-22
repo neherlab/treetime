@@ -119,6 +119,7 @@ pub fn softmax_with_log_norm(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64)
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::pretty_assert_neg_inf;
   use approx::assert_ulps_eq;
   use ndarray::array;
   use rstest::rstest;
@@ -189,7 +190,7 @@ mod tests {
 
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states as f64);
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
-    assert!(log_norm == NEG_INF, "expected NEG_INFINITY, got {log_norm}");
+    pretty_assert_neg_inf!(log_norm, "expected NEG_INFINITY, got {log_norm}");
   }
 
   /// Equal finite inputs produce exact uniform output.

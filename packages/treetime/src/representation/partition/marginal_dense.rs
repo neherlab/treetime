@@ -424,6 +424,7 @@ fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::pretty_assert_neg_inf;
   use approx::assert_abs_diff_eq;
   use ndarray::array;
 
@@ -472,10 +473,7 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis, Array2::from_elem((1, 4), 0.25), epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
   #[test]
@@ -485,10 +483,7 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis, Array2::from_elem((3, 4), 0.25), epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
   #[test]
@@ -515,10 +510,7 @@ mod tests {
     ];
     assert_abs_diff_eq!(dis.row(1), expected_row1, epsilon = 1e-10);
     // total_log_lh is -inf because one row was degenerate
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
   #[test]
@@ -556,10 +548,7 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis, Array2::from_elem((1, 3), 1.0 / 3.0), epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
   #[test]
@@ -580,10 +569,7 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY for all-zero row, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for all-zero row, got {log_lh}");
   }
 
   #[test]
@@ -597,8 +583,8 @@ mod tests {
     // Normal row is normalized
     assert_abs_diff_eq!(dis.row(1), array![0.2, 0.4, 0.2, 0.2], epsilon = 1e-10);
     // log_lh is NEG_INFINITY because one row was degenerate
-    assert!(
-      log_lh == f64::NEG_INFINITY,
+    pretty_assert_neg_inf!(
+      log_lh,
       "log_lh should be NEG_INFINITY when any row is zero, got {log_lh}"
     );
   }
@@ -610,10 +596,7 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY for NaN row, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for NaN row, got {log_lh}");
   }
 
   #[test]
@@ -623,9 +606,6 @@ mod tests {
 
     assert_valid_rows(&dis);
     assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
-    assert!(
-      log_lh == f64::NEG_INFINITY,
-      "log_lh should be NEG_INFINITY for inf row, got {log_lh}"
-    );
+    pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for inf row, got {log_lh}");
   }
 }

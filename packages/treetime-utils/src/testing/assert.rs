@@ -130,6 +130,29 @@ macro_rules! pretty_assert_abs_diff_eq {
   }};
 }
 
+#[macro_export]
+macro_rules! pretty_assert_neg_inf {
+  ($actual:expr $(,)?) => {{
+    let actual: f64 = $actual;
+    if !$crate::testing::assert::is_neg_inf(actual) {
+      pretty_assertions::assert_eq!(
+        $crate::testing::assert::format_scalar(format!("{actual:#?}")),
+        $crate::testing::assert::format_scalar(format!("{:#?}", f64::NEG_INFINITY)),
+      );
+    }
+  }};
+  ($actual:expr, $msg:literal $(, $arg:expr)* $(,)?) => {{
+    let actual: f64 = $actual;
+    if !$crate::testing::assert::is_neg_inf(actual) {
+      pretty_assertions::assert_eq!(
+        $crate::testing::assert::format_scalar(format!("{actual:#?}")),
+        $crate::testing::assert::format_scalar(format!("{:#?}", f64::NEG_INFINITY)),
+        $msg $(, $arg)*
+      );
+    }
+  }};
+}
+
 /// Replace newlines with NEL (U+0085) to keep multi-line Debug output on one diff line in pretty_assertions.
 pub fn format_newlines(s: impl AsRef<str>) -> String {
   s.as_ref().replace('\n', "\u{0085}")
@@ -137,6 +160,14 @@ pub fn format_newlines(s: impl AsRef<str>) -> String {
 
 pub fn format_array(s: impl AsRef<str>) -> String {
   strip_ndarray_metadata(&format_newlines(s))
+}
+
+pub fn format_scalar(s: impl AsRef<str>) -> String {
+  format_newlines(s)
+}
+
+pub fn is_neg_inf(actual: f64) -> bool {
+  actual.is_infinite() && actual.is_sign_negative()
 }
 
 #[macro_export]
@@ -174,4 +205,54 @@ macro_rules! assert_error {
     let actual_message = $crate::error::report_to_string(&error);
     pretty_assertions::assert_eq!(actual_message, $expected_message);
   }};
+}
+
+#[cfg(test)]
+mod tests {
+  use std::panic::{AssertUnwindSafe, catch_unwind, set_hook, take_hook};
+  use std::sync::{LazyLock, Mutex};
+
+  use crate::testing::assert::is_neg_inf;
+
+  static PANIC_HOOK_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+  #[test]
+  fn test_is_neg_inf_accepts_only_negative_infinity() {
+    assert!(is_neg_inf(f64::NEG_INFINITY));
+    assert!(!is_neg_inf(f64::INFINITY));
+    assert!(!is_neg_inf(f64::NAN));
+    assert!(!is_neg_inf(-1.0));
+    assert!(!is_neg_inf(-0.0));
+    assert!(!is_neg_inf(0.0));
+  }
+
+  #[test]
+  fn test_pretty_assert_neg_inf_accepts_negative_infinity() {
+    let result = catch_unwind(|| pretty_assert_neg_inf!(f64::NEG_INFINITY));
+    result.unwrap();
+  }
+
+  #[test]
+  fn test_pretty_assert_neg_inf_rejects_positive_infinity() {
+    let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::INFINITY));
+    assert!(result.is_err());
+  }
+
+  #[test]
+  fn test_pretty_assert_neg_inf_rejects_nan() {
+    let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::NAN));
+    assert!(result.is_err());
+  }
+
+  fn catch_panic_silent(f: impl FnOnce()) -> std::thread::Result<()> {
+    let _guard = match PANIC_HOOK_LOCK.lock() {
+      Ok(guard) => guard,
+      Err(err) => err.into_inner(),
+    };
+    let original_hook = take_hook();
+    set_hook(Box::new(|_| {}));
+    let result = catch_unwind(AssertUnwindSafe(f));
+    set_hook(original_hook);
+    result
+  }
 }
