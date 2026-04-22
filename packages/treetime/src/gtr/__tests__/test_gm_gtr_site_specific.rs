@@ -6,7 +6,6 @@ mod tests {
   use eyre::Report;
   use ndarray::prelude::*;
   use rstest::rstest;
-  use std::fs::read_to_string;
 
   use crate::gtr::__tests__::site_specific_support::{simulate_counts, value_to_array2, value_to_array3};
   use helpers::{load_gm_inputs, load_gm_outputs};
@@ -209,6 +208,7 @@ mod tests {
   mod helpers {
     use indexmap::IndexMap;
     use serde::Deserialize;
+    use std::fs::read_to_string;
 
     #[derive(Debug, Deserialize)]
     pub struct ExpQtEntry {

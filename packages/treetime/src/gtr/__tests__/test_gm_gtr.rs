@@ -7,7 +7,6 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use eyre::Report;
   use rstest::rstest;
-  use std::fs::read_to_string;
 
   use helpers::{compare_gtr, load_gm_gtr_inputs, load_gm_gtr_outputs};
 
@@ -169,6 +168,7 @@ mod tests {
   mod helpers {
     use crate::gtr::gtr::GTR;
     use approx::assert_abs_diff_eq;
+    use std::fs::read_to_string;
     use indexmap::IndexMap;
     use ndarray::{Array1, Array2};
     use serde::Deserialize;
