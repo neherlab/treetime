@@ -343,7 +343,7 @@ impl PartitionBranchOps for PartitionMarginalSparse {
   }
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    // Return cached marginal subs if available (computed during forward pass)
+    // Return marginal subs if available (computed during forward pass)
     if let Some(edge) = self.edges.get(&edge_key) {
       if let Some(subs) = edge.marginal_subs() {
         return Ok(subs.to_vec());

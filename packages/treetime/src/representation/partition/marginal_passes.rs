@@ -357,7 +357,7 @@ where
     // from parent sequence + edge mutations + variable site MAP states.
     reconstruct_map_sequence(partition, node);
 
-    // Compute and cache marginal subs for parent edges now that child profile is finalized
+    // Compute marginal subs for parent edges now that child profile is finalized
     for (parent_key, edge_key) in &node.parent_keys {
       let marginal_subs = compute_marginal_subs_for_edge(partition, *parent_key, node.key, *edge_key)?;
       if let Some(edge) = partition.edges.get_mut(edge_key) {

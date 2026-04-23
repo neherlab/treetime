@@ -74,7 +74,7 @@ where
 /// Post-marginal consumers (GTR inference, prune, output) should use this
 /// trait instead of reading `SparseEdgePartition.fitch_subs()` directly, which
 /// reflects Fitch parsimony data and becomes stale after marginal inference.
-/// Sparse partitions cache MAP-derived substitutions in `subs_marginal` during
+/// Sparse partitions store MAP-derived substitutions in `subs_marginal` during
 /// the forward pass, making subsequent calls O(1).
 ///
 /// The graph is accepted as `&dyn BranchTopology` so the same partition trait

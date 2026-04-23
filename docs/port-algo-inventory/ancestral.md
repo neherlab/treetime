@@ -122,7 +122,7 @@ Iterates every alignment position (0..L where L = number of rows in the profile 
 
 [`packages/treetime/src/representation/partition/marginal_sparse.rs#L346-L378`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L346-L378)
 
-Returns cached MAP-derived substitutions (`subs_marginal`) when available, falling back to tree-traversal computation otherwise. The cache is populated during the marginal forward pass by `compute_marginal_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). The cache is invalidated automatically by any fitch-sub mutation and by `clear_marginal_subs()` during reroot.
+Returns MAP-derived substitutions (`subs_marginal`) when available, falling back to tree-traversal computation otherwise. The marginal subs are computed during the marginal forward pass by `compute_marginal_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). Marginal subs are cleared automatically by any fitch-sub mutation and by `clear_marginal_subs()` during reroot.
 
 The fallback path iterates candidate positions via `edge_candidate_positions()` and resolves states via `node_state_at()`, which walks from the root applying edge substitutions and indels, then overrides with the variable-site posterior argmax when present.
 
