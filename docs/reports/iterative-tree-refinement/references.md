@@ -46,7 +46,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 21. Gascuel, O. 1997. "BIONJ: An Improved Version of the NJ Algorithm Based on a Simple Model of Sequence Data." _Mol. Biol. Evol._ 14(7):685-695. https://doi.org/10.1093/oxfordjournals.molbev.a025808
 
-22. Griffiths, R. C., and S. Tavare. 1994. "Sampling Theory for Neutral Alleles in a Varying Environment." _Phil. Trans. R. Soc. B_ 344(1310):403-410. https://doi.org/10.1098/rstb.1994.0079
+22. Griffiths, R. C., and S. Tavaré. 1994. "Sampling Theory for Neutral Alleles in a Varying Environment." _Phil. Trans. R. Soc. B_ 344(1310):403-410. https://doi.org/10.1098/rstb.1994.0079
 
 23. Guindon, S., and O. Gascuel. 2003. "A Simple, Fast, and Accurate Algorithm to Estimate Large Phylogenies by Maximum Likelihood." _Syst. Biol._ 52(5):696-704. https://doi.org/10.1080/10635150390235520
 
@@ -122,7 +122,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 59. Swofford, D. L., G. J. Olsen, P. J. Waddell, and D. M. Hillis. 1996. "Phylogenetic Inference." In _Molecular Systematics_, 2nd ed., edited by D. M. Hillis, C. Moritz, and B. K. Mable, 407-514. Sinauer Associates. ISBN 0-87893-282-8. https://books.google.com/books/about/Molecular_Systematics.html?id=W78TAQAAIAAJ
 
-60. Tavare, S. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lect. Math. Life Sci._ 17:57-86. American Mathematical Society. https://doi.org/10.1090/psapm/041
+60. Tavaré, S. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lect. Math. Life Sci._ 17:57-86. American Mathematical Society. No DOI available (pre-DOI publication).
 
 61. Tibshirani, R. 1996. "Regression Shrinkage and Selection Via the Lasso." _JRSS:B_ 58(1):267-288. https://doi.org/10.1111/j.2517-6161.1996.tb02080.x
 

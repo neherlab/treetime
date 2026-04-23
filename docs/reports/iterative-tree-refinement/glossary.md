@@ -192,7 +192,7 @@ Guaranteed to find the global optimum within the grid, but slow compared to Newt
 
 The most general time-reversible [substitution model](#substitution-model) for nucleotides.
 
-Six exchangeability parameters (one per nucleotide pair) and four base frequency parameters (three free). All simpler models ([JC69](#jc69-jukes-cantor), [K2P](#k2p-kimura-2-parameter), [HKY](#hky-hasegawa-kishino-yano)) are special cases with constrained parameters <a id="cite-17"></a>[Tavaré 1986](https://doi.org/10.1090/psapm/041) [[17](#ref-17)]; <a id="cite-12"></a>[Lanave et al. 1984](https://doi.org/10.1007/BF02101990) [[12](#ref-12)].
+Six exchangeability parameters (one per nucleotide pair) and four base frequency parameters (three free). All simpler models ([JC69](#jc69-jukes-cantor), [K2P](#k2p-kimura-2-parameter), [HKY](#hky-hasegawa-kishino-yano)) are special cases with constrained parameters <a id="cite-17"></a>Tavaré 1986 [[17](#ref-17)]; <a id="cite-12"></a>[Lanave et al. 1984](https://doi.org/10.1007/BF02101990) [[12](#ref-12)].
 
 ## Hamming Distance
 
@@ -575,7 +575,7 @@ See [boundary problem](#boundary-problem), [star tree paradox](#star-tree-parado
 14. <a id="ref-14"></a> Saitou, Naruya, and Masatoshi Nei. 1987. "The Neighbor-Joining Method: A New Method for Reconstructing Phylogenetic Trees." _Molecular Biology and Evolution_ 4(4):406-425. https://doi.org/10.1093/oxfordjournals.molbev.a040454 [↩](#cite-14)
 15. <a id="ref-15"></a> Self, Steven G., and Kung-Yee Liang. 1987. "Asymptotic Properties of Maximum Likelihood Estimators and Likelihood Ratio Tests Under Nonstandard Conditions." _Journal of the American Statistical Association_ 82(398):605-610. https://doi.org/10.1080/01621459.1987.10478472 [↩](#cite-15)
 16. <a id="ref-16"></a> Steel, Mike, and David Penny. 2000. "Parsimony, Likelihood, and the Role of Models in Molecular Phylogenetics." _Molecular Biology and Evolution_ 17(6):839-850. https://doi.org/10.1093/oxfordjournals.molbev.a026364 [↩](#cite-16)
-17. <a id="ref-17"></a> Tavaré, Simon. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86. https://doi.org/10.1090/psapm/041 [↩](#cite-17)
+17. <a id="ref-17"></a> Tavaré, Simon. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86. No DOI available (pre-DOI publication). [↩](#cite-17)
 18. <a id="ref-18"></a> Tibshirani, Robert. 1996. "Regression Shrinkage and Selection via the Lasso." _Journal of the Royal Statistical Society: Series B_ 58(1):267-288. https://doi.org/10.1111/j.2517-6161.1996.tb02080.x [↩](#cite-18)
 19. <a id="ref-19"></a> Tseng, Paul. 2001. "Convergence of a Block Coordinate Descent Method for Nondifferentiable Minimization." _Journal of Optimization Theory and Applications_ 109(3):475-494. https://doi.org/10.1023/A:1017501703105 [↩](#cite-19)
 20. <a id="ref-20"></a> Young, David M. 1954. "Iterative Methods for Solving Partial Difference Equations of Elliptic Type." _Transactions of the American Mathematical Society_ 76(1):92-111. https://doi.org/10.1090/S0002-9947-1954-0059635-7 [↩](#cite-20)
