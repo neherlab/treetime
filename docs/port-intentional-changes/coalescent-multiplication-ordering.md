@@ -124,4 +124,4 @@ The v1 grid strategy (uniform grid with max points) was chosen for simplicity an
 - Kingman, J.F.C. (1982). "The coalescent." Stochastic Processes and their Applications 13(3): 235-248. doi:10.1016/0304-4149(82)90011-4
 - Sagulenko, P., Puller, V., Neher, R.A. (2018). "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution 4(1): vex042. doi:10.1093/ve/vex042
 - Wakeley, J. (2009). "Coalescent Theory: An Introduction." Roberts & Company Publishers. ISBN 978-0-9747077-5-4
-- Birkner, M., Blath, J. (2014). "Coalescence 2.0: a multiple branching of recent developments." arXiv:1401.5248
+- Tellier, A., Lemaire, C. (2014). "Coalescence 2.0: a multiple branching of recent theoretical developments and their applications." arXiv:1401.5248

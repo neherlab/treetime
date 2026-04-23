@@ -41,7 +41,7 @@ The problem is branch length shrinkage. When jointly optimizing over ancestral s
 
 For certain tree topologies - particularly when one pair of sister branches is long and internal branches are short - the joint method estimates internal branch lengths as exactly zero even with infinite data. This collapses internal resolution, turning a resolved tree into a star tree.
 
-A 2019 follow-up paper (Susko, "Joint Maximum Likelihood of Phylogeny and Ancestral States Is Not Consistent", Molecular Biology and Evolution) strengthened this result: the only parameter values for which joint inference produces correct branch lengths lie in a set of measure zero. The bias is systematic and downward.
+A 2019 follow-up paper (Shaw, Dinh, and Matsen, "Joint Maximum Likelihood of Phylogeny and Ancestral States Is Not Consistent", Molecular Biology and Evolution, doi:10.1093/molbev/msz128) strengthened this result: the only parameter values for which joint inference produces correct branch lengths lie in a set of measure zero. The bias is systematic and downward.
 
 Marginal reconstruction avoids this problem by integrating over ancestral states rather than optimizing them. The classical Felsenstein pruning algorithm computes marginal likelihoods that are statistically consistent for branch length and topology inference.
 

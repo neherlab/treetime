@@ -167,7 +167,7 @@ Collapses internal edges whose optimal length is zero or near-zero, reparenting 
 
 v0: `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
-v1: Not implemented in the optimize loop. The prune command has `--prune-short` and `--prune-empty` as standalone operations. See known issue `M-optimize-no-topology-cleanup-in-loop.md`.
+v1: Not implemented in the optimize loop. The prune command has `--prune-short` and `--prune-empty` as standalone operations.
 
 ---
 
