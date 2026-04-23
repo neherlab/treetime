@@ -193,4 +193,4 @@ v1 code: per-site rate variation is tracked as a known issue (`M-gtr-per-site-ra
 - Lanave, C., G. Preparata, C. Saccone, and G. Serio. 1984. "A New Method for Calculating Evolutionary Substitution Rates." _J. Mol. Evol._ 20:86-93. https://doi.org/10.1007/BF02101990
 - Tavare, S. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lect. Math. Life Sci._ 17:57-86. https://doi.org/10.1090/psapm/041
 - Yang, Z. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates." _J. Mol. Evol._ 39:306-314. https://doi.org/10.1007/BF00160154
-- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1250-1286. https://doi.org/10.1214/16-AAP1240
+- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240

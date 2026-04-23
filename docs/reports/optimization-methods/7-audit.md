@@ -119,4 +119,4 @@ v0 features not in v1 (optimization-related): `optimize_gtr_rate()`, `infer_gtr_
 
 ## References
 
-1. <a id="ref-1"></a> Dinh, Vu, and Frederick A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1250-1286. https://doi.org/10.1214/16-AAP1240 [↩](#cite-1)
+1. <a id="ref-1"></a> Dinh, Vu, and Frederick A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240 [↩](#cite-1)

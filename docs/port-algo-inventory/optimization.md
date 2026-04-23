@@ -118,7 +118,7 @@ v1 defaults: `max_iter=10`, `dp=0.1`, matching v0's `optimize_tree_marginal()`.
 
 v0: uses a signed check (`deltaLH < LHtol`) which conflates convergence with worsening. See [v0 erratum](../port-v0-errata/optimize-signed-convergence-check.md).
 
-Background: the sparse representation classifies alignment positions as variable or fixed each iteration. The discrete reclassification produces a non-monotone objective, violating the EM monotone convergence guarantee (Wu 1983, https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full). See [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) for root cause analysis.
+Background: the sparse representation classifies alignment positions as variable or fixed each iteration. The discrete reclassification produces a non-monotone objective, violating the EM monotone convergence guarantee (Wu 1983, https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full). See M-optimize-sparse-em-2-cycle (resolved) for root cause analysis.
 
 References:
 

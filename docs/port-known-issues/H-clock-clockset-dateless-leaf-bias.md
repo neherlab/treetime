@@ -23,5 +23,5 @@ For dateless leaves (`date == None`), return a zero `ClockSet` (equivalent to `o
 
 ## Related
 
-- [N-clock-small-trees.md](N-clock-small-trees.md): `assign_dates` fails for small trees, which may produce many dateless leaves
+- N-clock-small-trees (resolved): `assign_dates` fails for small trees, which may produce many dateless leaves
 - [M-clock-filter-residual-parity.md](M-clock-filter-residual-parity.md): clock filter residual differences between v0 and v1

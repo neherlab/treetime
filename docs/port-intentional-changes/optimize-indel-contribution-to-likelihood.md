@@ -28,7 +28,7 @@ The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from current b
 
 `run_optimize_loop()` now uses the same per-iteration $\hat{\mu}$ both for the recorded outer-loop likelihood and for `run_optimize_mixed()`. This removes the previous objective mismatch where edge optimization included indels but `LH`, convergence checks, and rollback logic ignored them.
 
-**Update**: investigation of [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) confirmed that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat\mu \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat\mu$ proportionally across all edges. Proposed fix: compute $\hat\mu$ once before the loop and cache it. See [optimize-convergence-and-robustness](../port-proposals/optimize-convergence-and-robustness.md) P4.
+**Update**: investigation of M-optimize-sparse-em-2-cycle (resolved) confirmed that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat\mu \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat\mu$ proportionally across all edges. Proposed fix: compute $\hat\mu$ once before the loop and cache it. See [optimize-convergence-and-robustness](../port-proposals/optimize-convergence-and-robustness.md) P4.
 
 ## Double-counting caveat
 

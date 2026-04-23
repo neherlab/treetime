@@ -128,4 +128,4 @@ The tree likelihood `L(t)` is a function of all branch lengths simultaneously. F
 
 - Felsenstein, J. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _J. Mol. Evol._ 17:368-376. https://doi.org/10.1007/BF01734359
 - Felsenstein, J. 1973. "Maximum Likelihood and Minimum-Steps Methods for Estimating Evolutionary Trees." _Syst. Zool._ 22(3):240-249. https://doi.org/10.2307/2412304
-- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(2):1250-1286. https://doi.org/10.1214/16-AAP1240
+- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240

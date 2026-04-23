@@ -10,7 +10,6 @@ implemented".
 
 ## Related issues
 
-- [--plot-\* argument typed as Option\<usize\>](N-timetree-plot-arg-type.md)
-  the flags also have the wrong type (should be `Option<PathBuf>`)
+- N-timetree-plot-arg-type (resolved): the flags previously had the wrong type (`Option<usize>` instead of `Option<PathBuf>`)
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   `root_to_tip_regression.pdf` and `timetree.pdf` listed as missing outputs

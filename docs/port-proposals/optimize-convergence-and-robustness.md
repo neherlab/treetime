@@ -6,7 +6,7 @@ The `optimize` command alternates marginal ancestral reconstruction (E-step) and
 
 Dense mode operates as true soft-EM: every position stores a full probability vector, the E-step is purely continuous, and the objective is guaranteed non-decreasing per iteration (Dempster, Laird, and Rubin 1977; Wu 1983). Dense mode converges reliably.
 
-Sparse mode introduces an approximation: positions are classified as "variable" (individual posterior) or "fixed" (canonical-state profile bucketed by multiplicity). This classification can change between iterations, producing a discrete jump in the per-edge objective. The sparse loop is therefore not a standard EM and does not have the monotone convergence guarantee. The immediate non-convergence bug is addressed in [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) by making the convergence loop robust to non-monotone behavior (three-condition convergence check, damping floor, v0 defaults).
+Sparse mode introduces an approximation: positions are classified as "variable" (individual posterior) or "fixed" (canonical-state profile bucketed by multiplicity). This classification can change between iterations, producing a discrete jump in the per-edge objective. The sparse loop is therefore not a standard EM and does not have the monotone convergence guarantee. The immediate non-convergence bug is addressed in M-optimize-sparse-em-2-cycle (resolved) by making the convergence loop robust to non-monotone behavior (three-condition convergence check, damping floor, v0 defaults).
 
 This proposal addresses deeper architectural improvements that would eliminate or reduce the sparse approximation error, improve convergence speed, and add per-edge robustness features present in other phylogenetic software.
 
@@ -77,7 +77,7 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 - Implementation: ~30 lines in [representation/partition/marginal_passes.rs](../../packages/treetime/src/representation/partition/marginal_passes.rs). Store previous variable keys per edge. Reinstate previously-variable positions with the canonical-state profile if absent from the new variable map.
 - Pros: eliminates the discrete jump at its source. Minimal performance cost (~14 extra positions out of ~35000).
 - Cons: makes the sparse approximation history-dependent -- which positions are treated individually depends on early iterations, not only on the current posterior. The ~14 oscillating positions are genuinely ambiguous (near-equal posterior for two states), so promoting them to individual evaluation is the more accurate classification. After 1-2 iterations the set stabilizes.
-- Note: this is a model change, not a neutral fix. The immediate bug fix in [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) addresses convergence through loop robustness instead, without changing the sparse model.
+- Note: this is a model change, not a neutral fix. The immediate bug fix in M-optimize-sparse-em-2-cycle (resolved) addresses convergence through loop robustness instead, without changing the sparse model.
 
 **P2. Transparent variable/fixed boundary.** Ensure that a position's eigendecomposition coefficient is numerically identical regardless of whether it is evaluated via the variable path (individual posterior) or the fixed path (bucketed canonical profile).
 
@@ -201,13 +201,13 @@ The optimizer convergence work progressed through three phases:
 
 1. **Initial convergence fixes**: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping was initially considered sufficient.
 
-2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 ([M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../port-v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
+2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../port-v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 
-3. **Immediate fix** ([M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
+3. **Immediate fix** (M-optimize-sparse-em-2-cycle (resolved)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
 
 ## Related
 
-- [M-optimize-sparse-em-2-cycle](../port-known-issues/M-optimize-sparse-em-2-cycle.md) -- the immediate bug fix
+- M-optimize-sparse-em-2-cycle (resolved) -- the immediate bug fix
 - [M-optimize-gm-per-branch-divergence](../port-known-issues/M-optimize-gm-per-branch-divergence.md) -- per-branch v0 parity
 - [M-gtr-sparse-composition-stale-after-marginal](../port-known-issues/M-gtr-sparse-composition-stale-after-marginal.md) -- stale Fitch composition
 - [optimize-signed-convergence-check](../port-v0-errata/optimize-signed-convergence-check.md) -- v0 erratum: signed convergence check

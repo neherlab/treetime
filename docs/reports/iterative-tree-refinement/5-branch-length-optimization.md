@@ -105,7 +105,7 @@ RAxML, IQ-TREE, and PhyML do not compute initial guesses from sequence divergenc
 
 - Felsenstein, J. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _J. Mol. Evol._ 17:368-376. https://doi.org/10.1007/BF01734359
 - Brent, R. P. 1973. _Algorithms for Minimization without Derivatives._ Prentice-Hall. https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf
-- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(2):1250-1286. https://doi.org/10.1214/16-AAP1240
+- Dinh, V. C., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240
 - Nocedal, J., and S. J. Wright. 2006. _Numerical Optimization._ 2nd ed. Springer. https://doi.org/10.1007/978-0-387-40065-5
 - Stamatakis, A. 2014. "RAxML Version 8." _Bioinformatics_ 30(9):1312-1313. https://doi.org/10.1093/bioinformatics/btu033
 - Nguyen, L.-T., H. A. Schmidt, A. von Haeseler, and B. Q. Minh. 2015. "IQ-TREE." _Mol. Biol. Evol._ 32(1):268-274. https://doi.org/10.1093/molbev/msu300
