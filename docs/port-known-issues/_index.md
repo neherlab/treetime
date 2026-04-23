@@ -85,7 +85,6 @@ exactly.
 | Low        | GTR            | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                                          |
 | Low        | Representation | [`infer_dense()` stub always returns false](L-representation-infer-dense-stub.md)                                                                         |
 | Medium     | Optimize       | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                               |
-| Medium     | Optimize       | [Optimize outer loop enters persistent likelihood 2-cycle (sparse)](M-optimize-sparse-em-2-cycle.md) (**fixed**)                                          |
 | Medium     | GTR            | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                                  |
 | Medium     | Timetree       | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                             |
 | Medium     | Timetree       | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                              |
@@ -99,7 +98,6 @@ exactly.
 | Medium     | Timetree       | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                                      |
 | Medium     | Timetree       | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                         |
 | Negligible | Ancestral      | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                                     |
-| Negligible | Clock          | [assign_dates fails for small trees](N-clock-small-trees.md)                                                                                              |
 | Negligible | Core           | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                           |
 | Negligible | Dates          | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                           |
 | Negligible | Distribution   | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                       |
@@ -115,7 +113,6 @@ exactly.
 | Negligible | Optimize       | [Grid search upper bound caps at 0.5 subs/site](N-optimize-grid-search-upper-bound-capped.md)                                                             |
 | Negligible | Optimize       | [`reconcile_zero_boundary` grid extent argument is unverified](N-optimize-reconcile-grid-extent-unverified.md)                                            |
 | Negligible | Optimize       | [Optimize pre-step uses default Brent tolerance instead of v0's coarse tolerance](N-optimize-pre-step-coarse-tolerance.md)                                |
-| Negligible | Optimize       | [Optimize writes gtr.json before rate normalization](N-optimize-gtr-json-before-normalization.md)                                                         |
 | Negligible | Optimize       | [Topology cleanup in optimize loop uses Fitch substitutions instead of marginal MAP substitutions](N-optimize-topology-cleanup-fitch-vs-marginal-subs.md) |
 | Negligible | Timetree       | [--dates not required, misleading error when omitted](N-timetree-dates-not-required.md)                                                                   |
 | Negligible | Timetree       | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                                                |
@@ -126,7 +123,6 @@ exactly.
 | Negligible | Timetree       | [--n-branches-posterior panics with todo!()](N-timetree-n-branches-posterior-unimplemented.md)                                                            |
 | Negligible | Timetree       | [Negative coalescent Tc accepted without validation](N-timetree-negative-coalescent-tc.md)                                                                |
 | Negligible | Timetree       | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                                                     |
-| Negligible | Timetree       | [--plot-rtt and --plot-tree typed as Option\<usize\>](N-timetree-plot-arg-type.md)                                                                        |
 | Negligible | Timetree       | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                                                         |
 | Negligible | Timetree       | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                      |
 | Negligible | Timetree       | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                         |
@@ -140,8 +136,6 @@ exactly.
 | Medium     | Timetree       | [build_branch_distributions is a public todo!() stub](M-timetree-branch-distributions-todo-stub.md)                                                       |
 | Medium     | Timetree       | [resolve_polytomies_with_options ignores merge_compressed parameter](M-timetree-polytomy-merge-compressed-ignored.md)                                     |
 | Medium     | Timetree       | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                               |
-| Medium     | Alphabet       | [AlphabetConfig validation misses unknown-inside-ambiguous check](M-alphabet-validate-unknown-in-ambiguous.md)                                            |
-| Medium     | Ancestral      | [Sparse ancestral does not re-run marginal after GTR inference](M-ancestral-sparse-no-rerun-after-gtr-inference.md)                                       |
 | Medium     | Ancestral      | [Stdin FASTA path reads one record and truncates multi-record alignments](M-ancestral-stdin-fasta-truncation.md)                                          |
 | Medium     | CLI            | [RTT chart gather_points swaps normal and outlier series](M-cli-rtt-chart-partition-inversion.md)                                                         |
 | Medium     | CLI            | [RTT chart aborts clock command on non-TTY output](M-cli-rtt-chart-non-tty-abort.md)                                                                      |
