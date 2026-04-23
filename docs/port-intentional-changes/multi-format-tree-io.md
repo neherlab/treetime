@@ -224,7 +224,7 @@ The `convert` subcommand exposes all eight format adapters as a standalone tool.
 
 <a id="ref-6"></a>[6] Turakhia Y, Thornlow B, Hinrichs AS, De Maio N, Gozashti L, Lanfear R, Haussler D, Corbett-Detig R. "Ultrafast Sample placement on Existing tRees (UShER) enables real-time phylogenetics for the SARS-CoV-2 pandemic." Nature Genetics 53(6):809-816, 2021. <https://doi.org/10.1038/s41588-021-00862-7>
 
-<a id="ref-7"></a>[7] McBroome J, Thornlow B, Hinrichs AS, De Maio N, Goldman N, Haussler D, Corbett-Detig R, Turakhia Y. "matUtils: Tools to Interpret and Manipulate Mutation Annotated Trees." Molecular Biology and Evolution 38(12):5819-5824, 2021. <https://doi.org/10.1093/molbev/msab264>
+<a id="ref-7"></a>[7] McBroome J, Thornlow B, Hinrichs AS, De Maio N, Goldman N, Haussler D, Corbett-Detig R, Turakhia Y. "A Daily-Updated Database and Tools for Comprehensive SARS-CoV-2 Mutation-Annotated Trees." Molecular Biology and Evolution 38(12):5819-5824, 2021. <https://doi.org/10.1093/molbev/msab264>
 
 <a id="ref-8"></a>[8] Sagulenko P, Puller V, Neher RA. "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution 4(1):vex042, 2018. <https://doi.org/10.1093/ve/vex042>
 

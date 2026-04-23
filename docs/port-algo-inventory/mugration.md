@@ -79,7 +79,7 @@ Supporting references for missing data treatment:
 
 - Felsenstein (2004), p. 255: ambiguous states receive likelihood 1.0 for all possibilities
 - PastML (Ishikawa et al. 2019, Mol Biol Evol): "unknown states can be omitted and will be estimated during analysis"
-- BEAST UTM model (Scotch et al. 2019): extends to prior probability distributions over uncertain tip states
+- BEAST UTM model (Vaiente & Scotch 2020): extends to prior probability distributions over uncertain tip states
 
 ---
 
@@ -165,4 +165,4 @@ Sagulenko, Puller & Neher (2018). "TreeTime: Maximum-likelihood phylodynamic ana
 ### Missing Data
 
 - Ishikawa et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085.
-- Scotch et al. (2019). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." Virus Evol.
+- Vaiente, M.A. & Scotch, M. (2020). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." Infection, Genetics and Evolution, 85:104501. doi:10.1016/j.meegid.2020.104501
