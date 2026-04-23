@@ -20,6 +20,15 @@ Recompute `seq.composition` from `seq.sequence` after marginal reconstruction, o
 
 v0 overwrites `node.cseq` (compressed sequence) after each marginal pass. The `mutations` property dynamically compares current `node.up.cseq` vs `node.cseq`, so composition data always reflects the current reconstruction state. The stale-composition problem does not exist in v0.
 
+## Test co-dependency
+
+Fixing this issue requires updating tests that encode the stale behavior:
+
+- `gtr/infer_gtr/__tests__/test_contract.rs`: `test_root_state_sparse()` asserts Fitch-consensus counts after `update_marginal`
+- `gtr/infer_gtr/__tests__/test_sparse.rs`: `test_get_mutation_counts_sparse()` hard-codes `root_state` without deriving from reconstructed MAP root sequence
+
+Both tests will fail when composition is refreshed and must be rewritten to assert post-marginal state.
+
 ## Related
 
 - [M-gtr-per-site-rate-variation](M-gtr-per-site-rate-variation.md) - per-site rate variation, another GTR inference gap
