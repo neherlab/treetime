@@ -119,7 +119,7 @@ v0 code: `_ml_anc_marginal()` in [`packages/legacy/treetime/treetime/treeanc.py`
 
 **Marginal** reconstruction optimizes each position independently. The reconstruction at position i does not depend on the reconstruction at position j. This is correct under the standard assumption that sites evolve independently.
 
-**Joint** reconstruction finds the single most likely assignment of states to all internal nodes simultaneously. Joint reconstruction was implemented in v0 using the Viterbi-like algorithm of Pupko et al. (2000) but has been removed in v1 as an intentional simplification. Joint reconstruction can produce different ancestral sequences than marginal reconstruction at positions where the posterior is multimodal (multiple states have similar probabilities).
+**Joint** reconstruction finds the single most likely assignment of states to all internal nodes simultaneously. Early approaches include Yang, Kumar, and Nei (1995), who proposed empirical Bayesian methods for ancestral amino acid inference. Joint reconstruction was implemented in v0 using the Viterbi-like algorithm of Pupko et al. (2000) but has been removed in v1 as an intentional simplification. Joint reconstruction can produce different ancestral sequences than marginal reconstruction at positions where the posterior is multimodal (multiple states have similar probabilities).
 
 For tree refinement, marginal reconstruction is standard because:
 

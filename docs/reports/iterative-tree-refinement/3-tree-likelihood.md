@@ -10,7 +10,7 @@ The **likelihood** of a phylogenetic tree is the probability of observing the al
 L(T, t, Q | D) = P(D | T, t, Q)
 ```
 
-where T is the topology, t is the vector of branch lengths, Q is the substitution model, and D is the alignment. The tree with the highest likelihood is the maximum likelihood (ML) tree -- the tree that best explains the data.
+where T is the topology, t is the vector of branch lengths, Q is the substitution model, and D is the alignment. The tree with the highest likelihood is the maximum likelihood (ML) tree -- the tree that best explains the data. The ML approach to phylogenetics was introduced by Felsenstein (1973) and formalized with the pruning algorithm in Felsenstein (1981).
 
 Computing this probability requires summing over all possible ancestral sequences at internal nodes, since those sequences are not observed. For a tree with n internal nodes, each with L alignment positions and s possible states per position, the naive computation requires `s^(n*L)` terms -- astronomically many.
 
