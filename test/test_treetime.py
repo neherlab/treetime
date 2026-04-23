@@ -305,3 +305,59 @@ def test_seq_joint_lh_is_max():
     print(abs(ref.max() - real))
     # joint chooses the most likely realization of the tree
     assert abs(ref.max() - real) < 1e-10
+
+
+def test_marginal_mode_used_in_all_iterations(root_dir=None):
+    """Verify that marginal reconstruction is used in every call to
+    infer_ancestral_sequences when branch_length_mode='marginal'.
+
+    Regression test for https://github.com/neherlab/treetime/issues/601:
+    later iterations passed marginal_sequences via **seq_kwargs but not as the
+    explicit `marginal` parameter, causing infer_ancestral_sequences to default
+    to joint reconstruction.
+    """
+    import os
+    from unittest.mock import patch
+    from treetime import TreeTime
+    from treetime.utils import parse_dates
+
+    if root_dir is None:
+        root_dir = os.path.dirname(os.path.realpath(__file__))
+
+    fasta = root_dir + '/treetime_examples/data/h3n2_na/h3n2_na_20.fasta'
+    nwk = root_dir + '/treetime_examples/data/h3n2_na/h3n2_na_20.nwk'
+    dates = parse_dates(root_dir + '/treetime_examples/data/h3n2_na/h3n2_na_20.metadata.csv')
+
+    myTree = TreeTime(
+        gtr='Jukes-Cantor',
+        tree=nwk,
+        use_fft=False,
+        aln=fasta,
+        verbose=1,
+        dates=dates,
+        precision=3,
+        debug=True,
+        rng_seed=1234,
+    )
+
+    marginal_args_log = []
+    original = myTree.infer_ancestral_sequences.__func__
+
+    def tracking_wrapper(self, *args, marginal=False, **kwargs):
+        marginal_args_log.append(marginal)
+        return original(self, *args, marginal=marginal, **kwargs)
+
+    with patch.object(type(myTree), 'infer_ancestral_sequences', tracking_wrapper):
+        myTree.run(
+            branch_length_mode='marginal',
+            infer_gtr=False,
+            max_iter=2,
+            time_marginal=False,
+        )
+
+    assert len(marginal_args_log) > 0, "infer_ancestral_sequences was never called"
+    for i, was_marginal in enumerate(marginal_args_log):
+        assert was_marginal, (
+            f"Call #{i} to infer_ancestral_sequences used marginal=False (joint) "
+            f"when marginal reconstruction was requested"
+        )
