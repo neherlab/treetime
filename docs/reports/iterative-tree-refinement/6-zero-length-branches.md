@@ -76,7 +76,7 @@ The threshold 0.1 is heuristic. The 10% probability cutoff is conservative -- mo
 
 v0 code: [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496)
 
-### v1: derivative-sign detection without pruning
+### v1: derivative-sign detection with in-loop pruning
 
 v1's `is_zero_branch_optimal()` evaluates the derivative of log-likelihood at `t = 0`:
 
@@ -91,9 +91,9 @@ If this sum is negative, the likelihood decreases as t increases from zero, maki
 
 This is the correct criterion for local optimality at the boundary. For models with unimodal per-edge likelihoods (JC69, F81), this is also the global optimum. For models with multiple local maxima (K2P, HKY, GTR), the shortcut certifies a local boundary maximum only. No heuristic thresholds needed for the detection itself.
 
-**The gap:** v1 sets `branch_length = 0.0` when zero is optimal but does **not** collapse the edge. The node stays in the tree. Zero-length edges accumulate across iterations, wasting computation and preventing polytomy resolution. This is tracked as `M-optimize-no-topology-cleanup-in-loop` in the known issues ledger.
+Zero-optimal edges are identified after the M-step but before damping, then collapsed via `prune_and_merge_in_loop()` after damping is applied. This ensures the optimizer's actual decision (zero) is not obscured by damping blending it with the old branch length. The collapse also merges shared mutations in resulting polytomies (sparse partitions only). See [Chapter 9](9-iteration-loop.md) Loop 4 for the full iteration sequence.
 
-v1 code: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L192-L214`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L192-L214)
+v1 code: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L328`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L328)
 
 ### Comparison
 
@@ -101,8 +101,8 @@ v1 code: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L192-L214
 | -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
 | Detection criterion              | Branch length < threshold AND probability > threshold | Derivative of log-likelihood at zero < 0                                  |
 | Thresholds                       | 0.1 \* one_mutation, 0.1 probability (heuristic)      | None (local optimality condition; exact for unimodal models such as JC69) |
-| Action taken                     | Collapses edge, reparents children                    | Sets branch length to 0.0, keeps edge                                     |
-| Creates polytomies               | Yes                                                   | No                                                                        |
+| Action taken                     | Collapses edge, reparents children                    | Sets branch length to 0.0, collapses edge via `prune_and_merge_in_loop()` |
+| Creates polytomies               | Yes                                                   | Yes                                                                       |
 | Requires reconstructed sequences | Yes (for prob_t)                                      | No (uses eigendecomposition coefficients)                                 |
 
 ## The composition problem when collapsing edges
