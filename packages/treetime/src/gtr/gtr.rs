@@ -194,7 +194,7 @@ pub struct GTR {
   /// unimodal on $(0, \infty)$ for this model.
   ///
   /// Dinh V, Matsen FA IV (2017). "The shape of the one-dimensional phylogenetic
-  /// likelihood function." Ann Appl Probab 27(2):1264-1286. DOI: 10.1214/16-AAP1228.
+  /// likelihood function." Ann Appl Probab 27(3):1646-1677. DOI: 10.1214/16-AAP1240.
   ///
   /// Corollary 3.1 proves that models with a single distinct nonzero eigenvalue
   /// (JC69, F81, binary symmetric) have at most one stationary point. With one distinct nonzero eigenvalue, the per-site
