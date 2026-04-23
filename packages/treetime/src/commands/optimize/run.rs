@@ -142,7 +142,6 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
     for partition in &partitions {
       let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-      write_gtr_json(&gtr, *model_name, outdir, None)?;
       partition.write_arc().gtr = gtr;
     }
 
@@ -181,7 +180,6 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     update_marginal(&graph, &dense_partitions)?;
     for partition in &dense_partitions {
       let gtr = get_gtr_dense(model_name, partition, &graph)?;
-      write_gtr_json(&gtr, *model_name, outdir, None)?;
       partition.write_arc().gtr = gtr;
     }
 
@@ -196,6 +194,13 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   // substitutions per site across all partitions, while preserving relative rates between partitions.
   if *model_name == GtrModelName::Infer {
     normalize_partition_rates(&graph, &sparse_partitions, &dense_partitions);
+  }
+
+  for partition in &sparse_partitions {
+    write_gtr_json(&partition.read_arc().gtr, *model_name, outdir, None)?;
+  }
+  for partition in &dense_partitions {
+    write_gtr_json(&partition.read_arc().gtr, *model_name, outdir, None)?;
   }
 
   apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess)?;
