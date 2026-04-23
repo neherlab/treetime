@@ -5,4 +5,4 @@ The `--n-branches-posterior` flag is accepted by clap but crashes at runtime wit
 
 ## Location
 
-[`run.rs#L113`](../../packages/treetime/src/commands/timetree/run.rs#L113)
+[`run.rs#L176`](../../packages/treetime/src/commands/timetree/run.rs#L176)

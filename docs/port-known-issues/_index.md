@@ -123,7 +123,7 @@ exactly.
 | Negligible | Timetree       | [--n-branches-posterior panics with todo!()](N-timetree-n-branches-posterior-unimplemented.md)                                                            |
 | Negligible | Timetree       | [Negative coalescent Tc accepted without validation](N-timetree-negative-coalescent-tc.md)                                                                |
 | Negligible | Timetree       | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                                                     |
-| Negligible | Timetree       | [--plot-rtt and --plot-tree panic with todo!()](N-timetree-plot-unimplemented.md)                                                                         |
+| Negligible | Timetree       | [--plot-rtt and --plot-tree return error](N-timetree-plot-unimplemented.md)                                                                               |
 | Negligible | Timetree       | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                      |
 | Negligible | Timetree       | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                         |
 | Negligible | Timetree       | [Auspice JSON output incomplete](N-timetree-auspice-json-incomplete.md)                                                                                   |

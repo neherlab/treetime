@@ -8,7 +8,7 @@ serializes it to disk.
 ## Location
 
 `SkylineResult` computed at
-[`run.rs#L207-L213`](../../packages/treetime/src/commands/timetree/run.rs#L207-L213)
+[`run.rs#L285-L291`](../../packages/treetime/src/commands/timetree/run.rs#L285-L291)
 but not written.
 
 ## Details

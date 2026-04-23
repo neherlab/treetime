@@ -1,12 +1,11 @@
-# --plot-rtt and --plot-tree panic with todo!()
+# --plot-rtt and --plot-tree return error
 
-Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but crash at
-runtime with "not yet implemented: plot_root_to_tip/plot_time_tree not yet
-implemented".
+Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but return an
+error at runtime with "not yet implemented" via `make_error!()`.
 
 ## Location
 
-[`run.rs#L258-L262`](../../packages/treetime/src/commands/timetree/run.rs#L258-L262)
+[`run.rs#L503-L509`](../../packages/treetime/src/commands/timetree/run.rs#L503-L509)
 
 ## Related issues
 

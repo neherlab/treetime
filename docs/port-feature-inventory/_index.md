@@ -294,7 +294,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [x] Confidence TSV
 - [ ] Node dates TSV (`write_node_dates()` is `todo!()` - [known issue](../port-known-issues/N-timetree-node-dates-output-unimplemented.md))
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
-- [ ] Auspice JSON (v0 writes `auspice_tree.json`)
+- [/] Auspice JSON (v1 writes `auspice_tree.json` with `num_date`, `div`, `bad_branch`; missing: branch mutations, confidence, genome annotations - [known issue](../port-known-issues/N-timetree-auspice-json-incomplete.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
 - [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [known issue](../port-known-issues/N-timetree-plot-unimplemented.md))
@@ -643,7 +643,7 @@ likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 - [x] SVG/PNG charts (clock regression)
 - [x] Graphviz DOT
 - [ ] VCF output (v0 writes .vcf for VCF inputs)
-- [ ] Auspice JSON (Nextstrain visualization)
+- [/] Auspice JSON (partial - [known issue](../port-known-issues/N-timetree-auspice-json-incomplete.md))
 - [ ] Skyline TSV/plot
 - [ ] Substitution rates TSV
 - [ ] Outliers TSV
