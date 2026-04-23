@@ -107,8 +107,8 @@ impl ClockSet {
       (2, 2),
       vec![
         self.norm() * det_inv,
-        -self.dt_sum() * det_inv,
-        -self.dt_sum() * det_inv,
+        -self.t_sum() * det_inv,
+        -self.t_sum() * det_inv,
         self.tsq_sum() * det_inv,
       ],
     )
