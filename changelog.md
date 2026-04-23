@@ -1,3 +1,7 @@
+# 0.12.1
+
+- fix `infer_ancestral_sequences` silently falling back to joint reconstruction instead of marginal in all iterations after the first when `branch_length_mode='marginal'` [issue #601](https://github.com/neherlab/treetime/issues/601) [PR #602](https://github.com/neherlab/treetime/pull/602)
+
 # 0.12.0
 
 - fix `treetime clock` not writing `molecular_clock.txt` with the rate estimate, despite documentation listing it among output files. Also fix copy-paste message in `treetime timetree` that said "Inferred sequence evolution model" for the molecular clock file. Reported by @1ucyb [issue #574](https://github.com/neherlab/treetime/issues/574), fixed by @ivan-aksamentov [PR #575](https://github.com/neherlab/treetime/pull/575)
