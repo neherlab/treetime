@@ -105,6 +105,7 @@ exactly.
 | Negligible | Distribution   | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                   |
 | Negligible | I/O            | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                              |
 | Negligible | I/O            | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                            |
+| Low        | Optimize       | [update_marginal traverses graph twice for mixed partitions](L-optimize-double-graph-traversal-update-marginal.md)                    |
 | Negligible | Optimize       | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                                 |
 | Negligible | Optimize       | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                    |
 | Negligible | Optimize       | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                               |
