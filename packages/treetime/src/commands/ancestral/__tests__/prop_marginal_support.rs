@@ -93,7 +93,7 @@ pub mod tests {
 
     compress_sequences(&graph, &partitions, &input.alignment)?;
     for p in &partitions {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
     let log_lh = update_marginal(&graph, &partitions)?;
     Ok((log_lh, partitions))

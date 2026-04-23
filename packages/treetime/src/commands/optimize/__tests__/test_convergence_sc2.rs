@@ -49,7 +49,7 @@ mod tests {
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
     for p in &sparse_partitions {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
     update_marginal(&graph, &sparse_partitions)?;
 
@@ -113,7 +113,7 @@ mod tests {
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
     for p in &sparse_partitions {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
     update_marginal(&graph, &sparse_partitions)?;
 

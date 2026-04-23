@@ -96,22 +96,19 @@ impl PartitionMarginalSparse {
   /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
   /// sequences saves memory and removes stale data that would otherwise persist
   /// across reroots.
-  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>)
+  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
   where
     N: GraphNode,
     E: GraphEdge,
   {
-    let root_key = graph
-      .get_exactly_one_root()
-      .expect("Tree must have exactly one root")
-      .read_arc()
-      .key();
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
     self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
     for (key, node_data) in &mut self.nodes {
       if *key != root_key && !graph.is_leaf(*key) {
         node_data.seq.sequence = seq![];
       }
     }
+    Ok(())
   }
 
   /// Return positions that can change the reconstructed mutation set for one edge.
@@ -176,7 +173,8 @@ impl PartitionMarginalSparse {
 
     debug_assert!(
       !self.root_sequence.is_empty(),
-      "root_sequence is empty: compress_sequences() was not called or finalize_fitch() failed"
+"root_sequence is empty: compress_sequences() was not called or finalize_fitch() failed"
+"root_sequence is empty: call extract_root_sequence() after compress_sequences()"
     );
 
     let base_state = match graph.node_parent(node_key)? {

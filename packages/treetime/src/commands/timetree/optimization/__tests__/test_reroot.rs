@@ -101,7 +101,7 @@ mod tests {
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
     for p in &partitions_for_compress {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
 
     let clock_params = ClockParams::default();
@@ -540,7 +540,7 @@ mod tests {
     let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
     compress_sequences(&graph, &partitions_for_compress, &aln)?;
     for p in &partitions_for_compress {
-      p.write_arc().extract_root_sequence(&graph);
+      p.write_arc().extract_root_sequence(&graph)?;
     }
 
     let clock_params = ClockParams::default();

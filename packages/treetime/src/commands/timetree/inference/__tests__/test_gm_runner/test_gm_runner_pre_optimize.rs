@@ -63,7 +63,7 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
     sparse_partition.write_arc().extract_root_sequence(&graph);
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
@@ -124,7 +124,7 @@ mod tests {
       root_sequence: seq![],
     }));
 
-    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
     sparse_partition.write_arc().extract_root_sequence(&graph);
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
