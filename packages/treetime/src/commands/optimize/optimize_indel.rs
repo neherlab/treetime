@@ -116,7 +116,6 @@ mod tests {
   fn test_optimize_indel_poisson_zero_rate() {
     let metrics = poisson_indel_log_lh(3, 0.0, 0.1);
     pretty_assert_neg_inf!(metrics.log_lh);
-    assert!(metrics.log_lh.is_infinite() && metrics.log_lh.is_sign_negative());
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.second_derivative, 0.0, epsilon = 1e-15);
   }

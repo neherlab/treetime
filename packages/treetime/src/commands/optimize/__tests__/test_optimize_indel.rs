@@ -190,7 +190,6 @@ mod tests {
     let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
 
     pretty_assert_neg_inf!(total_lh);
-    assert!(total_lh.is_infinite() && total_lh.is_sign_negative());
     Ok(())
   }
 

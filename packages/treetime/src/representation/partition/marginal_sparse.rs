@@ -103,12 +103,13 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         .nodes
         .insert(info.new_node_key, SparseNodePartition::empty(&self.alphabet));
 
-      let old_edge_data = self
+      let mut old_edge_data = self
         .edges
         .remove(&info.old_edge_key)
         .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
 
       // Child-side edge gets all mutations (they describe parent->child relationship)
+      old_edge_data.clear_marginal_subs();
       self.edges.insert(info.child_side_edge_key, old_edge_data);
 
       // Parent-side edge is empty (no mutations between parent and new split node)
