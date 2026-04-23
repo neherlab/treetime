@@ -26,6 +26,15 @@ Candidates for root cause (from test file comments):
 The bimodal distribution (clean separation between populations 1 and 2)
 suggests a discrete trigger rather than continuous numerical drift.
 
+4. Sparse EPS demotion: `combine_messages()` demotes variable sites to fixed
+   when posterior peak exceeds `1 - EPS` (`EPS = 1e-4` at
+   `packages/treetime/src/representation/partition/marginal_helpers.rs#L15`).
+   This is an approximation not present in the dense path, which retains full
+   per-position probability vectors. The demotion replaces a position-specific
+   posterior with a shared per-character vector, introducing a small error
+   proportional to the distance between the position posterior and the shared
+   vector.
+
 ## Excluded cause
 
 Partial-IUPAC sparse reference-state fallback is covered separately by [`test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs#L317) and the `flu/h3n2/500` site-451 regression. The remaining issue in this file is not the fixed ambiguous-`R` exact-state bug.

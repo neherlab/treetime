@@ -152,6 +152,8 @@ exactly.
 | Medium     | Mugration      | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                   |
 | Medium     | Optimize       | [evaluate_site_contributions does not guard against negative branch lengths](M-optimize-negative-bl-in-evaluate.md)                   |
 | Negligible | Timetree       | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                |
+| Medium     | Marginal       | [Marginal forward pass missing fix_branch_length](M-marginal-forward-pass-missing-fix-branch-length.md)                               |
+| Low        | Marginal       | [Marginal forward pass zero-divisor floor converts structural zeros](L-marginal-forward-zero-divisor-floor.md)                        |
 
 ## Cross-references
 

@@ -112,7 +112,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/representation/a
 | `test_get_reconstructed_trait`                         | Argmax state extraction                     |
 | `test_get_confidence`                                  | Confidence profile access                   |
 | `test_get_log_lh`                                      | Log-likelihood access                       |
-| `test_argmax_first_1d`                                 | Deterministic tie-breaking                  |
+| `test_discrete_argmax_first`                           | Deterministic tie-breaking (shared utility) |
 | `test_normalize_inplace_1d_zero_sum_returns_error`     | Zero-sum normalization returns error        |
 | `test_normalize_from_log_1d_all_neg_inf_returns_error` | All-neg-inf log normalization returns error |
 | `test_normalize_inplace_1d_valid_input`                | Valid normalization sums to 1               |
@@ -221,3 +221,14 @@ Production source files in `representation/` with no inline or dedicated tests:
 | `algo/infer_dense.rs`          | Dense inference algorithm        |
 
 These are exercised indirectly through command-level tests (ancestral, optimize, timetree) but have no direct unit tests.
+
+## Known Test Deficiencies
+
+Specific functions and code paths identified as needing direct test coverage:
+
+| Entity                              | File                                                          | Deficiency                                                                                                                      |
+| ----------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `combine_messages()`                | `partition/marginal_helpers.rs`                               | Core sparse marginal algorithm with no direct tests. Only indirect coverage via command integration tests.                      |
+| `reconcile_topology()`              | `partition/marginal_sparse.rs`, `partition/marginal_dense.rs` | Adds/removes partition entries after graph topology edits with no tests asserting correctness.                                  |
+| `propagate_raw_per_site()` tests    | `partition/marginal_helpers.rs`                               | Tests use circular oracle (same `expQt_with_rate()` as SUT). Need hand-computed expected values.                                |
+| `collapse_edge()` composition tests | `algo/topology_cleanup/__tests__/test_collapse_edge.rs`       | Assert substitution count, not exact content. Composition semantics verified separately in `test_partition_marginal_sparse.rs`. |
