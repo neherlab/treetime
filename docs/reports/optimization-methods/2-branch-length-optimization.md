@@ -62,7 +62,7 @@ The choice of optimizer matters because the 1D likelihood surface can be multimo
 - **JC69, F81, binary symmetric**: the 1D likelihood has at most one stationary point. Any optimizer converges to the global MLE.
 - **K2P and above (HKY, GTR)**: explicit counterexamples with two local maxima exist. The space of rescaled 1D likelihoods under K2P is dense in all non-negative continuous functions on [0, infinity). Any shape is possible.
 
-For TreeTime's common use case (JC69 on viral data), NR is provably safe. For GTR models, a grid-search or multi-start fallback is warranted. <a id="cite-7"></a>[Claywell et al. 2017](https://doi.org/10.1093/molbev/msx253) [[7](#ref-7)] developed a four-parameter surrogate function for 1D phylogenetic likelihoods that provides a theoretically grounded fast approximation.
+For TreeTime's common use case (JC69 on viral data), NR is provably safe. For GTR models, a grid-search or multi-start fallback is warranted. <a id="cite-7"></a>[Claywell et al. 2018](https://doi.org/10.1093/molbev/msx253) [[7](#ref-7)] developed a four-parameter surrogate function for 1D phylogenetic likelihoods that provides a theoretically grounded fast approximation.
 
 ## Code locations
 
@@ -100,4 +100,4 @@ For TreeTime's common use case (JC69 on viral data), NR is provably safe. For GT
 4. <a id="ref-4"></a> Brent, Richard P. 1973. _Algorithms for Minimization without Derivatives._ Prentice-Hall. https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf [↩](#cite-4)
 5. <a id="ref-5"></a> Guindon, Stephane, and Olivier Gascuel. 2003. "A Simple, Fast, and Accurate Algorithm to Estimate Large Phylogenies by Maximum Likelihood." _Syst. Biol._ 52(5):696-704. https://doi.org/10.1080/10635150390235520 [↩](#cite-5)
 6. <a id="ref-6"></a> Dinh, Vu, and Frederick A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240 [↩](#cite-6)
-7. <a id="ref-7"></a> Claywell, Brian C., Vu Dinh, Mathieu Fourment, Connor O. McCoy, and Frederick A. Matsen IV. 2017. "A Surrogate Function for One-Dimensional Phylogenetic Likelihoods." _Mol. Biol. Evol._ 35(1):242-246. https://doi.org/10.1093/molbev/msx253 [↩](#cite-7)
+7. <a id="ref-7"></a> Claywell, Brian C., Vu Dinh, Mathieu Fourment, Connor O. McCoy, and Frederick A. Matsen IV. 2018. "A Surrogate Function for One-Dimensional Phylogenetic Likelihoods." _Mol. Biol. Evol._ 35(1):242-246. https://doi.org/10.1093/molbev/msx253 [↩](#cite-7)

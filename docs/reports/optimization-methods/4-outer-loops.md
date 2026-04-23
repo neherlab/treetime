@@ -19,7 +19,7 @@ The phylogenetic likelihood has ancestral states at internal nodes as latent var
 
 EM convergence is linear (first-order), governed by the fraction of missing information - the ratio of information in the complete data to observed data (<a id="cite-4"></a>[Meng and Rubin 1994](<https://doi.org/10.1016/0024-3795(94)90363-8>) [[4](#ref-4)]). When sequences are long and the tree is shallow (TreeTime's viral phylogenetics use case), little information is lost by treating ancestral states as latent, and convergence is fast (2-5 iterations). For deep divergence or short sequences, convergence degrades.
 
-<a id="cite-5"></a>[Sullivan et al. 2005](https://doi.org/10.1080/10635150590905966) [[5](#ref-5)] validated that alternating model parameter optimization and topology+branch-length optimization ("successive approximations") is reliable for ML topology estimation.
+<a id="cite-5"></a>[Sullivan et al. 2005](https://doi.org/10.1093/molbev/msi129) [[5](#ref-5)] validated that alternating model parameter optimization and topology+branch-length optimization ("successive approximations") is reliable for ML topology estimation.
 
 ## Damping
 
@@ -47,7 +47,7 @@ No tool uses pure EM for branch lengths. All use coordinate ascent (one branch a
 EM acceleration methods exist but are not adopted by any major phylogenetic tool:
 
 - **SQUAREM** (<a id="cite-6"></a>[Varadhan and Roland 2008](https://doi.org/10.1111/j.1467-9469.2007.00585.x) [[6](#ref-6)]): off-the-shelf acceleration achieving superlinear convergence. Mean 18-fold speedup in benchmarks. Requires only the EM mapping function (no gradients).
-- **DAAREM** ([Henderson and Varadhan 2019](https://doi.org/10.1080/10618600.2019.1594835)): damped Anderson acceleration with monotonicity control.
+- **DAAREM** (<a id="cite-7"></a>[Henderson and Varadhan 2019](https://doi.org/10.1080/10618600.2019.1594835) [[7](#ref-7)]): damped Anderson acceleration with monotonicity control.
 - **Anderson acceleration**: mixing of multiple previous iterates.
 
 Whether these would accelerate TreeTime's outer loop is unknown. The primary bottleneck is typically the pruning traversal (O(n \* s^2) per site per pass), not the number of outer iterations.
@@ -58,5 +58,6 @@ Whether these would accelerate TreeTime's outer loop is unknown. The primary bot
 2. <a id="ref-2"></a> Wu, C. F. Jeff. 1983. "On the Convergence Properties of the EM Algorithm." _Ann. Stat._ 11(1):95-103. https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full (DOI: https://doi.org/10.1214/aos/1176346060) [↩](#cite-2)
 3. <a id="ref-3"></a> Meng, Xiao-Li, and Donald B. Rubin. 1993. "Maximum Likelihood Estimation via the ECM Algorithm: A General Framework." _Biometrika_ 80(2):267-278. https://doi.org/10.1093/biomet/80.2.267 [↩](#cite-3)
 4. <a id="ref-4"></a> Meng, Xiao-Li, and Donald B. Rubin. 1994. "On the Global and Componentwise Rates of Convergence of the EM Algorithm." _Lin. Alg. Appl._ 199:413-425. https://doi.org/10.1016/0024-3795(94)90363-8 [↩](#cite-4)
-5. <a id="ref-5"></a> Sullivan, Jack, Zaid Abdo, Peter Joyce, and David L. Swofford. 2005. "Evaluating the Performance of a Successive-Approximations Approach to Parameter Optimization in Maximum-Likelihood Phylogeny Estimation." _Mol. Biol. Evol._ 22(6):1386-1392. https://doi.org/10.1080/10635150590905966 [↩](#cite-5)
+5. <a id="ref-5"></a> Sullivan, Jack, Zaid Abdo, Peter Joyce, and David L. Swofford. 2005. "Evaluating the Performance of a Successive-Approximations Approach to Parameter Optimization in Maximum-Likelihood Phylogeny Estimation." _Mol. Biol. Evol._ 22(6):1386-1392. https://doi.org/10.1093/molbev/msi129 [↩](#cite-5)
 6. <a id="ref-6"></a> Varadhan, Ravi, and Christophe Roland. 2008. "Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm." _Scand. J. Stat._ 35(2):335-353. https://doi.org/10.1111/j.1467-9469.2007.00585.x [↩](#cite-6)
+7. <a id="ref-7"></a> Henderson, Nicholas C., and Ravi Varadhan. 2019. "Damped Anderson Acceleration with Restarts and Monotonicity Control." _J. Comput. Graph. Stat._ 28(4):834-846. https://doi.org/10.1080/10618600.2019.1594835 [↩](#cite-7)

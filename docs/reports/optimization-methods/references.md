@@ -8,11 +8,11 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 2. Chen, M.-H., and Q.-M. Shao. 1999. "Monte Carlo Estimation of Bayesian Credible and HPD Intervals." _J. Comput. Graph. Stat._ 8(1):69-92. https://doi.org/10.1080/10618600.1999.10474802
 
-3. Claywell, B. C., V. Dinh, M. Fourment, C. O. McCoy, and F. A. Matsen IV. 2017. "A Surrogate Function for One-Dimensional Phylogenetic Likelihoods." _Mol. Biol. Evol._ 35(1):242-246. https://doi.org/10.1093/molbev/msx253
+3. Claywell, B. C., V. Dinh, M. Fourment, C. O. McCoy, and F. A. Matsen IV. 2018. "A Surrogate Function for One-Dimensional Phylogenetic Likelihoods." _Mol. Biol. Evol._ 35(1):242-246. https://doi.org/10.1093/molbev/msx253
 
 4. Dempster, A. P., N. M. Laird, and D. B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _JRSS:B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x
 
-5. Didelot, X., N. F. Muller, E. M. Volz, and X. Jiang. 2023. "mlesky: Efficient Estimation of Effective Population Size Trajectories." _Virus Evol._ 9(1):vead028. https://doi.org/10.1093/ve/vead028
+5. Didelot, X., V. Franceschi, S. D. W. Frost, A. Dennis, and E. M. Volz. 2023. "Model Design for Nonparametric Phylodynamic Inference and Applications to Pathogen Surveillance." _Virus Evol._ 9(1):vead028. https://doi.org/10.1093/ve/vead028
 
 6. Dinh, V., and F. A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _Ann. Appl. Prob._ 27(3):1646-1677. https://doi.org/10.1214/16-AAP1240
 
@@ -24,7 +24,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 10. Felsenstein, J. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _J. Mol. Evol._ 17:368-376. https://doi.org/10.1007/BF01734359
 
-11. Fourment, M., et al. 2022. "Automatic Differentiation is no Panacea for Phylogenetic Gradient Computation." arXiv:2211.02168. https://arxiv.org/abs/2211.02168
+11. Fourment, M., C. J. Swanepoel, J. G. Galloway, X. Ji, K. Gangavarapu, M. A. Suchard, and F. A. Matsen IV. 2023. "Automatic Differentiation is no Panacea for Phylogenetic Gradient Computation." _Genome Biol. Evol._ 15(6):evad099. https://doi.org/10.1093/gbe/evad099
 
 12. Gill, M. S., P. Lemey, N. R. Faria, A. Rambaut, B. Shapiro, and M. A. Suchard. 2013. "Improving Bayesian Population Dynamics Inference: A Coalescent-Based Model for Multiple Loci." _Mol. Biol. Evol._ 30(3):713-724. https://doi.org/10.1093/molbev/mss265
 
@@ -62,13 +62,13 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 29. Sagulenko, P., V. Puller, and R. A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evol._ 4(1):vex042. https://doi.org/10.1093/ve/vex042
 
-30. Siepel, A., and D. Haussler. 2004. "Phylogenetic Estimation of Context-Dependent Substitution Rates by Maximum Likelihood." _Mol. Biol. Evol._ 21(3):468-488. https://doi.org/10.1093/molbev/msh112
+30. Siepel, A., and D. Haussler. 2004. "Phylogenetic Estimation of Context-Dependent Substitution Rates by Maximum Likelihood." _Mol. Biol. Evol._ 21(3):468-488. https://doi.org/10.1093/molbev/msh039 (not cited in any chapter; retained for completeness)
 
 31. Stamatakis, A. 2014. "RAxML Version 8." _Bioinformatics_ 30(9):1312-1313. https://doi.org/10.1093/bioinformatics/btu033
 
 32. Strimmer, K., and O. G. Pybus. 2001. "Exploring the Demographic History of DNA Sequences Using the Generalized Skyline Plot." _Mol. Biol. Evol._ 18(12):2298-2305. https://doi.org/10.1093/oxfordjournals.molbev.a003776
 
-33. Sullivan, J., Z. Abdo, P. Joyce, and D. L. Swofford. 2005. "Evaluating the Performance of a Successive-Approximations Approach to Parameter Optimization in Maximum-Likelihood Phylogeny Estimation." _Mol. Biol. Evol._ 22(6):1386-1392. https://doi.org/10.1080/10635150590905966
+33. Sullivan, J., Z. Abdo, P. Joyce, and D. L. Swofford. 2005. "Evaluating the Performance of a Successive-Approximations Approach to Parameter Optimization in Maximum-Likelihood Phylogeny Estimation." _Mol. Biol. Evol._ 22(6):1386-1392. https://doi.org/10.1093/molbev/msi129
 
 34. Thorne, J. L., H. Kishino, and I. S. Painter. 1998. "Estimating the Rate of Evolution of the Rate of Molecular Evolution." _Mol. Biol. Evol._ 15(12):1647-1657. https://doi.org/10.1093/oxfordjournals.molbev.a025892
 

@@ -19,7 +19,7 @@ The coalescent skyline estimates how the effective population size Ne(t) (or its
 
 ## GMRF prior
 
-All modern implementations share a Gaussian Markov Random Field prior on `theta = log(Ne)`:
+All modern implementations share a Gaussian Markov Random Field prior on `theta = log(Ne)` (denoted `gamma` in the algorithm inventory, following the Skyride convention; this report uses `theta` throughout):
 
 ```
 p(theta | tau) ~ tau^((m-1)/2) * exp(-tau/2 * theta^T Q theta)
@@ -40,7 +40,7 @@ The coalescent + GMRF gradient is analytically tractable:
 - **Coalescent likelihood**: `d/d(theta_k) = n_coal_k - C_k * exp(-theta_k)` where n_coal_k and C_k are precomputable sufficient statistics
 - **Boundary penalty**: piecewise constant (subgradient)
 
-<a id="cite-9"></a>[Lan et al. 2015](https://doi.org/10.1093/bioinformatics/btv378) [[9](#ref-9)] demonstrated that gradient-based methods (HMC) outperform gradient-free methods for coalescent parameter estimation. <a id="cite-10"></a>[Fourment et al. 2022](https://arxiv.org/abs/2211.02168) [[10](#ref-10)] showed hand-coded gradients are faster than autodiff for phylogenetics.
+<a id="cite-9"></a>[Lan et al. 2015](https://doi.org/10.1093/bioinformatics/btv378) [[9](#ref-9)] demonstrated that gradient-based methods (HMC) outperform gradient-free methods for coalescent parameter estimation. <a id="cite-10"></a>[Fourment et al. 2023](https://doi.org/10.1093/gbe/evad099) [[10](#ref-10)] showed hand-coded gradients are faster than autodiff for phylogenetics.
 
 ## NelderMead vs LBFGS
 
@@ -89,10 +89,10 @@ v1's default 10 grid points means 10D optimization without convergence guarantee
 4. <a id="ref-4"></a> Minin, Vladimir N., Erik W. Bloomquist, and Marc A. Suchard. 2008. "Smooth Skyride through a Rough Skyline: Bayesian Coalescent-Based Inference of Population Dynamics." _Mol. Biol. Evol._ 25(7):1459-1471. https://doi.org/10.1093/molbev/msn090 [↩](#cite-4)
 5. <a id="ref-5"></a> Gill, Mandev S., Philippe Lemey, Nuno R. Faria, Andrew Rambaut, Beth Shapiro, and Marc A. Suchard. 2013. "Improving Bayesian Population Dynamics Inference: A Coalescent-Based Model for Multiple Loci." _Mol. Biol. Evol._ 30(3):713-724. https://doi.org/10.1093/molbev/mss265 [↩](#cite-5)
 6. <a id="ref-6"></a> Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evol._ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-6)
-7. <a id="ref-7"></a> Didelot, Xavier, Nicola F. Muller, Erik M. Volz, and Xiaowei Jiang. 2023. "mlesky: Efficient Estimation of Effective Population Size Trajectories." _Virus Evol._ 9(1):vead028. https://doi.org/10.1093/ve/vead028 [↩](#cite-7)
+7. <a id="ref-7"></a> Didelot, Xavier, Vinicius Franceschi, Simon D. W. Frost, Ann Dennis, and Erik M. Volz. 2023. "Model Design for Nonparametric Phylodynamic Inference and Applications to Pathogen Surveillance." _Virus Evol._ 9(1):vead028. https://doi.org/10.1093/ve/vead028 [↩](#cite-7)
 8. <a id="ref-8"></a> Faulkner, James R., Andrew F. Magee, Beth Shapiro, and Vladimir N. Minin. 2020. "Horseshoe-Based Bayesian Nonparametric Estimation of Effective Population Size Trajectories." _Biometrics_ 76(3):677-690. https://doi.org/10.1111/biom.13276 [↩](#cite-8)
 9. <a id="ref-9"></a> Lan, Shiwei, Julia A. Palacios, Michael D. Karcher, Vladimir N. Minin, and Babak Shahbaba. 2015. "An Efficient Bayesian Inference Framework for Coalescent-Based Nonparametric Phylodynamics." _Bioinformatics_ 31(20):3282-3289. https://doi.org/10.1093/bioinformatics/btv378 [↩](#cite-9)
-10. <a id="ref-10"></a> Fourment, Mathieu, et al. 2022. "Automatic Differentiation is no Panacea for Phylogenetic Gradient Computation." arXiv:2211.02168. https://arxiv.org/abs/2211.02168 [↩](#cite-10)
+10. <a id="ref-10"></a> Fourment, Mathieu, Christiaan J. Swanepoel, Jared G. Galloway, Xiang Ji, Karthik Gangavarapu, Marc A. Suchard, and Frederick A. Matsen IV. 2023. "Automatic Differentiation is no Panacea for Phylogenetic Gradient Computation." _Genome Biol. Evol._ 15(6):evad099. https://doi.org/10.1093/gbe/evad099 [↩](#cite-10)
 11. <a id="ref-11"></a> McKinnon, Ken I. M. 1998. "Convergence of the Nelder-Mead Simplex Method to a Nonstationary Point." _SIAM J. Optim._ 9(1):148-158. https://doi.org/10.1137/S1052623496303482 [↩](#cite-11)
 12. <a id="ref-12"></a> Lagarias, Jeffrey C., James A. Reeds, Margaret H. Wright, and Paul E. Wright. 1998. "Convergence Properties of the Nelder-Mead Simplex Method in Low Dimensions." _SIAM J. Optim._ 9(1):112-147. https://doi.org/10.1137/S1052623496303470 [↩](#cite-12)
 13. <a id="ref-13"></a> Rios, Luis Miguel, and Nikolaos V. Sahinidis. 2013. "Derivative-Free Optimization: A Review of Algorithms and Comparison of Software Implementations." _J. Global Optim._ 56(3):1247-1293. https://doi.org/10.1007/s10898-012-9951-y [↩](#cite-13)
