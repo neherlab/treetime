@@ -22,10 +22,11 @@ Changing all branch lengths in one sweep shifts the ancestral distributions, whi
 **Exponential damping** blends new branch lengths with old ones after each sweep:
 
 ```
-bl_damped = bl_new * (1 - d^(i+1)) + bl_old * d^(i+1)
+f = max(d^(i+1), DAMPING_FLOOR)
+bl_damped = bl_new * (1 - f) + bl_old * f
 ```
 
-where `d` is the damping factor (default 0.75) and `i` is the 0-based iteration index.
+where `d` is the damping factor (default 0.75), `DAMPING_FLOOR = 0.01`, and `i` is the 0-based iteration index. The floor prevents fully undamped late iterations.
 
 | Iteration | New weight | Old weight |
 | --------- | ---------- | ---------- |

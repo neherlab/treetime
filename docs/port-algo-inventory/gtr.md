@@ -80,10 +80,10 @@ Computing P(t) = exp(Qt) for the general time-reversible model requires eigendec
 
 ### Symmetrization trick
 
-Time-reversible rate matrices satisfy the detailed balance condition `pi_i * Q_ij = pi_j * Q_ji`. This allows symmetrization: `S = Pi^{1/2} * Q * Pi^{-1/2}` produces a real symmetric matrix with guaranteed real eigenvalues and orthogonal eigenvectors. Decompose `S = V^T * D * V`, then transform back:
+Time-reversible rate matrices satisfy the detailed balance condition `pi_i * Q_ij = pi_j * Q_ji`. This allows symmetrization: `S = Pi^{1/2} * Q * Pi^{-1/2}` produces a real symmetric matrix with guaranteed real eigenvalues and orthogonal eigenvectors. Decompose `S = V * D * V^T` (columns of V are eigenvectors), then transform back:
 
 ```
-P(t) = Pi^{-1/2} * V^T * diag(exp(lambda_i * t)) * V * Pi^{1/2}
+P(t) = Pi^{-1/2} * V * diag(exp(lambda_i * t)) * V^T * Pi^{1/2}
 ```
 
 The eigendecomposition is computed once per model. Per-branch computation reduces to multiplying diagonal exponentials by pre-computed eigenvector matrices - O(k^2) per branch rather than a full matrix exponential.

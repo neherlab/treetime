@@ -111,7 +111,7 @@ v1 code:
 - Forward pass: `process_node_forward()` in the same file
 - Marginal orchestration: `update_marginal()` in [`packages/treetime/src/commands/ancestral/marginal.rs`](../../../packages/treetime/src/commands/ancestral/marginal.rs)
 - Dense edge substitutions: `edge_subs()` on `PartitionMarginalDense` compares MAP states at parent and child node posteriors
-- Sparse edge substitutions: `edge_subs()` on `PartitionMarginalSparse` compares Fitch-reconstructed states
+- Sparse edge substitutions: `edge_subs()` on `PartitionMarginalSparse` returns marginal-reconstructed substitutions
 
 v0 code: `_ml_anc_marginal()` in [`packages/legacy/treetime/treetime/treeanc.py`](../../../packages/legacy/treetime/treetime/treeanc.py).
 

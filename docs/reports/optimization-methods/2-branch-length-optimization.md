@@ -35,11 +35,11 @@ Newton-Raphson converges quadratically near the optimum: each iteration doubles 
 
 - **RAxML-NG** (coraxlib): uses `dx = -f / |df|`, preserving the NR direction but preventing sign inversion. Also has SAFE mode that recomputes likelihood and reverts if it decreased.
 - **IQ-TREE**: falls back to bisection within the sign-change bracket `[xl, xh]`. Adapted from Numerical Recipes `rtsafe`.
-- **TreeTime v1**: falls back to grid search (100 linearly spaced points). This is the least principled fallback - BrentOpt would be more efficient (see [audit proposal P5](7-audit.md)).
+- **TreeTime v1**: falls back to grid search (100 logarithmically spaced points via `geomspace`). This is the least principled fallback - BrentOpt would be more efficient (see [audit proposal P5](7-audit.md)).
 
 ## Brent's method
 
-A derivative-free bracket-based optimizer combining golden-section search with successive parabolic interpolation (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf) [[4](#ref-4)]). Convergence order ~1.325 (tribonacci constant), falling back to golden-section ratio 0.618 on difficult surfaces.
+A derivative-free bracket-based optimizer combining golden-section search with successive parabolic interpolation (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf) [[4](#ref-4)]). Convergence order ~1.325 (plastic number), falling back to golden-section ratio 0.618 on difficult surfaces.
 
 TreeTime v0 is the only major phylogenetic tool using Brent for branch lengths, via `scipy.optimize.minimize_scalar(method='bounded')`. v0 adds a sqrt(t) reparameterization that spreads out the near-zero region and compresses the large-t region.
 

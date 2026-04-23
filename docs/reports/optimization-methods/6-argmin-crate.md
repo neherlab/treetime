@@ -110,7 +110,7 @@ Both are derivative-free and work with `f64` parameters.
 
 The `Observe<I>` trait has three optional methods: `observe_init`, `observe_iter`, `observe_final`. Attach via `.add_observer(observer, ObserverMode::Every(10))`.
 
-v1 has 5 near-identical observer implementations. A shared observer would eliminate this duplication (see [audit proposal P3](7-audit.md)):
+v1 has 3 near-identical observer implementations (E1, E2, E4). A shared observer would eliminate this duplication (see [audit proposal P3](7-audit.md)):
 
 ```rust
 pub struct PeriodicDebugObserver {

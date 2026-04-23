@@ -39,7 +39,7 @@ No numerical differentiation needed. The coefficients `k_{ic}` are computed once
 
 Newton-Raphson converges quadratically near the optimum (each iteration doubles the number of correct digits). The step is clamped to `[-1.0, current_bl]` to prevent negative branch lengths.
 
-**When Newton fails:** If the second derivative `f''(t) >= 0`, the surface is not concave and Newton would move toward a minimum. v1 falls back to a **grid search**: evaluate the likelihood on 100 linearly spaced branch lengths from `0.1 / L` to `1.5 * current_bl + 1/L`, and pick the maximum.
+**When Newton fails:** If the second derivative `f''(t) >= 0`, the surface is not concave and Newton would move toward a minimum. v1 falls back to a **grid search**: evaluate the likelihood on 100 logarithmically spaced branch lengths (`geomspace`) from `0.1 / L` to `1.5 * current_bl + 1/L`, and pick the maximum.
 
 v1 code: `run_optimize_mixed()` in [`packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291). Up to 10 inner iterations per edge.
 
@@ -81,7 +81,7 @@ v1 counts substitutions from the marginal reconstruction and divides by the effe
 initial_bl = #subs / effective_length
 ```
 
-The substitution count comes from `edge_subs()` -- MAP state comparison for dense partitions, Fitch-reconstructed states for sparse partitions. Gap positions are excluded from both numerator and denominator.
+The substitution count comes from `edge_subs()` -- MAP state comparison for dense partitions, marginal-reconstructed states for sparse partitions. Gap positions are excluded from both numerator and denominator.
 
 v1 code: `initial_guess_mixed()` in [`packages/treetime/src/commands/optimize/optimize_unified.rs#L300-L328`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L300-L328).
 

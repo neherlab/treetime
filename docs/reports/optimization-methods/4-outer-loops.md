@@ -26,10 +26,11 @@ EM convergence is linear (first-order), governed by the fraction of missing info
 TreeTime v1 uses exponential damping:
 
 ```
-bl_damped = bl_new * (1 - d^(i+1)) + bl_old * d^(i+1)
+damping_factor = max(d^(i+1), DAMPING_FLOOR)
+bl_damped = bl_new * (1 - damping_factor) + bl_old * damping_factor
 ```
 
-with d=0.75. Early iterations are conservative (iter 0: 25% new, 75% old), later iterations are aggressive (iter 10: 94% new). This is a form of under-relaxation analogous to SOR from linear algebra. It preserves the monotone likelihood guarantee because the damped value is a convex combination of the old (known-good) and new (improved) branch lengths.
+with d=0.75 and DAMPING_FLOOR=0.01. Early iterations are conservative (iter 0: 25% new, 75% old), later iterations are aggressive (iter 10: 94% new). The floor prevents fully undamped late iterations regardless of max_iter. This is a form of under-relaxation analogous to SOR from linear algebra. It preserves the monotone likelihood guarantee because the damped value is a convex combination of the old (known-good) and new (improved) branch lengths.
 
 v1 code: [packages/treetime/src/commands/optimize/run.rs#L199-L221](../../../packages/treetime/src/commands/optimize/run.rs#L199-L221) `apply_damping()`
 

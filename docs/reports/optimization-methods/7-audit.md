@@ -45,9 +45,9 @@ E1/E2/E3 solve the same problem with different methods. E3 bypasses argmin and c
 
 The most frequently called optimization (H1) is the only major 1D optimizer not using argmin. All other 1D optimizations use `BrentOpt`. **Wrap H1 as argmin `Solver`** (P1).
 
-### I3. Five duplicate observer implementations
+### I3. Three duplicate observer implementations
 
-E1, E2, E4, E5, E6 each define a near-identical `Observer` struct that logs every 10th iteration. **Extract a shared `PeriodicDebugObserver`** (P3).
+E1, E2, E4 each define a near-identical `Observer` struct that logs every 10th iteration. **Extract a shared `PeriodicDebugObserver`** (P3).
 
 ### I4. Hardcoded vs configurable parameters
 
@@ -69,7 +69,7 @@ E1/E2/E4/E5 use `impl CostFunction for &Type`. E6 uses `impl CostFunction for Ty
 
 ### P3. Extract generic observer (zero risk)
 
-Eliminate 5 near-identical observer structs. Pure deduplication.
+Eliminate 3 near-identical observer structs. Pure deduplication.
 
 ### P5. BrentOpt fallback (low risk)
 

@@ -126,9 +126,9 @@ Blending the new parameter value with the old one to prevent oscillation in [alt
 
 The update formula:
 
-`bl = bl_new * (1 - d^(i+1)) + bl_old * d^(i+1)`
+`bl = bl_new * (1 - f) + bl_old * f` where `f = max(d^(i+1), 0.01)`
 
-with damping factor `d` (default 0.75) makes early iterations conservative and later iterations aggressive.
+with damping factor `d` (default 0.75) and floor 0.01. Early iterations are conservative, later iterations aggressive but never fully undamped.
 
 Analogous to under-relaxation in [SOR](#sor-successive-over-relaxation) <a id="cite-13"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[13](#ref-13)].
 
@@ -184,7 +184,7 @@ Characterizes when a [polytomy](#polytomy) is mathematically necessary <a id="ci
 
 A fallback optimization method used when [Newton-Raphson](#newton-raphson) fails (second derivative non-negative).
 
-Evaluate the likelihood at evenly spaced [branch length](#branch-length) values and pick the maximum. v1 uses 100 linearly spaced points from `0.1/L` to `1.5 * current_bl + 1/L`.
+Evaluate the likelihood at a grid of [branch length](#branch-length) values and pick the maximum. v1 uses 100 logarithmically spaced points (`geomspace`) from `0.1/L` to `1.5 * current_bl + 1/L`.
 
 Guaranteed to find the global optimum within the grid, but slow compared to Newton-Raphson. Mitigates the risk of converging to a local optimum under multimodal likelihoods ([K2P](#k2p-kimura-2-parameter) and more complex models).
 
