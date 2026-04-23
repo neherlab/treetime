@@ -66,8 +66,7 @@ impl PartitionCompressed for PartitionMarginalSparse {
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
     &mut self.edges
   }
-
-  fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
+fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
   where
     N: GraphNode,
     E: GraphEdge,
@@ -82,99 +81,6 @@ impl PartitionCompressed for PartitionMarginalSparse {
     Ok(())
   }
 }
-
-impl PartitionMarginalSparse {
-  #[allow(clippy::same_name_method)]
-  pub fn get_sequence_length(&self) -> usize {
-    self.length
-  }
-
-  /// Extract root sequence from the root node and clear internal node sequences.
-  ///
-  /// After Fitch compression, every node carries a full resolved sequence. Only
-  /// the root sequence is needed for downstream reconstruction (node_state_at,
-  /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
-  /// sequences saves memory and removes stale data that would otherwise persist
-  /// across reroots.
-  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
-    for (key, node_data) in &mut self.nodes {
-      if *key != root_key && !graph.is_leaf(*key) {
-        node_data.seq.sequence = seq![];
-      }
-    }
-    Ok(())
-  }
-
-  /// Return positions that can change the reconstructed mutation set for one edge.
-  ///
-  /// In sparse mode, only a small set of sites can change the branch result:
-  /// sites changed on this edge, or sites where the parent or child has a
-  /// non-default marginal state. Everything else stays the same on both ends.
-  fn edge_candidate_positions(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<usize>, Report> {
-    let Some(edge) = self.edges.get(&edge_key) else {
-      return Ok(vec![]);
-    };
-    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
-
-    // Nodes may be absent when called during topology changes (e.g. after
-    // merge_sibling_pair creates a new node before marginal reconstruction
-    // populates its profile). Missing nodes contribute no variable positions.
-    let empty_iter = || -> Box<dyn Iterator<Item = usize>> { Box::new(std::iter::empty()) };
-    let parent_vars: Box<dyn Iterator<Item = usize>> = self
-      .nodes
-      .get(&parent_key)
-      .map_or_else(empty_iter, |n| Box::new(n.profile.variable.keys().copied()));
-    let child_vars: Box<dyn Iterator<Item = usize>> = self
-      .nodes
-      .get(&child_key)
-      .map_or_else(empty_iter, |n| Box::new(n.profile.variable.keys().copied()));
-
-    Ok(
-      edge
-        .subs
-        .iter()
-        .map(Sub::pos)
-        .chain(parent_vars)
-        .chain(child_vars)
-        // Stable ordering keeps `Vec<Sub>` equality meaningful in tests and
-        // callers that compare branch mutation lists directly.
-        .sorted()
-        .dedup()
-        .collect_vec(),
-    )
-  }
-
-  /// Reconstruct one node state at one site from sparse data.
-  ///
-  /// This is the single-site version of `reconstruct_node_sequence()`: start
-  /// from the parent state, apply edge changes, mask unknowns, then apply the
-  /// node's current best state for variable sites.
-  ///
-  /// After marginal inference, `edge.subs` alone is not enough. The final state
-  /// also depends on the node's current marginal result.
-  fn node_state_at(
-    &self,
-    graph: &dyn BranchTopology,
-    node_key: GraphNodeKey,
-    pos: usize,
-    cache: &mut BTreeMap<(GraphNodeKey, usize), AsciiChar>,
-  ) -> Result<AsciiChar, Report> {
-    if let Some(state) = cache.get(&(node_key, pos)) {
-      return Ok(*state);
-    }
-
-    let node_data = self.nodes.get(&node_key);
-
-    debug_assert!(
-      !self.root_sequence.is_empty(),
-"root_sequence is empty: compress_sequences() was not called or finalize_fitch() failed"
-"root_sequence is empty: call extract_root_sequence() after compress_sequences()"
     );
 
     let base_state = match graph.node_parent(node_key)? {

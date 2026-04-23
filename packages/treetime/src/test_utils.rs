@@ -61,9 +61,6 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   }))];
 
   compress_sequences(&graph, &partitions, &aln)?;
-  for p in &partitions {
-    p.write_arc().extract_root_sequence(&graph)?;
-  }
   update_marginal(&graph, &partitions)
 }
 

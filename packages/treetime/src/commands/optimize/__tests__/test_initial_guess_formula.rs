@@ -178,9 +178,6 @@ mod tests {
     }))];
 
     compress_sequences(graph, &partitions, aln)?;
-    for p in &partitions {
-      p.write_arc().extract_root_sequence(graph)?;
-    }
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)

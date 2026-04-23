@@ -5,7 +5,6 @@ Severity: medium
 ## Problem
 
 `capture_ancestral_states()` snapshots ancestral sequences for convergence tracking via `extract_ancestral_sequence()`. After `compress_sequences()` finalizes sparse partitions (clearing internal node sequences and storing the root sequence off-tree), `extract_ancestral_sequence()` returns empty `Seq` for non-root internal nodes. Both pre- and post-iteration snapshots are empty, so `count_sequence_changes()` returns 0, and the refinement loop may declare convergence prematurely.
-`capture_ancestral_states()` snapshots ancestral sequences for convergence tracking via `extract_ancestral_sequence()`. After `extract_root_sequence()` clears internal node sequences, `extract_ancestral_sequence()` returns empty `Seq` for non-root internal nodes. Both pre- and post-iteration snapshots are empty, so `count_sequence_changes()` returns 0, and the refinement loop may declare convergence prematurely.
 
 ## Affected paths
 

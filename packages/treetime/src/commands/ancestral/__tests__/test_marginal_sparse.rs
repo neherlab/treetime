@@ -130,7 +130,6 @@ mod tests {
     }))];
 
     compress_sequences(graph, &partitions, aln)?;
-    partitions[0].write_arc().extract_root_sequence(graph);
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partitions))
   }
@@ -205,7 +204,6 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
-    partitions_marginal_sparse[0].write_arc().extract_root_sequence(&graph);
 
     let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
 
@@ -531,7 +529,6 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &partitions, &aln)?;
-    partitions[0].write_arc().extract_root_sequence(&graph);
     update_marginal(&graph, &partitions)?;
 
     let actual_by_edge = {
