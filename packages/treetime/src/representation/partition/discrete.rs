@@ -11,6 +11,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 
 #[derive(Clone, Debug)]
@@ -48,7 +49,7 @@ impl PartitionDiscrete {
 
   pub fn get_reconstructed_trait(&self, node_key: GraphNodeKey) -> Option<String> {
     let node = self.nodes.get(&node_key)?;
-    let argmax = argmax_first_1d(&node.profile)?;
+    let argmax = argmax_first(&node.profile.view())?;
     Some(self.states.get_name(argmax).to_owned())
   }
 
@@ -219,21 +220,6 @@ impl HasLogLh for PartitionDiscrete {
   }
 }
 
-fn argmax_first_1d(arr: &Array1<f64>) -> Option<usize> {
-  if arr.is_empty() {
-    return None;
-  }
-  let mut max_idx = 0;
-  let mut max_val = arr[0];
-  for (i, &v) in arr.iter().enumerate().skip(1) {
-    if v > max_val {
-      max_val = v;
-      max_idx = i;
-    }
-  }
-  Some(max_idx)
-}
-
 fn normalize_inplace_1d(arr: &mut Array1<f64>) -> Result<f64, Report> {
   let sum = arr.sum();
   if sum.is_nan() || sum <= 0.0 {
@@ -338,10 +324,10 @@ mod tests {
   }
 
   #[test]
-  fn test_argmax_first_1d() {
-    assert_eq!(argmax_first_1d(&array![0.1, 0.5, 0.4]), Some(1));
-    assert_eq!(argmax_first_1d(&array![0.5, 0.5, 0.0]), Some(0)); // tie: first wins
-    assert_eq!(argmax_first_1d(&Array1::zeros(0)), None);
+  fn test_discrete_argmax_first() {
+    assert_eq!(argmax_first(&array![0.1, 0.5, 0.4].view()), Some(1));
+    assert_eq!(argmax_first(&array![0.5, 0.5, 0.0].view()), Some(0)); // tie: first wins
+    assert_eq!(argmax_first(&Array1::<f64>::zeros(0).view()), None);
   }
 
   #[test]

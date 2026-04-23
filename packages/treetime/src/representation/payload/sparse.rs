@@ -41,12 +41,6 @@ impl SparseNodePartition {
   }
 
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
-    // FIXME: the original code used `alphabet_gapN`:
-    //
-    // alphabet_gapN = ''.join(gtr.alphabet)+'-N'
-    //
-    // def seq_info_from_array(seq: np.array, profile: Dict[str,np.array], alphabet_gapN: str) -> SparseSeqInfo
-
     let variable = seq
       .iter()
       .enumerate()
@@ -94,8 +88,6 @@ pub struct SparseSeqInfo {
   pub sequence: Seq,
   pub fitch: FitchSeqDistribution,
 }
-
-///////////////////////////////////
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgePartition {

@@ -72,7 +72,6 @@ where
       log_lh: 0.0,
     }
   } else {
-    // for internal nodes, combine the messages from the children
     let mut variable_pos = btreemap! {};
     let mut child_states = vec![];
     let mut child_messages: Vec<MarginalSparseSeqDistribution> = vec![];
@@ -90,7 +89,7 @@ where
       child_messages.push(edge_data.msg_from_child.clone());
     }
 
-    // collected child states of variable positions that are not yet determined
+    // Fill in child states for variable positions without edge substitutions.
     let alphabet = &partition.alphabet;
     for (ci, (child_key, _)) in node.child_keys.iter().enumerate() {
       let states = &mut child_states[ci];
@@ -127,10 +126,9 @@ where
   };
 
   if node.is_root {
-    // data from children * gtr.pi as calculated above is the root profile.
     partition.nodes.get_mut(&node.key).unwrap().profile = msg_to_parent;
   } else {
-    // what was calculated above is what is sent to the parent. we also calculate the propagated message to the parent (we need it in the forward pass).
+    // Store msg_to_parent and propagate it through P(t)^T for the forward pass.
     let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
     let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
     let branch_length = fix_branch_length(length, branch_length);
