@@ -77,7 +77,7 @@ This is analogous to `--reconstruct-tip-states` in the ancestral command but app
 
 Supporting references for missing data treatment:
 
-- Felsenstein (2004), p. 255: ambiguous states receive likelihood 1.0 for all possibilities
+- Felsenstein (2003), p. 255: ambiguous states receive likelihood 1.0 for all possibilities
 - PastML (Ishikawa et al. 2019, Mol Biol Evol): "unknown states can be omitted and will be estimated during analysis"
 - BEAST UTM model (Vaiente & Scotch 2020): extends to prior probability distributions over uncertain tip states
 
@@ -155,7 +155,7 @@ Sagulenko, Puller & Neher (2018). "TreeTime: Maximum-likelihood phylodynamic ana
 ### Ancestral Reconstruction
 
 - Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
-- Felsenstein (2004). "Inferring Phylogenies." Sinauer Associates, p. 255.
+- Felsenstein (2003). "Inferring Phylogenies." Sinauer Associates, p. 255.
 
 ### Phylogeography
 

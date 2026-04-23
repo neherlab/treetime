@@ -94,7 +94,7 @@ One eigenvalue is always 0 (corresponding to the stationary distribution pi). Th
 
 References:
 
-- Felsenstein (2004). "Inferring Phylogenies." Chapter 13.
+- Felsenstein (2003). "Inferring Phylogenies." Chapter 13.
 - Moler & Van Loan (2003). "Nineteen Dubious Ways to Compute the Matrix Exponential, Twenty-Five Years Later." SIAM Review, 45(1):3-49. doi:10.1137/S00361445024180
 
 ---

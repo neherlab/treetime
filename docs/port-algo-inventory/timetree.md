@@ -116,7 +116,7 @@ Skyline is re-optimized after the main iteration loop converges with stabilized 
 
 References:
 
-- Pybus, Rambaut & Harvey (2000). "An integrated framework for the inference of viral population history from reconstructed genealogies." Genetics, 155(3):1429-1437.
+- Pybus, Rambaut & Harvey (2000). "An integrated framework for the inference of viral population history from reconstructed genealogies." Genetics, 155(3):1429-1437. doi:10.1093/genetics/155.3.1429
 - Drummond, Rambaut, Shapiro & Pybus (2005). "Bayesian coalescent inference of past population dynamics from molecular sequences." Mol Biol Evol, 22(5):1185-1192. doi:10.1093/molbev/msi103
 - Minin, Bloomquist & Suchard (2008). "Smooth skyride through a rough skyline: Bayesian coalescent-based inference of population dynamics." Mol Biol Evol, 25(7):1459-1471. doi:10.1093/molbev/msn090
 - Strimmer & Pybus (2001). "Exploring the demographic history of DNA sequences using the generalized skyline plot." Mol Biol Evol, 18(12):2298-2305.

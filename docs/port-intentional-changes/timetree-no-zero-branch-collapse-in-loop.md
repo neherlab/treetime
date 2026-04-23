@@ -28,4 +28,4 @@ Topology cleanup in the substitution-space M-step is consistent with EM algorith
 
 ## References
 
-1. <a id="ref-1"></a> Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _Journal of the Royal Statistical Society: Series B (Methodological)_ 39(1):1-22. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-1)
+1. <a id="ref-1"></a> Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data Via the EM Algorithm." _Journal of the Royal Statistical Society: Series B (Methodological)_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-1)
