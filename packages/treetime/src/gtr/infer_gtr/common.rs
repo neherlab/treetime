@@ -91,9 +91,14 @@ const TINY_NUMBER: f64 = 1e-12;
 ///  * $T_i$ is the time on the tree spent in character state $i$.
 ///
 /// To regularize the process, we add pseudo-counts and also need to account for the fact that the root of the tree is
-/// in a particular state. the modified equation is
+/// in a particular state. The modified equation is
 ///
 /// $$ n_{ij} + pc = pi_i W_{ij} (T_j+pc+root\_state) $$
+///
+/// with two regularization terms:
+///
+///  * $pc$ is a scalar pseudo-count that regularizes zero observations in transition data
+///  * $root\_state$ is a vector of character-state counts at the root, acting as a prior on equilibrium frequencies
 pub fn infer_gtr_impl(counts: &MutationCounts, options: &InferGtrOptions) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
