@@ -123,16 +123,19 @@ impl SparseEdgePartition {
 
   pub fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
     self.subs_fitch = subs;
+    self.subs_marginal = None;
   }
 
   pub fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
     self.subs_fitch.extend(subs);
+    self.subs_marginal = None;
   }
 
   pub fn invert_fitch_subs(&mut self) {
     for sub in &mut self.subs_fitch {
       sub.invert();
     }
+    self.subs_marginal = None;
   }
 
   pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {

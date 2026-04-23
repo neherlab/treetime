@@ -1,7 +1,7 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseNodePartition, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
@@ -35,6 +35,72 @@ fn node_reference_state_or(
     .unwrap_or(fallback)
 }
 
+fn reconstruct_map_sequence<N, E>(partition: &mut PartitionMarginalSparse, node: &GraphNodeForward<N, E, ()>)
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let alphabet = &partition.alphabet;
+
+  let mut seq = if node.is_root {
+    partition.root_sequence.clone()
+  } else {
+    let Some((parent_key, edge_key)) = get_exactly_one(&node.parent_keys).ok() else {
+      return;
+    };
+    let Some(parent_data) = partition.nodes.get(parent_key) else {
+      return;
+    };
+    if parent_data.seq.sequence.is_empty() {
+      return;
+    }
+    let Some(edge_data) = partition.edges.get(edge_key) else {
+      return;
+    };
+
+    let mut seq = parent_data.seq.sequence.clone();
+    for m in edge_data.fitch_subs() {
+      seq[m.pos()] = m.qry();
+    }
+    for indel in &edge_data.indels {
+      if indel.deletion {
+        seq[indel.range.0..indel.range.1].fill(alphabet.gap());
+      } else {
+        seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+      }
+    }
+    seq
+  };
+
+  let Some(node_data) = partition.nodes.get(&node.key) else {
+    return;
+  };
+
+  // Mask unknowns
+  for r in &node_data.seq.unknown {
+    seq[r.0..r.1].fill(alphabet.unknown());
+  }
+
+  // Override variable sites with MAP states
+  for (pos, states) in &node_data.profile.variable {
+    seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
+  }
+
+  partition.nodes.get_mut(&node.key).unwrap().seq.sequence = seq;
+}
+
+fn resolve_map_state(
+  node: &SparseNodePartition,
+  pos: usize,
+  alphabet: &crate::alphabet::alphabet::Alphabet,
+) -> AsciiChar {
+  if let Some(var) = node.profile.variable.get(&pos) {
+    alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
+  } else {
+    node.seq.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0))
+  }
+}
+
 fn compute_marginal_subs_for_edge(
   partition: &PartitionMarginalSparse,
   parent_key: GraphNodeKey,
@@ -66,33 +132,9 @@ fn compute_marginal_subs_for_edge(
   let mut subs = Vec::new();
 
   for pos in positions {
-    // Determine parent MAP state
-    let parent_state = if let Some(var) = parent_node.profile.variable.get(&pos) {
-      alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
-    } else {
-      // Use the Fitch-derived reference state or infer from fixed profiles
-      if let Some(sub) = edge.fitch_subs().iter().find(|s| s.pos() == pos) {
-        sub.reff()
-      } else if let Some(var) = child_node.profile.variable.get(&pos) {
-        var.state
-      } else {
-        continue;
-      }
-    };
+    let parent_state = resolve_map_state(parent_node, pos, alphabet);
+    let child_state = resolve_map_state(child_node, pos, alphabet);
 
-    // Determine child MAP state
-    let child_state = if let Some(var) = child_node.profile.variable.get(&pos) {
-      alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
-    } else {
-      // Use Fitch sub qry or parent state (no change)
-      if let Some(sub) = edge.fitch_subs().iter().find(|s| s.pos() == pos) {
-        sub.qry()
-      } else {
-        parent_state
-      }
-    };
-
-    // Skip if same state or non-canonical
     if parent_state == child_state {
       continue;
     }
@@ -309,6 +351,11 @@ where
     )?;
 
     partition.nodes.get_mut(&node.key).unwrap().profile = profile;
+
+    // Reconstruct MAP sequence for this node so resolve_map_state can read it.
+    // Internal node seq.sequence is cleared after Fitch to save memory; restore it
+    // from parent sequence + edge mutations + variable site MAP states.
+    reconstruct_map_sequence(partition, node);
 
     // Compute and cache marginal subs for parent edges now that child profile is finalized
     for (parent_key, edge_key) in &node.parent_keys {
