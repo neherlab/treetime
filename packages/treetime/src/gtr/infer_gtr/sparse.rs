@@ -1,7 +1,7 @@
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::partition::traits::PartitionBranchOps;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use parking_lot::RwLock;
@@ -10,7 +10,7 @@ use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
-/// Infer GTR model from sparse partition data.
+/// Infer GTR model from sparse partition Fitch substitutions.
 pub fn infer_gtr_sparse<N, E, D>(
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
   graph: &Graph<N, E, D>,
@@ -27,13 +27,11 @@ where
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
 
-/// Count mutations from sparse partition data for GTR inference.
+/// Count mutations from sparse partition Fitch substitutions for GTR inference.
 ///
-/// Uses `PartitionBranchOps::edge_subs()` to derive mutations
-/// from the current partition state rather than reading stale Fitch-era `subs`.
-/// Before marginal inference, this returns the same mutations as Fitch parsimony.
-/// After marginal inference, it returns MAP-derived mutations that reflect the
-/// current posteriors.
+/// Reads `fitch_subs()` directly. GTR inference runs before marginal inference
+/// (the marginal pass needs the GTR model), so only Fitch-derived mutations
+/// are available at this point.
 pub fn get_mutation_counts_sparse<N, E, D>(
   graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalSparse>>,
@@ -73,8 +71,9 @@ where
       Ti[i] += branch_length * node_composition.get(nuc).unwrap_or(0) as f64;
     }
 
-    let subs = partition.edge_subs(graph, edge_key)?;
-    for m in &subs {
+    let empty: &[Sub] = &[];
+    let subs = partition.edges.get(&edge_key).map_or(empty, |e| e.fitch_subs());
+    for m in subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry())?;
       let j = alphabet.index(m.reff())?;

@@ -61,19 +61,19 @@ compress_sequences(&graph, from_ref(&partition), &aln)?;
     update_marginal(&graph, from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
-    // Expected values reflect MAP-derived mutations from marginal posteriors
-    // (not stale Fitch substitutions). After marginal inference, edge_subs()
-    // compares MAP states between parent and child, which can differ from Fitch
-    // assignments at ambiguous positions.
-    let counts_expected = MutationCounts {
-      nij: array![[0., 0., 1., 1.], [0., 0., 0., 1.], [1., 1., 0., 0.], [0., 0., 1., 0.]],
-      Ti: array![1.72, 2.835, 2.775, 2.75],
-      root_state: array![4.0, 3.0, 3.0, 4.0],
-    };
-
-    pretty_assert_ulps_eq!(counts_expected.nij, counts_actual.nij, epsilon = 1e-9);
-    pretty_assert_ulps_eq!(counts_expected.Ti, counts_actual.Ti, epsilon = 1e-7);
-    pretty_assert_ulps_eq!(counts_expected.root_state, counts_actual.root_state, epsilon = 1e-9);
+    // Expected values reflect Fitch parsimony mutations. GTR inference reads
+    // fitch_subs() directly because it runs before marginal inference.
+    pretty_assert_ulps_eq!(
+      counts_actual.nij,
+      array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
+      epsilon = 1e-9
+    );
+    pretty_assert_ulps_eq!(counts_actual.root_state, array![4.0, 3.0, 3.0, 4.0], epsilon = 1e-9);
+    pretty_assert_ulps_eq!(
+      counts_actual.Ti,
+      array![1.9800000227987766, 2.9450000282377005, 2.515000017359853, 2.640000019222498],
+      epsilon = 1e-9
+    );
 
     Ok(())
   }
@@ -120,26 +120,25 @@ compress_sequences(&graph, from_ref(&partition), &aln)?;
       },
     )?;
 
-    // Expected values reflect GTR inference from MAP-derived marginal mutations
-    // (not stale Fitch substitutions).
+    // Expected values reflect GTR inference from Fitch parsimony mutations.
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       array![
-        [0.0, 0.23187287, 2.51672889, 1.35482864],
-        [0.23187287, 0.0, 1.29546764, 1.26410798],
-        [2.51672889, 1.29546764, 0.0, 1.23030742],
-        [1.35482864, 1.26410798, 1.23030742, 0.0]
+        [0.0,                  2.175112392280934,  2.956016575101041,  0.18620301184748264],
+        [2.175112392280934,    0.0,                1.405280909422987,  1.4146569619049196 ],
+        [2.956016575101041,    1.405280909422987,  0.0,                0.744903148823837  ],
+        [0.18620301184748264,  1.4146569619049196, 0.744903148823837,  0.0                ]
       ],
       &actual.W,
       epsilon = 1e-7
     );
 
     pretty_assert_ulps_eq!(
-      array![0.28554666, 0.21928785, 0.24010044, 0.25506505],
+      array![0.14878846342301447, 0.2405153630584697, 0.31239203299951585, 0.29830414051899984],
       &actual.pi,
       epsilon = 1e-7
     );
-    pretty_assert_ulps_eq!(0.6041583893945609, actual.mu, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(0.9471364348810554, actual.mu, epsilon = 1e-7);
 
     Ok(())
   }

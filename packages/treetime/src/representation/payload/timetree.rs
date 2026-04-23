@@ -345,9 +345,9 @@ mod tests {
     for (idx, subs) in edge_subs {
       if let Some(edge) = edges.get(*idx) {
         let edge_key = edge.read_arc().key();
-        partition
-          .edges
-          .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+        let mut edge_part = SparseEdgePartition::with_fitch_subs(subs.clone());
+        edge_part.set_marginal_subs(subs.clone());
+        partition.edges.insert(edge_key, edge_part);
       }
     }
 
