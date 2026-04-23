@@ -4,7 +4,8 @@
 //! produce structurally different mutation counts. The inferred GTR models (W, pi, mu) should
 //! agree qualitatively on real data.
 //!
-//! Measured differences (2025-03):
+//! Measured differences (2025-03, commit bba8c177, by running this test with assertions
+//! replaced by println! and collecting the table below):
 //!
 //! | dataset          | pi_cosine    | W_rel_frob | mu_rel_diff |
 //! |------------------|--------------|------------|-------------|

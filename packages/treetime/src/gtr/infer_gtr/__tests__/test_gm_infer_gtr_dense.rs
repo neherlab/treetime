@@ -71,6 +71,7 @@ mod tests {
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
     // (~200k positions) shows max diff ~2.3e-7. Tightest passing: 1e-6.
+    // Measured at commit bba8c177 by running all cases and collecting max abs diff.
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-6);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-6);
     pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
