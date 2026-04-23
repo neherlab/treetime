@@ -155,7 +155,6 @@ pub(super) fn prune_nodes(
 
 /// Count current nucleotide mutations on one edge across all partitions.
 pub(super) fn get_edge_num_muts(
-  _graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
 ) -> Result<Option<usize>, Report> {
@@ -196,7 +195,7 @@ fn prune_internal_nodes(
       let weight = edge.payload().read_arc().branch_length();
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
-      let should_prune_empty = prune_empty && get_edge_num_muts(graph, partitions, edge.key())? == Some(0);
+      let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key())? == Some(0);
 
       let target_node = graph
         .get_node(edge.target())
@@ -383,7 +382,7 @@ fn find_best_shared_mutation_pair(
 
   for i in 0..n {
     for j in (i + 1)..n {
-      let shared_subs = compute_shared_subs_across_partitions(graph, partitions, child_edges[i], child_edges[j])?;
+      let shared_subs = compute_shared_subs_across_partitions(partitions, child_edges[i], child_edges[j])?;
       let total_shared: usize = shared_subs.iter().map(Vec::len).sum();
 
       if total_shared > 0 {
@@ -405,17 +404,17 @@ fn find_best_shared_mutation_pair(
 
 /// Compute the intersection of substitutions on two edges, per partition.
 fn compute_shared_subs_across_partitions(
-  _graph: &GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key_a: GraphEdgeKey,
   edge_key_b: GraphEdgeKey,
 ) -> Result<Vec<Vec<Sub>>, Report> {
+  let empty: &[Sub] = &[];
   partitions
     .iter()
     .map(|partition| {
       let partition = partition.read_arc();
-      let subs_a = partition.edges.get(&edge_key_a).map_or(&[] as &[_], |e| e.fitch_subs());
-      let subs_b = partition.edges.get(&edge_key_b).map_or(&[] as &[_], |e| e.fitch_subs());
+      let subs_a = partition.edges.get(&edge_key_a).map_or(empty, |e| e.fitch_subs());
+      let subs_b = partition.edges.get(&edge_key_b).map_or(empty, |e| e.fitch_subs());
       Ok(iterator_intersection(subs_a, subs_b).cloned().collect_vec())
     })
     .collect()
@@ -470,10 +469,11 @@ fn merge_sibling_pair(
     .enumerate()
     .map(|(pi, partition)| {
       let partition = partition.read_arc();
+      let empty: &[Sub] = &[];
       let edge_a = partition.edges.get(&pair.edge_key_a);
       let edge_b = partition.edges.get(&pair.edge_key_b);
-      let subs_a = edge_a.map_or(&[] as &[_], |e| e.fitch_subs());
-      let subs_b = edge_b.map_or(&[] as &[_], |e| e.fitch_subs());
+      let subs_a = edge_a.map_or(empty, |e| e.fitch_subs());
+      let subs_b = edge_b.map_or(empty, |e| e.fitch_subs());
       let indels_a = edge_a.map(|e| e.indels.clone()).unwrap_or_default();
       let indels_b = edge_b.map(|e| e.indels.clone()).unwrap_or_default();
       let shared = &pair.shared_subs[pi];

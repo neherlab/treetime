@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::gtr::infer_gtr::sparse::get_mutation_counts_sparse;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;

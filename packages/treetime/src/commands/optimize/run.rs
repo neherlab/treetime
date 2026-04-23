@@ -211,6 +211,11 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     *opt_method,
   )?;
 
+  // Re-run marginal to populate subs_marginal after the loop (the last iteration
+  // may have changed topology, clearing marginal subs on affected edges).
+  update_marginal(&graph, &sparse_partitions)?;
+  update_marginal(&graph, &dense_partitions)?;
+
   // Annotate mutations from whichever partition type is active
   let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = if dense {
     dense_partitions

@@ -120,11 +120,9 @@ Iterates every alignment position (0..L where L = number of rows in the profile 
 
 ### Sparse `edge_subs()`
 
-[`packages/treetime/src/representation/partition/marginal_sparse.rs#L346-L378`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L346-L378)
+[`packages/treetime/src/representation/partition/marginal_sparse.rs#L233-L239`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L233-L239)
 
-Returns MAP-derived substitutions (`subs_marginal`) when available, falling back to tree-traversal computation otherwise. The marginal subs are computed during the marginal forward pass by `compute_marginal_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). Marginal subs are cleared automatically by any fitch-sub mutation and by `clear_marginal_subs()` during reroot.
-
-The fallback path iterates candidate positions via `edge_candidate_positions()` and resolves states via `node_state_at()`, which walks from the root applying edge substitutions and indels, then overrides with the variable-site posterior argmax when present.
+Returns MAP-derived substitutions stored in `subs_marginal`. Requires marginal inference to have run (errors if `subs_marginal` is `None`). The marginal subs are computed during the marginal forward pass by `compute_marginal_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). Marginal subs are cleared automatically by any fitch-sub mutation and by `clear_marginal_subs()` during reroot.
 
 The candidate set is complete: any position where parent and child could differ must appear as a variable site on at least one endpoint or as a Fitch substitution on the edge.
 
@@ -142,10 +140,8 @@ Both implementations produce the same mutation set for the same reconstruction. 
 
 - `annotate_branch_mutations()` (`#annotate_branch_mutations`): generic over graph payload, iterates edges and partitions, writes formatted mutation string to child node
 - `PartitionBranchOps::edge_subs()` (`#edge_subs`): trait method implemented by both `PartitionMarginalDense` and `PartitionMarginalSparse`
-- `compute_marginal_subs_for_edge()` (`#compute_marginal_subs_for_edge`): sparse-only, computes MAP-derived subs from finalized parent and child profiles during the forward pass, caches result in `subs_marginal`
+- `compute_marginal_subs_for_edge()` (`#compute_marginal_subs_for_edge`): sparse-only, computes MAP-derived subs from finalized parent and child profiles during the forward pass, stores result in `subs_marginal`
 - `reconstruct_map_sequence()` (`#reconstruct_map_sequence`): sparse-only, rebuilds node sequence from parent + edge mutations + MAP variable-site states during the forward pass
-- `edge_candidate_positions()` (`#edge_candidate_positions`): sparse-only, computes union of Fitch subs + parent/child variable sites
-- `node_state_at()` (`#node_state_at`): sparse-only fallback, resolves a node's state at a position by walking the tree from root, applying edge changes, and checking variable-site overrides
 - `HasBranchMutations::set_branch_mutations()` (`#set_branch_mutations`): trait implemented by `NodeAncestral` and `NodeTimetree` (via delegation to inner `NodeAncestral`)
 
 ---
