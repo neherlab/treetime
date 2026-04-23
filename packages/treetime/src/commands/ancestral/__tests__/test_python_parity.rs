@@ -527,7 +527,7 @@ mod tests {
       root_sequence: seq![],
     }));
 
-compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
     let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?;
 
     // Log-likelihoods should match for clean sequences

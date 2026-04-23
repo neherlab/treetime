@@ -77,7 +77,7 @@ mod tests {
       edges: btreemap! {},
       root_sequence: seq![],
     }));
-compress_sequences(&graph, from_ref(&partition), aln)?;
+    compress_sequences(&graph, from_ref(&partition), aln)?;
     update_marginal(&graph, from_ref(&partition))?;
     Ok((graph, partition))
   }

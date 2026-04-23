@@ -56,7 +56,7 @@ mod tests {
       root_sequence: seq![],
     }));
 
-compress_sequences(&graph, from_ref(&partition), &aln)?;
+    compress_sequences(&graph, from_ref(&partition), &aln)?;
     update_marginal(&graph, from_ref(&partition))?;
 
     let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
@@ -111,7 +111,7 @@ compress_sequences(&graph, from_ref(&partition), &aln)?;
       root_sequence: seq![],
     }));
 
-compress_sequences(&graph, from_ref(&partition), &aln)?;
+    compress_sequences(&graph, from_ref(&partition), &aln)?;
     update_marginal(&graph, from_ref(&partition))?;
 
     let counts = get_mutation_counts_sparse(&graph, &partition)?;

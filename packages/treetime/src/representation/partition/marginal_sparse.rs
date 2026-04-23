@@ -64,7 +64,7 @@ impl PartitionCompressed for PartitionMarginalSparse {
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
     &mut self.edges
   }
-fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
+  fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
   where
     N: GraphNode,
     E: GraphEdge,

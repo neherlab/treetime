@@ -112,7 +112,7 @@ pub fn initialize_partitions(
       edges: btreemap! {},
     }));
 
-compress_sequences(graph, from_ref(&sparse_partition), aln_data)?;
+    compress_sequences(graph, from_ref(&sparse_partition), aln_data)?;
 
     // For Infer: Fitch compression populated mutation counts, infer real GTR
     if model_name == GtrModelName::Infer {
