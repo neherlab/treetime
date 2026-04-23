@@ -90,7 +90,7 @@ O(n _ k^2 _ L) total for n nodes, k alphabet states (4 for nucleotides, 20 for a
 
 Joint maximum likelihood reconstruction (Pupko et al. 2000) finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently. Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
 
-v1: `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L194`](../../packages/treetime/src/commands/ancestral/run.rs#L194). Intentionally removed - see [intentional change](../port-intentional-changes/ancestral-joint-reconstruction-removed.md).
+v1: `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L199`](../../packages/treetime/src/commands/ancestral/run.rs#L199). Intentionally removed - see [intentional change](../port-intentional-changes/ancestral-joint-reconstruction-removed.md).
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L934-L1080`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1080).
 
 See [unimplemented](unimplemented.md#joint-ml) for full v0 algorithm details.

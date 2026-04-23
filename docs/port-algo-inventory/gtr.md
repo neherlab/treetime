@@ -24,7 +24,7 @@ All models listed below are implemented in [`packages/treetime/src/gtr/get_gtr.r
 
 Simplest model: equal base frequencies (pi = 1/4 each), equal substitution rates. Zero free parameters after normalization. Admits a closed-form transition probability: `P_ii(t) = 1/4 + 3/4 * exp(-4t/3)`, `P_ij(t) = 1/4 - 1/4 * exp(-4t/3)`. Eigenvalues: {0, -4/3, -4/3, -4/3}.
 
-`jc69()` (`#jc69`) at [`packages/treetime/src/gtr/get_gtr.rs#L161-L173`](../../packages/treetime/src/gtr/get_gtr.rs#L161-L173).
+`jc69()` (`#jc69`) at [`packages/treetime/src/gtr/get_gtr.rs#L183-L194`](../../packages/treetime/src/gtr/get_gtr.rs#L183-L194).
 
 Reference: Jukes & Cantor (1969). "Evolution of Protein Molecules." Academic Press, pp. 21-132.
 
@@ -32,7 +32,7 @@ Reference: Jukes & Cantor (1969). "Evolution of Protein Molecules." Academic Pre
 
 Distinguishes transitions (purine-purine A<->G, pyrimidine-pyrimidine C<->T) from transversions (purine-pyrimidine changes). One free parameter: the transition/transversion ratio kappa. Equal base frequencies. Closed-form P(t) with two exponential terms.
 
-`k80()` (`#k80`) at [`packages/treetime/src/gtr/get_gtr.rs#L200-L213`](../../packages/treetime/src/gtr/get_gtr.rs#L200-L213).
+`k80()` (`#k80`) at [`packages/treetime/src/gtr/get_gtr.rs#L219-L225`](../../packages/treetime/src/gtr/get_gtr.rs#L219-L225).
 
 Reference: Kimura (1980). "A simple method for estimating evolutionary rates of base substitutions through comparative studies of nucleotide sequences." J Mol Evol, 16(2):111-120. doi:10.1007/BF01731581
 
@@ -40,13 +40,13 @@ Reference: Kimura (1980). "A simple method for estimating evolutionary rates of 
 
 Unequal equilibrium frequencies, equal exchangeabilities. Generalizes JC69 by allowing non-uniform base composition. Three free parameters (three independent frequencies; fourth constrained to sum to 1). `P_ij(t) = pi_j * (1 - exp(-beta*t))` for i != j.
 
-`f81()` (`#f81`) at [`packages/treetime/src/gtr/get_gtr.rs#L237-L250`](../../packages/treetime/src/gtr/get_gtr.rs#L237-L250). Accepts optional `pi` parameter for non-uniform frequencies.
+`f81()` (`#f81`) at [`packages/treetime/src/gtr/get_gtr.rs#L247-L257`](../../packages/treetime/src/gtr/get_gtr.rs#L247-L257). Accepts optional `pi` parameter for non-uniform frequencies.
 
 ### HKY85 (Hasegawa-Kishino-Yano 1985)
 
 Combines K80's transition/transversion distinction with F81's unequal base frequencies. Four free parameters (kappa + three independent frequencies). `Q_ij = kappa * pi_j` for transitions, `pi_j` for transversions. Closed-form P(t) with three distinct exponential terms; eigenvalues involve kappa and purine/pyrimidine frequency sums (pi_R = pi_A + pi_G, pi_Y = pi_C + pi_T).
 
-`hky85()` (`#hky85`) at [`packages/treetime/src/gtr/get_gtr.rs#L280-L294`](../../packages/treetime/src/gtr/get_gtr.rs#L280-L294). Accepts optional `pi` parameter.
+`hky85()` (`#hky85`) at [`packages/treetime/src/gtr/get_gtr.rs#L285-L298`](../../packages/treetime/src/gtr/get_gtr.rs#L285-L298). Accepts optional `pi` parameter.
 
 Reference: Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting by a molecular clock of mitochondrial DNA." J Mol Evol, 22(2):160-174. doi:10.1007/BF02101694
 
@@ -54,13 +54,13 @@ Reference: Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting b
 
 GC-content parameterization: a simplification of HKY85 enforcing Chargaff's second parity rule (pi_A = pi_T, pi_C = pi_G). Parameterized by a single GC-content value theta = pi_G + pi_C, reducing three frequency parameters to one.
 
-`t92()` (`#t92`) at [`packages/treetime/src/gtr/get_gtr.rs#L323-L340`](../../packages/treetime/src/gtr/get_gtr.rs#L323-L340).
+`t92()` (`#t92`) at [`packages/treetime/src/gtr/get_gtr.rs#L325-L342`](../../packages/treetime/src/gtr/get_gtr.rs#L325-L342).
 
 ### TN93 (Tamura-Nei 1993)
 
 Distinguishes the two transition types: purine transitions (A<->G, rate kappa_1) and pyrimidine transitions (C<->T, rate kappa_2). Five free parameters. Closed-form P(t) with analytical eigendecomposition.
 
-`tn93()` (`#tn93`) at [`packages/treetime/src/gtr/get_gtr.rs#L466-L495`](../../packages/treetime/src/gtr/get_gtr.rs#L466-L495).
+`tn93()` (`#tn93`) at [`packages/treetime/src/gtr/get_gtr.rs#L459-L487`](../../packages/treetime/src/gtr/get_gtr.rs#L459-L487).
 
 Reference: Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. doi:10.1093/oxfordjournals.molbev.a040023
 
@@ -68,7 +68,7 @@ Reference: Tamura & Nei (1993). "Estimation of the number of nucleotide substitu
 
 Empirical 20x20 amino acid substitution matrix derived from a large database of protein sequence alignments. The exchangeability parameters and equilibrium frequencies are fixed to empirically observed values rather than estimated from data.
 
-`jtt92()` (`#jtt92`) at [`packages/treetime/src/gtr/get_gtr.rs#L360-L423`](../../packages/treetime/src/gtr/get_gtr.rs#L360-L423).
+`jtt92()` (`#jtt92`) at [`packages/treetime/src/gtr/get_gtr.rs#L360-L418`](../../packages/treetime/src/gtr/get_gtr.rs#L360-L418).
 
 Reference: Jones, Taylor & Thornton (1992). "The rapid generation of mutation data matrices from protein sequences." CABIOS, 8(3):275-282.
 
@@ -88,7 +88,7 @@ P(t) = Pi^{-1/2} * V * diag(exp(lambda_i * t)) * V^T * Pi^{1/2}
 
 The eigendecomposition is computed once per model. Per-branch computation reduces to multiplying diagonal exponentials by pre-computed eigenvector matrices - O(k^2) per branch rather than a full matrix exponential.
 
-v1: `eig_single_site()` (`#eig_single_site`) at [`packages/treetime/src/gtr/gtr.rs#L72-L103`](../../packages/treetime/src/gtr/gtr.rs#L72-L103), `expQt()` (`#expQt`) at [`packages/treetime/src/gtr/gtr.rs#L375-L385`](../../packages/treetime/src/gtr/gtr.rs#L375-L385).
+v1: `eig_single_site()` (`#eig_single_site`) at [`packages/treetime/src/gtr/gtr.rs#L71-L102`](../../packages/treetime/src/gtr/gtr.rs#L71-L102), `expQt()` (`#expQt`) at [`packages/treetime/src/gtr/gtr.rs#L442-L452`](../../packages/treetime/src/gtr/gtr.rs#L442-L452).
 
 One eigenvalue is always 0 (corresponding to the stationary distribution pi). The remaining k-1 eigenvalues are negative, guaranteeing convergence to equilibrium frequencies as t -> infinity.
 
@@ -107,14 +107,14 @@ Infers GTR model parameters (exchangeability matrix W, equilibrium frequencies p
 
 The `MutationCounts` (`#MutationCounts`) struct holds the sufficient statistics: `nij` (transition count matrix, symmetric) and `Ti` (time-in-state vector). Both sparse and dense inference paths produce `MutationCounts`, then share the same `infer_gtr_impl()` solver.
 
-v1: `infer_gtr_impl()` (`#infer_gtr_impl`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L97-L158`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L97-L158).
+v1: `infer_gtr_impl()` (`#infer_gtr_impl`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163).
 v0: [`packages/legacy/treetime/treetime/gtr.py#L491-L599`](../../packages/legacy/treetime/treetime/gtr.py#L491-L599).
 
 ### Sparse GTR Inference
 
 Counts mutations from Fitch reconstruction: integer substitution counts for `nij`, branch-length-weighted composition for `Ti`, root composition from consensus sequence. Fast because Fitch reconstruction gives hard assignments (no probabilistic profiles to integrate over).
 
-`infer_gtr_sparse()` (`#infer_gtr_sparse`) at [`packages/treetime/src/gtr/infer_gtr/sparse.rs#L12-L21`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L12-L21).
+`infer_gtr_sparse()` (`#infer_gtr_sparse`) at [`packages/treetime/src/gtr/infer_gtr/sparse.rs#L14-L28`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L14-L28).
 
 ### Dense GTR Inference
 
@@ -122,15 +122,15 @@ Counts mutations from fractional expected counts derived from branch joint distr
 
 Key functions:
 
-- `get_branch_mutation_matrix()` (`#get_branch_mutation_matrix`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L40-L71`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L40-L71): computes posterior `P(child=i, parent=j | site)` from edge messages and transition matrix.
-- `accumulate_mutation_counts()` (`#accumulate_mutation_counts`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L81-L119`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L81-L119): sums `nij` and `Ti` from branch joint distributions.
-- `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L127-L196`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L127-L196): iterates edges to build `MutationCounts` with `SUPERTINY_NUMBER` floor on expQt and branch length clamping.
+- `get_branch_mutation_matrix()` (`#get_branch_mutation_matrix`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L51-L82`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L51-L82): computes posterior `P(child=i, parent=j | site)` from edge messages and transition matrix.
+- `accumulate_mutation_counts()` (`#accumulate_mutation_counts`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L92-L130`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L92-L130): sums `nij` and `Ti` from branch joint distributions.
+- `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L138-L210`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L138-L210): iterates edges to build `MutationCounts` with `SUPERTINY_NUMBER` floor on expQt and branch length clamping.
 
 ---
 
 ## GTR Output
 
-`write_gtr_json()` (`#write_gtr_json`) at [`packages/treetime/src/gtr/get_gtr.rs#L77-L94`](../../packages/treetime/src/gtr/get_gtr.rs#L77-L94) writes GTR model parameters (model type, model name, mu, pi, W) to JSON. Accepts an optional `qualifier` parameter: `None` writes `gtr.json`, `Some("sparse")` writes `gtr_sparse.json`, `Some("dense")` writes `gtr_dense.json`. Commands with a single partition pass `None`; the `optimize` command passes partition-type qualifiers to avoid overwriting when both sparse and dense partitions coexist. Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
+`write_gtr_json()` (`#write_gtr_json`) at [`packages/treetime/src/gtr/get_gtr.rs#L81-L94`](../../packages/treetime/src/gtr/get_gtr.rs#L81-L94) writes GTR model parameters (model type, model name, mu, pi, W) to JSON. Accepts an optional `qualifier` parameter: `None` writes `gtr.json`, `Some("sparse")` writes `gtr_sparse.json`, `Some("dense")` writes `gtr_dense.json`. Commands with a single partition pass `None`; the `optimize` command passes partition-type qualifiers to avoid overwriting when both sparse and dense partitions coexist. Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
 
 ---
 
