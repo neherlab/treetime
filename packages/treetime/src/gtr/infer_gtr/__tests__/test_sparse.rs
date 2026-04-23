@@ -71,7 +71,12 @@ compress_sequences(&graph, from_ref(&partition), &aln)?;
     pretty_assert_ulps_eq!(counts_actual.root_state, array![4.0, 3.0, 3.0, 4.0], epsilon = 1e-9);
     pretty_assert_ulps_eq!(
       counts_actual.Ti,
-      array![1.9800000227987766, 2.9450000282377005, 2.515000017359853, 2.640000019222498],
+      array![
+        1.9800000227987766,
+        2.9450000282377005,
+        2.515000017359853,
+        2.640000019222498
+      ],
       epsilon = 1e-9
     );
 
@@ -134,7 +139,12 @@ compress_sequences(&graph, from_ref(&partition), &aln)?;
     );
 
     pretty_assert_ulps_eq!(
-      array![0.14878846342301447, 0.2405153630584697, 0.31239203299951585, 0.29830414051899984],
+      array![
+        0.14878846342301447,
+        0.2405153630584697,
+        0.31239203299951585,
+        0.29830414051899984
+      ],
       &actual.pi,
       epsilon = 1e-7
     );
