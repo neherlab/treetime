@@ -70,20 +70,8 @@ mod tests {
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
 
-    partition.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      ia_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'G', 5, b'C')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition.edges.insert(ri_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition.edges.insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
     partition.edges.insert(ib_key, SparseEdgePartition::default());
 
     let sparse = vec![Arc::new(RwLock::new(partition))];
@@ -105,13 +93,11 @@ mod tests {
       let edge_data = &p.edges[&edge.key()];
       match target_name.as_deref() {
         Some("A") => {
-          // Composed: collapsed-edge A0T + child-edge G5C
-          assert_eq!(edge_data.subs, vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]);
-        }
+          assert_eq!(edge_data.fitch_subs(), &[sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]);
+        },
         Some("B") => {
-          // Only the collapsed-edge sub A0T propagated (B had no own subs)
-          assert_eq!(edge_data.subs, vec![sub(b'A', 0, b'T')]);
-        }
+          assert_eq!(edge_data.fitch_subs(), &[sub(b'A', 0, b'T')]);
+        },
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -245,20 +231,8 @@ mod tests {
     let collapsed_indel = InDel::ins((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice());
     let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice());
 
-    partition.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        indels: vec![collapsed_indel.clone()],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      ia_key,
-      SparseEdgePartition {
-        indels: vec![child_a_indel.clone()],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition.edges.insert(ri_key, SparseEdgePartition::with_fitch_subs_and_indels(vec![], vec![collapsed_indel.clone()]));
+    partition.edges.insert(ia_key, SparseEdgePartition::with_fitch_subs_and_indels(vec![], vec![child_a_indel.clone()]));
     partition.edges.insert(ib_key, SparseEdgePartition::default());
 
     let sparse = vec![Arc::new(RwLock::new(partition))];
@@ -298,20 +272,8 @@ mod tests {
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
 
-    partition.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      ia_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'T', 0, b'A')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition.edges.insert(ri_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition.edges.insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
 
     let sparse = vec![Arc::new(RwLock::new(partition))];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -334,7 +296,7 @@ mod tests {
       .cloned()
       .unwrap();
     let edge_data = &p.edges[&root_to_a_edge.read_arc().key()];
-    assert_eq!(edge_data.subs.len(), 0, "reversion should cancel: {:?}", edge_data.subs);
+    assert_eq!(edge_data.fitch_subs().len(), 0, "reversion should cancel: {:?}", edge_data.fitch_subs());
 
     Ok(())
   }
@@ -370,26 +332,14 @@ mod tests {
 
     let mut partition_a = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition_a, &graph);
-    partition_a.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition_a.edges.insert(ri_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
     partition_a.edges.insert(ia_key, SparseEdgePartition::default());
     partition_a.edges.insert(ib_key, SparseEdgePartition::default());
 
     let mut partition_b = make_sparse_partition(100)?;
     partition_b.index = 1;
     populate_test_nodes(&mut partition_b, &graph);
-    partition_b.edges.insert(
-      ri_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'G', 5, b'C')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition_b.edges.insert(ri_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
     partition_b.edges.insert(ia_key, SparseEdgePartition::default());
     partition_b.edges.insert(ib_key, SparseEdgePartition::default());
 
@@ -399,21 +349,27 @@ mod tests {
     collapse_edge(&mut graph, &sparse, &dense, ri_key)?;
     graph.build()?;
 
-    // Partition 0: collapsed-edge sub is A0T
     let p0 = sparse[0].read_arc();
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p0.edges[&edge.key()];
-      assert_eq!(data.subs, vec![sub(b'A', 0, b'T')], "partition 0: each child inherits A0T");
+      assert_eq!(
+        data.fitch_subs(),
+        &[sub(b'A', 0, b'T')],
+        "partition 0: each child inherits A0T"
+      );
     }
     drop(p0);
 
-    // Partition 1: collapsed-edge sub is G5C
     let p1 = sparse[1].read_arc();
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p1.edges[&edge.key()];
-      assert_eq!(data.subs, vec![sub(b'G', 5, b'C')], "partition 1: each child inherits G5C");
+      assert_eq!(
+        data.fitch_subs(),
+        &[sub(b'G', 5, b'C')],
+        "partition 1: each child inherits G5C"
+      );
     }
 
     Ok(())

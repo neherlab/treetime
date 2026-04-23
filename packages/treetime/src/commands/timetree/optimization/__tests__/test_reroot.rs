@@ -215,16 +215,13 @@ mod tests {
         a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet)?,
       },
       edges: btreemap! {
-        edge_to_a_key => SparseEdgePartition {
-          subs: vec![sub_original],
-          indels: vec![indel_original],
-          msg_to_parent: MarginalSparseSeqDistribution::default(),
-          msg_to_child: MarginalSparseSeqDistribution::default(),
-          msg_from_child: MarginalSparseSeqDistribution {
+        edge_to_a_key => {
+          let mut edge = SparseEdgePartition::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]);
+          edge.msg_from_child = MarginalSparseSeqDistribution {
             log_lh: 1.0, // non-default to verify it gets cleared
             ..MarginalSparseSeqDistribution::default()
-          },
-          transmission: None,
+          };
+          edge
         },
       },
     };
@@ -240,7 +237,7 @@ mod tests {
 
     // Verify substitution is inverted
     let edge_data = &sparse_partition.edges[&edge_to_a_key];
-    let sub_after = &edge_data.subs[0];
+    let sub_after = &edge_data.fitch_subs()[0];
     assert_eq!(sub_after.reff(), c(b'G'), "Sub ref should be swapped to G");
     assert_eq!(sub_after.qry(), c(b'A'), "Sub qry should be swapped to A");
 
@@ -309,14 +306,7 @@ mod tests {
         a_key => SparseNodePartition::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet)?,
       },
       edges: btreemap! {
-        edge_to_a_key => SparseEdgePartition {
-          subs: vec![sub],
-          indels: vec![],
-          msg_to_parent: MarginalSparseSeqDistribution::default(),
-          msg_to_child: MarginalSparseSeqDistribution::default(),
-          msg_from_child: MarginalSparseSeqDistribution::default(),
-          transmission: None,
-        },
+        edge_to_a_key => SparseEdgePartition::with_fitch_subs(vec![sub]),
       },
     };
 
@@ -331,8 +321,8 @@ mod tests {
 
     // Verify edge mutation is inverted: was G->T, now should be T->G
     let edge_data = &sparse_partition.edges[&edge_to_a_key];
-    assert_eq!(edge_data.subs.len(), 1);
-    let inverted_sub = &edge_data.subs[0];
+    assert_eq!(edge_data.fitch_subs().len(), 1);
+    let inverted_sub = &edge_data.fitch_subs()[0];
     assert_eq!(
       inverted_sub.reff(),
       AsciiChar::from_byte_unchecked(b'T'),
@@ -392,14 +382,7 @@ mod tests {
         a_key => SparseNodePartition::new(&seq![c(b'A'); 8], &alphabet)?,
       },
       edges: btreemap! {
-        edge_to_a_key => SparseEdgePartition {
-          subs: vec![],
-          indels: vec![indel],
-          msg_to_parent: MarginalSparseSeqDistribution::default(),
-          msg_to_child: MarginalSparseSeqDistribution::default(),
-          msg_from_child: MarginalSparseSeqDistribution::default(),
-          transmission: None,
-        },
+        edge_to_a_key => SparseEdgePartition::with_fitch_subs_and_indels(vec![], vec![indel]),
       },
     };
 
@@ -470,22 +453,8 @@ mod tests {
         a_key => SparseNodePartition::new(&seq![c(b'A'); 8], &alphabet)?,
       },
       edges: btreemap! {
-        edge_root_ab => SparseEdgePartition {
-          subs: vec![sub1],
-          indels: vec![],
-          msg_to_parent: MarginalSparseSeqDistribution::default(),
-          msg_to_child: MarginalSparseSeqDistribution::default(),
-          msg_from_child: MarginalSparseSeqDistribution::default(),
-          transmission: None,
-        },
-        edge_ab_a => SparseEdgePartition {
-          subs: vec![sub2, sub3],
-          indels: vec![],
-          msg_to_parent: MarginalSparseSeqDistribution::default(),
-          msg_to_child: MarginalSparseSeqDistribution::default(),
-          msg_from_child: MarginalSparseSeqDistribution::default(),
-          transmission: None,
-        },
+        edge_root_ab => SparseEdgePartition::with_fitch_subs(vec![sub1]),
+        edge_ab_a => SparseEdgePartition::with_fitch_subs(vec![sub2, sub3]),
       },
     };
 

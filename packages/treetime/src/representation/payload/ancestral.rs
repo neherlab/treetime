@@ -243,13 +243,7 @@ mod tests {
     for (idx, subs) in edge_subs {
       if let Some(edge) = edges.get(*idx) {
         let edge_key = edge.read_arc().key();
-        partition.edges.insert(
-          edge_key,
-          SparseEdgePartition {
-            subs: subs.clone(),
-            ..SparseEdgePartition::default()
-          },
-        );
+        partition.edges.insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
       }
     }
 

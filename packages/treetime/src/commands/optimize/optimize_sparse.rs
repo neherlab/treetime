@@ -55,7 +55,7 @@ pub fn get_coefficients(
     .keys()
     .copied()
     .chain(edge.msg_to_parent.variable.keys().copied())
-    .chain(edge.subs.iter().map(Sub::pos))
+    .chain(edge.fitch_subs().iter().map(Sub::pos))
     .unique()
     .collect();
 
@@ -63,7 +63,7 @@ pub fn get_coefficients(
     .iter()
     .map(|pos| -> Result<_, Report> {
       // Check whether the position is in substitutions
-      if let Some(sub) = edge.subs.iter().find(|m| m.pos() == *pos) {
+      if let Some(sub) = edge.fitch_subs().iter().find(|m| m.pos() == *pos) {
         Ok((sub.reff(), sub.qry()))
       } else {
         let parent = edge

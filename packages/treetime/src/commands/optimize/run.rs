@@ -570,7 +570,7 @@ pub(crate) fn find_zero_optimal_internal_edges(
         partition
           .edges
           .get(&edge_key)
-          .is_some_and(|e| !e.subs.is_empty() || !e.indels.is_empty())
+          .is_some_and(|e| !e.fitch_subs().is_empty() || !e.indels.is_empty())
       });
       (!has_mutations).then_some(edge_key)
     })

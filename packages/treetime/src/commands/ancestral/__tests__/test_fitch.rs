@@ -48,7 +48,7 @@ mod tests {
         let child_name = get_node_name(graph, edge.target());
         let edge_name = format!("{parent_name}->{child_name}");
         let subs = partition.edges[&edge.key()]
-          .subs
+          .fitch_subs()
           .iter()
           .map(|sub| sub.to_string())
           .collect_vec();

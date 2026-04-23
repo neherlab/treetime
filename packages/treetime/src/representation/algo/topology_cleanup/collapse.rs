@@ -1,7 +1,6 @@
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::GraphAncestral;
-use crate::seq::mutation::compose_substitutions;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -58,7 +57,8 @@ pub fn collapse_edge(
       let mut partition = partition.write_arc();
       let removed_edge_data = partition.edges[&edge_key].clone();
       let child_edge = partition.edges.entry(new_edge_key).or_default();
-      child_edge.subs = compose_substitutions(&removed_edge_data.subs, &child_edge.subs)?;
+      let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
+      child_edge.set_fitch_subs(merged_subs);
       let mut merged_indels = removed_edge_data.indels;
       merged_indels.append(&mut child_edge.indels);
       child_edge.indels = merged_indels;

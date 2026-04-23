@@ -74,12 +74,11 @@ mod tests {
           if let Some(num_muts) = num_muts {
             partition.edges.insert(
               edge_key,
-              SparseEdgePartition {
-                subs: (0..*num_muts)
+              SparseEdgePartition::with_fitch_subs(
+                (0..*num_muts)
                   .map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap())
                   .collect_vec(),
-                ..SparseEdgePartition::default()
-              },
+              ),
             );
           }
         }
@@ -120,10 +119,9 @@ mod tests {
             Some(n) => {
               partition.edges.insert(
                 edge_key,
-                SparseEdgePartition {
-                  subs: (0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec(),
-                  ..SparseEdgePartition::default()
-                },
+                SparseEdgePartition::with_fitch_subs(
+                  (0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec(),
+                ),
               );
             },
             None => {
@@ -640,24 +638,18 @@ mod tests {
     // Root -> internal has mutations at positions 0, 1
     partition.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        subs: vec![
-          Sub::new(c(b'A'), 0_usize, c(b'T'))?,
-          Sub::new(c(b'A'), 1_usize, c(b'C'))?,
-        ],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![
+        Sub::new(c(b'A'), 0_usize, c(b'T'))?,
+        Sub::new(c(b'A'), 1_usize, c(b'C'))?,
+      ]),
     );
     // Internal -> A has mutations at positions 2, 3
     partition.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![
-          Sub::new(c(b'G'), 2_usize, c(b'T'))?,
-          Sub::new(c(b'C'), 3_usize, c(b'A'))?,
-        ],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![
+        Sub::new(c(b'G'), 2_usize, c(b'T'))?,
+        Sub::new(c(b'C'), 3_usize, c(b'A'))?,
+      ]),
     );
     // Internal -> B has no mutations
     partition
@@ -692,9 +684,9 @@ mod tests {
 
       if let Some(edge_partition) = partition.edges.get(&edge_key) {
         if target_name.as_deref() == Some("A") {
-          a_muts_count = edge_partition.subs.len();
+          a_muts_count = edge_partition.fitch_subs().len();
         } else if target_name.as_deref() == Some("B") {
-          b_muts_count = edge_partition.subs.len();
+          b_muts_count = edge_partition.fitch_subs().len();
         }
       }
     }
@@ -728,18 +720,12 @@ mod tests {
     // Parent edge: A->G at pos 0
     partition.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
     // Child edge: G->T at pos 0 (ref=G matches parent qry)
     partition.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?]),
     );
     partition
       .edges
@@ -766,9 +752,9 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.edges[&edge_key];
-        assert_eq!(edge_partition.subs.len(), 1);
-        assert_eq!(edge_partition.subs[0].reff(), c(b'A'));
-        assert_eq!(edge_partition.subs[0].qry(), c(b'T'));
+        assert_eq!(edge_partition.fitch_subs().len(), 1);
+        assert_eq!(edge_partition.fitch_subs()[0].reff(), c(b'A'));
+        assert_eq!(edge_partition.fitch_subs()[0].qry(), c(b'T'));
       }
     }
 
@@ -798,18 +784,12 @@ mod tests {
     // Parent edge: A->G at pos 0
     partition.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
     // Child edge: G->A at pos 0 (reverts back to original state)
     partition.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?]),
     );
     partition
       .edges
@@ -836,7 +816,7 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.edges[&edge_key];
-        assert_eq!(edge_partition.subs.len(), 0);
+        assert_eq!(edge_partition.fitch_subs().len(), 0);
       }
     }
 
@@ -865,17 +845,11 @@ mod tests {
     };
     partition1.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
     partition1.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?]),
     );
     partition1
       .edges
@@ -892,20 +866,14 @@ mod tests {
     };
     partition2.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        subs: vec![
-          Sub::new(c(b'C'), 10_usize, c(b'A'))?,
-          Sub::new(c(b'T'), 11_usize, c(b'G'))?,
-        ],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![
+        Sub::new(c(b'C'), 10_usize, c(b'A'))?,
+        Sub::new(c(b'T'), 11_usize, c(b'G'))?,
+      ]),
     );
     partition2.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?]),
     );
     partition2
       .edges
@@ -934,8 +902,8 @@ mod tests {
         .and_then(|n| n.read_arc().payload().read_arc().name.clone());
 
       if target_name.as_deref() == Some("A") {
-        assert_eq!(p1.edges[&edge_key].subs.len(), 2); // 1 + 1
-        assert_eq!(p2.edges[&edge_key].subs.len(), 3); // 2 + 1
+        assert_eq!(p1.edges[&edge_key].fitch_subs().len(), 2); // 1 + 1
+        assert_eq!(p2.edges[&edge_key].fitch_subs().len(), 3); // 2 + 1
       }
     }
 
@@ -1259,38 +1227,26 @@ mod tests {
     let ia_key = find_edge_key(&graph, "I", "A").unwrap();
     partition.edges.insert(
       ia_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
 
     let ib_key = find_edge_key(&graph, "I", "B").unwrap();
     partition.edges.insert(
       ib_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
 
     let pc_key = find_edge_key(&graph, "root", "C").unwrap();
     partition.edges.insert(
       pc_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
 
     // P→D: different mutation at position 5 (not shared with A, B, C)
     let pd_key = find_edge_key(&graph, "root", "D").unwrap();
     partition.edges.insert(
       pd_key,
-      SparseEdgePartition {
-        subs: vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?]),
     );
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
@@ -1345,17 +1301,11 @@ mod tests {
 
     partition.edges.insert(
       root_internal_edge_key,
-      SparseEdgePartition {
-        indels: vec![parent_indel],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs_and_indels(vec![], vec![parent_indel]),
     );
     partition.edges.insert(
       internal_a_edge_key,
-      SparseEdgePartition {
-        indels: vec![child_indel],
-        ..SparseEdgePartition::default()
-      },
+      SparseEdgePartition::with_fitch_subs_and_indels(vec![], vec![child_indel]),
     );
     partition
       .edges

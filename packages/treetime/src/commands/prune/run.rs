@@ -576,15 +576,15 @@ fn merge_sibling_pair(
 
     // Insert shared mutations on parent-to-new-node edge (no indels - only point mutations are shared)
     let parent_edge = partition.edges.entry(new_parent_edge_key).or_default();
-    parent_edge.subs = pair.shared_subs[pi].clone();
+    parent_edge.set_fitch_subs(pair.shared_subs[pi].clone());
 
     // Insert remaining mutations and preserved indels on new-node-to-child edges
     let edge_a = partition.edges.entry(new_edge_a_key).or_default();
-    edge_a.subs = data.remaining_subs_a.clone();
+    edge_a.set_fitch_subs(data.remaining_subs_a.clone());
     edge_a.indels = data.indels_a.clone();
 
     let edge_b = partition.edges.entry(new_edge_b_key).or_default();
-    edge_b.subs = data.remaining_subs_b.clone();
+    edge_b.set_fitch_subs(data.remaining_subs_b.clone());
     edge_b.indels = data.indels_b.clone();
   }
 

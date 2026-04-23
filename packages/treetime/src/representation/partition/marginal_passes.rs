@@ -2,15 +2,18 @@ use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::Array1;
 use std::collections::BTreeMap;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_primitives::AsciiChar;
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 
@@ -30,6 +33,77 @@ fn node_reference_state_or(
   node_reference_state(partition, node_key, pos)
     .filter(|state| partition.alphabet.is_canonical(*state))
     .unwrap_or(fallback)
+}
+
+fn compute_marginal_subs_for_edge(
+  partition: &PartitionMarginalSparse,
+  parent_key: GraphNodeKey,
+  child_key: GraphNodeKey,
+  edge_key: GraphEdgeKey,
+) -> Result<Vec<Sub>, Report> {
+  let alphabet = &partition.alphabet;
+  let Some(edge) = partition.edges.get(&edge_key) else {
+    return Ok(vec![]);
+  };
+  let Some(parent_node) = partition.nodes.get(&parent_key) else {
+    return Ok(vec![]);
+  };
+  let Some(child_node) = partition.nodes.get(&child_key) else {
+    return Ok(vec![]);
+  };
+
+  // Candidate positions: union of Fitch subs, parent variable sites, child variable sites
+  let positions: Vec<usize> = edge
+    .fitch_subs()
+    .iter()
+    .map(Sub::pos)
+    .chain(parent_node.profile.variable.keys().copied())
+    .chain(child_node.profile.variable.keys().copied())
+    .sorted()
+    .dedup()
+    .collect();
+
+  let mut subs = Vec::new();
+
+  for pos in positions {
+    // Determine parent MAP state
+    let parent_state = if let Some(var) = parent_node.profile.variable.get(&pos) {
+      alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
+    } else {
+      // Use the Fitch-derived reference state or infer from fixed profiles
+      if let Some(sub) = edge.fitch_subs().iter().find(|s| s.pos() == pos) {
+        sub.reff()
+      } else if let Some(var) = child_node.profile.variable.get(&pos) {
+        var.state
+      } else {
+        continue;
+      }
+    };
+
+    // Determine child MAP state
+    let child_state = if let Some(var) = child_node.profile.variable.get(&pos) {
+      alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
+    } else {
+      // Use Fitch sub qry or parent state (no change)
+      if let Some(sub) = edge.fitch_subs().iter().find(|s| s.pos() == pos) {
+        sub.qry()
+      } else {
+        parent_state
+      }
+    };
+
+    // Skip if same state or non-canonical
+    if parent_state == child_state {
+      continue;
+    }
+    if !alphabet.is_canonical(parent_state) || !alphabet.is_canonical(child_state) {
+      continue;
+    }
+
+    subs.push(Sub::new(parent_state, pos, child_state)?);
+  }
+
+  Ok(subs)
 }
 
 pub fn process_node_backward<N, E>(
@@ -78,7 +152,7 @@ where
     for (ci, (_child_key, edge_key)) in node.child_keys.iter().enumerate() {
       child_states.push(btreemap! {});
       let edge_data = &partition.edges[edge_key];
-      for m in &edge_data.subs {
+      for m in edge_data.fitch_subs() {
         variable_pos.insert(m.pos(), m.reff());
         child_states[ci].insert(m.pos(), m.qry());
       }
@@ -176,7 +250,7 @@ where
 
       let node_data = &partition.nodes[&node.key];
       // process substitutions first. these have defined states for both parent and child.
-      for m in &edge_data.subs {
+      for m in edge_data.fitch_subs() {
         let current_state = m.qry();
         variable_pos.insert(m.pos(), current_state);
         parent_state.entry(m.pos()).or_insert_with(|| m.reff());
@@ -235,6 +309,14 @@ where
     )?;
 
     partition.nodes.get_mut(&node.key).unwrap().profile = profile;
+
+    // Compute and cache marginal subs for parent edges now that child profile is finalized
+    for (parent_key, edge_key) in &node.parent_keys {
+      let marginal_subs = compute_marginal_subs_for_edge(partition, *parent_key, node.key, *edge_key)?;
+      if let Some(edge) = partition.edges.get_mut(edge_key) {
+        edge.set_marginal_subs(marginal_subs);
+      }
+    }
   }
 
   // precalculate messages to children that summarize info from their siblings and the parent
@@ -255,7 +337,7 @@ where
     let child_key = graph.get_target_node_key(*child_edge_key)?;
     let child_non_char = &partition.nodes[&child_key].seq.non_char;
     // handle substitutions first, these have defined states for both parent and child
-    for sub in &child_edge_data.subs {
+    for sub in child_edge_data.fitch_subs() {
       child_states.insert(sub.pos(), sub.qry());
       parent_states.insert(sub.pos(), sub.reff());
     }

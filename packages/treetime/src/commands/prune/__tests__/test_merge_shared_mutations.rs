@@ -67,13 +67,7 @@ mod tests {
     for (source, target, subs) in edge_mutations {
       let edge_key =
         find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
-      partition.edges.insert(
-        edge_key,
-        SparseEdgePartition {
-          subs: subs.clone(),
-          ..SparseEdgePartition::default()
-        },
-      );
+      partition.edges.insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
     }
 
     Ok(Arc::new(RwLock::new(partition)))
@@ -177,10 +171,10 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       if let Some(edge_data) = p.edges.get(&edge.key()) {
         match target_name.as_deref() {
-          Some("A" | "B") => assert_eq!(edge_data.subs.len(), 0, "child should have no remaining mutations"),
-          Some("C") => assert_eq!(edge_data.subs.len(), 1),
+          Some("A" | "B") => assert_eq!(edge_data.fitch_subs().len(), 0, "child should have no remaining mutations"),
+          Some("C") => assert_eq!(edge_data.fitch_subs().len(), 1),
           None => assert_eq!(
-            edge_data.subs.len(),
+            edge_data.fitch_subs().len(),
             2,
             "new internal edge should carry shared mutations"
           ),
@@ -226,13 +220,13 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       if let Some(edge_data) = p.edges.get(&edge.key()) {
         match target_name.as_deref() {
-          Some("A") => assert_eq!(edge_data.subs.len(), 0),
+          Some("A") => assert_eq!(edge_data.fitch_subs().len(), 0),
           Some("B") => {
-            assert_eq!(edge_data.subs.len(), 1);
-            assert_eq!(edge_data.subs[0], sub(b'T', 10, b'A'));
+            assert_eq!(edge_data.fitch_subs().len(), 1);
+            assert_eq!(edge_data.fitch_subs()[0], sub(b'T', 10, b'A'));
           },
-          Some("C") => assert_eq!(edge_data.subs.len(), 1),
-          None => assert_eq!(edge_data.subs.len(), 2, "internal edge carries shared mutations"),
+          Some("C") => assert_eq!(edge_data.fitch_subs().len(), 1),
+          None => assert_eq!(edge_data.fitch_subs().len(), 2, "internal edge carries shared mutations"),
           _ => {},
         }
       }
@@ -282,7 +276,7 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       if target_name.is_none() {
         if let Some(edge_data) = p.edges.get(&edge.key()) {
-          assert_eq!(edge_data.subs.len(), 3);
+          assert_eq!(edge_data.fitch_subs().len(), 3);
         }
       }
     }
@@ -409,20 +403,8 @@ mod tests {
     let edge_a = find_edge_key(&graph, "root", "A").unwrap();
     let edge_b = find_edge_key(&graph, "root", "B").unwrap();
     let edge_c = find_edge_key(&graph, "root", "C").unwrap();
-    p2_inner.edges.insert(
-      edge_a,
-      SparseEdgePartition {
-        subs: vec![sub(b'C', 50, b'G')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    p2_inner.edges.insert(
-      edge_b,
-      SparseEdgePartition {
-        subs: vec![sub(b'C', 50, b'G')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    p2_inner.edges.insert(edge_a, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
+    p2_inner.edges.insert(edge_b, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
     p2_inner.edges.insert(edge_c, SparseEdgePartition::default());
     let p2 = Arc::new(RwLock::new(p2_inner));
 
@@ -457,10 +439,10 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       if target_name.as_deref() == Some("B") {
         // P1: B had {A0T, G5C}, shared = {A0T}, remaining = {G5C}
-        assert_eq!(p1.edges[&edge.key()].subs.len(), 1);
-        assert_eq!(p1.edges[&edge.key()].subs[0], sub(b'G', 5, b'C'));
+        assert_eq!(p1.edges[&edge.key()].fitch_subs().len(), 1);
+        assert_eq!(p1.edges[&edge.key()].fitch_subs()[0], sub(b'G', 5, b'C'));
         // P2: B had {C50G}, shared = {C50G}, remaining = {}
-        assert_eq!(p2.edges[&edge.key()].subs.len(), 0);
+        assert_eq!(p2.edges[&edge.key()].fitch_subs().len(), 0);
       }
     }
 

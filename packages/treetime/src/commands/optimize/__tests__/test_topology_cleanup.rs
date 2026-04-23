@@ -151,34 +151,10 @@ mod tests {
     let rc_key = find_edge_key(&graph, "root", "C").unwrap();
     let rd_key = find_edge_key(&graph, "root", "D").unwrap();
 
-    partition.edges.insert(
-      ia_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      ib_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      rc_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'A', 0, b'T')],
-        ..SparseEdgePartition::default()
-      },
-    );
-    partition.edges.insert(
-      rd_key,
-      SparseEdgePartition {
-        subs: vec![sub(b'G', 5, b'C')],
-        ..SparseEdgePartition::default()
-      },
-    );
+    partition.edges.insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition.edges.insert(ib_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition.edges.insert(rc_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition.edges.insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
     let sparse = vec![Arc::new(RwLock::new(partition))];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];

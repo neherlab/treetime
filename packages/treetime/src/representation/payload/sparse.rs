@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
@@ -90,13 +90,66 @@ pub struct SparseSeqInfo {
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[allow(clippy::partial_pub_fields)]
 pub struct SparseEdgePartition {
-  pub subs: Vec<Sub>,
+  subs_fitch: Vec<Sub>,
+  subs_marginal: Option<Vec<Sub>>,
   pub indels: Vec<InDel>,
   pub msg_to_parent: MarginalSparseSeqDistribution,
   pub msg_to_child: MarginalSparseSeqDistribution,
   pub msg_from_child: MarginalSparseSeqDistribution,
   pub transmission: Option<Vec<(usize, usize)>>,
+}
+
+impl SparseEdgePartition {
+  pub fn with_fitch_subs(subs: Vec<Sub>) -> Self {
+    Self {
+      subs_fitch: subs,
+      ..Default::default()
+    }
+  }
+
+  pub fn with_fitch_subs_and_indels(subs: Vec<Sub>, indels: Vec<InDel>) -> Self {
+    Self {
+      subs_fitch: subs,
+      indels,
+      ..Default::default()
+    }
+  }
+
+  pub fn fitch_subs(&self) -> &[Sub] {
+    &self.subs_fitch
+  }
+
+  pub fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
+    self.subs_fitch = subs;
+  }
+
+  pub fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
+    self.subs_fitch.extend(subs);
+  }
+
+  pub fn invert_fitch_subs(&mut self) {
+    for sub in &mut self.subs_fitch {
+      sub.invert();
+    }
+  }
+
+  pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
+    compose_substitutions(&self.subs_fitch, suffix)
+  }
+
+  pub fn marginal_subs(&self) -> Option<&[Sub]> {
+    self.subs_marginal.as_deref()
+  }
+
+  pub fn set_marginal_subs(&mut self, subs: Vec<Sub>) {
+    self.subs_marginal = Some(subs);
+  }
+
+  pub fn clear_marginal_subs(&mut self) {
+    self.subs_marginal = None;
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

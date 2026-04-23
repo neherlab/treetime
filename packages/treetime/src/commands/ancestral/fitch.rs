@@ -450,7 +450,7 @@ where
         // can emit positions out of order when parent-only positions precede child positions.
         subs.sort();
         let edge = partition.edge_mut(edge_key);
-        edge.subs.extend(subs);
+        edge.extend_fitch_subs(subs);
         edge.indels.extend(indels);
       }
     }
@@ -577,7 +577,7 @@ fn run_fitch_reconstruction(
       let mut sequence = partition.nodes[parent].seq.sequence.clone();
       let edge_part = &partition.edges[edge];
 
-      for sub in &edge_part.subs {
+      for sub in edge_part.fitch_subs() {
         sequence[sub.pos()] = sub.qry();
       }
 
