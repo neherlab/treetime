@@ -1,6 +1,6 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::representation::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseNodePartition, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -40,10 +40,8 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let alphabet = &partition.alphabet;
-
-  let mut seq = if node.is_root {
-    partition.root_sequence.clone()
+  let (base_seq, edge) = if node.is_root {
+    (&partition.root_sequence, None)
   } else {
     let Some((parent_key, edge_key)) = get_exactly_one(&node.parent_keys).ok() else {
       return;
@@ -57,35 +55,14 @@ where
     let Some(edge_data) = partition.edges.get(edge_key) else {
       return;
     };
-
-    let mut seq = parent_data.seq.sequence.clone();
-    for m in edge_data.fitch_subs() {
-      seq[m.pos()] = m.qry();
-    }
-    for indel in &edge_data.indels {
-      if indel.deletion {
-        seq[indel.range.0..indel.range.1].fill(alphabet.gap());
-      } else {
-        seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-      }
-    }
-    seq
+    (&parent_data.seq.sequence, Some(edge_data))
   };
 
   let Some(node_data) = partition.nodes.get(&node.key) else {
     return;
   };
 
-  // Mask unknowns
-  for r in &node_data.seq.unknown {
-    seq[r.0..r.1].fill(alphabet.unknown());
-  }
-
-  // Override variable sites with MAP states
-  for (pos, states) in &node_data.profile.variable {
-    seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
-  }
-
+  let seq = reconstruct_map_seq(base_seq, edge, node_data, &partition.alphabet);
   partition.nodes.get_mut(&node.key).unwrap().seq.sequence = seq;
 }
 

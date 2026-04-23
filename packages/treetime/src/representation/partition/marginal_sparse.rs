@@ -87,6 +87,40 @@ impl PartitionMarginalSparse {
   }
 }
 
+pub(crate) fn reconstruct_map_seq(
+  base_seq: &Seq,
+  edge: Option<&SparseEdgePartition>,
+  node: &SparseNodePartition,
+  alphabet: &Alphabet,
+) -> Seq {
+  let mut seq = if let Some(edge) = edge {
+    let mut seq = base_seq.clone();
+    for m in edge.fitch_subs() {
+      seq[m.pos()] = m.qry();
+    }
+    for indel in &edge.indels {
+      if indel.deletion {
+        seq[indel.range.0..indel.range.1].fill(alphabet.gap());
+      } else {
+        seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
+      }
+    }
+    seq
+  } else {
+    base_seq.clone()
+  };
+
+  for r in &node.seq.unknown {
+    seq[r.0..r.1].fill(alphabet.unknown());
+  }
+
+  for (pos, states) in &node.profile.variable {
+    seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
+  }
+
+  seq
+}
+
 impl HasLogLh for PartitionMarginalSparse {
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
     self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
@@ -335,45 +369,16 @@ where
 
     let mut node_data = self.nodes.remove(&node.key)?;
 
-    let mut seq = if node.is_root {
-      self.root_sequence.clone()
+    let (base_seq, edge) = if node.is_root {
+      (&self.root_sequence, None)
     } else {
       let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
       let parent_data = self.nodes.get(parent_key)?;
       let edge_data = self.edges.get(edge_key)?;
-
-      let mut seq = parent_data.seq.sequence.clone();
-
-      // Implant mutations
-      for m in edge_data.fitch_subs() {
-        seq[m.pos()] = m.qry();
-      }
-
-      // Implant indels
-      for indel in &edge_data.indels {
-        if indel.deletion {
-          seq[indel.range.0..indel.range.1].fill(self.alphabet.gap());
-        } else {
-          seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
-        }
-      }
-
-      seq
+      (&parent_data.seq.sequence, Some(edge_data))
     };
 
-    // At the node itself, mask whatever is unknown in the node.
-    let alphabet = &self.alphabet;
-    for r in &node_data.seq.unknown {
-      let ambig_char = alphabet.unknown();
-      seq[r.0..r.1].fill(ambig_char);
-    }
-
-    // Change variable sites to their most likely state.
-    // Uses argmax_first for NumPy-compatible tie-breaking.
-    for (pos, states) in &node_data.profile.variable {
-      seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
-    }
-
+    let seq = reconstruct_map_seq(base_seq, edge, &node_data, &self.alphabet);
     node_data.seq.sequence = seq.clone();
     self.nodes.insert(node.key, node_data);
 
