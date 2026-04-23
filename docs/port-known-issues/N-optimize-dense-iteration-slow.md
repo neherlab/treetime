@@ -39,4 +39,4 @@ The $O(N \cdot s^2 \cdot L)$ complexity is inherent -- the question is constant 
 ## References
 
 1. <a id="ref-1"></a> Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17:368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
-2. <a id="ref-2"></a> Flouri, Tomas, Fernando Izquierdo-Carrasco, Kassian Kobert, and Alexandros Stamatakis. 2015. "The Phylogenetic Likelihood Library." _Systematic Biology_ 64(2):356-362. https://doi.org/10.1093/sysbio/syu084 [↩](#cite-2)
+2. <a id="ref-2"></a> Flouri, Tomas, Fernando Izquierdo-Carrasco, Diego Darriba, Andre J. Aberer, Lam-Tung Nguyen, Bui Quang Minh, Arndt Von Haeseler, and Alexandros Stamatakis. 2015. "The Phylogenetic Likelihood Library." _Systematic Biology_ 64(2):356-362. https://doi.org/10.1093/sysbio/syu084 [↩](#cite-2)

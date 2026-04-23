@@ -8,13 +8,13 @@ Timetree inference (including TreeTime's own marginal timetree pipeline) can pro
 
 ## Affected code locations
 
-| Location | Role |
-|---|---|
-| [packages/treetime/src/commands/optimize/run.rs#L132-L148](../../packages/treetime/src/commands/optimize/run.rs#L132-L148) | Mode dispatch — selects what to do before optimization |
-| [packages/treetime/src/commands/optimize/run.rs#L396-L416](../../packages/treetime/src/commands/optimize/run.rs#L396-L416) | `is_branch_length_missing` and `any_edge_missing_branch_length` predicates |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597) | Per-edge bootstrap inside `run_optimize_mixed` |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704) | Skip condition inside `initial_guess_mixed` |
-| [packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31](../../packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31) | `debug_assert!(t > 0.0)` in `poisson_indel_log_lh` |
+| Location                                                                                                                                             | Role                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [packages/treetime/src/commands/optimize/run.rs#L710-L738](../../packages/treetime/src/commands/optimize/run.rs#L710-L738)                           | Mode dispatch -- selects what to do before optimization                    |
+| [packages/treetime/src/commands/optimize/run.rs#L650-L665](../../packages/treetime/src/commands/optimize/run.rs#L650-L665)                           | `is_branch_length_missing` and `any_edge_missing_branch_length` predicates |
+| [packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597) | Per-edge bootstrap inside `run_optimize_mixed`                             |
+| [packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704) | Skip condition inside `initial_guess_mixed`                                |
+| [packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31](../../packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31)         | `debug_assert!(t > 0.0)` in `poisson_indel_log_lh`                         |
 
 ## Behaviour per mode
 
@@ -67,23 +67,23 @@ For edges with no indels in `Never` mode, the substitution-side evaluation (`exp
 
 ## Summary table
 
-| Mode | Negative BL (+ indels) | Negative BL (no indels) | User notified? |
-|------|------------------------|-------------------------|----------------|
-| `auto` | Rewritten silently (no crash) | Preserved silently, Newton starts at `t < 0` | No |
-| `always` | Rewritten silently (no crash) | Rewritten silently (no crash) | No |
-| `never` (debug) | **Panic** | Wrong starting point | No |
-| `never` (release) | NaN propagation, silent wrong results | Wrong starting point | No |
+| Mode              | Negative BL (+ indels)                | Negative BL (no indels)                      | User notified? |
+| ----------------- | ------------------------------------- | -------------------------------------------- | -------------- |
+| `auto`            | Rewritten silently (no crash)         | Preserved silently, Newton starts at `t < 0` | No             |
+| `always`          | Rewritten silently (no crash)         | Rewritten silently (no crash)                | No             |
+| `never` (debug)   | **Panic**                             | Wrong starting point                         | No             |
+| `never` (release) | NaN propagation, silent wrong results | Wrong starting point                         | No             |
 
 ## Inconsistencies
 
 Four separate validity predicates exist across the codebase. They disagree on what constitutes an invalid branch length:
 
-| Predicate | Rejects `None` | Rejects `NaN` | Rejects `< 0` |
-|---|---|---|---|
-| `is_branch_length_missing` (run.rs) | ✓ | ✓ | ✗ |
-| `initial_guess_mixed` skip (Auto mode, no indels) | ✓ | ✓ | ✗ (−BL treated as valid) |
-| `initial_guess_mixed` skip (Auto mode, with indels) | ✓ | ✓ | ✓ (−BL triggers rewrite) |
-| `run_optimize_mixed` bootstrap | n/a | n/a | ✗ (handles `== 0.0` only) |
+| Predicate                                           | Rejects `None` | Rejects `NaN` | Rejects `< 0`             |
+| --------------------------------------------------- | -------------- | ------------- | ------------------------- |
+| `is_branch_length_missing` (run.rs)                 | ✓              | ✓             | ✗                         |
+| `initial_guess_mixed` skip (Auto mode, no indels)   | ✓              | ✓             | ✗ (−BL treated as valid)  |
+| `initial_guess_mixed` skip (Auto mode, with indels) | ✓              | ✓             | ✓ (−BL triggers rewrite)  |
+| `run_optimize_mixed` bootstrap                      | n/a            | n/a           | ✗ (handles `== 0.0` only) |
 
 The `Never`-mode guard and the initial-guess skip condition for no-indel edges both fail to treat negative branch lengths as invalid, while the skip condition for indel-bearing edges does the right thing.
 
@@ -133,11 +133,13 @@ Promoting the `debug_assert!` to a proper `Result`-returning error requires chan
 The fix touches four distinct code paths across three different entry modes. Coverage should be exhaustive across the matrix. Start with red tests that reproduce the reported failures, then expand to the adjacent cases.
 
 **Regression repros (currently failing or crashing):**
+
 - `Never` mode + negative BL + indels on the affected edge: should return an error, not panic
 - `Never` mode + negative BL + no indels: should return an error (negative is invalid by contract)
 - `Auto` mode + negative BL + no indels: should emit a warning and not preserve the negative value into optimization
 
 **Correctness after fix:**
+
 - `Auto` mode + negative BL + no indels: branch length is replaced, result is finite and ≥ 0
 - `Auto` mode + negative BL + indels: same
 - `Always` mode + any invalid BL: all replaced, warning still emitted
@@ -146,11 +148,13 @@ The fix touches four distinct code paths across three different entry modes. Cov
 - `Never`-mode error message lists the correct edges
 
 **Boundary conditions:**
+
 - Exactly-zero BL on an indel-free edge (should remain valid — zero branch length is a meaningful optimizer result)
 - Exactly-zero BL on an indel-bearing edge (handled by existing bootstrap, should not regress)
 - Mixed tree: some negative, some zero, some positive BLs across different edge types
 - Tree with no invalid BLs: no warning emitted, no regression in any mode
 
 **`poisson_indel_log_lh` promotion (if done):**
+
 - Calling with `t < 0` and `k > 0` returns an error in both debug and release builds
 - Calling with `t = 0` and `k = 0` still returns the correct zero-indel result

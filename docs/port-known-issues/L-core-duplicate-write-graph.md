@@ -4,9 +4,9 @@ Three commands (`ancestral`, `optimize`, `prune`) each define a private `write_g
 
 ## Locations
 
-- Ancestral: [packages/treetime/src/commands/ancestral/run.rs#L224-L249](../../packages/treetime/src/commands/ancestral/run.rs#L224-L249) -- `annotated_tree.{nwk,nexus}`
-- Optimize: [packages/treetime/src/commands/optimize/run.rs#L484-L510](../../packages/treetime/src/commands/optimize/run.rs#L484-L510) -- `annotated_tree.{nwk,nexus}`
-- Prune: [packages/treetime/src/commands/prune/run.rs#L548-L567](../../packages/treetime/src/commands/prune/run.rs#L548-L567) -- `pruned_tree.{nwk,nexus}`
+- Ancestral: [packages/treetime/src/commands/ancestral/run.rs#L208-L233](../../packages/treetime/src/commands/ancestral/run.rs#L208-L233) -- `annotated_tree.{nwk,nexus}`
+- Optimize: [packages/treetime/src/commands/optimize/run.rs#L742-L767](../../packages/treetime/src/commands/optimize/run.rs#L742-L767) -- `annotated_tree.{nwk,nexus}`
+- Prune: [packages/treetime/src/commands/prune/run.rs#L584-L603](../../packages/treetime/src/commands/prune/run.rs#L584-L603) -- `pruned_tree.{nwk,nexus}`
 
 ## Proposed placement
 

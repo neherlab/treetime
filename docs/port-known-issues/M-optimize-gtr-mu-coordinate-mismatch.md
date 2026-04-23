@@ -22,16 +22,16 @@ input (timetree-derived trees with year-scale branch lengths).
 
 ## Affected code locations
 
-| Location | Role |
-|---|---|
-| [packages/treetime/src/gtr/gtr.rs#L440](../../packages/treetime/src/gtr/gtr.rs#L440) | `expQt(t)` — computes `exp(eigvals * mu * t)` using `exp_lt` |
-| [packages/treetime/src/gtr/gtr.rs#L317](../../packages/treetime/src/gtr/gtr.rs#L317) | `expQt_with_rate(t, rate)` — same convention with per-site rate |
-| [packages/treetime/src/gtr/gtr.rs#L330](../../packages/treetime/src/gtr/gtr.rs#L330) | `evolve()` — propagates profiles forward in time via `expQt` |
-| [packages/treetime/src/gtr/gtr.rs#L383](../../packages/treetime/src/gtr/gtr.rs#L383) | `propagate_profile()` — propagates likelihoods upward via `expQt` |
-| [packages/treetime/src/commands/optimize/optimize_eval.rs#L29](../../packages/treetime/src/commands/optimize/optimize_eval.rs#L29) | `evaluate_site_contributions` — computes `exp(eigvals * t)` without mu |
-| [packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21) | Dispatches `evaluate_site_contributions` with `gtr.eigvals` and raw `branch_length` |
-| [packages/treetime/src/commands/optimize/run.rs#L152-L153](../../packages/treetime/src/commands/optimize/run.rs#L152-L153) | Main optimization loop — calls `update_marginal` then `run_optimize_mixed` in sequence |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L720](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L720) | `initial_guess_mixed` — sets BL = `subs_count / effective_length`, implicitly assuming `mu = 1` |
+| Location                                                                                                                                       | Role                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [packages/treetime/src/gtr/gtr.rs#L442](../../packages/treetime/src/gtr/gtr.rs#L442)                                                           | `expQt(t)` -- computes `exp(eigvals * mu * t)` using `exp_lt`                                    |
+| [packages/treetime/src/gtr/gtr.rs#L319](../../packages/treetime/src/gtr/gtr.rs#L319)                                                           | `expQt_with_rate(t, rate)` -- same convention with per-site rate                                 |
+| [packages/treetime/src/gtr/gtr.rs#L350](../../packages/treetime/src/gtr/gtr.rs#L350)                                                           | `evolve()` -- propagates profiles forward in time via `expQt`                                    |
+| [packages/treetime/src/gtr/gtr.rs#L399](../../packages/treetime/src/gtr/gtr.rs#L399)                                                           | `propagate_profile()` -- propagates likelihoods upward via `expQt`                               |
+| [packages/treetime/src/commands/optimize/optimize_eval.rs#L29](../../packages/treetime/src/commands/optimize/optimize_eval.rs#L29)             | `evaluate_site_contributions` -- computes `exp(eigvals * t)` without mu                          |
+| [packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21) | Dispatches `evaluate_site_contributions` with `gtr.eigvals` and raw `branch_length`              |
+| [packages/treetime/src/commands/optimize/run.rs#L314-L359](../../packages/treetime/src/commands/optimize/run.rs#L314-L359)                     | Main optimization loop -- calls `update_marginal` then `run_optimize_mixed` in sequence          |
+| [packages/treetime/src/commands/optimize/optimize_unified.rs#L720](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L720)     | `initial_guess_mixed` -- sets BL = `subs_count / effective_length`, implicitly assuming `mu = 1` |
 
 ## Background: two incompatible conventions for `t`
 
@@ -42,7 +42,7 @@ and stores `mu = mu_input * average_rate_raw`. The matrix exponential is then de
 expQt(t) = V * diag(exp(eigvals * mu * t)) * V_inv
 ```
 
-where `eigvals` are the eigenvalues of the *normalized* W. By convention, `t` is a physical time
+where `eigvals` are the eigenvalues of the _normalized_ W. By convention, `t` is a physical time
 parameter (e.g., years) and `mu` carries the units (subs/site/year). The product `mu * t` is
 dimensionless and represents expected substitutions per site.
 
@@ -60,10 +60,12 @@ units. This is consistent with `expQt(t)` only if `mu = 1`.
 and the two expressions produce the same transition probabilities for the same numeric `t`.
 
 **When mu ≠ 1**, the same numeric value of `t` is interpreted differently:
+
 - `expQt(t)` evaluates the matrix transition at `mu * t` subs/site
 - The optimizer evaluates the matrix transition at `t` subs/site
 
 A numeric value of `t = 0.0007` represents:
+
 - `expQt`: `0.0007 * 0.0007 = 4.9e-7` subs/site → essentially no evolution
 - optimizer: `0.0007` subs/site → correct for sc2
 
@@ -122,6 +124,7 @@ Expected (correct): branch lengths distributed in `[~5e-4, ~2e-3]` matching v0 o
 Observed (buggy): branch lengths converge toward 0 or produce wrong subs/site values.
 
 Compare v0 reference:
+
 ```bash
 ./dev/docker/python treetime ancestral \
   --tree data/sc2/2844/tree.nwk \
@@ -152,7 +155,7 @@ There is no clean workaround at the CLI level:
 - **Pre-normalize the input tree**: multiply all branch lengths by the estimated clock rate
   before calling `treetime optimize`. This converts year-scale BLs to subs/site and makes GTR
   inference yield `mu ≈ 1`. Requires an external clock rate estimate (e.g., from `treetime
-  clock`).
+clock`).
 - **Use `--branch-length-initial-guess=auto` with `--max-iter=1`**: single iteration uses the
   correct year-scale profiles from `update_marginal` and produces one round of valid optimization.
   Multi-iteration results are unreliable.
@@ -229,6 +232,7 @@ Before implementing, the following must be confirmed:
 ## Tests needed
 
 **Regression repros (currently producing wrong results with `always` mode):**
+
 - `sc2/2844` with `--dense false --branch-length-initial-guess=always`: final branch lengths
   should be in subs/site range (~5e-4 to 2e-3), not near 0
 - Same with `--dense true`: same expected range
@@ -236,6 +240,7 @@ Before implementing, the following must be confirmed:
   expected subs/site range for ebola rates
 
 **Consistency checks after fix:**
+
 - For any dataset: `update_marginal` profiles after optimization should differ meaningfully from
   root priors on leaf-adjacent edges (non-collapse check — profiles at leaves must carry
   alignment signal, not be near-uniform)
@@ -244,6 +249,7 @@ Before implementing, the following must be confirmed:
   when starting from the same initial tree
 
 **No-regression checks:**
+
 - Non-timetree input (e.g., a tree with BLs already in subs/site): `always` mode should still
   produce correct results after fix
 - Single-iteration `auto` mode result should not change (it was already correct)

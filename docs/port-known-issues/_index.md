@@ -62,8 +62,8 @@ exactly.
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                        |
 | High       | Timetree       | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                                |
 | High       | Timetree       | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                            |
-| Medium     | Timetree       | [Golden master runner missing internal node times](M-timetree-gm-runner-missing-internal-times.md)                                                        |
-| Medium     | Clock          | [Clock filter residual parity](M-clock-filter-residual-parity.md)                                                                                         |
+| Medium     | Timetree       | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)                                   |
+| Medium     | Clock          | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                                    |
 | Negligible | Clock          | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                                                  |
 | Negligible | Clock          | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                                               |
 | Medium     | Ancestral      | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                          |
@@ -126,8 +126,8 @@ exactly.
 | Negligible | Timetree       | [--plot-rtt and --plot-tree return error](N-timetree-plot-unimplemented.md)                                                                               |
 | Negligible | Timetree       | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                      |
 | Negligible | Timetree       | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                         |
-| Negligible | Timetree       | [Auspice JSON output incomplete](N-timetree-auspice-json-incomplete.md)                                                                                   |
-| Negligible | Timetree       | [Unnamed root after reroot](N-timetree-unnamed-root-after-reroot.md)                                                                                      |
+| Negligible | Timetree       | [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md)                                 |
+| Negligible | Timetree       | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                                                       |
 | Negligible | Timetree       | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                                   |
 | Negligible | Timetree       | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                         |
 | Medium     | Timetree       | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                             |

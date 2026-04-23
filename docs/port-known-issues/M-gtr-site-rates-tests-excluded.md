@@ -4,7 +4,7 @@ The file [packages/treetime/src/gtr/**tests**/test_prop_gtr_site_rates.rs](../..
 
 ## Impact
 
-The per-site rate paths in `GTR::expQt_with_rate`, `GTR::evolve`, and `GTR::propagate_profile` (at [packages/treetime/src/gtr/gtr.rs#L317](../../packages/treetime/src/gtr/gtr.rs#L317), [gtr.rs#L354-L364](../../packages/treetime/src/gtr/gtr.rs#L354-L364), [gtr.rs#L403-L412](../../packages/treetime/src/gtr/gtr.rs#L403-L412)) are wired to production via [packages/treetime/src/representation/partition/marginal_helpers.rs](../../packages/treetime/src/representation/partition/marginal_helpers.rs) and have no test coverage in the current build. The only existing coverage for per-site rate behavior is through `test_prop_gtr_site_specific.rs`, which tests the separate `GTRSiteSpecific` class, not the scalar `GTR` per-site branch.
+The per-site rate paths in `GTR::expQt_with_rate`, `GTR::evolve`, and `GTR::propagate_profile` (at [packages/treetime/src/gtr/gtr.rs#L319](../../packages/treetime/src/gtr/gtr.rs#L319), [gtr.rs#L356-L367](../../packages/treetime/src/gtr/gtr.rs#L356-L367), [gtr.rs#L405-L415](../../packages/treetime/src/gtr/gtr.rs#L405-L415)) are wired to production via [packages/treetime/src/representation/partition/marginal_helpers.rs](../../packages/treetime/src/representation/partition/marginal_helpers.rs) and have no test coverage in the current build. The only existing coverage for per-site rate behavior is through `test_prop_gtr_site_specific.rs`, which tests the separate `GTRSiteSpecific` class, not the scalar `GTR` per-site branch.
 
 ## Affected code
 

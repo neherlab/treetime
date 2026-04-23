@@ -2,11 +2,11 @@
 
 `update_marginal()` is generic over `P: PartitionMarginalOps<N, E>`. Dense and sparse partitions are different concrete types, so each call requires a separate slice. Every site that needs both runs two sequential graph traversals:
 
-- `packages/treetime/src/commands/optimize/run.rs:174+181:` initial marginal
-- `packages/treetime/src/commands/optimize/run.rs:216+217:` pre-annotation
-- `packages/treetime/src/commands/optimize/run.rs:309+310:` numerical failure revert
-- `packages/treetime/src/commands/optimize/run.rs:347+348:` worsened revert
-- `packages/treetime/src/commands/optimize/run.rs:390+391:` per-iteration likelihood
+- `packages/treetime/src/commands/optimize/run.rs:173+180:` initial marginal
+- `packages/treetime/src/commands/optimize/run.rs:221+222:` pre-annotation
+- `packages/treetime/src/commands/optimize/run.rs:314+315:` numerical failure revert
+- `packages/treetime/src/commands/optimize/run.rs:352+353:` worsened revert
+- `packages/treetime/src/commands/optimize/run.rs:395+396:` per-iteration likelihood
 
 Each traversal does a full backward + forward pass over the tree. The per-node partition work dominates, but the graph traversal overhead and synchronization barriers double.
 

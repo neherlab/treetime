@@ -4,7 +4,7 @@
 
 ## Locations
 
-- Definition: [packages/treetime/src/commands/prune/run.rs#L293-L313](../../packages/treetime/src/commands/prune/run.rs#L293-L313) (plus the helper functions `find_polytomy_nodes`, `merge_single_polytomy`, `collect_child_edge_keys`, `find_best_shared_mutation_pair`, `compute_shared_subs_across_partitions`, and `merge_sibling_pair`)
+- Definition: [packages/treetime/src/commands/prune/run.rs#L294](../../packages/treetime/src/commands/prune/run.rs#L294) (plus the helper functions `find_polytomy_nodes`, `merge_single_polytomy`, `collect_child_edge_keys`, `find_best_shared_mutation_pair`, `compute_shared_subs_across_partitions`, and `merge_sibling_pair`)
 - Optimize-side usage: [packages/treetime/src/commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs) -- `use crate::commands::prune::run::merge_shared_mutation_branches;`
 
 ## Proposed placement

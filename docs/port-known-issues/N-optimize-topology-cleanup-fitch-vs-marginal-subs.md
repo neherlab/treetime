@@ -24,8 +24,8 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 ## Locations
 
-- Zero-optimal edge identification: [`packages/treetime/src/commands/optimize/run.rs#L558-L583`](../../packages/treetime/src/commands/optimize/run.rs#L558-L583) (`find_zero_optimal_internal_edges`)
-- Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L594-L648`](../../packages/treetime/src/commands/optimize/run.rs#L594-L648) (`prune_and_merge_in_loop`)
+- Zero-optimal edge identification: [`packages/treetime/src/commands/optimize/run.rs#L563-L598`](../../packages/treetime/src/commands/optimize/run.rs#L563-L598) (`find_zero_optimal_internal_edges`)
+- Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L599-L642`](../../packages/treetime/src/commands/optimize/run.rs#L599-L642) (`prune_and_merge_in_loop`)
 - Edge collapse: [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs)
 - Shared mutation merge: [`packages/treetime/src/commands/prune/run.rs#L293-L540`](../../packages/treetime/src/commands/prune/run.rs#L293-L540) (`merge_shared_mutation_branches` and helpers)
 - Fitch/marginal accessors: [`packages/treetime/src/representation/payload/sparse.rs#L112-L163`](../../packages/treetime/src/representation/payload/sparse.rs#L112-L163) (`SparseEdgePartition`)

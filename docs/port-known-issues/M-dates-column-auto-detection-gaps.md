@@ -10,7 +10,7 @@ A metadata file with only a `num_date` column (no `date` column) would auto-dete
 
 ### Affected commands
 
-- `clock` - [`run()`](../../packages/treetime/src/commands/clock/run.rs#L64) passes `name_column` and `date_column` to `read_dates()`
+- `clock` - [`run()`](../../packages/treetime/src/commands/clock/run.rs#L56) passes `name_column` and `date_column` to `read_dates()`
 - `timetree` - [`initialization.rs`](../../packages/treetime/src/commands/timetree/initialization.rs#L59) passes `name_column` and `date_column` to `read_dates()`
 
 ### Project datasets

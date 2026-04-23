@@ -1,8 +1,6 @@
 # GTR::new() panics on invalid dimensions
 
-`GTR::new()` at [packages/treetime/src/gtr/gtr.rs#L76](../../packages/treetime/src/gtr/gtr.rs#L76) uses `assert!` for precondition validation: `assert!(abs(W.diag().sum()) < 1e-10)`. If the input rate matrix `W` has a non-zero diagonal sum, the function panics instead of returning a typed error.
-
-`eig_single_site` (called from `GTR::new`) also uses `assert!` for dimension checks on the input matrices.
+`GTR::new()` at [packages/treetime/src/gtr/gtr.rs#L231](../../packages/treetime/src/gtr/gtr.rs#L231) uses `assert_eq!` for dimension validation at L234-L246. `eig_single_site` (called from `GTR::new`) at [packages/treetime/src/gtr/gtr.rs#L76](../../packages/treetime/src/gtr/gtr.rs#L76) uses `assert!(abs(W.diag().sum()) < 1e-10)` for diagonal sum validation. If the input rate matrix `W` has a non-zero diagonal sum, the function panics instead of returning a typed error.
 
 ## Impact
 
@@ -10,8 +8,8 @@
 
 ## Affected code
 
-- Panic site: [packages/treetime/src/gtr/gtr.rs#L76](../../packages/treetime/src/gtr/gtr.rs#L76) -- `assert!(abs(W.diag().sum()) < 1e-10)`
-- Also: `eig_single_site` at [packages/treetime/src/gtr/gtr.rs](../../packages/treetime/src/gtr/gtr.rs) uses `assert!` for preconditions
+- Dimension asserts: [packages/treetime/src/gtr/gtr.rs#L234-L246](../../packages/treetime/src/gtr/gtr.rs#L234-L246) -- `assert_eq!` in `GTR::new()`
+- Diagonal sum assert: [packages/treetime/src/gtr/gtr.rs#L76](../../packages/treetime/src/gtr/gtr.rs#L76) -- `assert!(abs(W.diag().sum()) < 1e-10)` in `eig_single_site`
 
 ## Fix
 

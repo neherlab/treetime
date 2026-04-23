@@ -5,7 +5,7 @@ v1 hardcodes `overdispersion = 2.0` for the covariation clock path. v0 uses
 `--tip-slack`.
 
 - v1: `overdispersion = 2.0` at
-  [`packages/treetime/src/commands/clock/run.rs#L72`](../../packages/treetime/src/commands/clock/run.rs#L72),
+  [`packages/treetime/src/commands/clock/run.rs#L64`](../../packages/treetime/src/commands/clock/run.rs#L64),
   fed into `ClockParams.variance_factor` as `overdispersion / seq_len`
 - v0: `self.tip_slack = ttconf.OVER_DISPERSION` at
   [`packages/legacy/treetime/treetime/clock_tree.py#L98`](../../packages/legacy/treetime/treetime/clock_tree.py#L98),

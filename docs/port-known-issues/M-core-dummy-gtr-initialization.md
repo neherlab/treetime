@@ -6,28 +6,28 @@ Three commands (`ancestral`, `optimize`, `prune`) create partition structs with 
 
 ### ancestral
 
-`packages/treetime/src/commands/ancestral/run.rs` creates dummy JC69 for both sparse (line 113) and dense (line 150) partitions, then replaces after `compress_sequences` / `initialize_marginal`:
+`packages/treetime/src/commands/ancestral/run.rs` creates dummy JC69 for both sparse (line 106) and dense (line 150) partitions, then replaces after `compress_sequences` / `initialize_marginal`:
 
-- [packages/treetime/src/commands/ancestral/run.rs#L113](../../packages/treetime/src/commands/ancestral/run.rs#L113): sparse dummy GTR
-- [packages/treetime/src/commands/ancestral/run.rs#L126-L127](../../packages/treetime/src/commands/ancestral/run.rs#L126-L127): sparse GTR replacement
+- [packages/treetime/src/commands/ancestral/run.rs#L106](../../packages/treetime/src/commands/ancestral/run.rs#L106): sparse dummy GTR
+- [packages/treetime/src/commands/ancestral/run.rs#L122-L125](../../packages/treetime/src/commands/ancestral/run.rs#L122-L125): sparse GTR replacement
 - [packages/treetime/src/commands/ancestral/run.rs#L150](../../packages/treetime/src/commands/ancestral/run.rs#L150): dense dummy GTR
-- [packages/treetime/src/commands/ancestral/run.rs#L163-L164](../../packages/treetime/src/commands/ancestral/run.rs#L163-L164): dense GTR replacement
+- [packages/treetime/src/commands/ancestral/run.rs#L170-L174](../../packages/treetime/src/commands/ancestral/run.rs#L170-L174): dense GTR replacement
 
 ### optimize
 
-`packages/treetime/src/commands/optimize/run.rs` creates dummy JC69 for both sparse (line 63) and dense (line 90) partitions:
+`packages/treetime/src/commands/optimize/run.rs` creates dummy JC69 for both sparse (line 128) and dense (line 157) partitions:
 
-- [packages/treetime/src/commands/optimize/run.rs#L63](../../packages/treetime/src/commands/optimize/run.rs#L63): sparse dummy GTR
-- [packages/treetime/src/commands/optimize/run.rs#L75-L76](../../packages/treetime/src/commands/optimize/run.rs#L75-L76): sparse GTR replacement
-- [packages/treetime/src/commands/optimize/run.rs#L90](../../packages/treetime/src/commands/optimize/run.rs#L90): dense dummy GTR
-- [packages/treetime/src/commands/optimize/run.rs#L107-L108](../../packages/treetime/src/commands/optimize/run.rs#L107-L108): dense GTR replacement
+- [packages/treetime/src/commands/optimize/run.rs#L128](../../packages/treetime/src/commands/optimize/run.rs#L128): sparse dummy GTR
+- [packages/treetime/src/commands/optimize/run.rs#L143-L146](../../packages/treetime/src/commands/optimize/run.rs#L143-L146): sparse GTR replacement
+- [packages/treetime/src/commands/optimize/run.rs#L157](../../packages/treetime/src/commands/optimize/run.rs#L157): dense dummy GTR
+- [packages/treetime/src/commands/optimize/run.rs#L181-L183](../../packages/treetime/src/commands/optimize/run.rs#L181-L183): dense GTR replacement
 
 ### prune
 
-`packages/treetime/src/commands/prune/run.rs` creates dummy JC69 for sparse only (line 64):
+`packages/treetime/src/commands/prune/run.rs` creates dummy JC69 for sparse only (line 76):
 
-- [packages/treetime/src/commands/prune/run.rs#L64](../../packages/treetime/src/commands/prune/run.rs#L64): sparse dummy GTR
-- [packages/treetime/src/commands/prune/run.rs#L73-L74](../../packages/treetime/src/commands/prune/run.rs#L73-L74): sparse GTR replacement
+- [packages/treetime/src/commands/prune/run.rs#L76](../../packages/treetime/src/commands/prune/run.rs#L76): sparse dummy GTR
+- [packages/treetime/src/commands/prune/run.rs#L89-L91](../../packages/treetime/src/commands/prune/run.rs#L89-L91): sparse GTR replacement
 
 ## Not affected
 
