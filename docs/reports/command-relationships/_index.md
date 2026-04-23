@@ -141,8 +141,8 @@ Time inference uses branch-length distributions $P(b_e) = \exp(Q b_e)$ to inform
 
 | Gap                                                              | Severity | Tracking issue                                   | Status |
 | :--------------------------------------------------------------- | :------- | :----------------------------------------------- | :----- |
-| Topology cleanup not in a shared module                          | Medium   | `L-optimize-prune-duplicate-collapse`            | Open   |
-| Timetree skips optimize(max_iter=1) pre-step                     | Medium   | `M-timetree-missing-initial-branch-optimization` | Open   |
+| Topology cleanup not in a shared module                          | Medium   | `L-optimize-prune-duplicate-collapse`            | Done   |
+| Timetree skips optimize(max_iter=1) pre-step                     | Medium   | `M-timetree-missing-initial-branch-optimization` | Done   |
 | Timetree has no branch re-optimization after polytomy resolution | Low      | Chapter 10 (iterative-tree-refinement)           | Open   |
 
 ---
