@@ -12,7 +12,7 @@ The design document describes a simpler approach: store a rate vector `mu^a` per
 
 ## v1 current state
 
-`packages/treetime/src/gtr/gtr.rs:173:` defines `pub mu: f64` as a scalar. All sites share this single rate. The `is_site_specific` field at `gtr.rs:169:` exists but is always `false`.
+`packages/treetime/src/gtr/gtr.rs:172:` defines `pub mu: f64` as a scalar. All sites share this single rate. The `is_site_specific: bool` field has been removed from `GTR`.
 
 ## v0 implementation
 

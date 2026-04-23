@@ -40,7 +40,7 @@ GTR parameter estimation from phylogenetic data uses the EM framework <a id="cit
 
 TreeTime uses an ECM variant with MAP hard assignment: ancestral states are set to their most probable value rather than integrated over the full posterior. This is a generalized EM that preserves monotone likelihood increase but introduces bias proportional to ancestral state uncertainty <a id="cite-2"></a>[Meng and Rubin 1993](https://doi.org/10.1093/biomet/80.2.267) [[2](#ref-2)].
 
-The stale composition issue means the E-step uses mixed provenance: $n_{ij}$ from current MAP states (correct) but $T_i$ from Fitch-era compositions (stale). <a id="cite-3"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1101/2020.01.18.911255) [[3](#ref-3)] show that ignoring site-specific preferences in TreeTime's GTR inference underestimates branch lengths, with magnitude comparable to ignoring rate variation. The stale composition is a milder version of the same problem: base counts from a previous reconstruction stage fed into the current GTR inference iteration.
+The stale composition issue means the E-step uses mixed provenance: $n_{ij}$ from current MAP states (correct) but $T_i$ from Fitch-era compositions (stale). <a id="cite-3"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[3](#ref-3)] show that ignoring site-specific preferences in TreeTime's GTR inference underestimates branch lengths, with magnitude comparable to ignoring rate variation. The stale composition is a milder version of the same problem: base counts from a previous reconstruction stage fed into the current GTR inference iteration.
 
 For typical viral datasets with low diversity, variable sites are a small fraction of total positions, bounding the discrepancy between Fitch and marginal compositions. The bias grows with sequence divergence and the proportion of ambiguous sites.
 
@@ -48,4 +48,4 @@ For typical viral datasets with low diversity, variable sites are a small fracti
 
 1. <a id="ref-1"></a> Holmes, Ian, and Gregory M. Rubin. 2002. "An Expectation Maximization Algorithm for Training Hidden Substitution Models." _Journal of Molecular Biology_ 317(5):753-764. https://doi.org/10.1006/jmbi.2002.5405 [↩](#cite-1)
 2. <a id="ref-2"></a> Meng, Xiao-Li, and Donald B. Rubin. 1993. "Maximum Likelihood Estimation via the ECM Algorithm: A General Framework." _Biometrika_ 80(2):267-278. https://doi.org/10.1093/biomet/80.2.267 [↩](#cite-2)
-3. <a id="ref-3"></a> Puller, Vadim, Pavel Sagulenko, and Richard A. Neher. 2020. "Efficient Inference, Potential, and Limitations of Site-Specific Substitution Models." _bioRxiv_ 2020.01.18.911255. https://doi.org/10.1101/2020.01.18.911255 [↩](#cite-3)
+3. <a id="ref-3"></a> Puller, Vadim, Pavel Sagulenko, and Richard A. Neher. 2020. "Efficient Inference, Potential, and Limitations of Site-Specific Substitution Models." _Virus Evolution_ 6(2):veaa066. https://doi.org/10.1093/ve/veaa066 [↩](#cite-3)

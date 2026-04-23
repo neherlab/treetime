@@ -38,7 +38,7 @@ Study v0's `treeanc.infer_gtr(site_specific=True)` path for the inference-to-tra
 
 ## Related
 
-- Dead `is_site_specific: bool` field on `GTR` struct at `packages/treetime/src/gtr/gtr.rs:169:` should be removed when this integration is done
+- The `is_site_specific: bool` field formerly on `GTR` has been removed
 - [M-gtr-per-site-rate-variation](M-gtr-per-site-rate-variation.md) - simpler feature where only $\mu$ varies per site (shared eigendecomposition); `GTRSiteSpecific` provides the full model (per-site $\mu$ AND per-site $\pi$)
 - [docs/algorithms/sequence_evolution.md](../algorithms/sequence_evolution.md) - design document specifying site-specific models
 
