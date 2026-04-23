@@ -67,7 +67,9 @@ mod tests {
     for (source, target, subs) in edge_mutations {
       let edge_key =
         find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
-      partition.edges.insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+      partition
+        .edges
+        .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
     }
 
     Ok(Arc::new(RwLock::new(partition)))
@@ -171,7 +173,11 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       if let Some(edge_data) = p.edges.get(&edge.key()) {
         match target_name.as_deref() {
-          Some("A" | "B") => assert_eq!(edge_data.fitch_subs().len(), 0, "child should have no remaining mutations"),
+          Some("A" | "B") => assert_eq!(
+            edge_data.fitch_subs().len(),
+            0,
+            "child should have no remaining mutations"
+          ),
           Some("C") => assert_eq!(edge_data.fitch_subs().len(), 1),
           None => assert_eq!(
             edge_data.fitch_subs().len(),
@@ -226,7 +232,11 @@ mod tests {
             assert_eq!(edge_data.fitch_subs()[0], sub(b'T', 10, b'A'));
           },
           Some("C") => assert_eq!(edge_data.fitch_subs().len(), 1),
-          None => assert_eq!(edge_data.fitch_subs().len(), 2, "internal edge carries shared mutations"),
+          None => assert_eq!(
+            edge_data.fitch_subs().len(),
+            2,
+            "internal edge carries shared mutations"
+          ),
           _ => {},
         }
       }
@@ -403,8 +413,12 @@ mod tests {
     let edge_a = find_edge_key(&graph, "root", "A").unwrap();
     let edge_b = find_edge_key(&graph, "root", "B").unwrap();
     let edge_c = find_edge_key(&graph, "root", "C").unwrap();
-    p2_inner.edges.insert(edge_a, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
-    p2_inner.edges.insert(edge_b, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
+    p2_inner
+      .edges
+      .insert(edge_a, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
+    p2_inner
+      .edges
+      .insert(edge_b, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
     p2_inner.edges.insert(edge_c, SparseEdgePartition::default());
     let p2 = Arc::new(RwLock::new(p2_inner));
 
