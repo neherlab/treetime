@@ -131,7 +131,7 @@ cargo -q run --bin=treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/
 Tests are run using [nextest](https://nexte.st/). This can be installed with:
 
 ```bash
-cargo install nextest
+cargo install cargo-nextest
 ```
 
 Then run the tests with:

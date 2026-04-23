@@ -95,7 +95,7 @@ v1: [`packages/treetime/src/commands/mugration/run.rs#L120-L131`](../../packages
 - Exchangeability matrix `W`: uniform (all transitions equally likely)
 - Single forward-backward pass with fixed model
 
-**v0 implementation** (see [Iterative GTR for Discrete Traits](unimplemented.md#iterative-gtr-for-discrete-traits)):
+**v0 implementation** (see [Iterative GTR for Discrete Traits](unimplemented.md#iterative-gtr-for-discrete-traits-ported)):
 
 - Initial reconstruction with uniform model
 - 5 iterations of `infer_gtr()` + `optimize_gtr_rate()` re-estimation
