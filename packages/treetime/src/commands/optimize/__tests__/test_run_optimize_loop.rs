@@ -5,7 +5,6 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::commands::optimize::args::BranchOptMethod;
-  use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
   use crate::commands::optimize::run::{ConvergenceReason, run_optimize_loop};
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -13,6 +12,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
 use parking_lot::RwLock;
+  use parking_lot::RwLock;
   use statrs::function::factorial::ln_factorial;
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
@@ -135,6 +135,7 @@ use parking_lot::RwLock;
 let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
 let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
     let indel_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+    let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
     let result = run_optimize_loop(
