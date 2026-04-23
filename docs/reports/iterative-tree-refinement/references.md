@@ -60,7 +60,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 28. Jukes, T. H., and C. R. Cantor. 1969. "Evolution of Protein Molecules." In _Mammalian Protein Metabolism_, vol. 3, edited by H. N. Munro, 21-132. Academic Press. https://doi.org/10.1016/B978-1-4832-3211-9.50009-7
 
-29. Kimura, M. 1980. "A Simple Method for Estimating Evolutionary Rates of Base Substitutions." _J. Mol. Evol._ 16:111-120. https://doi.org/10.1007/BF01731581
+29. Kimura, M. 1980. "A Simple Method for Estimating Evolutionary Rates of Base Substitutions." _J. Mol. Evol._ 16(2):111-120. https://doi.org/10.1007/BF01731581
 
 30. Kingman, J. F. C. 1982. "On the Genealogy of Large Populations." _J. Appl. Prob._ 19(A):27-43. https://doi.org/10.2307/3213548
 
@@ -146,7 +146,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 71. Young, D. M. 1954. "Iterative Methods for Solving Partial Difference Equations of Elliptic Type." _Trans. Amer. Math. Soc._ 76(1):92-111. https://doi.org/10.1090/S0002-9947-1954-0059635-7
 
-72. Zhang, C., V. C. Dinh, and F. A. Matsen IV. 2021. "Nonbifurcating Phylogenetic Tree Inference via the Adaptive LASSO." _JASA_ 116(534):858-873. https://doi.org/10.1080/01621459.2020.1778481. Preprint: https://arxiv.org/abs/1805.11073
+72. Zhang, C., V. C. Dinh, and F. A. Matsen IV. 2021. "Nonbifurcating Phylogenetic Tree Inference via the Adaptive LASSO." _JASA_ 116(534):858-873. https://doi.org/10.1080/01621459.2020.1778481 Preprint: https://arxiv.org/abs/1805.11073
 
 73. Zou, H. 2006. "The Adaptive Lasso and Its Oracle Properties." _JASA_ 101(476):1418-1429. https://doi.org/10.1198/016214506000000735
 

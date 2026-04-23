@@ -10,7 +10,7 @@ Most phylogenetic ML software treats gap characters as missing data. At a gapped
 
 <a id="cite-1"></a>[Warnow 2012](https://doi.org/10.1371/currents.rrn1308) [[1](#ref-1)] constructed a four-taxon counterexample where ML phylogeny estimation treating indels as missing data is statistically inconsistent: the ML tree converges to the wrong topology as sequence length increases, because the missing-data treatment systematically underestimates distances between sequences with different gap patterns.
 
-<a id="cite-27"></a>[Truszkowski and Goldman 2015](https://doi.org/10.1093/sysbio/syv089) [[27](#ref-27)] subsequently proved that ML IS consistent on gapped MSAs under broader (and more realistic) conditions: substitution rates $> 0$ on all edges and each site category observed infinitely often as the alignment grows. The Warnow counterexample relies on zero substitution rates on specific edges, which violates these conditions.
+<a id="cite-27"></a>[Truszkowski and Goldman 2016](https://doi.org/10.1093/sysbio/syv089) [[27](#ref-27)] subsequently proved that ML IS consistent on gapped MSAs under broader (and more realistic) conditions: substitution rates $> 0$ on all edges and each site category observed infinitely often as the alignment grows. The Warnow counterexample relies on zero substitution rates on specific edges, which violates these conditions.
 
 The consistency debate concerns tree topology estimation, not branch length optimization. Regardless of consistency, the practical consequence for branch length optimization remains: a branch with zero substitutions but one or more indels is assigned zero length, collapsing topology that the indel evidence supports. This is the direct motivation for TreeTime v1's Poisson indel contribution.
 
@@ -112,6 +112,6 @@ PRANK is a special case: it uses a phylogeny-aware progressive alignment strateg
 4. <a id="ref-4"></a> Qian, Bin, and Richard A. Goldstein. 2001. "Distribution of Indel Lengths." _Proteins_ 45(1):102-104. https://doi.org/10.1002/prot.1129
 5. <a id="ref-5"></a> Cartwright, Reed A. 2009. "Problems and Solutions for Estimating Indel Rates and Length Distributions." _MBE_ 26(2):473-480. https://doi.org/10.1093/molbev/msn275
 6. <a id="ref-6"></a> Wygoda, Elya, et al. 2024. "Statistical Framework to Determine Indel-Length Distribution." _Bioinformatics_ 40(2):btae043. https://doi.org/10.1093/bioinformatics/btae043
-7. <a id="ref-27"></a> Truszkowski, Jakub, and Nick Goldman. 2015. "Maximum Likelihood Phylogenetic Inference is Consistent on Multiple Sequence Alignments, with or without Gaps." _Systematic Biology_ 65(2):328-333. https://doi.org/10.1093/sysbio/syv089
+7. <a id="ref-27"></a> Truszkowski, Jakub, and Nick Goldman. 2016. "Maximum Likelihood Phylogenetic Inference is Consistent on Multiple Sequence Alignments, with or without Gaps." _Systematic Biology_ 65(2):328-333. https://doi.org/10.1093/sysbio/syv089
 
 See [consolidated references](references.md) for the complete bibliography.

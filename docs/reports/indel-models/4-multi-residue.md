@@ -84,7 +84,7 @@ The intractability of exact GGI has motivated several approximation strategies:
 
 - **TKF92**: fragments (see above)
 - **Knudsen and Miyamoto 2003, Redelings and Suchard 2005/2007 (RS07)**: guessed pair HMM forms matching GGI moments (see above)
-- **De Maio 2020**: moment-matching differential equations for best-fit pair HMM. The Cumulative Indel Model approximates GGI dynamics via ODEs with adaptive banding. <a id="cite-21"></a>[De Maio 2020](https://doi.org/10.1093/sysbio/syaa050) [[21](#ref-21)].
+- **De Maio 2021**: moment-matching differential equations for best-fit pair HMM. The Cumulative Indel Model approximates GGI dynamics via ODEs with adaptive banding. <a id="cite-21"></a>[De Maio 2021](https://doi.org/10.1093/sysbio/syaa050) [[21](#ref-21)].
 - **Holmes 2020**: refined ODEs via coarse-graining of pair HMM state spaces. <a id="cite-22"></a>[Holmes 2020](https://doi.org/10.1534/genetics.120.303630) [[22](#ref-22)]. The best known approximation to GGI.
 
 ### The Redelings 2024 review
@@ -114,7 +114,7 @@ The SID model and GGI describe the same underlying process. "SID" refers to the 
 14. <a id="ref-14"></a> Thorne, Jeffrey L., Hirohisa Kishino, and Joseph Felsenstein. 1992. "Inching toward Reality." _J Mol Evol_ 34(1):3-16. https://doi.org/10.1007/BF00163848
 15. <a id="ref-15"></a> Redelings, Benjamin D., and Marc A. Suchard. 2007. "Incorporating Indel Information into Phylogeny Estimation." _BMC Evol Biol_ 7(1):40. https://doi.org/10.1186/1471-2148-7-40
 16. <a id="ref-16"></a> Holmes, Ian. 2017. "Solving the Master Equation for Indels." _BMC Bioinformatics_ 18:255. https://doi.org/10.1186/s12859-017-1665-1
-17. <a id="ref-21"></a> De Maio, Nicola. 2020. "The Cumulative Indel Model." _Syst Biol_ 70(2):236-257. https://doi.org/10.1093/sysbio/syaa050
+17. <a id="ref-21"></a> De Maio, Nicola. 2021. "The Cumulative Indel Model." _Syst Biol_ 70(2):236-257. https://doi.org/10.1093/sysbio/syaa050
 18. <a id="ref-22"></a> Holmes, Ian. 2020. "A Model of Indel Evolution by Finite-State, Continuous-Time Machines." _Genetics_ 215(4):1187-1204. https://doi.org/10.1534/genetics.120.303630
 19. <a id="ref-23"></a> Redelings, Benjamin D., Ian Holmes, Gerton Lunter, Tal Pupko, and Maria Anisimova. 2024. "Insertions and Deletions." _MBE_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
 20. <a id="ref-24"></a> Miklos, Istvan, et al. 2004. "A 'Long Indel' Model." _MBE_ 21(3):529-540. https://doi.org/10.1093/molbev/msh043

@@ -190,7 +190,7 @@ v1 code: per-site rate variation is tracked as a known issue (`M-gtr-per-site-ra
 ## References
 
 - Jukes, T. H., and C. R. Cantor. 1969. "Evolution of Protein Molecules." In _Mammalian Protein Metabolism_, vol. 3, 21-132. https://doi.org/10.1016/B978-1-4832-3211-9.50009-7
-- Kimura, M. 1980. "A Simple Method for Estimating Evolutionary Rates." _J. Mol. Evol._ 16:111-120. https://doi.org/10.1007/BF01731581
+- Kimura, M. 1980. "A Simple Method for Estimating Evolutionary Rates." _J. Mol. Evol._ 16(2):111-120. https://doi.org/10.1007/BF01731581
 - Hasegawa, M., H. Kishino, and T. Yano. 1985. "Dating of the Human-Ape Splitting." _J. Mol. Evol._ 22(2):160-174. https://doi.org/10.1007/BF02101694
 - Lanave, C., G. Preparata, C. Saccone, and G. Serio. 1984. "A New Method for Calculating Evolutionary Substitution Rates." _J. Mol. Evol._ 20:86-93. https://doi.org/10.1007/BF02101990
 - Tavaré, S. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lect. Math. Life Sci._ 17:57-86. No DOI available (pre-DOI publication).
