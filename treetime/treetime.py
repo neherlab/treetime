@@ -261,7 +261,7 @@ class TreeTime(ClockTree):
 
         if self.branch_length_mode == 'input':
             if self.aln:
-                self.infer_ancestral_sequences(**seq_kwargs)
+                self.infer_ancestral_sequences(marginal=seq_kwargs['marginal_sequences'], **seq_kwargs)
         else:
             self.optimize_tree(max_iter=1, method_anc=method_anc, **seq_kwargs)
 
@@ -342,10 +342,14 @@ class TreeTime(ClockTree):
             if need_new_time_tree:
                 self.make_time_tree(**tt_kwargs)
                 if self.aln:
-                    ndiff = self.infer_ancestral_sequences('ml', **seq_kwargs)
+                    ndiff = self.infer_ancestral_sequences(
+                        'ml', marginal=seq_kwargs['marginal_sequences'], **seq_kwargs
+                    )
             else:  # no refinements, just iterate
                 if self.aln:
-                    ndiff = self.infer_ancestral_sequences('ml', **seq_kwargs)
+                    ndiff = self.infer_ancestral_sequences(
+                        'ml', marginal=seq_kwargs['marginal_sequences'], **seq_kwargs
+                    )
                 self.make_time_tree(**tt_kwargs)
 
             self.tree.coalescent_joint_LH = self.merger_model.total_LH() if Tc else 0.0
