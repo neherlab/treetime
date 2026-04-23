@@ -247,6 +247,7 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions { p.write_arc().extract_root_sequence(&graph); }
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -334,6 +335,7 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions { p.write_arc().extract_root_sequence(&graph); }
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -407,6 +409,9 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     update_marginal(&graph, &sparse_partitions)?;
 
     let initial_node_count = graph.get_nodes().len();

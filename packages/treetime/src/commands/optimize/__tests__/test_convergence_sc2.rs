@@ -48,6 +48,9 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     update_marginal(&graph, &sparse_partitions)?;
 
     // Infer GTR from data (matches production flow)
@@ -109,6 +112,9 @@ mod tests {
     }))];
 
     compress_sequences(&graph, &sparse_partitions, &aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(&graph);
+    }
     update_marginal(&graph, &sparse_partitions)?;
 
     for partition in &sparse_partitions {

@@ -83,6 +83,9 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     }))];
 
     compress_sequences(&graph, &partitions, &aln)?;
+    for partition in &partitions {
+      partition.write_arc().extract_root_sequence(&graph);
+    }
 
     // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
     // FIXME: spaghetti code: dummy gtr is replaced by real gtr here

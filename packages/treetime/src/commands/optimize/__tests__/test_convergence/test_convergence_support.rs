@@ -73,6 +73,9 @@ pub mod tests {
     }))];
 
     compress_sequences(graph, &sparse_partitions, aln)?;
+    for p in &sparse_partitions {
+      p.write_arc().extract_root_sequence(graph);
+    }
     initialize_marginal(graph, &dense_partitions, aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

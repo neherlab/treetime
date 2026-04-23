@@ -307,6 +307,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   }));
 
   compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+  sparse_partition.write_arc().extract_root_sequence(&graph);
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];

@@ -89,6 +89,31 @@ impl PartitionMarginalSparse {
     self.length
   }
 
+  /// Extract root sequence from the root node and clear internal node sequences.
+  ///
+  /// After Fitch compression, every node carries a full resolved sequence. Only
+  /// the root sequence is needed for downstream reconstruction (node_state_at,
+  /// reconstruct_node_sequence cascade from it via edge subs). Clearing internal
+  /// sequences saves memory and removes stale data that would otherwise persist
+  /// across reroots.
+  pub fn extract_root_sequence<N, E>(&mut self, graph: &Graph<N, E, ()>)
+  where
+    N: GraphNode,
+    E: GraphEdge,
+  {
+    let root_key = graph
+      .get_exactly_one_root()
+      .expect("Tree must have exactly one root")
+      .read_arc()
+      .key();
+    self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
+    for (key, node_data) in &mut self.nodes {
+      if *key != root_key && !graph.is_leaf(*key) {
+        node_data.seq.sequence = seq![];
+      }
+    }
+  }
+
   /// Return positions that can change the reconstructed mutation set for one edge.
   ///
   /// In sparse mode, only a small set of sites can change the branch result:
