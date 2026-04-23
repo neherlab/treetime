@@ -70,7 +70,7 @@ Pipeline:
 
 ### ancestral
 
-Entry: `run_ancestral_reconstruction()` at [packages/treetime/src/commands/ancestral/run.rs#L35](../../../packages/treetime/src/commands/ancestral/run.rs#L35)
+Entry: `run_ancestral_reconstruction()` at [packages/treetime/src/commands/ancestral/run.rs#L36](../../../packages/treetime/src/commands/ancestral/run.rs#L36)
 
 Pipeline (marginal dense path):
 
@@ -109,7 +109,7 @@ Pipeline:
 5. Create `PartitionDiscrete::new(0, gtr, discrete_states)`. Set `min_branch_length = 0.001`.
 6. `attach_traits()` -- map leaf names to one-hot or uniform profiles, validate all leaves have traits and vice versa
 7. `run_discrete_marginal()` -- backward + forward on `PartitionDiscrete`
-8. `refine_gtr_iterative()` at [packages/treetime/src/commands/mugration/gtr_refinement.rs#L26](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L26):
+8. `refine_gtr_iterative()` at [packages/treetime/src/commands/mugration/gtr_refinement.rs#L28](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L28):
    - Count transitions from marginal profiles via `count_transitions_discrete()`, then `infer_gtr_impl()`
    - `optimize_gtr_rate()` via custom Brent minimization
    - Repeat for `iterations` rounds (default 5)
@@ -142,8 +142,8 @@ Pipeline:
 - `nwk_read_file()` -- tree input
 - `GTR` struct and `GTR::new()` constructor ([packages/treetime/src/gtr/gtr.rs](../../../packages/treetime/src/gtr/gtr.rs))
 - `infer_gtr_impl()` from `gtr/infer_gtr/common` -- core GTR inference algorithm, called by ancestral (via `infer_gtr_dense` / `infer_gtr_sparse`) and by mugration (via `gtr_refinement.rs`)
-- `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L128](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L128))
-- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` ([packages/treetime/src/representation/partition/discrete.rs#L82](../../../packages/treetime/src/representation/partition/discrete.rs#L82))
+- `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L98](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L98))
+- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` via `normalize_from_log_1d()` ([packages/treetime/src/representation/partition/discrete.rs#L83](../../../packages/treetime/src/representation/partition/discrete.rs#L83))
 
 ### Ancestral only
 
@@ -226,7 +226,7 @@ Both commands implement the same Felsenstein pruning algorithm (backward: leaves
 ### mugration (direct on `PartitionDiscrete`)
 
 - Profiles are 1D arrays: `(n_states,)`
-- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/representation/partition/discrete.rs#L59-L213](../../../packages/treetime/src/representation/partition/discrete.rs#L59-L213))
+- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/representation/partition/discrete.rs#L60-L214](../../../packages/treetime/src/representation/partition/discrete.rs#L60-L214))
 - Does not implement `PartitionMarginalOps`
 - Traversal uses `Arc<Mutex<&mut Partition>>` instead of `Arc<RwLock<Partition>>`
 - Single transition matrix $e^{Qt}$ per edge (one "position")
