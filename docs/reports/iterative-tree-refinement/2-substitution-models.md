@@ -18,10 +18,12 @@ Substitution models formalize these patterns mathematically.
 
 ## The continuous-time Markov chain
 
-A substitution model is a continuous-time Markov chain (CTMC) on four states {A, C, G, T}. The model is defined by a 4x4 **rate matrix** `Q`, where:
+A substitution model is a continuous-time Markov chain (CTMC) on four states {A, C, G, T}. The model is defined by a 4x4 **rate matrix** `Q`, where (row-stochastic convention: `Q_{ij}` = rate from i to j, rows sum to zero):
 
 - `Q_{ij}` (off-diagonal): the instantaneous rate of substitution from state i to state j
 - `Q_{ii}` (diagonal): set so each row sums to zero (`Q_{ii} = -sum_{j!=i} Q_{ij}`)
+
+Note: the algorithm specification in `docs/algorithms/sequence_evolution.md` uses the transpose (column-stochastic) convention where `Q_{ij}` is the rate from j to i and columns sum to zero. The two conventions are mathematically equivalent; this chapter uses the row-stochastic form common in phylogenetics textbooks.
 
 The **transition probability matrix** at evolutionary distance t is the matrix exponential:
 
