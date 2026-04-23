@@ -284,14 +284,16 @@ A proposal to fix this exists: [docs/port-proposals/mugration-full-reconstructio
 
 ## Known issues and intentional changes
 
-### Ancestral known issues (6 open)
+### Ancestral known issues (7 open)
 
 | ID                                         | Issue                                                                                       | Impact                                               |
 | :----------------------------------------- | :------------------------------------------------------------------------------------------ | :--------------------------------------------------- |
+| `H-ancestral-joint-default-panics`         | `--method-anc` defaults to `Joint` which panics (`unimplemented!()`)                        | Default invocation crashes                           |
 | `M-ancestral-dense-sparse-divergence`      | ~2.5% of random gap-free GTR configs produce different likelihoods between dense and sparse | Affects sparse path only                             |
 | `M-ancestral-marginal-probability-space`   | Forward pass uses plain probability space (v1) vs neg-log space (v0)                        | Floating-point divergence, GM tolerance 1e-6 to 1e-7 |
 | `M-ancestral-sparse-root-invariance`       | Sparse marginal violates Felsenstein pulley principle by ~0.09                              | Affects sparse path only                             |
 | `M-ancestral-sparse-alphabet-mismatch`     | Variable-site classification uses `is_ambiguous()` vs v0's `alphabet_gapN`                  | Contributes to dense-sparse divergence               |
+| `M-ancestral-stdin-fasta-truncation`       | Stdin FASTA reads one record, silently truncates multi-record alignments                    | Data loss on piped input                             |
 | `N-ancestral-sparse-remove-insert-pattern` | Remove/insert pattern in sparse passes                                                      | Code smell                                           |
 | ~~`N-dense-normalize-inplace-zero-row`~~   | ~~NaN for all-zero probability rows~~ (fixed: returns uniform distribution)                 | ~~Edge case guard~~                                  |
 
