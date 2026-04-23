@@ -14,7 +14,7 @@ This proposal addresses deeper architectural improvements that would eliminate o
 
 ### Outer loop
 
-`run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L260](../../packages/treetime/src/commands/optimize/run.rs#L260)
+`run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L275](../../packages/treetime/src/commands/optimize/run.rs#L275)
 
 ```
 for i in 0..max_iter:
@@ -56,15 +56,15 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 
 | ID  | Feature                                               | Reference                                                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [commands/optimize/run.rs#L366](../../packages/treetime/src/commands/optimize/run.rs#L366)                                                                                                     |
+| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [commands/optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                                                     |
 | I2  | Six per-edge methods (`--opt-method`)                 | [commands/optimize/method_newton.rs](../../packages/treetime/src/commands/optimize/method_newton.rs), [commands/optimize/method_brent.rs](../../packages/treetime/src/commands/optimize/method_brent.rs)         |
 | I3  | Grid search fallback (100-point, non-concave regions) | [commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)                                                                                                       |
 | I4  | `--model` wired to GTR dispatch                       | [commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                                                 |
 | I5  | Gap-aware initial guess (`edge_effective_length`)     | [commands/optimize/partition_ops.rs](../../packages/treetime/src/commands/optimize/partition_ops.rs)                                                                                                             |
-| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [commands/optimize/optimize_unified.rs#L327](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L327)                                                                  |
+| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [commands/optimize/optimize_unified.rs#L328](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L328)                                                                  |
 | I7  | Eigenvalue-space coefficient caching                  | [commands/optimize/optimize_sparse.rs](../../packages/treetime/src/commands/optimize/optimize_sparse.rs), [commands/optimize/optimize_dense.rs](../../packages/treetime/src/commands/optimize/optimize_dense.rs) |
 | I8  | Poisson indel contribution                            | [commands/optimize/optimize_indel.rs](../../packages/treetime/src/commands/optimize/optimize_indel.rs)                                                                                                           |
-| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [commands/optimize/run.rs#L416](../../packages/treetime/src/commands/optimize/run.rs#L416)                                                                                  |
+| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [commands/optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                                                  |
 
 ## Proposed improvements
 
