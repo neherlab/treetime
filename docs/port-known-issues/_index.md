@@ -150,6 +150,7 @@ exactly.
 | Negligible | Timetree       | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                                    |
 | Medium     | Marginal       | [Marginal forward pass missing fix_branch_length](M-marginal-forward-pass-missing-fix-branch-length.md)                                                   |
 | Low        | Marginal       | [Marginal forward pass zero-divisor floor converts structural zeros](L-marginal-forward-zero-divisor-floor.md)                                            |
+| Negligible | Timetree       | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                                 |
 
 ## Cross-references
 
