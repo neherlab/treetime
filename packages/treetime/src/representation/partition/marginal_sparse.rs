@@ -13,7 +13,7 @@ use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, Spar
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
