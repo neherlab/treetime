@@ -4,7 +4,7 @@
 
 This chapter is the actionable output of the optimization methods audit. It inventories every optimization in v1, identifies inconsistencies across commands, and proposes prioritized refactoring.
 
-The full item-by-item audit with code locations, callers, callees, and convergence criteria is maintained in [.memory/argmin-audit/report.md](../../../.memory/argmin-audit/report.md).
+The full item-by-item audit with code locations, callers, callees, and convergence criteria was produced during the initial audit session (no longer available).
 
 ## Inventory
 
@@ -15,21 +15,21 @@ The full item-by-item audit with code locations, callers, callees, and convergen
 | E1  | [method_brent.rs#L36-L78](../../../packages/treetime/src/commands/clock/find_best_root/method_brent.rs#L36-L78)                   | `BrentOpt`                | Root-split chi-squared |
 | E2  | [method_golden_section.rs#L36-L81](../../../packages/treetime/src/commands/clock/find_best_root/method_golden_section.rs#L36-L81) | `GoldenSectionSearch`     | Root-split chi-squared |
 | E3  | [method_grid_search.rs#L10-L58](../../../packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs#L10-L58)       | Grid search (hand-rolled) | Root-split chi-squared |
-| E4  | [optimize_tc.rs#L45-L85](../../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L45-L85)                      | `BrentOpt`                | Coalescent Tc          |
+| E4  | [optimize_tc.rs#L47-L87](../../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L47-L87)                      | `BrentOpt`                | Coalescent Tc          |
 | E5  | [skyline.rs#L68-L157](../../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L157)                            | `NelderMead`              | Skyline Tc(t)          |
-| E6  | [polytomy.rs#L263-L289](../../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L263-L289)                      | `BrentOpt`                | Polytomy merge time    |
+| E6  | [polytomy.rs#L239-L289](../../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L239-L289)                      | `BrentOpt`                | Polytomy merge time    |
 
 ### Hand-rolled optimization (H1-H11)
 
 | ID  | Location                                                                                                                              | Algorithm             | argmin candidate?                |
 | :-- | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------------- | :------------------------------- |
-| H1  | [optimize_unified.rs#L221-L291](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291)                       | Newton-Raphson + grid | **High** - wrap as `Solver` (P1) |
-| H2  | [common.rs#L97-L158](../../../packages/treetime/src/gtr/infer_gtr/common.rs#L97-L158)                                                 | Fixed-point iteration | No - domain-specific ECM         |
-| H3  | [run.rs#L133-L155](../../../packages/treetime/src/commands/optimize/run.rs#L133-L155)                                                 | EM-like outer loop    | No - pipeline coordination       |
-| H4  | [run.rs#L204-L245](../../../packages/treetime/src/commands/timetree/run.rs#L204-L245)                                                 | Refinement pipeline   | No - multi-phase pipeline        |
+| H1  | [optimize_unified.rs#L533-L711](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L533-L711)                       | Newton-Raphson + grid | **High** - wrap as `Solver` (P1) |
+| H2  | [common.rs#L93-L163](../../../packages/treetime/src/gtr/infer_gtr/common.rs#L93-L163)                                                 | Fixed-point iteration | No - domain-specific ECM         |
+| H3  | [run.rs#L275-L410](../../../packages/treetime/src/commands/optimize/run.rs#L275-L410)                                                 | EM-like outer loop    | No - pipeline coordination       |
+| H4  | [run.rs#L236-L279](../../../packages/treetime/src/commands/timetree/run.rs#L236-L279)                                                 | Refinement pipeline   | No - multi-phase pipeline        |
 | H5  | [distribution.rs#L425-L491](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L425-L491)                  | HPD bisection         | **Medium** - `BrentRoot` (P2)    |
 | H6  | Same as E3                                                                                                                            | Grid search           | Retire (P4)                      |
-| H7  | [optimize_unified.rs#L273-L286](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L273-L286)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |
+| H7  | [optimize_unified.rs#L399-L421](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L399-L421)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |
 | H8  | [function.rs#L250](../../../packages/treetime-distribution/src/distribution_core/function.rs#L250)                                    | Array argmax          | No - array scan                  |
 | H9  | [distribution.rs#L236-L293](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L236-L293)                  | CDF linear scan       | No - sorted lookup               |
 | H10 | [branch_length_likelihood.rs#L31-L63](../../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L31-L63) | Grid evaluation       | No - full distribution needed    |

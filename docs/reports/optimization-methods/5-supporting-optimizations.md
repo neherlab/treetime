@@ -10,7 +10,7 @@ Finding the optimal position along an edge to place the tree root. Minimizes chi
 
 v1 provides three interchangeable solvers (E1-E3): BrentOpt, GoldenSectionSearch, and grid search. All use the same `BranchPointCostFunction`. See [audit inconsistency I1](7-audit.md) for why grid search should be retired.
 
-v0 uses `scipy.optimize.minimize_scalar(method='bounded')` with a 6-point grid pre-search: [treetime/treeregression.py#L321-L383](https://github.com/neherlab/treetime/blob/master/treetime/treeregression.py#L321-L383).
+v0 uses `scipy.optimize.minimize_scalar(method='bounded')` with a 6-point grid pre-search: [treetime/treeregression.py#L385-L414](https://github.com/neherlab/treetime/blob/master/treetime/treeregression.py#L385-L414).
 
 ## Coalescent Tc optimization
 

@@ -90,7 +90,7 @@ For TreeTime's common use case (JC69 on viral data), NR is provably safe. For GT
 
 **TreeTime v1**:
 
-- Newton-Raphson + grid: [packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L221-L291) `run_optimize_mixed()`
+- Newton-Raphson + grid: [packages/treetime/src/commands/optimize/optimize_unified.rs#L533-L711](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L533-L711) `run_optimize_mixed()`
 
 ## References
 
