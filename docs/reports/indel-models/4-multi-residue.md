@@ -32,7 +32,6 @@ Pairwise: $O(L_1 \cdot L_2)$ via pair HMM. Multi-sequence: approximate (no exact
 
 The fragment structure addresses TKF91's main biological limitation (single-residue indels) but introduces an approximation: in reality, fragment boundaries are not fixed, and the geometric fragment length distribution is a simplification. The fragment model also does not account for overlapping indels (an insertion within a previously inserted fragment).
 
-
 ---
 
 ## RS07 (Redelings-Suchard 2007)
@@ -67,7 +66,6 @@ RS07 is a practical approximation designed for Bayesian MCMC: it captures the es
 
 **[BAli-Phy](https://github.com/bredelings/BAli-Phy)**: default indel model. **[Historian](https://github.com/ihh/dart)**: uses RS07 for progressive alignment with MCMC refinement. Reference for Historian: <a id="cite-16"></a>[Holmes 2017](https://doi.org/10.1186/s12859-017-1665-1) [[16](#ref-16)].
 
-
 ---
 
 ## General Geometric Indel model (GGI)
@@ -91,8 +89,7 @@ The intractability of exact GGI has motivated several approximation strategies:
 
 ### The Redelings 2024 review
 
-<a id="cite-23"></a>[Redelings 2024](https://doi.org/10.1093/molbev/msae177) [[23](#ref-23)] provides a taxonomy of GGI and its approximations. Key recommendation from the review: indel information should only be used when the alignment was inferred with a phylogeny-aware aligner. Ideally MSA and tree should be co-estimated. Indel rates should be inferred from data, not fixed to defaults. Single-character indel models conflate indel rate and indel length into one parameter, making the parameter uninterpretable as a biological rate.
-
+<a id="cite-23"></a>[Redelings et al. 2024](https://doi.org/10.1093/molbev/msae177) [[23](#ref-23)] provides a taxonomy of GGI and its approximations. Key recommendation from the review: indel information should only be used when the alignment was inferred with a phylogeny-aware aligner. Ideally MSA and tree should be co-estimated. Indel rates should be inferred from data, not fixed to defaults. Single-character indel models conflate indel rate and indel length into one parameter, making the parameter uninterpretable as a biological rate.
 
 ---
 
@@ -110,7 +107,6 @@ The key algorithmic contribution is the "chop zone" decomposition: the alignment
 
 The SID model and GGI describe the same underlying process. "SID" refers to the Miklos-Lunter-Holmes formulation and algorithmic approach (chop zones, rate grammars). "GGI" is the broader model class. TKF91 is the special case $\bar{X} = \bar{Y} = 1$ of both.
 
-
 ---
 
 ## References
@@ -118,9 +114,9 @@ The SID model and GGI describe the same underlying process. "SID" refers to the 
 14. <a id="ref-14"></a> Thorne, Jeffrey L., Hirohisa Kishino, and Joseph Felsenstein. 1992. "Inching toward Reality." _J Mol Evol_ 34(1):3-16. https://doi.org/10.1007/BF00163848
 15. <a id="ref-15"></a> Redelings, Benjamin D., and Marc A. Suchard. 2007. "Incorporating Indel Information into Phylogeny Estimation." _BMC Evol Biol_ 7(1):40. https://doi.org/10.1186/1471-2148-7-40
 16. <a id="ref-16"></a> Holmes, Ian. 2017. "Solving the Master Equation for Indels." _BMC Bioinformatics_ 18:255. https://doi.org/10.1186/s12859-017-1665-1
-21. <a id="ref-21"></a> De Maio, Nicola. 2020. "The Cumulative Indel Model." _Syst Biol_ 70(2):236-257. https://doi.org/10.1093/sysbio/syaa050
-22. <a id="ref-22"></a> Holmes, Ian. 2020. "A Model of Indel Evolution by Finite-State, Continuous-Time Machines." _Genetics_ 215(4):1187-1204. https://doi.org/10.1534/genetics.120.303630
-23. <a id="ref-23"></a> Redelings, Benjamin D. 2024. "Insertions and Deletions." _MBE_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
-24. <a id="ref-24"></a> Miklos, Istvan, et al. 2004. "A 'Long Indel' Model." _MBE_ 21(3):529-540. https://doi.org/10.1093/molbev/msh043
+17. <a id="ref-21"></a> De Maio, Nicola. 2020. "The Cumulative Indel Model." _Syst Biol_ 70(2):236-257. https://doi.org/10.1093/sysbio/syaa050
+18. <a id="ref-22"></a> Holmes, Ian. 2020. "A Model of Indel Evolution by Finite-State, Continuous-Time Machines." _Genetics_ 215(4):1187-1204. https://doi.org/10.1534/genetics.120.303630
+19. <a id="ref-23"></a> Redelings, Benjamin D., Ian Holmes, Gerton Lunter, Tal Pupko, and Maria Anisimova. 2024. "Insertions and Deletions." _MBE_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
+20. <a id="ref-24"></a> Miklos, Istvan, et al. 2004. "A 'Long Indel' Model." _MBE_ 21(3):529-540. https://doi.org/10.1093/molbev/msh043
 
 See [consolidated references](references.md) for the complete bibliography.

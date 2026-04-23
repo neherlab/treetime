@@ -63,7 +63,7 @@ Uses the <a id="gloss-use-4"></a>Dollo principle <sup>[†4](#gloss-4)</sup>: a 
 
 ### Practical performance
 
-According to the <a id="cite-23"></a>[Redelings 2024](https://doi.org/10.1093/molbev/msae177) [[23](#ref-23)] review, indelMaP outperforms competitors on large densely sampled datasets, where the parsimony assumption (few changes per branch) holds well. For sparse datasets with long branches, probabilistic models (TKF91, RS07, PIP) are more accurate.
+According to the <a id="cite-23"></a>[Redelings et al. 2024](https://doi.org/10.1093/molbev/msae177) [[23](#ref-23)] review, indelMaP outperforms competitors on large densely sampled datasets, where the parsimony assumption (few changes per branch) holds well. For sparse datasets with long branches, probabilistic models (TKF91, RS07, PIP) are more accurate.
 
 ### Software
 
@@ -90,9 +90,9 @@ This approach ignores indel length (treating each gapped position independently,
 
 5. <a id="ref-5"></a> Cartwright, Reed A. 2009. "Problems and Solutions for Estimating Indel Rates and Length Distributions." _Molecular Biology and Evolution_ 26(2):473-480. https://doi.org/10.1093/molbev/msn275
 6. <a id="ref-6"></a> Wygoda, Elya, et al. 2024. "Statistical Framework to Determine Indel-Length Distribution." _Bioinformatics_ 40(2):btae043. https://doi.org/10.1093/bioinformatics/btae043
-7. <a id="ref-23"></a> Redelings, Benjamin D. 2024. "Insertions and Deletions: Computational Methods, Evolutionary Dynamics, and Biological Applications." _Molecular Biology and Evolution_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
+7. <a id="ref-23"></a> Redelings, Benjamin D., Ian Holmes, Gerton Lunter, Tal Pupko, and Maria Anisimova. 2024. "Insertions and Deletions: Computational Methods, Evolutionary Dynamics, and Biological Applications." _Molecular Biology and Evolution_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
 8. <a id="ref-25"></a> Loewenthal, Gil, et al. 2021. "A Probabilistic Model for Indel Evolution: Differentiating Insertions from Deletions." _Molecular Biology and Evolution_ 38(12):5769-5781. https://doi.org/10.1093/molbev/msab266
-9. <a id="ref-26"></a> Iglhaut, Fynn, et al. 2024. "Please Mind the Gap: Indel-Aware Parsimony for Fast and Accurate Ancestral Sequence Reconstruction." _Molecular Biology and Evolution_ 41(7):msae109. https://doi.org/10.1093/molbev/msae109
+9. <a id="ref-26"></a> Iglhaut, Clara, et al. 2024. "Please Mind the Gap: Indel-Aware Parsimony for Fast and Accurate Ancestral Sequence Reconstruction." _Molecular Biology and Evolution_ 41(7):msae109. https://doi.org/10.1093/molbev/msae109
 10. <a id="ref-30"></a> Gillespie, Daniel T. 1977. "Exact Stochastic Simulation of Coupled Chemical Reactions." _Journal of Physical Chemistry_ 81(25):2340-2361. https://doi.org/10.1021/j100540a008
 
 See [consolidated references](references.md) for the complete bibliography across all chapters.
