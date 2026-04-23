@@ -106,7 +106,7 @@ Loop (max_iter=20):
 
 Zero-optimal edges are identified after the M-step but before damping (step 6), because damping blends the zero values with old branch lengths and obscures the optimizer's decision. Damping applies normally to all edges (step 7). Then `prune_and_merge_in_loop` overrides the damped values for zero-optimal edges back to zero, collapses them, and merges shared mutations in resulting polytomies (sparse partitions only).
 
-v1 code: [`packages/treetime/src/commands/optimize/run.rs#L37-L162`](../../../packages/treetime/src/commands/optimize/run.rs#L37-L162)
+v1 code: [`packages/treetime/src/commands/optimize/run.rs#L275-L378`](../../../packages/treetime/src/commands/optimize/run.rs#L275-L378)
 
 ### Loop 5: v1 timetree refinement
 
