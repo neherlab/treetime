@@ -149,7 +149,8 @@ impl Alphabet {
 
     let mut char_to_index = vec![None; 128];
     let mut index_to_char = Vec::with_capacity(canonical.len());
-    for (i, c) in canonical.iter().enumerate() {
+    for (i, &b) in config.canonical.iter().enumerate() {
+      let c = AsciiChar::try_new(b)?;
       char_to_index[usize::from(c)] = Some(i);
       index_to_char.push(c);
     }

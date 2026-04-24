@@ -643,4 +643,46 @@ mod tests {
       assert_eq!(c, back);
     }
   }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_profile_index_consistency(#[case] name: AlphabetName) {
+    let alphabet = Alphabet::new(name).unwrap();
+    for c in alphabet.canonical() {
+      let index = alphabet.index(c).unwrap();
+      let profile = alphabet.get_profile(c).unwrap();
+      assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
+
+      for j in 0..alphabet.n_canonical() {
+        if j != index {
+          assert_ulps_eq!(0.0, profile[j], max_ulps = 4);
+        }
+      }
+
+      let roundtrip = alphabet.char(index);
+      assert_eq!(c, roundtrip, "char(index({c})) should roundtrip");
+    }
+  }
+
+  #[test]
+  fn test_alphabet_aa_star_index_matches_profile() {
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
+    let star = AsciiChar::from_byte_unchecked(b'*');
+    let index = alphabet.index(star).unwrap();
+    let profile = alphabet.get_profile(star).unwrap();
+    assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
+  }
+
+  #[test]
+  fn test_alphabet_char_index_roundtrip_aa() {
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
+    for i in 0..alphabet.n_canonical() {
+      let c = alphabet.char(i);
+      let idx = alphabet.index(c).unwrap();
+      assert_eq!(i, idx);
+    }
+  }
 }
