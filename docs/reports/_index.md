@@ -23,3 +23,7 @@ Survey of insertion-deletion (indel) modeling approaches: mathematical foundatio
 ### [Optimization methods](optimization-methods/_index.md)
 
 Numerical optimization algorithms in TreeTime v1: per-edge branch length optimization (Newton-Raphson, Brent, cubic Hermite spline), coalescent skyline estimation (GMRF, NelderMead vs LBFGS), EM convergence, and the argmin Rust crate. Systematic comparison across RAxML-NG, IQ-TREE, PhyML, BEAST, and TreeTime v0/v1 with code locations. Includes a v1 optimization audit with 17 items inventoried, 7 inconsistencies identified, and 8 prioritized refactoring proposals. 7 chapters, glossary, 36 verified references.
+
+### [Sparse substitution accessors](sparse-subs-accessors.md)
+
+Production call sites for `fitch_subs` and `marginal_subs` on `SparseEdgePartition`. 22 fitch call sites across ancestral, marginal passes, sparse reroot, prune, topology cleanup, optimize, and GTR inference. 6 marginal call sites across marginal passes, sparse reroot, and output serialization.
