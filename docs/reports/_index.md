@@ -27,3 +27,7 @@ Numerical optimization algorithms in TreeTime v1: per-edge branch length optimiz
 ### [Sparse substitution accessors](sparse-subs-accessors.md)
 
 Production call sites for `fitch_subs` and `marginal_subs` on `SparseEdgePartition`. 22 fitch call sites across ancestral, marginal passes, sparse reroot, prune, topology cleanup, optimize, and GTR inference. 6 marginal call sites across marginal passes, sparse reroot, and output serialization.
+
+### [Zero branch length optimization](zero-branch-length-optimization.md)
+
+How TreeTime v1 decides when an edge has zero optimal branch length, handles boundary conditions, and collapses degenerate edges. Covers the derivative-sign shortcut for unimodal models (JC69, F81, binary), post-dispatch reconciliation for non-unimodal models (K80, HKY85, TN93, GTR), grid search fallback, input domain protection, and topology cleanup via edge collapse. Decision matrix for all 6 model/indel/validity combinations.
