@@ -110,12 +110,12 @@
 
 **Impl:** [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs)
 
-| Test                                            | Purpose                            |
-| ----------------------------------------------- | ---------------------------------- |
-| `test_brent_minimize_quadratic`                 | Minimum of (x-3)^2                 |
-| `test_brent_minimize_shifted_quadratic`         | Minimum of (x-0.7)^2+1             |
-| `test_brent_minimize_cosine`                    | Minimum of cos(x) on [2,5]         |
-| `test_brent_minimize_monotone_returns_boundary` | Monotone function returns boundary |
+| Test                                                 | Purpose                                        |
+| ---------------------------------------------------- | ---------------------------------------------- |
+| `test_brent_minimize_bracketed_quadratic`            | Minimum of (x-3)^2 with bracket triple         |
+| `test_brent_minimize_bracketed_shifted_quadratic`    | Minimum of (x-0.7)^2+1 with bracket triple     |
+| `test_brent_minimize_bracketed_cosine`               | Minimum of cos(x) on [2,5] with bracket triple |
+| `test_brent_minimize_bracketed_starts_near_interior` | Fast convergence from near-optimal interior    |
 
 ---
 

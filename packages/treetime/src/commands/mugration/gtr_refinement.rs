@@ -202,7 +202,7 @@ where
   if cost_mid < cost_lo && cost_mid < cost_hi {
     let optimal_sqrt_mu = {
       let mut cost_fn = |sqrt_mu: f64| -> f64 { run_backward(partition, sqrt_mu) };
-      brent_minimize(&mut cost_fn, lo, hi, 1e-8, 100)
+      brent_minimize_bracketed(&mut cost_fn, lo, sqrt_old_mu, hi, cost_mid, 1e-8, 100)
     };
     run_backward(partition, optimal_sqrt_mu);
     debug!(
@@ -220,27 +220,33 @@ where
   Ok(())
 }
 
-/// Brent's method for 1D minimization of a function on [a, b].
+/// Brent's method for 1D minimization with a known bracket triple `(xa, xb, xc)`.
 ///
-/// Combines golden section search with parabolic interpolation for
-/// superlinear convergence on smooth functions.
-///
-/// Returns the x value that minimizes f(x) within the interval.
+/// Matches SciPy's `Brent.optimize()` initialization: starts from the interior
+/// point `xb` where `f(xb) < f(xa)` and `f(xb) < f(xc)`, preserving the
+/// three-point bracket semantics that plain interval-based Brent discards.
 #[allow(clippy::many_single_char_names, clippy::float_cmp)]
-fn brent_minimize<F>(f: &mut F, a: f64, b: f64, tol: f64, max_iter: usize) -> f64
+fn brent_minimize_bracketed<F>(f: &mut F, xa: f64, xb: f64, xc: f64, fb: f64, tol: f64, max_iter: usize) -> f64
 where
   F: FnMut(f64) -> f64,
 {
   const GOLDEN: f64 = 0.381_966_011_250_105; // (3 - sqrt(5)) / 2
-  const ZEPS: f64 = 1e-10;
+  const ZEPS: f64 = 1e-11;
 
-  let (mut a, mut b) = if a < b { (a, b) } else { (b, a) };
-  let mut x = a + GOLDEN * (b - a);
-  let mut w = x;
-  let mut v = x;
-  let mut fx = f(x);
-  let mut fw = fx;
-  let mut fv = fx;
+  debug_assert!(
+    xb > xa.min(xc) && xb < xa.max(xc),
+    "xb={xb} must be interior to [{}, {}]",
+    xa.min(xc),
+    xa.max(xc)
+  );
+
+  let (mut a, mut b) = if xa < xc { (xa, xc) } else { (xc, xa) };
+  let mut x = xb;
+  let mut w = xb;
+  let mut v = xb;
+  let mut fx = fb;
+  let mut fw = fb;
+  let mut fv = fb;
   let mut e: f64 = 0.0;
   let mut d: f64 = 0.0;
 
@@ -328,34 +334,45 @@ mod tests {
   use approx::assert_abs_diff_eq;
 
   #[test]
-  fn test_brent_minimize_quadratic() {
-    // f(x) = (x - 3)^2, minimum at x = 3
+  fn test_brent_minimize_bracketed_quadratic() {
     let mut f = |x: f64| (x - 3.0) * (x - 3.0);
-    let result = brent_minimize(&mut f, 0.0, 10.0, 1e-10, 100);
+    let (xa, xb, xc) = (0.0, 3.5, 10.0);
+    let fb = f(xb);
+    let result = brent_minimize_bracketed(&mut f, xa, xb, xc, fb, 1e-10, 100);
     assert_abs_diff_eq!(result, 3.0, epsilon = 1e-8);
   }
 
   #[test]
-  fn test_brent_minimize_shifted_quadratic() {
-    // f(x) = (x - 0.7)^2 + 1, minimum at x = 0.7
+  fn test_brent_minimize_bracketed_shifted_quadratic() {
     let mut f = |x: f64| (x - 0.7) * (x - 0.7) + 1.0;
-    let result = brent_minimize(&mut f, 0.0, 5.0, 1e-10, 100);
+    let (xa, xb, xc) = (0.0, 1.0, 5.0);
+    let fb = f(xb);
+    let result = brent_minimize_bracketed(&mut f, xa, xb, xc, fb, 1e-10, 100);
     assert_abs_diff_eq!(result, 0.7, epsilon = 1e-8);
   }
 
   #[test]
-  fn test_brent_minimize_monotone_returns_boundary() {
-    // Monotone decreasing: minimum at the right boundary
-    let mut f = |x: f64| -x;
-    let result = brent_minimize(&mut f, 0.0, 10.0, 1e-10, 100);
-    assert_abs_diff_eq!(result, 10.0, epsilon = 1e-6);
+  fn test_brent_minimize_bracketed_cosine() {
+    let mut f = |x: f64| x.cos();
+    let (xa, xb, xc) = (2.0, 3.0, 5.0);
+    let fb = f(xb);
+    let result = brent_minimize_bracketed(&mut f, xa, xb, xc, fb, 1e-10, 100);
+    assert_abs_diff_eq!(result, std::f64::consts::PI, epsilon = 1e-8);
   }
 
   #[test]
-  fn test_brent_minimize_cosine() {
-    // f(x) = cos(x) on [2, 5], minimum at x = pi where cos(pi) = -1
-    let mut f = |x: f64| x.cos();
-    let result = brent_minimize(&mut f, 2.0, 5.0, 1e-10, 100);
-    assert_abs_diff_eq!(result, std::f64::consts::PI, epsilon = 1e-8);
+  fn test_brent_minimize_bracketed_starts_near_interior() {
+    let call_count = std::cell::Cell::new(0u32);
+    let mut f = |x: f64| -> f64 {
+      call_count.set(call_count.get() + 1);
+      (x - 5.0) * (x - 5.0)
+    };
+    let (xa, xb, xc) = (0.0, 4.9, 10.0);
+    let fb = f(xb);
+    call_count.set(0);
+    let result = brent_minimize_bracketed(&mut f, xa, xb, xc, fb, 1e-10, 100);
+    assert_abs_diff_eq!(result, 5.0, epsilon = 1e-8);
+    let count = call_count.get();
+    assert!(count < 20, "Starting near minimum should converge quickly, took {count} evaluations");
   }
 }
