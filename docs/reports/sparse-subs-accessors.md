@@ -4,7 +4,7 @@ Production call sites for `marginal_subs` and `fitch_subs` on `SparseEdgePartiti
 
 Definitions: [packages/treetime/src/representation/payload/sparse.rs](../../packages/treetime/src/representation/payload/sparse.rs)
 
-## Marginal subs call sites (6)
+## Marginal subs writes (5)
 
 ### Store computed marginal subs after forward pass
 
@@ -28,11 +28,22 @@ After inverting fitch subs on edges along the old-root-to-new-root path, margina
 - `apply_reroot()` [representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133)
 - `edge_data.clear_marginal_subs()` [representation/partition/marginal_sparse.rs#L212](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L212)
 
-### Read marginal subs for branch length and output
+## Marginal subs reads (3)
 
-`PartitionBranchOps::edge_subs()` reads marginal subs for branch length computation and output serialization. Errors if marginal inference has not run yet.
+### Count marginal subs for initial branch length guess
 
-- `edge_subs()` [representation/partition/marginal_sparse.rs#L267](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L267)
+Count discrete substitutions per edge across all partitions to estimate initial branch lengths before the optimization loop. Called from `optimize` and `timetree` commands.
+
+- `initial_guess_mixed()` [commands/optimize/optimize_unified.rs#L729](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L729)
+- `partition.edge_subs()` [commands/optimize/optimize_unified.rs#L774](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L774)
+- `edge.marginal_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
+
+### Collect marginal subs for branch mutation annotation
+
+Collect all marginal subs across partitions for each edge and write them as comma-separated mutation strings onto the graph nodes. Used for output in `ancestral`, `optimize`, and `timetree` commands.
+
+- `annotate_branch_mutations()` [representation/payload/ancestral.rs#L152](../../packages/treetime/src/representation/payload/ancestral.rs#L152)
+- `partition.edge_subs()` [representation/payload/ancestral.rs#L170](../../packages/treetime/src/representation/payload/ancestral.rs#L170)
 - `edge.marginal_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
 
 ## Fitch subs call sites (22)
