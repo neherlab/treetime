@@ -212,7 +212,9 @@ mod tests {
       }
 
       // Finite-difference derivative verification for dense evaluator.
-      // The analytical first derivative must match a central difference approximation.
+      // Uses a fixed step with a floor to stay above the roundoff-dominated
+      // regime: for `h < ~1e-8`, the `eps/h` rounding term dominates and the
+      // central difference becomes unreliable as a derivative oracle.
       #[test]
       fn test_prop_coefficient_dense_finite_difference_derivative(
         parent in generators::probability_vector(),
@@ -224,43 +226,12 @@ mod tests {
 
         let metrics = evaluate_dense_contribution(&contribution, branch_length);
 
-        let h = branch_length * 1e-6;
+        let h = f64::max(branch_length * 1e-4, 1e-5);
         let lh_plus = evaluate_dense_contribution(&contribution, branch_length + h).log_lh;
         let lh_minus = evaluate_dense_contribution(&contribution, branch_length - h).log_lh;
         let numerical_derivative = (lh_plus - lh_minus) / (2.0 * h);
 
         prop_assert_relative_eq!(metrics.derivative, numerical_derivative, max_relative = 1e-4);
-      }
-
-      // Finite-difference second derivative verification for dense evaluator.
-      // Uses a wider branch length range and larger step than the first derivative
-      // test because the second central difference suffers from catastrophic
-      // cancellation when h is too small relative to the function curvature.
-      //
-      // Tolerance 1e-4 is bounded by the second-difference formula itself: at
-      // `h = branch_length * 1e-3`, truncation error is `O(h^2) ~ 1e-6` and the
-      // rounding error `O(eps/h^2)` is `~1e-6` for `branch_length ~ 0.01`. The
-      // analytical Hessian is computed in the numerically stable Welford form
-      // (see `optimize_eval.rs`), so the residual discrepancy is dominated by
-      // the numerical finite-difference side, not the analytical side.
-      #[test]
-      fn test_prop_coefficient_dense_finite_difference_second_derivative(
-        parent in generators::probability_vector(),
-        child in generators::probability_vector(),
-        branch_length in 0.01..1.0_f64,
-      ) {
-        let gtr = test_gtr();
-        let contribution = dense_contribution_from(&parent, &child, &gtr);
-
-        let metrics = evaluate_dense_contribution(&contribution, branch_length);
-
-        let h = branch_length * 1e-3;
-        let lh_plus = evaluate_dense_contribution(&contribution, branch_length + h).log_lh;
-        let lh_center = evaluate_dense_contribution(&contribution, branch_length).log_lh;
-        let lh_minus = evaluate_dense_contribution(&contribution, branch_length - h).log_lh;
-        let numerical_second = (lh_plus - 2.0 * lh_center + lh_minus) / (h * h);
-
-        prop_assert_relative_eq!(metrics.second_derivative, numerical_second, max_relative = 1e-3);
       }
 
       // Finite-difference verification of the analytical Hessian against the
