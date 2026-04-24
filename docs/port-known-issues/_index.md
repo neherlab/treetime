@@ -55,6 +55,7 @@ exactly.
 | Severity   | Scope          | Issue                                                                                                                                                     |
 | ---------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | High       | Ancestral      | [Ancestral joint method default panics](H-ancestral-joint-default-panics.md)                                                                              |
+| High       | Ancestral      | [Dense partitions lack Fitch compression](H-dense-with-fitch-compression.md)                                                                              |
 | High       | Clock          | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                                           |
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                                     |
 | High       | Clock          | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                                                 |
@@ -62,6 +63,7 @@ exactly.
 | High       | Core           | [Gap handling not implemented](H-core-gap-handling-not-implemented.md)                                                                                    |
 | High       | Core           | [Shared graph topology operations misplaced inside command modules](H-core-shared-graph-operations-misplaced.md)                                          |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                                |
+| High       | Optimize       | [`--no-indels` flag to disable indel contributions to branch-length optimization](H-optimize-no-indel-flag.md)                                            |
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                        |
 | High       | Timetree       | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                                |
 | High       | Timetree       | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                            |
@@ -69,6 +71,7 @@ exactly.
 | Medium     | Clock          | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                                    |
 | Negligible | Clock          | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                                                  |
 | Negligible | Clock          | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                                               |
+| Medium     | Ancestral      | [Refactor Fitch compression long functions](M-ancestral-fitch-compression-long-functions.md)                                                              |
 | Medium     | Ancestral      | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                          |
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                         |
 | Medium     | Ancestral      | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                                 |
@@ -90,6 +93,7 @@ exactly.
 | Low        | Representation | [Dense and sparse partition types have structural and naming asymmetries](L-representation-dense-sparse-partition-asymmetry.md)                           |
 | Medium     | Optimize       | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                               |
 | Medium     | Representation | [Indel composition missing during edge merge](M-representation-indel-composition-missing.md)                                                              |
+| Medium     | GTR            | [GTR inference chicken-and-egg problem](M-gtr-chicken-and-egg-problem.md)                                                                                 |
 | Medium     | GTR            | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                                  |
 | Medium     | Timetree       | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                             |
 | Medium     | Timetree       | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                              |

@@ -59,6 +59,10 @@ Split partition construction into `PartitionBuilder` (no GTR, holds sequence dat
 
 Compute GTR inference inputs (Fitch mutation counts, initial profiles) without constructing a full partition. Pass raw alignment + tree to the GTR inference functions, then construct partitions with the real GTR from the start. This decouples GTR inference from the partition lifecycle but requires extracting the relevant computation from the partition methods.
 
+## Related
+
+- [Dense partitions lack Fitch compression](H-dense-with-fitch-compression.md) - Fitch subs for dense would provide GTR inference inputs before partition construction, eliminating the dummy pattern for dense (S3 approach)
+
 ## v0 handling
 
 v0 has a similar pattern but less visible: `TreeTime.__init__()` accepts a `gtr` parameter (default `'infer'`), and `run()` calls `infer_gtr()` after initial ancestral reconstruction. The GTR is a mutable attribute on the `TreeAnc` object, replaced in place. The circular dependency exists but is hidden by Python's mutable object model.
