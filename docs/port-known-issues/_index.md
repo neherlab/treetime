@@ -58,6 +58,9 @@ exactly.
 | High       | Clock          | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                                           |
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                                     |
 | High       | Clock          | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                                                 |
+| High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                                |
+| High       | Core           | [Gap handling not implemented](H-core-gap-handling-not-implemented.md)                                                                                    |
+| High       | Core           | [Shared graph topology operations misplaced inside command modules](H-core-shared-graph-operations-misplaced.md)                                          |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                                |
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                        |
 | High       | Timetree       | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                                |

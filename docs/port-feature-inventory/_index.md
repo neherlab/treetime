@@ -77,7 +77,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 
 - [x] `--reconstruct-tip-states` (overwrite ambiguous tips, controls leaf emission)
 - [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
-- [ ] `--keep-overhangs` (parsed but not wired)
+- [ ] `--keep-overhangs` (parsed but not wired; [known issue: gap handling](../port-known-issues/H-core-gap-handling-not-implemented.md))
 - [ ] `--zero-based` indexing (parsed but not wired)
 - [ ] `--report-ambiguous` (parsed but not wired)
 - [ ] `--seed` for reproducibility (parsed but not wired)
@@ -312,7 +312,7 @@ Uses [Obsidian checkbox statuses](https://publish.obsidian.md/tasks/Getting+Star
 - [ ] `--gtr-params` (parsed but not wired)
 - [ ] `--method-anc`
 - [ ] `--aa`
-- [ ] `--keep-overhangs`
+- [ ] `--keep-overhangs` ([known issue: gap handling](../port-known-issues/H-core-gap-handling-not-implemented.md))
 - [ ] `--zero-based`
 - [ ] `--reconstruct-tip-states`
 - [ ] `--report-ambiguous`
