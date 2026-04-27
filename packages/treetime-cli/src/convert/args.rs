@@ -21,10 +21,10 @@ pub enum TreeFormat {
 #[clap(author, version)]
 #[clap(verbatim_doc_comment)]
 #[clap(styles = styles())]
-/// Read and write Usher MAT files
+/// Convert between phylogenetic tree formats
 ///
-/// - https://github.com/yatisht/usher
-/// - https://usher-wiki.readthedocs.io/
+/// Supported formats: Auspice JSON, Newick, Nexus, PhyloGraph JSON,
+/// PhyloXML, PhyloXML JSON, UShER MAT protobuf, UShER MAT JSON.
 pub struct Args {
   /// Path to input file
   ///
