@@ -60,10 +60,10 @@ mod tests {
   }
 
   mod helpers {
+    use crate::representation::algo::topology_cleanup::reroot::{apply_reroot_topology, remove_node_if_trivial};
     use crate::representation::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use itertools::Itertools;
-    use treetime_graph::edge::{GraphEdgeKey, HasBranchLength, invert_edge};
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
@@ -93,95 +93,14 @@ mod tests {
 
       let new_root_key = internal_keys[node_idx % internal_keys.len()];
 
-      let path = graph.path_from_node_to_node(new_root_key, old_root_key)?;
-      for (_, edge) in &path {
-        if let Some(edge) = edge {
-          invert_edge(&mut graph, edge);
-        }
-      }
-      drop(path);
-
-      // Bypass the degree-2 old root, then remove it and the dangling edge
-      // so the graph is in a consistent state (no ghost nodes or orphaned edges).
-      let inbound_key = bypass_degree2_node(&graph, old_root_key)?;
-      graph.remove_edge(inbound_key)?;
-      graph.remove_node(old_root_key)?;
-
-      graph.build()?;
+      apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
+      remove_node_if_trivial(&mut graph, old_root_key)?;
 
       let options = NwkWriteOptions {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
       };
       nwk_write_str(&graph, &options)
-    }
-
-    /// Bypass a degree-2 node (1 inbound, 1 outbound) by redirecting its
-    /// outbound edge to connect parent directly to child, with summed branch length.
-    ///
-    /// Returns the inbound edge key so the caller can remove it (along with the
-    /// now-disconnected node) to leave the graph consistent.
-    fn bypass_degree2_node(graph: &GraphAncestral, node_key: GraphNodeKey) -> Result<GraphEdgeKey, Report> {
-      let node = graph
-        .get_node(node_key)
-        .ok_or_else(|| eyre::eyre!("Node {node_key} not found"))?;
-      let node_ref = node.read_arc();
-
-      if node_ref.inbound().len() != 1 || node_ref.outbound().len() != 1 {
-        return Err(eyre::eyre!(
-          "Node {node_key} is not degree-2: in={}, out={}",
-          node_ref.inbound().len(),
-          node_ref.outbound().len()
-        ));
-      }
-
-      let inbound_key = node_ref.inbound()[0];
-      let outbound_key = node_ref.outbound()[0];
-      drop(node_ref);
-
-      let inbound_edge = graph
-        .get_edge(inbound_key)
-        .ok_or_else(|| eyre::eyre!("Inbound edge {inbound_key} not found"))?;
-      let outbound_edge = graph
-        .get_edge(outbound_key)
-        .ok_or_else(|| eyre::eyre!("Outbound edge {outbound_key} not found"))?;
-
-      let parent_key = inbound_edge.read_arc().source();
-      let inbound_bl = inbound_edge
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or(0.0);
-      let outbound_bl = outbound_edge
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or(0.0);
-
-      // Redirect outbound edge: old_root->child becomes parent->child
-      outbound_edge.write_arc().set_source(parent_key);
-      outbound_edge
-        .write_arc()
-        .payload()
-        .write_arc()
-        .set_branch_length(Some(inbound_bl + outbound_bl));
-
-      // Update parent: replace inbound_key with outbound_key in outbound list
-      let parent = graph
-        .get_node(parent_key)
-        .ok_or_else(|| eyre::eyre!("Parent node {parent_key} not found"))?;
-      {
-        let mut parent_ref = parent.write_arc();
-        parent_ref.outbound_mut().retain(|&k| k != inbound_key);
-        parent_ref.outbound_mut().push(outbound_key);
-      }
-
-      // Clear old root's outbound so remove_node won't find the redirected edge
-      node.write_arc().outbound_mut().clear();
-
-      Ok(inbound_key)
     }
 
     #[cfg(test)]
