@@ -26,7 +26,7 @@ Numerical optimization algorithms in TreeTime v1: per-edge branch length optimiz
 
 ### [Sparse substitution accessors](sparse-subs-accessors.md)
 
-Production call sites for `fitch_subs` and `marginal_subs` on `SparseEdgePartition`. 22 fitch call sites across ancestral, marginal passes, sparse reroot, prune, topology cleanup, optimize, and GTR inference. 6 marginal call sites across marginal passes, sparse reroot, and output serialization.
+Production call sites for `fitch_subs` and `ml_subs` on `SparseEdgePartition`. 22 fitch call sites across ancestral, marginal passes, sparse reroot, prune, topology cleanup, optimize, and GTR inference. 6 ML call sites across marginal passes, sparse reroot, and output serialization.
 
 ### [Indel rate re-estimation in the optimize loop](optimize-indel-rate-reestimation.md)
 

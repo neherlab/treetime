@@ -143,7 +143,7 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
 
       // Child-side edge gets all mutations (they describe parent->child relationship)
-      old_edge_data.clear_marginal_subs();
+      old_edge_data.clear_ml_subs();
       self.edges.insert(info.child_side_edge_key, old_edge_data);
 
       // Parent-side edge is empty (no mutations between parent and new split node)
@@ -208,8 +208,8 @@ impl PartitionRerootOps for PartitionMarginalSparse {
       // Invert all substitutions
       edge_data.invert_fitch_subs();
 
-      // Clear marginal subs (stale after topology change)
-      edge_data.clear_marginal_subs();
+      // Clear ML subs (stale after topology change)
+      edge_data.clear_ml_subs();
 
       // Invert all indels
       for indel in &mut edge_data.indels {
@@ -266,9 +266,9 @@ impl PartitionBranchOps for PartitionMarginalSparse {
 
   fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     let edge = &self.edges[&edge_key];
-    match edge.marginal_subs() {
+    match edge.ml_subs() {
       Some(subs) => Ok(subs.to_vec()),
-      None => make_error!("edge_subs() called before marginal inference populated subs_marginal for edge {edge_key:?}"),
+      None => make_error!("edge_subs() called before marginal inference populated subs_ml for edge {edge_key:?}"),
     }
   }
 

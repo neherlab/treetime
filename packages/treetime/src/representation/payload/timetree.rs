@@ -346,7 +346,7 @@ mod tests {
       if let Some(edge) = edges.get(*idx) {
         let edge_key = edge.read_arc().key();
         let mut edge_part = SparseEdgePartition::with_fitch_subs(subs.clone());
-        edge_part.set_marginal_subs(subs.clone());
+        edge_part.set_ml_subs(subs.clone());
         partition.edges.insert(edge_key, edge_part);
       }
     }

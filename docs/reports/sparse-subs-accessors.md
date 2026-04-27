@@ -1,50 +1,50 @@
 # Sparse substitution accessors
 
-Production call sites for `marginal_subs` and `fitch_subs` on `SparseEdgePartition`, excluding tests.
+Production call sites for `ml_subs` and `fitch_subs` on `SparseEdgePartition`, excluding tests.
 
 Definitions: [packages/treetime/src/representation/payload/sparse.rs](../../packages/treetime/src/representation/payload/sparse.rs)
 
-## Marginal subs writes (5)
+## ML subs writes (5)
 
-### Store computed marginal subs after forward pass
+### Store computed ML subs after forward pass
 
-After the child profile is finalized during the forward (root-to-tip) marginal pass, compute the marginal substitutions for each parent edge by comparing parent and child marginal profiles, then store them on the edge.
+After the child profile is finalized during the forward (root-to-tip) marginal pass, compute the ML substitutions for each parent edge by comparing parent and child marginal profiles, then store them on the edge.
 
 - `process_node_forward()` [representation/partition/marginal_passes.rs#L250](../../packages/treetime/src/representation/partition/marginal_passes.rs#L250)
-- `compute_marginal_subs_for_edge()` [representation/partition/marginal_passes.rs#L339](../../packages/treetime/src/representation/partition/marginal_passes.rs#L339)
-- `edge.set_marginal_subs(marginal_subs)` [representation/partition/marginal_passes.rs#L341](../../packages/treetime/src/representation/partition/marginal_passes.rs#L341)
+- `compute_ml_subs_for_edge()` [representation/partition/marginal_passes.rs#L339](../../packages/treetime/src/representation/partition/marginal_passes.rs#L339)
+- `edge.set_ml_subs(ml_subs)` [representation/partition/marginal_passes.rs#L341](../../packages/treetime/src/representation/partition/marginal_passes.rs#L341)
 
-### Invalidate marginal subs on edge split during reroot
+### Invalidate ML subs on edge split during reroot
 
-The old edge moves to the child side of a new internal node. Marginal subs are cleared because they were computed under the old root and are stale.
-
-- `apply_reroot()` [representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133)
-- `old_edge_data.clear_marginal_subs()` [representation/partition/marginal_sparse.rs#L146](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L146)
-
-### Invalidate marginal subs after edge inversion during reroot
-
-After inverting fitch subs on edges along the old-root-to-new-root path, marginal subs are cleared because they depend on directionality that just changed.
+The old edge moves to the child side of a new internal node. ML subs are cleared because they were computed under the old root and are stale.
 
 - `apply_reroot()` [representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133)
-- `edge_data.clear_marginal_subs()` [representation/partition/marginal_sparse.rs#L212](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L212)
+- `old_edge_data.clear_ml_subs()` [representation/partition/marginal_sparse.rs#L146](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L146)
 
-## Marginal subs reads (3)
+### Invalidate ML subs after edge inversion during reroot
 
-### Count marginal subs for initial branch length guess
+After inverting fitch subs on edges along the old-root-to-new-root path, ML subs are cleared because they depend on directionality that just changed.
+
+- `apply_reroot()` [representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133)
+- `edge_data.clear_ml_subs()` [representation/partition/marginal_sparse.rs#L212](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L212)
+
+## ML subs reads (3)
+
+### Count ML subs for initial branch length guess
 
 Count discrete substitutions per edge across all partitions to estimate initial branch lengths before the optimization loop. Called from `optimize` and `timetree` commands.
 
 - `initial_guess_mixed()` [commands/optimize/optimize_unified.rs#L729](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L729)
 - `partition.edge_subs()` [commands/optimize/optimize_unified.rs#L774](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L774)
-- `edge.marginal_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
+- `edge.ml_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
 
-### Collect marginal subs for branch mutation annotation
+### Collect ML subs for branch mutation annotation
 
-Collect all marginal subs across partitions for each edge and write them as comma-separated mutation strings onto the graph nodes. Used for output in `ancestral`, `optimize`, and `timetree` commands.
+Collect all ML subs across partitions for each edge and write them as comma-separated mutation strings onto the graph nodes. Used for output in `ancestral`, `optimize`, and `timetree` commands.
 
 - `annotate_branch_mutations()` [representation/payload/ancestral.rs#L152](../../packages/treetime/src/representation/payload/ancestral.rs#L152)
 - `partition.edge_subs()` [representation/payload/ancestral.rs#L170](../../packages/treetime/src/representation/payload/ancestral.rs#L170)
-- `edge.marginal_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
+- `edge.ml_subs()` [representation/partition/marginal_sparse.rs#L269](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L269)
 
 ## Fitch subs call sites (22)
 
@@ -62,11 +62,11 @@ After Fitch reconstruction, apply fitch subs to the parent sequence to produce t
 - `run_fitch_reconstruction()` [commands/ancestral/fitch.rs#L561](../../packages/treetime/src/commands/ancestral/fitch.rs#L561)
 - `edge_part.fitch_subs()` [commands/ancestral/fitch.rs#L580](../../packages/treetime/src/commands/ancestral/fitch.rs#L580)
 
-### Seed candidate positions for marginal sub computation
+### Seed candidate positions for ML sub computation
 
-Fitch subs provide candidate positions (union with parent/child variable sites) where marginal substitutions may differ from Fitch. The marginal computation refines these using posterior probabilities.
+Fitch subs provide candidate positions (union with parent/child variable sites) where ML substitutions may differ from Fitch. The ML computation refines these using posterior probabilities.
 
-- `compute_marginal_subs_for_edge()` [representation/partition/marginal_passes.rs#L81](../../packages/treetime/src/representation/partition/marginal_passes.rs#L81)
+- `compute_ml_subs_for_edge()` [representation/partition/marginal_passes.rs#L81](../../packages/treetime/src/representation/partition/marginal_passes.rs#L81)
 - `.fitch_subs()` [representation/partition/marginal_passes.rs#L100](../../packages/treetime/src/representation/partition/marginal_passes.rs#L100)
 
 ### Identify variable positions in backward marginal pass

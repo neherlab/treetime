@@ -93,7 +93,7 @@ pub struct SparseSeqInfo {
 #[allow(clippy::partial_pub_fields)]
 pub struct SparseEdgePartition {
   subs_fitch: Vec<Sub>,
-  subs_marginal: Option<Vec<Sub>>,
+  subs_ml: Option<Vec<Sub>>,
   pub indels: Vec<InDel>,
   pub msg_to_parent: MarginalSparseSeqDistribution,
   pub msg_to_child: MarginalSparseSeqDistribution,
@@ -123,35 +123,35 @@ impl SparseEdgePartition {
 
   pub fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
     self.subs_fitch = subs;
-    self.subs_marginal = None;
+    self.subs_ml = None;
   }
 
   pub fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
     self.subs_fitch.extend(subs);
-    self.subs_marginal = None;
+    self.subs_ml = None;
   }
 
   pub fn invert_fitch_subs(&mut self) {
     for sub in &mut self.subs_fitch {
       sub.invert();
     }
-    self.subs_marginal = None;
+    self.subs_ml = None;
   }
 
   pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
     compose_substitutions(&self.subs_fitch, suffix)
   }
 
-  pub fn marginal_subs(&self) -> Option<&[Sub]> {
-    self.subs_marginal.as_deref()
+  pub fn ml_subs(&self) -> Option<&[Sub]> {
+    self.subs_ml.as_deref()
   }
 
-  pub fn set_marginal_subs(&mut self, subs: Vec<Sub>) {
-    self.subs_marginal = Some(subs);
+  pub fn set_ml_subs(&mut self, subs: Vec<Sub>) {
+    self.subs_ml = Some(subs);
   }
 
-  pub fn clear_marginal_subs(&mut self) {
-    self.subs_marginal = None;
+  pub fn clear_ml_subs(&mut self) {
+    self.subs_ml = None;
   }
 }
 

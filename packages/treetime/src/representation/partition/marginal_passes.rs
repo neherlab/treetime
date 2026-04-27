@@ -78,7 +78,7 @@ fn resolve_map_state(
   }
 }
 
-fn compute_marginal_subs_for_edge(
+fn compute_ml_subs_for_edge(
   partition: &PartitionMarginalSparse,
   parent_key: GraphNodeKey,
   child_key: GraphNodeKey,
@@ -334,11 +334,11 @@ where
     // from parent sequence + edge mutations + variable site MAP states.
     reconstruct_map_sequence(partition, node);
 
-    // Compute marginal subs for parent edges now that child profile is finalized
+    // Compute ML subs for parent edges now that child profile is finalized
     for (parent_key, edge_key) in &node.parent_keys {
-      let marginal_subs = compute_marginal_subs_for_edge(partition, *parent_key, node.key, *edge_key)?;
+      let ml_subs = compute_ml_subs_for_edge(partition, *parent_key, node.key, *edge_key)?;
       if let Some(edge) = partition.edges.get_mut(edge_key) {
-        edge.set_marginal_subs(marginal_subs);
+        edge.set_ml_subs(ml_subs);
       }
     }
   }

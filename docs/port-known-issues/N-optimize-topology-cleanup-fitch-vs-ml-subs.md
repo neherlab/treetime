@@ -2,13 +2,13 @@
 
 The optimize loop's topology cleanup step (`find_zero_optimal_internal_edges` + `merge_shared_mutation_branches`) uses `fitch_subs()` to decide which edges carry mutations and which sibling edges share mutations. `fitch_subs()` contains the compression-time Fitch-algorithm substitutions, not the post-marginal MAP-derived substitutions that reflect the current ancestral reconstruction.
 
-At the point where `find_zero_optimal_internal_edges` runs, `update_marginal()` has already populated `subs_marginal` with the current MAP state. For non-collapsed edges, `fitch_subs()` and `subs_marginal` can differ at ambiguous positions where marginal inference resolves differently than parsimony. The topology cleanup decisions are therefore based on the parsimony-era representation, not the current maximum a posteriori state.
+At the point where `find_zero_optimal_internal_edges` runs, `update_marginal()` has already populated `subs_ml` with the current MAP state. For non-collapsed edges, `fitch_subs()` and `subs_ml` can differ at ambiguous positions where marginal inference resolves differently than parsimony. The topology cleanup decisions are therefore based on the parsimony-era representation, not the current maximum a posteriori state.
 
 ## Context
 
 This is the documented current behavior, not a regression. Git archaeology shows that `find_zero_optimal_internal_edges` always read the raw `subs` field (now `subs_fitch` behind the `fitch_subs()` accessor). The `edge_subs()` trait method (which performed on-demand tree traversal to derive MAP subs) was a different code path never used at this call site.
 
-In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()` calls `set_fitch_subs()` which clears `subs_marginal`, so `fitch_subs()` is the only available data at that point. The `merge_shared_mutation_branches()` step runs immediately after collapse and correctly uses `fitch_subs()` for all edges. The next iteration re-runs `update_marginal()`.
+In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()` calls `set_fitch_subs()` which clears `subs_ml`, so `fitch_subs()` is the only available data at that point. The `merge_shared_mutation_branches()` step runs immediately after collapse and correctly uses `fitch_subs()` for all edges. The next iteration re-runs `update_marginal()`.
 
 ## Suspected problems
 
@@ -17,10 +17,10 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 ## Investigation tasks
 
-- Determine whether using `subs_marginal` (when available) for `find_zero_optimal_internal_edges` produces different zero-optimal edge sets on real datasets (compare edge sets from `fitch_subs()` vs `subs_marginal` after `update_marginal()`).
-- Determine whether using `subs_marginal` for `merge_shared_mutation_branches` on non-collapsed sibling edges produces different merge decisions. This requires computing shared mutations from `subs_marginal` for edges where it is available and `fitch_subs()` for freshly composed edges.
-- Measure the effect on convergence speed and final topology. If Fitch-based decisions cause unnecessary iterations (conservative edge retention), switching to marginal subs where available could reduce iteration count.
-- Consider a hybrid approach: use `subs_marginal` for `find_zero_optimal_internal_edges` (pre-collapse, all edges have marginal data), fall back to `fitch_subs()` for `merge_shared_mutation_branches` (post-collapse, composed edges lack marginal data).
+- Determine whether using `subs_ml` (when available) for `find_zero_optimal_internal_edges` produces different zero-optimal edge sets on real datasets (compare edge sets from `fitch_subs()` vs `subs_ml` after `update_marginal()`).
+- Determine whether using `subs_ml` for `merge_shared_mutation_branches` on non-collapsed sibling edges produces different merge decisions. This requires computing shared mutations from `subs_ml` for edges where it is available and `fitch_subs()` for freshly composed edges.
+- Measure the effect on convergence speed and final topology. If Fitch-based decisions cause unnecessary iterations (conservative edge retention), switching to ML subs where available could reduce iteration count.
+- Consider a hybrid approach: use `subs_ml` for `find_zero_optimal_internal_edges` (pre-collapse, all edges have marginal data), fall back to `fitch_subs()` for `merge_shared_mutation_branches` (post-collapse, composed edges lack marginal data).
 
 ## Locations
 
@@ -28,7 +28,7 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 - Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L599-L642`](../../packages/treetime/src/commands/optimize/run.rs#L599-L642) (`prune_and_merge_in_loop`)
 - Edge collapse: [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs)
 - Shared mutation merge: [`packages/treetime/src/commands/prune/run.rs#L293-L540`](../../packages/treetime/src/commands/prune/run.rs#L293-L540) (`merge_shared_mutation_branches` and helpers)
-- Fitch/marginal accessors: [`packages/treetime/src/representation/payload/sparse.rs#L112-L163`](../../packages/treetime/src/representation/payload/sparse.rs#L112-L163) (`SparseEdgePartition`)
+- Fitch/ML accessors: [`packages/treetime/src/representation/payload/sparse.rs#L112-L163`](../../packages/treetime/src/representation/payload/sparse.rs#L112-L163) (`SparseEdgePartition`)
 
 ## Related
 

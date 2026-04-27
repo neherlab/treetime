@@ -69,7 +69,7 @@ where
 ///
 /// Both dense and sparse partitions implement this. Dense partitions compare
 /// MAP states from full marginal posteriors. Sparse partitions return
-/// pre-computed MAP-derived substitutions stored in `subs_marginal` during
+/// pre-computed MAP-derived substitutions stored in `subs_ml` during
 /// the marginal forward pass.
 ///
 /// Requires marginal inference to have run. Pre-marginal consumers (GTR
@@ -86,7 +86,7 @@ pub trait PartitionBranchOps: Send + Sync {
   ///
   /// For dense partitions, computes MAP state (argmax of node posterior) at
   /// parent and child endpoints. For sparse partitions, returns pre-computed
-  /// `subs_marginal` (populated during forward pass). Non-canonical states
+  /// `subs_ml` (populated during forward pass). Non-canonical states
   /// and gap positions are excluded in both cases.
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 

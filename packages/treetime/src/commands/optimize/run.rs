@@ -216,8 +216,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     *opt_method,
   )?;
 
-  // Re-run marginal to populate subs_marginal after the loop (the last iteration
-  // may have changed topology, clearing marginal subs on affected edges).
+  // Re-run marginal to populate subs_ml after the loop (the last iteration
+  // may have changed topology, clearing ML subs on affected edges).
   update_marginal(&graph, &sparse_partitions)?;
   update_marginal(&graph, &dense_partitions)?;
 
