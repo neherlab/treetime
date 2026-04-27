@@ -23,8 +23,8 @@ pub enum TreeFormat {
 #[clap(styles = styles())]
 /// Read and write Usher MAT files
 ///
-/// * https://github.com/yatisht/usher
-/// * https://usher-wiki.readthedocs.io/
+/// - https://github.com/yatisht/usher
+/// - https://usher-wiki.readthedocs.io/
 pub struct Args {
   /// Path to input file
   ///

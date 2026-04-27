@@ -102,6 +102,7 @@ exactly.
 | Medium     | Timetree       | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                                       |
 | Medium     | Timetree       | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                                |
 | Medium     | Timetree       | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                   |
+| Negligible | CLI            | [Convert command description is stale](N-convert-stale-command-description.md)                                                                      |
 | Negligible | Ancestral      | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                               |
 | Negligible | Core           | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                     |
 | Negligible | Dates          | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |
