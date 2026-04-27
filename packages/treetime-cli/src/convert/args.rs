@@ -2,9 +2,8 @@ use crate::cli::verbosity::Verbosity;
 use clap::{Parser, ValueEnum, ValueHint};
 use std::path::{Path, PathBuf};
 use treetime_utils::init::clap_styles::styles;
-use treetime_utils::io::fs::extension;
 
-#[derive(Copy, Clone, Debug, ValueEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
 pub enum TreeFormat {
   Auspice,
@@ -69,17 +68,28 @@ pub struct Args {
   pub verbosity: Verbosity,
 }
 
+const COMPOUND_EXTENSIONS: &[(&str, TreeFormat)] = &[
+  (".auspice.json", TreeFormat::Auspice),
+  (".graph.json", TreeFormat::PhyloGraph),
+  (".mat.json", TreeFormat::MatJson),
+  (".mat.pb", TreeFormat::MatPb),
+  (".phylo.xml", TreeFormat::Phyloxml),
+  (".phyloxml.json", TreeFormat::PhyloxmlJson),
+];
+
 pub fn guess_tree_format_from_filename(filepath: impl AsRef<Path>) -> Option<TreeFormat> {
-  let filepath = filepath.as_ref();
-  let ext = extension(filepath).map(|s| s.to_lowercase());
-  match ext.as_deref() {
-    Some("auspice.json") => Some(TreeFormat::Auspice),
-    Some("graph.json") => Some(TreeFormat::PhyloGraph),
-    Some("mat.json") => Some(TreeFormat::MatPb),
-    Some("mat.pb") => Some(TreeFormat::MatPb),
-    Some("nex" | "nexus") => Some(TreeFormat::Nexus),
-    Some("nwk" | "newick") => Some(TreeFormat::Newick),
-    Some("phylo.xml") => Some(TreeFormat::Phyloxml),
+  let name = filepath.as_ref().file_name()?.to_str()?.to_ascii_lowercase();
+
+  for &(suffix, format) in COMPOUND_EXTENSIONS {
+    if name.ends_with(suffix) {
+      return Some(format);
+    }
+  }
+
+  let ext = name.rsplit('.').next()?;
+  match ext {
+    "nex" | "nexus" => Some(TreeFormat::Nexus),
+    "nwk" | "newick" => Some(TreeFormat::Newick),
     _ => None,
   }
 }
