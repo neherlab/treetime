@@ -3,8 +3,9 @@ mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::commands::clock::reroot::{RerootParams, remove_node_if_trivial, reroot_in_place};
+  use crate::commands::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
+  use crate::representation::algo::topology_cleanup::reroot::remove_node_if_trivial;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

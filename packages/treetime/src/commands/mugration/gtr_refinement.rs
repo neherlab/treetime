@@ -373,6 +373,9 @@ mod tests {
     let result = brent_minimize_bracketed(&mut f, xa, xb, xc, fb, 1e-10, 100);
     assert_abs_diff_eq!(result, 5.0, epsilon = 1e-8);
     let count = call_count.get();
-    assert!(count < 20, "Starting near minimum should converge quickly, took {count} evaluations");
+    assert!(
+      count < 20,
+      "Starting near minimum should converge quickly, took {count} evaluations"
+    );
   }
 }

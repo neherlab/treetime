@@ -5,11 +5,11 @@ mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::commands::clock::reroot::RerootChanges;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
+  use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::sparse::{

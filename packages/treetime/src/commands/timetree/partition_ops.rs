@@ -1,5 +1,5 @@
-use crate::commands::clock::reroot::RerootChanges;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionMarginalOps;
 use eyre::Report;
