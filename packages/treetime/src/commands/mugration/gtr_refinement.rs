@@ -362,7 +362,7 @@ mod tests {
 
   #[test]
   fn test_brent_minimize_bracketed_starts_near_interior() {
-    let call_count = std::cell::Cell::new(0u32);
+    let call_count = std::cell::Cell::new(0_u32);
     let mut f = |x: f64| -> f64 {
       call_count.set(call_count.get() + 1);
       (x - 5.0) * (x - 5.0)
