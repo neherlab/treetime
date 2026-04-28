@@ -1,6 +1,6 @@
 # Dead CLI flags in timetree
 
-12 flags are parsed by clap but never read in the timetree pipeline:
+11 flags are parsed by clap but never read in the timetree pipeline:
 
 | Flag                       | Notes                                  |
 | -------------------------- | -------------------------------------- |
@@ -10,7 +10,6 @@
 | `--n-iqd`                  | Never read                             |
 | `--vcf-reference`          | Never read                             |
 | `--aa`                     | Never read                             |
-| `--keep-overhangs`         | Never read                             |
 | `--zero-based`             | Never read                             |
 | `--reconstruct-tip-states` | Never read                             |
 | `--report-ambiguous`       | Never read                             |
