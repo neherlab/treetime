@@ -1,15 +1,14 @@
 #![allow(dead_code)]
 
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+use crate::commands::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::payload::sparse::{
-  Deletion, FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
-  SparseSeqInfo,
+  FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
 };
 use crate::seq::composition::Composition;
-use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
@@ -27,9 +26,7 @@ use treetime_primitives::AlphabetLike;
 use treetime_primitives::{BitSet128, Seq, StateSet, StateSetStatus, seq, stateset};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
-use treetime_utils::interval::range_complement::range_complement;
-use treetime_utils::interval::range_difference::range_difference;
-use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
+use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub(crate) fn attach_seqs_to_graph<N, E, P>(
@@ -120,8 +117,6 @@ where
     let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
     // non_char are ranges that are either unknown or gaps in all children (can differ from the union of gaps and unknown)
     let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
-    // calculate the complement of gaps for later look-up
-    let non_gap = range_complement(&[(0, partition.length())], &[gaps.clone()]); // FIXME(perf): unnecessary clone
 
     // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
     let mut sequence = seq![FILL_CHAR; partition.length()];
@@ -209,35 +204,12 @@ where
       }
     }
 
-    // Process insertions and deletions. This also could be a function that returns variable_indel
+    // Resolve indels using shared logic
+    let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
+    let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
-    // 1) seq_info.gaps is the intersection of child gaps, i.e. this is gap if and only if all children have a gap
-    //    --> hence we find positions where children differ in terms of gap presence absence by intersecting
-    //        the child gaps with the complement of the parent gaps
-    for (child, _) in &children {
-      for r in range_intersection(&[non_gap.clone(), child.gaps.clone()]) {
-        let indel = seq_dis.variable_indel.entry(r).or_insert_with(|| Deletion {
-          deleted: 0,
-          present: n_children,
-        });
-        indel.deleted += 1;
-        indel.present -= 1;
-      }
-    }
+    seq_dis.variable_indel = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
 
-    // 2) if a gap is variable in a child and the parent, we need to add this child to the deletion count of this range
-    for (child, _) in &children {
-      for r in child.fitch.variable_indel.keys() {
-        if let Some(indel) = seq_dis.variable_indel.get_mut(r) {
-          indel.deleted += 1;
-          indel.present -= 1;
-        }
-      }
-    }
-
-    // 3) if all children are compatible with a gap, we add the gap back to the gap collection and remove the
-    // variable site (nothing needs doing in the case where all children are compatible with non-gap)
-    // this could for example happen if a gap position is variable in a child and thus not part of child.gaps
     seq_dis.variable_indel.retain(|r, indel| {
       if indel.deleted == n_children {
         gaps.push(*r);
@@ -395,47 +367,10 @@ where
         }
       }
 
-      // The following deals with indels.
-      // Process indels. Gaps where the children disagree, need to be decided by also looking at parent.
-      for (r, indel) in variable_indel.iter() {
-        let gap_in_parent = if parent.gaps.contains(r) { 1 } else { 0 };
-        if indel.deleted + gap_in_parent > indel.present {
-          gaps.push(*r);
-          if gap_in_parent == 0 {
-            // If the gap is not in parent, add deletion.
-            // the sequence that is deleted is the sequence of the parent
-            let indel = InDel::del(*r, &parent.sequence[r.0..r.1]);
-            composition.add_indel(&indel);
-            indels.push(indel);
-          }
-        } else if gap_in_parent > 0 {
-          // Add insertion if gap is present in parent.
-          let indel = InDel::ins(*r, &sequence[r.0..r.1]);
-          composition.add_indel(&indel);
-          indels.push(indel);
-        }
-      }
-
-      // Process consensus gaps in the node that are not in the parent (deletions)
-      for r in range_difference(gaps, &parent.gaps) {
-        if variable_indel.contains_key(&r) {
-          // all gaps in variable_indel are already processed
-          continue;
-        }
-        let indel = InDel::del(r, &sequence[r.0..r.1]);
-        composition.add_indel(&indel);
-        indels.push(indel);
-      }
-
-      // Process gaps in the parent that are not in the node (insertions)
-      for r in range_difference(&parent.gaps, gaps) {
-        if variable_indel.contains_key(&r) {
-          // all gaps in variable_indel are already processed
-          continue;
-        }
-        let indel = InDel::ins(r, &sequence[r.0..r.1]);
-        composition.add_indel(&indel);
-        indels.push(indel);
+      // Resolve indels using shared logic
+      indels = resolve_indels_forward(variable_indel, gaps, &parent.gaps, &parent.sequence, sequence);
+      for indel in &indels {
+        composition.add_indel(indel);
       }
       for r in unknown.iter() {
         // this might result in compensating addition/deletions of Ns already present in the parent
