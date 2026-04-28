@@ -26,7 +26,7 @@ The key difference from substitutions: indel composition is not a simple positio
 
 For treetime's purposes, the indel representation is simpler than the general theoretical case because indels are stored as alignment-coordinate ranges (positions do not shift), the Fitch parsimony pass already resolved which positions are gapped vs present, and composition only needs to merge the observed indel annotations, not compute transition probabilities. Treetime's indel composition is a bookkeeping operation on alignment coordinates, not a probabilistic inference step.
 
-Known issue tracking implementation: [M-representation-indel-composition-missing.md](../port-known-issues/M-representation-indel-composition-missing.md).
+Implemented in `fn compose_indels()` ([packages/treetime/src/seq/indel.rs](../../packages/treetime/src/seq/indel.rs)).
 
 ### Data model
 
@@ -119,10 +119,11 @@ expected:  del (1,3) seq="CG"  + del (6,7) seq="G"
 
 Cases 1, 2, and 7 are expected to dominate in phylogenetic data. Cases 4 and 5 require an indel event to be immediately undone on the next branch, which is biologically unusual. Case 6 requires two indel events at similar but not identical positions on adjacent branches.
 
-### Implementation target
+### Implementation
 
 - `fn compose_indels(parent: &[InDel], child: &[InDel]) -> Vec<InDel>` in [packages/treetime/src/seq/indel.rs](../../packages/treetime/src/seq/indel.rs), following the merge-sort pattern of `fn compose_substitutions()`
-- `fn chain_fitch_indels()` on `SparseEdgePartition` ([packages/treetime/src/representation/payload/sparse.rs#L104](../../packages/treetime/src/representation/payload/sparse.rs#L104)), analogous to `fn chain_fitch_subs()` ([packages/treetime/src/representation/payload/sparse.rs#L141](../../packages/treetime/src/representation/payload/sparse.rs#L141))
+- `fn chain_fitch_indels()` on `SparseEdgePartition` ([packages/treetime/src/representation/payload/sparse.rs](../../packages/treetime/src/representation/payload/sparse.rs)), analogous to `fn chain_fitch_subs()`
+- Call sites: `fn collapse_edge()` and `fn PartitionMarginalSparse::apply_reroot()`
 
 ## Glossary
 

@@ -88,7 +88,6 @@ exactly.
 | Low        | Representation | [`infer_dense()` stub always returns false](L-representation-infer-dense-stub.md)                                                                   |
 | Low        | Representation | [Dense and sparse partition types have structural and naming asymmetries](L-representation-dense-sparse-partition-asymmetry.md)                     |
 | Medium     | Optimize       | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
-| Medium     | Representation | [Indel composition missing during edge merge](M-representation-indel-composition-missing.md)                                                        |
 | Medium     | GTR            | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                            |
 | Medium     | Timetree       | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                       |
 | Medium     | Timetree       | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                        |
