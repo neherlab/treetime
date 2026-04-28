@@ -187,9 +187,7 @@ impl PartitionRerootOps for PartitionMarginalSparse {
       self.nodes.remove(&info.removed_node_key);
 
       let merged_subs = parent_edge.chain_fitch_subs(child_edge.fitch_subs())?;
-
-      let mut merged_indels = parent_edge.indels;
-      merged_indels.extend(child_edge.indels);
+      let merged_indels = parent_edge.chain_fitch_indels(&child_edge.indels);
 
       let mut merged_edge = SparseEdgePartition::default();
       merged_edge.set_fitch_subs(merged_subs);

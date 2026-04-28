@@ -78,6 +78,7 @@ exactly.
 | Medium     | I/O            | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
 | Medium     | I/O            | [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md)                                                           |
 | Medium     | Mugration      | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                              |
+| Medium     | Optimize       | [Indel event count reduced after composition on merged edges](M-optimize-indel-event-count-after-composition.md)                                    |
 | Medium     | Optimize       | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)                         |
 | Medium     | Optimize       | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
 | Low        | Core           | [Duplicate `write_graph()` across commands](L-core-duplicate-write-graph.md)                                                                        |

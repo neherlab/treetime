@@ -90,9 +90,11 @@ expected:  del (1,4) seq="CGT"  + ins (1,4) seq="TTT"
 ```
 node A:    ACGTAC    root
 node B:    A--TAC    edge A-B: del (1,3) seq="CG"
-node C:    A----C    edge B-C: del (2,5) seq="TAC"  <-- seq is WRONG
-expected:  del (1,5) seq="CGTA"   merged from parent original content
+node C:    A----C    edge B-C: del (2,5) seq="TAC"  <-- seq is unreliable in overlap region
+expected:  del (1,5) seq="CGAC"   assembled from parent prefix + parent overlap + child suffix
 ```
+
+The ideal result using node A's ground-truth content would be `seq="CGTA"`, but the composition algorithm has no access to the ancestor sequence. It assembles the merged seq from available data: parent's seq for the prefix and overlap region, child's seq for the non-overlapping suffix. The Fitch pass uses `range_difference()` to exclude already-gapped positions, so overlapping deletions on consecutive Fitch edges are unreachable. This case arises only from multi-step composition where intermediate seq fields are correct from prior composition steps.
 
 **Case 7: non-overlapping (no interaction)**
 

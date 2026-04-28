@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::indel::InDel;
+use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use maplit::btreemap;
@@ -140,6 +140,14 @@ impl SparseEdgePartition {
 
   pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
     compose_substitutions(&self.subs_fitch, suffix)
+  }
+
+  pub fn chain_fitch_indels(&self, child_indels: &[InDel]) -> Vec<InDel> {
+    let mut parent = self.indels.clone();
+    let mut child = child_indels.to_vec();
+    sort_indels(&mut parent);
+    sort_indels(&mut child);
+    compose_indels(&parent, &child)
   }
 
   pub fn ml_subs(&self) -> Option<&[Sub]> {

@@ -17,7 +17,8 @@ use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 ///
 /// Sparse partitions: substitutions on the collapsed edge are composed with each former
 /// child edge's substitutions using the Markov semigroup property. Indels are
-/// concatenated (collapsed-edge-first). See `compose_substitutions()` for details.
+/// composed (overlapping/adjacent deletions merged, cancellations applied).
+/// See `compose_substitutions()` and `compose_indels()` for details.
 ///
 /// Stale entries for the removed node and removed edge are dropped from every sparse
 /// and dense partition so the partition state stays consistent with the graph.
@@ -59,9 +60,7 @@ pub fn collapse_edge(
       let child_edge = partition.edges.entry(new_edge_key).or_default();
       let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
       child_edge.set_fitch_subs(merged_subs);
-      let mut merged_indels = removed_edge_data.indels;
-      merged_indels.append(&mut child_edge.indels);
-      child_edge.indels = merged_indels;
+      child_edge.indels = removed_edge_data.chain_fitch_indels(&child_edge.indels);
     }
   }
 
