@@ -247,7 +247,7 @@ mod tests {
           profile: DenseSeqDis::new(parent_posterior),
         },
         child_key => DenseNodePartition {
-          seq: DenseSeqInfo { gaps: vec![(1, 3)], ..Default::default() },
+          seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
           profile: DenseSeqDis::new(child_posterior),
         },
       },

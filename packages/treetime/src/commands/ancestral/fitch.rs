@@ -204,7 +204,7 @@ where
       }
     }
 
-    // Resolve indels using shared logic
+    // Resolve variable indels from child gap disagreements
     let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
@@ -367,7 +367,7 @@ where
         }
       }
 
-      // Resolve indels using shared logic
+      // Resolve variable indels using parent gap context
       indels = resolve_indels_forward(variable_indel, gaps, &parent.gaps, &parent.sequence, sequence);
       for indel in &indels {
         composition.add_indel(indel);

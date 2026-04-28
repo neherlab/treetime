@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
@@ -24,7 +25,7 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
-use treetime_utils::interval::range_intersection::range_intersection;
+use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug)]
@@ -80,17 +81,18 @@ impl PartitionBranchOps for PartitionMarginalDense {
   /// initial branch length estimation.
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
-    let parent_gaps = &self.nodes[&parent_key].seq.gaps;
-    let child_gaps = &self.nodes[&child_key].seq.gaps;
+    let parent_non_char = &self.nodes[&parent_key].seq.non_char;
+    let child_non_char = &self.nodes[&child_key].seq.non_char;
 
     let parent_profile = &self.nodes[&parent_key].profile.dis;
     let child_profile = &self.nodes[&child_key].profile.dis;
     let mut subs = Vec::new();
 
     for (pos, parent, child) in izip!(0..parent_profile.nrows(), parent_profile.rows(), child_profile.rows()) {
-      // Gap positions get uniform profiles under treat_gap_as_unknown, so argmax
-      // returns an arbitrary canonical state. Check original gap ranges instead.
-      if range_contains(parent_gaps, pos) || range_contains(child_gaps, pos) {
+      // Gap and unknown positions get uniform profiles under treat_gap_as_unknown,
+      // so argmax returns an arbitrary canonical state. Check original non_char
+      // ranges (gaps + unknowns) instead.
+      if range_contains(parent_non_char, pos) || range_contains(child_non_char, pos) {
         continue;
       }
 
@@ -113,18 +115,17 @@ impl PartitionBranchOps for PartitionMarginalDense {
 
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
-    let parent_gaps = &self.nodes[&parent_key].seq.gaps;
-    let child_gaps = &self.nodes[&child_key].seq.gaps;
+    let parent_non_char = &self.nodes[&parent_key].seq.non_char;
+    let child_non_char = &self.nodes[&child_key].seq.non_char;
 
-    // Use DenseSeqInfo.gaps (propagated as intersection during Fitch backward
-    // pass) because profile-based detection is unreliable: treat_gap_as_unknown
-    // makes gap profiles indistinguishable from genuinely uncertain positions.
-    let gap_positions: usize = range_union(&[parent_gaps.clone(), child_gaps.clone()])
+    // non_char covers both gaps and unknowns (positions that do not evolve
+    // under the substitution model), matching the sparse implementation.
+    let non_char_positions: usize = range_union(&[parent_non_char.clone(), child_non_char.clone()])
       .iter()
       .map(|(start, end)| end - start)
       .sum();
 
-    Ok(self.length.saturating_sub(gap_positions))
+    Ok(self.length.saturating_sub(non_char_positions))
   }
 }
 
@@ -218,16 +219,44 @@ where
         log_lh: 0.0,
       }
     } else {
-      let gaps = node
+      let child_gaps: Vec<Vec<(usize, usize)>> = node
         .child_keys
         .iter()
-        .map(|(child_key, _)| self.nodes[child_key].seq.gaps.clone()) // TODO: avoid cloning
+        .map(|(child_key, _)| self.nodes[child_key].seq.gaps.clone())
+        .collect_vec();
+      let gaps = range_intersection(&child_gaps);
+
+      let unknown = range_intersection_iter(
+        node
+          .child_keys
+          .iter()
+          .map(|(child_key, _)| &self.nodes[child_key].seq.unknown),
+      )
+      .collect_vec();
+      let non_char = range_intersection_iter(
+        node
+          .child_keys
+          .iter()
+          .map(|(child_key, _)| &self.nodes[child_key].seq.non_char),
+      )
+      .collect_vec();
+
+      let child_variable_indels: Vec<&BTreeMap<(usize, usize), _>> = node
+        .child_keys
+        .iter()
+        .map(|(child_key, _)| &self.nodes[child_key].seq.variable_indel)
         .collect_vec();
 
-      let gaps = range_intersection(&gaps);
+      let variable_indel = resolve_indels_backward(&child_gaps, &child_variable_indels, length);
 
+      // Dense keeps gaps as pure backward-pass intersection. Unlike sparse Fitch,
+      // we do NOT push resolved variable_indels into gaps because dense sequence
+      // reconstruction relies on marginal profiles, not Fitch gap assignments.
       let seq = DenseSeqInfo {
         gaps,
+        unknown,
+        non_char,
+        variable_indel,
         ..DenseSeqInfo::default()
       };
 
@@ -289,7 +318,16 @@ where
   }
 
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
-    if !node.is_root {
+    if node.is_root {
+      // Resolve variable indels at root by majority rule into a scratch list
+      // so that the node's canonical gaps (backward-pass intersection) are not
+      // altered. Dense uses marginal profiles for sequence reconstruction.
+      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      node_data.seq.variable_indel.clear();
+      let seq = assign_sequence(node_data, &self.alphabet);
+      node_data.seq.sequence = seq;
+      node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
+    } else {
       let mut dis: Option<Array2<f64>> = None;
       let mut log_lh = 0.0;
       for (_, edge_key) in &node.parent_keys {
@@ -311,6 +349,37 @@ where
       let delta_ll = normalize_inplace(&mut dis);
       log_lh += delta_ll;
       self.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDis { dis, log_lh };
+
+      // Reconstruct MAP sequence before indel resolution so the helper can
+      // slice sequence content for InDel payloads.
+      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
+
+      // Resolve indels using parent context. Use a scratch copy of gaps so that
+      // resolve_indels_forward can track gap mutations for indel detection without
+      // altering the node's canonical gap list. Dense sequence reconstruction uses
+      // marginal profiles (assign_sequence), not Fitch gap assignments, so the
+      // node's seq.gaps must stay as the backward-pass intersection.
+      let (parent_key, edge_key) =
+        get_exactly_one(&node.parent_keys).expect("Non-root dense node must have exactly one parent");
+      let parent_gaps = self.nodes[parent_key].seq.gaps.clone();
+      let parent_sequence = self.nodes[parent_key].seq.sequence.clone();
+
+      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
+      let mut scratch_gaps = node_data.seq.gaps.clone();
+      let node_sequence = &node_data.seq.sequence;
+
+      let indels = resolve_indels_forward(
+        &variable_indel,
+        &mut scratch_gaps,
+        &parent_gaps,
+        &parent_sequence,
+        node_sequence,
+      );
+
+      let edge_data = self.edges.get_mut(edge_key).unwrap();
+      edge_data.indels = indels;
     }
 
     let node_data = &self.nodes[&node.key];
@@ -362,6 +431,9 @@ fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
   let mut seq = prof2seq(&seq_info.profile, alphabet);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
+  }
+  for unk in &seq_info.seq.unknown {
+    seq[unk.0..unk.1].fill(alphabet.unknown());
   }
   seq
 }

@@ -1,14 +1,20 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::representation::payload::sparse::Deletion;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use treetime_primitives::Seq;
+use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct DenseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
+  pub unknown: Vec<(usize, usize)>,
+  pub non_char: Vec<(usize, usize)>,
+  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
   pub sequence: Seq,
 }
 
@@ -21,11 +27,16 @@ pub struct DenseNodePartition {
 impl DenseNodePartition {
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
+    let unknown = find_letter_ranges(seq, alphabet.unknown());
+    let non_char = range_union(&[unknown.clone(), gaps.clone()]);
 
     Ok(Self {
       seq: DenseSeqInfo {
         gaps,
-        sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
+        unknown,
+        non_char,
+        variable_indel: BTreeMap::new(),
+        sequence: seq.to_owned(),
       },
       profile: DenseSeqDis::default(),
     })

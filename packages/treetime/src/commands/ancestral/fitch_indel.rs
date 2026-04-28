@@ -13,8 +13,8 @@ use treetime_utils::interval::range_intersection::range_intersection;
 /// types - usable by both partition kinds.
 ///
 /// Three steps, matching the sparse Fitch backward logic:
-/// 1. For each child, intersect child gaps with complement of parent consensus
-///    gaps to find disagreement ranges.
+/// 1. For each child, intersect child gaps with complement of consensus gaps
+///    (intersection of all children's gaps) to find disagreement ranges.
 /// 2. Propagate variable indels from children.
 /// 3. Caller is responsible for collapsing ranges where all children agree on gap.
 ///
