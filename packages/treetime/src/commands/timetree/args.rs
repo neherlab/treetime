@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::commands::ancestral::args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
+use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -277,8 +278,16 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub aa: bool,
 
-  /// Do not fill terminal gaps
-  #[clap(long)]
+  /// How to handle gap characters in input sequences
+  ///
+  /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+  /// 'all': replace all gap characters with the ambiguous character.
+  /// 'none': leave all gap characters unchanged.
+  #[clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs")]
+  pub gap_fill: GapFill,
+
+  /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
+  #[clap(long, hide = true)]
   pub keep_overhangs: bool,
 
   /// Zero-based mutation indexing
@@ -305,4 +314,14 @@ pub struct TreetimeTimetreeArgs {
   /// Random seed
   #[clap(long)]
   pub seed: Option<u64>,
+}
+
+impl TreetimeTimetreeArgs {
+  pub fn effective_gap_fill(&self) -> GapFill {
+    if self.keep_overhangs {
+      GapFill::None
+    } else {
+      self.gap_fill
+    }
+  }
 }

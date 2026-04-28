@@ -10,6 +10,7 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
+use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
@@ -58,8 +59,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
 
+  let gap_fill_mode = ancestral_args.effective_gap_fill();
+
   // TODO: avoid reading all sequences into memory somehow?
-  let aln = if input_fastas.is_empty() {
+  let mut aln = if input_fastas.is_empty() {
     info!("Reading input fasta from standard input");
     let mut reader = FastaReader::new(open_stdin()?, &alphabet);
     let mut record = FastaRecord::default();
@@ -68,6 +71,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   } else {
     read_many_fasta(input_fastas, &alphabet)?
   };
+
+  for record in &mut aln {
+    apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
+  }
 
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);

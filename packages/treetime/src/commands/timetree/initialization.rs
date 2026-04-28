@@ -17,6 +17,7 @@ use crate::representation::partition::timetree::{GraphTimetree, PartitionTimetre
 use crate::representation::partition::traits::PartitionMarginalOps;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
+use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
 use log::info;
 use maplit::btreemap;
@@ -45,7 +46,12 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
   // Load alignment sequences (optional if using input branch lengths only)
   let aln = if !args.input_fastas.is_empty() {
-    Some(read_many_fasta(&args.input_fastas, &alphabet)?)
+    let mut records = read_many_fasta(&args.input_fastas, &alphabet)?;
+    let gap_fill_mode = args.effective_gap_fill();
+    for record in &mut records {
+      apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
+    }
+    Some(records)
   } else if args.input_fastas.is_empty() && args.branch_length_mode != BranchLengthMode::Input {
     return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \
