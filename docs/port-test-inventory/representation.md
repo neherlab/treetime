@@ -13,6 +13,7 @@
 | [Normalize (discrete 1D)](#normalize-discrete-1d)                    | Unit                 |
 | [Per-site rate propagation](#per-site-rate-propagation)              | Unit                 |
 | [Topology cleanup / edge collapse](#topology-cleanup--edge-collapse) | Unit                 |
+| [Topology cleanup / reroot](#topology-cleanup--reroot)               | Unit                 |
 | [Payload: ancestral annotation](#payload-ancestral-annotation)       | Unit                 |
 | [Payload: discrete data](#payload-discrete-data)                     | Unit                 |
 | [Payload: timetree annotation](#payload-timetree-annotation)         | Unit                 |
@@ -155,6 +156,27 @@ Also cross-referenced from [Mugration Tests](mugration.md#partition--discrete).
 | `test_topology_collapse_edge_multiple_sparse_partitions`  | Multiple sparse partitions each receive composed substitutions      |
 
 Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-cleanup-in-loop).
+
+---
+
+## Topology Cleanup / Reroot
+
+**Test:** [`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_reroot.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_reroot.rs)
+
+**Impl:** [`packages/treetime/src/representation/algo/topology_cleanup/reroot.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/reroot.rs)
+
+| Test                                                          | Purpose                                                               |
+| ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `test_reroot_split_edge_divides_branch_length`                | Edge split distributes branch length at specified fractional position |
+| `test_reroot_split_edge_at_midpoint`                          | Midpoint split produces equal-length child and parent edges           |
+| `test_reroot_apply_reroot_topology_inverts_path`              | Single-hop reroot inverts one edge and moves root                     |
+| `test_reroot_apply_reroot_topology_multi_hop`                 | Multi-hop reroot inverts two edges through internal node              |
+| `test_reroot_apply_reroot_topology_preserves_leaf_count`      | Leaf count unchanged after topology reroot                            |
+| `test_reroot_remove_node_if_trivial_merges_edges`             | Degree-2 node removed with summed branch lengths                      |
+| `test_reroot_remove_node_if_trivial_non_trivial_returns_none` | Non-trivial nodes (root, bifurcating internal) return None            |
+| `test_reroot_full_reroot_and_cleanup_preserves_topology`      | Full reroot + trivial removal preserves all leaves and taxa           |
+| `test_reroot_remove_trivial_with_partial_branch_lengths`      | Partial branch lengths (Some + None) produce Some after merge         |
+| `test_reroot_full_cycle_branch_length_conservation`           | Total branch length conserved across reroot + trivial node removal    |
 
 ---
 
