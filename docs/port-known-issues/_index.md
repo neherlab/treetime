@@ -61,7 +61,7 @@ exactly.
 | High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
 | High       | Dense          | [Dense partitions lack Fitch compression](H-dense-with-fitch-compression.md)                                                                        |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
-| High       | Optimize       | [`--no-indels` flag to disable indel contributions to branch-length optimization](H-optimize-no-indel-flag.md)                                      |
+| Medium     | Optimize       | [`--no-indels` flag does not gate `initial_guess_mixed()`](M-optimize-no-indels-initial-guess-not-gated.md)                                         |
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                  |
 | High       | Timetree       | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                          |
 | High       | Timetree       | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                      |
