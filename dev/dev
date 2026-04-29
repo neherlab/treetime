@@ -66,8 +66,13 @@ function main() {
     nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
     ;;
   "build-release")
+    local bin="${1:-}"
+    shift || true
     declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" "$@"
+    nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" ${bin:+--bin="${bin}"} "$@"
+    if [ -n "${bin}" ]; then
+      copy_bin_to_out "${bin}"
+    fi
     ;;
   "run")
     local bin="${1:-}"

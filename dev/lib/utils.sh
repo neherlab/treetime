@@ -149,6 +149,16 @@ function get_final_bin_path() {
 }
 export -f get_final_bin_path
 
+function copy_bin_to_out() {
+  local bin="${1:?}"
+  local target="${2:-}"
+  local full_bin="$(get_full_bin_path "${bin}" "${target}")"
+  local final_bin="$(get_final_bin_path "${bin}" "${target}")"
+  mkdir -p "$(dirname "${final_bin}")"
+  cp "${full_bin}" "${final_bin}"
+}
+export -f copy_bin_to_out
+
 function load_env_maybe() {
   local env_file="${1:-}"
   # shellcheck disable=SC2046

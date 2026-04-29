@@ -59,13 +59,7 @@ function build() {
   nicely cargo -q build --release ${target:+--target="${target}"} --target-dir="${target_dir}" --bin="${bin}"
 
   if [ -n "${target}" ] && [ "${target}" != 'native' ]; then
-    local full_bin="$(get_full_bin_path "${bin}" "${target}")"
-    local final_bin="$(get_final_bin_path "${bin}" "${target}")"
-    mkdir -p "$(dirname "${final_bin}")"
-    (
-      set -x
-      cp "${full_bin}" "${final_bin}"
-    )
+    copy_bin_to_out "${bin}" "${target}"
   fi
 }
 
