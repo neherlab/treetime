@@ -26,12 +26,8 @@ mod tests {
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
 
-  /// Bio crate newick parser returns `f32::NAN` for branches without
-  /// a `:length` suffix, stored as `Some(NaN)` after cast.
   const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
 
-  /// All-zero branch length tree: used to exercise the Never-mode
-  /// rejection of zero-branch-length indel-bearing edges.
   const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 
   #[test]

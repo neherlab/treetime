@@ -329,7 +329,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None)?;
+  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);
@@ -384,7 +384,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None)?;
+  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);
