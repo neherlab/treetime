@@ -86,9 +86,7 @@ NNGTACGTAC
     let p = partition.read_arc();
 
     // Find leaf A's node (has "NN" at positions 4-5)
-    let leaf_a = p.nodes.values().find(|n| {
-      n.seq.unknown.contains(&(4, 6))
-    });
+    let leaf_a = p.nodes.values().find(|n| n.seq.unknown.contains(&(4, 6)));
     assert!(leaf_a.is_some(), "Leaf A should have unknown range (4,6)");
 
     let leaf_a = leaf_a.unwrap();
@@ -120,7 +118,10 @@ NNGTACGTAC
         any_reduced = true;
       }
     }
-    assert!(any_reduced, "At least one edge should have reduced effective length due to unknown positions");
+    assert!(
+      any_reduced,
+      "At least one edge should have reduced effective length due to unknown positions"
+    );
     Ok(())
   }
 
@@ -199,7 +200,10 @@ ACGTACGTAC
 
     // Verify indel directions exist (at least one deletion)
     let has_deletion = p.edges.values().any(|e| e.indels.iter().any(|i| i.deletion));
-    assert!(has_deletion, "At least one deletion should be detected from gap-bearing leaves");
+    assert!(
+      has_deletion,
+      "At least one deletion should be detected from gap-bearing leaves"
+    );
     Ok(())
   }
 

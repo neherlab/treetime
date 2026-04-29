@@ -211,7 +211,13 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   // Second pass with coalescent prior
   if coalescent_tc.is_some() {
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)?;
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      args.no_indels,
+    )?;
   }
 
   // Post-filter reroots: use covariation params when --covariation is enabled,
@@ -293,8 +299,14 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     // Run final timetree pass with optimized skyline. OnlyFinal defers this to the
     // final marginal pass below; Always and Never take this path.
     if time_marginal != TimeMarginalMode::OnlyFinal {
-      run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)
-        .wrap_err("Final timetree pass with optimized skyline failed")?;
+      run_timetree(
+        &mut graph,
+        &partitions,
+        &clock_model,
+        coalescent_tc.as_ref(),
+        args.no_indels,
+      )
+      .wrap_err("Final timetree pass with optimized skyline failed")?;
 
       if !partitions.is_empty() {
         update_marginal(&graph, &partitions)?;
@@ -328,16 +340,29 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       warn!("Clock rate is non-positive ({current_rate:.6e}), skipping rate susceptibility");
     } else {
       info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-      compute_rate_susceptibility(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), rate_std, args.no_indels)
-        .wrap_err("Rate susceptibility analysis failed")?;
+      compute_rate_susceptibility(
+        &mut graph,
+        &partitions,
+        &clock_model,
+        coalescent_tc.as_ref(),
+        rate_std,
+        args.no_indels,
+      )
+      .wrap_err("Rate susceptibility analysis failed")?;
     }
   }
 
   // Final marginal pass for confidence interval estimation
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)
-      .wrap_err("Final timetree inference failed")?;
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      args.no_indels,
+    )
+    .wrap_err("Final timetree inference failed")?;
 
     if !partitions.is_empty() {
       update_marginal(&graph, &partitions)?;

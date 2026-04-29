@@ -73,7 +73,8 @@ pub fn run_refinement_iteration(
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, clock_model, coalescent_tc, args.no_indels).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, coalescent_tc, args.no_indels)
+      .wrap_err("Timetree inference failed")?;
 
     if !partitions.is_empty() {
       update_marginal(graph, partitions)?;
@@ -85,7 +86,8 @@ pub fn run_refinement_iteration(
     }
 
     info!("Updating node times via timetree inference");
-    run_timetree(graph, partitions, clock_model, coalescent_tc, args.no_indels).wrap_err("Timetree inference failed")?;
+    run_timetree(graph, partitions, clock_model, coalescent_tc, args.no_indels)
+      .wrap_err("Timetree inference failed")?;
   }
 
   // Compute n_diff from ancestral state changes

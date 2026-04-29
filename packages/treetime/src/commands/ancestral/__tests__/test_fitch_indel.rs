@@ -50,13 +50,7 @@ mod tests {
     let child_gaps = vec![vec![(2, 4)], vec![]];
     let empty0 = BTreeMap::new();
     let mut child1_vi = BTreeMap::new();
-    child1_vi.insert(
-      (2, 4),
-      Deletion {
-        deleted: 1,
-        present: 1,
-      },
-    );
+    child1_vi.insert((2, 4), Deletion { deleted: 1, present: 1 });
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &child1_vi];
     let result = resolve_indels_backward(&child_gaps, &child_vis, 10);
 
@@ -71,13 +65,7 @@ mod tests {
   #[test]
   fn test_fitch_indel_forward_deletion_from_variable() {
     let mut variable_indel = BTreeMap::new();
-    variable_indel.insert(
-      (2, 5),
-      Deletion {
-        deleted: 2,
-        present: 1,
-      },
-    );
+    variable_indel.insert((2, 5), Deletion { deleted: 2, present: 1 });
 
     let parent_gaps: Vec<(usize, usize)> = vec![];
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
@@ -96,13 +84,7 @@ mod tests {
   #[test]
   fn test_fitch_indel_forward_insertion_from_variable() {
     let mut variable_indel = BTreeMap::new();
-    variable_indel.insert(
-      (2, 5),
-      Deletion {
-        deleted: 1,
-        present: 2,
-      },
-    );
+    variable_indel.insert((2, 5), Deletion { deleted: 1, present: 2 });
 
     let parent_gaps = vec![(2, 5)];
     let parent_seq = Seq::try_from_str("AC---CGTAC").unwrap();

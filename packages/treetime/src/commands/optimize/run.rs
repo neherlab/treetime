@@ -312,7 +312,14 @@ pub fn run_optimize_loop(
   let mut best_branch_lengths: Vec<f64> = Vec::new();
 
   for i in 0..max_iter {
-    let iteration_lh = compute_iteration_likelihood(graph, sparse_partitions, dense_partitions, mixed_partitions, indel_rate, no_indels)?;
+    let iteration_lh = compute_iteration_likelihood(
+      graph,
+      sparse_partitions,
+      dense_partitions,
+      mixed_partitions,
+      indel_rate,
+      no_indels,
+    )?;
     lh_history.push(iteration_lh.total_lh);
 
     debug!(

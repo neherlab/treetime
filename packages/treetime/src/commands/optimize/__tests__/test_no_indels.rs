@@ -51,12 +51,8 @@ mod tests {
     partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   ) -> Result<(), Report> {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    partitions[0]
-      .write_arc()
-      .edges
-      .get_mut(&first_edge_key)
-      .unwrap()
-      .indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
+    partitions[0].write_arc().edges.get_mut(&first_edge_key).unwrap().indels =
+      vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
     Ok(())
   }
 
