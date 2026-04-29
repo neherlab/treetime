@@ -1,6 +1,8 @@
 mod prop_generators;
 mod prop_marginal_support;
+mod test_dense_completeness;
 mod test_fitch;
+mod test_fitch_indel;
 mod test_marginal_analytical;
 mod test_marginal_branch_length;
 mod test_marginal_consistency;
