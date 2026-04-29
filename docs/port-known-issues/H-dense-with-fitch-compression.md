@@ -10,15 +10,9 @@ Two Fitch products are absent in dense:
 
 ## Impact
 
-### Indel likelihood contribution is zero for dense
+### ~~Indel likelihood contribution is zero for dense~~ (RESOLVED)
 
-`edge_indel_count()` ([packages/treetime/src/representation/partition/marginal_dense.rs#L139-L141](../../packages/treetime/src/representation/partition/marginal_dense.rs#L139-L141)) reads `self.edges[&edge_key].indels.len()`, always returning 0. The Poisson indel log-likelihood term in branch length optimization ([optimize-indel-contribution-to-likelihood](../port-intentional-changes/optimize-indel-contribution-to-likelihood.md)) is a no-op for dense partitions. Branches with indel-only divergence signal get zero-length assignment.
-
-Downstream consumers that read dense indel counts:
-
-- `optimize_indel.rs` - global indel rate, per-edge Poisson contribution
-- `optimize_unified.rs` - zero-branch optimality check, initial guess
-- `timetree/inference/runner.rs` - branch-length distribution grid
+Dense partitions now detect indels during the marginal backward/forward passes using shared `fitch_indel` logic extracted from the sparse Fitch code. `DenseEdgePartition.indels` is populated with resolved `InDel` entries, so `edge_indel_count()` returns correct values and the Poisson indel log-likelihood contributes to branch-length optimization. Tests verify dense/sparse indel count agreement.
 
 ### GTR inference requires double marginal pass
 

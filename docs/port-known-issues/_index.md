@@ -59,7 +59,9 @@ exactly.
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
 | High       | Clock          | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                                           |
 | High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
+| High       | Dense          | [Dense partitions lack Fitch compression](H-dense-with-fitch-compression.md)                                                                        |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
+| High       | Optimize       | [`--no-indels` flag to disable indel contributions to branch-length optimization](H-optimize-no-indel-flag.md)                                      |
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                  |
 | High       | Timetree       | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                          |
 | High       | Timetree       | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                      |
@@ -67,6 +69,8 @@ exactly.
 | Medium     | Clock          | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |
 | Negligible | Clock          | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                                            |
 | Negligible | Clock          | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                                         |
+| Medium     | Ancestral      | [Refactor Fitch compression long functions](M-ancestral-fitch-compression-long-functions.md)                                                        |
+| Medium     | Ancestral      | [Dense effective length change breaks two tests](M-ancestral-dense-effective-length-test-regression.md)                                             |
 | Medium     | Ancestral      | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral      | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |

@@ -2,6 +2,8 @@
 
 Two functions in [packages/treetime/src/commands/ancestral/fitch.rs](../../packages/treetime/src/commands/ancestral/fitch.rs) exceed 170 lines each and handle multiple distinct phases inline. Both contain comments marking extractable blocks ("could be a function", numbered steps).
 
+**Partial progress:** The indel processing logic (3-step backward and 3-loop forward) has been extracted into shared functions in [packages/treetime/src/commands/ancestral/fitch_indel.rs](../../packages/treetime/src/commands/ancestral/fitch_indel.rs) (`resolve_indels_backward`, `resolve_indels_forward`). Both `run_fitch_backward` and `run_fitch_forward` now delegate to these shared functions. The substitution and composition blocks remain inline.
+
 ## Affected functions
 
 ### `fn run_fitch_backward()` (174 lines, [L97-L270](../../packages/treetime/src/commands/ancestral/fitch.rs#L97-L270))

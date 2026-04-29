@@ -11,7 +11,7 @@ graph LR
         D_P["PartitionMarginalDense"] --> D_N["DenseNodePartition"]
         D_P --> D_E["DenseEdgePartition"]
         D_N --> D_dis["DenseSeqDis<br/>Array2 + log_lh"]
-        D_N --> D_seq["DenseSeqInfo<br/>gaps, sequence"]
+        D_N --> D_seq["DenseSeqInfo<br/>gaps, unknown, non_char,<br/>variable_indel, sequence"]
         D_E --> D_dis
     end
 
@@ -29,25 +29,9 @@ Both partition types implement `PartitionBranchOps`, `PartitionMarginalOps`, `Pa
 
 ## Actionable asymmetries
 
-### Correctness defect: dense `edge_effective_length()` ignores unknowns
+### ~~Correctness defect: dense `edge_effective_length()` ignores unknowns~~ (RESOLVED)
 
-`DenseSeqInfo` [packages/treetime/src/representation/payload/dense.rs#L10](../../packages/treetime/src/representation/payload/dense.rs#L10) tracks only `gaps`. `SparseSeqInfo` [packages/treetime/src/representation/payload/sparse.rs#L83](../../packages/treetime/src/representation/payload/sparse.rs#L83) tracks `gaps`, `unknown`, and `non_char` (their union - positions that do not evolve under the substitution model).
-
-- Dense `edge_effective_length()` [packages/treetime/src/representation/partition/marginal_dense.rs#L114](../../packages/treetime/src/representation/partition/marginal_dense.rs#L114): subtracts gap positions only
-- Sparse `edge_effective_length()` [packages/treetime/src/representation/partition/marginal_sparse.rs#L275](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L275): subtracts `non_char` (gaps + unknowns)
-
-When sequences contain `N` characters, dense overcounts effective sites, inflating the denominator of substitution rate estimates. Dense `edge_subs()` [packages/treetime/src/representation/partition/marginal_dense.rs#L81](../../packages/treetime/src/representation/partition/marginal_dense.rs#L81) has the same blind spot - it filters gaps but not unknowns.
-
-v0 does not have this defect: its effective length computation uses compressed alignment metadata that handles unknowns through the compression layer.
-
-**Fix:** add `unknown` and `non_char` fields to `DenseSeqInfo`, matching `SparseSeqInfo`. Requires four changes:
-
-1. `DenseNodePartition::new()` [packages/treetime/src/representation/payload/dense.rs#L22](../../packages/treetime/src/representation/payload/dense.rs#L22) - compute `unknown` and `non_char` ranges from input sequence
-2. Dense backward pass [packages/treetime/src/representation/partition/marginal_dense.rs#L210](../../packages/treetime/src/representation/partition/marginal_dense.rs#L210) - propagate `non_char` as intersection of children (same as current `gaps` propagation)
-3. `edge_effective_length()` - subtract `non_char` instead of `gaps`
-4. `edge_subs()` - skip unknown positions in addition to gap positions
-
-Risk is low: `non_char` is a superset of `gaps`, so effective length can only decrease (more conservative, correct direction). Must verify against v0 oracle.
+`DenseSeqInfo` now tracks `unknown`, `non_char`, and `variable_indel` fields matching `SparseSeqInfo`. Both `edge_effective_length()` and `edge_subs()` now use `non_char` (gaps + unknowns). Dense backward pass propagates `unknown` and `non_char` as intersection of children. Tests verify dense/sparse agreement on `edge_effective_length()`.
 
 ### Naming: `DenseSeqDis` vs `MarginalSparseSeqDistribution`
 
@@ -64,7 +48,7 @@ The remaining differences follow from dense storing full N-by-K matrices while s
 - **Composition tracking**: sparse carries explicit `Composition` counts. Dense does not need them - character frequencies are implicit in the full matrix
 - **Reroot**: `PartitionRerootOps` is a no-op for dense [packages/treetime/src/representation/partition/marginal_dense.rs#L55](../../packages/treetime/src/representation/partition/marginal_dense.rs#L55), ~120 lines for sparse [packages/treetime/src/representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133). Dense recomputes profiles from scratch after topology changes; sparse must update mutation lists, edge messages, and root sequence
 - **`PartitionCompressed`**: sparse-only [packages/treetime/src/representation/partition/marginal_sparse.rs#L39](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L39). Compression is a sparse concept with no dense counterpart
-- **`SparseSeqInfo` has 6 fields vs `DenseSeqInfo` has 2**: the extra fields (`unknown`, `non_char`, `composition`, `fitch`) are sparse bookkeeping. Consistent naming, different scopes
+- **`SparseSeqInfo` has 6 fields vs `DenseSeqInfo` has 5**: `DenseSeqInfo` tracks `gaps`, `unknown`, `non_char`, `variable_indel`, `sequence`. `SparseSeqInfo` also has `composition` and `fitch` (sparse bookkeeping)
 
 ## Investigation needed
 
