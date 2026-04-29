@@ -7,7 +7,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::optimize::args::BranchOptMethod;
-use crate::commands::optimize::optimize_unified::run_optimize_mixed;
+use crate::commands::optimize::optimize_unified::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
@@ -124,7 +124,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     if args.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
       initialize_marginal(&graph, &partitions, aln)?;
-      optimize_branch_lengths_pre_step(&graph, &partitions)
+      optimize_branch_lengths_pre_step(&graph, &partitions, args.no_indels)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }
   }
@@ -157,7 +157,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
         update_marginal(&graph, &partitions)?;
-        optimize_branch_lengths_pre_step(&graph, &partitions)
+        optimize_branch_lengths_pre_step(&graph, &partitions, args.no_indels)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
     }
@@ -180,7 +180,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // First pass without coalescent: establish internal node time distributions via
   // backward+forward pass. Coalescent contributions read node times that only exist
   // after the backward pass writes them.
-  run_timetree(&mut graph, &partitions, &clock_model, None)?;
+  run_timetree(&mut graph, &partitions, &clock_model, None, args.no_indels)?;
 
   // Build coalescent Tc using established node times.
   // For skyline mode: use constant Tc during iterations, switch to skyline after convergence.
@@ -211,7 +211,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
 
   // Second pass with coalescent prior
   if coalescent_tc.is_some() {
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())?;
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)?;
   }
 
   // Post-filter reroots: use covariation params when --covariation is enabled,
@@ -293,7 +293,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     // Run final timetree pass with optimized skyline. OnlyFinal defers this to the
     // final marginal pass below; Always and Never take this path.
     if time_marginal != TimeMarginalMode::OnlyFinal {
-      run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
+      run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)
         .wrap_err("Final timetree pass with optimized skyline failed")?;
 
       if !partitions.is_empty() {
@@ -328,7 +328,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
       warn!("Clock rate is non-positive ({current_rate:.6e}), skipping rate susceptibility");
     } else {
       info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-      compute_rate_susceptibility(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), rate_std)
+      compute_rate_susceptibility(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), rate_std, args.no_indels)
         .wrap_err("Rate susceptibility analysis failed")?;
     }
   }
@@ -336,7 +336,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   // Final marginal pass for confidence interval estimation
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref())
+    run_timetree(&mut graph, &partitions, &clock_model, coalescent_tc.as_ref(), args.no_indels)
       .wrap_err("Final timetree inference failed")?;
 
     if !partitions.is_empty() {
@@ -446,6 +446,7 @@ fn build_covariation_clock_params(
 fn optimize_branch_lengths_pre_step(
   graph: &GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  no_indels: bool,
 ) -> Result<(), Report> {
   // v0 default damping (treeanc.py:1298)
   let damping = 0.75;
@@ -458,8 +459,12 @@ fn optimize_branch_lengths_pre_step(
     .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
     .collect();
 
-  run_optimize_mixed(graph, &opt_partitions, BranchOptMethod::BrentSqrt)
-    .wrap_err("ML branch-length optimization pre-step failed")?;
+  if no_indels {
+    run_optimize_mixed_inner(graph, &opt_partitions, BranchOptMethod::BrentSqrt, 0.0, true)
+  } else {
+    run_optimize_mixed(graph, &opt_partitions, BranchOptMethod::BrentSqrt)
+  }
+  .wrap_err("ML branch-length optimization pre-step failed")?;
 
   // Blend optimized branch lengths with old values (iteration=0):
   // bl = bl_optimized * (1 - 0.75^1) + bl_old * 0.75^1

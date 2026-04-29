@@ -42,7 +42,7 @@ mod tests {
     let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let coalescent_tc = Distribution::constant(tc);
-    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc))?;
+    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc), false)?;
 
     let times = extract_node_times(&graph);
     let expected_count = graph.num_nodes();

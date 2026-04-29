@@ -70,6 +70,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert!(
@@ -129,6 +130,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert!(

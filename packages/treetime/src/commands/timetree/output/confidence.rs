@@ -59,6 +59,7 @@ pub fn compute_rate_susceptibility(
   clock_model: &ClockModel,
   coalescent_tc: Option<&Distribution>,
   rate_std: f64,
+  no_indels: bool,
 ) -> Result<(), Report> {
   let current_rate = clock_model.clock_rate();
 
@@ -82,21 +83,21 @@ pub fn compute_rate_susceptibility(
   // Run 1: upper rate bound
   scale_gammas(graph, &original_gammas, upper_rate / current_rate);
   info!("Rate susceptibility: running with upper rate {upper_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc)
+  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
     .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
   let upper_dates = collect_node_times(graph);
 
   // Run 2: lower rate bound
   scale_gammas(graph, &original_gammas, lower_rate / current_rate);
   info!("Rate susceptibility: running with lower rate {lower_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc)
+  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
     .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
   let lower_dates = collect_node_times(graph);
 
   // Run 3: central rate (restores graph to pre-call state)
   scale_gammas(graph, &original_gammas, 1.0);
   info!("Rate susceptibility: running with central rate {current_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc)
+  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
     .wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
   // Store sorted date triples per node.

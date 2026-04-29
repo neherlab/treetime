@@ -171,4 +171,13 @@ pub struct TreetimeOptimizeArgs {
   /// - newton-log: Newton-Raphson in ln(t) space
   #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
   pub opt_method: BranchOptMethod,
+
+  /// Disable indel (insertion/deletion) contributions to branch-length
+  /// optimization.
+  ///
+  /// When set, the optimizer uses substitution-only likelihood, matching
+  /// standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
+  /// enabling v0 parity testing. Default: indels enabled.
+  #[clap(long)]
+  pub no_indels: bool,
 }

@@ -149,7 +149,7 @@ compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
     )?;
 
     initialize_clock_totals_from_time_distributions(&graph)?;
-    run_timetree(&mut graph, &partitions, &clock_model, None)?;
+    run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
 
     let actual = extract_node_times(&graph);
     assert!(

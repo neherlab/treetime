@@ -169,6 +169,7 @@ mod tests {
       dp,
       damping,
       method,
+      false,
     )?;
 
     assert!(
@@ -222,6 +223,7 @@ mod tests {
       dp,
       0.75,
       method,
+      false,
     )?;
 
     // Strict non-regression: damped optimization must not degrade likelihood.

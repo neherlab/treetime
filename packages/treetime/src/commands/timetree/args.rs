@@ -302,6 +302,16 @@ pub struct TreetimeTimetreeArgs {
   #[clap(long)]
   pub report_ambiguous: bool,
 
+  /// Disable indel (insertion/deletion) contributions to branch-length
+  /// optimization and branch-length distributions.
+  ///
+  /// When set, branch-length optimization uses substitution-only likelihood
+  /// and timetree branch distributions exclude the Poisson indel term.
+  /// Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
+  /// and enables v0 parity testing. Default: indels enabled.
+  #[clap(long)]
+  pub no_indels: bool,
+
   /// Directory to write the output to
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,

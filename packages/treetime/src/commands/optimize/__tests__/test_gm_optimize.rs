@@ -277,6 +277,7 @@ mod tests {
         dp,
         case.damping,
         method,
+        false,
       )?;
 
       // Append a trailing likelihood measurement so `lh_history.last()` reflects the state

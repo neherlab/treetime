@@ -118,6 +118,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -147,6 +148,7 @@ mod tests {
       0.0,
       0.0,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     match result.stopped_at {
@@ -186,6 +188,7 @@ mod tests {
       1.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -217,6 +220,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert_eq!(result.lh_history.len(), 2);
@@ -248,6 +252,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert!(

@@ -546,7 +546,7 @@ where
   }
 
   let indel_rate = estimate_indel_rate(graph, partitions);
-  run_optimize_mixed_with_indel_rate(graph, partitions, method, indel_rate)
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
 pub(crate) fn run_optimize_mixed_with_indel_rate<N, E, P>(
@@ -554,6 +554,21 @@ pub(crate) fn run_optimize_mixed_with_indel_rate<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
   indel_rate: f64,
+) -> Result<(), Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  P: PartitionOptimizeOps + ?Sized,
+{
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
+}
+
+pub(crate) fn run_optimize_mixed_inner<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+  method: BranchOptMethod,
+  indel_rate: f64,
+  no_indels: bool,
 ) -> Result<(), Report>
 where
   N: GraphNode,
@@ -578,10 +593,14 @@ where
       .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
       .collect::<Result<_, _>>()?;
 
-    let indel_count: usize = partitions
-      .iter()
-      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-      .sum();
+    let indel_count: usize = if no_indels {
+      0
+    } else {
+      partitions
+        .iter()
+        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+        .sum()
+    };
 
     // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
     // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.

@@ -26,6 +26,7 @@ pub fn run_timetree<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   clock_model: &ClockModel,
   coalescent_tc: Option<&Distribution>,
+  no_indels: bool,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode,
@@ -51,7 +52,7 @@ where
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels)?;
   } else {
     info!("## Creating branch distributions from input lengths");
     create_branch_distributions_input_mode(graph, clock_rate)?;
@@ -78,6 +79,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   clock_rate: f64,
+  no_indels: bool,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
@@ -87,10 +89,11 @@ where
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
-  // Global indel rate used by every edge's Poisson indel contribution. Matches
-  // the rate estimated in `run_optimize_mixed()`; when no edge carries an
-  // indel, the rate is zero and the Poisson term drops out of the grid.
-  let indel_rate = estimate_indel_rate(graph, partitions);
+  let indel_rate = if no_indels {
+    0.0
+  } else {
+    estimate_indel_rate(graph, partitions)
+  };
 
   info!(
     "Computing branch distributions from {} partition(s) with {} total sites",
@@ -109,10 +112,14 @@ where
     debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
     let contributions = collect_contributions(partitions, edge_key)?;
-    let indel_count: usize = partitions
-      .iter()
-      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-      .sum();
+    let indel_count: usize = if no_indels {
+      0
+    } else {
+      partitions
+        .iter()
+        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+        .sum()
+    };
     let distribution = compute_branch_length_distribution(
       &contributions,
       indel_count,

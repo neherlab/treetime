@@ -102,6 +102,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     // One entry per executed iteration, regardless of how the loop stopped.
@@ -143,6 +144,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert_eq!(result.lh_history.len(), 1);
@@ -175,6 +177,7 @@ mod tests {
       dp,
       0.0,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert_eq!(result.stopped_at, Some((1, ConvergenceReason::Converged)));
@@ -198,6 +201,7 @@ mod tests {
       1e-2,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     assert!(result.lh_history.is_empty());
@@ -224,6 +228,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     for (i, &lh) in result.lh_history.iter().enumerate() {
@@ -266,6 +271,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
+      false,
     )?;
 
     let final_sparse_lh = update_marginal(&graph, &sparse_partitions)?;

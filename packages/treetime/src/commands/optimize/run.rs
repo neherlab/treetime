@@ -3,7 +3,7 @@ use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
-use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_with_indel_rate};
+use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_inner};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
 use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
@@ -110,6 +110,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     damping,
     branch_length_initial_guess,
     opt_method,
+    no_indels,
   } = args;
 
   if !(0.0..1.0).contains(damping) {
@@ -203,7 +204,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     write_gtr_json(&partition.read_arc().gtr, *model_name, outdir, None)?;
   }
 
-  apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess)?;
+  apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess, *no_indels)?;
 
   run_optimize_loop(
     &mut graph,
@@ -214,6 +215,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     *dp,
     *damping,
     *opt_method,
+    *no_indels,
   )?;
 
   // Re-run marginal to populate subs_ml after the loop (the last iteration
@@ -255,14 +257,20 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 /// - `mixed_partitions` contains both partition families (see [`collect_optimize_partitions`]).
 /// - Each partition's `gtr` field is the final model (dummy GTRs have been replaced).
 ///
+/// The indel rate is estimated once before the first iteration and held fixed
+/// throughout the loop, removing the feedback path where branch-length changes
+/// shift the rate estimate. When `no_indels` is true, the rate is zero and
+/// the Poisson indel term drops out of both the likelihood evaluation and the
+/// per-edge optimizer.
+///
 /// Per-iteration sequence:
 ///
-/// 1. Run `update_marginal` on sparse and dense partitions, estimate one indel rate for the
-///    current tree, and sum the joint substitution + indel log-likelihood.
+/// 1. Run `update_marginal` on sparse and dense partitions and sum the joint
+///    substitution + indel log-likelihood using the pre-computed indel rate.
 /// 2. Check three stopping conditions (converged, oscillating, worsened).
 /// 3. Save current branch lengths ([`save_branch_lengths`]).
-/// 4. Per-edge branch-length update with that same indel rate
-///    ([`run_optimize_mixed_with_indel_rate`]).
+/// 4. Per-edge branch-length update with the pre-computed indel rate
+///    ([`run_optimize_mixed_inner`]).
 /// 5. Identify internal edges the optimizer drove to exactly zero, BEFORE damping
 ///    blends those zeros with the old branch lengths ([`find_zero_optimal_internal_edges`]).
 /// 6. Apply damping ([`apply_damping`]): convex combination of new and saved branch lengths.
@@ -281,7 +289,19 @@ pub fn run_optimize_loop(
   dp: f64,
   damping: f64,
   opt_method: BranchOptMethod,
+  no_indels: bool,
 ) -> Result<OptimizeLoopResult, Report> {
+  // Compute the indel rate once before entering the loop, rather than
+  // re-estimating each iteration. This removes the feedback path where
+  // branch-length changes shift the rate estimate, which shifts
+  // branch-length targets. When --no-indels is set, the rate is zero
+  // and the Poisson indel term drops out entirely.
+  let indel_rate = if no_indels {
+    0.0
+  } else {
+    estimate_indel_rate(graph, mixed_partitions)
+  };
+
   let mut lh_history: Vec<f64> = Vec::with_capacity(max_iter);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut lh_prev = f64::NEG_INFINITY;
@@ -292,7 +312,7 @@ pub fn run_optimize_loop(
   let mut best_branch_lengths: Vec<f64> = Vec::new();
 
   for i in 0..max_iter {
-    let iteration_lh = compute_iteration_likelihood(graph, sparse_partitions, dense_partitions, mixed_partitions)?;
+    let iteration_lh = compute_iteration_likelihood(graph, sparse_partitions, dense_partitions, mixed_partitions, indel_rate, no_indels)?;
     lh_history.push(iteration_lh.total_lh);
 
     debug!(
@@ -356,7 +376,7 @@ pub fn run_optimize_loop(
     }
 
     let old_branch_lengths = save_branch_lengths(graph);
-    run_optimize_mixed_with_indel_rate(graph, mixed_partitions, opt_method, iteration_lh.indel_rate)?;
+    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, indel_rate, no_indels)?;
 
     // Identify zero-optimal internal edges BEFORE damping blends them with old values
     let zero_optimal_edges = find_zero_optimal_internal_edges(graph, sparse_partitions);
@@ -391,11 +411,16 @@ fn compute_iteration_likelihood(
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   mixed_partitions: &PartitionOptimizeVec,
+  indel_rate: f64,
+  no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
   let sparse_lh = update_marginal(graph, sparse_partitions)?;
   let dense_lh = update_marginal(graph, dense_partitions)?;
-  let indel_rate = estimate_indel_rate(graph, mixed_partitions);
-  let indel_lh = total_indel_log_lh(graph, mixed_partitions, indel_rate);
+  let indel_lh = if no_indels {
+    0.0
+  } else {
+    total_indel_log_lh(graph, mixed_partitions, indel_rate)
+  };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
   Ok(OptimizeIterationLikelihood {
@@ -711,6 +736,7 @@ pub(crate) fn apply_initial_guess_mode<P>(
   graph: &GraphAncestral,
   mixed_partitions: &[Arc<RwLock<P>>],
   mode: InitialGuessMode,
+  no_indels: bool,
 ) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
@@ -726,7 +752,7 @@ where
            Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
         );
       }
-      if any_indel_edge_has_zero_branch_length(graph, mixed_partitions) {
+      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions) {
         return make_error!(
           "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \
