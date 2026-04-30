@@ -57,7 +57,10 @@ pub fn resolve_indels_backward(
     }
   });
 
-  IndelsBackward { variable_indel, resolved_gaps }
+  IndelsBackward {
+    variable_indel,
+    resolved_gaps,
+  }
 }
 
 /// Resolve variable indels during the forward pass using parent context.
