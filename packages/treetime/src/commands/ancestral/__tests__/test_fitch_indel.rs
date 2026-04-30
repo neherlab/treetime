@@ -52,14 +52,12 @@ mod tests {
     let mut child1_vi = BTreeMap::new();
     child1_vi.insert((2, 4), Deletion { deleted: 1, present: 1 });
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &child1_vi];
-    let result = resolve_indels_backward(&child_gaps, &child_vis, 10).variable_indel;
+    let result = resolve_indels_backward(&child_gaps, &child_vis, 10);
 
-    assert_eq!(result.len(), 1);
-    let del = &result[&(2, 4)];
-    // Step 1 adds deleted=1, present=1 (child 0 gap vs consensus no-gap)
-    // Step 2 adds deleted += 1 for child 1's variable indel
-    assert_eq!(del.deleted, 2);
-    assert_eq!(del.present, 0);
+    // deleted=2 (child 0 gap + child 1 variable indel), present=0
+    // deleted == n_children: resolved as consensus gap, removed from variable_indel
+    assert!(result.variable_indel.is_empty());
+    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }
 
   #[test]
