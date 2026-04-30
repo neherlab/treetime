@@ -248,12 +248,21 @@ where
         .collect_vec();
 
       let variable_indel = resolve_indels_backward(&child_gaps, &child_variable_indels, length);
+      let mut final_gaps = gaps;
+      let variable_indel = variable_indel
+        .into_iter()
+        .filter(|(r, indel)| {
+          if indel.deleted == node.child_keys.len() {
+            final_gaps.push(*r);
+            false
+          } else {
+            true
+          }
+        })
+        .collect();
 
-      // Dense keeps gaps as pure backward-pass intersection. Unlike sparse Fitch,
-      // we do NOT push resolved variable_indels into gaps because dense sequence
-      // reconstruction relies on marginal profiles, not Fitch gap assignments.
       let seq = DenseSeqInfo {
-        gaps,
+        gaps: final_gaps,
         unknown,
         non_char,
         variable_indel,
@@ -319,10 +328,12 @@ where
 
   fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
     if node.is_root {
-      // Resolve variable indels at root by majority rule into a scratch list
-      // so that the node's canonical gaps (backward-pass intersection) are not
-      // altered. Dense uses marginal profiles for sequence reconstruction.
       let node_data = self.nodes.get_mut(&node.key).unwrap();
+      for (r, indel) in &node_data.seq.variable_indel {
+        if indel.deleted > indel.present {
+          node_data.seq.gaps.push(*r);
+        }
+      }
       node_data.seq.variable_indel.clear();
       let seq = assign_sequence(node_data, &self.alphabet);
       node_data.seq.sequence = seq;
@@ -356,10 +367,6 @@ where
       node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
 
       // Resolve indels using parent context. Use a scratch copy of gaps so that
-      // resolve_indels_forward can track gap mutations for indel detection without
-      // altering the node's canonical gap list. Dense sequence reconstruction uses
-      // marginal profiles (assign_sequence), not Fitch gap assignments, so the
-      // node's seq.gaps must stay as the backward-pass intersection.
       let (parent_key, edge_key) =
         get_exactly_one(&node.parent_keys).expect("Non-root dense node must have exactly one parent");
       let parent_gaps = self.nodes[parent_key].seq.gaps.clone();
@@ -367,16 +374,25 @@ where
 
       let node_data = self.nodes.get_mut(&node.key).unwrap();
       let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
-      let mut scratch_gaps = node_data.seq.gaps.clone();
+      let node_gaps = &mut node_data.seq.gaps;
       let node_sequence = &node_data.seq.sequence;
 
       let indels = resolve_indels_forward(
         &variable_indel,
-        &mut scratch_gaps,
+        node_gaps,
         &parent_gaps,
         &parent_sequence,
         node_sequence,
       );
+
+      let node_data = self.nodes.get_mut(&node.key).unwrap();
+      node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
+      for gap in &node_data.seq.gaps {
+        node_data.seq.sequence[gap.0..gap.1].fill(self.alphabet.gap());
+      }
+      for unk in &node_data.seq.unknown {
+        node_data.seq.sequence[unk.0..unk.1].fill(self.alphabet.unknown());
+      }
 
       let edge_data = self.edges.get_mut(edge_key).unwrap();
       edge_data.indels = indels;
