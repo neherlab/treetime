@@ -7,6 +7,7 @@ source "${BASH_SOURCE%/*}/lib/utils.sh"
 declare -A ALIASES=(
   ["b"]="build"
   ["br"]="build-release"
+  ["bp"]="build-profiling"
   ["r"]="run"
   ["rr"]="run-release"
   ["t"]="test-all"
@@ -73,6 +74,12 @@ function main() {
     if [ -n "${bin}" ]; then
       copy_bin_to_out "${bin}"
     fi
+    ;;
+  "build-profiling")
+    local bin="${1:-}"
+    shift || true
+    declare -x RUSTFLAGS="${build_rustflags}"
+    nicely cargo -q build --profile=profiling ${ci_flag} --target-dir="${target_dir}" ${bin:+--bin="${bin}"} "$@"
     ;;
   "run")
     local bin="${1:-}"
