@@ -13,7 +13,7 @@ mod tests {
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
-  use crate::gtr::infer_gtr::sparse::get_mutation_counts_sparse;
+  use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
@@ -144,7 +144,7 @@ mod tests {
     )?;
 
     let (graph, partition) = setup_sparse("(leaf_a:0.1,leaf_c:0.1)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
 
     // Sparse gives exact integer counts: one A->C substitution
     pretty_assert_ulps_eq!(1.0, counts.nij[[IDX_C, IDX_A]], epsilon = 1e-9);
@@ -184,8 +184,8 @@ mod tests {
     let (graph1, partition1) = setup_sparse(&tree1, &aln)?;
     let (graph2, partition2) = setup_sparse(&tree2, &aln)?;
 
-    let counts1 = get_mutation_counts_sparse(&graph1, &partition1)?;
-    let counts2 = get_mutation_counts_sparse(&graph2, &partition2)?;
+    let counts1 = get_mutation_counts_fitch(&graph1, &*partition1.read_arc())?;
+    let counts2 = get_mutation_counts_fitch(&graph2, &*partition2.read_arc())?;
 
     let ratio = bl2 / bl1;
     for k in 0..4 {
@@ -277,7 +277,7 @@ mod tests {
     let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_sparse(&graph_s, &partition_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
 
     // nij: dense fractional counts should approximate sparse integer counts.
     // Measured max nij_diff: 6.68e-2
@@ -386,7 +386,7 @@ mod tests {
     )?;
 
     let (graph, partition) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
 
     // Sparse root_state comes from Fitch composition counts.
     // All 8 positions should be A at root (3/4 leaves have A at pos 0).
@@ -425,7 +425,7 @@ mod tests {
 
     let tree_nwk = "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;";
     let (graph, partition) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
 
     // Position 0: A->G on the mut1 branch. nij[G, A] += 1
     assert!(
@@ -527,7 +527,7 @@ mod tests {
 
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
     let (graph, partition) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
 
     // All Ti values should be equal (uniform composition, no mutations)
     pretty_assert_ulps_eq!(counts.Ti[IDX_A], counts.Ti[IDX_C], epsilon = 1e-9);
@@ -566,7 +566,7 @@ mod tests {
     let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_sparse(&graph_s, &partition_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
 
     // Both should have their largest off-diagonal nij entry in the same cell
     let dense_max_cell = dense
@@ -643,7 +643,7 @@ mod tests {
     let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_sparse(&graph_s, &partition_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
 
     for k in 0..4 {
       pretty_assert_ulps_eq!(0.0, dense.nij[[k, k]], epsilon = 1e-15);
@@ -676,7 +676,7 @@ mod tests {
     let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_sparse(&graph_s, &partition_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
 
     for ((i, j), &v) in dense.nij.indexed_iter() {
       assert!(v >= 0.0, "Dense nij[{i},{j}] should be non-negative, got {v}");
@@ -711,7 +711,7 @@ mod tests {
     let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_sparse(&graph_s, &partition_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
 
     for (k, &v) in dense.Ti.iter().enumerate() {
       assert!(v >= 0.0, "Dense Ti[{k}] should be non-negative, got {v}");

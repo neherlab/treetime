@@ -1,4 +1,4 @@
-//! Tests for sparse GTR inference.
+//! Tests for Fitch GTR inference.
 
 #[cfg(test)]
 mod tests {
@@ -7,7 +7,7 @@ mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::gtr::infer_gtr::sparse::get_mutation_counts_sparse;
+  use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -28,7 +28,7 @@ mod tests {
   }
 
   #[test]
-  fn test_get_mutation_counts_sparse() -> Result<(), Report> {
+  fn test_get_mutation_counts_fitch() -> Result<(), Report> {
     let aln = read_many_fasta_str(
       indoc! {r#"
       >A
@@ -59,7 +59,7 @@ mod tests {
     compress_sequences(&graph, from_ref(&partition), &aln)?;
     update_marginal(&graph, from_ref(&partition))?;
 
-    let counts_actual = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts_actual = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
     // Expected values reflect Fitch parsimony mutations. GTR inference reads
     // fitch_subs() directly because it runs before marginal inference.
     pretty_assert_ulps_eq!(
@@ -83,7 +83,7 @@ mod tests {
   }
 
   #[test]
-  fn test_infer_gtr_sparse() -> Result<(), Report> {
+  fn test_infer_gtr_fitch() -> Result<(), Report> {
     let aln = read_many_fasta_str(
       indoc! {r#"
       >A
@@ -114,7 +114,7 @@ mod tests {
     compress_sequences(&graph, from_ref(&partition), &aln)?;
     update_marginal(&graph, from_ref(&partition))?;
 
-    let counts = get_mutation_counts_sparse(&graph, &partition)?;
+    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
     let actual = infer_gtr_impl(
       &counts,
       &InferGtrOptions {

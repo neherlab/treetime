@@ -37,7 +37,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
-  use crate::gtr::infer_gtr::sparse::infer_gtr_sparse;
+  use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -152,7 +152,7 @@ mod tests {
       }));
       compress_sequences(&graph, from_ref(&partition), &aln)?;
       update_marginal(&graph, from_ref(&partition))?;
-      infer_gtr_sparse(&partition, &graph)?
+      infer_gtr_fitch(&*partition.read_arc(), &graph)?
     };
 
     Ok(DenseSparseGtr { dense, sparse })

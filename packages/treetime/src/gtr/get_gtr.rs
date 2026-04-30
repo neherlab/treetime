@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::dense::infer_gtr_dense;
-use crate::gtr::infer_gtr::sparse::infer_gtr_sparse;
+use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::{make_error, make_report};
@@ -123,7 +123,7 @@ where
   D: Send + Sync,
 {
   let gtr = match name {
-    GtrModelName::Infer => infer_gtr_sparse(partition, graph),
+    GtrModelName::Infer => infer_gtr_fitch(&*partition.read_arc(), graph),
     _ => get_gtr_by_name(*name),
   }
   .wrap_err_with(|| make_report!("When creating model '{name}'"))?;
