@@ -208,16 +208,9 @@ where
     let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
-    seq_dis.variable_indel = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
-
-    seq_dis.variable_indel.retain(|r, indel| {
-      if indel.deleted == n_children {
-        gaps.push(*r);
-        false
-      } else {
-        true
-      }
-    });
+    let indels_bw = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
+    seq_dis.variable_indel = indels_bw.variable_indel;
+    gaps.extend(indels_bw.resolved_gaps);
 
     let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {

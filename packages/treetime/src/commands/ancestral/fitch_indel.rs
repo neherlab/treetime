@@ -6,32 +6,27 @@ use treetime_utils::interval::range_complement::range_complement;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::range_intersection;
 
+pub struct IndelsBackward {
+  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+  pub resolved_gaps: Vec<(usize, usize)>,
+}
+
 /// Resolve indels during the backward pass: identify positions where children
 /// disagree on gap presence.
 ///
-/// Operates on gap range lists and integer counters. Independent of sparse/dense
-/// types - usable by both partition kinds.
-///
-/// Three steps, matching the sparse Fitch backward logic:
-/// 1. For each child, intersect child gaps with complement of consensus gaps
-///    (intersection of all children's gaps) to find disagreement ranges.
-/// 2. Propagate variable indels from children.
-/// 3. Caller is responsible for collapsing ranges where all children agree on gap.
-///
-/// Returns the variable_indel map. The caller must filter out entries where
-/// `deleted == n_children` and push those ranges back to the consensus gaps.
+/// Returns variable indels (unresolved disagreements) and resolved gaps (ranges
+/// where all children agree on gap).
 pub fn resolve_indels_backward(
   child_gaps: &[Vec<(usize, usize)>],
   child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
   length: usize,
-) -> BTreeMap<(usize, usize), Deletion> {
+) -> IndelsBackward {
   let n_children = child_gaps.len();
   let consensus_gaps = range_intersection(child_gaps);
   let non_gap = range_complement(&[(0, length)], &[consensus_gaps]);
 
   let mut variable_indel = BTreeMap::new();
 
-  // Step 1: find gap ranges in children that are not in consensus (disagreement)
   for child_gap in child_gaps {
     for r in range_intersection(&[non_gap.clone(), child_gap.clone()]) {
       let indel = variable_indel.entry(r).or_insert_with(|| Deletion {
@@ -43,7 +38,6 @@ pub fn resolve_indels_backward(
     }
   }
 
-  // Step 2: propagate variable indels from children
   for child_vi in child_variable_indels {
     for r in child_vi.keys() {
       if let Some(indel) = variable_indel.get_mut(r) {
@@ -53,7 +47,17 @@ pub fn resolve_indels_backward(
     }
   }
 
-  variable_indel
+  let mut resolved_gaps = Vec::new();
+  variable_indel.retain(|r, indel| {
+    if indel.deleted == n_children {
+      resolved_gaps.push(*r);
+      false
+    } else {
+      true
+    }
+  });
+
+  IndelsBackward { variable_indel, resolved_gaps }
 }
 
 /// Resolve variable indels during the forward pass using parent context.

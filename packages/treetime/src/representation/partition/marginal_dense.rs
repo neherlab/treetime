@@ -224,7 +224,7 @@ where
         .iter()
         .map(|(child_key, _)| self.nodes[child_key].seq.gaps.clone())
         .collect_vec();
-      let gaps = range_intersection(&child_gaps);
+      let mut gaps = range_intersection(&child_gaps);
 
       let unknown = range_intersection_iter(
         node
@@ -247,22 +247,12 @@ where
         .map(|(child_key, _)| &self.nodes[child_key].seq.variable_indel)
         .collect_vec();
 
-      let variable_indel = resolve_indels_backward(&child_gaps, &child_variable_indels, length);
-      let mut final_gaps = gaps;
-      let variable_indel = variable_indel
-        .into_iter()
-        .filter(|(r, indel)| {
-          if indel.deleted == node.child_keys.len() {
-            final_gaps.push(*r);
-            false
-          } else {
-            true
-          }
-        })
-        .collect();
+      let indels_bw = resolve_indels_backward(&child_gaps, &child_variable_indels, length);
+      gaps.extend(indels_bw.resolved_gaps);
+      let variable_indel = indels_bw.variable_indel;
 
       let seq = DenseSeqInfo {
-        gaps: final_gaps,
+        gaps,
         unknown,
         non_char,
         variable_indel,
