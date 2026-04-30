@@ -5,7 +5,7 @@ use crate::commands::timetree::partition_ops::PartitionRerootOps;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
-use crate::representation::partition::traits::BranchTopology;
+use crate::representation::partition::traits::{BranchTopology, HasGtr};
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
@@ -13,6 +13,7 @@ use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartiti
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
+use maplit::btreemap;
 use ndarray::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
@@ -39,8 +40,31 @@ pub struct PartitionMarginalDense {
 }
 
 impl PartitionMarginalDense {
+  pub fn new(index: usize, gtr: GTR, alphabet: Alphabet, length: usize) -> Self {
+    Self {
+      index,
+      gtr,
+      alphabet,
+      length,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }
+  }
+
   #[allow(clippy::same_name_method)]
   pub fn get_sequence_length(&self) -> usize {
+    self.length
+  }
+}
+
+impl HasGtr for PartitionMarginalDense {
+  fn gtr(&self) -> &GTR {
+    &self.gtr
+  }
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.gtr
+  }
+  fn sequence_length(&self) -> usize {
     self.length
   }
 }

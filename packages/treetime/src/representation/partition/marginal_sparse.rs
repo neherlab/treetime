@@ -7,7 +7,7 @@ use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::BranchTopology;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::PartitionCompressed;
+use crate::representation::partition::traits::{HasGtr, PartitionCompressed};
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
@@ -34,6 +34,18 @@ pub struct PartitionMarginalSparse {
   pub root_sequence: Seq,
   pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
   pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
+}
+
+impl HasGtr for PartitionMarginalSparse {
+  fn gtr(&self) -> &GTR {
+    &self.gtr
+  }
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.gtr
+  }
+  fn sequence_length(&self) -> usize {
+    self.length
+  }
 }
 
 impl PartitionCompressed for PartitionMarginalSparse {

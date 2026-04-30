@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -13,6 +14,20 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
+
+pub trait HasGtr {
+  fn gtr(&self) -> &GTR;
+  fn gtr_mut(&mut self) -> &mut GTR;
+  fn sequence_length(&self) -> usize;
+
+  fn weighted_rate(&self) -> f64 {
+    self.sequence_length() as f64 * self.gtr().mu
+  }
+
+  fn normalize_rate(&mut self, scale: f64) {
+    self.gtr_mut().mu /= scale;
+  }
+}
 
 /// Minimal graph-structure abstraction used by per-branch partition operations.
 ///
