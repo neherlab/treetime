@@ -5,7 +5,7 @@ triplet="${1}"
 dest=${2:-"/usr/local/${triplet}"}
 mkdir -p "${dest}"
 
-curl -fsSL "https://github.com/binarylandia/build_openblas/releases/download/2024-11-07_22-51-18/openblas-static-threads-0.3.28-${triplet}-2024-11-07_22-51-18.tar.xz" \
+curl -fsSL "https://github.com/binarylandia/build_openblas/releases/download/2024-11-07_22-51-18/openblas-static-0.3.28-${triplet}-2024-11-07_22-51-18.tar.xz" \
   | pixz -dp "$(nproc)" \
   | tar -C "${dest}" -x
 
