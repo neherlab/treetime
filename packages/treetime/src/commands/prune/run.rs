@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_sparse, jc69, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, log_gtr, write_gtr_json};
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::make_error;
 use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
+use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -14,7 +14,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use maplit::{btreemap, btreeset};
+use maplit::btreeset;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -27,7 +27,6 @@ use treetime_io::fasta::read_many_fasta;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
-use treetime_primitives::seq;
 use treetime_utils::iterator::difference::iterator_difference;
 use treetime_utils::iterator::intersection::iterator_intersection;
 
@@ -71,27 +70,12 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
     let aln = read_many_fasta(input_fastas, &alphabet)?;
 
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-      alphabet,
-      length: get_common_length(&aln)?,
-      root_sequence: seq![],
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-    for partition in &partitions {
-      let gtr = get_gtr_sparse(&GtrModelName::JC69, partition, &graph)?;
-      write_gtr_json(&gtr, GtrModelName::JC69, outdir, None)?;
-      partition.write_arc().gtr = gtr;
-    }
-
-    partitions
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let gtr = fitch.resolve_gtr(&graph, GtrModelName::JC69)?;
+    log_gtr(&gtr, GtrModelName::JC69);
+    write_gtr_json(&gtr, GtrModelName::JC69, outdir, None)?;
+    let partition = fitch.into_marginal_sparse(gtr, &graph)?;
+    vec![Arc::new(RwLock::new(partition))]
   } else {
     vec![]
   };

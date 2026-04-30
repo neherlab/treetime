@@ -7,7 +7,7 @@ use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::BranchTopology;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::{HasGtr, PartitionCompressed};
+use crate::representation::partition::traits::HasGtr;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
@@ -15,7 +15,7 @@ use crate::{make_error, make_internal_report};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
@@ -48,49 +48,6 @@ impl HasGtr for PartitionMarginalSparse {
   }
 }
 
-impl PartitionCompressed for PartitionMarginalSparse {
-  fn index(&self) -> usize {
-    self.index
-  }
-
-  fn alphabet(&self) -> &Alphabet {
-    &self.alphabet
-  }
-
-  fn length(&self) -> usize {
-    self.length
-  }
-
-  fn nodes(&self) -> &BTreeMap<GraphNodeKey, SparseNodePartition> {
-    &self.nodes
-  }
-
-  fn edges(&self) -> &BTreeMap<GraphEdgeKey, SparseEdgePartition> {
-    &self.edges
-  }
-
-  fn nodes_mut(&mut self) -> &mut BTreeMap<GraphNodeKey, SparseNodePartition> {
-    &mut self.nodes
-  }
-
-  fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
-    &mut self.edges
-  }
-  fn finalize_fitch<N, E>(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    self.root_sequence = self.nodes[&root_key].seq.sequence.clone();
-    for (key, node_data) in &mut self.nodes {
-      if *key != root_key && !graph.is_leaf(*key) {
-        node_data.seq.sequence = seq![];
-      }
-    }
-    Ok(())
-  }
-}
 
 impl PartitionMarginalSparse {
   #[allow(clippy::same_name_method)]

@@ -1,22 +1,22 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_inner};
 use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
-use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
+use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::partition::traits::PartitionBranchOps;
+use crate::representation::partition::traits::{HasGtr, PartitionBranchOps};
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
 use eyre::Report;
 use itertools::{Itertools, chain, izip};
 use log::debug;
-use maplit::btreemap;
 use num_traits::pow::pow;
 use parking_lot::RwLock;
 use serde::Serialize;
@@ -28,7 +28,6 @@ use treetime_graph::node::GraphNode;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use treetime_primitives::seq;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -49,32 +48,17 @@ pub struct TreetimeOptimizeParams {
 /// is multiplied by `total_average`. The product `mu × t` (expected substitutions) is preserved,
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
-fn normalize_partition_rates(
-  graph: &GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-) {
-  let total_length: usize = sparse_partitions.iter().map(|p| p.read_arc().length).sum::<usize>()
-    + dense_partitions.iter().map(|p| p.read_arc().length).sum::<usize>();
+fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+  let total_length: usize = partitions
+    .iter()
+    .map(|p| p.read_arc().sequence_length())
+    .sum();
 
   if total_length == 0 {
     return;
   }
 
-  let weighted_rate: f64 = sparse_partitions
-    .iter()
-    .map(|p| {
-      let p = p.read_arc();
-      p.length as f64 * p.gtr.mu
-    })
-    .sum::<f64>()
-    + dense_partitions
-      .iter()
-      .map(|p| {
-        let p = p.read_arc();
-        p.length as f64 * p.gtr.mu
-      })
-      .sum::<f64>();
+  let weighted_rate: f64 = partitions.iter().map(|p| p.read_arc().weighted_rate()).sum();
 
   let total_average = weighted_rate / total_length as f64;
 
@@ -82,11 +66,8 @@ fn normalize_partition_rates(
     return;
   }
 
-  for partition in sparse_partitions {
-    partition.write_arc().gtr.mu /= total_average;
-  }
-  for partition in dense_partitions {
-    partition.write_arc().gtr.mu /= total_average;
+  for partition in partitions {
+    partition.write_arc().normalize_rate(total_average);
   }
 
   for edge_ref in graph.get_edges() {
@@ -123,49 +104,29 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   let mut graph: GraphAncestral = nwk_read_file(tree)?;
 
   let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if !dense {
-    #[allow(clippy::iter_on_single_items)]
-    let partitions = [PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-      alphabet: alphabet.clone(),
-      length: get_common_length(&aln)?,
-      root_sequence: seq![],
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }]
-    .into_iter()
-    .map(|p| Arc::new(RwLock::new(p)))
-    .collect_vec();
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-    // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-    for partition in &partitions {
-      let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-      partition.write_arc().gtr = gtr;
-    }
-
-    partitions
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+    let gtr = fitch.resolve_gtr(&graph, *model_name)?;
+    log_gtr(&gtr, *model_name);
+    let partition = fitch.into_marginal_sparse(gtr, &graph)?;
+    vec![Arc::new(RwLock::new(partition))]
   } else {
     vec![]
   };
 
   let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = if dense {
-    #[allow(clippy::iter_on_single_items)]
-    let partitions = [PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }]
-    .into_iter()
-    .map(|p| Arc::new(RwLock::new(p)))
-    .collect_vec();
-
-    partitions
+    if *model_name == GtrModelName::Infer {
+      let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+      let gtr = fitch.infer_gtr(&graph)?;
+      log_gtr(&gtr, *model_name);
+      let partition = fitch.into_marginal_dense(gtr);
+      vec![Arc::new(RwLock::new(partition))]
+    } else {
+      let length = get_common_length(&aln)?;
+      let gtr = get_gtr_by_name(*model_name)?;
+      log_gtr(&gtr, *model_name);
+      let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
+      vec![Arc::new(RwLock::new(partition))]
+    }
   } else {
     vec![]
   };
@@ -174,27 +135,14 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   update_marginal(&graph, &sparse_partitions)?;
   if !dense_partitions.is_empty() {
     initialize_marginal(&graph, &dense_partitions, &aln)?;
-
-    // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-    // Dense GTR requires profiles populated via initialize_marginal + update_marginal.
-    // Run first marginal pass with dummy GTR, then replace with real model.
-    update_marginal(&graph, &dense_partitions)?;
-    for partition in &dense_partitions {
-      let gtr = get_gtr_dense(model_name, partition, &graph)?;
-      partition.write_arc().gtr = gtr;
-    }
-
-    // Re-run with inferred GTR so node posteriors reflect the real model.
     update_marginal(&graph, &dense_partitions)?;
   }
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-  // When GTR is inferred, normalize substitution rates so the length-weighted average mu equals 1
-  // and rescale branch lengths accordingly. This makes branch lengths interpretable as expected
-  // substitutions per site across all partitions, while preserving relative rates between partitions.
   if *model_name == GtrModelName::Infer {
-    normalize_partition_rates(&graph, &sparse_partitions, &dense_partitions);
+    normalize_partition_rates(&graph, &sparse_partitions);
+    normalize_partition_rates(&graph, &dense_partitions);
   }
 
   for partition in &sparse_partitions {

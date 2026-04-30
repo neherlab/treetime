@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::dense::infer_gtr_dense;
-use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::{make_error, make_report};
 use clap::ValueEnum;
 use eyre::{Report, WrapErr};
@@ -112,26 +110,11 @@ pub enum GtrModelName {
   Jtt92,
 }
 
-pub fn get_gtr_sparse<N, E, D>(
-  name: &GtrModelName,
-  partition: &Arc<RwLock<PartitionMarginalSparse>>,
-  graph: &Graph<N, E, D>,
-) -> Result<GTR, Report>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  let gtr = match name {
-    GtrModelName::Infer => infer_gtr_fitch(&*partition.read_arc(), graph),
-    _ => get_gtr_by_name(*name),
-  }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))?;
-  log_gtr(&gtr, *name);
-  Ok(gtr)
-}
-
 /// Get GTR model for dense representation.
+///
+/// Retained for tests and future iterative GTR refinement. Production
+/// dense inference now goes through `PartitionFitch::infer_gtr`.
+#[allow(dead_code)]
 pub fn get_gtr_dense<N, E, D>(
   name: &GtrModelName,
   partition: &Arc<RwLock<PartitionMarginalDense>>,

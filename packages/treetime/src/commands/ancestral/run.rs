@@ -2,19 +2,18 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
-use crate::gtr::get_gtr::{JC69Params, get_gtr_dense, get_gtr_sparse, jc69, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
+use maplit::btreemap;
 use crate::make_error;
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
-use maplit::btreemap;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
@@ -25,7 +24,6 @@ use treetime_graph::node::GraphNode;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use treetime_primitives::seq;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 #[derive(Clone, Debug, Default)]
@@ -83,17 +81,13 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
   match method_anc {
     MethodAncestral::Parsimony => {
-      #[allow(clippy::iter_on_single_items)]
-      let partitions_parsimony = [PartitionFitch {
+      let partitions_parsimony = vec![Arc::new(RwLock::new(PartitionFitch {
         index: 0,
         alphabet,
         length: get_common_length(&aln)?,
         nodes: btreemap! {},
         edges: btreemap! {},
-      }]
-      .into_iter()
-      .map(|p| Arc::new(RwLock::new(p)))
-      .collect_vec();
+      }))];
 
       if !partitions_parsimony.is_empty() {
         compress_sequences(&graph, &partitions_parsimony, &aln)?;
@@ -107,36 +101,46 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     },
     MethodAncestral::Marginal => {
       if !dense {
-        #[allow(clippy::iter_on_single_items)]
-        let partitions_marginal_sparse = [PartitionMarginalSparse {
-          index: 0,
-          gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-          alphabet,
-          length: get_common_length(&aln)?,
-          root_sequence: seq![],
-          nodes: btreemap! {},
-          edges: btreemap! {},
-        }]
-        .into_iter()
-        .map(|p| Arc::new(RwLock::new(p)))
-        .collect_vec();
+        let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+        let gtr = fitch.resolve_gtr(&graph, *model_name)?;
+        write_gtr_json(&gtr, *model_name, outdir, None)?;
+        log_gtr(&gtr, *model_name);
+        let partition = fitch.into_marginal_sparse(gtr, &graph)?;
+        let partitions = vec![Arc::new(RwLock::new(partition))];
 
-        if !partitions_marginal_sparse.is_empty() {
-          compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+        update_marginal(&graph, &partitions)?;
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
 
-          // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-          // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-          for partition in &partitions_marginal_sparse {
-            let gtr = get_gtr_sparse(model_name, partition, &graph)?;
-            write_gtr_json(&gtr, *model_name, outdir, None)?;
-            partition.write_arc().gtr = gtr;
-          }
+        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
+          .into_iter()
+          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+          .collect_vec();
+        annotate_branch_mutations(&graph, &branch_ops)?;
+      } else {
+        if *model_name == GtrModelName::Infer {
+          let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+          let gtr = fitch.infer_gtr(&graph)?;
+          write_gtr_json(&gtr, *model_name, outdir, None)?;
+          log_gtr(&gtr, *model_name);
+          let partition = fitch.into_marginal_dense(gtr);
+          let partitions = vec![Arc::new(RwLock::new(partition))];
 
-          update_marginal(&graph, &partitions_marginal_sparse)?;
+          initialize_marginal(&graph, &partitions, &aln)?;
+          update_marginal(&graph, &partitions)?;
+
           ancestral_reconstruction_marginal(
             &graph,
             *reconstruct_tip_states,
-            &partitions_marginal_sparse,
+            &partitions,
             |node, seq| {
               let name = node.name.as_deref().unwrap_or("");
               let desc = &node.desc;
@@ -144,49 +148,26 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             },
           )?;
 
-          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions_marginal_sparse
+          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
             .into_iter()
             .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
             .collect_vec();
           annotate_branch_mutations(&graph, &branch_ops)?;
-        }
-      } else {
-        #[allow(clippy::iter_on_single_items)]
-        let partitions_marginal_dense = [PartitionMarginalDense {
-          index: 0,
-          gtr: jc69(JC69Params::default())?, // FIXME: dummy temporary gtr should not be needed here
-          alphabet,
-          length: get_common_length(&aln)?,
-          nodes: btreemap! {},
-          edges: btreemap! {},
-        }]
-        .into_iter()
-        .map(|p| Arc::new(RwLock::new(p)))
-        .collect_vec();
+        } else {
+          let length = get_common_length(&aln)?;
+          let gtr = get_gtr_by_name(*model_name)?;
+          write_gtr_json(&gtr, *model_name, outdir, None)?;
+          log_gtr(&gtr, *model_name);
+          let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
+          let partitions = vec![Arc::new(RwLock::new(partition))];
 
-        if !partitions_marginal_dense.is_empty() {
-          initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
-
-          // FIXME: chicken & egg problem: to get a gtr we need partitions, to get partitions we need a gtr
-          // FIXME: spaghetti code: dummy gtr is replaced by real gtr here
-          // For model inference, we need profiles populated first. Run marginal reconstruction
-          // with dummy GTR, then infer the real GTR, then re-run if model changed.
-          update_marginal(&graph, &partitions_marginal_dense)?;
-
-          // Triggers second marginal pass internally when model=infer
-          for partition in &partitions_marginal_dense {
-            let gtr = get_gtr_dense(model_name, partition, &graph)?;
-            write_gtr_json(&gtr, *model_name, outdir, None)?;
-            partition.write_arc().gtr = gtr;
-          }
-
-          // Re-run with inferred GTR
-          update_marginal(&graph, &partitions_marginal_dense)?;
+          initialize_marginal(&graph, &partitions, &aln)?;
+          update_marginal(&graph, &partitions)?;
 
           ancestral_reconstruction_marginal(
             &graph,
             *reconstruct_tip_states,
-            &partitions_marginal_dense,
+            &partitions,
             |node, seq| {
               let name = node.name.as_deref().unwrap_or("");
               let desc = &node.desc;
@@ -194,7 +175,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
             },
           )?;
 
-          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions_marginal_dense
+          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
             .into_iter()
             .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
             .collect_vec();
@@ -218,12 +199,6 @@ where
   E: GraphEdge + EdgeToNwk + Serialize,
   D: Send + Sync + Default + Serialize,
 {
-  // json_write_file(
-  //   outdir.as_ref().join("annotated_tree.graph.json"),
-  //   &graph,
-  //   JsonPretty(true),
-  // )?;
-
   nwk_write_file(
     outdir.as_ref().join("annotated_tree.nwk"),
     graph,
