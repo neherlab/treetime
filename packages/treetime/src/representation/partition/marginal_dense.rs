@@ -89,12 +89,6 @@ impl PartitionBranchOps for PartitionMarginalDense {
     let mut subs = Vec::new();
 
     for (pos, parent, child) in izip!(0..parent_profile.nrows(), parent_profile.rows(), child_profile.rows()) {
-      // Gap and unknown positions get uniform profiles under treat_gap_as_unknown,
-      // so argmax returns an arbitrary canonical state. Check original non_char
-      // ranges (gaps + unknowns) instead.
-      if range_contains(parent_non_char, pos) || range_contains(child_non_char, pos) {
-        continue;
-      }
 
       let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
       let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
@@ -107,6 +101,14 @@ impl PartitionBranchOps for PartitionMarginalDense {
       if !self.alphabet.is_canonical(parent_state) || !self.alphabet.is_canonical(child_state) {
         continue;
       }
+
+      // Gap and unknown positions get uniform profiles under treat_gap_as_unknown,
+      // so argmax returns an arbitrary canonical state. Check original non_char
+      // ranges (gaps + unknowns) instead.
+      if range_contains(parent_non_char, pos) || range_contains(child_non_char, pos) {
+        continue;
+      }
+
       subs.push(Sub::new(parent_state, pos, child_state)?);
     }
 
