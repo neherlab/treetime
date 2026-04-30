@@ -110,11 +110,11 @@ The `MutationCounts` (`#MutationCounts`) struct holds the sufficient statistics:
 v1: `infer_gtr_impl()` (`#infer_gtr_impl`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163).
 v0: [`packages/legacy/treetime/treetime/gtr.py#L491-L599`](../../packages/legacy/treetime/treetime/gtr.py#L491-L599).
 
-### Sparse GTR Inference
+### Fitch GTR Inference
 
-Counts mutations from Fitch reconstruction: integer substitution counts for `nij`, branch-length-weighted composition for `Ti`, root composition from consensus sequence. Fast because Fitch reconstruction gives hard assignments (no probabilistic profiles to integrate over).
+Counts mutations from Fitch reconstruction: integer substitution counts for `nij`, branch-length-weighted composition for `Ti`, root composition from consensus sequence. Fast because Fitch reconstruction gives hard assignments (no probabilistic profiles to integrate over). Used by both dense and sparse initial GTR inference via `PartitionFitch::infer_gtr`.
 
-`infer_gtr_sparse()` (`#infer_gtr_sparse`) at [`packages/treetime/src/gtr/infer_gtr/sparse.rs#L14-L28`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L14-L28).
+`infer_gtr_fitch()` (`#infer_gtr_fitch`) at [`packages/treetime/src/gtr/infer_gtr/fitch.rs`](../../packages/treetime/src/gtr/infer_gtr/fitch.rs).
 
 ### Dense GTR Inference
 
@@ -163,12 +163,12 @@ See [unimplemented](unimplemented.md) for full details:
 
 ## File Index
 
-| File                                                                                                                 | Algorithms                                                    |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                                         | GTR core, eigendecomposition, `expQt()` (`#expQt`)            |
-| [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)             | Site-specific GTR, per-site eigendecomposition, interpolation |
-| [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                 | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON      |
-| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)               | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`       |
-| [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)               | Sparse GTR inference from Fitch mutation counts               |
-| [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)                 | Dense GTR inference from branch joint distributions           |
-| [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs) | Site-specific GTR inference from per-site mutation counts     |
+| File                                                                                                                 | Algorithms                                                            |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                                         | GTR core, eigendecomposition, `expQt()` (`#expQt`)                    |
+| [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)             | Site-specific GTR, per-site eigendecomposition, interpolation         |
+| [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                 | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON              |
+| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)               | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`               |
+| [`packages/treetime/src/gtr/infer_gtr/fitch.rs`](../../packages/treetime/src/gtr/infer_gtr/fitch.rs)                 | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
+| [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)                 | Dense GTR inference from branch joint distributions                   |
+| [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs) | Site-specific GTR inference from per-site mutation counts             |

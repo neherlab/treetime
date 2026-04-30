@@ -129,7 +129,7 @@ Structural observation, not profiled. `initial_guess_mixed()` (`optimize_unified
 
 The highest-impact optimization for dense mode overall: group identical alignment columns and weight by multiplicity, matching what v0 does. For viral datasets, unique columns are typically 5-20% of total alignment length. This would reduce marginal pass cost, GTR inference, argmax, and `edge_subs` proportionally.
 
-This is documented in existing known issues ([N-optimize-dense-iteration-slow](../port-known-issues/N-optimize-dense-iteration-slow.md), [H-dense-with-fitch-compression](../port-known-issues/H-dense-with-fitch-compression.md)) and the [OpenBLAS profiling report](dense-openblas-profiling.md). It is the primary lever for dense mode performance improvement and would subsume the per-function micro-optimizations in 5.1-5.3.
+This is documented in existing known issues ([N-optimize-dense-iteration-slow](../port-known-issues/N-optimize-dense-iteration-slow.md)) and the [OpenBLAS profiling report](dense-openblas-profiling.md). It is the primary lever for dense mode performance improvement and would subsume the per-function micro-optimizations in 5.1-5.3.
 
 ## 6. Assessment
 

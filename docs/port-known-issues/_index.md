@@ -59,7 +59,6 @@ exactly.
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
 | High       | Clock          | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                                           |
 | High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
-| High       | Dense          | [Dense partitions lack Fitch compression](H-dense-with-fitch-compression.md)                                                                        |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
 | Medium     | Optimize       | [`--no-indels` flag does not gate `initial_guess_mixed()`](M-optimize-no-indels-initial-guess-not-gated.md)                                         |
 | High       | Timetree       | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                  |
@@ -74,7 +73,7 @@ exactly.
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral      | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
 | Medium     | Ancestral      | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                                                   |
-| Medium     | Core           | [Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)                                                              |
+| ~~Medium~~ | ~~Core~~       | ~~[Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)~~ (RESOLVED)                                               |
 | Medium     | Clock          | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                                                 |
 | Medium     | Dates          | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
 | Medium     | GTR            | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |

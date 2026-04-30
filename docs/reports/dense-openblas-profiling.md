@@ -9,7 +9,7 @@ Dense marginal ancestral reconstruction is known to be slow. Three open known-is
 
 - [M-timetree-marginal-dense-mpox-slow](../port-known-issues/M-timetree-marginal-dense-mpox-slow.md) -- 250x wall-time slowdown on mpox (20 tips, 44 min vs 7 sec for flu). Suspected cause: convolution grid spacing blow-up from low clock rate.
 - [N-optimize-dense-iteration-slow](../port-known-issues/N-optimize-dense-iteration-slow.md) -- each marginal pass costs O(N _ s^2 _ L) over the full alignment length L. v0 mitigates with column compression; v1 dense does not compress.
-- [H-dense-with-fitch-compression](../port-known-issues/H-dense-with-fitch-compression.md) -- dense skips Fitch compression entirely, causing downstream issues (double marginal pass for GTR, missing indel counts).
+- Dense Fitch compression gap (RESOLVED) -- dense now uses `PartitionFitch::compress` -> `infer_gtr` -> `into_marginal_dense`, and resolves indels via shared `fitch_indel` logic.
 
 The goal of this investigation is to profile dense ancestral reconstruction, identify where time is spent, and find actionable improvements.
 
