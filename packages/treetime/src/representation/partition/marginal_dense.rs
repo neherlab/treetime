@@ -355,8 +355,10 @@ where
 
       // Reconstruct MAP sequence before indel resolution so the helper can
       // slice sequence content for InDel payloads.
-      let node_data = self.nodes.get_mut(&node.key).unwrap();
-      node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
+      if !node.is_leaf {
+        let node_data = self.nodes.get_mut(&node.key).unwrap();
+        node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
+      }
 
       // Resolve indels using parent context. Use a scratch copy of gaps so that
       let (parent_key, edge_key) =

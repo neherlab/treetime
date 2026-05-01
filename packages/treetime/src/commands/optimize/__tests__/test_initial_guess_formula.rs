@@ -198,7 +198,6 @@ mod tests {
     }))];
 
     initialize_marginal(graph, &partitions, aln)?;
-    update_marginal(graph, &partitions)?;
 
     Ok(partitions)
   }
