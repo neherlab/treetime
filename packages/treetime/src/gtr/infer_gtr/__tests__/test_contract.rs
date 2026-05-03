@@ -9,14 +9,15 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
   use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -28,7 +29,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -65,21 +66,11 @@ mod tests {
   fn setup_sparse(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalSparse>>), Report> {
+  ) -> Result<(GraphAncestral, PartitionFitch), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
     let alphabet = Alphabet::default();
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
-    compress_sequences(&graph, from_ref(&partition), aln)?;
-    update_marginal(&graph, from_ref(&partition))?;
-    Ok((graph, partition))
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, aln)?;
+    Ok((graph, fitch))
   }
 
   /// Dense nij orientation: a single A->C mutation produces nij[C,A] >> nij[A,C].
@@ -143,8 +134,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition) = setup_sparse("(leaf_a:0.1,leaf_c:0.1)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
+    let (graph, fitch) = setup_sparse("(leaf_a:0.1,leaf_c:0.1)root:0.0;", &aln)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // Sparse gives exact integer counts: one A->C substitution
     pretty_assert_ulps_eq!(1.0, counts.nij[[IDX_C, IDX_A]], epsilon = 1e-9);
@@ -181,11 +172,11 @@ mod tests {
     let tree1 = format!("((A:{bl1},B:{bl1})AB:{bl1},(C:{bl1},D:{bl1})CD:{bl1})root:0.0;");
     let tree2 = format!("((A:{bl2},B:{bl2})AB:{bl2},(C:{bl2},D:{bl2})CD:{bl2})root:0.0;");
 
-    let (graph1, partition1) = setup_sparse(&tree1, &aln)?;
-    let (graph2, partition2) = setup_sparse(&tree2, &aln)?;
+    let (graph1, fitch1) = setup_sparse(&tree1, &aln)?;
+    let (graph2, fitch2) = setup_sparse(&tree2, &aln)?;
 
-    let counts1 = get_mutation_counts_fitch(&graph1, &*partition1.read_arc())?;
-    let counts2 = get_mutation_counts_fitch(&graph2, &*partition2.read_arc())?;
+    let counts1 = get_mutation_counts_fitch(&graph1, &fitch1)?;
+    let counts2 = get_mutation_counts_fitch(&graph2, &fitch2)?;
 
     let ratio = bl2 / bl1;
     for k in 0..4 {
@@ -274,10 +265,10 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
 
     let (graph_d, partition_d) = setup_dense(tree_nwk, &aln)?;
-    let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
+    let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     // nij: dense fractional counts should approximate sparse integer counts.
     // Measured max nij_diff: 6.68e-2
@@ -385,8 +376,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
+    let (graph, fitch) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // Sparse root_state comes from Fitch composition counts.
     // All 8 positions should be A at root (3/4 leaves have A at pos 0).
@@ -424,8 +415,8 @@ mod tests {
     )?;
 
     let tree_nwk = "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;";
-    let (graph, partition) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
+    let (graph, fitch) = setup_sparse(tree_nwk, &aln)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // Position 0: A->G on the mut1 branch. nij[G, A] += 1
     assert!(
@@ -526,8 +517,8 @@ mod tests {
     )?;
 
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
-    let (graph, partition) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
+    let (graph, fitch) = setup_sparse(tree_nwk, &aln)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // All Ti values should be equal (uniform composition, no mutations)
     pretty_assert_ulps_eq!(counts.Ti[IDX_A], counts.Ti[IDX_C], epsilon = 1e-9);
@@ -563,10 +554,10 @@ mod tests {
     let tree_nwk = "((A:0.05,B:0.05)AB:0.1,(C:0.05,D:0.05)CD:0.1)root:0.0;";
 
     let (graph_d, partition_d) = setup_dense(tree_nwk, &aln)?;
-    let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
+    let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     // Both should have their largest off-diagonal nij entry in the same cell
     let dense_max_cell = dense
@@ -640,10 +631,10 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
     let (graph_d, partition_d) = setup_dense(tree_nwk, &aln)?;
-    let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
+    let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     for k in 0..4 {
       pretty_assert_ulps_eq!(0.0, dense.nij[[k, k]], epsilon = 1e-15);
@@ -673,10 +664,10 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
     let (graph_d, partition_d) = setup_dense(tree_nwk, &aln)?;
-    let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
+    let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     for ((i, j), &v) in dense.nij.indexed_iter() {
       assert!(v >= 0.0, "Dense nij[{i},{j}] should be non-negative, got {v}");
@@ -708,10 +699,10 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
     let (graph_d, partition_d) = setup_dense(tree_nwk, &aln)?;
-    let (graph_s, partition_s) = setup_sparse(tree_nwk, &aln)?;
+    let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &*partition_s.read_arc())?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     for (k, &v) in dense.Ti.iter().enumerate() {
       assert!(v >= 0.0, "Dense Ti[{k}] should be non-negative, got {v}");

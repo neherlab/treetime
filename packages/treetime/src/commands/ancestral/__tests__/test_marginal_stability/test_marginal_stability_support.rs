@@ -1,10 +1,11 @@
 #[cfg(test)]
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::dense::DenseSeqDis;
@@ -16,7 +17,7 @@ pub mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -113,17 +114,8 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
     let log_lh = update_marginal(&graph, &partitions)?;
     Ok((log_lh, partitions))
   }

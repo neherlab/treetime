@@ -14,10 +14,11 @@ pub mod tests {
   //! 4. Final log-LH difference should be bounded
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -27,7 +28,7 @@ pub mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_primitives::seq;
+  
 
   pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -73,17 +74,8 @@ pub mod tests {
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(graph, &partitions, aln)?;
+    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
+    let partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?))];
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)

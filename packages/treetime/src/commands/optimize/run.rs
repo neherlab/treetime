@@ -115,7 +115,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = if dense {
     if *model_name == GtrModelName::Infer {
-      let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+      let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
       let gtr = fitch.infer_gtr(&graph)?;
       log_gtr(&gtr, *model_name);
       let partition = fitch.into_marginal_dense(gtr);

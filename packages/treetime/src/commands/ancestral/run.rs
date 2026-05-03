@@ -101,7 +101,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     },
     MethodAncestral::Marginal => {
       if !dense {
-        let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+        let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
         let gtr = fitch.resolve_gtr(&graph, *model_name)?;
         write_gtr_json(&gtr, *model_name, outdir, None)?;
         log_gtr(&gtr, *model_name);
@@ -125,62 +125,60 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
           .collect_vec();
         annotate_branch_mutations(&graph, &branch_ops)?;
+      } else if *model_name == GtrModelName::Infer {
+        let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+        let gtr = fitch.infer_gtr(&graph)?;
+        write_gtr_json(&gtr, *model_name, outdir, None)?;
+        log_gtr(&gtr, *model_name);
+        let partition = fitch.into_marginal_dense(gtr);
+        let partitions = vec![Arc::new(RwLock::new(partition))];
+
+        initialize_marginal(&graph, &partitions, &aln)?;
+        update_marginal(&graph, &partitions)?;
+
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
+
+        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
+          .into_iter()
+          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+          .collect_vec();
+        annotate_branch_mutations(&graph, &branch_ops)?;
       } else {
-        if *model_name == GtrModelName::Infer {
-          let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
-          let gtr = fitch.infer_gtr(&graph)?;
-          write_gtr_json(&gtr, *model_name, outdir, None)?;
-          log_gtr(&gtr, *model_name);
-          let partition = fitch.into_marginal_dense(gtr);
-          let partitions = vec![Arc::new(RwLock::new(partition))];
+        let length = get_common_length(&aln)?;
+        let gtr = get_gtr_by_name(*model_name)?;
+        write_gtr_json(&gtr, *model_name, outdir, None)?;
+        log_gtr(&gtr, *model_name);
+        let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
+        let partitions = vec![Arc::new(RwLock::new(partition))];
 
-          initialize_marginal(&graph, &partitions, &aln)?;
-          update_marginal(&graph, &partitions)?;
+        initialize_marginal(&graph, &partitions, &aln)?;
+        update_marginal(&graph, &partitions)?;
 
-          ancestral_reconstruction_marginal(
-            &graph,
-            *reconstruct_tip_states,
-            &partitions,
-            |node, seq| {
-              let name = node.name.as_deref().unwrap_or("");
-              let desc = &node.desc;
-              output_fasta.write(name, desc, seq)
-            },
-          )?;
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
 
-          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
-            .into_iter()
-            .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-            .collect_vec();
-          annotate_branch_mutations(&graph, &branch_ops)?;
-        } else {
-          let length = get_common_length(&aln)?;
-          let gtr = get_gtr_by_name(*model_name)?;
-          write_gtr_json(&gtr, *model_name, outdir, None)?;
-          log_gtr(&gtr, *model_name);
-          let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
-          let partitions = vec![Arc::new(RwLock::new(partition))];
-
-          initialize_marginal(&graph, &partitions, &aln)?;
-          update_marginal(&graph, &partitions)?;
-
-          ancestral_reconstruction_marginal(
-            &graph,
-            *reconstruct_tip_states,
-            &partitions,
-            |node, seq| {
-              let name = node.name.as_deref().unwrap_or("");
-              let desc = &node.desc;
-              output_fasta.write(name, desc, seq)
-            },
-          )?;
-
-          let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
-            .into_iter()
-            .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-            .collect_vec();
-          annotate_branch_mutations(&graph, &branch_ops)?;
-        }
+        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
+          .into_iter()
+          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
+          .collect_vec();
+        annotate_branch_mutations(&graph, &branch_ops)?;
       }
     },
     MethodAncestral::Joint => {

@@ -32,14 +32,15 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -52,7 +53,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::seq;
+  
 
   #[rustfmt::skip]
   #[rstest]
@@ -138,21 +139,8 @@ mod tests {
 
     let sparse = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-        index: 0,
-        gtr: jc69(JC69Params {
-          alphabet: AlphabetName::Nuc,
-          ..JC69Params::default()
-        })?,
-        alphabet: SPARSE_NUC_ALPHABET.clone(),
-        length: get_common_length(&aln)?,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-        root_sequence: seq![],
-      }));
-      compress_sequences(&graph, from_ref(&partition), &aln)?;
-      update_marginal(&graph, from_ref(&partition))?;
-      infer_gtr_fitch(&*partition.read_arc(), &graph)?
+      let fitch = PartitionFitch::compress(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln)?;
+      infer_gtr_fitch(&fitch, &graph)?
     };
 
     Ok(DenseSparseGtr { dense, sparse })

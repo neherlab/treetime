@@ -3,25 +3,17 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
-  use crate::commands::ancestral::marginal::update_marginal;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
-  use maplit::btreemap;
   use ndarray::array;
-  use parking_lot::RwLock;
-  use std::slice::from_ref;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -46,22 +38,9 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
 
-    compress_sequences(&graph, from_ref(&partition), &aln)?;
-    update_marginal(&graph, from_ref(&partition))?;
-
-    let counts_actual = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
-    // Expected values reflect Fitch parsimony mutations. GTR inference reads
-    // fitch_subs() directly because it runs before marginal inference.
+    let counts_actual = get_mutation_counts_fitch(&graph, &fitch)?;
     pretty_assert_ulps_eq!(
       counts_actual.nij,
       array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
@@ -101,20 +80,9 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
 
-    compress_sequences(&graph, from_ref(&partition), &aln)?;
-    update_marginal(&graph, from_ref(&partition))?;
-
-    let counts = get_mutation_counts_fitch(&graph, &*partition.read_arc())?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
     let actual = infer_gtr_impl(
       &counts,
       &InferGtrOptions {
@@ -123,7 +91,6 @@ mod tests {
       },
     )?;
 
-    // Expected values reflect GTR inference from Fitch parsimony mutations.
     #[rustfmt::skip]
     pretty_assert_ulps_eq!(
       array![

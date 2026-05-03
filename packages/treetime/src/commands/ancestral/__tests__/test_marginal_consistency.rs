@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -23,7 +24,7 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
   use treetime_utils::make_report;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -122,18 +123,10 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalSparse>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
+    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
+    let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 
-    compress_sequences(graph, &partitions, aln)?;
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partition))
   }

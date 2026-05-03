@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
@@ -12,6 +12,7 @@ mod tests {
   use crate::commands::prune::run::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -220,17 +221,8 @@ mod tests {
     // A and B are identical: the internal edge AB should be optimized to zero
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: nuc,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -307,17 +299,8 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: nuc,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -380,17 +363,8 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: nuc,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let initial_node_count = graph.get_nodes().len();

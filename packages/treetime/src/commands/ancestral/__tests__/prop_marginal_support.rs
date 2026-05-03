@@ -2,9 +2,10 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -12,7 +13,7 @@ pub mod tests {
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   /// Run marginal ancestral reconstruction using dense representation.
   ///
@@ -81,17 +82,8 @@ pub mod tests {
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: input.gtr.clone(),
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &partitions, &input.alignment)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &input.alignment)?;
+    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(input.gtr.clone(), &graph)?))];
     let log_lh = update_marginal(&graph, &partitions)?;
     Ok((log_lh, partitions))
   }

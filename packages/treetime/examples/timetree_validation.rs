@@ -9,10 +9,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::slice::from_ref;
 use std::sync::Arc;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::commands::ancestral::fitch::compress_sequences;
 use treetime::commands::ancestral::marginal::initialize_marginal;
 use treetime::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::commands::clock::date_constraints::load_date_constraints;
@@ -27,14 +25,13 @@ use treetime::commands::timetree::utils::{
 };
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
-use treetime::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use treetime::representation::partition::fitch::PartitionFitch;
 use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::nwk_read_str;
-use treetime_primitives::seq;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::global::global_init;
 
@@ -296,17 +293,8 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   let alphabet = Alphabet::default();
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
-  let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-    index: 0,
-    gtr: jc69(JC69Params::default())?,
-    alphabet,
-    length: config.sequence_length,
-    root_sequence: seq![],
-    nodes: btreemap! {},
-    edges: btreemap! {},
-  }));
-
-  compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+  let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+  let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];

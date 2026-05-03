@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::method_newton::{newton_inner, newton_sqrt_inner};
@@ -14,6 +14,7 @@ mod tests {
   use crate::commands::optimize::run::{collect_optimize_partitions, find_zero_optimal_internal_edges};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -26,7 +27,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   /// 4-taxon tree with positive initial branch lengths on every edge.
   ///
@@ -76,17 +77,8 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 1,
-      gtr: get_gtr_by_name(model)?,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?))];
     initialize_marginal(graph, &dense_partitions, &aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

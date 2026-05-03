@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -15,7 +16,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use ndarray::prelude::*;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -26,7 +27,7 @@ mod tests {
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-  use treetime_primitives::seq;
+  
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -119,17 +120,8 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
     let alphabet = Alphabet::default();
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(graph, &partitions, aln)?;
+    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
+    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partitions))
   }
@@ -193,17 +185,8 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions_marginal_sparse = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
 
     let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
 
@@ -297,17 +280,8 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
@@ -470,17 +444,8 @@ mod tests {
           // Create alignment with single position containing this triplet
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
-          let partitions_marginal_sparse = [Arc::new(RwLock::new(PartitionMarginalSparse {
-            index: 0,
-            gtr: gtr.clone(),
-            alphabet: alphabet.clone(),
-            length: get_common_length(&aln)?,
-            nodes: btreemap! {},
-            edges: btreemap! {},
-            root_sequence: seq![],
-          }))];
-
-          compress_sequences(&graph, &partitions_marginal_sparse, &aln)?;
+          let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+          let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
 
           let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
           total_lh += log_lh.exp();
@@ -518,17 +483,8 @@ mod tests {
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: make_nonuniform_gtr()?,
-      alphabet: Alphabet::default(),
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, Alphabet::default(), &aln)?;
+    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?))];
     update_marginal(&graph, &partitions)?;
 
     let actual_by_edge = {

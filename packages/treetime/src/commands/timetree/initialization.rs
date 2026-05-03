@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
-use crate::commands::ancestral::marginal::update_marginal;
 use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
@@ -11,9 +10,7 @@ use crate::make_report;
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
-use crate::representation::partition::traits::PartitionMarginalOps;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use crate::seq::gap_fill::apply_gap_fill;
@@ -87,7 +84,7 @@ pub fn initialize_partitions(
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
-    let fitch = PartitionFitch::compress(graph, 0, alphabet.clone(), aln_data)?;
+    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln_data)?;
     let gtr = fitch
       .resolve_gtr(graph, model_name)
       .wrap_err("When resolving GTR model for sparse partition")?;
@@ -99,32 +96,30 @@ pub fn initialize_partitions(
     let sparse_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
     Ok(vec![sparse_partition])
+  } else if model_name == GtrModelName::Infer {
+    let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
+    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln_data)?;
+    let gtr = fitch
+      .infer_gtr(graph)
+      .wrap_err("When inferring GTR model from Fitch data for dense partition")?;
+    log_gtr(&gtr, model_name);
+    let partition = fitch.into_marginal_dense(gtr);
+
+    write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
+
+    let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
+      Arc::new(RwLock::new(partition));
+    Ok(vec![dense_partition])
   } else {
-    if model_name == GtrModelName::Infer {
-      let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
-      let fitch = PartitionFitch::compress(graph, 0, alphabet.clone(), aln_data)?;
-      let gtr = fitch
-        .infer_gtr(graph)
-        .wrap_err("When inferring GTR model from Fitch data for dense partition")?;
-      log_gtr(&gtr, model_name);
-      let partition = fitch.into_marginal_dense(gtr);
+    info!("GTR model: {model_name}");
+    let gtr = get_gtr_by_name(model_name).wrap_err_with(|| format!("When creating GTR model '{model_name}'"))?;
+    log_gtr(&gtr, model_name);
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
 
-      write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
 
-      let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-        Arc::new(RwLock::new(partition));
-      Ok(vec![dense_partition])
-    } else {
-      info!("GTR model: {model_name}");
-      let gtr = get_gtr_by_name(model_name).wrap_err_with(|| format!("When creating GTR model '{model_name}'"))?;
-      log_gtr(&gtr, model_name);
-      let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
-
-      write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
-
-      let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-        Arc::new(RwLock::new(partition));
-      Ok(vec![dense_partition])
-    }
+    let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
+      Arc::new(RwLock::new(partition));
+    Ok(vec![dense_partition])
   }
 }

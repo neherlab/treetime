@@ -1,14 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -18,7 +19,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   // Regression: run_optimize_mixed must not produce -inf/NaN when entering
   // with branch_length=0 and mismatched certain states. Before the fix,
@@ -58,17 +59,8 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 1,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: alphabet_sparse,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 1, alphabet_sparse, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     initialize_marginal(&graph, &dense_partitions, &aln)?;
     update_marginal(&graph, &sparse_partitions)?;
 

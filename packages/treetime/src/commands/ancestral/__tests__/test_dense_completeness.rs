@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
@@ -16,7 +17,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
 
   fn setup_dense_with_unknowns() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -65,17 +66,8 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length,
-      root_sequence: seq![],
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
-
-    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
     update_marginal(&graph, std::slice::from_ref(&partition))?;
     Ok((graph, partition))
   }
@@ -242,17 +234,8 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length,
-      root_sequence: seq![],
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
-
-    compress_sequences(&graph, std::slice::from_ref(&partition), &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
     update_marginal(&graph, std::slice::from_ref(&partition))?;
     Ok((graph, partition))
   }

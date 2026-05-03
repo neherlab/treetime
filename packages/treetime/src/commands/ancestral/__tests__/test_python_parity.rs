@@ -1,13 +1,14 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -20,7 +21,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
-  use treetime_primitives::seq;
+  
   use treetime_utils::make_report;
 
   /// Resolve the workspace root directory by walking up from the crate's manifest directory.
@@ -517,17 +518,8 @@ mod tests {
     let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?;
 
     // Sparse partition
-    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
-
-    compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
     let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?;
 
     // Log-likelihoods should match for clean sequences

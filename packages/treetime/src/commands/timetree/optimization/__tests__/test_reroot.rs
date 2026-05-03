@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -10,6 +10,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
+  use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::sparse::{
@@ -88,18 +89,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
-
-    let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
-    compress_sequences(&graph, &partitions_for_compress, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None);
@@ -493,18 +484,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
-
-    let partitions_for_compress: [Arc<RwLock<PartitionMarginalSparse>>; 1] = [Arc::clone(&sparse_partition)];
-    compress_sequences(&graph, &partitions_for_compress, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None);

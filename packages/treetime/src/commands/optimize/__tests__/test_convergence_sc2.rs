@@ -1,21 +1,22 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+  
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::commands::optimize::run::{collect_optimize_partitions, run_optimize_loop};
-  use crate::gtr::get_gtr::{JC69Params, get_gtr_sparse, jc69};
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use eyre::Report;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use std::path::Path;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::seq;
+  
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
@@ -37,24 +38,9 @@ mod tests {
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
     let mut graph = nwk_read_file(&tree_path)?;
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
-
-    // Infer GTR from data (matches production flow)
-    for partition in &sparse_partitions {
-      let gtr = get_gtr_sparse(&crate::gtr::get_gtr::GtrModelName::JC69, partition, &graph)?;
-      partition.write_arc().gtr = gtr;
-    }
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -99,23 +85,9 @@ mod tests {
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
     let mut graph = nwk_read_file(&tree_path)?;
 
-    let sparse_partitions = vec![Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }))];
-
-    compress_sequences(&graph, &sparse_partitions, &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
-
-    for partition in &sparse_partitions {
-      let gtr = get_gtr_sparse(&crate::gtr::get_gtr::GtrModelName::JC69, partition, &graph)?;
-      partition.write_arc().gtr = gtr;
-    }
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

@@ -3,7 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use crate::commands::ancestral::fitch::compress_sequences;
+  
   use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::commands::clock::date_constraints::load_date_constraints;
@@ -14,17 +14,18 @@ mod tests {
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::fitch::PartitionFitch;
+  
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use rstest::rstest;
-  use std::slice::from_ref;
+  
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::seq;
+  
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Marginal sparse tests ---
@@ -49,17 +50,8 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: ALPHABET.clone(),
-      length: case.sequence_length(),
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    }));
-
-compress_sequences(&graph, from_ref(&sparse_partition), &aln)?;
+    let fitch = PartitionFitch::compress(&graph, 0, ALPHABET.clone(), &aln)?;
+    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;
