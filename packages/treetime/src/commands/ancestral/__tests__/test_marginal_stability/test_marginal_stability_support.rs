@@ -4,8 +4,8 @@ pub mod tests {
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::dense::DenseSeqDis;
@@ -17,7 +17,6 @@ pub mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 

@@ -11,8 +11,8 @@ mod tests {
   };
   use crate::commands::prune::run::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -364,7 +364,9 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
     let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let initial_node_count = graph.get_nodes().len();

@@ -73,7 +73,6 @@ exactly.
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral      | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
 | Medium     | Ancestral      | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                                                   |
-| ~~Medium~~ | ~~Core~~       | ~~[Dummy GTR initialization pattern across commands](M-core-dummy-gtr-initialization.md)~~ (RESOLVED)                                               |
 | Medium     | Clock          | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                                                 |
 | Medium     | Dates          | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
 | Medium     | GTR            | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |

@@ -1,22 +1,21 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  
+
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::commands::optimize::run::{collect_optimize_partitions, run_optimize_loop};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::fitch::PartitionFitch;
-  
+
   use eyre::Report;
-  
+
   use parking_lot::RwLock;
   use std::path::Path;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
-  
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
@@ -39,7 +38,9 @@ mod tests {
     let mut graph = nwk_read_file(&tree_path)?;
 
     let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions = vec![];
@@ -86,7 +87,9 @@ mod tests {
     let mut graph = nwk_read_file(&tree_path)?;
 
     let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
     update_marginal(&graph, &sparse_partitions)?;
 
     let dense_partitions = vec![];

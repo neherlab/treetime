@@ -49,10 +49,7 @@ pub struct TreetimeOptimizeParams {
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
 fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
-  let total_length: usize = partitions
-    .iter()
-    .map(|p| p.read_arc().sequence_length())
-    .sum();
+  let total_length: usize = partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
 
   if total_length == 0 {
     return;
@@ -203,7 +200,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 /// - Sparse partitions have compressed sequences ([`compress_sequences`]).
 /// - Dense partitions have populated profiles ([`initialize_marginal`] + [`update_marginal`]).
 /// - `mixed_partitions` contains both partition families (see [`collect_optimize_partitions`]).
-/// - Each partition's `gtr` field is the final model (dummy GTRs have been replaced).
+/// - Each partition's `gtr` field is the final model (resolved before partition construction).
 ///
 /// The indel rate is estimated once before the first iteration and held fixed
 /// throughout the loop, removing the feedback path where branch-length changes

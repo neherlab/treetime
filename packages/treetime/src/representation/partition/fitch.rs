@@ -13,7 +13,7 @@ use maplit::btreemap;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
@@ -27,8 +27,6 @@ pub struct PartitionFitch {
   pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
   pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
 }
-
-use treetime_graph::edge::GraphEdgeKey;
 
 impl PartitionFitch {
   /// Phase 1: construct and compress in one step.

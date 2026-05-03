@@ -9,10 +9,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
 /// Infer GTR model from Fitch substitution counts on a compressed partition.
-pub fn infer_gtr_fitch<N, E, D>(
-  partition: &impl PartitionCompressed,
-  graph: &Graph<N, E, D>,
-) -> Result<GTR, Report>
+pub fn infer_gtr_fitch<N, E, D>(partition: &impl PartitionCompressed, graph: &Graph<N, E, D>) -> Result<GTR, Report>
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,

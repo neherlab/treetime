@@ -15,9 +15,9 @@ mod tests {
   use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
   use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
-  
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -29,7 +29,6 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -63,10 +62,7 @@ mod tests {
     Ok((graph, partition))
   }
 
-  fn setup_sparse(
-    tree_nwk: &str,
-    aln: &[FastaRecord],
-  ) -> Result<(GraphAncestral, PartitionFitch), Report> {
+  fn setup_sparse(tree_nwk: &str, aln: &[FastaRecord]) -> Result<(GraphAncestral, PartitionFitch), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
     let alphabet = Alphabet::default();
     let fitch = PartitionFitch::compress(&graph, 0, alphabet, aln)?;

@@ -38,9 +38,9 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
-  
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -53,7 +53,6 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
-  
 
   #[rustfmt::skip]
   #[rstest]

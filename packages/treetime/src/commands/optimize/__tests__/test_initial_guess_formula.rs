@@ -6,8 +6,8 @@ mod tests {
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;

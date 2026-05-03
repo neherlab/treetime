@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  
+
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;

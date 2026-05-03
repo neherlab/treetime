@@ -6,9 +6,9 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
-  
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -21,7 +21,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
-  
+
   use treetime_utils::make_report;
 
   /// Resolve the workspace root directory by walking up from the crate's manifest directory.

@@ -5,9 +5,9 @@ use crate::gtr::gtr::GTR;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::BranchTopology;
+use crate::representation::partition::traits::HasGtr;
 use crate::representation::partition::traits::HasLogLh;
 use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::HasGtr;
 use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
@@ -47,7 +47,6 @@ impl HasGtr for PartitionMarginalSparse {
     self.length
   }
 }
-
 
 impl PartitionMarginalSparse {
   #[allow(clippy::same_name_method)]

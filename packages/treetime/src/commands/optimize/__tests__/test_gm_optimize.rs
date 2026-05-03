@@ -178,12 +178,12 @@ mod tests {
     use crate::commands::optimize::optimize_unified::initial_guess_mixed;
     use crate::commands::optimize::run::{collect_optimize_partitions, run_optimize_loop};
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::representation::partition::marginal_dense::PartitionMarginalDense;
     use crate::representation::partition::fitch::PartitionFitch;
-  
+    use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+
     use crate::representation::payload::ancestral::GraphAncestral;
     use eyre::Report;
-    
+
     use parking_lot::RwLock;
     use serde::Deserialize;
     use std::collections::BTreeMap;
@@ -192,7 +192,6 @@ mod tests {
     use std::sync::Arc;
     use treetime_io::fasta::read_many_fasta;
     use treetime_io::nwk::nwk_read_file;
-    
 
     #[derive(Clone, Deserialize)]
     pub struct GmOptimizeCase {
@@ -242,10 +241,17 @@ mod tests {
       let mut graph: GraphAncestral = nwk_read_file(&tree_path)?;
 
       let fitch = PartitionFitch::compress(&graph, 0, alphabet_sparse, &aln)?;
-      let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
+      let sparse_partitions = vec![Arc::new(RwLock::new(
+        fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+      ))];
 
       let length = get_common_length(&aln)?;
-      let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(1, jc69(JC69Params::default())?, alphabet_dense, length)))];
+      let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+        1,
+        jc69(JC69Params::default())?,
+        alphabet_dense,
+        length,
+      )))];
 
       initialize_marginal(&graph, &dense_partitions, &aln)?;
       update_marginal(&graph, &sparse_partitions)?;

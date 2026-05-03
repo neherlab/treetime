@@ -24,8 +24,8 @@ use treetime::commands::timetree::utils::{
   initialize_node_divergences,
 };
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::fitch::PartitionFitch;
+use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime_io::dates_csv::read_dates;
@@ -294,7 +294,9 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
   let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-  let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
+  let sparse_partition = Arc::new(RwLock::new(
+    fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+  ));
   dump_graph(&graph, &output_dir_str, "001_after_compress_sequences.json")?;
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];

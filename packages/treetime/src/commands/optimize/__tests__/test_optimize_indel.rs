@@ -16,8 +16,8 @@ mod tests {
   use crate::commands::optimize::run::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_neg_inf;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
@@ -32,7 +32,6 @@ mod tests {
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-  
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
   fn inject_indels_on_first_edge(
@@ -87,7 +86,9 @@ mod tests {
     }))];
 
     let fitch = PartitionFitch::compress(graph, 1, alphabet_sparse, &aln)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?))];
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
+    ))];
     initialize_marginal(graph, &dense_partitions, &aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

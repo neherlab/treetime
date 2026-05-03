@@ -3,7 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  
+
   use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::commands::clock::date_constraints::load_date_constraints;
@@ -18,19 +18,18 @@ mod tests {
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::fitch::PartitionFitch;
-  
+
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
   use itertools::Itertools;
-  
+
   use parking_lot::RwLock;
   use rstest::rstest;
-  
+
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::nwk_read_str;
-  
 
   fn extract_branch_lengths(graph: &GraphTimetree) -> Vec<f64> {
     graph

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  
+
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -16,7 +16,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use ndarray::prelude::*;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -27,7 +27,6 @@ mod tests {
   use treetime_io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-  
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -186,7 +185,9 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-    let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
+    let partitions_marginal_sparse = [Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
 
     let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
 
@@ -484,7 +485,9 @@ mod tests {
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let fitch = PartitionFitch::compress(&graph, 0, Alphabet::default(), &aln)?;
-    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?))];
+    let partitions = [Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
+    ))];
     update_marginal(&graph, &partitions)?;
 
     let actual_by_edge = {

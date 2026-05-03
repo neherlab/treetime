@@ -13,8 +13,8 @@ mod tests {
   use crate::commands::optimize::partition_ops::PartitionOptimizeVec;
   use crate::commands::optimize::run::{collect_optimize_partitions, find_zero_optimal_internal_edges};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -27,7 +27,6 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  
 
   /// 4-taxon tree with positive initial branch lengths on every edge.
   ///
@@ -78,7 +77,9 @@ mod tests {
     }))];
 
     let fitch = PartitionFitch::compress(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?))];
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?,
+    ))];
     initialize_marginal(graph, &dense_partitions, &aln)?;
     update_marginal(graph, &sparse_partitions)?;
 

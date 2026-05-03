@@ -17,8 +17,8 @@ pub mod tests {
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::fitch::PartitionFitch;
+  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -28,7 +28,6 @@ pub mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  
 
   pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -75,7 +74,9 @@ pub mod tests {
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
-    let partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?))];
+    let partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
+    ))];
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)

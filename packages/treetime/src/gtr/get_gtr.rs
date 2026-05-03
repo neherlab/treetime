@@ -1,21 +1,14 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::dense::infer_gtr_dense;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::{make_error, make_report};
+use crate::make_error;
 use clap::ValueEnum;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::info;
 use ndarray::{Array1, Array2, array};
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::path::Path;
-use std::sync::Arc;
 use strum_macros::Display;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 
@@ -95,9 +88,7 @@ pub fn write_gtr_json(
   Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize,
 )]
 pub enum GtrModelName {
-  /// Infer GTR parameters from data.
-  ///
-  /// Dense mode requires pre-populated profiles, causing two reconstruction passes.
+  /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
   JC69,
@@ -108,30 +99,6 @@ pub enum GtrModelName {
   TN93,
   #[value(name = "jtt92")]
   Jtt92,
-}
-
-/// Get GTR model for dense representation.
-///
-/// Retained for tests and future iterative GTR refinement. Production
-/// dense inference now goes through `PartitionFitch::infer_gtr`.
-#[allow(dead_code)]
-pub fn get_gtr_dense<N, E, D>(
-  name: &GtrModelName,
-  partition: &Arc<RwLock<PartitionMarginalDense>>,
-  graph: &Graph<N, E, D>,
-) -> Result<GTR, Report>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  let gtr = match name {
-    GtrModelName::Infer => infer_gtr_dense(partition, graph),
-    _ => get_gtr_by_name(*name),
-  }
-  .wrap_err_with(|| make_report!("When creating model '{name}'"))?;
-  log_gtr(&gtr, *name);
-  Ok(gtr)
 }
 
 pub fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {

@@ -3,7 +3,6 @@ use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
-use maplit::btreemap;
 use crate::make_error;
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;
@@ -14,6 +13,7 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use itertools::Itertools;
 use log::info;
+use maplit::btreemap;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::path::Path;
@@ -109,16 +109,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
         update_marginal(&graph, &partitions)?;
-        ancestral_reconstruction_marginal(
-          &graph,
-          *reconstruct_tip_states,
-          &partitions,
-          |node, seq| {
-            let name = node.name.as_deref().unwrap_or("");
-            let desc = &node.desc;
-            output_fasta.write(name, desc, seq)
-          },
-        )?;
+        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
+          let name = node.name.as_deref().unwrap_or("");
+          let desc = &node.desc;
+          output_fasta.write(name, desc, seq)
+        })?;
 
         let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
           .into_iter()
@@ -136,16 +131,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
 
-        ancestral_reconstruction_marginal(
-          &graph,
-          *reconstruct_tip_states,
-          &partitions,
-          |node, seq| {
-            let name = node.name.as_deref().unwrap_or("");
-            let desc = &node.desc;
-            output_fasta.write(name, desc, seq)
-          },
-        )?;
+        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
+          let name = node.name.as_deref().unwrap_or("");
+          let desc = &node.desc;
+          output_fasta.write(name, desc, seq)
+        })?;
 
         let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
           .into_iter()
@@ -163,16 +153,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
 
-        ancestral_reconstruction_marginal(
-          &graph,
-          *reconstruct_tip_states,
-          &partitions,
-          |node, seq| {
-            let name = node.name.as_deref().unwrap_or("");
-            let desc = &node.desc;
-            output_fasta.write(name, desc, seq)
-          },
-        )?;
+        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
+          let name = node.name.as_deref().unwrap_or("");
+          let desc = &node.desc;
+          output_fasta.write(name, desc, seq)
+        })?;
 
         let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
           .into_iter()
