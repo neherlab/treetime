@@ -89,7 +89,6 @@ impl PartitionBranchOps for PartitionMarginalDense {
     let mut subs = Vec::new();
 
     for (pos, parent, child) in izip!(0..parent_profile.nrows(), parent_profile.rows(), child_profile.rows()) {
-
       let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
       let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
       if parent_state == child_state {

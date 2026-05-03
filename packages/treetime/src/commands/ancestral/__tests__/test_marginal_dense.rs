@@ -108,6 +108,31 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
+  static TREE_7_TAXON: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+
+  static ALN_7_TAXON: LazyLock<Vec<FastaRecord>> = LazyLock::new(|| {
+    read_many_fasta_str(
+      indoc! {r#"
+      >root
+      TCAGCCATGTATTG--
+      >AB
+      ACATCCCTGTA-TG--
+      >A
+      ACATCGCCNNA--GAC
+      >B
+      GCATCCCTGTA-NG--
+      >CD
+      CCGGCCATGTATTG--
+      >C
+      CCGGCGATGTRTTG--
+      >D
+      TCGGCCGTGTRTTG--
+    "#},
+      &*NUC_ALPHABET,
+    )
+    .unwrap()
+  });
+
   /// Verify that dense marginal ancestral reconstruction infers the expected
   /// ancestral sequences at internal nodes.
   ///
@@ -127,26 +152,6 @@ mod tests {
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
     rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
-    let aln = read_many_fasta_str(
-      indoc! {r#"
-      >root
-      TCAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
-      >A
-      ACATCGCCNNA--GAC
-      >B
-      GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
-      >C
-      CCGGCGATGTRTTG--
-      >D
-      TCGGCCGTGTRTTG--
-    "#},
-      &*NUC_ALPHABET,
-    )?;
-
     let expected = read_many_fasta_str(
       indoc! {r#"
       >root
@@ -162,27 +167,16 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
 
-    let partitions_marginal_dense = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
-
-    initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
+    let (_, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(&graph, false, &partitions_marginal_dense, |node, seq| {
+    ancestral_reconstruction_marginal(&graph, false, &partitions, |node, seq| {
       actual.insert(node.name.clone(), seq.to_string());
       Ok(())
     })?;
@@ -210,33 +204,13 @@ mod tests {
   /// model combination.
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
-      indoc! {r#"
-      >root
-      TCAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
-      >A
-      ACATCGCCNNA--GAC
-      >B
-      GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
-      >C
-      CCGGCGATGTRTTG--
-      >D
-      TCGGCCGTGTRTTG--
-    "#},
-      &*NUC_ALPHABET,
-    )?;
-
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
 
-    let (log_lh, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
+    let (log_lh, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
     // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
@@ -277,33 +251,13 @@ mod tests {
   /// in-place mutation of node/edge profiles.
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
-      indoc! {r#"
-      >root
-      TCAGCCATGTATTG--
-      >AB
-      ACATCCCTGTA-TG--
-      >A
-      ACATCGCCNNA--GAC
-      >B
-      GCATCCCTGTA-NG--
-      >CD
-      CCGGCCATGTATTG--
-      >C
-      CCGGCGATGTRTTG--
-      >D
-      TCGGCCGTGTRTTG--
-    "#},
-      &*NUC_ALPHABET,
-    )?;
-
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
 
-    let (log_lh_init, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
+    let (log_lh_init, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
@@ -359,10 +313,9 @@ mod tests {
     let log_lh2 = run_dense_lh_for_newick(tree2, &aln, gtr2)?;
     let log_lh3 = run_dense_lh_for_newick(tree3, &aln, gtr3)?;
 
-    let epsilon = 1e-6;
-    assert_ulps_eq!(log_lh1, log_lh2, epsilon = epsilon);
-    assert_ulps_eq!(log_lh1, log_lh3, epsilon = epsilon);
-    assert_ulps_eq!(log_lh2, log_lh3, epsilon = epsilon);
+    assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
+    assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
+    assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
 
     Ok(())
   }
@@ -408,26 +361,12 @@ mod tests {
     })?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
-    // Generate all possible triplets (4^3 = 64 combinations)
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
       for &state_b in &states {
         for &state_c in &states {
-          // Create alignment with single position containing this triplet
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
-
-          let partitions_marginal_dense = [Arc::new(RwLock::new(PartitionMarginalDense {
-            index: 0,
-            gtr: gtr.clone(),
-            alphabet: alphabet.clone(),
-            length: get_common_length(&aln)?,
-            nodes: btreemap! {},
-            edges: btreemap! {},
-          }))];
-
-          initialize_marginal(&graph, &partitions_marginal_dense, &aln)?;
-
-          let log_lh = update_marginal(&graph, &partitions_marginal_dense)?;
+          let (log_lh, _) = run_dense_marginal(&graph, &aln, gtr.clone())?;
           total_lh += log_lh.exp();
         }
       }
