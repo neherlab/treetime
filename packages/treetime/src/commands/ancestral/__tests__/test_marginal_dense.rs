@@ -303,15 +303,13 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
+    let (log_lh_init, partitions) = run_dense_marginal(&graph, &aln, gtr)?;
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
-    // Regression check: same tree/alignment/model as normalization test
-    // pretty_assert_ulps_eq!(-57.83384186579029, log_lh_first, epsilon = 1e-6);
-
-    // Idempotency: second pass must produce identical log-likelihood
+    // Repeated updates must produce identical log-likelihood to initialization
+    assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
     assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
