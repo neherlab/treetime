@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::commands::timetree::partition_ops::PartitionRerootOps;
+use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeOps};
 use crate::gtr::gtr::GTR;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::marginal_passes;
@@ -260,8 +261,8 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,
-  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
-    crate::commands::optimize::optimize_unified::OptimizationContribution::from_sparse(edge_key, self)
+  ) -> Result<OptimizationContribution, Report> {
+    OptimizationContribution::from_sparse(edge_key, self)
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
@@ -269,7 +270,7 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
   }
 }
 
-impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalSparse
+impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,

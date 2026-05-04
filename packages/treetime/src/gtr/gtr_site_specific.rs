@@ -1,5 +1,5 @@
 use crate::gtr::gtr::eig_single_site;
-use crate::make_error;
+use crate::{make_error, make_report};
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray::{Array3, Array4};
@@ -224,7 +224,7 @@ impl GTRSiteSpecific {
     let pi = {
       let mut pi = Array2::zeros((n_states, seq_len));
       if pi_dirichlet_alpha > 0.0 {
-        let gamma = Gamma::new(pi_dirichlet_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        let gamma = Gamma::new(pi_dirichlet_alpha, 1.0).map_err(|e| make_report!("{e}"))?;
         for a in 0..seq_len {
           for i in 0..n_states {
             pi[[i, a]] = rng.sample(gamma);
@@ -241,7 +241,7 @@ impl GTRSiteSpecific {
     let W = {
       let mut W = Array2::zeros((n_states, n_states));
       if W_dirichlet_alpha > 0.0 {
-        let gamma = Gamma::new(W_dirichlet_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        let gamma = Gamma::new(W_dirichlet_alpha, 1.0).map_err(|e| make_report!("{e}"))?;
         for i in 0..n_states {
           for j in 0..i {
             let val: f64 = rng.sample(gamma);
@@ -260,7 +260,7 @@ impl GTRSiteSpecific {
     let mu = {
       let mut mu = Array1::zeros(seq_len);
       if mu_gamma_alpha > 0.0 {
-        let gamma = Gamma::new(mu_gamma_alpha, 1.0).map_err(|e| eyre::eyre!("{e}"))?;
+        let gamma = Gamma::new(mu_gamma_alpha, 1.0).map_err(|e| make_report!("{e}"))?;
         for a in 0..seq_len {
           mu[a] = rng.sample(gamma);
         }

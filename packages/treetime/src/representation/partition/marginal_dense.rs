@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
+use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::commands::timetree::partition_ops::PartitionRerootOps;
+use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeOps};
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
@@ -158,8 +159,8 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
   fn create_edge_contribution(
     &self,
     edge_key: GraphEdgeKey,
-  ) -> Result<crate::commands::optimize::optimize_unified::OptimizationContribution, Report> {
-    Ok(crate::commands::optimize::optimize_unified::OptimizationContribution::from_dense(edge_key, self))
+  ) -> Result<OptimizationContribution, Report> {
+    Ok(OptimizationContribution::from_dense(edge_key, self))
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
@@ -167,7 +168,7 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
   }
 }
 
-impl<N, E> crate::commands::timetree::partition_ops::PartitionTimetreeOps<N, E> for PartitionMarginalDense
+impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalDense
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,

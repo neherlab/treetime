@@ -26,7 +26,7 @@ use crate::commands::timetree::output::confidence::{
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
-use crate::make_error;
+use crate::{make_error, make_report};
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::ancestral::annotate_branch_mutations;
 use crate::representation::payload::timetree::EdgeTimetree;
@@ -443,7 +443,7 @@ fn build_covariation_clock_params(
   } else {
     args
       .sequence_length
-      .ok_or_else(|| eyre::eyre!("--sequence-length required for --covariation without alignment"))? as f64
+      .ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))? as f64
   };
 
   // v0 default: OVER_DISPERSION = 10 (config.py:8), overridable via --tip-slack

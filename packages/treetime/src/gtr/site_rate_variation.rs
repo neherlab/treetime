@@ -1,7 +1,7 @@
 use eyre::Report;
 use ndarray::Array1;
 use statrs::distribution::{ContinuousCDF, Gamma};
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_report};
 
 /// Compute K discrete rate categories approximating a Gamma(alpha, alpha) distribution.
 ///
@@ -54,13 +54,13 @@ pub fn discrete_gamma_rates(alpha: f64, n_categories: usize) -> Result<Array1<f6
 
   // Gamma(alpha, alpha) has mean = alpha/alpha = 1.0
   let gamma =
-    Gamma::new(alpha, alpha).map_err(|e| eyre::eyre!("Failed to create Gamma({alpha}, {alpha}) distribution: {e}"))?;
+    Gamma::new(alpha, alpha).map_err(|e| make_report!("Failed to create Gamma({alpha}, {alpha}) distribution: {e}"))?;
 
   // Gamma(alpha+1, alpha) for computing conditional means within quantile intervals.
   // Derivation: integral of x * f_{a,b}(x) dx = (a/b) * F_{a+1,b}(x)
   // For a=alpha, b=alpha: integral = 1 * F_{alpha+1,alpha}(x)
   let gamma_next = Gamma::new(alpha + 1.0, alpha)
-    .map_err(|e| eyre::eyre!("Failed to create Gamma({}, {alpha}) distribution: {e}", alpha + 1.0))?;
+    .map_err(|e| make_report!("Failed to create Gamma({}, {alpha}) distribution: {e}", alpha + 1.0))?;
 
   let k = n_categories as f64;
   let mut rates = Array1::zeros(n_categories);

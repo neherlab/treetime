@@ -5,11 +5,12 @@ use crate::commands::mugration::gtr_refinement::refine_gtr_iterative;
 use crate::commands::mugration::input::MugrationInput;
 use crate::commands::mugration::output::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::make_error;
+use crate::{make_error, make_report};
 use crate::representation::discrete_states::DiscreteStates;
 use crate::representation::partition::discrete::PartitionDiscrete;
 use crate::representation::payload::ancestral::GraphAncestral;
 use eyre::Report;
+use std::path::Path;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use log::{info, warn};
@@ -115,7 +116,7 @@ pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationIn
   } = args;
 
   // Read tree
-  let tree_path = tree.as_ref().ok_or_else(|| eyre::eyre!("Tree file is required"))?;
+  let tree_path = tree.as_ref().ok_or_else(|| make_report!("Tree file is required"))?;
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
 
   // Read trait values
@@ -279,7 +280,7 @@ fn write_annotated_tree(
   graph: &GraphAncestral,
   partition: &PartitionDiscrete,
   traits: &MugrationTraitsOutput,
-  outdir: &std::path::Path,
+  outdir: &Path,
 ) -> Result<(), Report> {
   let provider = PartitionCommentProvider::new(partition, &traits.attribute);
   let providers = CommentProviders::new().with(&provider);
@@ -292,11 +293,11 @@ fn write_annotated_tree(
   Ok(())
 }
 
-fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &std::path::Path) -> Result<(), Report> {
+fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &Path) -> Result<(), Report> {
   json_write_file(outdir.join("gtr.json"), gtr, JsonPretty(true))
 }
 
-fn write_confidence_csv(result: &MugrationResult, output_path: &std::path::Path) -> Result<(), Report> {
+fn write_confidence_csv(result: &MugrationResult, output_path: &Path) -> Result<(), Report> {
   fs::write(output_path, result.confidence.render_csv())?;
   Ok(())
 }
