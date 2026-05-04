@@ -49,6 +49,7 @@ pub fn write_clock_regression_chart_png(
   _clock_model: &ClockModel,
   _filepath: impl AsRef<Path>,
 ) -> Result<(), Report> {
+  log::warn!("PNG chart output requested but binary was built without the 'png' feature");
   Ok(())
 }
 

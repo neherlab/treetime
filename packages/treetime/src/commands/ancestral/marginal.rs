@@ -70,9 +70,10 @@ where
 
     let seq: Seq = if !partitions.is_empty() {
       let mut partition = partitions[0].write_arc();
-      partition
-        .reconstruct_node_sequence(&node, include_leaves)
-        .unwrap_or_else(|| seq![])
+      partition.reconstruct_node_sequence(&node, include_leaves).unwrap_or_else(|| {
+        log::warn!("Missing reconstruction for node {:?}, using empty sequence", node.key);
+        seq![]
+      })
     } else {
       seq![]
     };

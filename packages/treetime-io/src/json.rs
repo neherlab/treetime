@@ -74,5 +74,11 @@ pub fn json_or_yaml_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T
 /// know the exact type. Usage: add attribute `#[serde(skip_serializing_if = "is_json_value_null")]` to a struct field
 /// you want to skip.
 pub fn is_json_value_null<T: Serialize>(t: &T) -> bool {
-  serde_json::to_value(t).unwrap_or(serde_json::Value::Null).is_null()
+  match serde_json::to_value(t) {
+    Ok(v) => v.is_null(),
+    Err(e) => {
+      log::warn!("JSON serialization failed during null check, treating as null: {e}");
+      true
+    },
+  }
 }

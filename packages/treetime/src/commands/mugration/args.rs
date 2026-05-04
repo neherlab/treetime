@@ -35,7 +35,7 @@ pub struct TreetimeMugrationArgs {
   #[clap(value_hint = ValueHint::AnyPath)]
   pub confidence: Option<PathBuf>,
 
-  /// Pseudo-counts. Higher numbers results in 'flatter' models.
+  /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
   #[clap(long)]
   pub pc: Option<f64>,
 
