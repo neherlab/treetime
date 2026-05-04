@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::commands::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::representation::partition::fitch::PartitionFitch;

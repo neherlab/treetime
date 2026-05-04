@@ -1,5 +1,3 @@
-#![allow(unused_qualifications)]
-
 use crate::cli::jobs::Jobs;
 use crate::cli::verbosity::Verbosity;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
