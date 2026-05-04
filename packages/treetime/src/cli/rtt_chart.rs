@@ -88,7 +88,7 @@ pub fn print_clock_regression_chart(results: &[ClockRegressionResult], clock_mod
   }
   println!("{table}");
 
-  let (width, height) = terminal::size()?;
+  let (width, height) = terminal::size().unwrap_or((120, 40));
   let width = clamp(width, 0, 1024) as u32;
   let height = clamp(height, 0, 1024) as u32;
 
@@ -136,15 +136,14 @@ pub(crate) fn gather_points(
 ) -> Result<PointsResult, Report> {
   assert!(!results.is_empty());
 
-  let (norms, outliers): (Vec<_>, Vec<_>) = results.iter().partition(|result| result.is_outlier);
+  let (outliers, norms): (Vec<_>, Vec<_>) = results.iter().partition(|result| result.is_outlier);
 
-  let norm_points = outliers
+  let norm_points = norms
     .into_iter()
-    .cloned()
     .filter_map(|result| result.date.map(|date| (date as f32, result.div as f32)))
     .collect_vec();
 
-  let outlier_points = norms
+  let outlier_points = outliers
     .into_iter()
     .filter_map(|result| result.date.map(|date| (date as f32, result.div as f32)))
     .collect_vec();

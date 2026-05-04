@@ -1,12 +1,6 @@
 use treetime_primitives::{AsciiChar, Seq};
 
-// Finds contiguous ranges (segments) in the sequence, such that for every character inside every range,
-// the predicate function returns true and every range contains only the same letter.
-//
-// The predicate is a function that takes a character and returns boolean.
-//
-// For example if predicate returns `true` for characters A and C, this function will find ranges `AAAA`, `CCCCC`, `ACCCACAAA`
-// but not `ZZZZZ`.
+// Finds maximal contiguous ranges in the sequence where the predicate returns true for every character.
 #[inline]
 pub fn find_letter_ranges_by<F>(seq: &Seq, pred: F) -> Vec<(usize, usize)>
 where

@@ -57,7 +57,6 @@ exactly.
 | High       | Ancestral      | [Ancestral joint method default panics](H-ancestral-joint-default-panics.md)                                                                        |
 | High       | Clock          | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                                     |
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
-| High       | Clock          | [Clock covariation divides by zero when sequence length is absent](H-clock-covariation-divide-by-zero.md)                                           |
 | High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
 | High       | Homoplasy      | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
 | Medium     | Optimize       | [`--no-indels` flag does not gate `initial_guess_mixed()`](M-optimize-no-indels-initial-guess-not-gated.md)                                         |
@@ -141,8 +140,6 @@ exactly.
 | Medium     | Timetree       | [resolve_polytomies_with_options ignores merge_compressed parameter](M-timetree-polytomy-merge-compressed-ignored.md)                               |
 | Medium     | Timetree       | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                         |
 | Medium     | Ancestral      | [Stdin FASTA path reads one record and truncates multi-record alignments](M-ancestral-stdin-fasta-truncation.md)                                    |
-| Medium     | CLI            | [RTT chart gather_points swaps normal and outlier series](M-cli-rtt-chart-partition-inversion.md)                                                   |
-| Medium     | CLI            | [RTT chart aborts clock command on non-TTY output](M-cli-rtt-chart-non-tty-abort.md)                                                                |
 | Medium     | Clock          | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock          | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |
 | Medium     | Discrete       | [DiscreteNodeData::missing(0) produces inf-filled profile](M-discrete-missing-zero-states-inf.md)                                                   |

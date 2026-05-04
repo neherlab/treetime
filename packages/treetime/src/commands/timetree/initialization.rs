@@ -45,7 +45,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
       apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
     }
     Some(records)
-  } else if args.input_fastas.is_empty() && args.branch_length_mode != BranchLengthMode::Input {
+  } else if args.branch_length_mode != BranchLengthMode::Input {
     return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \
        Provide FASTA files or use --branch-length-mode=input"

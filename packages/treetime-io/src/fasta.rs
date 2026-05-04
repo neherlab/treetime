@@ -33,7 +33,7 @@ impl FastaRecord {
   }
 
   pub fn is_empty(&self) -> bool {
-    self.seq_name.is_empty() && self.seq_name.is_empty() && self.desc.is_none() && self.index == 0
+    self.seq_name.is_empty() && self.seq.is_empty() && self.desc.is_none() && self.index == 0
   }
 
   pub fn header(&self) -> String {

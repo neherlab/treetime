@@ -11,6 +11,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
+use crate::make_report;
 use eyre::{Report, WrapErr};
 use log::info;
 use treetime_io::dates_csv::read_dates;
@@ -59,7 +60,8 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   // Split workflow into a separate blocks depending whether covariation is used or not
   let (clock_model, new_outliers) = if *covariation {
-    let seq_len = sequence_length.unwrap_or(0) as f64; // should error if sequence_length is None and covariation is true
+    let seq_len = sequence_length
+      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))? as f64;
     let tip_slack = tip_slack.unwrap_or(3.0);
     let overdispersion = 2.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
     let options = ClockParams {
