@@ -291,6 +291,7 @@ where
 
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
       let branch_length = edge_payload.branch_length().unwrap_or(0.0);
+      let branch_length = fix_branch_length(partition.length, branch_length);
 
       msgs_to_combine.push(if partition.gtr.has_site_rates() {
         propagate_raw_per_site(

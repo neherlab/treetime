@@ -361,6 +361,7 @@ where
         let edge = &self.edges[edge_key];
         let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
         let branch_length = edge_payload.branch_length().unwrap_or(0.0);
+        let branch_length = fix_branch_length(self.length, branch_length);
         let msg_child = self.gtr.evolve(&edge.msg_to_child.dis, branch_length, false);
         log_lh += edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh;
         dis = Some(match dis {
