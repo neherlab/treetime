@@ -70,4 +70,4 @@ compromise but introduces a new threshold parameter.
 - `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`
   and `prune_and_merge_in_loop`
 - `packages/legacy/treetime/treetime/treeanc.py` `prune_short_branches` (line 1475)
-- M-optimize-sparse-em-2-cycle (resolved) (**fixed**) -- the sparse 2-cycle non-convergence may have contributed to per-branch divergence; v1 defaults now match v0 (`max_iter=10`, `dp=0.1`)
+- Sparse EM 2-cycle non-convergence (fixed): v1 defaults now match v0 (`max_iter=10`, `dp=0.1`), which may have contributed to per-branch divergence

@@ -1,6 +1,6 @@
 # Dead CLI flags in timetree
 
-11 flags are parsed by clap but never read in the timetree pipeline:
+12 flags are parsed by clap but never read in the timetree pipeline:
 
 | Flag                       | Notes                                  |
 | -------------------------- | -------------------------------------- |
@@ -33,4 +33,3 @@ always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`,
 ## Related issues
 
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
-- [--aln flag silently ignored](M-timetree-aln-flag-ignored.md) `--aln` also dead, causes confusing error

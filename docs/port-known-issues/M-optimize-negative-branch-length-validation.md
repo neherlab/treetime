@@ -54,7 +54,7 @@ if branch_length == 0.0 && indel_count > 0 { … }
 
 A negative value reaches `evaluate_with_indels → poisson_indel_log_lh` with `t < 0` and `k > 0`:
 
-- **Debug build**: `debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}")` — **panic/crash**.
+- **Debug build**: `debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}")` - **panic/crash**.
 - **Release build**: The assert is compiled out. `ln(mu * t)` with `t < 0` computes `ln(negative)` = `NaN`, which propagates silently through the rest of optimization. Results are silently wrong.
 
 For edges with no indels in `Never` mode, the substitution-side evaluation (`exp(eigvals * t)` with `t < 0`) produces mathematically valid but physically wrong exponentials. No crash, but the optimizer starts from an incorrect position. **No message emitted.**
@@ -114,7 +114,7 @@ Define a single canonical predicate that treats a branch length as valid only wh
 
 ### `Auto` skip condition in `initial_guess_mixed`
 
-The current skip logic has two branches of intent: skip if the value is already good, rewrite otherwise. The indel-count term in the condition exists for a specific reason (zero BL is invalid when indels are present, even though zero is finite and non-negative — the Poisson derivative diverges there). Any replacement must preserve that nuance, not flatten it into a single validity check. Be careful about collapsing or simplifying this condition without reading the surrounding comment and understanding why zero is treated differently.
+The current skip logic has two branches of intent: skip if the value is already good, rewrite otherwise. The indel-count term in the condition exists for a specific reason (zero BL is invalid when indels are present, even though zero is finite and non-negative - the Poisson derivative diverges there). Any replacement must preserve that nuance, not flatten it into a single validity check. Be careful about collapsing or simplifying this condition without reading the surrounding comment and understanding why zero is treated differently.
 
 ### `Never`-mode guard
 
@@ -149,7 +149,7 @@ The fix touches four distinct code paths across three different entry modes. Cov
 
 **Boundary conditions:**
 
-- Exactly-zero BL on an indel-free edge (should remain valid — zero branch length is a meaningful optimizer result)
+- Exactly-zero BL on an indel-free edge (should remain valid - zero branch length is a meaningful optimizer result)
 - Exactly-zero BL on an indel-bearing edge (handled by existing bootstrap, should not regress)
 - Mixed tree: some negative, some zero, some positive BLs across different edge types
 - Tree with no invalid BLs: no warning emitted, no regression in any mode

@@ -5,10 +5,9 @@ error at runtime with "not yet implemented" via `make_error!()`.
 
 ## Location
 
-[`run.rs#L503-L509`](../../packages/treetime/src/commands/timetree/run.rs#L503-L509)
+[`run.rs#L503-L508`](../../packages/treetime/src/commands/timetree/run.rs#L503-L508)
 
 ## Related issues
 
-- N-timetree-plot-arg-type (resolved): the flags previously had the wrong type (`Option<usize>` instead of `Option<PathBuf>`)
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   `root_to_tip_regression.pdf` and `timetree.pdf` listed as missing outputs

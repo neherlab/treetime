@@ -10,7 +10,7 @@ A Rust crate for numerical optimization providing the `Solver` trait, `Executor`
 
 ## Brent's method
 
-A derivative-free 1D optimization algorithm combining golden-section search with successive parabolic interpolation. Guaranteed to converge within a bracket. Convergence order ~1.325 (tribonacci constant). Used by TreeTime v0 for branch lengths and by v1 (via argmin BrentOpt) for root-split, Tc, and polytomy merge-time optimization. Brent 1973.
+A derivative-free 1D optimization algorithm combining golden-section search with successive parabolic interpolation. Guaranteed to converge within a bracket. Convergence order ~1.325 (plastic number). Used by TreeTime v0 for branch lengths and by v1 (via argmin BrentOpt) for root-split, Tc, and polytomy merge-time optimization. Brent 1973.
 
 ## BrentOpt / BrentRoot
 

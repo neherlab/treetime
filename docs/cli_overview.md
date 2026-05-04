@@ -3,8 +3,8 @@
 Many of TreeTime's commands define related workflows that contain each other partly.
 The main difference between different workflows are whether they
 
-* use sequence information (optional in some)
-* use date information
+- use sequence information (optional in some)
+- use date information
 
 The `homoplasy` and `mugration` are simple wrappers that can be added at a later point.
 
@@ -72,7 +72,7 @@ This complexity should be disentangled and made more explicit.
 
 #### Steps
 
-* `TreeTime.run` which under the hood does
+- `TreeTime.run` which under the hood does
   - initial iteration:
     - optimize the tree unless using the input branch length, otherwise infer ancestral sequences if an alignment is provided, remove unsupported branches.
     - (optional) reroot and clock filter. This is happening with the
@@ -84,21 +84,19 @@ This complexity should be disentangled and made more explicit.
     - optional step: polytomy resolution
     - reinfer time tree and ancestral sequences
   - finally: evaluate rate variation and determine confidence intervals
-* Happy path:
+- Happy path:
   - `infer_ancestral_sequences`
   - `reroot`
   - `make_time_tree`
 
-
-
 #### Outputs:
 
-* rerooted time tree
-* plot of time tree
-* table with dates and root-to-tip distances
-* plot of root-to-tip distances vs time
-* (optional): coalescent models
-* molecular clock parameters
+- rerooted time tree
+- plot of time tree
+- table with dates and root-to-tip distances
+- plot of root-to-tip distances vs time
+- (optional): coalescent models
+- molecular clock parameters
 
 ## `mugration`
 
@@ -113,8 +111,8 @@ These are often geographic locations and the name is a mash-up of "migration" an
 
 #### Steps
 
-* coding of the discrete traits as one-character alphabet
-* ancestral inference via the `reconstruct_discrete_traits` wrapper. This does some magic with GTR model inference that
+- coding of the discrete traits as one-character alphabet
+- ancestral inference via the `reconstruct_discrete_traits` wrapper. This does some magic with GTR model inference that
   tries to counter sampling biases and basically inflates the rate at which characters change.
 
 #### Outputs:
@@ -123,7 +121,7 @@ These are often geographic locations and the name is a mash-up of "migration" an
 
 ## `homoplasy`
 
-Another wrapper around  `infer_ancestral_sequences`.
+Another wrapper around `infer_ancestral_sequences`.
 Here actual sequences are used and inferred.
 The command then counts how often every site is mutated and compares this to a random distribution of mutations to
 detect sites that are mutated suspiciously often.

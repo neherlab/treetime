@@ -67,8 +67,6 @@ v1: not needed for basic regression (sufficient statistics approach), but missin
 
 ---
 
----
-
 ## Numerical Hessian for Root Position
 
 Augments the 2x2 Hessian (rate, intercept) with a third parameter (root position) via finite differences, enabling root position uncertainty quantification.

@@ -1,6 +1,6 @@
 # Sequence evolution models
 
-Sequence evolution models describe the stochastic ways sequences change over time do to mutations.
+Sequence evolution models describe the stochastic ways sequences change over time due to mutations.
 If we consider just a single site and denote the probability of finding that site in state $i$ as $p_i$, these models take the form
 $$\frac{d p_i}{dt} = \sum_j Q_{ij} p_j$$
 where the matrix $Q_{ij}$ describes the rate at which the mutation changes the site from state $j$ to $i$.

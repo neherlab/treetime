@@ -36,7 +36,7 @@ The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_
 
 ## Integration note
 
-`edge_indel_count()` is on `PartitionOptimizeOps`. When `PartitionBranchOps` (branch `refactor/unified-branch-mutations-api`) is merged, move `edge_indel_count` to `PartitionBranchOps` since indel counts are a general partition property.
+`edge_indel_count()` is on `PartitionOptimizeOps`. Consider moving it to `PartitionBranchOps` since indel counts are a general partition property.
 
 ## Alternatives considered
 

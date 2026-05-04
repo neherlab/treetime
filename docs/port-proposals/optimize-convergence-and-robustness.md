@@ -199,7 +199,7 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 
 The optimizer convergence work progressed through three phases:
 
-1. **Initial convergence fixes**: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping was initially considered sufficient.
+1. **Initial convergence fixes**: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping alone is insufficient (see phase 2).
 
 2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../port-v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 

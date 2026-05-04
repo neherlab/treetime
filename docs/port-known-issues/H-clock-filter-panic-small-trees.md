@@ -31,5 +31,4 @@ Guard the IQD computation with `n < 4` check. Return an error with a descriptive
 
 ## Related
 
-- N-clock-small-trees (resolved): `assign_dates` also fails on small trees
 - [M-clock-filter-residual-parity.md](M-clock-filter-residual-parity.md): clock filter differences between v0 and v1

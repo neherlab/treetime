@@ -17,7 +17,7 @@ Key functions: `run_discrete_marginal()`, `attach_traits()`.
 
 ### Algorithm
 
-**Initialization** ([`packages/treetime/src/commands/mugration/discrete_marginal.rs#L46-L84`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs#L46-L84)):
+**Initialization** (`attach_traits()` in [`packages/treetime/src/commands/mugration/discrete_marginal.rs#L96`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs#L96)):
 
 For each leaf node:
 
@@ -26,7 +26,7 @@ For each leaf node:
 
 This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
 
-**Backward pass** (postorder, leaves to root) ([`packages/treetime/src/representation/partition/discrete.rs#L47-L122`](../../packages/treetime/src/representation/partition/discrete.rs#L47-L122)):
+**Backward pass** (postorder, leaves to root) (`process_node_backward()` in [`packages/treetime/src/representation/partition/discrete.rs#L60`](../../packages/treetime/src/representation/partition/discrete.rs#L60)):
 
 For each node in postorder:
 
@@ -46,7 +46,7 @@ For each node in postorder:
    ```
    where `P = exp(Q*t)` is the transition probability matrix for branch length `t`.
 
-**Forward pass** (preorder, root to leaves) ([`packages/treetime/src/representation/partition/discrete.rs#L125-L178`](../../packages/treetime/src/representation/partition/discrete.rs#L125-L178)):
+**Forward pass** (preorder, root to leaves) (`process_node_forward()` in [`packages/treetime/src/representation/partition/discrete.rs#L150`](../../packages/treetime/src/representation/partition/discrete.rs#L150)):
 
 For each node in preorder:
 
@@ -61,7 +61,7 @@ For each node in preorder:
    msg_to_child = normalize(profile / msg_from_child)
    ```
 
-**Trait assignment** ([`packages/treetime/src/representation/partition/discrete.rs#L37-L41`](../../packages/treetime/src/representation/partition/discrete.rs#L37-L41)):
+**Trait assignment** (`get_reconstructed_trait()` in [`packages/treetime/src/representation/partition/discrete.rs#L50`](../../packages/treetime/src/representation/partition/discrete.rs#L50)):
 
 After forward-backward passes, each node has a posterior probability distribution over states. The assigned trait is `argmax(profile)`.
 
@@ -87,13 +87,13 @@ Supporting references for missing data treatment:
 
 Constructs a GTR-like transition model for discrete traits.
 
-v1: [`packages/treetime/src/commands/mugration/run.rs#L120-L131`](../../packages/treetime/src/commands/mugration/run.rs#L120-L131).
+v1: [`packages/treetime/src/commands/mugration/run.rs#L223`](../../packages/treetime/src/commands/mugration/run.rs#L223).
 
 **v1 implementation**:
 
-- Equilibrium frequencies `pi`: uniform (1/n_states) or from weights file
+- Equilibrium frequencies `pi`: uniform (1/n_states) or from weights file, with pseudo-count smoothing
 - Exchangeability matrix `W`: uniform (all transitions equally likely)
-- Single forward-backward pass with fixed model
+- Initial forward-backward pass with uniform model, then iterative GTR refinement via `refine_gtr_iterative()` ([`packages/treetime/src/commands/mugration/gtr_refinement.rs#L28`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L28))
 
 **v0 implementation** (see [Iterative GTR for Discrete Traits](unimplemented.md#iterative-gtr-for-discrete-traits-ported)):
 
@@ -101,25 +101,25 @@ v1: [`packages/treetime/src/commands/mugration/run.rs#L120-L131`](../../packages
 - 5 iterations of `infer_gtr()` + `optimize_gtr_rate()` re-estimation
 - Final reconstruction with refined model
 
-The iterative refinement shifts equilibrium frequencies to reflect actual trait prevalence. Without it, v1 uses uniform prior weight for all states, causing argmax differences at ambiguous internal nodes.
+Both v0 and v1 perform iterative GTR refinement. v1's implementation includes two intentional improvements (pseudo-count smoothing on initial pi, root state uniform-threshold filtering) that shift posterior probabilities at ambiguous internal nodes. Remaining parity differences tracked in [Mugration golden master parity with v0](../port-known-issues/M-mugration-iterative-gtr.md).
 
 ---
 
 ## Confidence Profiles
 
-After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/representation/partition/discrete.rs#L43-L45`](../../packages/treetime/src/representation/partition/discrete.rs#L43-L45). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
+After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/representation/partition/discrete.rs#L56`](../../packages/treetime/src/representation/partition/discrete.rs#L56). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
 
 ---
 
 ## Output Files
 
-| File                   | Content                                        | v1 Status         |
-| ---------------------- | ---------------------------------------------- | ----------------- |
-| `traits.csv`           | Per-node trait assignments (all nodes)         | Complete          |
-| `annotated_tree.nexus` | Newick tree with trait annotations in comments | Complete          |
-| `annotated_tree.nwk`   | Newick tree with NHX-style trait annotations   | Complete          |
-| `gtr.json`             | GTR model parameters                           | Complete          |
-| `confidence.csv`       | Per-node posterior distributions (optional)    | Parsed, not wired |
+| File                   | Content                                        | v1 Status |
+| ---------------------- | ---------------------------------------------- | --------- |
+| `traits.csv`           | Per-node trait assignments (all nodes)         | Complete  |
+| `annotated_tree.nexus` | Newick tree with trait annotations in comments | Complete  |
+| `annotated_tree.nwk`   | Newick tree with NHX-style trait annotations   | Complete  |
+| `gtr.json`             | GTR model parameters                           | Complete  |
+| `confidence.csv`       | Per-node posterior distributions (optional)    | Complete  |
 
 ---
 
@@ -142,7 +142,7 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 
 ## Known Issues
 
-- [Iterative GTR inference not implemented for mugration](../port-known-issues/M-mugration-iterative-gtr.md) - causes argmax divergence at ambiguous internal nodes for 4/6 test datasets
+- [Mugration golden master parity with v0](../port-known-issues/M-mugration-iterative-gtr.md) - iterative GTR implemented but two intentional v1 improvements cause argmax divergence at ambiguous internal nodes for 5/7 test datasets
 
 ---
 

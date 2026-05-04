@@ -1,9 +1,9 @@
 # Optimizer and marginal propagation use incompatible branch-length scales when GTR mu ≠ 1
 
 The branch-length optimizer and `update_marginal` disagree on the meaning of the branch-length
-variable `t`. The optimizer evaluates `exp(eigvals * t)` — treating `t` as subs/site in
+variable `t`. The optimizer evaluates `exp(eigvals * t)` - treating `t` as subs/site in
 normalized eigenvalue units. `update_marginal` passes `t` to `expQt(t)`, which computes
-`exp(eigvals * mu * t)` — treating `t` as time and relying on `mu` to convert to subs/site.
+`exp(eigvals * mu * t)` - treating `t` as time and relying on `mu` to convert to subs/site.
 These are equivalent only when `mu = 1`. When the GTR is fitted from a timetree with year-scale
 branch lengths, `mu ≈ clock_rate` (e.g., `~0.0007 subs/site/year` for SARS-CoV-2), and the two
 computations diverge by a factor of roughly `1/mu ≈ 1400`. The mismatch shifts node profiles
@@ -242,7 +242,7 @@ Before implementing, the following must be confirmed:
 **Consistency checks after fix:**
 
 - For any dataset: `update_marginal` profiles after optimization should differ meaningfully from
-  root priors on leaf-adjacent edges (non-collapse check — profiles at leaves must carry
+  root priors on leaf-adjacent edges (non-collapse check - profiles at leaves must carry
   alignment signal, not be near-uniform)
 - GTR mu after the renormalization step (option A) should be `1.0 ± 1e-10` for all partitions
 - Branch lengths output by the optimizer should be consistent between `auto` and `always` modes

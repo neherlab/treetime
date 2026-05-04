@@ -679,7 +679,7 @@ Counts represent top-level feature groups (section headings and their direct chi
 | homoplasy      | 9           | 0              | 9          | 0       |
 | mugration      | 10          | 10             | 0          | 0       |
 | arg            | 4           | 0              | 4          | 0       |
-| optimize       | 0           | 0              | 0          | 8       |
+| optimize       | 5           | 3              | 5          | 2       |
 | prune          | 0           | 0              | 0          | 7       |
 | gtr            | 12          | 7              | 5          | 0       |
 | alphabet       | 6           | 5              | 1          | 0       |

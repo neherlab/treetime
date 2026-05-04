@@ -38,3 +38,7 @@ making the clock regression more sensitive to outlier tips when
 
 The `--tip-slack` CLI argument is not wired through in v1, so users cannot
 override the hardcoded value.
+
+## Fix
+
+Wire `--tip-slack` through to `ClockParams.variance_factor` and match v0's default `OVER_DISPERSION = 10`.

@@ -38,10 +38,11 @@ Files are prefixed with a severity letter so that `ls` sorts high-severity first
 | ------ | ---------- | ------------------------------------------------------------------------------- |
 | `C-`   | Critical   | Data corruption, security, blocks all usage                                     |
 | `H-`   | High       | Crashes, panics, blocks correct results, or missing standard expected feature   |
+| `L-`   | Low        | Minor inefficiency, code quality, cleanup opportunities                         |
 | `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
 | `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic gaps              |
 
-The letters C < H < M < N sort alphabetically in severity order. Domain prefix
+The letters C < H < L < M < N sort alphabetically in severity order. Domain prefix
 (`ancestral-`, `clock-`, `timetree-`, etc.) follows the severity letter, grouping
 related issues within each tier.
 
@@ -64,8 +65,8 @@ exactly.
 | High       | Timetree       | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                      |
 | Medium     | Timetree       | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)                             |
 | Medium     | Clock          | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |
-| Negligible | Clock          | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                                            |
-| Negligible | Clock          | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                                         |
+| Negligible | Clock          | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                  |
+| Negligible | Clock          | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                          |
 | Medium     | Ancestral      | [Refactor Fitch compression long functions](M-ancestral-fitch-compression-long-functions.md)                                                        |
 | Medium     | Ancestral      | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
@@ -82,8 +83,8 @@ exactly.
 | Medium     | Optimize       | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
 | Low        | Core           | [Duplicate `write_graph()` across commands](L-core-duplicate-write-graph.md)                                                                        |
 | Low        | Topology       | [Move `merge_shared_mutation_branches()` to shared topology_cleanup module](L-topology-cleanup-move-merge-shared-mutations.md)                      |
-| Low        | GTR            | [Site-specific GTR partition integration pending](L-gtr-site-specific-partition-integration.md)                                                     |
-| Low        | GTR            | [Site-specific GTR end-to-end inference test pending](L-gtr-site-specific-e2e-inference-test.md)                                                    |
+| Low        | GTR            | [Site-specific GTR not integrated into partition system](L-gtr-site-specific-partition-integration.md)                                              |
+| Low        | GTR            | [Site-specific GTR inference lacks end-to-end test from real tree data](L-gtr-site-specific-e2e-inference-test.md)                                  |
 | Low        | Representation | [`infer_dense()` stub always returns false](L-representation-infer-dense-stub.md)                                                                   |
 | Low        | Representation | [Dense and sparse partition types have structural and naming asymmetries](L-representation-dense-sparse-partition-asymmetry.md)                     |
 | Medium     | Optimize       | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
@@ -105,11 +106,11 @@ exactly.
 | Negligible | I/O            | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O            | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Low        | Optimize       | [update_marginal traverses graph twice for mixed partitions](L-optimize-double-graph-traversal-update-marginal.md)                                  |
-| Negligible | Optimize       | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                                               |
+| Low        | Optimize       | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](L-optimize-initial-guess-alloc.md)                                               |
 | Negligible | Optimize       | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                                  |
 | Negligible | Optimize       | [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md)                                                             |
 | Negligible | Optimize       | [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md)                                                                              |
-| Negligible | Optimize       | [Multi-modal surface counterexample with $\ell'(0) < 0$ not constructed](N-optimize-multimodal-counterexample-unreproduced.md)                      |
+| Negligible | Optimize       | [Multi-modal surface counterexample with $\ell'(0) < 0$ is not constructed](N-optimize-multimodal-counterexample-unreproduced.md)                   |
 | Negligible | Optimize       | [Grid search resolution (100 points) is unverified](N-optimize-grid-search-resolution-unverified.md)                                                |
 | Negligible | Optimize       | [Grid search upper bound caps at 0.5 subs/site](N-optimize-grid-search-upper-bound-capped.md)                                                       |
 | Negligible | Optimize       | [`reconcile_zero_boundary` grid extent argument is unverified](N-optimize-reconcile-grid-extent-unverified.md)                                      |
@@ -121,7 +122,7 @@ exactly.
 | Negligible | Timetree       | [timetree.json missing coalescent and skyline parameters](N-timetree-json-missing-coalescent.md)                                                    |
 | Negligible | Timetree       | [Missing output files compared to v0](N-timetree-missing-output-files.md)                                                                           |
 | Negligible | Timetree       | [Missing skyline output files](N-timetree-missing-skyline-output.md)                                                                                |
-| Negligible | Timetree       | [--n-branches-posterior panics with todo!()](N-timetree-n-branches-posterior-unimplemented.md)                                                      |
+| Negligible | Timetree       | [--n-branches-posterior returns error](N-timetree-n-branches-posterior-unimplemented.md)                                                            |
 | Negligible | Timetree       | [Negative coalescent Tc accepted without validation](N-timetree-negative-coalescent-tc.md)                                                          |
 | Negligible | Timetree       | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                                               |
 | Negligible | Timetree       | [--plot-rtt and --plot-tree return error](N-timetree-plot-unimplemented.md)                                                                         |

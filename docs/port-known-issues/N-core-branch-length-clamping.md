@@ -8,6 +8,6 @@ pass, which computes `log(expQt)` - divergent at `t=0`. Mathematically,
 requires `t > 0`.
 
 This is a documented limitation matching v0 behavior. The consequence:
-[test assertions for zero-branch-length cases](../../packages/treetime/src/commands/ancestral/__tests__/test_dense.rs#L147)
+[test assertions for zero-branch-length cases](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense.rs)
 were weakened from exact mathematical properties (`Ti == 0` with epsilon 1e-15,
 `off_diagonal < 0.1`) to `is_finite()` checks.
