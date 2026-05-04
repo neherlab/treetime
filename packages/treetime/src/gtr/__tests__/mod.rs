@@ -1,7 +1,5 @@
 mod generators;
-#[cfg(test)]
 mod prop_support;
-#[cfg(test)]
 pub mod site_specific_support;
 mod test_gm_gtr;
 mod test_gm_gtr_site_specific;

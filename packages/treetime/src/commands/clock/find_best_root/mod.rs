@@ -6,4 +6,5 @@ pub mod method_golden_section;
 pub mod method_grid_search;
 pub mod params;
 
+#[cfg(test)]
 mod __tests__;

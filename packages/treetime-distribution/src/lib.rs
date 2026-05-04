@@ -3,6 +3,7 @@ pub(crate) mod distribution_ops;
 pub(crate) mod distribution_scaled;
 pub(crate) mod policy;
 
+#[cfg(test)]
 mod __tests__;
 
 pub use distribution_core::distribution::{

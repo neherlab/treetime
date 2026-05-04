@@ -4,4 +4,5 @@ pub mod branch_length_likelihood;
 pub mod forward_pass;
 pub mod runner;
 
+#[cfg(test)]
 mod __tests__;

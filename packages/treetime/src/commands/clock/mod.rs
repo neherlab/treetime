@@ -13,4 +13,5 @@ pub mod reroot;
 pub mod rtt;
 pub mod run;
 
+#[cfg(test)]
 mod __tests__;

@@ -1,3 +1,4 @@
+#[cfg(test)]
 mod __tests__;
 pub mod bitset128;
 pub mod seq;
