@@ -63,9 +63,16 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
   let mut aln = if input_fastas.is_empty() {
     info!("Reading input fasta from standard input");
     let mut reader = FastaReader::new(open_stdin()?, &alphabet);
-    let mut record = FastaRecord::default();
-    reader.read(&mut record)?;
-    vec![record]
+    let mut records = Vec::new();
+    loop {
+      let mut record = FastaRecord::default();
+      reader.read(&mut record)?;
+      if record.is_empty() {
+        break;
+      }
+      records.push(record);
+    }
+    records
   } else {
     read_many_fasta(input_fastas, &alphabet)?
   };

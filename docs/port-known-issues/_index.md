@@ -138,7 +138,6 @@ exactly.
 | Medium     | Timetree       | [build_branch_distributions is a public todo!() stub](M-timetree-branch-distributions-todo-stub.md)                                                 |
 | Medium     | Timetree       | [resolve_polytomies_with_options ignores merge_compressed parameter](M-timetree-polytomy-merge-compressed-ignored.md)                               |
 | Medium     | Timetree       | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                         |
-| Medium     | Ancestral      | [Stdin FASTA path reads one record and truncates multi-record alignments](M-ancestral-stdin-fasta-truncation.md)                                    |
 | Medium     | Clock          | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock          | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |
 | Medium     | Discrete       | [DiscreteNodeData::missing(0) produces inf-filled profile](M-discrete-missing-zero-states-inf.md)                                                   |
