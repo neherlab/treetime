@@ -108,7 +108,7 @@ mod tests {
 
     // Resolve with very low threshold (should merge all possible pairs)
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
 
     // After resolution, ABC should have 2 children (one merge happened)
     let final_children = graph
@@ -129,7 +129,7 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
     let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 10.0)?;
+      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0)?;
 
     assert_eq!(n_resolved, 0, "Binary tree should have no resolutions");
     assert_eq!(
@@ -147,7 +147,7 @@ mod tests {
 
     // With very high threshold, no merges should occur
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, false, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, 10.0)?;
 
     assert_eq!(n_resolved, 0, "Very high threshold should prevent any merges");
 
@@ -194,7 +194,7 @@ mod tests {
 
     // Resolve polytomy
     let partitions = vec![];
-    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
+    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
 
     // Find the new internal node (not ABC, not a leaf, not root)
     // New nodes created by polytomy resolution don't have a name set
@@ -276,7 +276,7 @@ mod tests {
 
     // Resolve with very low threshold
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, false, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
 
     // 5-way polytomy needs 3 merges to become binary (5->4->3->2)
     assert_eq!(n_resolved, 3, "Should create 3 new nodes to resolve 5-way polytomy");
@@ -342,14 +342,13 @@ mod tests {
       &mut graph_high,
       &partitions,
       DEFAULT_RESOLUTION_THRESHOLD,
-      false,
       1000.0,
     )?;
 
     // Small slope: penalty negligible, branch redistribution drives merge
     let mut graph_low = create_polytomy_tree_with_realistic_distributions()?;
     let n_low =
-      resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 0.01)?;
+      resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01)?;
 
     assert!(
       n_low > n_high,
@@ -365,7 +364,7 @@ mod tests {
     let mut graph = create_polytomy_tree_with_realistic_distributions()?;
     let partitions = vec![];
     let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, false, 0.0)?;
+      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0)?;
 
     assert_eq!(n_resolved, 1, "Zero slope should allow merge");
     Ok(())

@@ -88,7 +88,6 @@ exactly.
 | Low        | Representation | [Dense and sparse partition types have structural and naming asymmetries](L-representation-dense-sparse-partition-asymmetry.md)                     |
 | Medium     | Optimize       | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
 | Medium     | GTR            | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                            |
-| Medium     | Timetree       | [--aln flag silently ignored](M-timetree-aln-flag-ignored.md)                                                                                       |
 | Medium     | Timetree       | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                        |
 | Medium     | Timetree       | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                                          |
 | Medium     | Timetree       | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                        |
@@ -136,7 +135,6 @@ exactly.
 | Medium     | Timetree       | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                         |
 | Medium     | Timetree       | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)                            |
 | Medium     | Timetree       | [build_branch_distributions is a public todo!() stub](M-timetree-branch-distributions-todo-stub.md)                                                 |
-| Medium     | Timetree       | [resolve_polytomies_with_options ignores merge_compressed parameter](M-timetree-polytomy-merge-compressed-ignored.md)                               |
 | Medium     | Timetree       | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                         |
 | Medium     | Clock          | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock          | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |

@@ -112,12 +112,6 @@ pub struct TreetimeClockArgs {
   #[clap(long)]
   pub allow_negative_rate: bool,
 
-  /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-  /// default=pdf)
-  #[clap(long)]
-  #[clap(value_hint = ValueHint::FilePath)]
-  pub plot_rtt: Option<usize>,
-
   /// Directory to write the output to
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,

@@ -33,26 +33,17 @@ pub fn resolve_polytomies(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   zero_branch_slope: f64,
 ) -> Result<usize, Report> {
-  resolve_polytomies_with_options(
-    graph,
-    partitions,
-    DEFAULT_RESOLUTION_THRESHOLD,
-    false,
-    zero_branch_slope,
-  )
+  resolve_polytomies_with_options(graph, partitions, DEFAULT_RESOLUTION_THRESHOLD, zero_branch_slope)
 }
 
 /// Resolve polytomies with configurable options.
 ///
 /// - `resolution_threshold`: minimum delta LH to merge a pair (default 0.05)
-/// - `merge_compressed`: if true, also resolve compressed branches (default false)
 /// - `zero_branch_slope`: expected substitutions per unit time (`clock_rate * sequence_length`)
-#[allow(unused_variables)]
 pub fn resolve_polytomies_with_options(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   resolution_threshold: f64,
-  merge_compressed: bool,
   zero_branch_slope: f64,
 ) -> Result<usize, Report> {
   let mut total_resolved = 0;

@@ -41,7 +41,6 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     tip_slack,
     covariation,
     allow_negative_rate,
-    plot_rtt,
     outdir,
     seed,
     branch_split,
