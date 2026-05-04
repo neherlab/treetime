@@ -70,7 +70,6 @@ exactly.
 | Negligible | Clock          | [Clock regression all-negative-rate divergence](N-clock-regression-all-negative-rate.md)                                                            |
 | Negligible | Clock          | [Clock chisq near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                                         |
 | Medium     | Ancestral      | [Refactor Fitch compression long functions](M-ancestral-fitch-compression-long-functions.md)                                                        |
-| Medium     | Ancestral      | [Dense/sparse optimization metric divergence with IUPAC ambiguity codes](M-ancestral-dense-effective-length-test-regression.md)                     |
 | Medium     | Ancestral      | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
 | Medium     | Ancestral      | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral      | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
