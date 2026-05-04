@@ -11,6 +11,7 @@ use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
+use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};
 use log::info;
@@ -50,7 +51,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let mut graph: GraphClock = if let Some(tree) = tree {
     nwk_read_file(tree)
   } else {
-    unimplemented!("Tree inference is not implemented")
+    return make_error!("Tree inference is not implemented. Provide a tree file with --tree")
   }?;
 
   {

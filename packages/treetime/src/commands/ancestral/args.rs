@@ -10,8 +10,8 @@ use std::path::PathBuf;
 #[value(rename_all = "kebab-case")]
 #[derive(Default)]
 pub enum MethodAncestral {
-  #[default]
   Joint,
+  #[default]
   Marginal,
   Parsimony,
 }

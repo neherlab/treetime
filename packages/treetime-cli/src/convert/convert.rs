@@ -87,7 +87,7 @@ pub fn convert_read_file(args: &Args, input_format: TreeFormat) -> Result<Conver
   match input_format {
     TreeFormat::Auspice => auspice_read_file::<AuspiceReader, _, _, _>(&args.input),
     TreeFormat::Newick => nwk_read_file(&args.input),
-    TreeFormat::Nexus => unimplemented!("Reading Nexus files is not yet implemented"),
+    TreeFormat::Nexus => eyre::bail!("Reading Nexus files is not yet implemented"),
     TreeFormat::PhyloGraph => json_read_file(&args.input),
     TreeFormat::MatJson => usher_mat_json_read_file::<UsherReader, _, _, _>(&args.input),
     TreeFormat::MatPb => usher_mat_pb_read_file::<UsherReader, _, _, _>(&args.input),

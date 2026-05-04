@@ -186,12 +186,10 @@ where
     return make_error!("When converting graph to Newick format: No roots found.");
   }
 
-  let root = {
-    if roots.len() > 1 {
-      unimplemented!("Multiple roots are not supported yet");
-    }
-    &roots[0]
-  };
+  if roots.len() > 1 {
+    return make_error!("Multiple roots are not supported. Found {} roots", roots.len());
+  }
+  let root = &roots[0];
 
   let mut stack: Vec<(SafeNode<N>, Option<SafeEdge<E>>, usize)> = vec![(Arc::clone(root), None, 0)];
   while let Some((node, edge, child_visit)) = stack.pop() {

@@ -167,7 +167,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       }
     },
     MethodAncestral::Joint => {
-      unimplemented!("MethodAncestral::MaximumLikelihoodJoint")
+      return make_error!("Joint ancestral reconstruction is not yet implemented. Use --method-anc=marginal or --method-anc=parsimony");
     },
   }
 

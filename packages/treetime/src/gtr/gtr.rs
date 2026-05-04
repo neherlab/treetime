@@ -1,3 +1,4 @@
+use crate::make_error;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
@@ -227,22 +228,24 @@ impl GTR {
   ///
   /// # Panics
   ///
-  /// Panics if dimensions of W or pi don't match n_states.
+  /// Returns an error if dimensions of W or pi don't match n_states.
   pub fn new(GTRParams { n_states, mu, W, pi }: GTRParams) -> Result<Self, Report> {
     let n = n_states;
 
-    assert_eq!(
-      pi.shape().to_vec(),
-      [n],
-      "Length of equilibrium frequency vector (`pi`) does not match n_states"
-    );
+    if pi.shape() != [n] {
+      return make_error!(
+        "Length of equilibrium frequency vector (pi) is {}, expected {n}",
+        pi.len()
+      );
+    }
 
     if let Some(W) = &W {
-      assert_eq!(
-        W.shape().to_vec(),
-        [n, n],
-        "Dimensions of substitution matrix (`W`) don't match n_states"
-      );
+      if W.shape() != [n, n] {
+        return make_error!(
+          "Dimensions of substitution matrix (W) are {:?}, expected [{n}, {n}]",
+          W.shape()
+        );
+      }
     }
 
     // Symmetrize W and zero diagonal

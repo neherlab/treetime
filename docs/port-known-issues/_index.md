@@ -54,7 +54,6 @@ exactly.
 
 | Severity   | Scope          | Issue                                                                                                                                               |
 | ---------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| High       | Ancestral      | [Ancestral joint method default panics](H-ancestral-joint-default-panics.md)                                                                        |
 | High       | Clock          | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                                     |
 | High       | Clock          | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
 | High       | Core           | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
@@ -143,7 +142,6 @@ exactly.
 | Medium     | Clock          | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock          | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |
 | Medium     | Discrete       | [DiscreteNodeData::missing(0) produces inf-filled profile](M-discrete-missing-zero-states-inf.md)                                                   |
-| Medium     | GTR            | [GTR::new() panics on invalid dimensions](M-gtr-new-panics-on-invalid-dimensions.md)                                                                |
 | Medium     | GTR            | [GTR site-rate property tests excluded from build](M-gtr-site-rates-tests-excluded.md)                                                              |
 | Medium     | Mugration      | [Mugration fixed_pi capture happens before pseudo-count smoothing](M-mugration-fixed-pi-timing.md)                                                  |
 | Medium     | Mugration      | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                                 |
