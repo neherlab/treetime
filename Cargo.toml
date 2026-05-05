@@ -136,6 +136,8 @@ tikv-jemallocator = "=0.6.0"
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 proptest = "=1.6.0"
+quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
+xml = "=1.0.0"
 
 phyloxml = { path = "packages/phyloxml" }
 treetime = { path = "packages/treetime" }
