@@ -14,17 +14,19 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
+# [internal]
+treetime-utils = { workspace = true }
+
+# [external]
 auto_ops = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 serde = { workspace = true }
-treetime-utils = { path = "../treetime-utils" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 serde_json = { workspace = true }
-treetime-io = { path = "../treetime-io" }
 
 [lints]
 workspace = true

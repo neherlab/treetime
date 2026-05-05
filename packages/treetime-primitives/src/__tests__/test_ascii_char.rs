@@ -3,7 +3,6 @@ mod tests {
   use crate::AsciiChar;
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use treetime_io::json::json_read_str;
   use treetime_utils::assert_error;
 
   // Note: test_deserialize_invalid_fails uses serde_json directly to verify
@@ -45,7 +44,7 @@ mod tests {
 
   #[test]
   fn test_deserialize_valid() -> Result<(), Report> {
-    let actual: AsciiChar = json_read_str("65")?;
+    let actual: AsciiChar = serde_json::from_str("65")?;
     let expected = AsciiChar::from_byte_unchecked(b'A');
     assert_eq!(actual, expected);
     Ok(())
