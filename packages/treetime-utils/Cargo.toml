@@ -10,9 +10,6 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
-[lib]
-crate-type = ["lib"]
-
 [dependencies]
 approx = { workspace = true }
 argmin = { workspace = true }
