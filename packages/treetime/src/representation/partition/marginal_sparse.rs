@@ -258,10 +258,7 @@ impl PartitionBranchOps for PartitionMarginalSparse {
 }
 
 impl PartitionOptimizeOps for PartitionMarginalSparse {
-  fn create_edge_contribution(
-    &self,
-    edge_key: GraphEdgeKey,
-  ) -> Result<OptimizationContribution, Report> {
+  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     OptimizationContribution::from_sparse(edge_key, self)
   }
 

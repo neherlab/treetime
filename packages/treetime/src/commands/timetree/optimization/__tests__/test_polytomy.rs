@@ -128,8 +128,7 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0)?;
 
     assert_eq!(n_resolved, 0, "Binary tree should have no resolutions");
     assert_eq!(
@@ -338,17 +337,11 @@ mod tests {
 
     // Large slope: penalty dominates branch length improvement → no merge
     let mut graph_high = create_polytomy_tree_with_realistic_distributions()?;
-    let n_high = resolve_polytomies_with_options(
-      &mut graph_high,
-      &partitions,
-      DEFAULT_RESOLUTION_THRESHOLD,
-      1000.0,
-    )?;
+    let n_high = resolve_polytomies_with_options(&mut graph_high, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 1000.0)?;
 
     // Small slope: penalty negligible, branch redistribution drives merge
     let mut graph_low = create_polytomy_tree_with_realistic_distributions()?;
-    let n_low =
-      resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01)?;
+    let n_low = resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01)?;
 
     assert!(
       n_low > n_high,
@@ -363,8 +356,7 @@ mod tests {
   fn test_resolve_polytomies_zero_slope_no_penalty() -> Result<(), Report> {
     let mut graph = create_polytomy_tree_with_realistic_distributions()?;
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0)?;
 
     assert_eq!(n_resolved, 1, "Zero slope should allow merge");
     Ok(())

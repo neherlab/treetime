@@ -549,6 +549,7 @@ where
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
+#[cfg(test)]
 pub(crate) fn run_optimize_mixed_with_indel_rate<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],

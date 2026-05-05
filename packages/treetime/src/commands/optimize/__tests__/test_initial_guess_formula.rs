@@ -23,7 +23,6 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -169,7 +168,9 @@ mod tests {
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
-    let partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?))];
+    let partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
+    ))];
     update_marginal(graph, &partitions)?;
 
     Ok(partitions)

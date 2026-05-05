@@ -50,7 +50,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let mut graph: GraphClock = if let Some(tree) = tree {
     nwk_read_file(tree)
   } else {
-    return make_error!("Tree inference is not implemented. Provide a tree file with --tree")
+    return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
   }?;
 
   {
@@ -61,7 +61,8 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   // Split workflow into a separate blocks depending whether covariation is used or not
   let (clock_model, new_outliers) = if *covariation {
     let seq_len = sequence_length
-      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))? as f64;
+      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?
+      as f64;
     let tip_slack = tip_slack.unwrap_or(3.0);
     let overdispersion = 2.0; // TODO: empirical value for now, need to think of a better parameter than `tip_slack`
     let options = ClockParams {

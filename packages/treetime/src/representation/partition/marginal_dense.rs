@@ -156,10 +156,7 @@ impl PartitionBranchOps for PartitionMarginalDense {
 }
 
 impl PartitionOptimizeOps for PartitionMarginalDense {
-  fn create_edge_contribution(
-    &self,
-    edge_key: GraphEdgeKey,
-  ) -> Result<OptimizationContribution, Report> {
+  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     Ok(OptimizationContribution::from_dense(edge_key, self))
   }
 

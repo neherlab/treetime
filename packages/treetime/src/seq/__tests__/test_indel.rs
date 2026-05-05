@@ -133,7 +133,10 @@ mod tests {
     let result = compose_indels(&parent, &child);
     assert_eq!(result, vec![ins(1, 5, "TTTT"), del(3, 7, "ACGT")]);
     assert!(
-      result.windows(2).all(|w| w[0].range.0 <= w[1].range.0),
+      result.windows(2).all(|w| match w {
+        [a, b] => a.range.0 <= b.range.0,
+        _ => true,
+      }),
       "output must be sorted by range.0"
     );
   }
@@ -183,8 +186,9 @@ mod tests {
     for (parent, child) in &cases {
       let result = compose_indels(parent, child);
       for w in result.windows(2) {
+        let [a, b] = w else { continue };
         assert!(
-          w[0].range.0 <= w[1].range.0,
+          a.range.0 <= b.range.0,
           "output not sorted for parent={parent:?}, child={child:?}: result={result:?}"
         );
       }

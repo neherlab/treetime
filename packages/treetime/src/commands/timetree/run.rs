@@ -26,11 +26,11 @@ use crate::commands::timetree::output::confidence::{
 use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
-use crate::{make_error, make_report};
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::ancestral::annotate_branch_mutations;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
+use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use parking_lot::RwLock;
