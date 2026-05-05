@@ -14,6 +14,10 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
+# [internal]
+treetime-utils = { workspace = true }
+
+# [external]
 derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
@@ -22,7 +26,6 @@ parking_lot = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 traversal = { workspace = true }
-treetime-utils = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

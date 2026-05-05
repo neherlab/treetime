@@ -14,16 +14,19 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-phyloxml = { path = "../phyloxml" }
-treetime-analytical = { path = "../treetime-analytical" }
-treetime-distribution = { path = "../treetime-distribution" }
+# [internal]
+phyloxml = { workspace = true }
+treetime-analytical = { workspace = true }
+treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
-treetime-grid = { path = "../treetime-grid" }
+treetime-grid = { workspace = true }
+treetime-io = { workspace = true }
+treetime-ops = { workspace = true }
 treetime-primitives = { workspace = true }
-treetime-ops = { path = "../treetime-ops" }
-treetime-validation = { path = "../treetime-validation" }
-treetime-io = { path = "../treetime-io" }
-treetime-utils = { path = "../treetime-utils" }
+treetime-utils = { workspace = true }
+treetime-validation = { workspace = true }
+
+# [external]
 approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }

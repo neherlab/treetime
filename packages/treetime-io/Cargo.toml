@@ -14,11 +14,14 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-phyloxml = { path = "../phyloxml" }
+# [internal]
+phyloxml = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-primitives = { workspace = true }
-treetime-utils = { path = "../treetime-utils" }
-usher-mat-utils = { path = "../usher-mat-utils" }
+treetime-utils = { workspace = true }
+usher-mat-utils = { workspace = true }
+
+# [external]
 bio = { workspace = true }
 bytes = { workspace = true }
 csv = { workspace = true }

@@ -137,10 +137,19 @@ time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
 proptest = "=1.6.0"
 
+phyloxml = { path = "packages/phyloxml" }
+treetime = { path = "packages/treetime" }
+treetime-analytical = { path = "packages/treetime-analytical" }
+treetime-cli = { path = "packages/treetime-cli" }
 treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }
+treetime-grid = { path = "packages/treetime-grid" }
+treetime-io = { path = "packages/treetime-io" }
+treetime-ops = { path = "packages/treetime-ops" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-utils = { path = "packages/treetime-utils" }
+treetime-validation = { path = "packages/treetime-validation" }
+usher-mat-utils = { path = "packages/usher-mat-utils" }
 
 [workspace.lints.rust]
 # Lint groups

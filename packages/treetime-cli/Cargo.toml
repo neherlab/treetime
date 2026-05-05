@@ -12,6 +12,13 @@ version.workspace = true
 
 
 [dependencies]
+# [internal]
+treetime = { workspace = true }
+treetime-graph = { workspace = true }
+treetime-io = { workspace = true }
+treetime-utils = { workspace = true }
+
+# [external]
 clap = { workspace = true }
 clap_complete = { workspace = true }
 clap_complete_fig = { workspace = true }
@@ -26,10 +33,6 @@ maplit = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-treetime = { path = "../treetime" }
-treetime-graph = { workspace = true }
-treetime-io = { path = "../treetime-io" }
-treetime-utils = { path = "../treetime-utils" }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

@@ -14,8 +14,10 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-treetime-utils = { path = "../treetime-utils" }
+# [internal]
+treetime-utils = { workspace = true }
 
+# [external]
 eyre = { workspace = true }
 serde = { workspace = true }
 

@@ -14,9 +14,11 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-treetime-ops = { path = "../treetime-ops" }
-treetime-utils = { path = "../treetime-utils" }
+# [internal]
+treetime-ops = { workspace = true }
+treetime-utils = { workspace = true }
 
+# [external]
 serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

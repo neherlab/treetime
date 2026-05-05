@@ -14,10 +14,12 @@ version.workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-treetime-grid = { path = "../treetime-grid" }
-treetime-ops = { path = "../treetime-ops" }
-treetime-utils = { path = "../treetime-utils" }
+# [internal]
+treetime-grid = { workspace = true }
+treetime-ops = { workspace = true }
+treetime-utils = { workspace = true }
 
+# [external]
 approx = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
@@ -30,11 +32,14 @@ ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
 
 [dev-dependencies]
+# [internal]
+treetime-analytical = { workspace = true }
+
+# [external]
 ctor = { workspace = true }
 ordered-float = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-treetime-analytical = { path = "../treetime-analytical" }
 
 [lints]
 workspace = true
