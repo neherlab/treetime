@@ -147,6 +147,29 @@ exactly.
 | Negligible | Timetree       | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                              |
 | Low        | Marginal       | [Marginal forward pass zero-divisor floor converts structural zeros](L-marginal-forward-zero-divisor-floor.md)                                      |
 | Negligible | Timetree       | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                           |
+| High       | Timetree       | [Relaxed clock unit mismatch](H-timetree-relaxed-clock-unit-mismatch.md)                                                                            |
+| Medium     | Ancestral      | [Sparse variant skips initialize_marginal before update_marginal](M-ancestral-sparse-missing-initialize-marginal.md)                                |
+| Medium     | Marginal       | [Marginal forward pass NEG_INFINITY produces NaN](M-marginal-forward-pass-neg-infinity-nan.md)                                                      |
+| Medium     | Marginal       | [normalize_inplace NEG_INFINITY masks all contributions](M-marginal-normalize-neg-infinity-masks-total.md)                                          |
+| Medium     | Timetree       | [Polytomy resolution leaves stale fields after topology change](M-timetree-polytomy-stale-fields-after-topology-change.md)                          |
+| Medium     | Timetree       | [Timetree convergence metric deficiencies](M-timetree-convergence-metric-deficiencies.md)                                                           |
+| Medium     | Timetree       | [Timetree confidence interval computation deficiencies](M-timetree-confidence-interval-deficiencies.md)                                             |
+| Medium     | Timetree       | [Rate susceptibility citation references wrong paper section](M-timetree-confidence-citation-accuracy.md)                                           |
+| Medium     | Coalescent     | [Coalescent leaf survival formula sign convention requires investigation](M-coalescent-leaf-survival-sign-convention.md)                            |
+| Medium     | Coalescent     | [Coalescent subsystem time notation conflict](M-coalescent-time-notation-conflict.md)                                                               |
+| Medium     | Inference      | [Inference forward/backward pass asymmetries](M-inference-forward-backward-asymmetry.md)                                                            |
+| Medium     | Clock          | [Clock pre-filter ignores user-provided variance parameters](M-clock-prefilter-ignores-user-variance.md)                                            |
+| Negligible | Timetree       | [Timetree indel rate recomputed per refinement iteration](N-timetree-indel-rate-recomputed-per-iteration.md)                                        |
+| Negligible | Numerical      | [Numerical stability magic constants](N-numerical-stability-magic-constants.md)                                                                     |
+| Negligible | Coalescent     | [Coalescent skyline robustness deficiencies](N-coalescent-skyline-robustness.md)                                                                    |
+| Negligible | Core           | [Error suppression via unwrap_or_default and silent fallbacks](N-error-suppression-unwrap-or-defaults.md)                                           |
+| Negligible | Core           | [Dead code and orphaned APIs](N-dead-code-orphaned-apis.md)                                                                                         |
+| Negligible | Core           | [Code quality and convention violations](N-code-quality-conventions.md)                                                                             |
+| Negligible | Core           | [Architectural debt (documented, low priority)](N-architectural-debt-documented.md)                                                                 |
+| Negligible | Core           | [Production unwrap/expect/assert audit](N-production-unwrap-expect-audit.md)                                                                        |
+| Negligible | Test           | [Test coverage gaps across production functions](N-test-coverage-gaps.md)                                                                           |
+| Negligible | Test           | [Test quality deficiencies](N-test-quality-deficiencies.md)                                                                                         |
+| Negligible | GTR            | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 
 ## Cross-references
 

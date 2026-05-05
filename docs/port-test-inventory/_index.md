@@ -186,6 +186,15 @@ Datasets disabled via commented-out `#[case]` annotations:
 
 ---
 
+## Known Test Deficiencies
+
+Tracked in `docs/port-known-issues/`:
+
+- [Test coverage gaps](../port-known-issues/N-test-coverage-gaps.md): zero-test production functions across all major subsystems, 4 ignored golden-master tests, missing property tests for ClockSet and Fitch invariants
+- [Test quality deficiencies](../port-known-issues/N-test-quality-deficiencies.md): missing pretty_assertions (46+ instances), loop-over-cases anti-pattern (21 files), circular tests, weak assertions, grossly loose tolerances (epsilon = 10.0, 1e0), helper placement violations
+
+---
+
 ## References
 
 - Test framework: [rstest](https://docs.rs/rstest) for parameterized tests
