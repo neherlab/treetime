@@ -92,7 +92,7 @@ getset = "=0.1.6"
 image = { version = "=0.25.8", features = ["png"] }
 indexmap = { version = "=2.11.4", features = ["rayon", "serde"] }
 indoc = "=2.0.6"
-intervallum = "=1.4.4"
+intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.14.0"
 lazy_static = "=1.5.0"
 log = "=0.4.28"

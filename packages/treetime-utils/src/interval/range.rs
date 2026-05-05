@@ -1,6 +1,6 @@
 use gcollections::ops::Bounded;
-use interval::IntervalSet;
-use interval::interval_set::ToIntervalSet;
+use intervallum::IntervalSet;
+use intervallum::interval_set::ToIntervalSet;
 use itertools::Itertools;
 
 pub type Range = (usize, usize);

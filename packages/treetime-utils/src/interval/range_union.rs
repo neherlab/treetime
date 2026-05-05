@@ -1,6 +1,6 @@
 use crate::interval::range::{from_interval_set, to_interval_sets};
 use gcollections::ops::{Empty, Union};
-use interval::interval_set::IntervalSet;
+use intervallum::interval_set::IntervalSet;
 
 pub fn range_union(range_sets: &[Vec<(usize, usize)>]) -> Vec<(usize, usize)> {
   range_union_iter(range_sets.iter()).collect()
