@@ -1,7 +1,7 @@
 [package]
 name = "treetime-distribution"
 authors.workspace = true
-description = "Probability distributions for treetime"
+description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 homepage.workspace = true

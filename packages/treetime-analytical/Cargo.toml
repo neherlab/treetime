@@ -1,7 +1,7 @@
 [package]
 name = "treetime-analytical"
 authors.workspace = true
-description = "Analytical formulas for probability distributions"
+description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 homepage.workspace = true
