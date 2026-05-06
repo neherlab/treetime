@@ -33,7 +33,6 @@ ndarray-stats = { workspace = true }
 treetime-analytical = { workspace = true }
 
 # [external]
-ctor = { workspace = true }
 ordered-float = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }

@@ -39,11 +39,7 @@ ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
 ctor = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
-rstest_reuse = { workspace = true }
 
 [lints]
 workspace = true

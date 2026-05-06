@@ -24,8 +24,6 @@ statrs = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
 treetime-utils = { workspace = true }
 
 [lints]

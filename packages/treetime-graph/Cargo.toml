@@ -24,10 +24,5 @@ rayon = { workspace = true }
 serde = { workspace = true }
 traversal = { workspace = true }
 
-[dev-dependencies]
-pretty_assertions = { workspace = true }
-rstest = { workspace = true }
-rstest_reuse = { workspace = true }
-
 [lints]
 workspace = true
