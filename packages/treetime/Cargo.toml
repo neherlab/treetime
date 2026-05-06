@@ -14,7 +14,6 @@ version.workspace = true
 # [internal]
 treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
-treetime-grid = { workspace = true }
 treetime-io = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
@@ -30,7 +29,6 @@ color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
-ctor = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 image = { workspace = true, optional = true }
@@ -50,7 +48,6 @@ rgb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smart-default = { workspace = true }
-strum = { workspace = true }
 strum_macros = { workspace = true }
 tikv-jemallocator = { workspace = true, optional = true }
 
@@ -82,9 +79,11 @@ textplots = { workspace = true }
 [dev-dependencies]
 bio = { workspace = true }
 criterion = { workspace = true }
+ctor = { workspace = true }
 indoc = { workspace = true }
 lazy_static = { workspace = true }
 petgraph = { workspace = true }
+treetime-grid = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
