@@ -65,12 +65,10 @@ xz2 = { workspace = true }
 zstd = { workspace = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rstest = { workspace = true }
-rstest_reuse = { workspace = true }
 
 [lints]
 workspace = true

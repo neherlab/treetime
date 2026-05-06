@@ -10,6 +10,9 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+[package.metadata.cargo-shear]
+ignored = ["approx"]
+
 [dependencies]
 # [internal]
 phyloxml = { workspace = true }
