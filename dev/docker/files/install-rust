@@ -39,6 +39,11 @@ curl -sSL "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${CARGO_
 chmod +x "${dest}/bin/cargo-llvm-cov"
 cargo llvm-cov --version
 
+CARGO_SHEAR_VERSION="1.11.2"
+curl -sSL "https://github.com/Boshen/cargo-shear/releases/download/v${CARGO_SHEAR_VERSION}/cargo-shear-x86_64-unknown-linux-gnu.tar.gz" | tar -C "${dest}/bin" -xz "cargo-shear"
+chmod +x "${dest}/bin/cargo-shear"
+cargo shear --version
+
 CARGO_EDIT_VERSION="0.13.7"
 cargo -q install --locked cargo-edit --version "${CARGO_EDIT_VERSION}"
 cargo upgrade --version

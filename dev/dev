@@ -17,6 +17,7 @@ declare -A ALIASES=(
   ["l"]="lint"
   ["lf"]="lint-fix"
   ["lc"]="lint-ci"
+  ["lD"]="lint-deps"
   ["f"]="format"
   ["fc"]="format-check"
   ["q"]="quality"
@@ -166,6 +167,9 @@ function main() {
     ;;
   "lint-ci")
     nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
+    ;;
+  "lint-deps")
+    nicely cargo shear "$@"
     ;;
   "format")
     nicely cargo -q fmt "$@"
