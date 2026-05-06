@@ -64,12 +64,8 @@ zstd = { version = "=0.13.3", features = ["zstdmt"] }
 approx = "=0.5.1"
 argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
-argmin-observer-slog = { version = "=0.1.0", features = ["serde"] }
-argmin_testfunctions = { version = "=0.2.0" }
-atty = "=0.2.14"
 auto_ops = "=0.3.0"
 bio = { version = "=2.3.0", features = ["phylogeny"] }
-bio-types = { version = "=1.0.4", features = ["phylogeny"] }
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "=0.4.42", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
@@ -97,12 +93,9 @@ itertools = "=0.14.0"
 lazy_static = "=1.5.0"
 log = "=0.4.28"
 maplit = { version = "=1.0.2", features = [] }
-multimap = { version = "=0.10.1", features = ["serde_impl"] }
 ndarray-conv = { version = "=0.5.0", features = [] }
 num = "=0.4.3"
-num-integer = "=0.1.46"
 num-traits = "=0.2.19"
-num_cpus = "=1.17.0"
 ordered-float = { version = "=5.0.0", default-features = false }
 parking_lot = { version = "=0.12.4", features = ["arc_lock", "serde", "deadlock_detection", "hardware-lock-elision"] }
 petgraph = { version = "=0.6.5", features = ["serde", "stable_graph"] }
@@ -111,8 +104,6 @@ pretty_assertions = "=1.4.1"
 pretty_dtoa = "=0.3.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
-prost-derive = "=0.14.1"
-prost-types = "=0.14.1"
 rand = { version = "=0.8.5", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
@@ -120,10 +111,8 @@ rayon = "=1.11.0"
 regex = { version = "=1.11.2", features = [] }
 rgb = "=0.8.52"
 rstest = "=0.26.1"
-rstest_reuse = "=0.7.0"
 serde = { version = "=1.0.225", features = ["derive", "rc"] }
 serde_json = { version = "=1.0.145", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-serde_repr = "=0.1.20"
 serde_stacker = { version = "=0.1.14" }
 serde_yaml = "=0.9.34"
 smart-default = "=0.7.1"
@@ -142,7 +131,6 @@ xml = "=1.0.0"
 phyloxml = { path = "packages/phyloxml" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
-treetime-cli = { path = "packages/treetime-cli" }
 treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }
 treetime-grid = { path = "packages/treetime-grid" }
@@ -150,8 +138,10 @@ treetime-io = { path = "packages/treetime-io" }
 treetime-ops = { path = "packages/treetime-ops" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-utils = { path = "packages/treetime-utils" }
-treetime-validation = { path = "packages/treetime-validation" }
 usher-mat-utils = { path = "packages/usher-mat-utils" }
+
+[workspace.metadata.cargo-shear]
+ignored = ["blas-src", "openblas-src", "argmin-math"]
 
 [workspace.lints.rust]
 # Lint groups
