@@ -16,7 +16,6 @@ chrono = { workspace = true }
 chronoutil = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
-ctor = { workspace = true }
 env_logger = { workspace = true }
 eyre = { workspace = true }
 flate2 = { workspace = true }
@@ -67,6 +66,7 @@ zstd = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rstest = { workspace = true }
