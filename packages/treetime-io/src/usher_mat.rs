@@ -1,4 +1,4 @@
-use crate::json::{JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str};
 use crate::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, nwk_read_str, nwk_write_str};
 use bytes::Buf;
 use eyre::{Report, WrapErr};

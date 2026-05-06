@@ -1,5 +1,5 @@
 use crate::auspice_types::{AuspiceTree, AuspiceTreeData, AuspiceTreeNode};
-use crate::json::{JsonPretty, json_read, json_write};
+use treetime_utils::io::json::{JsonPretty, json_read, json_write};
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
