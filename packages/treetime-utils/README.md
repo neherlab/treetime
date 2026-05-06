@@ -75,6 +75,8 @@ Date and time parsing for phylogenetic metadata:
 
 ### I/O (`io`)
 
+- `json` - JSON via `serde_json` with `serde_stacker` for deep nesting: `json_read_file()`, `json_read_str()`, `json_read()`, `json_write_file()`, `json_write_str()`, `json_write()`, `json_or_yaml_write_file()`, `is_json_value_null()`, `JsonPretty`
+- `yaml` - YAML via `serde_yaml`: `yaml_read_file()`, `yaml_read_str()`, `yaml_read()`, `yaml_write_file()`, `yaml_write_str()`, `yaml_write()`
 - `compression` - transparent compression/decompression (gzip, bzip2, xz, zstd) with `Compressor`/`Decompressor` streaming wrappers and format detection from file extension
 - `file` - buffered file reading/writing with automatic decompression, stdin/stdout support (`open_file_or_stdin()`, `create_file_or_stdout()`)
 - `fs` - filesystem helpers: `ensure_dir()`, `absolute_path()`, `extension()`, `has_extension()`, `add_extension()`, `read_file_to_string()`
