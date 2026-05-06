@@ -12,78 +12,47 @@ version.workspace = true
 
 [dependencies]
 # [internal]
-phyloxml = { workspace = true }
-treetime-analytical = { workspace = true }
 treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-grid = { workspace = true }
 treetime-io = { workspace = true }
-treetime-ops = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
-treetime-validation = { workspace = true }
 
 # [external]
 approx = { workspace = true }
 argmin = { workspace = true }
 argmin-math = { workspace = true }
-argmin-observer-slog = { workspace = true }
-argmin_testfunctions = { workspace = true }
 auto_ops = { workspace = true }
-bio = { workspace = true }
-bio-types = { workspace = true }
-bytes = { workspace = true }
 chrono = { workspace = true }
-chronoutil = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
 comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
-csv = { workspace = true }
 ctor = { workspace = true }
-derive_more = { workspace = true }
-env_logger = { workspace = true }
 eyre = { workspace = true }
-flate2 = { workspace = true }
-gcollections = { workspace = true }
 getset = { workspace = true }
 image = { workspace = true, optional = true }
 indexmap = { workspace = true }
-indoc = { workspace = true }
-intervallum = { workspace = true }
 itertools = { workspace = true }
-lazy_static = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
-multimap = { workspace = true }
-ndarray-conv = { workspace = true }
 num = { workspace = true }
-num-integer = { workspace = true }
 num-traits = { workspace = true }
-num_cpus = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
-petgraph = { workspace = true }
 plotters = { workspace = true }
-pretty_dtoa = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
-rand_isaac = { workspace = true }
-rayon = { workspace = true }
 regex = { workspace = true }
 rgb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_repr = { workspace = true }
-serde_stacker = { workspace = true }
-serde_yaml = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 tikv-jemallocator = { workspace = true, optional = true }
-time = { workspace = true }
-traversal = { workspace = true }
 
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
 tikv-jemallocator = { workspace = true }
@@ -101,24 +70,24 @@ tikv-jemallocator = { workspace = true }
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-atty = { workspace = true }
 blas-src = { workspace = true }
-bzip2 = { workspace = true }
 crossterm = { workspace = true }
 ndarray = { workspace = true }
 ndarray-linalg = { workspace = true }
-ndarray-rand = { workspace = true }
 ndarray-stats = { workspace = true }
 openblas-src = { workspace = true }
 statrs = { workspace = true }
 textplots = { workspace = true }
-xz2 = { workspace = true }
-zstd = { workspace = true }
 
 [dev-dependencies]
+bio = { workspace = true }
 criterion = { workspace = true }
+indoc = { workspace = true }
+lazy_static = { workspace = true }
+petgraph = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
+rayon = { workspace = true }
 rstest = { workspace = true }
 rstest_reuse = { workspace = true }
 tempfile = { workspace = true }

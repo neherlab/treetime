@@ -164,44 +164,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "argmin-observer-slog"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83d798c8ab61e6a55d161775f2ae8c42e56c15b746398878c36234575e6839aa"
-dependencies = [
- "anyhow",
- "argmin",
- "serde",
- "slog",
- "slog-async",
- "slog-term",
-]
-
-[[package]]
-name = "argmin_testfunctions"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "866912833daca43599e91a630fd277afb92f77d5f7c641f0a5448b5c1b3efa00"
-dependencies = [
- "num",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-
-[[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "auto_ops"
@@ -545,10 +511,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "145052bdd345b87320e369255277e3fb5152762ad123a901ef5c262dd38fe8d2"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-traits",
  "serde",
- "wasm-bindgen",
  "windows-link 0.2.0",
 ]
 
@@ -828,15 +792,6 @@ checksum = "9b1bcc0dc7dfae599d84ad0b1a55f80cde8af3725da8313b528da95ef783e338"
 dependencies = [
  "cast",
  "itertools 0.13.0",
-]
-
-[[package]]
-name = "crossbeam-channel"
-version = "0.5.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
-dependencies = [
- "crossbeam-utils",
 ]
 
 [[package]]
@@ -1532,21 +1487,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "hermit-abi"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1658,17 +1598,6 @@ dependencies = [
  "num-traits",
  "serde",
  "trilean",
-]
-
-[[package]]
-name = "is-terminal"
-version = "0.4.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
-dependencies = [
- "hermit-abi 0.5.2",
- "libc",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2206,16 +2135,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91df4bbde75afed763b708b7eee1e8e7651e02d97f6d5dd763e89367e957b23b"
-dependencies = [
- "hermit-abi 0.5.2",
- "libc",
 ]
 
 [[package]]
@@ -3166,17 +3085,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_repr"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "175ee3e80ae9982737ca543e96133087cbd9a485eecc3bc4de9c1a37b47ea59c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "serde_spanned"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3300,38 +3208,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
-name = "slog"
-version = "2.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8347046d4ebd943127157b94d63abb990fcf729dc4e9978927fdf4ac3c998d06"
-
-[[package]]
-name = "slog-async"
-version = "2.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72c8038f898a2c79507940990f05386455b3a317d8f18d4caea7cbc3d5096b84"
-dependencies = [
- "crossbeam-channel",
- "slog",
- "take_mut",
- "thread_local",
-]
-
-[[package]]
-name = "slog-term"
-version = "2.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cb1fc680b38eed6fad4c02b3871c09d2c81db8c96aa4e9c0a34904c830f09b5"
-dependencies = [
- "chrono",
- "is-terminal",
- "slog",
- "term",
- "thread_local",
- "time",
-]
-
-[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3447,12 +3323,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "take_mut"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
-
-[[package]]
 name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3469,15 +3339,6 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.0",
-]
-
-[[package]]
-name = "term"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a43bddab41f8626c7bdaab872bbba75f8df5847b516d77c569c746e2ae5eb746"
-dependencies = [
- "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3590,7 +3451,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91e7d9e3bb61134e77bde20dd4825b97c010155709965fedf0f49bb138e52a9d"
 dependencies = [
  "deranged",
- "itoa",
  "num-conv",
  "powerfmt",
  "serde",
@@ -3722,17 +3582,10 @@ dependencies = [
  "approx",
  "argmin",
  "argmin-math",
- "argmin-observer-slog",
- "argmin_testfunctions",
- "atty",
  "auto_ops",
  "bio",
- "bio-types",
  "blas-src",
- "bytes",
- "bzip2",
  "chrono",
- "chronoutil",
  "clap",
  "color-eyre",
  "comfy-table",
@@ -3740,44 +3593,30 @@ dependencies = [
  "crossbeam-queue",
  "crossbeam-skiplist",
  "crossterm",
- "csv",
  "ctor",
- "derive_more",
- "env_logger",
  "eyre",
- "flate2",
- "gcollections",
  "getset",
  "image",
  "indexmap",
  "indoc",
- "intervallum",
  "itertools 0.14.0",
  "lazy_static",
  "log",
  "maplit",
- "multimap",
  "ndarray",
- "ndarray-conv",
  "ndarray-linalg",
- "ndarray-rand",
  "ndarray-stats",
  "num",
- "num-integer",
  "num-traits",
- "num_cpus",
  "openblas-src",
  "ordered-float",
  "parking_lot",
  "petgraph",
- "phyloxml",
  "plotters",
  "pretty_assertions",
- "pretty_dtoa",
  "proptest",
  "rand",
  "rand_distr",
- "rand_isaac",
  "rayon",
  "regex",
  "rgb",
@@ -3785,9 +3624,6 @@ dependencies = [
  "rstest_reuse",
  "serde",
  "serde_json",
- "serde_repr",
- "serde_stacker",
- "serde_yaml",
  "smart-default",
  "statrs",
  "strum 0.27.2",
@@ -3795,19 +3631,12 @@ dependencies = [
  "tempfile",
  "textplots",
  "tikv-jemallocator",
- "time",
- "traversal",
- "treetime-analytical",
  "treetime-distribution",
  "treetime-graph",
  "treetime-grid",
  "treetime-io",
- "treetime-ops",
  "treetime-primitives",
  "treetime-utils",
- "treetime-validation",
- "xz2",
- "zstd",
 ]
 
 [[package]]
@@ -3837,7 +3666,6 @@ dependencies = [
  "eyre",
  "indoc",
  "itertools 0.14.0",
- "lazy_static",
  "log",
  "maplit",
  "pretty_assertions",
@@ -3916,11 +3744,9 @@ dependencies = [
  "approx",
  "bio",
  "bytes",
- "bzip2",
  "csv",
  "ctor",
  "eyre",
- "flate2",
  "indexmap",
  "itertools 0.14.0",
  "log",
@@ -3938,8 +3764,6 @@ dependencies = [
  "treetime-primitives",
  "treetime-utils",
  "usher-mat-utils",
- "xz2",
- "zstd",
 ]
 
 [[package]]
@@ -4034,10 +3858,7 @@ dependencies = [
  "image",
  "itertools 0.14.0",
  "ndarray",
- "ndarray-conv",
  "ndarray-stats",
- "num",
- "num-traits",
  "ordered-float",
  "plotters",
  "pretty_assertions",
@@ -4045,13 +3866,10 @@ dependencies = [
  "rstest",
  "rstest_reuse",
  "serde",
- "serde_json",
  "smart-default",
- "statrs",
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "treetime-analytical",
- "treetime-io",
  "treetime-ops",
  "treetime-utils",
 ]
