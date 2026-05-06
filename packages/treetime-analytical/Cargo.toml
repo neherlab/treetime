@@ -13,7 +13,6 @@ version.workspace = true
 [dependencies]
 # [internal]
 treetime-ops = { workspace = true }
-treetime-utils = { workspace = true }
 
 # [external]
 serde = { workspace = true }
@@ -27,6 +26,7 @@ approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+treetime-utils = { workspace = true }
 
 [lints]
 workspace = true
