@@ -12,7 +12,7 @@ use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceNumDate, AuspiceTreeBranchAttrs, AuspiceTreeData, AuspiceTreeMeta,
   AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
 };
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
 
 /// Write partial auspice v2 JSON for timetree results.

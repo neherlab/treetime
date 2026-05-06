@@ -9,7 +9,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_io::json::{JsonPretty, json_read_str, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_primitives::AsciiChar;
 
   fn make_valid_config() -> AlphabetConfig {

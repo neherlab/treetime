@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, Named, TimeConstraint};
   use treetime_io::dates_csv::DatesMap;
-  use treetime_io::json::json_read_str;
+  use treetime_utils::io::json::json_read_str;
   use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
 
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]

@@ -17,7 +17,7 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::vec_of_owned;
 

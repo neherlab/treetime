@@ -17,7 +17,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::graphviz::graphviz_write_file;
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_utils::io::console::is_tty;
 

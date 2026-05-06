@@ -147,7 +147,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use treetime_io::discrete_states_csv::read_discrete_attrs;
-    use treetime_io::json::json_read_file;
+    use treetime_utils::io::json::json_read_file;
     use treetime_io::nwk::nwk_read_file;
 
     #[derive(Debug, Deserialize)]

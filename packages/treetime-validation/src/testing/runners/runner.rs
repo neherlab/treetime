@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fs;
 use std::time::Instant;
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
 
 pub trait TestRunner: Send + Sync + Sized {

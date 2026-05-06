@@ -7,7 +7,7 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_io::json::{JsonPretty, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 

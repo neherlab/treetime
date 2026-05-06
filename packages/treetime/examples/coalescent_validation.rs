@@ -20,7 +20,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_grid::grid::Grid;
 use treetime_io::dates_csv::read_dates;
-use treetime_io::json::json_read_file;
+use treetime_utils::io::json::json_read_file;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;

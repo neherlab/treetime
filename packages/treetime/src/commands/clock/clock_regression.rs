@@ -13,7 +13,7 @@ use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
 pub struct ClockParams {

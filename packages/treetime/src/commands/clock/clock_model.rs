@@ -5,7 +5,7 @@ use getset::{CopyGetters, Getters};
 use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 /// Regression statistics from clock model estimation

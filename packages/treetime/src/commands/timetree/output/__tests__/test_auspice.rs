@@ -9,7 +9,7 @@ mod tests {
 
   use treetime_graph::node::{GraphNodeKey, Named};
   use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree};
-  use treetime_io::json::json_read_file;
+  use treetime_utils::io::json::json_read_file;
 
   #[test]
   fn test_auspice_metadata_structure() {

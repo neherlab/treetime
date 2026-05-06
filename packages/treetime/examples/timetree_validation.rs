@@ -30,7 +30,7 @@ use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::global::global_init;

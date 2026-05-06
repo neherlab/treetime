@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_model::ClockModel;
 use eyre::Report;
 use std::path::Path;
-use treetime_io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 /// Write clock model parameters to file.
 ///

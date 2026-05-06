@@ -7,7 +7,7 @@ use itertools::{Itertools, chain};
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::iter::once;
-use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_primitives::{AsciiChar, StateSet};
 use treetime_utils::fmt::string::quote;
 

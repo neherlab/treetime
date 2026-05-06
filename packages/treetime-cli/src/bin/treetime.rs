@@ -9,7 +9,7 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime_cli::cli::treetime_cli::{TreetimeCommands, generate_shell_completions, treetime_parse_cli_args};
-use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
 

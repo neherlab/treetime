@@ -4,7 +4,7 @@ use crate::testing::framework::test_case::TestCase;
 use eyre::Report;
 use itertools::izip;
 use std::fmt::Display;
-use treetime_io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 const VERBOSE_LABEL_WIDTH: usize = 32;
