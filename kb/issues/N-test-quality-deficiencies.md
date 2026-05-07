@@ -16,20 +16,6 @@ Systematic test quality issues: missing pretty_assertions, missing rstest trace 
 
 Element-by-element loop assertions. Highest density: `test_prop_gtr_site_specific.rs` (39 loops), `generators.rs` (13 loops). Many within proptest bodies where `prop_assert!` is correct but `prop_assert_array_*_eq!` from project utilities could replace the element iteration.
 
-### Helpers placement violations (9 files)
-
-Helper functions before tests and/or not wrapped in `mod helpers`:
-
-1. `seq/__tests__/test_mutation.rs`
-2. `seq/__tests__/test_find_char_ranges.rs`
-3. `alphabet/__tests__/test_alphabet_config.rs`
-4. `commands/timetree/coalescent/__tests__/test_skyline.rs`
-5. `commands/timetree/optimization/__tests__/test_relaxed_clock.rs`
-6. `commands/timetree/optimization/__tests__/test_polytomy.rs`
-7. `commands/timetree/convergence/__tests__/test_metrics.rs`
-8. `commands/timetree/inference/__tests__/test_branch_length_likelihood.rs`
-9. `gtr/__tests__/test_gm_gtr_site_specific.rs:170-207:`
-
 ### Sparse root-invariance proptest tolerance (RESOLVED)
 
 Tightened to 1e-6 and `#[ignore]`d pending fix of `M-ancestral-sparse-root-invariance.md`.
@@ -64,12 +50,6 @@ Branch-length distributions are point masses making the cost function trivial: a
 ### test_gm_runner_marginal_sparse compares against dense expected (NOT A DEFECT)
 
 Cross-mode validation: v0 has no sparse mode, so dense oracle is the only available comparison. Documented in test support module.
-
-### .read() instead of .read_arc() (8 instances)
-
-`packages/treetime/src/commands/ancestral/__tests__/test_python_parity.rs:192,240,283,327,390,391,463,473:`
-
-Test code calls `.read()` on `parking_lot::RwLock` values wrapped in `Arc`. Per project convention, `.read_arc()` should be used to return an `ArcRwLockReadGuard` that keeps the `Arc` alive.
 
 ### Loose tolerance 1e-6 in div tests (RESOLVED)
 
