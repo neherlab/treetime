@@ -226,11 +226,11 @@ mod tests {
     assert_eq!(intervals.len(), 1);
 
     // v0 HPD bounds: [0, 2.3026] (narrowest 90% interval around peak)
-    // Allow tolerance for grid discretization (dt ~ 0.02)
     let hpd_lower = 0.0;
     let hpd_upper = (0.1_f64).ln().abs(); // -ln(0.1) = 2.3026
-    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = dx);
-    assert_relative_eq!(intervals[0].upper, hpd_upper, epsilon = dx);
+    // Measured errors: lower=0.0, upper=3.9e-4.
+    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-3);
+    assert_relative_eq!(intervals[0].upper, hpd_upper, epsilon = 1e-3);
   }
 
   mod helpers {

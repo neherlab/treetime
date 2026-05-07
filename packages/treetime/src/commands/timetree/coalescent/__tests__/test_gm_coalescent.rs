@@ -100,14 +100,12 @@ mod tests {
     }
 
     assert!(
-      worst_err < PASS_THRESHOLD,
-      "Max absolute error {worst_err:.2e} at node '{worst_node}' exceeds threshold {PASS_THRESHOLD:.0e}"
+      worst_err < 1e-5,
+      "Max absolute error {worst_err:.2e} at node '{worst_node}' exceeds threshold 1e-5"
     );
 
     Ok(())
   }
-
-  const PASS_THRESHOLD: f64 = 1e-5;
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),

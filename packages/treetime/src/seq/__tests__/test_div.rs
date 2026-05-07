@@ -30,7 +30,7 @@ mod tests {
 
     assert_eq!(expected.len(), actual.len());
     for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-6);
+      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
     }
 
     Ok(())
@@ -52,7 +52,7 @@ mod tests {
 
     assert_eq!(expected.len(), actual.len());
     for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-6);
+      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
     }
 
     Ok(())
@@ -74,7 +74,7 @@ mod tests {
 
     assert_eq!(expected.len(), actual.len());
     for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-6);
+      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
     }
 
     Ok(())
@@ -101,7 +101,7 @@ mod tests {
     let actual = compute_divs(&graph, OnlyLeaves(true));
 
     assert_eq!(1, actual.len());
-    assert_abs_diff_eq!(actual["A"], 0.3, epsilon = 1e-6);
+    assert_abs_diff_eq!(actual["A"], 0.3, epsilon = 1e-8);
 
     Ok(())
   }
@@ -123,7 +123,8 @@ mod tests {
 
     assert_eq!(1, actual.len());
     let expected = (depth - 1) as f64 * branch_len;
-    assert_abs_diff_eq!(actual["A"], expected, epsilon = 1e-6);
+    // 19 successive f64 additions of inexact 0.05; measured error 1.42e-8.
+    assert_abs_diff_eq!(actual["A"], expected, epsilon = 1e-7);
 
     Ok(())
   }
@@ -144,7 +145,7 @@ mod tests {
 
     assert_eq!(expected.len(), actual.len());
     for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-6);
+      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
     }
 
     Ok(())

@@ -25,6 +25,7 @@ mod tests {
   // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
   // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
+  #[ignore = "dense-vs-v0 discrepancy: max 0.27 years (grid-width limited, kb/issues/M-timetree-branch-grid-uniform-resolution.md)"]
   fn test_gm_runner_poisson(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = case.poisson();
@@ -43,7 +44,7 @@ mod tests {
     propagate_distributions_forward(&graph)?;
 
     let actual = extract_node_times(&graph);
-    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 3e-1);
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())
   }

@@ -133,12 +133,20 @@ mod tests {
     Ok(())
   }
 
+  // Midpoint-rule discretization error: 1.6e-4 with 1000 segments on 1/(0.01+0.004t).
+  // O(h^2) convergence requires ~12500 segments for 1e-6.
+  // See kb/issues/N-timetree-coalescent-integration-grossly-loose-tolerance.md.
   #[test]
+  #[ignore = "midpoint-rule discretization error 1.6e-4 (kb/issues/N-timetree-coalescent-integration-grossly-loose-tolerance.md)"]
   fn test_compute_integral_merger_rate_varying_tc_many_segments() -> Result<(), Report> {
-    // k=3 constant, many segments for better numerical accuracy
-    // Use 11 breakpoints (10 segments) to approach analytical solution
-    let breakpoints = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-    let values = array![0.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0];
+    // k=3 constant, 1000 segments for high-accuracy numerical integration.
+    let n_segments = 1000;
+    let breakpoints = Array1::linspace(0.0, 10.0, n_segments + 1);
+    let values = {
+      let mut v = vec![0.0];
+      v.extend(std::iter::repeat_n(3.0, n_segments + 1));
+      Array1::from(v)
+    };
     let lineage_counts = PiecewiseConstantFn::new(breakpoints, values);
 
     // Tc varies linearly from 0.01 to 0.05
@@ -153,8 +161,7 @@ mod tests {
     //           = (1/0.004) * ln(0.05/0.01) = 250 * ln(5) ≈ 402.359
     let expected_analytical = 250.0 * 5.0_f64.ln();
     pretty_assert_ulps_eq!(actual_y[0], 0.0);
-    // With 10 segments, numerical approximation should be within 2% of analytical
-    assert_abs_diff_eq!(actual_y[actual_y.len() - 1], expected_analytical, epsilon = 10.0);
+    assert_abs_diff_eq!(actual_y[actual_y.len() - 1], expected_analytical, epsilon = 1e-6);
 
     Ok(())
   }

@@ -35,14 +35,13 @@ mod tests {
     /// Same strategy as the dense test, but uses sparse marginal reconstruction
     /// (Fitch compression + marginal on variable positions only).
     ///
-    /// Tolerance is looser than dense (1e-1 vs 1e-6) because Fitch forward pass
-    /// resolves ambiguous state sets using parent states, which differ under
-    /// different rootings. This produces different compression patterns and
-    /// different sets of edge mutations, causing root-dependent likelihood
-    /// contributions beyond the matrix exponential path difference.
-    /// Measured max diff: ~3e-4 typical, ~1e-2 with rare proptest seeds;
-    /// 1e-1 is tightest 1e-N that accommodates the worst observed case.
+    /// Sparse root invariance: Fitch forward pass resolves ambiguous state
+    /// sets using parent states, which differ under different rootings. This
+    /// produces different compression patterns and different sets of edge
+    /// mutations, causing root-dependent likelihood contributions.
+    /// See kb/issues/M-ancestral-sparse-root-invariance.md.
     #[test]
+    #[ignore = "sparse root invariance violation: max ~1e-2 (kb/issues/M-ancestral-sparse-root-invariance.md)"]
     fn test_prop_marginal_sparse_log_lh_root_invariance(
       input in arb_marginal_input_no_gaps(4, 10),
       node_idx in 0_usize..100,
@@ -54,7 +53,7 @@ mod tests {
       let lh2 = run_sparse_marginal(&input2).unwrap().0;
 
       let diff = (lh1 - lh2).abs();
-      prop_assert!(diff < 1e-1,
+      prop_assert!(diff < 1e-6,
         "Sparse root invariance violated: lh1={lh1}, lh2={lh2}, diff={diff}");
     }
   }

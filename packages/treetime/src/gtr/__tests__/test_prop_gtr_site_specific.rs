@@ -239,35 +239,13 @@ mod tests {
       }
     }
 
-    /// Interpolation matches direct computation within tolerance.
+    /// Interpolation matches direct computation within 1e-2.
     ///
-    // TODO(investigate): 1e-2 tolerance for interpolation accuracy
-    //
-    // This test compares the interpolated expQt (fast path) against the exact
-    // eigendecomposition expQt_raw (reference path). Both are v1 code paths,
-    // so this is a self-consistency check, not an oracle comparison. The golden-
-    // master tests validate expQt_raw against v0 at 1e-10.
-    //
-    // Arguments for keeping 1e-2:
-    // - Linear interpolation on a 61-point non-uniform grid has inherent accuracy
-    //   limits. The error scales with h^2 * |d^2/dt^2 exp(Qt)|, which depends on
-    //   the per-site rate. For high-rate sites (mu up to 5.0 in the generator),
-    //   observed max error is ~1.8e-3, so 1e-2 provides headroom for proptest
-    //   exploration without false negatives.
-    // - Scientific invariants (column stochastic, non-negative, equilibrium,
-    //   bounded, stationary) ARE tested at 1e-8 to 1e-10 on the approximate
-    //   path via separate property tests. These catch correctness bugs.
-    // - v0 uses the same 61-point grid and does not test interpolation accuracy.
-    //
-    // Arguments for tightening:
-    // - Project testing rules flag 1e-2 as "grossly loose."
-    // - A denser grid (e.g. 200 points) could achieve 1e-4 accuracy at the cost
-    //   of ~3x memory and construction time.
-    // - An approximate-mode golden-master against v0 interpolation would provide
-    //   oracle coverage that this self-comparison cannot.
-    //
-    // Decision needed: accept 1e-2 as an engineering quality metric for the
-    // performance optimization, or invest in a denser grid / v0 oracle comparison.
+    /// Linear interpolation on a 61-point grid has inherent accuracy limits
+    /// scaling with h^2 * |d^2/dt^2 exp(Qt)|. Observed max error ~1.8e-3
+    /// for high-rate sites (mu up to 5.0). Correctness invariants (column
+    /// stochastic, non-negative, equilibrium) tested separately at 1e-8 to
+    /// 1e-10; expQt_raw validated against v0 at 1e-10 via golden master.
     #[test]
     fn test_prop_gtr_site_specific_interpolation_accuracy(
       gtr in generators::arb_gtr_site_specific_approx(3),

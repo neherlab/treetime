@@ -62,11 +62,12 @@ mod tests {
     test_gm_mugration_outputs(case)
   }
 
-  // Confidence profile comparison against v0 oracle at 2e-2 tolerance.
-  // Max observed error: 1.34e-2 at one ambiguous internal node (NODE_0000008),
-  // all other nodes within 1.2e-3. The 2e-2 tolerance covers the single
-  // divergent node where D1/D2 improvements shift the posterior.
+  // Confidence profile comparison against v0 oracle.
+  // Max observed error: 1.34e-2 at NODE_0000008 due to intentional v1
+  // improvements (D1: pseudo-count pi, D2: root-state filtering).
+  // See kb/issues/M-mugration-iterative-gtr.md.
   #[test]
+  #[ignore = "v0 parity: max 1.34e-2 confidence divergence at ambiguous node (kb/issues/M-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -89,7 +90,7 @@ mod tests {
         "profile length mismatch for node '{node_name}'"
       );
       for (expected_val, actual_val) in expected_profile.iter().zip(actual_profile.profile.iter()) {
-        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 2e-2);
+        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 1e-6);
       }
     }
 

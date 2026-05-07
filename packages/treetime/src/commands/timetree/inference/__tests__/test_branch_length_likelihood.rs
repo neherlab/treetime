@@ -8,16 +8,6 @@ mod tests {
 
   const N_GRID: usize = 1000;
 
-  /// Grid spacing in branch-length space for the tests below.
-  ///
-  /// `create_simple_grid` builds `linspace(one_mutation * 0.1, max_bl, N_GRID)`
-  /// with `max_bl = max(center * 3, one_mutation * 10, MAX_BRANCH_TIME * clock_rate)`.
-  /// For the test parameters here (`one_mutation = 1e-3`, `clock_rate = 1.0`,
-  /// `MAX_BRANCH_TIME = 200.0`), `max_bl = 200` regardless of the center, giving
-  /// a uniform spacing of `(200 - 1e-4) / 999 ~ 0.2`. Peak assertions tolerate
-  /// one grid cell of slack.
-  const GRID_SPACING_BL: f64 = 200.0 / (N_GRID as f64 - 1.0);
-
   /// Evaluate a distribution at `t` by sampling the underlying function.
   fn eval(distribution: &Distribution, t: f64) -> f64 {
     distribution.eval(t).unwrap_or(0.0)
@@ -77,11 +67,12 @@ mod tests {
     let t_min = one_mutation * 0.1;
     let expected_peak_time = t_min / (clock_rate * gamma);
     let peak_time = distribution.likely_time().expect("distribution has a peak");
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = GRID_SPACING_BL);
+    // Peak at t_min sits on the first grid point (exact match).
+    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-10);
 
     // Closed-form shape: prob(t) = exp(-mu * (t - t_min)) after normalization.
     // The grid-wise linear interpolation error on exp(-mu t) is bounded by
-    // h^2 * mu^2 * exp(-mu t) / 8 = (0.2)^2 / 8 ~ 5e-3 with h = GRID_SPACING_BL.
+    // h^2 * mu^2 * exp(-mu t) / 8 = (0.2)^2 / 8 ~ 5e-3 with h ~ 0.2.
     // Tolerance 1e-2 is above that bound and orders of magnitude tighter than
     // the "indels ignored" failure mode, where the Poisson term is absent and
     // prob = 1 everywhere.
@@ -125,8 +116,8 @@ mod tests {
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time().expect("distribution has a peak");
-    // Peak is snapped to the nearest grid point; allow one grid cell of slack.
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = GRID_SPACING_BL);
+    // Peak snapped to nearest grid point; measured error 5.1e-3.
+    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }
 
@@ -158,8 +149,8 @@ mod tests {
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time().expect("distribution has a peak");
-    let expected_epsilon = GRID_SPACING_BL / (clock_rate * gamma);
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = expected_epsilon);
+    // Peak snapped to nearest grid point; measured error 2.6e-3.
+    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }
 
