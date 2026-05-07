@@ -40,9 +40,9 @@ Tightened to 1e-6 and `#[ignore]`d pending fix of `M-ancestral-sparse-root-invar
 
 Both test functions compute expected values using `gtr.expQt_with_rate()`, the same function called internally by the SUT. Tautological verification.
 
-### Element-by-element float loops in alphabet tests
+### Element-by-element float loops in alphabet tests (RESOLVED)
 
-`packages/treetime/src/alphabet/__tests__/` - 19+ instances of `for (actual, expected) in ... { assert_ulps_eq!(...) }`. Should use `pretty_assert_ulps_eq!` or `pretty_assert_abs_diff_eq!` on whole arrays.
+Replaced 22 element-by-element loops with `pretty_assert_ulps_eq!` on whole arrays.
 
 ### GM runner tests use grossly loose tolerance (RESOLVED)
 
