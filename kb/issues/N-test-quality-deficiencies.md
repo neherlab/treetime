@@ -12,9 +12,9 @@ Systematic test quality issues: missing pretty_assertions, missing rstest trace 
 
 ### Mixed approx wrappers (RESOLVED)
 
-### Loop-over-cases in test assertions (21 files)
+### Loop-over-cases in test assertions (RESOLVED)
 
-Element-by-element loop assertions. Highest density: `test_prop_gtr_site_specific.rs` (39 loops), `generators.rs` (13 loops). Many within proptest bodies where `prop_assert!` is correct but `prop_assert_array_*_eq!` from project utilities could replace the element iteration.
+Converted element-by-element zip assertions to whole-array macros (33 instances across 6 files) and loop-over-test-cases to rstest parameterized tests (10 instances across 4 files). Remaining loops in proptest files are structural invariant checks with per-element diagnostics, not anti-patterns.
 
 ### Sparse root-invariance proptest tolerance (RESOLVED)
 
