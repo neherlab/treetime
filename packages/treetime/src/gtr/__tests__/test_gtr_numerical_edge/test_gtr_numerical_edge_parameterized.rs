@@ -19,6 +19,7 @@ mod tests {
   #[case::one(1.0)]
   #[case::large(100.0)]
   #[case::very_large(1000.0)]
+  #[trace]
   fn test_gtr_expqt_branch_length_range(#[case] t: f64) -> Result<(), Report> {
     let gtr = hky85(HKY85Params {
       mu: 1.0,
@@ -47,6 +48,7 @@ mod tests {
   #[case::moderate(5.0)]
   #[case::large(50.0)]
   #[case::very_large(500.0)]
+  #[trace]
   fn test_gtr_k80_kappa_range(#[case] kappa: f64) -> Result<(), Report> {
     let gtr = k80(K80Params {
       mu: 1.0,

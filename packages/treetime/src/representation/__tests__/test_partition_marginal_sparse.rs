@@ -89,6 +89,7 @@ mod tests {
   #[case(b'A', b'G', b'A', None)] // cancel: A->G->A = none
   #[case(b'C', b'T', b'G', Some((b'C', b'G')))] // chain: C->T->G = C->G
   #[case(b'G', b'A', b'G', None)] // cancel: G->A->G = none
+  #[trace]
   fn test_compose_substitutions_single_position(
     #[case] parent_reff: u8,
     #[case] intermediate: u8,

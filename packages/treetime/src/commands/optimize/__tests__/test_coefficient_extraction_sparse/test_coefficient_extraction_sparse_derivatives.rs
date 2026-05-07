@@ -5,7 +5,8 @@ mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::{assert_abs_diff_eq, assert_ulps_eq};
+  use crate::pretty_assert_ulps_eq;
+  use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
   use rstest::rstest;
 
@@ -132,9 +133,9 @@ mod tests {
 
     // All three quantities scale linearly with multiplicity:
     // ℓ(t) = m * ln(L), ℓ'(t) = m * d1, ℓ''(t) = m * (d2 - d1^2)
-    assert_ulps_eq!(metrics3.log_lh, 3.0 * metrics1.log_lh, max_ulps = 100);
-    assert_ulps_eq!(metrics3.derivative, 3.0 * metrics1.derivative, max_ulps = 100);
-    assert_ulps_eq!(
+    pretty_assert_ulps_eq!(metrics3.log_lh, 3.0 * metrics1.log_lh, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics3.derivative, 3.0 * metrics1.derivative, max_ulps = 100);
+    pretty_assert_ulps_eq!(
       metrics3.second_derivative,
       3.0 * metrics1.second_derivative,
       max_ulps = 100
@@ -184,9 +185,9 @@ mod tests {
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length);
     let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length);
 
-    assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
-    assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
-    assert_ulps_eq!(
+    pretty_assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
+    pretty_assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);
+    pretty_assert_ulps_eq!(
       sparse_metrics.second_derivative,
       dense_metrics.second_derivative,
       max_ulps = 10

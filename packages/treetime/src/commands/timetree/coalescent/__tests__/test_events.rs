@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::timetree::coalescent::events::collect_tree_events;
   use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
   use crate::representation::partition::timetree::GraphTimetree;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -34,7 +34,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
     assert_eq!(
       events,
       vec![(cal(2000.0), -2), (cal(2005.0), 1), (cal(2010.0), 1), (cal(2015.0), 1)]
@@ -57,7 +57,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time.value(), 2012.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(present_time.value(), 2012.0, max_ulps = 4);
     assert_eq!(
       events,
       vec![
@@ -106,7 +106,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
     let (present_time, events) = collect_tree_events(&graph)?;
 
-    assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
     assert_eq!(
       events,
       vec![(cal(2000.0), -2), (cal(2010.0), 1), (cal(2010.0), 1), (cal(2010.0), 1)]

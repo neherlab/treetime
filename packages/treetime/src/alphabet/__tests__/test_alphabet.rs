@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::vec_u8;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use indexmap::indexmap;
   use itertools::Itertools;
   use ndarray::array;
@@ -233,25 +233,25 @@ mod tests {
     let profile_a = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'A')).unwrap();
     let expected_a = array![1.0, 0.0, 0.0, 0.0];
     for (actual, expected) in profile_a.iter().zip(expected_a.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_c = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'C')).unwrap();
     let expected_c = array![0.0, 1.0, 0.0, 0.0];
     for (actual, expected) in profile_c.iter().zip(expected_c.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_g = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'G')).unwrap();
     let expected_g = array![0.0, 0.0, 1.0, 0.0];
     for (actual, expected) in profile_g.iter().zip(expected_g.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_t = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'T')).unwrap();
     let expected_t = array![0.0, 0.0, 0.0, 1.0];
     for (actual, expected) in profile_t.iter().zip(expected_t.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -262,13 +262,13 @@ mod tests {
     let profile_r = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'R')).unwrap();
     let expected_r = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in profile_r.iter().zip(expected_r.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_y = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'Y')).unwrap();
     let expected_y = array![0.0, 1.0, 0.0, 1.0];
     for (actual, expected) in profile_y.iter().zip(expected_y.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -278,7 +278,7 @@ mod tests {
     let profile_n = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
     let expected_n = array![1.0, 1.0, 1.0, 1.0];
     for (actual, expected) in profile_n.iter().zip(expected_n.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -338,7 +338,7 @@ mod tests {
       .unwrap();
     let expected = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in actual.iter().zip(expected.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -356,7 +356,7 @@ mod tests {
 
     let expected_row0 = array![1.0, 0.0, 0.0, 0.0];
     for (actual, expected) in actual.row(0).iter().zip(expected_row0.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -373,7 +373,7 @@ mod tests {
     let profile_gap = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'-')).unwrap();
     let profile_unknown = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
     for (gap, unk) in profile_gap.iter().zip(profile_unknown.iter()) {
-      assert_ulps_eq!(*unk, *gap, max_ulps = 4);
+      pretty_assert_ulps_eq!(*unk, *gap, max_ulps = 4);
     }
   }
 
@@ -486,7 +486,7 @@ mod tests {
       .unwrap();
     let expected = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in actual.iter().zip(expected.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -496,7 +496,7 @@ mod tests {
     let actual = alphabet.construct_profile::<[AsciiChar; 0], _>([]).unwrap();
     let expected = array![0.0, 0.0, 0.0, 0.0];
     for (actual, expected) in actual.iter().zip(expected.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -513,12 +513,12 @@ mod tests {
 
     let expected_row0 = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in actual.row(0).iter().zip(expected_row0.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let expected_row1 = array![0.0, 1.0, 0.0, 1.0];
     for (actual, expected) in actual.row(1).iter().zip(expected_row1.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -565,7 +565,7 @@ mod tests {
     let profile_w = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'W')).unwrap();
     let expected_w = array![1.0, 1.0, 0.0];
     for (actual, expected) in profile_w.iter().zip(expected_w.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -654,11 +654,11 @@ mod tests {
     for c in alphabet.canonical() {
       let index = alphabet.index(c).unwrap();
       let profile = alphabet.get_profile(c).unwrap();
-      assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
+      pretty_assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
 
       for j in 0..alphabet.n_canonical() {
         if j != index {
-          assert_ulps_eq!(0.0, profile[j], max_ulps = 4);
+          pretty_assert_ulps_eq!(0.0, profile[j], max_ulps = 4);
         }
       }
 
@@ -673,7 +673,7 @@ mod tests {
     let star = AsciiChar::from_byte_unchecked(b'*');
     let index = alphabet.index(star).unwrap();
     let profile = alphabet.get_profile(star).unwrap();
-    assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
+    pretty_assert_ulps_eq!(1.0, profile[index], max_ulps = 4);
   }
 
   #[test]

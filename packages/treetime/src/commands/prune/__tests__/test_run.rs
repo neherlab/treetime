@@ -12,7 +12,8 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
-  use approx::{assert_relative_eq, assert_ulps_eq};
+  use crate::pretty_assert_ulps_eq;
+  use approx::assert_relative_eq;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
@@ -975,10 +976,10 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         // 1e-10 + 2e-10 = 3e-10
-        assert_ulps_eq!(branch_length.unwrap(), 3e-10, max_ulps = 4);
+        pretty_assert_ulps_eq!(branch_length.unwrap(), 3e-10, max_ulps = 4);
       } else if target_name.as_deref() == Some("B") {
         // 1e-10 + 3e-10 = 4e-10
-        assert_ulps_eq!(branch_length.unwrap(), 4e-10, max_ulps = 4);
+        pretty_assert_ulps_eq!(branch_length.unwrap(), 4e-10, max_ulps = 4);
       }
     }
 
@@ -1054,7 +1055,7 @@ mod tests {
         assert!(branch_length.is_none());
       } else if target_name.as_deref() == Some("B") {
         // Both Some: 0.5 + 0.2 = 0.7
-        assert_ulps_eq!(branch_length.unwrap(), 0.7, max_ulps = 4);
+        pretty_assert_ulps_eq!(branch_length.unwrap(), 0.7, max_ulps = 4);
       }
     }
 
@@ -1127,10 +1128,10 @@ mod tests {
 
       if target_name.as_deref() == Some("A") {
         // Removed edge had None, so no sum - original Some(0.3) preserved
-        assert_ulps_eq!(branch_length.unwrap(), 0.3, max_ulps = 4);
+        pretty_assert_ulps_eq!(branch_length.unwrap(), 0.3, max_ulps = 4);
       } else if target_name.as_deref() == Some("B") {
         // Removed edge had None, so no sum - original Some(0.2) preserved
-        assert_ulps_eq!(branch_length.unwrap(), 0.2, max_ulps = 4);
+        pretty_assert_ulps_eq!(branch_length.unwrap(), 0.2, max_ulps = 4);
       }
     }
 

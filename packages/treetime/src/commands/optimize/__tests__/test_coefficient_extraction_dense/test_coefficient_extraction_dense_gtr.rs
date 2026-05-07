@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::optimize::optimize_dense::get_coefficients;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -26,7 +26,7 @@ mod tests {
     let expected = child_v * parent_v_inv_t;
 
     for i in 0..4 {
-      assert_ulps_eq!(contribution.coefficients[[0, i]], expected[[0, i]], max_ulps = 10);
+      pretty_assert_ulps_eq!(contribution.coefficients[[0, i]], expected[[0, i]], max_ulps = 10);
     }
   }
 
@@ -44,7 +44,7 @@ mod tests {
 
     // Stored GTR should have same eigenvalues
     for i in 0..4 {
-      assert_ulps_eq!(contribution.gtr.eigvals[i], gtr.eigvals[i], max_ulps = 10);
+      pretty_assert_ulps_eq!(contribution.gtr.eigvals[i], gtr.eigvals[i], max_ulps = 10);
     }
   }
 }

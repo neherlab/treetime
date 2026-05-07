@@ -79,31 +79,31 @@ impl Add<f64> for Tbp {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
 
   #[test]
   fn test_calendar_to_tbp_roundtrip() {
     let present = CalendarTime::new(2013.0);
     let cal = CalendarTime::new(2005.0);
     let tbp = cal.to_tbp(present);
-    assert_ulps_eq!(tbp.value(), 8.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(tbp.value(), 8.0, max_ulps = 4);
     let back = tbp.to_calendar(present);
-    assert_ulps_eq!(back.value(), 2005.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(back.value(), 2005.0, max_ulps = 4);
   }
 
   #[test]
   fn test_tbp_at_present_is_zero() {
     let present = CalendarTime::new(2013.0);
     let tbp = present.to_tbp(present);
-    assert_ulps_eq!(tbp.value(), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(tbp.value(), 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_tbp_arithmetic() {
     let a = Tbp::new(8.0);
     let b = Tbp::new(3.0);
-    assert_ulps_eq!(a - b, 5.0, max_ulps = 4);
-    assert_ulps_eq!((b + 2.0).value(), 5.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(a - b, 5.0, max_ulps = 4);
+    pretty_assert_ulps_eq!((b + 2.0).value(), 5.0, max_ulps = 4);
   }
 
   #[test]

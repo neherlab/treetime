@@ -7,6 +7,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
+  use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 

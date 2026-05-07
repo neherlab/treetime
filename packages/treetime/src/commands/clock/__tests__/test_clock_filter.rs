@@ -6,6 +6,7 @@ mod tests {
   use crate::o;
   use eyre::Report;
   use maplit::btreemap;
+  use pretty_assertions::assert_eq;
   use treetime_graph::node::{Named, Outlier};
   use treetime_io::nwk::nwk_read_str;
 

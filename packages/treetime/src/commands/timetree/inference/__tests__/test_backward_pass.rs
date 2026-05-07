@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::test_utils::find_node_key_by_name;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -51,7 +51,7 @@ mod tests {
       .likely_time()
       .expect("time distribution should have likely_time");
 
-    assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(likely_time, 2010.5, max_ulps = 4);
     assert!(likely_time < 2013.0, "Parent should be older than child");
 
     Ok(())
@@ -111,7 +111,7 @@ mod tests {
       .likely_time()
       .expect("time distribution should have likely_time");
 
-    assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
 
     Ok(())
   }
@@ -181,7 +181,7 @@ mod tests {
       let likely_time = time_dist
         .likely_time()
         .expect("leaf A time distribution should have likely_time");
-      assert_ulps_eq!(likely_time, date_a, max_ulps = 4);
+      pretty_assert_ulps_eq!(likely_time, date_a, max_ulps = 4);
     }
 
     // Verify leaf B still has its original date
@@ -195,7 +195,7 @@ mod tests {
       let likely_time = time_dist
         .likely_time()
         .expect("leaf B time distribution should have likely_time");
-      assert_ulps_eq!(likely_time, date_b, max_ulps = 4);
+      pretty_assert_ulps_eq!(likely_time, date_b, max_ulps = 4);
     }
 
     Ok(())
@@ -237,7 +237,7 @@ mod tests {
           .expect("edge should have msg_to_parent after backward pass");
         let msg_time = msg.likely_time().expect("message should have likely_time");
         // Message should be parent time: 2013.0 - 2.5 = 2010.5
-        assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
+        pretty_assert_ulps_eq!(msg_time, 2010.5, max_ulps = 4);
       }
     }
 
@@ -284,7 +284,7 @@ mod tests {
       .likely_time()
       .expect("time distribution should have likely_time");
 
-    assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(likely_time, 2012.0, max_ulps = 4);
 
     Ok(())
   }
@@ -346,7 +346,7 @@ mod tests {
       .likely_time()
       .expect("should have likely_time");
 
-    assert_ulps_eq!(ref_time, test_time, max_ulps = 4);
+    pretty_assert_ulps_eq!(ref_time, test_time, max_ulps = 4);
 
     Ok(())
   }

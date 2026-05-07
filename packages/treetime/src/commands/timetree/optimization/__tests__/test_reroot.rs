@@ -21,7 +21,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -237,7 +237,7 @@ mod tests {
     assert_eq!(indel_after.deletion, false, "Indel deletion flag should be toggled");
 
     // Verify msg_from_child is cleared
-    assert_ulps_eq!(edge_data.msg_from_child.log_lh, 0.0, max_ulps = 5);
+    pretty_assert_ulps_eq!(edge_data.msg_from_child.log_lh, 0.0, max_ulps = 5);
 
     Ok(())
   }

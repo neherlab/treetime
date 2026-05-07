@@ -4,6 +4,7 @@ mod tests {
   use crate::o;
   use eyre::Report;
   use itertools::Itertools;
+  use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
   use std::sync::Arc;

@@ -3,7 +3,7 @@ mod tests {
   use super::super::helpers::setup_graph;
   use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
   use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_distribution::Distribution;
@@ -98,7 +98,7 @@ mod tests {
 
     let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?;
 
-    assert_ulps_eq!(opt.likelihood, lh, max_ulps = 10);
+    pretty_assert_ulps_eq!(opt.likelihood, lh, max_ulps = 10);
 
     Ok(())
   }
@@ -118,7 +118,7 @@ mod tests {
     let lh_const = compute_coalescent_total_lh(&graph, &tc_const)?;
     let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula)?;
 
-    assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
+    pretty_assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 
     Ok(())
   }

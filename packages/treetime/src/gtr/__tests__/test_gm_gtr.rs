@@ -25,6 +25,7 @@ mod tests {
   #[case::default("default")]
   #[case::mu_0_5("mu_0.5")]
   #[case::mu_2_0("mu_2.0")]
+  #[trace]
   fn test_gm_gtr_jc69(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -45,6 +46,7 @@ mod tests {
   #[case::kappa_2_0("kappa_2.0")]
   #[case::kappa_5_0("kappa_5.0")]
   #[case::mu_0_5_kappa_2_0("mu_0.5_kappa_2.0")]
+  #[trace]
   fn test_gm_gtr_k80(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -64,6 +66,7 @@ mod tests {
   #[case::custom_pi("custom_pi")]
   #[case::asymmetric_pi("asymmetric_pi")]
   #[case::mu_2_0("mu_2.0")]
+  #[trace]
   fn test_gm_gtr_f81(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -83,6 +86,7 @@ mod tests {
   #[case::kappa_2_0("kappa_2.0")]
   #[case::custom_pi("custom_pi")]
   #[case::custom_all("custom_all")]
+  #[trace]
   fn test_gm_gtr_hky85(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -104,6 +108,7 @@ mod tests {
   #[case::low_gc("low_gc")]
   #[case::kappa_2_0("kappa_2.0")]
   #[case::custom_all("custom_all")]
+  #[trace]
   fn test_gm_gtr_t92(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -126,6 +131,7 @@ mod tests {
   #[case::both_kappa("both_kappa")]
   #[case::custom_pi("custom_pi")]
   #[case::full_custom("full_custom")]
+  #[trace]
   fn test_gm_gtr_tn93(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();
@@ -148,6 +154,7 @@ mod tests {
   #[case::asymmetric_pi("asymmetric_pi")]
   #[case::mu_scaling("mu_scaling")]
   #[case::random("random")]
+  #[trace]
   fn test_gm_gtr_custom(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_gtr_inputs();
     let outputs = load_gm_gtr_outputs();

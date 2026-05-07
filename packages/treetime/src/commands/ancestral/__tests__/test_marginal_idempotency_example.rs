@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::payload::ancestral::GraphAncestral;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -81,7 +81,7 @@ TCGGCCGTGTRTTG--
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
-    assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
@@ -108,7 +108,7 @@ TCGGCCGTGTRTTG--
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
     let log_lh_second = update_marginal(&graph, &partitions)?;
-    assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::optimize_sparse::SiteContribution;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -12,9 +12,9 @@ mod tests {
       coefficients: coefficients.clone(),
     };
 
-    assert_ulps_eq!(contribution.multiplicity, 5.0, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.multiplicity, 5.0, max_ulps = 10);
     for i in 0..4 {
-      assert_ulps_eq!(contribution.coefficients[i], coefficients[i], max_ulps = 10);
+      pretty_assert_ulps_eq!(contribution.coefficients[i], coefficients[i], max_ulps = 10);
     }
   }
 
@@ -26,6 +26,6 @@ mod tests {
       coefficients: array![0.25, 0.25, 0.25, 0.25],
     };
 
-    assert_ulps_eq!(contribution.multiplicity, 1.0, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.multiplicity, 1.0, max_ulps = 10);
   }
 }

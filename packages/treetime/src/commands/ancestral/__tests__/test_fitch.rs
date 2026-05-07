@@ -13,6 +13,7 @@ mod tests {
   use itertools::Itertools;
   use maplit::btreemap;
   use parking_lot::RwLock;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;

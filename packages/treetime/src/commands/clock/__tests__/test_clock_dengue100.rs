@@ -11,6 +11,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use itertools::Itertools;
+  use pretty_assertions::assert_eq;
   use std::path::Path;
   use treetime_graph::node::{Named, Outlier};
   use treetime_io::dates_csv::read_dates;

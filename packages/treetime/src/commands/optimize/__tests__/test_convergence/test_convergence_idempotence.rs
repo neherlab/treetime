@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
@@ -102,7 +102,7 @@ mod tests {
     let lh2 = compute_total_lh(&graph2, &dense_partitions2, &sparse_partitions2)?;
 
     // Both runs should converge to same likelihood
-    assert_ulps_eq!(lh1, lh2, max_ulps = 100);
+    pretty_assert_ulps_eq!(lh1, lh2, max_ulps = 100);
 
     Ok(())
   }

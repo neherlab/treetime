@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use crate::representation::partition::timetree::GraphTimetree;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::nwk::nwk_read_str;
 
@@ -92,7 +92,7 @@ mod tests {
 
     let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
     for gamma in &gammas {
-      assert_ulps_eq!(*gamma, mean_gamma, max_ulps = 1000);
+      pretty_assert_ulps_eq!(*gamma, mean_gamma, max_ulps = 1000);
     }
 
     Ok(())
@@ -122,7 +122,7 @@ mod tests {
     // Before: gamma should be default 1.0
     for edge in graph.get_edges() {
       let gamma = edge.read_arc().payload().read_arc().gamma;
-      assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
+      pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
     apply_relaxed_clock(&graph, &params, one_mutation);
@@ -384,7 +384,7 @@ mod tests {
       .first()
       .map_or(1.0, |e| e.read_arc().payload().read_arc().gamma);
 
-    assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
+    pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 
     Ok(())
   }

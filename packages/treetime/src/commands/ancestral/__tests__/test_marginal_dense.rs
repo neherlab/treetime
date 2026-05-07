@@ -9,7 +9,6 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -34,7 +33,7 @@ mod tests {
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
         sum.is_finite(),
         "Row {row_idx} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
@@ -262,8 +261,8 @@ mod tests {
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
     // Repeated updates must produce identical log-likelihood to initialization
-    assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
-    assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
@@ -312,9 +311,9 @@ mod tests {
     let log_lh2 = run_dense_lh_for_newick(tree2, &aln, gtr2)?;
     let log_lh3 = run_dense_lh_for_newick(tree3, &aln, gtr3)?;
 
-    assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
-    assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
-    assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
 
     Ok(())
   }

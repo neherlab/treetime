@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -26,7 +26,7 @@ mod tests {
     // At branch_length=0, exp(λt) = 1 for all eigenvalues
     // log-LH = ln(sum of coefficients) = ln(1.0) = 0.0
     let coeff_sum: f64 = 0.5 + 0.2 + 0.2 + 0.1;
-    assert_ulps_eq!(metrics.log_lh, coeff_sum.ln(), max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh, coeff_sum.ln(), max_ulps = 100);
   }
 
   #[test]
@@ -49,7 +49,7 @@ mod tests {
     // log-LH = multiplicity * ln(sum of coefficients) = 10 * ln(1.0) = 0.0
     let coeff_sum: f64 = 0.5 + 0.2 + 0.2 + 0.1;
     let expected_log_lh = 10.0 * coeff_sum.ln();
-    assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
   }
 
   #[test]
@@ -82,7 +82,7 @@ mod tests {
     let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1);
 
     // log-LH should scale with multiplicity
-    assert_ulps_eq!(metrics5.log_lh, 5.0 * metrics1.log_lh, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics5.log_lh, 5.0 * metrics1.log_lh, max_ulps = 100);
   }
 
   #[test]
@@ -128,6 +128,6 @@ mod tests {
     let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1);
 
     // log-LH should be sum of individual contributions
-    assert_ulps_eq!(metrics_both.log_lh, metrics_a.log_lh + metrics_b.log_lh, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics_both.log_lh, metrics_a.log_lh + metrics_b.log_lh, max_ulps = 100);
   }
 }

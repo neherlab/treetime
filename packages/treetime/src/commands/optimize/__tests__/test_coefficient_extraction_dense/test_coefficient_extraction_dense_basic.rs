@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_dense::get_coefficients;
   use crate::commands::optimize::optimize_dense_eval::evaluate_dense_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::{Axis, array};
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -29,11 +29,11 @@ mod tests {
     // At branch_length=0, the likelihood is the row sum of coefficients.
     // For uniform messages, this equals sum_a (0.25 * 0.25) = 4 * 0.0625 = 0.25
     let row_sum = contribution.coefficients.sum_axis(Axis(1));
-    assert_ulps_eq!(row_sum[0], 0.25, max_ulps = 10);
+    pretty_assert_ulps_eq!(row_sum[0], 0.25, max_ulps = 10);
 
     // Verify via evaluate function
     let metrics = evaluate_dense_contribution(&contribution, 0.0);
-    assert_ulps_eq!(metrics.log_lh, 0.25_f64.ln(), max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh, 0.25_f64.ln(), max_ulps = 100);
   }
 
   #[test]
@@ -50,7 +50,7 @@ mod tests {
 
     // Row sum should still sum to product of individual sums
     let row_sum = contribution.coefficients.sum_axis(Axis(1))[0];
-    assert_ulps_eq!(row_sum, 0.25, max_ulps = 10);
+    pretty_assert_ulps_eq!(row_sum, 0.25, max_ulps = 10);
   }
 
   #[test]
@@ -67,7 +67,7 @@ mod tests {
 
     // Row sum at branch_length=0 equals sum_a (child_a * parent_a) = 1.0 * 0.25 = 0.25
     let row_sum = contribution.coefficients.sum_axis(Axis(1))[0];
-    assert_ulps_eq!(row_sum, 0.25, max_ulps = 10);
+    pretty_assert_ulps_eq!(row_sum, 0.25, max_ulps = 10);
   }
 
   #[test]

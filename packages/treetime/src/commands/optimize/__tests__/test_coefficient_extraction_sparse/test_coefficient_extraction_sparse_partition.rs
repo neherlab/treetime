@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -34,7 +34,7 @@ mod tests {
     };
 
     assert_eq!(contribution.site_contributions.len(), 1);
-    assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 1.0, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 1.0, max_ulps = 10);
   }
 
   #[test]
@@ -64,7 +64,7 @@ mod tests {
 
     assert_eq!(contribution.site_contributions.len(), 3);
     for site in &contribution.site_contributions {
-      assert_ulps_eq!(site.multiplicity, 1.0, max_ulps = 10);
+      pretty_assert_ulps_eq!(site.multiplicity, 1.0, max_ulps = 10);
     }
   }
 
@@ -90,7 +90,7 @@ mod tests {
     };
 
     assert_eq!(contribution.site_contributions.len(), 2);
-    assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 100.0, max_ulps = 10);
-    assert_ulps_eq!(contribution.site_contributions[1].multiplicity, 50.0, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 100.0, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.site_contributions[1].multiplicity, 50.0, max_ulps = 10);
   }
 }

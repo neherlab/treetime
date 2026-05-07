@@ -10,7 +10,7 @@ pub mod tests {
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::dense::DenseSeqDis;
   use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use parking_lot::RwLock;
@@ -30,7 +30,7 @@ pub mod tests {
 
     for (pos, row) in profile.dis.outer_iter().enumerate() {
       let sum: f64 = row.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       for (idx, &val) in row.iter().enumerate() {
         assert!(
           val.is_finite(),
@@ -51,7 +51,7 @@ pub mod tests {
 
     for (pos, var_pos) in &profile.variable {
       let sum: f64 = var_pos.dis.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       for (idx, &val) in var_pos.dis.iter().enumerate() {
         assert!(
           val.is_finite(),
@@ -66,7 +66,7 @@ pub mod tests {
 
     for (char_key, fixed_dis) in &profile.fixed {
       let sum: f64 = fixed_dis.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       for (idx, &val) in fixed_dis.iter().enumerate() {
         assert!(
           val.is_finite(),

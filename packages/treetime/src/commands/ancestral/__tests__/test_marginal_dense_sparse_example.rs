@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::commands::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::fasta::read_many_fasta_str;
 
@@ -67,7 +67,7 @@ ACGTACGTACGTACGC
   /// positions follows a different code path.
   ///
   /// Tolerance: `epsilon = 1e-10` absolute difference OR <= 4 ULPs (the
-  /// `assert_ulps_eq!` default `max_ulps`). With JC69, both paths produce
+  /// `pretty_assert_ulps_eq!` default `max_ulps`). With JC69, both paths produce
   /// near-identical floating-point results (operation ordering differences only).
   #[test]
   fn test_marginal_dense_sparse_example_gap_free_consistency() -> Result<(), Report> {
@@ -75,7 +75,7 @@ ACGTACGTACGTACGC
     let (dense_log_lh, _) = run_dense_marginal(&input)?;
     let (sparse_log_lh, _) = run_sparse_marginal(&input)?;
 
-    assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
     Ok(())
   }
 }

@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -53,11 +53,11 @@ mod tests {
 
     // Total log-LH equals sum of individual contributions
     let expected_log_lh = variable_metrics.log_lh + fixed_metrics.log_lh;
-    assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
 
     // Total derivative equals sum of individual derivatives
     let expected_derivative = variable_metrics.derivative + fixed_metrics.derivative;
-    assert_ulps_eq!(metrics.derivative, expected_derivative, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.derivative, expected_derivative, max_ulps = 100);
   }
 
   #[test]
@@ -93,6 +93,6 @@ mod tests {
     let fixed_coeff_sum: f64 = 0.9 + 0.03 + 0.03 + 0.04;
     let variable_coeff_sum: f64 = 0.1 + 0.1 + 0.1 + 0.1;
     let expected = 1.0 * variable_coeff_sum.ln() + 1000.0 * fixed_coeff_sum.ln();
-    assert_ulps_eq!(metrics.log_lh, expected, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh, expected, max_ulps = 100);
   }
 }

@@ -4,7 +4,8 @@ mod tests {
   use crate::commands::timetree::timetree_traits::TimetreeEdge;
   use crate::representation::payload::timetree::EdgeTimetree;
   use crate::representation::payload::timetree::NodeTimetree;
-  use approx::{assert_abs_diff_eq, assert_ulps_eq};
+  use crate::pretty_assert_ulps_eq;
+  use approx::assert_abs_diff_eq;
   use bio::io::newick;
   use eyre::Report;
   use maplit::btreemap;
@@ -31,7 +32,7 @@ mod tests {
       if let Some(bl) = branch_length {
         let expected_time = bl / clock_rate;
         let actual_time = time_length.expect("time_length should be set when branch_length exists");
-        assert_ulps_eq!(actual_time, expected_time, max_ulps = 4);
+        pretty_assert_ulps_eq!(actual_time, expected_time, max_ulps = 4);
       }
     }
 
@@ -74,7 +75,7 @@ mod tests {
       let actual_length = branch_lengths
         .get(name)
         .unwrap_or_else(|| panic!("Node '{name}' not found in parsed tree"));
-      assert_ulps_eq!(*actual_length, expected_length, max_ulps = 4);
+      pretty_assert_ulps_eq!(*actual_length, expected_length, max_ulps = 4);
     }
 
     Ok(())
@@ -147,7 +148,7 @@ mod tests {
         // With gamma=1.0, time = bl / clock_rate (same as without gamma)
         let expected = bl / clock_rate;
         let actual = edge.time_length().expect("time_length should be set");
-        assert_ulps_eq!(actual, expected, max_ulps = 4);
+        pretty_assert_ulps_eq!(actual, expected, max_ulps = 4);
       }
     }
 

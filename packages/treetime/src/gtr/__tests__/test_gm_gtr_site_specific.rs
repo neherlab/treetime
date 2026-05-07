@@ -23,6 +23,7 @@ mod tests {
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
   #[case::single_site_uniform("single_site_uniform")]
+  #[trace]
   fn test_gm_gtr_site_specific_expqt(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
@@ -56,6 +57,7 @@ mod tests {
   #[rstest]
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
+  #[trace]
   fn test_gm_gtr_site_specific_propagate_evolve(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
@@ -147,6 +149,7 @@ mod tests {
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
   #[case::single_site_uniform("single_site_uniform")]
+  #[trace]
   fn test_gm_gtr_site_specific_approximate(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();

@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::representation::payload::ancestral::GraphAncestral;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use treetime_io::fasta::read_many_fasta_str;
@@ -27,7 +27,7 @@ mod tests {
     let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
 
     // Initial log-LH should be equivalent (before any optimization)
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
+    pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
 
     Ok(())
   }
@@ -60,7 +60,7 @@ mod tests {
     let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
 
     // Initial log-LH should be equivalent
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
+    pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
 
     Ok(())
   }

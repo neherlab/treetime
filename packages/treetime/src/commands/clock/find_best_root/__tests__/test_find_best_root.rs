@@ -8,7 +8,7 @@ mod tests {
     BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
   };
   use crate::o;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
@@ -67,7 +67,7 @@ mod tests {
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true)?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -95,7 +95,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -118,7 +118,7 @@ mod tests {
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent(), true)?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -149,7 +149,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -172,7 +172,7 @@ mod tests {
     let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section(), true)?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -203,7 +203,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(

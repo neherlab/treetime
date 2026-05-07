@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::optimize::optimize_sparse::{PartitionContribution, SiteContribution};
   use crate::commands::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]
@@ -32,7 +32,7 @@ mod tests {
 
     // Verify coefficients match
     for i in 0..4 {
-      assert_ulps_eq!(
+      pretty_assert_ulps_eq!(
         contribution.site_contributions[0].coefficients[i],
         expected_coefficients[i],
         max_ulps = 10

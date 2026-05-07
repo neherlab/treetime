@@ -13,7 +13,6 @@ mod tests {
   use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
 
@@ -51,7 +50,7 @@ mod tests {
 
     for (pos, var_pos) in &profile.variable {
       let sum: f64 = var_pos.dis.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
         sum.is_finite(),
         "Variable position {pos} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
@@ -70,7 +69,7 @@ mod tests {
 
     for (char_key, fixed_dis) in &profile.fixed {
       let sum: f64 = fixed_dis.sum();
-      assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
+      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
       assert!(
         sum.is_finite(),
         "Fixed distribution for char {char_key:?} sum={sum} is not normalized to 1.0 within max_ulps={max_ulps}"
@@ -290,7 +289,7 @@ mod tests {
     pretty_assert_ulps_eq!(-55.55428496980045, log_lh_first, epsilon = 1e-6);
 
     // Verify idempotency
-    assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
@@ -336,9 +335,9 @@ mod tests {
     let log_lh2 = run_sparse_lh_for_newick(tree2, &aln, gtr2)?;
     let log_lh3 = run_sparse_lh_for_newick(tree3, &aln, gtr3)?;
 
-    assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
-    assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
-    assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh1, log_lh2, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh1, log_lh3, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(log_lh2, log_lh3, epsilon = 1e-6);
 
     Ok(())
   }

@@ -11,13 +11,14 @@ mod tests {
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
+  use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
   use ndarray::{Array1, array};
   use parking_lot::RwLock;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
@@ -158,7 +159,7 @@ mod tests {
     let (log_lh_dense, _) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, _) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
     Ok(())
   }
@@ -211,7 +212,7 @@ mod tests {
         );
 
         for (idx, (&dense_val, &sparse_val)) in dense_row.iter().zip(sparse_dis.iter()).enumerate() {
-          assert_ulps_eq!(dense_val, sparse_val, epsilon = 1e-6);
+          pretty_assert_ulps_eq!(dense_val, sparse_val, epsilon = 1e-6);
         }
       }
     }
@@ -265,7 +266,7 @@ mod tests {
     let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
@@ -275,7 +276,7 @@ mod tests {
         for row in node_data.profile.dis.rows() {
           let sum: f64 = row.sum();
           assert!(sum.is_finite(), "Dense node profile row sum is not finite: {sum}");
-          assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+          pretty_assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
         }
       }
     }
@@ -293,7 +294,7 @@ mod tests {
           sum.is_finite(),
           "Sparse variable position {pos} sum is not finite: {sum}"
         );
-        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        pretty_assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
       }
 
       for (char_key, fixed_dis) in &node_data.profile.fixed {
@@ -302,7 +303,7 @@ mod tests {
           sum.is_finite(),
           "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}"
         );
-        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        pretty_assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
       }
     }
 
@@ -326,7 +327,7 @@ mod tests {
     let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &aln, gtr_dense)?;
     let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &aln, gtr_sparse)?;
 
-    assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
     let dense_sequences = reconstruct_named_sequences(&graph, from_ref(&dense_partition))?;
     let sparse_sequences = reconstruct_named_sequences(&graph, from_ref(&sparse_partition))?;
@@ -469,7 +470,7 @@ mod tests {
           sum.is_finite(),
           "Node {node_key:?} position {pos}: posterior sum is not finite: {sum}"
         );
-        assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
+        pretty_assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
       }
     }
 
@@ -500,7 +501,7 @@ mod tests {
     gtr_uniform.set_site_rates(Array1::ones(seq_len));
     let (log_lh_uniform, _) = run_sparse_marginal(&graph, &aln, gtr_uniform)?;
 
-    assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
     Ok(())
   }
@@ -525,7 +526,7 @@ mod tests {
     gtr_uniform.set_site_rates(Array1::ones(seq_len));
     let (log_lh_uniform, _) = run_dense_marginal(&graph, &aln, gtr_uniform)?;
 
-    assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
     Ok(())
   }

@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::vec_u8;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indexmap::indexmap;
   use ndarray::array;
@@ -187,19 +187,19 @@ mod tests {
     let profile_a = &profile_map[&AsciiChar::from_byte_unchecked(b'A')];
     let expected_a = array![1.0, 0.0, 0.0, 0.0];
     for (actual, expected) in profile_a.iter().zip(expected_a.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_r = &profile_map[&AsciiChar::from_byte_unchecked(b'R')];
     let expected_r = array![1.0, 0.0, 1.0, 0.0];
     for (actual, expected) in profile_r.iter().zip(expected_r.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_n = &profile_map[&AsciiChar::from_byte_unchecked(b'N')];
     let expected_n = array![1.0, 1.0, 1.0, 1.0];
     for (actual, expected) in profile_n.iter().zip(expected_n.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -211,7 +211,7 @@ mod tests {
     let profile_gap = &profile_map[&AsciiChar::from_byte_unchecked(b'-')];
     let profile_n = &profile_map[&AsciiChar::from_byte_unchecked(b'N')];
     for (gap, unk) in profile_gap.iter().zip(profile_n.iter()) {
-      assert_ulps_eq!(*unk, *gap, max_ulps = 4);
+      pretty_assert_ulps_eq!(*unk, *gap, max_ulps = 4);
     }
   }
 
@@ -228,19 +228,19 @@ mod tests {
     let profile_x = &profile_map[&AsciiChar::from_byte_unchecked(b'X')];
     let expected_x = array![1.0, 0.0, 0.0];
     for (actual, expected) in profile_x.iter().zip(expected_x.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_y = &profile_map[&AsciiChar::from_byte_unchecked(b'Y')];
     let expected_y = array![0.0, 1.0, 0.0];
     for (actual, expected) in profile_y.iter().zip(expected_y.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_z = &profile_map[&AsciiChar::from_byte_unchecked(b'Z')];
     let expected_z = array![0.0, 0.0, 1.0];
     for (actual, expected) in profile_z.iter().zip(expected_z.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 
@@ -333,13 +333,13 @@ mod tests {
     let profile_s = &profile_map[&AsciiChar::from_byte_unchecked(b'S')];
     let expected_s = array![0.0, 1.0, 1.0, 0.0];
     for (actual, expected) in profile_s.iter().zip(expected_s.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
 
     let profile_w = &profile_map[&AsciiChar::from_byte_unchecked(b'W')];
     let expected_w = array![1.0, 0.0, 0.0, 1.0];
     for (actual, expected) in profile_w.iter().zip(expected_w.iter()) {
-      assert_ulps_eq!(*expected, *actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
     }
   }
 

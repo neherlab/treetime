@@ -1,24 +1,24 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
 
   #[test]
   fn test_optimization_metrics_default_is_zero() {
     let metrics = OptimizationMetrics::default();
 
-    assert_ulps_eq!(metrics.log_lh, 0.0, max_ulps = 4);
-    assert_ulps_eq!(metrics.derivative, 0.0, max_ulps = 4);
-    assert_ulps_eq!(metrics.second_derivative, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.log_lh, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.derivative, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.second_derivative, 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_optimization_metrics_new() {
     let metrics = OptimizationMetrics::new(1.5, -0.3, -2.0);
 
-    assert_ulps_eq!(metrics.log_lh, 1.5, max_ulps = 4);
-    assert_ulps_eq!(metrics.derivative, -0.3, max_ulps = 4);
-    assert_ulps_eq!(metrics.second_derivative, -2.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.log_lh, 1.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.derivative, -0.3, max_ulps = 4);
+    pretty_assert_ulps_eq!(metrics.second_derivative, -2.0, max_ulps = 4);
   }
 
   #[test]
@@ -28,9 +28,9 @@ mod tests {
 
     total.add(&other);
 
-    assert_ulps_eq!(total.log_lh, 1.0, max_ulps = 4);
-    assert_ulps_eq!(total.derivative, 2.0, max_ulps = 4);
-    assert_ulps_eq!(total.second_derivative, 3.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.log_lh, 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.derivative, 2.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.second_derivative, 3.0, max_ulps = 4);
   }
 
   #[test]
@@ -49,9 +49,9 @@ mod tests {
     let expected_derivative = 0.5 + 0.3 + -0.1;
     let expected_second_derivative = -1.0 + -2.0 + -0.5;
 
-    assert_ulps_eq!(total.log_lh, expected_log_lh, max_ulps = 4);
-    assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 4);
-    assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.log_lh, expected_log_lh, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 4);
   }
 
   #[test]
@@ -61,9 +61,9 @@ mod tests {
 
     total.add(&other);
 
-    assert_ulps_eq!(total.log_lh, -150.0, max_ulps = 4);
-    assert_ulps_eq!(total.derivative, -2.0, max_ulps = 4);
-    assert_ulps_eq!(total.second_derivative, -15.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.log_lh, -150.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.derivative, -2.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.second_derivative, -15.0, max_ulps = 4);
   }
 
   #[test]
@@ -81,9 +81,9 @@ mod tests {
     let expected_second_derivative = -0.01;
 
     // Allow more tolerance for 1000 accumulated additions
-    assert_ulps_eq!(total.log_lh, expected_log_lh, max_ulps = 1000);
-    assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 1000);
-    assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 1000);
+    pretty_assert_ulps_eq!(total.log_lh, expected_log_lh, max_ulps = 1000);
+    pretty_assert_ulps_eq!(total.derivative, expected_derivative, max_ulps = 1000);
+    pretty_assert_ulps_eq!(total.second_derivative, expected_second_derivative, max_ulps = 1000);
   }
 
   #[test]
@@ -94,8 +94,8 @@ mod tests {
 
     total.add(&zero);
 
-    assert_ulps_eq!(total.log_lh, original.log_lh, max_ulps = 4);
-    assert_ulps_eq!(total.derivative, original.derivative, max_ulps = 4);
-    assert_ulps_eq!(total.second_derivative, original.second_derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.log_lh, original.log_lh, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.derivative, original.derivative, max_ulps = 4);
+    pretty_assert_ulps_eq!(total.second_derivative, original.second_derivative, max_ulps = 4);
   }
 }

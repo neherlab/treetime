@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::optimize::optimize_dense::get_coefficients;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -63,7 +63,7 @@ mod tests {
 
     // First row should match single contribution
     for i in 0..4 {
-      assert_ulps_eq!(
+      pretty_assert_ulps_eq!(
         single_contribution.coefficients[[0, i]],
         multi_contribution.coefficients[[0, i]],
         max_ulps = 10
