@@ -233,8 +233,10 @@ mod tests {
 
     let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
 
-    // JC69 closed-form: P(t)_ii = (1/4)(1 + 3*exp(-4/3 * mu * rate * t)),
-    // P(t)_ij = (1/4)(1 - exp(-4/3 * mu * rate * t)). mu=0.75 after GTR normalization.
+    // JC69 closed-form (Jukes and Cantor 1969, DOI 10.1016/B978-1-4832-3211-9.50009-7):
+    //   P(t)_ii = (1/4)(1 + 3*exp(-4/3 * mu * r * t))
+    //   P(t)_ij = (1/4)(1 - exp(-4/3 * mu * r * t))
+    // mu = 0.75 after GTR normalization (avg_transition = pi^T W pi), r = site rate.
     let expected_0 = array![0.8094601846762877, 0.06064424518648728, 0.06925132495073787, 0.06064424518648728];
     let expected_5 = array![0.16767825458589602, 0.4420840726329092, 0.22255941819529867, 0.16767825458589602];
     let expected_10 = array![0.05591089329029837, 0.05591089329029837, 0.7837450434516795, 0.10443316996772378];

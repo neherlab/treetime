@@ -58,12 +58,6 @@ Helper functions before tests and/or not wrapped in `mod helpers`:
 
 Hides >2-orders-of-magnitude pulley-principle violation. Dense uses 1e-6. The 5-order gap indicates real algorithmic divergence. Related: `M-ancestral-sparse-root-invariance.md`.
 
-### propagate_raw_per_site tests are circular
-
-`packages/treetime/src/representation/partition/marginal_helpers.rs:209,245:`
-
-Both test functions compute expected values using `gtr.expQt_with_rate()`, the same function called internally by the SUT. Tautological verification.
-
 ### Weak sorted-output assertion
 
 `packages/treetime/src/seq/__tests__/test_mutation.rs:89:`
