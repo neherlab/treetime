@@ -64,27 +64,9 @@ Hides >2-orders-of-magnitude pulley-principle violation. Dense uses 1e-6. The 5-
 
 Both test functions compute expected values using `gtr.expQt_with_rate()`, the same function called internally by the SUT. Tautological verification.
 
-### Weak sorted-output assertion
-
-`packages/treetime/src/seq/__tests__/test_mutation.rs:89:`
-
-Uses `windows(2)` loop to check ordering instead of asserting exact expected vector.
-
 ### Element-by-element float loops in alphabet tests
 
 `packages/treetime/src/alphabet/__tests__/` - 19+ instances of `for (actual, expected) in ... { assert_ulps_eq!(...) }`. Should use `pretty_assert_ulps_eq!` or `pretty_assert_abs_diff_eq!` on whole arrays.
-
-### Collapse edge tests assert count, not content
-
-`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs:100,396:`
-
-Success defined as `subs.len()` matching expectation, not exact `Vec<Sub>` content.
-
-### Nexus serialization test uses substring check
-
-`packages/treetime/src/representation/payload/timetree.rs:413:`
-
-Uses `contains()` instead of structured comparison.
 
 ### GM runner tests use grossly loose tolerance (RESOLVED)
 
