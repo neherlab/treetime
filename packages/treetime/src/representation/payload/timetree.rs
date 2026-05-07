@@ -132,6 +132,7 @@ impl NodeToNwk for NodeTimetree {
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     let mut comments = self.base.nwk_comments();
     if let Some(time) = self.time {
+      // 2-decimal precision matches v0 Newick format. See kb/decisions/timetree-nwk-date-two-decimal-precision.md
       comments.insert("date".to_owned(), format!("{time:.2}"));
     }
     comments

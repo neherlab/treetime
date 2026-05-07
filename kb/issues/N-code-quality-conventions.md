@@ -68,12 +68,6 @@ Four `#[serde(skip)]` fields with no post-deserialization rebuild. If `struct Al
 
 `fn validate()` does not reject an empty canonical character set. An empty alphabet produces division-by-zero in profile construction.
 
-### NodeTimetree.nwk_comments() truncates date to 2 decimals
-
-`packages/treetime/src/representation/payload/timetree.rs:135:`
-
-Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pathogens sampled days apart.
-
 ### calculate_diff_stats divides by zero on disjoint sets
 
 `packages/treetime/examples/timetree_validation.rs:411-412:`
