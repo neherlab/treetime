@@ -173,60 +173,54 @@ mod tests {
     assert_eq!(result, expected);
   }
 
-  #[test]
-  fn test_indel_compose_output_sorted_invariant() {
-    // Verify sortedness across multiple mixed-type configurations
-    let cases: Vec<(Vec<InDel>, Vec<InDel>)> = vec![
-      (vec![del(5, 8, "ACG")], vec![ins(1, 4, "TTT")]),
-      (vec![ins(1, 4, "TTT")], vec![del(5, 8, "ACG")]),
-      (vec![del(1, 5, "ACGT")], vec![ins(3, 7, "TTTT")]),
-      (vec![ins(3, 7, "TTTT")], vec![del(1, 5, "ACGT")]),
-      (vec![del(1, 3, "CG"), del(6, 8, "AT")], vec![del(4, 5, "T")]),
-    ];
-    for (parent, child) in &cases {
-      let result = compose_indels(parent, child);
-      for w in result.windows(2) {
-        let [a, b] = w else { continue };
-        assert!(
-          a.range.0 <= b.range.0,
-          "output not sorted for parent={parent:?}, child={child:?}: result={result:?}"
-        );
-      }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::del_after_ins(  vec![del(5, 8, "ACG")],                vec![ins(1, 4, "TTT")])]
+  #[case::ins_before_del( vec![ins(1, 4, "TTT")],                vec![del(5, 8, "ACG")])]
+  #[case::overlap_del_ins(vec![del(1, 5, "ACGT")],               vec![ins(3, 7, "TTTT")])]
+  #[case::overlap_ins_del(vec![ins(3, 7, "TTTT")],               vec![del(1, 5, "ACGT")])]
+  #[case::multi_del(      vec![del(1, 3, "CG"), del(6, 8, "AT")], vec![del(4, 5, "T")])]
+  #[trace]
+  fn test_indel_compose_output_sorted_invariant(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
+    let result = compose_indels(&parent, &child);
+    for w in result.windows(2) {
+      let [a, b] = w else { continue };
+      assert!(
+        a.range.0 <= b.range.0,
+        "output not sorted: result={result:?}"
+      );
     }
   }
 
-  #[test]
-  fn test_indel_compose_cancellation_roundtrip() {
-    // del then ins of same content cancels, regardless of range
-    let ranges = [(0, 3), (5, 10), (100, 105)];
-    let seqs = ["ACG", "ACGTC", "TTTTT"];
-    for ((start, end), seq) in ranges.iter().zip(seqs.iter()) {
-      let result = compose_indels(&[del(*start, *end, seq)], &[ins(*start, *end, seq)]);
-      assert_eq!(result, vec![], "del+ins of '{seq}' at ({start},{end}) should cancel");
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short(  (0,   3),   "ACG")]
+  #[case::medium( (5,   10),  "ACGTC")]
+  #[case::long(   (100, 105), "TTTTT")]
+  #[trace]
+  fn test_indel_compose_cancellation_roundtrip(#[case] (start, end): (usize, usize), #[case] seq: &str) {
+    let result = compose_indels(&[del(start, end, seq)], &[ins(start, end, seq)]);
+    assert_eq!(result, vec![], "del+ins should cancel");
 
-      let result = compose_indels(&[ins(*start, *end, seq)], &[del(*start, *end, seq)]);
-      assert_eq!(result, vec![], "ins+del of '{seq}' at ({start},{end}) should cancel");
-    }
+    let result = compose_indels(&[ins(start, end, seq)], &[del(start, end, seq)]);
+    assert_eq!(result, vec![], "ins+del should cancel");
   }
 
-  #[test]
-  fn test_indel_compose_seq_length_invariant() {
-    // Every output indel must have seq.len() == range.1 - range.0
-    let cases: Vec<(Vec<InDel>, Vec<InDel>)> = vec![
-      (vec![del(1, 3, "CG")], vec![del(2, 5, "TAC")]),
-      (vec![del(0, 2, "AC")], vec![del(2, 4, "GT"), del(4, 6, "CG")]),
-      (vec![del(1, 4, "CGT")], vec![ins(1, 4, "TTT")]),
-      (vec![ins(1, 4, "TTT")], vec![ins(1, 4, "GGG")]),
-    ];
-    for (parent, child) in &cases {
-      let result = compose_indels(parent, child);
-      for indel in &result {
-        assert_eq!(
-          indel.seq.len(),
-          indel.range.1 - indel.range.0,
-          "seq length mismatch for {indel:?}"
-        );
-      }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::partial_overlap(  vec![del(1, 3, "CG")],  vec![del(2, 5, "TAC")])]
+  #[case::triple_merge(     vec![del(0, 2, "AC")],   vec![del(2, 4, "GT"), del(4, 6, "CG")])]
+  #[case::del_then_ins(     vec![del(1, 4, "CGT")],  vec![ins(1, 4, "TTT")])]
+  #[case::ins_then_ins(     vec![ins(1, 4, "TTT")],  vec![ins(1, 4, "GGG")])]
+  #[trace]
+  fn test_indel_compose_seq_length_invariant(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
+    let result = compose_indels(&parent, &child);
+    for indel in &result {
+      assert_eq!(
+        indel.seq.len(),
+        indel.range.1 - indel.range.0,
+        "seq length mismatch for {indel:?}"
+      );
     }
   }
 

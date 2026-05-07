@@ -2,8 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
-  use crate::vec_u8;
   use crate::pretty_assert_ulps_eq;
+  use crate::vec_u8;
   use indexmap::indexmap;
   use itertools::Itertools;
   use ndarray::array;
@@ -231,16 +231,20 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let profile_a = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'A')).unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 0.0], profile_a, max_ulps = 4);
+    let expected_a = array![1.0, 0.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected_a, profile_a, max_ulps = 4);
 
     let profile_c = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'C')).unwrap();
-    pretty_assert_ulps_eq!(array![0.0, 1.0, 0.0, 0.0], profile_c, max_ulps = 4);
+    let expected_c = array![0.0, 1.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected_c, profile_c, max_ulps = 4);
 
     let profile_g = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'G')).unwrap();
-    pretty_assert_ulps_eq!(array![0.0, 0.0, 1.0, 0.0], profile_g, max_ulps = 4);
+    let expected_g = array![0.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_g, profile_g, max_ulps = 4);
 
     let profile_t = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'T')).unwrap();
-    pretty_assert_ulps_eq!(array![0.0, 0.0, 0.0, 1.0], profile_t, max_ulps = 4);
+    let expected_t = array![0.0, 0.0, 0.0, 1.0];
+    pretty_assert_ulps_eq!(expected_t, profile_t, max_ulps = 4);
   }
 
   #[test]
@@ -248,17 +252,20 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let profile_r = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'R')).unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], profile_r, max_ulps = 4);
+    let expected_r = array![1.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_r, profile_r, max_ulps = 4);
 
     let profile_y = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'Y')).unwrap();
-    pretty_assert_ulps_eq!(array![0.0, 1.0, 0.0, 1.0], profile_y, max_ulps = 4);
+    let expected_y = array![0.0, 1.0, 0.0, 1.0];
+    pretty_assert_ulps_eq!(expected_y, profile_y, max_ulps = 4);
   }
 
   #[test]
   fn test_alphabet_nuc_get_profile_unknown() {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let profile_n = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'N')).unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 1.0, 1.0, 1.0], profile_n, max_ulps = 4);
+    let expected_n = array![1.0, 1.0, 1.0, 1.0];
+    pretty_assert_ulps_eq!(expected_n, profile_n, max_ulps = 4);
   }
 
   #[test]
@@ -315,7 +322,8 @@ mod tests {
         AsciiChar::from_byte_unchecked(b'G'),
       ])
       .unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], actual, max_ulps = 4);
+    let expected = array![1.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
   }
 
   #[test]
@@ -330,7 +338,8 @@ mod tests {
     let expected_shape = [3, 4];
     assert_eq!(expected_shape, actual.shape());
 
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 0.0], actual.row(0).to_owned(), max_ulps = 4);
+    let expected_row0 = array![1.0, 0.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected_row0, actual.row(0).to_owned(), max_ulps = 4);
   }
 
   #[test]
@@ -455,14 +464,16 @@ mod tests {
     let actual = alphabet
       .construct_profile([AsciiChar::from_byte_unchecked(b'R')])
       .unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], actual, max_ulps = 4);
+    let expected = array![1.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
   }
 
   #[test]
   fn test_alphabet_construct_profile_empty() {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let actual = alphabet.construct_profile::<[AsciiChar; 0], _>([]).unwrap();
-    pretty_assert_ulps_eq!(array![0.0, 0.0, 0.0, 0.0], actual, max_ulps = 4);
+    let expected = array![0.0, 0.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
   }
 
   #[test]
@@ -476,8 +487,11 @@ mod tests {
     let expected_shape = [2, 4];
     assert_eq!(expected_shape, actual.shape());
 
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], actual.row(0).to_owned(), max_ulps = 4);
-    pretty_assert_ulps_eq!(array![0.0, 1.0, 0.0, 1.0], actual.row(1).to_owned(), max_ulps = 4);
+    let expected_row0 = array![1.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_row0, actual.row(0).to_owned(), max_ulps = 4);
+
+    let expected_row1 = array![0.0, 1.0, 0.0, 1.0];
+    pretty_assert_ulps_eq!(expected_row1, actual.row(1).to_owned(), max_ulps = 4);
   }
 
   #[rstest]
@@ -521,61 +535,36 @@ mod tests {
     assert_eq!(expected_gap, alphabet.gap());
 
     let profile_w = alphabet.get_profile(AsciiChar::from_byte_unchecked(b'W')).unwrap();
-    pretty_assert_ulps_eq!(array![1.0, 1.0, 0.0], profile_w, max_ulps = 4);
+    let expected_w = array![1.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_w, profile_w, max_ulps = 4);
   }
 
-  #[test]
-  fn test_alphabet_nuc_all_ambiguous_mappings() {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-
-    let cases = [
-      (b'R', vec![b'A', b'G']),
-      (b'Y', vec![b'C', b'T']),
-      (b'S', vec![b'C', b'G']),
-      (b'W', vec![b'A', b'T']),
-      (b'K', vec![b'G', b'T']),
-      (b'M', vec![b'A', b'C']),
-      (b'D', vec![b'A', b'G', b'T']),
-      (b'H', vec![b'A', b'C', b'T']),
-      (b'B', vec![b'C', b'G', b'T']),
-      (b'V', vec![b'A', b'C', b'G']),
-    ];
-
-    for (ambig, expected_chars) in cases {
-      let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(ambig));
-      assert_eq!(expected_chars.len(), set.len(), "wrong size for {}", char::from(ambig));
-      for c in expected_chars {
-        assert!(
-          set.contains(AsciiChar::from_byte_unchecked(c)),
-          "{} should contain {}",
-          char::from(ambig),
-          char::from(c)
-        );
-      }
-    }
-  }
-
-  #[test]
-  fn test_alphabet_aa_all_ambiguous_mappings() {
-    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
-
-    let cases = [
-      (b'B', vec![b'N', b'D']),
-      (b'Z', vec![b'Q', b'E']),
-      (b'J', vec![b'L', b'I']),
-    ];
-
-    for (ambig, expected_chars) in cases {
-      let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(ambig));
-      assert_eq!(expected_chars.len(), set.len(), "wrong size for {}", char::from(ambig));
-      for c in expected_chars {
-        assert!(
-          set.contains(AsciiChar::from_byte_unchecked(c)),
-          "{} should contain {}",
-          char::from(ambig),
-          char::from(c)
-        );
-      }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::r(AlphabetName::Nuc, b'R', vec![b'A', b'G'])]
+  #[case::y(AlphabetName::Nuc, b'Y', vec![b'C', b'T'])]
+  #[case::s(AlphabetName::Nuc, b'S', vec![b'C', b'G'])]
+  #[case::w(AlphabetName::Nuc, b'W', vec![b'A', b'T'])]
+  #[case::k(AlphabetName::Nuc, b'K', vec![b'G', b'T'])]
+  #[case::m(AlphabetName::Nuc, b'M', vec![b'A', b'C'])]
+  #[case::d(AlphabetName::Nuc, b'D', vec![b'A', b'G', b'T'])]
+  #[case::h(AlphabetName::Nuc, b'H', vec![b'A', b'C', b'T'])]
+  #[case::b(AlphabetName::Nuc, b'B', vec![b'C', b'G', b'T'])]
+  #[case::v(AlphabetName::Nuc, b'V', vec![b'A', b'C', b'G'])]
+  #[case::aa_b(AlphabetName::Aa, b'B', vec![b'N', b'D'])]
+  #[case::aa_z(AlphabetName::Aa, b'Z', vec![b'Q', b'E'])]
+  #[case::aa_j(AlphabetName::Aa, b'J', vec![b'L', b'I'])]
+  #[trace]
+  fn test_alphabet_ambiguous_mapping(
+    #[case] name: AlphabetName,
+    #[case] ambig: u8,
+    #[case] expected_chars: Vec<u8>,
+  ) {
+    let alphabet = Alphabet::new(name).unwrap();
+    let set = alphabet.char_to_set(AsciiChar::from_byte_unchecked(ambig));
+    assert_eq!(expected_chars.len(), set.len());
+    for c in expected_chars {
+      assert!(set.contains(AsciiChar::from_byte_unchecked(c)));
     }
   }
 

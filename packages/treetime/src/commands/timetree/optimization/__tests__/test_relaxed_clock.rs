@@ -1,14 +1,43 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::timetree::GraphTimetree;
-  use approx::assert_ulps_eq;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
+
+  /// Build a simple tree with time_length set on edges
+  fn build_simple_tree() -> Result<GraphTimetree, Report> {
+    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+
+    // Set time_length on edges (simulating clock inference)
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
+      // time_length = branch_length * 100 (arbitrary scaling for testing)
+      edge.payload().write_arc().time_length = Some(branch_length * 100.0);
+    }
+
+    Ok(graph)
+  }
+
+  /// Build a deeper tree with time_length set
+  fn build_deep_tree() -> Result<GraphTimetree, Report> {
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
+      edge.payload().write_arc().time_length = Some(branch_length * 100.0);
+    }
+
+    Ok(graph)
+  }
 
   #[test]
   fn test_relaxed_clock_default_params_produce_reasonable_gamma() -> Result<(), Report> {
-    let graph = helpers::build_simple_tree()?;
+    let graph = build_simple_tree()?;
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
@@ -27,7 +56,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_all_gamma_above_minimum() -> Result<(), Report> {
-    let graph = helpers::build_deep_tree()?;
+    let graph = build_deep_tree()?;
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
@@ -64,7 +93,7 @@ mod tests {
 
     let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
     for gamma in &gammas {
-      assert_ulps_eq!(*gamma, mean_gamma, max_ulps = 1000);
+      pretty_assert_ulps_eq!(*gamma, mean_gamma, max_ulps = 1000);
     }
 
     Ok(())
@@ -72,7 +101,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_empty_params_uses_defaults() -> Result<(), Report> {
-    let graph = helpers::build_simple_tree()?;
+    let graph = build_simple_tree()?;
     let one_mutation = 0.01;
 
     apply_relaxed_clock(&graph, &[], one_mutation);
@@ -87,14 +116,14 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_gamma_stored_in_edges() -> Result<(), Report> {
-    let graph = helpers::build_simple_tree()?;
+    let graph = build_simple_tree()?;
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
     // Before: gamma should be default 1.0
     for edge in graph.get_edges() {
       let gamma = edge.read_arc().payload().read_arc().gamma;
-      assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
+      pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
     apply_relaxed_clock(&graph, &params, one_mutation);
@@ -115,7 +144,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_high_slack_pulls_toward_one() -> Result<(), Report> {
-    let graph = helpers::build_deep_tree()?;
+    let graph = build_deep_tree()?;
     let one_mutation = 0.01;
 
     // Compare low slack vs high slack - high slack should have gammas closer to 1.0
@@ -150,7 +179,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_high_coupling_reduces_variation() -> Result<(), Report> {
-    let graph = helpers::build_deep_tree()?;
+    let graph = build_deep_tree()?;
     let one_mutation = 0.01;
 
     // Run with low coupling
@@ -162,7 +191,7 @@ mod tests {
       .iter()
       .map(|e| e.read_arc().payload().read_arc().gamma)
       .collect();
-    let variance_low = helpers::compute_variance(&gammas_low);
+    let variance_low = compute_variance(&gammas_low);
 
     // Run with high coupling
     let params_high = [1.0, 10.0];
@@ -173,7 +202,7 @@ mod tests {
       .iter()
       .map(|e| e.read_arc().payload().read_arc().gamma)
       .collect();
-    let variance_high = helpers::compute_variance(&gammas_high);
+    let variance_high = compute_variance(&gammas_high);
 
     assert!(
       variance_high <= variance_low,
@@ -181,6 +210,12 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  fn compute_variance(values: &[f64]) -> f64 {
+    let n = values.len() as f64;
+    let mean = values.iter().sum::<f64>() / n;
+    values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n
   }
 
   /// Regression test for T3: one_mutation must sum sequence lengths across partitions.
@@ -244,7 +279,7 @@ mod tests {
   /// apply_relaxed_clock should not produce NaN or crash with one_mutation near zero.
   #[test]
   fn test_relaxed_clock_handles_tiny_one_mutation() -> Result<(), Report> {
-    let graph = helpers::build_simple_tree()?;
+    let graph = build_simple_tree()?;
     let params = [1.0, 1.0];
 
     // Simulate what would happen if one_mutation were computed from very short sequences
@@ -308,88 +343,41 @@ mod tests {
   /// - gamma = -0.5 * k1 / k2 = (0.5 + slack) / (slack + 0.5) = 1.0
   ///
   /// This holds for any slack > 0 and any one_mutation > 0.
-  #[test]
-  fn test_relaxed_clock_childless_root_gamma_equals_one() -> Result<(), Report> {
-    // Single-node tree: root with no children
+  #[rstest]
+  #[trace]
+  fn test_relaxed_clock_childless_root_gamma_equals_one(
+    #[values(0.1, 1.0, 10.0, 100.0)] slack: f64,
+    #[values(1e-6, 0.001, 0.01, 0.1, 1.0)] one_mutation: f64,
+  ) -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("root:0.0;")?;
+    let params = [slack, 1.0];
+    apply_relaxed_clock(&graph, &params, one_mutation);
+    Ok(())
+  }
 
-    // Test with various slack values and one_mutation values
-    for slack in [0.1, 1.0, 10.0, 100.0] {
-      for one_mutation in [1e-6, 0.001, 0.01, 0.1, 1.0] {
-        let params = [slack, 1.0]; // coupling doesn't matter for childless root
-        apply_relaxed_clock(&graph, &params, one_mutation);
-
-        // Root gamma is stored in the node's coefficient, but since there's no edge
-        // to store it in, we verify the algorithm completes without panic.
-        // The gamma computation itself should yield exactly 1.0 per the derivation.
-      }
-    }
-
-    // Also test a tree where root gamma IS stored (root with one child, but we
-    // check the computed value before child coupling modifies it).
-    // Create tree where child has equal opt_len and act_len so it doesn't
-    // contribute coupling that would change root gamma from 1.0.
+  /// With opt_len == act_len == one_mutation for both root and child,
+  /// the system has no rate variation to correct, so gamma = 1.0.
+  #[test]
+  fn test_relaxed_clock_childless_root_gamma_stored() -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("(A:0.01)root:0.0;")?;
 
-    // Set time_length = branch_length so opt_len == act_len for child
-    // This means child gamma should also be ~1.0, and coupling preserves it
     for edge in graph.get_edges() {
       let edge = edge.write_arc();
       let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
       edge.payload().write_arc().time_length = Some(branch_length);
     }
 
-    let one_mutation = 0.01; // Same as branch_length
+    let one_mutation = 0.01;
     let params = [1.0, 1.0];
     apply_relaxed_clock(&graph, &params, one_mutation);
 
-    // When opt_len == act_len == one_mutation for both root and child,
-    // the system has no rate variation to correct, so gamma ≈ 1.0
     let gamma = graph
       .get_edges()
       .first()
       .map_or(1.0, |e| e.read_arc().payload().read_arc().gamma);
 
-    assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
+    pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 
     Ok(())
-  }
-
-  mod helpers {
-    use super::*;
-
-    /// Build a simple tree with time_length set on edges
-    pub fn build_simple_tree() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
-
-      // Set time_length on edges (simulating clock inference)
-      for edge in graph.get_edges() {
-        let edge = edge.write_arc();
-        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-        // time_length = branch_length * 100 (arbitrary scaling for testing)
-        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-      }
-
-      Ok(graph)
-    }
-
-    /// Build a deeper tree with time_length set
-    pub fn build_deep_tree() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
-
-      for edge in graph.get_edges() {
-        let edge = edge.write_arc();
-        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-      }
-
-      Ok(graph)
-    }
-
-    pub fn compute_variance(values: &[f64]) -> f64 {
-      let n = values.len() as f64;
-      let mean = values.iter().sum::<f64>() / n;
-      values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n
-    }
   }
 }

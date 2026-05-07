@@ -38,10 +38,7 @@ mod tests {
     // function values: 1, 2, 3, 4, 5
     // products: 2, 12, 30, 56, 90
     let expected = array![2.0, 12.0, 30.0, 56.0, 90.0];
-    assert_eq!(result_fn.y().len(), expected.len());
-    for (&actual, &exp) in result_fn.y().iter().zip(expected.iter()) {
-      assert_ulps_eq!(exp, actual, max_ulps = 10);
-    }
+    assert_ulps_eq!(expected, result_fn.y(), max_ulps = 10);
   }
 
   /// Commutativity: Function * Formula gives the same result as Formula * Function.
@@ -61,10 +58,7 @@ mod tests {
       panic!("Both results should be Function variants");
     };
 
-    assert_eq!(ff_fn.y().len(), fxf_fn.y().len());
-    for (&a, &b) in ff_fn.y().iter().zip(fxf_fn.y().iter()) {
-      assert_ulps_eq!(a, b, max_ulps = 10);
-    }
+    assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
   }
 
   fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {

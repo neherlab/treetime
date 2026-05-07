@@ -4,14 +4,24 @@ mod tests {
   use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use rstest::rstest;
   use treetime_distribution::Distribution;
 
   const N_GRID: usize = 1000;
 
-  /// With no substitution contributions and indel rate zero, every grid point
-  /// has log-likelihood zero, so the normalized probability is uniform at 1.0.
-  #[test]
-  fn test_branch_length_likelihood_no_indels_flat_distribution() -> Result<(), Report> {
+  /// Evaluate a distribution at `t` by sampling the underlying function.
+  fn eval(distribution: &Distribution, t: f64) -> f64 {
+    distribution.eval(t).unwrap_or(0.0)
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::t_0_05(  0.05)]
+  #[case::t_1(     1.0)]
+  #[case::t_10(   10.0)]
+  #[case::t_100( 100.0)]
+  #[trace]
+  fn test_branch_length_likelihood_no_indels_flat_distribution(#[case] t: f64) -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
@@ -24,9 +34,7 @@ mod tests {
       /* gamma */ 1.0,
     )?;
 
-    for t in [0.05, 1.0, 10.0, 100.0] {
-      assert_abs_diff_eq!(helpers::eval(&distribution, t), 1.0, epsilon = 1e-12);
-    }
+    assert_abs_diff_eq!(eval(&distribution, t), 1.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -77,7 +85,7 @@ mod tests {
     // we sample only t >= 0.5 where both effects are well separated.
     for t in [0.5, 2.0, 10.0] {
       let expected = (-indel_rate * (t - t_min)).exp();
-      assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-2);
+      assert_abs_diff_eq!(eval(&distribution, t), expected, epsilon = 1e-2);
     }
     Ok(())
   }
@@ -149,12 +157,14 @@ mod tests {
     Ok(())
   }
 
-  /// Without indels (`indel_count == 0`, `indel_rate == 0`) the Poisson term is
-  /// identically zero. The resulting distribution must be identical to one
-  /// computed with zero substitutional contributions and no indel arguments,
-  /// confirming the new parameters are no-ops on indel-free datasets.
-  #[test]
-  fn test_branch_length_likelihood_zero_indels_matches_substitution_only() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::t_0_001( 0.001)]
+  #[case::t_0_05(  0.05)]
+  #[case::t_5(     5.0)]
+  #[case::t_50(   50.0)]
+  #[trace]
+  fn test_branch_length_likelihood_zero_indels_matches_substitution_only(#[case] t: f64) -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let with_zero_indels = compute_branch_length_distribution(
       &contributions,
@@ -167,9 +177,7 @@ mod tests {
       /* gamma */ 1.0,
     )?;
 
-    for t in [0.001, 0.05, 5.0, 50.0] {
-      assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
-    }
+    assert_abs_diff_eq!(eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -192,14 +200,5 @@ mod tests {
     let report = result.expect_err("expected negative clock rate to error");
     let rendered = format!("{report:#}");
     assert!(rendered.contains("--clock-rate"), "unexpected error: {rendered}");
-  }
-
-  mod helpers {
-    use super::*;
-
-    /// Evaluate a distribution at `t` by sampling the underlying function.
-    pub fn eval(distribution: &Distribution, t: f64) -> f64 {
-      distribution.eval(t).unwrap_or(0.0)
-    }
   }
 }

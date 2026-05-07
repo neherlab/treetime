@@ -2,6 +2,7 @@
 mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -84,14 +85,8 @@ mod tests {
         .iter()
         .find(|row| row.node == *node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
-      assert_eq!(
-        expected_profile.len(),
-        actual_profile.profile.len(),
-        "profile length mismatch for node '{node_name}'"
-      );
-      for (expected_val, actual_val) in expected_profile.iter().zip(actual_profile.profile.iter()) {
-        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 1e-6);
-      }
+      let expected_arr = Array1::from_vec(expected_profile.clone());
+      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-6);
     }
 
     Ok(())
@@ -125,14 +120,8 @@ mod tests {
         .iter()
         .find(|row| row.node == *node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
-      assert_eq!(
-        expected_profile.len(),
-        actual_profile.profile.len(),
-        "profile length mismatch for node '{node_name}'"
-      );
-      for (expected_val, actual_val) in expected_profile.iter().zip(actual_profile.profile.iter()) {
-        assert_abs_diff_eq!(expected_val, actual_val, epsilon = 1e-10);
-      }
+      let expected_arr = Array1::from_vec(expected_profile.clone());
+      assert_abs_diff_eq!(expected_arr, actual_profile.profile, epsilon = 1e-10);
     }
 
     Ok(())
@@ -148,8 +137,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use treetime_io::discrete_states_csv::read_discrete_attrs;
-    use treetime_utils::io::json::json_read_file;
     use treetime_io::nwk::nwk_read_file;
+    use treetime_utils::io::json::json_read_file;
 
     #[derive(Debug, Deserialize)]
     pub struct GmMugrationInput {

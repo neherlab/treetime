@@ -2,19 +2,31 @@
 mod tests {
   use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::alphabet::alphabet_config::AlphabetConfig;
-  use crate::vec_u8;
   use crate::pretty_assert_ulps_eq;
+  use crate::vec_u8;
   use eyre::Report;
   use indexmap::indexmap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_primitives::AsciiChar;
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+
+  fn make_valid_config() -> AlphabetConfig {
+    AlphabetConfig {
+      canonical: vec_u8!['A', 'C', 'G', 'T'],
+      ambiguous: indexmap! {
+        b'R' => vec_u8!['A', 'G'],
+        b'Y' => vec_u8!['C', 'T'],
+      },
+      unknown: b'N',
+      gap: b'-',
+    }
+  }
 
   #[test]
   fn test_alphabet_config_validate_valid() {
-    let config = helpers::make_valid_config();
+    let config = make_valid_config();
     let result = config.validate();
     result.unwrap();
   }
@@ -169,22 +181,25 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_create_profile_map() {
-    let config = helpers::make_valid_config();
+    let config = make_valid_config();
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_a = &profile_map[&AsciiChar::from_byte_unchecked(b'A')];
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 0.0], profile_a, max_ulps = 4);
+    let expected_a = array![1.0, 0.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected_a, profile_a, max_ulps = 4);
 
     let profile_r = &profile_map[&AsciiChar::from_byte_unchecked(b'R')];
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], profile_r, max_ulps = 4);
+    let expected_r = array![1.0, 0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_r, profile_r, max_ulps = 4);
 
     let profile_n = &profile_map[&AsciiChar::from_byte_unchecked(b'N')];
-    pretty_assert_ulps_eq!(array![1.0, 1.0, 1.0, 1.0], profile_n, max_ulps = 4);
+    let expected_n = array![1.0, 1.0, 1.0, 1.0];
+    pretty_assert_ulps_eq!(expected_n, profile_n, max_ulps = 4);
   }
 
   #[test]
   fn test_alphabet_config_create_profile_map_gap_matches_unknown() {
-    let config = helpers::make_valid_config();
+    let config = make_valid_config();
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_gap = &profile_map[&AsciiChar::from_byte_unchecked(b'-')];
@@ -203,18 +218,21 @@ mod tests {
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_x = &profile_map[&AsciiChar::from_byte_unchecked(b'X')];
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0], profile_x, max_ulps = 4);
+    let expected_x = array![1.0, 0.0, 0.0];
+    pretty_assert_ulps_eq!(expected_x, profile_x, max_ulps = 4);
 
     let profile_y = &profile_map[&AsciiChar::from_byte_unchecked(b'Y')];
-    pretty_assert_ulps_eq!(array![0.0, 1.0, 0.0], profile_y, max_ulps = 4);
+    let expected_y = array![0.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_y, profile_y, max_ulps = 4);
 
     let profile_z = &profile_map[&AsciiChar::from_byte_unchecked(b'Z')];
-    pretty_assert_ulps_eq!(array![0.0, 0.0, 1.0], profile_z, max_ulps = 4);
+    let expected_z = array![0.0, 0.0, 1.0];
+    pretty_assert_ulps_eq!(expected_z, profile_z, max_ulps = 4);
   }
 
   #[test]
   fn test_alphabet_config_serde_roundtrip() -> Result<(), Report> {
-    let config = helpers::make_valid_config();
+    let config = make_valid_config();
     let json = json_write_str(&config, JsonPretty(false))?;
     let deserialized: AlphabetConfig = json_read_str(&json)?;
     assert_eq!(config, deserialized);
@@ -299,16 +317,18 @@ mod tests {
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_s = &profile_map[&AsciiChar::from_byte_unchecked(b'S')];
-    pretty_assert_ulps_eq!(array![0.0, 1.0, 1.0, 0.0], profile_s, max_ulps = 4);
+    let expected_s = array![0.0, 1.0, 1.0, 0.0];
+    pretty_assert_ulps_eq!(expected_s, profile_s, max_ulps = 4);
 
     let profile_w = &profile_map[&AsciiChar::from_byte_unchecked(b'W')];
-    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 1.0], profile_w, max_ulps = 4);
+    let expected_w = array![1.0, 0.0, 0.0, 1.0];
+    pretty_assert_ulps_eq!(expected_w, profile_w, max_ulps = 4);
   }
 
   #[test]
   fn test_alphabet_config_equality() {
-    let config1 = helpers::make_valid_config();
-    let config2 = helpers::make_valid_config();
+    let config1 = make_valid_config();
+    let config2 = make_valid_config();
     assert_eq!(config1, config2);
 
     let config3 = AlphabetConfig {
@@ -322,7 +342,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_clone() {
-    let config = helpers::make_valid_config();
+    let config = make_valid_config();
     let cloned = config.clone();
     assert_eq!(config, cloned);
   }
@@ -337,21 +357,5 @@ mod tests {
     };
     let result = config.validate();
     result.unwrap();
-  }
-
-  mod helpers {
-    use super::*;
-
-    pub fn make_valid_config() -> AlphabetConfig {
-      AlphabetConfig {
-        canonical: vec_u8!['A', 'C', 'G', 'T'],
-        ambiguous: indexmap! {
-          b'R' => vec_u8!['A', 'G'],
-          b'Y' => vec_u8!['C', 'T'],
-        },
-        unknown: b'N',
-        gap: b'-',
-      }
-    }
   }
 }

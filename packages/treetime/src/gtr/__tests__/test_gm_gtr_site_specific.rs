@@ -23,13 +23,14 @@ mod tests {
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
   #[case::single_site_uniform("single_site_uniform")]
+  #[trace]
   fn test_gm_gtr_site_specific_expqt(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
     let input = &inputs.site_specific[case];
     let expected = &outputs.site_specific[case];
 
-    let gtr = helpers::build_from_input(input)?;
+    let gtr = build_from_input(input)?;
 
     // Compare eigenvalues (per-site, sorted per column for ordering independence)
     let expected_eigvals = value_to_array2(&expected.eigenvals);
@@ -38,9 +39,9 @@ mod tests {
       let mut expected_col: Vec<f64> = expected_eigvals.column(a).to_vec();
       actual_col.sort_by_key(|x| ordered_float::OrderedFloat(*x));
       expected_col.sort_by_key(|x| ordered_float::OrderedFloat(*x));
-      for (a_val, e_val) in actual_col.iter().zip(expected_col.iter()) {
-        assert_abs_diff_eq!(a_val, e_val, epsilon = 1e-10);
-      }
+      let actual_arr = Array1::from_vec(actual_col);
+      let expected_arr = Array1::from_vec(expected_col);
+      assert_abs_diff_eq!(expected_arr, actual_arr, epsilon = 1e-10);
     }
 
     // Compare expQt at each captured time point
@@ -56,13 +57,14 @@ mod tests {
   #[rstest]
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
+  #[trace]
   fn test_gm_gtr_site_specific_propagate_evolve(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
     let input = &inputs.site_specific[case];
     let expected = &outputs.site_specific[case];
 
-    let gtr = helpers::build_from_input(input)?;
+    let gtr = build_from_input(input)?;
 
     for (profile_name, profile_output) in &expected.profiles {
       let profile_data = &inputs.profiles[profile_name.as_str()];
@@ -147,13 +149,14 @@ mod tests {
   #[case::two_site_uniform_skewed("two_site_uniform_skewed")]
   #[case::three_site_heterogeneous("three_site_heterogeneous")]
   #[case::single_site_uniform("single_site_uniform")]
+  #[trace]
   fn test_gm_gtr_site_specific_approximate(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
     let input = &inputs.site_specific[case];
     let expected = &outputs.approximate[case];
 
-    let gtr = helpers::build_from_input_approximate(input)?;
+    let gtr = build_from_input_approximate(input)?;
 
     for entry in &expected.exp_qts {
       let actual = gtr.expQt(entry.time)?;
@@ -167,49 +170,48 @@ mod tests {
     Ok(())
   }
 
+  fn parse_input(input: &serde_json::Value) -> (usize, usize, Array1<f64>, Option<Array2<f64>>, Array2<f64>) {
+    let n_states = input["n_states"].as_u64().unwrap() as usize;
+    let seq_len = input["seq_len"].as_u64().unwrap() as usize;
+    let mu: Vec<f64> = serde_json::from_value(input["mu"].clone()).unwrap();
+    let mu = Array1::from_vec(mu);
+    let pi = value_to_array2(&input["pi"]);
+    let W: Option<Array2<f64>> = if input["W"].is_null() {
+      None
+    } else {
+      Some(value_to_array2(&input["W"]))
+    };
+    (n_states, seq_len, mu, W, pi)
+  }
+
+  fn build_from_input(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
+    let (n_states, seq_len, mu, W, pi) = parse_input(input);
+    GTRSiteSpecific::new(GTRSiteSpecificParams {
+      n_states,
+      seq_len,
+      mu,
+      W,
+      pi,
+      approximate: false,
+    })
+  }
+
+  fn build_from_input_approximate(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
+    let (n_states, seq_len, mu, W, pi) = parse_input(input);
+    GTRSiteSpecific::new(GTRSiteSpecificParams {
+      n_states,
+      seq_len,
+      mu,
+      W,
+      pi,
+      approximate: true,
+    })
+  }
+
   mod helpers {
-    use super::*;
     use indexmap::IndexMap;
     use serde::Deserialize;
     use std::fs::read_to_string;
-
-    pub fn parse_input(input: &serde_json::Value) -> (usize, usize, Array1<f64>, Option<Array2<f64>>, Array2<f64>) {
-      let n_states = input["n_states"].as_u64().unwrap() as usize;
-      let seq_len = input["seq_len"].as_u64().unwrap() as usize;
-      let mu: Vec<f64> = serde_json::from_value(input["mu"].clone()).unwrap();
-      let mu = Array1::from_vec(mu);
-      let pi = value_to_array2(&input["pi"]);
-      let W: Option<Array2<f64>> = if input["W"].is_null() {
-        None
-      } else {
-        Some(value_to_array2(&input["W"]))
-      };
-      (n_states, seq_len, mu, W, pi)
-    }
-
-    pub fn build_from_input(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
-      let (n_states, seq_len, mu, W, pi) = parse_input(input);
-      GTRSiteSpecific::new(GTRSiteSpecificParams {
-        n_states,
-        seq_len,
-        mu,
-        W,
-        pi,
-        approximate: false,
-      })
-    }
-
-    pub fn build_from_input_approximate(input: &serde_json::Value) -> Result<GTRSiteSpecific, Report> {
-      let (n_states, seq_len, mu, W, pi) = parse_input(input);
-      GTRSiteSpecific::new(GTRSiteSpecificParams {
-        n_states,
-        seq_len,
-        mu,
-        W,
-        pi,
-        approximate: true,
-      })
-    }
 
     #[derive(Debug, Deserialize)]
     pub struct ExpQtEntry {

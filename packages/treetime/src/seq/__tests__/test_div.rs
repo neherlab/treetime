@@ -10,6 +10,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // OnlyLeaves(false) - all nodes
   #[test]
@@ -28,10 +29,7 @@ mod tests {
       o!("D") => 0.17,
     };
 
-    assert_eq!(expected.len(), actual.len());
-    for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
-    }
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-8);
 
     Ok(())
   }
@@ -50,10 +48,7 @@ mod tests {
       o!("D") => 0.17,
     };
 
-    assert_eq!(expected.len(), actual.len());
-    for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
-    }
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-8);
 
     Ok(())
   }
@@ -72,10 +67,7 @@ mod tests {
       o!("D") => 0.17,
     };
 
-    assert_eq!(expected.len(), actual.len());
-    for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
-    }
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-8);
 
     Ok(())
   }
@@ -143,10 +135,7 @@ mod tests {
       o!("D") => 0.1,
     };
 
-    assert_eq!(expected.len(), actual.len());
-    for (name, expected_div) in &expected {
-      assert_abs_diff_eq!(actual[name], *expected_div, epsilon = 1e-8);
-    }
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-8);
 
     Ok(())
   }
