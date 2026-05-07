@@ -37,7 +37,10 @@ mod tests {
   // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
   // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
-  #[ignore = "golden master datasets not yet passing"]
+  #[ignore = "dense-vs-v0 discrepancy: max 0.92 years at root-adjacent node (grid-width difference)"]
+  // TODO: investigate why uniform branch distribution grids produce 0.92-year shift at
+  // root-adjacent nodes. All other nodes within 0.1 years. Related:
+  // kb/issues/M-timetree-branch-grid-uniform-resolution.md
   fn test_gm_runner_marginal_dense(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
@@ -73,11 +76,7 @@ mod tests {
     run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
 
     let actual = extract_node_times(&graph);
-    // Tolerance increased from 0.9 to 1.0 after widening branch distribution grids
-    // (MAX_BRANCH_TIME): root-adjacent nodes shift by up to 0.92 years because the
-    // wider grid evaluates the true likelihood over a larger range, changing the
-    // distribution shape for deep-tree branches.
-    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e0);
+    pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())
   }

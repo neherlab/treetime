@@ -22,8 +22,9 @@ Peak shape is under-resolved for confidence interval estimation.
 ## Affected tests
 
 Golden master tests `test_gm_runner_marginal_dense` and
-`test_gm_runner_marginal_sparse` use `epsilon = 1e0` (1.0 years). With a
-non-uniform grid restoring peak resolution, this tolerance should tighten.
+`test_gm_runner_marginal_sparse` set target tolerance `epsilon = 1e-6` and are
+`#[ignore]`d until this grid resolution issue is fixed. With a non-uniform grid
+restoring peak resolution, the tests should pass at that tolerance.
 
 ## v0 reference
 
