@@ -295,6 +295,7 @@ mod tests {
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use eyre::Report;
+  use indoc::indoc;
   use maplit::btreemap;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -427,14 +428,20 @@ mod tests {
     }
 
     let nexus = nex_write_str(&graph, &NexWriteOptions::default())?;
-    assert!(
-      nexus.contains(r#"mutations="A55G,T93C""#),
-      "Nexus output missing mutations annotation; got:\n{nexus}"
+    let expected = concat!(
+      indoc! {r#"
+        #NEXUS
+        Begin Taxa;
+          Dimensions NTax=1;
+          TaxLabels A;
+        End;
+        Begin Trees;
+          Tree tree1=(A[&date="2003.84"][&mutations="A55G,T93C"])root;;
+        End;
+      "#},
+      "\n"
     );
-    assert!(
-      nexus.contains(r#"date="2003.84""#),
-      "Nexus output missing date annotation; got:\n{nexus}"
-    );
+    assert_eq!(nexus, expected);
     Ok(())
   }
 }

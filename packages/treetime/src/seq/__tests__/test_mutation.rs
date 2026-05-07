@@ -91,12 +91,15 @@ mod tests {
     let parent = vec![sub(b'A', 1, b'T'), sub(b'G', 3, b'C'), sub(b'T', 5, b'A')];
     let child = vec![sub(b'C', 0, b'G'), sub(b'A', 2, b'T'), sub(b'C', 4, b'G')];
     let result = compose_substitutions(&parent, &child)?;
-    for w in result.windows(2) {
-      if let [a, b] = w {
-        assert!(a.pos() < b.pos(), "output not sorted: pos {} >= {}", a.pos(), b.pos());
-      }
-    }
-    assert_eq!(result.len(), 6);
+    let expected = vec![
+      sub(b'C', 0, b'G'),
+      sub(b'A', 1, b'T'),
+      sub(b'A', 2, b'T'),
+      sub(b'G', 3, b'C'),
+      sub(b'C', 4, b'G'),
+      sub(b'T', 5, b'A'),
+    ];
+    assert_eq!(result, expected);
     Ok(())
   }
 

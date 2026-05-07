@@ -311,12 +311,8 @@ mod tests {
       .cloned()
       .unwrap();
     let edge_data = &p.edges[&root_to_a_edge.read_arc().key()];
-    assert_eq!(
-      edge_data.fitch_subs().len(),
-      0,
-      "reversion should cancel: {:?}",
-      edge_data.fitch_subs()
-    );
+    let expected: &[Sub] = &[];
+    assert_eq!(edge_data.fitch_subs(), expected);
 
     Ok(())
   }
