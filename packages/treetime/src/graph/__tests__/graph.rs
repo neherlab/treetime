@@ -145,8 +145,6 @@ pub mod tests {
 
   #[test]
   fn test_traversal_parallel_breadth_first_forward() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-
     let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = Arc::new(RwLock::new(vec![]));
@@ -164,8 +162,6 @@ pub mod tests {
 
   #[test]
   fn test_traversal_parallel_breadth_first_backward() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
-
     let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let actual = Arc::new(RwLock::new(vec![]));

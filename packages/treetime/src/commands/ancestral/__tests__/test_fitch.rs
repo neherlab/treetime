@@ -178,7 +178,6 @@ mod tests {
   /// state is preferred when present in the child's state set.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -244,7 +243,6 @@ mod tests {
   /// observed data) and that internal node sequences match the expected reconstruction.
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -313,7 +311,6 @@ mod tests {
 
   #[test]
   fn test_compress_sequences_retains_internal_exact_sequences() -> Result<(), Report> {
-    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -367,7 +364,6 @@ mod tests {
   /// indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
-    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -442,7 +438,6 @@ mod tests {
   ///   requiring both indel and substitution tracking within the insertion.
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
-    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     // Test cases: a) deletions overlap, b) root has a deletion, c) inserted sequence is variable
     // In DE, position 3 is inserted, but it varies in D and E
@@ -524,7 +519,6 @@ mod tests {
   /// binary tree version.
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
-    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     // Test polytomy (node with more than 2 children)
     let aln = read_many_fasta_str(
@@ -611,7 +605,6 @@ mod tests {
   /// - After forward: same variable positions are tracked, but root sequence is fully resolved.
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
-    drop(rayon::ThreadPoolBuilder::new().num_threads(1).build_global());
 
     let aln = read_many_fasta_str(
       indoc! {r#"

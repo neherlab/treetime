@@ -25,6 +25,7 @@ ndarray-conv = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
+rayon = { workspace = true }
 
 [lints]
 workspace = true

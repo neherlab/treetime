@@ -68,6 +68,7 @@ zstd = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
+rayon = { workspace = true }
 rstest = { workspace = true }
 
 [lints]

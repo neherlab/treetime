@@ -86,12 +86,6 @@ Divides by `n` (count of overlapping keys). Disjoint node sets produce `n = 0`, 
 
 Passes `filepath` directly to `SVGBackend::new()` instead of using `fn create_file_or_stdout()` from `treetime-utils`.
 
-### rayon::ThreadPoolBuilder::build_global called per-test
-
-`packages/treetime/src/graph/__tests__/graph.rs:148,167:` and multiple ancestral test files.
-
-Calling `build_global` multiple times causes nondeterministic test failures because the global pool can only be initialized once.
-
 ### BrentOpt absolute epsilon on calendar time
 
 `packages/treetime/src/commands/timetree/optimization/polytomy.rs:265:`

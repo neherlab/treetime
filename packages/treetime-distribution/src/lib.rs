@@ -3,9 +3,6 @@ pub(crate) mod distribution_ops;
 pub(crate) mod distribution_scaled;
 pub(crate) mod policy;
 
-#[cfg(test)]
-mod __tests__;
-
 pub use distribution_core::distribution::{
   Distribution, DistributionNegLog, DistributionPlain, TIME_EPSILON, TIME_LIMIT,
 };
@@ -29,3 +26,21 @@ pub use distribution_scaled::divide::scaled_distribution_division;
 pub use distribution_scaled::multiply::{scaled_distribution_multiplication, scaled_distribution_multiply_many};
 pub use distribution_scaled::scaled::ScaledDistribution;
 pub use policy::{NegLog, Plain, PolicyMarker, SupportsConvolution, SupportsSubtraction, YAxisPolicy};
+
+#[cfg(test)]
+mod __tests__;
+
+#[cfg(test)]
+mod tests {
+  use ctor::ctor;
+  use treetime_utils::init::global::global_init;
+
+  #[ctor]
+  fn init() {
+    global_init();
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(1)
+      .build_global()
+      .expect("rayon global thread pool initialization failed");
+  }
+}

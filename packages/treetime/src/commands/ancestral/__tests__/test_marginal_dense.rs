@@ -150,7 +150,6 @@ mod tests {
   /// posteriori) state argmax_s P(s|data) at each position.
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let expected = read_many_fasta_str(
       indoc! {r#"
@@ -345,7 +344,6 @@ mod tests {
   /// exponentiated log-likelihoods are summed.
   #[test]
   fn test_total_likelihood_marginal_dense_all_triplets() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;

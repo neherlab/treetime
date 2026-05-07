@@ -149,7 +149,6 @@ mod tests {
   /// Also verifies the total log-likelihood matches the expected value.
   #[test]
   fn test_ancestral_reconstruction_marginal_sparse() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -421,7 +420,6 @@ mod tests {
   /// with extreme frequency imbalance.
   #[test]
   fn test_total_likelihood_marginal_sparse_all_triplets() -> Result<(), Report> {
-    rayon::ThreadPoolBuilder::new().num_threads(1).build_global()?;
 
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;

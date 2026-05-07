@@ -25,5 +25,9 @@ mod tests {
   #[ctor]
   fn init() {
     global_init();
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(1)
+      .build_global()
+      .expect("rayon global thread pool initialization failed");
   }
 }

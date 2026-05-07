@@ -41,6 +41,7 @@ traversal = { workspace = true }
 approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
+rayon = { workspace = true }
 rstest = { workspace = true }
 
 [lints]

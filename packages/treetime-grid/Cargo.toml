@@ -29,6 +29,7 @@ ndarray-stats = { workspace = true }
 [dev-dependencies]
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
+rayon = { workspace = true }
 rstest = { workspace = true }
 
 [lints]
