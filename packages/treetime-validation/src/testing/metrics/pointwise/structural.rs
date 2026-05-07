@@ -1,5 +1,6 @@
 use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
@@ -119,16 +120,11 @@ fn compute_symmetry_residual(x: &Array1<f64>, y: &Array1<f64>) -> Array1<f64> {
   let n = x.len();
   let mut residual = Array1::zeros(n);
 
-  let x_map: BTreeMap<String, (usize, f64)> = x
-    .iter()
-    .enumerate()
-    .map(|(i, &val)| (format!("{val:.12}"), (i, val)))
-    .collect();
+  let x_map: BTreeMap<OrderedFloat<f64>, usize> =
+    x.iter().enumerate().map(|(i, &val)| (OrderedFloat(val), i)).collect();
 
   for (i, &xi) in x.iter().enumerate() {
-    let neg_xi = -xi;
-    let key = format!("{neg_xi:.12}");
-    if let Some(&(j, _)) = x_map.get(&key) {
+    if let Some(&j) = x_map.get(&OrderedFloat(-xi)) {
       residual[i] = y[i] - y[j];
     }
   }

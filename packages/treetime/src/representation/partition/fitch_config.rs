@@ -24,8 +24,8 @@ pub struct PartitionFitchConfig {
 }
 
 impl PartitionFitchConfig {
-  pub fn new(alphabet: Alphabet, length: usize) -> Result<Self, Report> {
-    Ok(Self { alphabet, length })
+  pub fn new(alphabet: Alphabet, length: usize) -> Self {
+    Self { alphabet, length }
   }
 }
 

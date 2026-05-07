@@ -37,44 +37,6 @@ pub struct TreetimeOptimizeParams {
   pub fixed_pi: bool,
 }
 
-/// Normalize substitution rates across partitions after GTR inference.
-///
-/// Each inferred GTR model has a rate `mu` (expected substitutions per site per branch-length
-/// unit). When partitions differ in rate, we rescale so the length-weighted average mu is 1:
-///
-///   total_average = Σ(partition.length × partition.gtr.mu) / Σ(partition.length)
-///
-/// Each partition's `gtr.mu` is divided by `total_average`, and every branch length in the tree
-/// is multiplied by `total_average`. The product `mu × t` (expected substitutions) is preserved,
-/// but now the average rate across all partitions equals 1, making branch lengths directly
-/// interpretable as substitutions per site.
-fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
-  let total_length: usize = partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
-
-  if total_length == 0 {
-    return;
-  }
-
-  let weighted_rate: f64 = partitions.iter().map(|p| p.read_arc().weighted_rate()).sum();
-
-  let total_average = weighted_rate / total_length as f64;
-
-  if total_average == 0.0 {
-    return;
-  }
-
-  for partition in partitions {
-    partition.write_arc().normalize_rate(total_average);
-  }
-
-  for edge_ref in graph.get_edges() {
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    if let Some(bl) = edge.branch_length() {
-      edge.set_branch_length(Some(bl * total_average));
-    }
-  }
-}
-
 pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   let TreetimeOptimizeArgs {
     input_fastas,
@@ -714,6 +676,44 @@ where
       }
       Ok(())
     },
+  }
+}
+
+/// Normalize substitution rates across partitions after GTR inference.
+///
+/// Each inferred GTR model has a rate `mu` (expected substitutions per site per branch-length
+/// unit). When partitions differ in rate, we rescale so the length-weighted average mu is 1:
+///
+///   total_average = Σ(partition.length * partition.gtr.mu) / Σ(partition.length)
+///
+/// Each partition's `gtr.mu` is divided by `total_average`, and every branch length in the tree
+/// is scaled by `total_average`. The value `mu * t` (expected substitutions) is preserved,
+/// but now the average rate across all partitions equals 1, making branch lengths directly
+/// interpretable as substitutions per site.
+fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+  let total_length: usize = partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+
+  if total_length == 0 {
+    return;
+  }
+
+  let weighted_rate: f64 = partitions.iter().map(|p| p.read_arc().weighted_rate()).sum();
+
+  let total_average = weighted_rate / total_length as f64;
+
+  if total_average == 0.0 {
+    return;
+  }
+
+  for partition in partitions {
+    partition.write_arc().normalize_rate(total_average);
+  }
+
+  for edge_ref in graph.get_edges() {
+    let mut edge = edge_ref.write_arc().payload().write_arc();
+    if let Some(bl) = edge.branch_length() {
+      edge.set_branch_length(Some(bl * total_average));
+    }
   }
 }
 

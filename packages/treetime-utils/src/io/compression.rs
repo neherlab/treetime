@@ -9,7 +9,7 @@ use log::{debug, error};
 use num::Integer;
 use num_traits::NumCast;
 use std::env;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -128,7 +128,7 @@ impl<'r> Decompressor<'r> {
 }
 
 impl Read for Decompressor<'_> {
-  fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+  fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
     self
       .decompressor
       .read(buf)
@@ -141,7 +141,7 @@ impl Read for Decompressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Decompressor"))
-      .map_err(|report| std::io::Error::other(report_to_string(&report)))
+      .map_err(|report| io::Error::other(report_to_string(&report)))
   }
 }
 
@@ -187,7 +187,7 @@ impl<'w> Compressor<'w> {
 }
 
 impl Write for Compressor<'_> {
-  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     self
       .compressor
       .write(buf)
@@ -200,10 +200,10 @@ impl Write for Compressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Compressor"))
-      .map_err(|report| std::io::Error::other(report_to_string(&report)))
+      .map_err(|report| io::Error::other(report_to_string(&report)))
   }
 
-  fn flush(&mut self) -> std::io::Result<()> {
+  fn flush(&mut self) -> io::Result<()> {
     self
       .compressor
       .flush()
@@ -216,7 +216,7 @@ impl Write for Compressor<'_> {
           .header("Filename")
       })
       .with_section(|| self.compression_type.clone().header("Compressor"))
-      .map_err(|report| std::io::Error::other(report_to_string(&report)))
+      .map_err(|report| io::Error::other(report_to_string(&report)))
   }
 }
 

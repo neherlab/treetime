@@ -51,7 +51,7 @@ impl PartitionFitch {
     compress_sequences(graph, std::slice::from_ref(&partition), aln)?;
     Arc::try_unwrap(partition)
       .map(|rw| rw.into_inner())
-      .map_err(|_| make_report!("PartitionFitch::compress: Arc still shared after compress_sequences"))
+      .map_err(|_arc| make_report!("PartitionFitch::compress: Arc still shared after compress_sequences"))
   }
 
   /// Phase 2: infer GTR from Fitch substitution counts.

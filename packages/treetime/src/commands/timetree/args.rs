@@ -16,18 +16,16 @@ fn parse_n_skyline(s: &str) -> Result<usize, String> {
   Ok(n)
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
-#[derive(Default)]
 pub enum BranchLengthMode {
   Input,
   #[default]
   Marginal,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
-#[derive(Default)]
 pub enum TimeMarginalMode {
   #[default]
   Never,
@@ -35,9 +33,8 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
-#[derive(Default)]
 pub enum RerootMode {
   #[default]
   LeastSquares,

@@ -17,7 +17,6 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 
-#[allow(clippy::useless_let_if_seq)]
 pub fn run_refinement_iteration(
   args: &TreetimeTimetreeArgs,
   graph: &mut GraphTimetree,
@@ -27,8 +26,6 @@ pub fn run_refinement_iteration(
   branch_params: &BranchPointOptimizationParams,
   coalescent_tc: Option<&Distribution>,
 ) -> Result<(usize, usize), Report> {
-  let mut is_tree_dirty = false;
-
   let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
   if !args.relax.is_empty() {
@@ -67,9 +64,7 @@ pub fn run_refinement_iteration(
     0
   };
 
-  if n_resolved > 0 {
-    is_tree_dirty = true;
-  }
+  let is_tree_dirty = n_resolved > 0;
 
   if is_tree_dirty {
     info!("Tree structure changed - recomputing timetree then marginal");

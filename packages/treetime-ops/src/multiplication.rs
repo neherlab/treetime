@@ -7,21 +7,6 @@ use treetime_utils::array::ndarray::max_or;
 /// This is much smaller than 1.0 to avoid unnecessary normalizations.
 const UNDERFLOW_THRESHOLD: f64 = 1e-100;
 
-fn normalize_and_extract_scale(arr: &Array1<f64>) -> ScaledArray {
-  let max_val = max_or(arr, f64::NEG_INFINITY);
-  let log_scale = if max_val > 0.0 && max_val.is_finite() {
-    max_val.ln()
-  } else {
-    f64::NEG_INFINITY
-  };
-  let normalized = if max_val > 0.0 && max_val.is_finite() {
-    arr.mapv(|v| v / max_val)
-  } else {
-    arr.clone()
-  };
-  ScaledArray::new(normalized, log_scale)
-}
-
 /// Multiply multiple distributions with lazy normalization.
 ///
 /// Returns `ScaledArray { normalized, log_scale }` where the full result is:
@@ -201,4 +186,19 @@ impl MultiplyAlgo for AggressiveMultiply {
   fn multiply_many(&self, distributions: &[&Array1<f64>]) -> ScaledArray {
     multiply_many(distributions)
   }
+}
+
+fn normalize_and_extract_scale(arr: &Array1<f64>) -> ScaledArray {
+  let max_val = max_or(arr, f64::NEG_INFINITY);
+  let log_scale = if max_val > 0.0 && max_val.is_finite() {
+    max_val.ln()
+  } else {
+    f64::NEG_INFINITY
+  };
+  let normalized = if max_val > 0.0 && max_val.is_finite() {
+    arr.mapv(|v| v / max_val)
+  } else {
+    arr.clone()
+  };
+  ScaledArray::new(normalized, log_scale)
 }

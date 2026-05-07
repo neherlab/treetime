@@ -30,10 +30,10 @@ use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::global::global_init;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[ctor]
 fn init() {
@@ -398,16 +398,23 @@ fn calculate_diff_stats(expected: &BTreeMap<String, f64>, actual: &BTreeMap<Stri
     })
     .collect();
 
+  if diffs.is_empty() {
+    return DiffStats {
+      mean_abs_diff: 0.0,
+      median_abs_diff: 0.0,
+      max_abs_diff: 0.0,
+      min_abs_diff: 0.0,
+      std_dev: 0.0,
+      rmse: 0.0,
+    };
+  }
+
   let n = diffs.len() as f64;
   let mean_abs_diff = diffs.iter().sum::<f64>() / n;
 
   let mut sorted_diffs = diffs.clone();
   sorted_diffs.sort_by_key(|&x| OrderedFloat(x));
-  let median_abs_diff = if sorted_diffs.is_empty() {
-    0.0
-  } else {
-    sorted_diffs[sorted_diffs.len() / 2]
-  };
+  let median_abs_diff = sorted_diffs[sorted_diffs.len() / 2];
 
   let max_abs_diff = diffs.iter().copied().map(OrderedFloat).max().map_or(0.0, |x| x.0);
   let min_abs_diff = diffs.iter().copied().map(OrderedFloat).min().map_or(0.0, |x| x.0);

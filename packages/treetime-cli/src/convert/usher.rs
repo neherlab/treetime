@@ -14,11 +14,13 @@ const NUC_PARTITION: &str = "nuc";
 const NUC_CHARS: [u8; 4] = [b'A', b'C', b'G', b'T'];
 
 fn nuc_int_to_char(nuc: i32) -> Option<u8> {
-  NUC_CHARS.get(nuc as usize).copied()
+  let idx: usize = nuc.try_into().ok()?;
+  NUC_CHARS.get(idx).copied()
 }
 
 fn nuc_char_to_int(nuc: u8) -> Option<i32> {
-  NUC_CHARS.iter().position(|&c| c == nuc).map(|i| i as i32)
+  let pos = NUC_CHARS.iter().position(|&c| c == nuc)?;
+  i32::try_from(pos).ok()
 }
 
 fn parse_usher_mutations(usher_mutations: &[UsherMutation]) -> Result<PartitionedMutations, Report> {
@@ -31,7 +33,7 @@ fn parse_usher_mutations(usher_mutations: &[UsherMutation]) -> Result<Partitione
     .filter_map(|m| {
       let reference = nuc_int_to_char(m.par_nuc)?;
       let alternative = m.mut_nuc.first().and_then(|&n| nuc_int_to_char(n))?;
-      let position = m.position as usize;
+      let position: usize = m.position.try_into().ok()?;
       Some(Mutation::new(reference, position, alternative))
     })
     .collect_vec();
@@ -52,8 +54,9 @@ fn format_usher_mutations(mutations: &PartitionedMutations) -> UsherMutationList
       .filter_map(|m| {
         let par_nuc = nuc_char_to_int(m.reference)?;
         let mut_nuc = nuc_char_to_int(m.alternative)?;
+        let position: i32 = m.position.try_into().ok()?;
         Some(UsherMutation {
-          position: m.position as i32,
+          position,
           ref_nuc: par_nuc,
           par_nuc,
           mut_nuc: vec![mut_nuc],

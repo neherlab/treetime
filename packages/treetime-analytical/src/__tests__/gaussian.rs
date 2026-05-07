@@ -14,11 +14,11 @@ mod tests {
       amplitude: 3.0,
     }];
 
-    let (mu_star, sigma_star, log_scale) = gaussian_product_params(&params);
+    let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(mu_star, 1.0, max_ulps = 4);
-    assert_ulps_eq!(sigma_star, 2.0, max_ulps = 4);
-    assert_ulps_eq!(log_scale, 3.0_f64.ln(), max_ulps = 4);
+    assert_ulps_eq!(result.mu, 1.0, max_ulps = 4);
+    assert_ulps_eq!(result.sigma, 2.0, max_ulps = 4);
+    assert_ulps_eq!(result.log_scale, 3.0_f64.ln(), max_ulps = 4);
   }
 
   #[test]
@@ -36,11 +36,11 @@ mod tests {
       },
     ];
 
-    let (mu_star, sigma_star, log_scale) = gaussian_product_params(&params);
+    let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(mu_star, 0.0, max_ulps = 4);
-    assert_ulps_eq!(sigma_star, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
-    assert_ulps_eq!(log_scale, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -58,20 +58,20 @@ mod tests {
       },
     ];
 
-    let (mu_star, sigma_star, _log_scale) = gaussian_product_params(&params);
+    let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(mu_star, 0.0, max_ulps = 4);
-    assert_ulps_eq!(sigma_star, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
   }
 
   #[test]
   fn test_gaussian_product_params_empty() {
     let params: [GaussianParams; 0] = [];
-    let (mu_star, sigma_star, log_scale) = gaussian_product_params(&params);
+    let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(mu_star, 0.0, max_ulps = 4);
-    assert!(sigma_star.is_infinite());
-    assert_ulps_eq!(log_scale, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    assert!(result.sigma.is_infinite());
+    assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
   }
 
   #[test]

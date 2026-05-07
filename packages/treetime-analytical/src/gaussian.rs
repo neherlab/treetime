@@ -10,6 +10,14 @@ pub struct GaussianParams {
   pub amplitude: f64,
 }
 
+/// Result of the Gaussian product parameter computation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GaussianProductResult {
+  pub mu: f64,
+  pub sigma: f64,
+  pub log_scale: f64,
+}
+
 /// Analytical parameters for the product of N Gaussians.
 ///
 /// Product of N Gaussians: G_i(x) = A_i * exp(-0.5 * ((x - mu_i) / sigma_i)^2)
@@ -21,20 +29,22 @@ pub struct GaussianParams {
 /// - quadratic_term = sum((mu_i - mu_star)^2 / sigma_i^2)
 /// - log_scale = -0.5 * quadratic_term + sum(ln(A_i))
 ///
-/// Returns (mu_star, sigma_star, log_scale).
-///
 /// # Preconditions
 ///
 /// All `sigma` values must be positive (non-zero). Zero sigma represents a Dirac delta
 /// which cannot be represented as a Gaussian product.
-pub fn gaussian_product_params(params: &[GaussianParams]) -> (f64, f64, f64) {
+pub fn gaussian_product_params(params: &[GaussianParams]) -> GaussianProductResult {
   debug_assert!(
     params.iter().all(|p| p.sigma > 0.0),
     "gaussian_product_params: all sigma values must be positive"
   );
 
   if params.is_empty() {
-    return (0.0, f64::INFINITY, 0.0);
+    return GaussianProductResult {
+      mu: 0.0,
+      sigma: f64::INFINITY,
+      log_scale: 0.0,
+    };
   }
 
   let precision_sum: f64 = params.iter().map(|p| 1.0 / p.sigma.powi(2)).sum();
@@ -45,7 +55,11 @@ pub fn gaussian_product_params(params: &[GaussianParams]) -> (f64, f64, f64) {
   let log_amplitude_sum: f64 = params.iter().map(|p| p.amplitude.ln()).sum();
   let log_scale = -0.5 * quadratic_term + log_amplitude_sum;
 
-  (mu_star, sigma_star, log_scale)
+  GaussianProductResult {
+    mu: mu_star,
+    sigma: sigma_star,
+    log_scale,
+  }
 }
 
 /// Evaluate Gaussian product on grid.
@@ -57,9 +71,9 @@ pub fn gaussian_product(params: &[GaussianParams], grid: &Array1<f64>) -> Scaled
     return ScaledArray::new(Array1::ones(grid.len()), 0.0);
   }
 
-  let (mu_star, sigma_star, log_scale) = gaussian_product_params(params);
-  let normalized = grid.mapv(|x| (-(0.5 * ((x - mu_star) / sigma_star).powi(2))).exp());
-  ScaledArray::new(normalized, log_scale)
+  let result = gaussian_product_params(params);
+  let normalized = grid.mapv(|x| (-(0.5 * ((x - result.mu) / result.sigma).powi(2))).exp());
+  ScaledArray::new(normalized, result.log_scale)
 }
 
 /// Evaluate a single Gaussian on grid.

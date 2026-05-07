@@ -30,22 +30,6 @@ use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_utils::iterator::difference::iterator_difference;
 use treetime_utils::iterator::intersection::iterator_intersection;
 
-fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
-  if args.prune_empty && args.input_fastas.is_empty() {
-    return make_error!(
-      "The --prune-empty requires --aln. Without sequence data, it's not possible to determine which branches lack mutations."
-    );
-  }
-
-  if args.merge_shared_mutations && args.input_fastas.is_empty() {
-    return make_error!(
-      "The --merge-shared-mutations requires --aln. Without sequence data, it's not possible to determine which branches share mutations."
-    );
-  }
-
-  Ok(())
-}
-
 pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
   validate_args(args)?;
 
@@ -97,6 +81,22 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
   }
 
   write_graph(outdir, &graph)?;
+
+  Ok(())
+}
+
+fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
+  if args.prune_empty && args.input_fastas.is_empty() {
+    return make_error!(
+      "The --prune-empty requires --aln. Without sequence data, it's not possible to determine which branches lack mutations."
+    );
+  }
+
+  if args.merge_shared_mutations && args.input_fastas.is_empty() {
+    return make_error!(
+      "The --merge-shared-mutations requires --aln. Without sequence data, it's not possible to determine which branches share mutations."
+    );
+  }
 
   Ok(())
 }

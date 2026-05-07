@@ -8,7 +8,6 @@ use crate::commands::clock::find_best_root::params::BranchPointOptimizationParam
 use crate::commands::clock::reroot::RerootParams;
 use crate::commands::optimize::args::BranchOptMethod;
 use crate::commands::optimize::optimize_unified::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::commands::optimize::run::{apply_damping, save_branch_lengths};
 use crate::commands::timetree::args::{BranchLengthMode, TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
@@ -39,6 +38,9 @@ use treetime_distribution::Distribution;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nex::{NexWriteOptions, nex_write_file};
 use treetime_io::nwk::{NwkWriteOptions, nwk_write_file};
+
+/// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
+const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
 pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
   info!("# TreeTime Timetree Estimation");
@@ -314,8 +316,6 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     }
   }
 
-  // --- Postprocessing ---
-
   info!("### TreeTime: postprocessing");
 
   // Rate susceptibility analysis: re-run timetree at rate +/- rate_std.
@@ -473,28 +473,19 @@ fn optimize_branch_lengths_pre_step(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   no_indels: bool,
 ) -> Result<(), Report> {
-  // v0 default damping (treeanc.py:1298)
-  let damping = 0.75;
-
   let old_branch_lengths = save_branch_lengths(graph);
 
-  #[allow(trivial_casts)]
-  let opt_partitions: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
-    .iter()
-    .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
-    .collect();
-
   if no_indels {
-    run_optimize_mixed_inner(graph, &opt_partitions, BranchOptMethod::BrentSqrt, 0.0, true)
+    run_optimize_mixed_inner(graph, partitions, BranchOptMethod::BrentSqrt, 0.0, true)
   } else {
-    run_optimize_mixed(graph, &opt_partitions, BranchOptMethod::BrentSqrt)
+    run_optimize_mixed(graph, partitions, BranchOptMethod::BrentSqrt)
   }
   .wrap_err("ML branch-length optimization pre-step failed")?;
 
   // Blend optimized branch lengths with old values (iteration=0):
   // bl = bl_optimized * (1 - 0.75^1) + bl_old * 0.75^1
   //    = bl_optimized * 0.25 + bl_old * 0.75
-  apply_damping(graph, &old_branch_lengths, damping, 0);
+  apply_damping(graph, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
 
   // Re-run marginal reconstruction with damped branch lengths
   update_marginal(graph, partitions)?;

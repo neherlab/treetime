@@ -720,16 +720,6 @@ where
   })
 }
 
-fn total_sequence_length<P>(partitions: &[Arc<RwLock<P>>]) -> usize
-where
-  P: PartitionOptimizeOps + ?Sized,
-{
-  partitions
-    .iter()
-    .map(|partition| partition.read_arc().sequence_length())
-    .sum()
-}
-
 /// Initial estimation of branch lengths for mixed partitions.
 ///
 /// Computes per-edge substitution count over canonical (non-ambiguous,
@@ -823,4 +813,14 @@ where
   }
 
   Ok(())
+}
+
+fn total_sequence_length<P>(partitions: &[Arc<RwLock<P>>]) -> usize
+where
+  P: PartitionOptimizeOps + ?Sized,
+{
+  partitions
+    .iter()
+    .map(|partition| partition.read_arc().sequence_length())
+    .sum()
 }

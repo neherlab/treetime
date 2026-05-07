@@ -235,11 +235,11 @@ mod tests {
       },
     ];
 
-    let (mu, sigma, log_scale) = gaussian_product_params(&params);
+    let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(mu, 0.0, max_ulps = 4);
-    assert_ulps_eq!(sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
-    assert_ulps_eq!(log_scale, -1.0, max_ulps = 4);
+    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    assert_ulps_eq!(result.log_scale, -1.0, max_ulps = 4);
   }
 
   #[test]
