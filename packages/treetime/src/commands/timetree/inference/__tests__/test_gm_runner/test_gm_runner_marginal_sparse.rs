@@ -28,7 +28,9 @@ mod tests {
 
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
-  // --- Marginal sparse tests ---
+  // Cross-mode consistency: sparse marginal inference should produce node times
+  // matching dense marginal inference. No independent sparse oracle exists (v0 has
+  // no sparse mode), so dense golden master output serves as reference.
 
   #[rustfmt::skip]
 #[rstest]
@@ -41,7 +43,7 @@ mod tests {
   // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
   // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
-  fn test_gm_runner_marginal_sparse(#[case] dataset: &str) -> Result<(), Report> {
+  fn test_gm_runner_marginal_sparse_dense_consistency(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 

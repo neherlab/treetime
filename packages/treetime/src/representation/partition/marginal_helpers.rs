@@ -233,12 +233,15 @@ mod tests {
 
     let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
 
-    for (&pos, var_pos) in &result.variable {
-      let rate = gtr.site_rates.as_ref().unwrap()[pos];
-      let exp_qt = gtr.expQt_with_rate(t, rate);
-      let expected = exp_qt.dot(&seq_dis.variable[&pos].dis);
-      assert_abs_diff_eq!(var_pos.dis, expected, epsilon = 1e-14);
-    }
+    // JC69 closed-form: P(t)_ii = (1/4)(1 + 3*exp(-4/3 * mu * rate * t)),
+    // P(t)_ij = (1/4)(1 - exp(-4/3 * mu * rate * t)). mu=0.75 after GTR normalization.
+    let expected_0 = array![0.8094601846762877, 0.06064424518648728, 0.06925132495073787, 0.06064424518648728];
+    let expected_5 = array![0.16767825458589602, 0.4420840726329092, 0.22255941819529867, 0.16767825458589602];
+    let expected_10 = array![0.05591089329029837, 0.05591089329029837, 0.7837450434516795, 0.10443316996772378];
+
+    assert_abs_diff_eq!(result.variable[&0].dis, expected_0, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[&5].dis, expected_5, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[&10].dis, expected_10, epsilon = 1e-14);
   }
 
   #[test]
@@ -269,11 +272,13 @@ mod tests {
 
     let result = propagate_raw_per_site(&gtr, t, true, &seq_dis, None);
 
-    for (&pos, var_pos) in &result.variable {
-      let rate = gtr.site_rates.as_ref().unwrap()[pos];
-      let exp_qt = gtr.expQt_with_rate(t, rate);
-      let expected = exp_qt.t().dot(&seq_dis.variable[&pos].dis);
-      assert_abs_diff_eq!(var_pos.dis, expected, epsilon = 1e-14);
-    }
+    // JC69 P(t) is symmetric, so P(t)^T = P(t). Same expected values as forward.
+    let expected_0 = array![0.8094601846762877, 0.06064424518648728, 0.06925132495073787, 0.06064424518648728];
+    let expected_5 = array![0.16767825458589602, 0.4420840726329092, 0.22255941819529867, 0.16767825458589602];
+    let expected_10 = array![0.05591089329029837, 0.05591089329029837, 0.7837450434516795, 0.10443316996772378];
+
+    assert_abs_diff_eq!(result.variable[&0].dis, expected_0, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[&5].dis, expected_5, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[&10].dis, expected_10, epsilon = 1e-14);
   }
 }
