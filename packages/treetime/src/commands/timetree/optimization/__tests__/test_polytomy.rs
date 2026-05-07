@@ -13,60 +13,9 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::make_report;
 
-  /// Create a tree with a polytomy (node with 3+ children).
-  /// Tree: ((A,B,C)ABC)root where ABC has 3 children
-  fn create_polytomy_tree() -> Result<GraphTimetree, Report> {
-    // Newick with 3 children at ABC node
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-
-    // Set times for all nodes (tips have explicit times, internals derived)
-    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
-    for (name, time) in tip_times {
-      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      let node = graph.get_node(key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(time);
-    }
-
-    // Set internal node times
-    if let Some(abc_key) = find_node_key_by_name(&graph, "ABC") {
-      let node = graph.get_node(abc_key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(2010.0);
-    }
-
-    if let Some(root_key) = find_node_key_by_name(&graph, "root") {
-      let node = graph.get_node(root_key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(2000.0);
-    }
-
-    // Set branch length distributions on edges
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let mut payload = edge.payload().write_arc();
-      // Simple uniform distribution for branch lengths
-      payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
-    }
-
-    Ok(graph)
-  }
-
-  /// Create a binary tree (no polytomies).
-  fn create_binary_tree() -> Result<GraphTimetree, Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
-
-    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
-    for (name, time) in tip_times {
-      if let Some(key) = find_node_key_by_name(&graph, name) {
-        let node = graph.get_node(key).expect("Node must exist");
-        node.write_arc().payload().write_arc().time = Some(time);
-      }
-    }
-
-    Ok(graph)
-  }
-
   #[test]
   fn test_find_polytomy_nodes_detects_multifurcation() -> Result<(), Report> {
-    let graph = create_polytomy_tree()?;
+    let graph = helpers::create_polytomy_tree()?;
 
     // Count nodes with >2 children
     let polytomy_count = graph
@@ -81,7 +30,7 @@ mod tests {
 
   #[test]
   fn test_find_polytomy_nodes_returns_empty_for_binary_tree() -> Result<(), Report> {
-    let graph = create_binary_tree()?;
+    let graph = helpers::create_binary_tree()?;
 
     let polytomy_count = graph
       .get_nodes()
@@ -95,7 +44,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_reduces_children_count() -> Result<(), Report> {
-    let mut graph = create_polytomy_tree()?;
+    let mut graph = helpers::create_polytomy_tree()?;
 
     // Find ABC node and verify it starts with 3 children
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
@@ -124,7 +73,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_no_change_for_binary_tree() -> Result<(), Report> {
-    let mut graph = create_binary_tree()?;
+    let mut graph = helpers::create_binary_tree()?;
 
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
@@ -142,7 +91,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_respects_threshold() -> Result<(), Report> {
-    let mut graph = create_polytomy_tree()?;
+    let mut graph = helpers::create_polytomy_tree()?;
 
     // With very high threshold, no merges should occur
     let partitions = vec![];
@@ -164,7 +113,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_new_node_has_correct_time() -> Result<(), Report> {
-    let mut graph = create_polytomy_tree()?;
+    let mut graph = helpers::create_polytomy_tree()?;
 
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let abc_time = graph
@@ -291,44 +240,6 @@ mod tests {
     Ok(())
   }
 
-  /// Create a polytomy tree with branch length distributions that produce genuine
-  /// cost improvement from splitting (exponential decay: short branches more probable).
-  fn create_polytomy_tree_with_realistic_distributions() -> Result<GraphTimetree, Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-
-    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
-    for (name, time) in tip_times {
-      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      let node = graph.get_node(key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(time);
-    }
-
-    if let Some(key) = find_node_key_by_name(&graph, "ABC") {
-      let node = graph.get_node(key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(2010.0);
-    }
-
-    if let Some(key) = find_node_key_by_name(&graph, "root") {
-      let node = graph.get_node(key).expect("Node must exist");
-      node.write_arc().payload().write_arc().time = Some(2000.0);
-    }
-
-    // Exponential decay distribution: shorter branches are more probable.
-    // This gives the optimizer incentive to split long branches, creating
-    // genuine cost improvement that competes with the zero-branch penalty.
-    let x = Array1::linspace(0.0, 25.0, 200);
-    let y = x.mapv(|t: f64| (-0.5 * t).exp());
-    let dist = Arc::new(Distribution::function(x, y)?);
-
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let mut payload = edge.payload().write_arc();
-      payload.branch_length_distribution = Some(Arc::clone(&dist));
-    }
-
-    Ok(graph)
-  }
-
   /// Higher zero_branch_slope increases the penalty for zero-mutation branches,
   /// reducing cost gain and preventing merges that succeed with lower slopes.
   #[test]
@@ -336,11 +247,11 @@ mod tests {
     let partitions = vec![];
 
     // Large slope: penalty dominates branch length improvement → no merge
-    let mut graph_high = create_polytomy_tree_with_realistic_distributions()?;
+    let mut graph_high = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let n_high = resolve_polytomies_with_options(&mut graph_high, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 1000.0)?;
 
     // Small slope: penalty negligible, branch redistribution drives merge
-    let mut graph_low = create_polytomy_tree_with_realistic_distributions()?;
+    let mut graph_low = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let n_low = resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01)?;
 
     assert!(
@@ -354,7 +265,7 @@ mod tests {
   /// With zero_branch_slope = 0, penalty vanishes entirely (no sequence data).
   #[test]
   fn test_resolve_polytomies_zero_slope_no_penalty() -> Result<(), Report> {
-    let mut graph = create_polytomy_tree_with_realistic_distributions()?;
+    let mut graph = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let partitions = vec![];
     let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0)?;
 
@@ -364,7 +275,7 @@ mod tests {
 
   #[test]
   fn test_prepare_tree_after_topology_change_preserves_leaf_state() -> Result<(), Report> {
-    let graph = create_polytomy_tree()?;
+    let graph = helpers::create_polytomy_tree()?;
 
     // Set time_distribution on leaves (simulating load_date_constraints)
     let leaf_a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
@@ -432,5 +343,98 @@ mod tests {
     }
 
     Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    /// Create a tree with a polytomy (node with 3+ children).
+    /// Tree: ((A,B,C)ABC)root where ABC has 3 children
+    pub fn create_polytomy_tree() -> Result<GraphTimetree, Report> {
+      // Newick with 3 children at ABC node
+      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+      // Set times for all nodes (tips have explicit times, internals derived)
+      let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
+      for (name, time) in tip_times {
+        let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(time);
+      }
+
+      // Set internal node times
+      if let Some(abc_key) = find_node_key_by_name(&graph, "ABC") {
+        let node = graph.get_node(abc_key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2010.0);
+      }
+
+      if let Some(root_key) = find_node_key_by_name(&graph, "root") {
+        let node = graph.get_node(root_key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2000.0);
+      }
+
+      // Set branch length distributions on edges
+      for edge in graph.get_edges() {
+        let edge = edge.write_arc();
+        let mut payload = edge.payload().write_arc();
+        // Simple uniform distribution for branch lengths
+        payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+      }
+
+      Ok(graph)
+    }
+
+    /// Create a binary tree (no polytomies).
+    pub fn create_binary_tree() -> Result<GraphTimetree, Report> {
+      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
+
+      let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
+      for (name, time) in tip_times {
+        if let Some(key) = find_node_key_by_name(&graph, name) {
+          let node = graph.get_node(key).expect("Node must exist");
+          node.write_arc().payload().write_arc().time = Some(time);
+        }
+      }
+
+      Ok(graph)
+    }
+
+    /// Create a polytomy tree with branch length distributions that produce genuine
+    /// cost improvement from splitting (exponential decay: short branches more probable).
+    pub fn create_polytomy_tree_with_realistic_distributions() -> Result<GraphTimetree, Report> {
+      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+      let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
+      for (name, time) in tip_times {
+        let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(time);
+      }
+
+      if let Some(key) = find_node_key_by_name(&graph, "ABC") {
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2010.0);
+      }
+
+      if let Some(key) = find_node_key_by_name(&graph, "root") {
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2000.0);
+      }
+
+      // Exponential decay distribution: shorter branches are more probable.
+      // This gives the optimizer incentive to split long branches, creating
+      // genuine cost improvement that competes with the zero-branch penalty.
+      let x = Array1::linspace(0.0, 25.0, 200);
+      let y = x.mapv(|t: f64| (-0.5 * t).exp());
+      let dist = Arc::new(Distribution::function(x, y)?);
+
+      for edge in graph.get_edges() {
+        let edge = edge.write_arc();
+        let mut payload = edge.payload().write_arc();
+        payload.branch_length_distribution = Some(Arc::clone(&dist));
+      }
+
+      Ok(graph)
+    }
   }
 }

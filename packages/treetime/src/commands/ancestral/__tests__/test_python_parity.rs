@@ -190,7 +190,7 @@ mod tests {
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
-    let partition = partitions[0].read();
+    let partition = partitions[0].read_arc();
     let ab_profile = &partition.nodes[&ab_key].profile.dis;
 
     // Position 0 is variable in Python (first variable position)
@@ -238,7 +238,7 @@ mod tests {
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
-    let partition = partitions[0].read();
+    let partition = partitions[0].read_arc();
     let root_profile = &partition.nodes[&root_key].profile.dis;
 
     // Position 0 profile
@@ -281,7 +281,7 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?;
 
     let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
-    let partition = partitions[0].read();
+    let partition = partitions[0].read_arc();
     let cd_profile = &partition.nodes[&cd_key].profile.dis;
 
     // Verify all positions are normalized and valid
@@ -325,7 +325,7 @@ mod tests {
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
-    let partition = partitions[0].read();
+    let partition = partitions[0].read_arc();
 
     for (key, node_data) in &partition.nodes {
       let profile = &node_data.profile.dis;
@@ -388,8 +388,8 @@ mod tests {
     // Check root profiles differ between partitions
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
-    let p1 = partition1.read();
-    let p2 = partition2.read();
+    let p1 = partition1.read_arc();
+    let p2 = partition2.read_arc();
 
     let root1 = &p1.nodes[&root_key].profile.dis;
     let root2 = &p2.nodes[&root_key].profile.dis;
@@ -461,7 +461,7 @@ mod tests {
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
     // Partition 1: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
-    let p1 = partition1.read();
+    let p1 = partition1.read_arc();
     let ab1 = &p1.nodes[&ab_key].profile.dis;
     let pos0_ab1 = ab1.row(0);
 
@@ -471,7 +471,7 @@ mod tests {
     pretty_assert_ulps_eq!(pos0_ab1[3], 0.14949031, epsilon = 1e-6);
 
     // Partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
-    let p2 = partition2.read();
+    let p2 = partition2.read_arc();
     let ab2 = &p2.nodes[&ab_key].profile.dis;
     let pos0_ab2 = ab2.row(0);
 

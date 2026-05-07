@@ -12,21 +12,9 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_primitives::AsciiChar;
 
-  fn make_valid_config() -> AlphabetConfig {
-    AlphabetConfig {
-      canonical: vec_u8!['A', 'C', 'G', 'T'],
-      ambiguous: indexmap! {
-        b'R' => vec_u8!['A', 'G'],
-        b'Y' => vec_u8!['C', 'T'],
-      },
-      unknown: b'N',
-      gap: b'-',
-    }
-  }
-
   #[test]
   fn test_alphabet_config_validate_valid() {
-    let config = make_valid_config();
+    let config = helpers::make_valid_config();
     let result = config.validate();
     result.unwrap();
   }
@@ -181,7 +169,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_create_profile_map() {
-    let config = make_valid_config();
+    let config = helpers::make_valid_config();
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_a = &profile_map[&AsciiChar::from_byte_unchecked(b'A')];
@@ -196,7 +184,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_create_profile_map_gap_matches_unknown() {
-    let config = make_valid_config();
+    let config = helpers::make_valid_config();
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_gap = &profile_map[&AsciiChar::from_byte_unchecked(b'-')];
@@ -226,7 +214,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_serde_roundtrip() -> Result<(), Report> {
-    let config = make_valid_config();
+    let config = helpers::make_valid_config();
     let json = json_write_str(&config, JsonPretty(false))?;
     let deserialized: AlphabetConfig = json_read_str(&json)?;
     assert_eq!(config, deserialized);
@@ -319,8 +307,8 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_equality() {
-    let config1 = make_valid_config();
-    let config2 = make_valid_config();
+    let config1 = helpers::make_valid_config();
+    let config2 = helpers::make_valid_config();
     assert_eq!(config1, config2);
 
     let config3 = AlphabetConfig {
@@ -334,7 +322,7 @@ mod tests {
 
   #[test]
   fn test_alphabet_config_clone() {
-    let config = make_valid_config();
+    let config = helpers::make_valid_config();
     let cloned = config.clone();
     assert_eq!(config, cloned);
   }
@@ -349,5 +337,21 @@ mod tests {
     };
     let result = config.validate();
     result.unwrap();
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub fn make_valid_config() -> AlphabetConfig {
+      AlphabetConfig {
+        canonical: vec_u8!['A', 'C', 'G', 'T'],
+        ambiguous: indexmap! {
+          b'R' => vec_u8!['A', 'G'],
+          b'Y' => vec_u8!['C', 'T'],
+        },
+        unknown: b'N',
+        gap: b'-',
+      }
+    }
   }
 }

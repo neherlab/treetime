@@ -8,12 +8,6 @@ mod tests {
   use treetime_io::dates_csv::{DateOrRange, DatesMap};
   use treetime_io::nwk::nwk_read_str;
 
-  fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphTimetree, Report> {
-    let graph = nwk_read_str(tree_nwk)?;
-    load_date_constraints(dates, &graph)?;
-    Ok(graph)
-  }
-
   #[test]
   fn test_optimize_skyline_returns_result() -> Result<(), Report> {
     const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
@@ -25,7 +19,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
     };
 
-    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 5,
       stiffness: 2.0,
@@ -54,7 +48,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
     };
 
-    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 5,
       ..SkylineParams::default()
@@ -89,7 +83,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
     };
 
-    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 5,
       regularization: 10.0,
@@ -130,7 +124,7 @@ mod tests {
       "h".to_owned() => Some(DateOrRange::YearFraction(2013.0)),
     };
 
-    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 10,
       ..SkylineParams::default()
@@ -142,5 +136,15 @@ mod tests {
     assert!(result.log_likelihood.is_finite());
 
     Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphTimetree, Report> {
+      let graph = nwk_read_str(tree_nwk)?;
+      load_date_constraints(dates, &graph)?;
+      Ok(graph)
+    }
   }
 }

@@ -8,11 +8,6 @@ mod tests {
 
   const N_GRID: usize = 1000;
 
-  /// Evaluate a distribution at `t` by sampling the underlying function.
-  fn eval(distribution: &Distribution, t: f64) -> f64 {
-    distribution.eval(t).unwrap_or(0.0)
-  }
-
   /// With no substitution contributions and indel rate zero, every grid point
   /// has log-likelihood zero, so the normalized probability is uniform at 1.0.
   #[test]
@@ -30,7 +25,7 @@ mod tests {
     )?;
 
     for t in [0.05, 1.0, 10.0, 100.0] {
-      assert_abs_diff_eq!(eval(&distribution, t), 1.0, epsilon = 1e-12);
+      assert_abs_diff_eq!(helpers::eval(&distribution, t), 1.0, epsilon = 1e-12);
     }
     Ok(())
   }
@@ -82,7 +77,7 @@ mod tests {
     // we sample only t >= 0.5 where both effects are well separated.
     for t in [0.5, 2.0, 10.0] {
       let expected = (-indel_rate * (t - t_min)).exp();
-      assert_abs_diff_eq!(eval(&distribution, t), expected, epsilon = 1e-2);
+      assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-2);
     }
     Ok(())
   }
@@ -173,7 +168,7 @@ mod tests {
     )?;
 
     for t in [0.001, 0.05, 5.0, 50.0] {
-      assert_abs_diff_eq!(eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
+      assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
     }
     Ok(())
   }
@@ -197,5 +192,14 @@ mod tests {
     let report = result.expect_err("expected negative clock rate to error");
     let rendered = format!("{report:#}");
     assert!(rendered.contains("--clock-rate"), "unexpected error: {rendered}");
+  }
+
+  mod helpers {
+    use super::*;
+
+    /// Evaluate a distribution at `t` by sampling the underlying function.
+    pub fn eval(distribution: &Distribution, t: f64) -> f64 {
+      distribution.eval(t).unwrap_or(0.0)
+    }
   }
 }
