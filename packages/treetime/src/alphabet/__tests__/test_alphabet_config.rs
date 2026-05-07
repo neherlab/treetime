@@ -185,22 +185,13 @@ mod tests {
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_a = &profile_map[&AsciiChar::from_byte_unchecked(b'A')];
-    let expected_a = array![1.0, 0.0, 0.0, 0.0];
-    for (actual, expected) in profile_a.iter().zip(expected_a.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 0.0], profile_a, max_ulps = 4);
 
     let profile_r = &profile_map[&AsciiChar::from_byte_unchecked(b'R')];
-    let expected_r = array![1.0, 0.0, 1.0, 0.0];
-    for (actual, expected) in profile_r.iter().zip(expected_r.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![1.0, 0.0, 1.0, 0.0], profile_r, max_ulps = 4);
 
     let profile_n = &profile_map[&AsciiChar::from_byte_unchecked(b'N')];
-    let expected_n = array![1.0, 1.0, 1.0, 1.0];
-    for (actual, expected) in profile_n.iter().zip(expected_n.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![1.0, 1.0, 1.0, 1.0], profile_n, max_ulps = 4);
   }
 
   #[test]
@@ -210,9 +201,7 @@ mod tests {
 
     let profile_gap = &profile_map[&AsciiChar::from_byte_unchecked(b'-')];
     let profile_n = &profile_map[&AsciiChar::from_byte_unchecked(b'N')];
-    for (gap, unk) in profile_gap.iter().zip(profile_n.iter()) {
-      pretty_assert_ulps_eq!(*unk, *gap, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(profile_n, profile_gap, max_ulps = 4);
   }
 
   #[test]
@@ -226,22 +215,13 @@ mod tests {
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_x = &profile_map[&AsciiChar::from_byte_unchecked(b'X')];
-    let expected_x = array![1.0, 0.0, 0.0];
-    for (actual, expected) in profile_x.iter().zip(expected_x.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0], profile_x, max_ulps = 4);
 
     let profile_y = &profile_map[&AsciiChar::from_byte_unchecked(b'Y')];
-    let expected_y = array![0.0, 1.0, 0.0];
-    for (actual, expected) in profile_y.iter().zip(expected_y.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![0.0, 1.0, 0.0], profile_y, max_ulps = 4);
 
     let profile_z = &profile_map[&AsciiChar::from_byte_unchecked(b'Z')];
-    let expected_z = array![0.0, 0.0, 1.0];
-    for (actual, expected) in profile_z.iter().zip(expected_z.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![0.0, 0.0, 1.0], profile_z, max_ulps = 4);
   }
 
   #[test]
@@ -331,16 +311,10 @@ mod tests {
     let profile_map = config.create_profile_map().unwrap();
 
     let profile_s = &profile_map[&AsciiChar::from_byte_unchecked(b'S')];
-    let expected_s = array![0.0, 1.0, 1.0, 0.0];
-    for (actual, expected) in profile_s.iter().zip(expected_s.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![0.0, 1.0, 1.0, 0.0], profile_s, max_ulps = 4);
 
     let profile_w = &profile_map[&AsciiChar::from_byte_unchecked(b'W')];
-    let expected_w = array![1.0, 0.0, 0.0, 1.0];
-    for (actual, expected) in profile_w.iter().zip(expected_w.iter()) {
-      pretty_assert_ulps_eq!(*expected, *actual, max_ulps = 4);
-    }
+    pretty_assert_ulps_eq!(array![1.0, 0.0, 0.0, 1.0], profile_w, max_ulps = 4);
   }
 
   #[test]
