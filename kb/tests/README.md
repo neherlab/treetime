@@ -58,16 +58,17 @@
 
 Tests marked `#[ignore]` with reasons:
 
-| Test                                                   | File                                                                                                                                                    | Reason                                                                             |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `test_gm_mugration_outputs_v1_divergence`              | [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)                                                 | v0 parity: intentional v1 improvements (pseudo-count pi, root-state filtering)     |
-| `test_gm_mugration_confidence_outputs`                 | [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)                                                 | v0 parity: confidence profiles exceed 1e-2 at multiple nodes (D1/D2 divergence)    |
-| `test_prop_marginal_dense_sparse_gap_free_consistency` | [`test_marginal_dense_sparse_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs)                     | Investigate dense-sparse marginal log-likelihood divergence on certain GTR configs |
-| `test_discrete_gamma_rates_mean_one`                   | [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)                                                                      | Flaky: discrete_gamma_rates fails for some alpha/K combinations                    |
-| `test_prop_discrete_gamma_rates_mean_one`              | [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)                                                                      | Flaky: discrete_gamma_rates fails for some alpha/K combinations                    |
-| `test_runner_coalescent_completes`                     | [`test_runner_coalescent.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs)               | Golden master datasets not yet passing                                             |
-| `test_gm_runner_marginal_dense`                        | [`test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs) | Golden master datasets not yet passing                                             |
-| `test_gm_optimize`                                     | [`test_gm_optimize.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs)                                                    | Per-branch divergence with v0 fixture exceeds 10% relative tolerance               |
+| Test                                                   | File                                                                                                                                                      | Reason                                                                             |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `test_gm_mugration_outputs_v1_divergence`              | [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)                                                   | v0 parity: intentional v1 improvements (pseudo-count pi, root-state filtering)     |
+| `test_gm_mugration_confidence_outputs`                 | [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)                                                   | v0 parity: confidence profiles exceed 1e-2 at multiple nodes (D1/D2 divergence)    |
+| `test_prop_marginal_dense_sparse_gap_free_consistency` | [`test_marginal_dense_sparse_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs)                       | Investigate dense-sparse marginal log-likelihood divergence on certain GTR configs |
+| `test_discrete_gamma_rates_mean_one`                   | [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)                                                                        | Flaky: discrete_gamma_rates fails for some alpha/K combinations                    |
+| `test_prop_discrete_gamma_rates_mean_one`              | [`site_rate_variation.rs`](../../packages/treetime/src/gtr/site_rate_variation.rs)                                                                        | Flaky: discrete_gamma_rates fails for some alpha/K combinations                    |
+| `test_runner_coalescent_completes`                     | [`test_runner_coalescent.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs)                 | Golden master datasets not yet passing                                             |
+| `test_gm_runner_marginal_dense`                        | [`test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs)   | Golden master datasets not yet passing                                             |
+| `test_gm_runner_marginal_sparse_dense_consistency`     | [`test_gm_runner_marginal_sparse.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs) | Sparse-vs-dense discrepancy: 0.92 years at root-adjacent node (grid-width)         |
+| `test_gm_optimize`                                     | [`test_gm_optimize.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs)                                                      | Per-branch divergence with v0 fixture exceeds 10% relative tolerance               |
 
 ---
 
@@ -80,7 +81,6 @@ Assertions using 1e-4 or looser:
 | 1e-1      | `test_prop_marginal_sparse_log_lh_root_invariance` | [`test_marginal_root_invariance_prop.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs)                          | Fitch ambiguity: compression pattern varies with root |
 | 3e-1      | `test_gm_runner_poisson`                           | [`test_gm_runner_poisson.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs)                          | Root node dominates max diff                          |
 | 9e-1      | `test_gm_runner_marginal_dense`                    | [`test_gm_runner_marginal_dense.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs)            | Disabled datasets                                     |
-| 9e-1      | `test_gm_runner_marginal_sparse`                   | [`test_gm_runner_marginal_sparse.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs)          | Disabled datasets                                     |
 | 2e-2      | `test_gm_mugration_confidence_zika`                | [`test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)                                                            | Mugration confidence comparison                       |
 | 1e-2      | `test_convergence_iterations`                      | [`test_convergence_iterations.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_iterations.rs)                        | Cross-method LH comparison                            |
 | 1e-2      | `test_gtr_numerical_edge_extreme_parameters`       | [`test_gtr_numerical_edge_extreme_parameters.rs`](../../packages/treetime/src/gtr/__tests__/test_gtr_numerical_edge/test_gtr_numerical_edge_extreme_parameters.rs) | Extreme parameter edge case                           |
@@ -95,11 +95,11 @@ Assertions using 1e-4 or looser:
 
 Datasets disabled via commented-out `#[case]` annotations:
 
-| Test                             | Disabled Cases                                                              | Reason                                              |
-| -------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
-| `test_gm_runner_poisson`         | dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20           | Missing internal node times, leaf dates not refined |
-| `test_gm_runner_marginal_dense`  | dengue_20, ebola_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20 | Same + ebola golden master node key mismatch        |
-| `test_gm_runner_marginal_sparse` | dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20           | Same as poisson                                     |
+| Test                                               | Disabled Cases                                                              | Reason                                              |
+| -------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
+| `test_gm_runner_poisson`                           | dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20           | Missing internal node times, leaf dates not refined |
+| `test_gm_runner_marginal_dense`                    | dengue_20, ebola_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20 | Same + ebola golden master node key mismatch        |
+| `test_gm_runner_marginal_sparse_dense_consistency` | dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, tb_20, zika_20           | Same as poisson                                     |
 
 ---
 
