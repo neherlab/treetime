@@ -1,32 +1,11 @@
 use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_with_indels_log_lh_only};
 use crate::make_error;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
-use treetime_graph::edge::GraphEdgeKey;
-
-pub fn collect_edge_contributions(
-  edge_key: GraphEdgeKey,
-  dense_partitions: &[&PartitionMarginalDense],
-  sparse_partitions: &[&PartitionMarginalSparse],
-) -> Result<Vec<OptimizationContribution>, Report> {
-  let mut contributions = Vec::with_capacity(dense_partitions.len() + sparse_partitions.len());
-
-  for partition in dense_partitions {
-    contributions.push(OptimizationContribution::from_dense(edge_key, partition));
-  }
-
-  for partition in sparse_partitions {
-    contributions.push(OptimizationContribution::from_sparse(edge_key, partition)?);
-  }
-
-  Ok(contributions)
-}
 
 /// Compute the branch-length likelihood distribution used for time inference.
 ///
