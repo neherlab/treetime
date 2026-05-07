@@ -35,7 +35,7 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 
 /// Quantify how clock rate uncertainty propagates to node date uncertainty.
 ///
-/// Rate susceptibility analysis (Sagulenko, Puller & Neher 2018, Section 2.5):
+/// Rate susceptibility analysis (Sagulenko, Puller & Neher 2018, Section 2.2):
 /// node date uncertainty has two independent sources:
 ///
 /// 1. **Mutation stochasticity** - captured by the marginal posterior from belief
@@ -162,7 +162,7 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 ///
 /// When both marginal distributions and rate susceptibility data are present,
 /// combines the two independent uncertainty sources via quadrature sum
-/// (Sagulenko et al. 2018, Section 2.5). This treats mutation stochasticity
+/// (Sagulenko et al. 2018, Section 2.2). This treats mutation stochasticity
 /// and clock rate uncertainty as independent Gaussian-like contributions:
 ///
 /// ```text
