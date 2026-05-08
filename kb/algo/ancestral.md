@@ -4,7 +4,7 @@
 
 ## Fitch Parsimony
 
-Maximum parsimony (Fitch 1971) reconstructs ancestral character states by minimizing the total number of state changes on the tree. The method makes no assumptions about branch lengths or substitution rates, treating all state transitions as equally costly. It remains widely used for seeding ML optimization with initial ancestral assignments due to its speed, and for compression of sequence data to variable-position-only representations.
+Maximum parsimony (<a id="cite-1"></a>[Fitch 1971](https://doi.org/10.2307/2412116) [[1](#ref-1)]) reconstructs ancestral character states by minimizing the total number of state changes on the tree. The method makes no assumptions about branch lengths or substitution rates, treating all state transitions as equally costly. It remains widely used for seeding ML optimization with initial ancestral assignments due to its speed, and for compression of sequence data to variable-position-only representations.
 
 v1: [`packages/treetime/src/commands/ancestral/fitch.rs#L85-L513`](../../packages/treetime/src/commands/ancestral/fitch.rs#L85-L513).
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L575-L686`](../../packages/legacy/treetime/treetime/treeanc.py#L575-L686).
@@ -35,15 +35,15 @@ v1 uses deterministic `get_one()` (`#get_one`) for root state selection when the
 
 ### References
 
-- Fitch (1971). "Toward Defining the Course of Evolution: Minimum Change for a Specific Tree Topology." Systematic Zoology, 20(4):406-416. doi:10.2307/2412116
-- Farris (1970). "Methods for Computing Wagner Trees." Systematic Zoology, 19(1):83-92. doi:10.2307/2412028
-- Felsenstein (1978). "Cases in which Parsimony or Compatibility Methods Will be Positively Misleading." Systematic Zoology, 27(4):401-410. doi:10.2307/2412923
+- <a id="ref-1"></a>Fitch, Walter M. 1971. "Toward Defining the Course of Evolution: Minimum Change for a Specific Tree Topology." _Systematic Zoology_ 20(4):406-416. https://doi.org/10.2307/2412116 [↩](#cite-1)
+- <a id="ref-2"></a>Farris, James S. 1970. "Methods for Computing Wagner Trees." _Systematic Zoology_ 19(1):83-92. https://doi.org/10.2307/2412028
+- <a id="ref-3"></a>Felsenstein, Joseph. 1978. "Cases in which Parsimony or Compatibility Methods Will be Positively Misleading." _Systematic Zoology_ 27(4):401-410. https://doi.org/10.2307/2412923
 
 ---
 
 ## Marginal ML
 
-Maximum likelihood ancestral reconstruction via the Felsenstein pruning algorithm (Felsenstein 1981), equivalent to the sum-product algorithm (belief propagation) on a tree-structured factor graph (Pearl 1988). Each site is treated independently: the total likelihood is a product over sites.
+Maximum likelihood ancestral reconstruction via the Felsenstein pruning algorithm (<a id="cite-4"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[4](#ref-4)]), equivalent to the sum-product algorithm (belief propagation) on a tree-structured factor graph (<a id="cite-5"></a>[Pearl 1988](https://doi.org/10.1016/B978-0-08-051489-5.50001-5) [[5](#ref-5)]). Each site is treated independently: the total likelihood is a product over sites.
 
 The algorithm computes partial likelihoods at each node - the probability of observing the data in the node's subtree given each possible ancestral state. For an internal node k with children i and j:
 
@@ -80,22 +80,24 @@ O(n _ k^2 _ L) total for n nodes, k alphabet states (4 for nucleotides, 20 for a
 
 ### References
 
-- Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
-- Pearl (1988). "Probabilistic Reasoning in Intelligent Systems." Morgan Kaufmann. (Sum-product / belief propagation on graphical models.)
-- Kschischang, Frey & Loeliger (2001). "Factor Graphs and the Sum-Product Algorithm." IEEE Trans Inform Theory, 47(2):498-519. doi:10.1109/18.910572
+- <a id="ref-4"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-4)
+- <a id="ref-5"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. [↩](#cite-5)
+- <a id="ref-6"></a>Kschischang, Frank R., Brendan J. Frey, and Hans-Andrea Loeliger. 2001. "Factor Graphs and the Sum-Product Algorithm." _IEEE Transactions on Information Theory_ 47(2):498-519. https://doi.org/10.1109/18.910572
 
 ---
 
 ## Joint ML (Unimplemented)
 
-Joint maximum likelihood reconstruction (Pupko et al. 2000) finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently. Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
+Joint maximum likelihood reconstruction (<a id="cite-7"></a>[Pupko et al. 2000](https://doi.org/10.1093/oxfordjournals.molbev.a026369) [[7](#ref-7)]) finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently. Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
 
 v1: `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L199`](../../packages/treetime/src/commands/ancestral/run.rs#L199). Intentionally removed - see [intentional change](../decisions/ancestral-joint-reconstruction-removed.md).
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L934-L1080`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1080).
 
 See [unimplemented](unimplemented.md#joint-ml) for full v0 algorithm details.
 
-Reference: Pupko, Pe'er, Shamir & Graur (2000). "A fast algorithm for joint reconstruction of ancestral amino acid sequences." Mol Biol Evol, 17(6):890-896. doi:10.1093/oxfordjournals.molbev.a026369
+### References
+
+- <a id="ref-7"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-7)
 
 ---
 

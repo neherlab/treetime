@@ -4,47 +4,39 @@
 
 ## FFT Convolution
 
-O(n log n) convolution via the convolution theorem: `IFFT(FFT(f) * FFT(g))`. The discrete Fourier transform converts convolution (an O(n^2) operation in the time domain) into pointwise multiplication in the frequency domain, then transforms back.
+O(n log n) convolution via the convolution theorem (<a id="cite-1"></a>[Cooley and Tukey 1965](https://doi.org/10.2307/2003354) [[1](#ref-1)]): `IFFT(FFT(f) * FFT(g))`. The discrete Fourier transform converts convolution (an O(n^2) operation in the time domain) into pointwise multiplication in the frequency domain, then transforms back.
 
 v1: `convolve_fft()` (`#convolve_fft`) in [`packages/treetime-ops/src/convolution.rs#L33-L37`](../../packages/treetime-ops/src/convolution.rs#L33-L37).
-
-Reference: Cooley & Tukey (1965). "An algorithm for the machine calculation of complex Fourier series." Math Comp, 19(90):297-301. doi:10.2307/2003354
 
 ---
 
 ## Gaussian Convolution
 
-Closed-form convolution of two Gaussians: `G1 * G2 ~ N(mu1 + mu2, sqrt(sigma1^2 + sigma2^2))`. The convolution of two Gaussian PDFs is itself Gaussian with mean equal to the sum of means and variance equal to the sum of variances. No numerical integration required.
+Closed-form convolution of two Gaussians (<a id="cite-2"></a>[Bromiley 2003](https://www.tina-vision.net/docs/memos/2003-003.pdf) [[2](#ref-2)]): `G1 * G2 ~ N(mu1 + mu2, sqrt(sigma1^2 + sigma2^2))`. The convolution of two Gaussian PDFs is itself Gaussian with mean equal to the sum of means and variance equal to the sum of variances. No numerical integration required.
 
 v1: `gaussian_convolution()` (`#gaussian_convolution`) in [`packages/treetime-analytical/src/gaussian.rs#L110-L117`](../../packages/treetime-analytical/src/gaussian.rs#L110-L117).
-
-Reference: Bromiley (2003). "Products and Convolutions of Gaussian Probability Density Functions." Tina Memo No. 2003-003. https://www.tina-vision.net/docs/memos/2003-003.pdf
 
 ---
 
 ## Exponential Convolution
 
-Closed-form convolution of two exponential distributions. When rates differ (a != b), the result is a hypoexponential distribution with PDF involving two exponential terms. When rates are equal (a == b), the result is the Erlang-2 distribution: `f(x) = a^2 * x * exp(-a*x)`.
+Closed-form convolution of two exponential distributions (<a id="cite-3"></a>[Ross 2014](https://doi.org/10.1016/C2012-0-03564-8) [[3](#ref-3)]). When rates differ (a != b), the result is a hypoexponential distribution with PDF involving two exponential terms. When rates are equal (a == b), the result is the Erlang-2 distribution: `f(x) = a^2 * x * exp(-a*x)`.
 
 v1: `exponential_convolution()` (`#exponential_convolution`) in [`packages/treetime-analytical/src/exponential.rs#L28-L37`](../../packages/treetime-analytical/src/exponential.rs#L28-L37).
-
-Reference: Ross (2014). "Introduction to Probability Models." 11th ed. Academic Press, Chapter 5. ISBN 978-0-12-407948-9
 
 ---
 
 ## Gaussian-Exponential Convolution
 
-Convolution of a Gaussian with an exponential distribution, yielding a function involving the complementary error function (erfc). This arises in timetree inference when combining a Gaussian-like node time distribution with an exponentially distributed branch length.
+Convolution of a Gaussian with an exponential distribution, yielding a function involving the complementary error function (erfc). This arises in timetree inference when combining a Gaussian-like node time distribution with an exponentially distributed branch length (<a id="cite-4"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Supplementary Section S2).
 
 v1: `gaussian_exponential_convolution()` (`#gaussian_exponential_convolution`) in [`packages/treetime-analytical/src/gaussian_exponential.rs#L12-L14`](../../packages/treetime-analytical/src/gaussian_exponential.rs#L12-L14).
-
-Reference: Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Supplementary Section S2.
 
 ---
 
 ## Gaussian Product
 
-Pointwise multiplication of two Gaussian PDFs (not convolution). The product of two Gaussians is an unnormalized Gaussian with precision-weighted mean:
+Pointwise multiplication of two Gaussian PDFs (not convolution). The product of two Gaussians is an unnormalized Gaussian with precision-weighted mean (<a id="cite-5"></a>[Petersen and Pedersen 2012](https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf) [[5](#ref-5)], Section 8.1.8):
 
 ```
 sigma* = 1 / sqrt(1/sigma1^2 + 1/sigma2^2)
@@ -55,17 +47,13 @@ This operation appears in belief propagation when combining independent messages
 
 v1: `gaussian_product_params()` (`#gaussian_product_params`), `gaussian_product()` (`#gaussian_product`) in [`packages/treetime-analytical/src/gaussian.rs#L30-L63`](../../packages/treetime-analytical/src/gaussian.rs#L30-L63).
 
-Reference: Petersen & Pedersen (2012). "The Matrix Cookbook." Section 8.1.8. https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf
-
 ---
 
 ## ScaledDistribution
 
-Decomposition `P(x) = exp(log_scale) * inner(x)` with `max(inner) = 1.0`. This log-sum-exp pattern prevents underflow when multiplying many small probabilities: the log-scale factor absorbs the magnitude while the inner distribution maintains full floating-point precision in the [0, 1] range. The standard technique for numerical stability in probabilistic computation (Bishop 2006).
+Decomposition `P(x) = exp(log_scale) * inner(x)` with `max(inner) = 1.0`. This log-sum-exp pattern prevents underflow when multiplying many small probabilities: the log-scale factor absorbs the magnitude while the inner distribution maintains full floating-point precision in the [0, 1] range. The standard technique for numerical stability in probabilistic computation (<a id="cite-6"></a>[Bishop 2006](https://doi.org/10.1007/978-0-387-45528-0) [[6](#ref-6)], Section 2.2).
 
 v1: `ScaledDistribution` (`#ScaledDistribution`) in [`packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13`](../../packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13).
-
-Reference: Bishop (2006). "Pattern Recognition and Machine Learning." Springer, Section 2.2. ISBN 978-0-387-31073-2
 
 ---
 
@@ -121,6 +109,17 @@ See [unimplemented](unimplemented.md) for full details:
 - Adaptive Simpson's Rule Convolution
 - FWHM Computation
 - Branch Length Interpolator (Input Mode)
+
+---
+
+## References
+
+- <a id="ref-1"></a>Cooley, James W., and John W. Tukey. 1965. "An Algorithm for the Machine Calculation of Complex Fourier Series." _Mathematics of Computation_ 19(90):297-301. https://doi.org/10.2307/2003354 [↩](#cite-1)
+- <a id="ref-2"></a>Bromiley, Paul A. 2003. "Products and Convolutions of Gaussian Probability Density Functions." Tina Memo No. 2003-003. https://www.tina-vision.net/docs/memos/2003-003.pdf [↩](#cite-2)
+- <a id="ref-3"></a>Ross, Sheldon M. 2014. _Introduction to Probability Models._ 11th ed. Academic Press. ISBN 978-0-12-407948-9. [↩](#cite-3)
+- <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
+- <a id="ref-5"></a>Petersen, Kaare Brandt, and Michael Syskind Pedersen. 2012. _The Matrix Cookbook._ Technical report. https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf [↩](#cite-5)
+- <a id="ref-6"></a>Bishop, Christopher M. 2006. _Pattern Recognition and Machine Learning._ Springer. ISBN 978-0-387-31073-2. [↩](#cite-6)
 
 ---
 

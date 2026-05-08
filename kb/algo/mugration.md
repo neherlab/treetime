@@ -8,7 +8,7 @@ Discrete trait ancestral reconstruction treats categorical metadata (locations, 
 
 ## Discrete Marginal Reconstruction
 
-Felsenstein pruning (Felsenstein 1981) applied to discrete categorical traits rather than nucleotide sequences. The algorithm is identical to marginal ML ancestral reconstruction but operates on a discrete state alphabet (e.g., country names) with a GTR-like transition matrix.
+Felsenstein pruning (<a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)]) applied to discrete categorical traits rather than nucleotide sequences. The algorithm is identical to marginal ML ancestral reconstruction but operates on a discrete state alphabet (e.g., country names) with a GTR-like transition matrix.
 
 v1: [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs).
 v0: [`packages/legacy/treetime/treetime/wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811).
@@ -77,9 +77,9 @@ This is analogous to `--reconstruct-tip-states` in the ancestral command but app
 
 Supporting references for missing data treatment:
 
-- Felsenstein (2003), p. 255: ambiguous states receive likelihood 1.0 for all possibilities
-- PastML (Ishikawa et al. 2019, Mol Biol Evol): "unknown states can be omitted and will be estimated during analysis"
-- BEAST UTM model (Vaiente & Scotch 2020): extends to prior probability distributions over uncertain tip states
+- <a id="cite-2"></a>[Felsenstein 2003](https://doi.org/10.1007/978-0-387-21337-7) [[2](#ref-2)], p. 255: ambiguous states receive likelihood 1.0 for all possibilities
+- PastML (<a id="cite-3"></a>[Ishikawa et al. 2019](https://doi.org/10.1093/molbev/msz131) [[3](#ref-3)]): "unknown states can be omitted and will be estimated during analysis"
+- BEAST UTM model (<a id="cite-4"></a>[Vaiente and Scotch 2020](https://doi.org/10.1016/j.meegid.2020.104501) [[4](#ref-4)]): extends to prior probability distributions over uncertain tip states
 
 ---
 
@@ -148,21 +148,10 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 
 ## References
 
-### Primary
-
-Sagulenko, Puller & Neher (2018). "TreeTime: Maximum-likelihood phylodynamic analysis." Virus Evolution, 4(1):vex042. doi:10.1093/ve/vex042
-
-### Ancestral Reconstruction
-
-- Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
-- Felsenstein (2003). "Inferring Phylogenies." Sinauer Associates, p. 255.
-
-### Phylogeography
-
-- Lemey, Rambaut, Drummond & Suchard (2009). "Bayesian phylogeography finds its roots." PLoS Computational Biology, 5(9):e1000520. doi:10.1371/journal.pcbi.1000520
-- Edwards et al. (2011). "Ancient hybridization and an Irish origin for the modern polar bear matriline." Current Biology, 21(15):1251-1258. doi:10.1016/j.cub.2011.05.058
-
-### Missing Data
-
-- Ishikawa et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085. doi:10.1093/molbev/msz131
-- Vaiente, M.A. & Scotch, M. (2020). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." Infection, Genetics and Evolution, 85:104501. doi:10.1016/j.meegid.2020.104501
+- <a id="ref-0"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042
+- <a id="ref-1"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
+- <a id="ref-2"></a>Felsenstein, Joseph. 2003. _Inferring Phylogenies._ Sinauer Associates. ISBN 978-0-87893-177-4. [↩](#cite-2)
+- <a id="ref-3"></a>Ishikawa, Sohta A., Anna Zhukova, Wataru Iwasaki, and Olivier Gascuel. 2019. "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." _Molecular Biology and Evolution_ 36(9):2069-2085. https://doi.org/10.1093/molbev/msz131 [↩](#cite-3)
+- <a id="ref-4"></a>Vaiente, Mara A., and Matthew Scotch. 2020. "Going Back to the Roots: Evaluating Bayesian Phylogeographic Models with Discrete Trait Uncertainty." _Infection, Genetics and Evolution_ 85:104501. https://doi.org/10.1016/j.meegid.2020.104501 [↩](#cite-4)
+- <a id="ref-5"></a>Lemey, Philippe, Andrew Rambaut, Alexei J. Drummond, and Marc A. Suchard. 2009. "Bayesian Phylogeography Finds Its Roots." _PLoS Computational Biology_ 5(9):e1000520. https://doi.org/10.1371/journal.pcbi.1000520
+- <a id="ref-6"></a>Edwards, Ceiridwen J., Marc A. Suchard, Philippe Lemey, et al. 2011. "Ancient Hybridization and an Irish Origin for the Modern Polar Bear Matriline." _Current Biology_ 21(15):1251-1258. https://doi.org/10.1016/j.cub.2011.05.058

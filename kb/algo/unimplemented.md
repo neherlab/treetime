@@ -31,7 +31,7 @@ Forward pass (lines 1043-1063):
 
 - `node.seq_idx = choose(parent.seq_idx, node.joint_Cx.T)` - traceback via argmax pointers
 
-Reference: Pupko, Pe'er, Shamir & Graur (2000). "A fast algorithm for joint reconstruction of ancestral amino acid sequences." Mol Biol Evol, 17(6):890-896. doi:10.1093/oxfordjournals.molbev.a026369
+Reference: <a id="cite-1"></a>[Pupko et al. 2000](https://doi.org/10.1093/oxfordjournals.molbev.a026369) [[1](#ref-1)]
 
 ---
 
@@ -103,9 +103,7 @@ Known issue: [Per-site rate variation not implemented](../issues/M-gtr-per-site-
 
 For each site `a`, the matrix exponential becomes `exp(Q * mu_a * t)`. With eigendecomposition `Q = V * diag(lambda) * V_inv`, this is `V * diag(exp(lambda * mu_a * t)) * V_inv`. The eigenvectors `V`, `V_inv` are computed once; only the `exp(lambda_k * mu_a * t)` terms change per site.
 
-### Reference
-
-Yang Z (1994). "Maximum likelihood phylogenetic estimation from DNA sequences with variable rates over sites: approximate methods." J Mol Evol 39:306-314.
+Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00178256) [[2](#ref-2)]
 
 ---
 
@@ -129,14 +127,14 @@ v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no
 
 ## Stochastic Polytomy Resolution
 
-Coalescent-based stochastic resolution of polytomies as an alternative to the greedy deterministic method. Produces more realistic tree topologies by sampling from the Kingman coalescent process (Kingman 1982) rather than always merging the highest-gain pair.
+Coalescent-based stochastic resolution of polytomies as an alternative to the greedy deterministic method. Produces more realistic tree topologies by sampling from the Kingman coalescent process (<a id="cite-3"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[3](#ref-3)]) rather than always merging the highest-gain pair.
 
 v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
 v1: not ported - v1 has greedy deterministic approach only. Known issue: [Stochastic polytomy resolution not implemented](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Background
 
-The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (Sagulenko et al. 2018, Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Algorithm (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011))
 
@@ -365,3 +363,14 @@ Iterative parameter estimation for discrete trait (mugration) GTR models followi
 
 v0: `reconstruct_discrete_traits()` in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` in [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632).
 v1: `refine_gtr_iterative()` in [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs). Remaining parity gap tracked in [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md). Full forward-backward per iteration proposed in [mugration-full-reconstruction-per-iteration](../proposals/mugration-full-reconstruction-per-iteration.md).
+
+---
+
+## References
+
+- <a id="ref-1"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-1)
+- <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00178256 [↩](#cite-2)
+- <a id="ref-3"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-3)
+- <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
+- <a id="ref-5"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x
+- <a id="ref-6"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359

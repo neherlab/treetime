@@ -4,7 +4,7 @@
 
 ## Belief Propagation
 
-Two-pass message passing for time inference on the phylogenetic tree (Pearl 1988). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.
+Two-pass message passing for time inference on the phylogenetic tree (<a id="cite-1"></a>[Pearl 1988](https://doi.org/10.1016/B978-0-08-051489-5.50001-5) [[1](#ref-1)]). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.
 
 v1: [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs), [`packages/treetime/src/commands/timetree/inference/forward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs).
 v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/legacy/treetime/treetime/node_interpolator.py).
@@ -12,13 +12,11 @@ v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/le
 - `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time
 - `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/commands/timetree/inference/forward_pass.rs#L11-L22](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs#L11-L22): preserves internal node times when forward pass yields `None`
 
-Reference: Pearl (1988). "Probabilistic Reasoning in Intelligent Systems." Morgan Kaufmann.
-
 ---
 
 ## ML Branch-Length Pre-Step
 
-Before time inference, the timetree pipeline runs one pass of per-edge ML branch-length optimization to seed the belief propagation with better branch lengths than raw input values. This matches v0's `optimize_tree(max_iter=1)` calls (Sagulenko, Puller & Neher 2018, pipeline description).
+Before time inference, the timetree pipeline runs one pass of per-edge ML branch-length optimization to seed the belief propagation with better branch lengths than raw input values. This matches v0's `optimize_tree(max_iter=1)` calls (<a id="cite-3"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[3](#ref-3)], pipeline description).
 
 v1: `optimize_branch_lengths_pre_step()` in [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs), called twice: before and after rerooting.
 v0: `optimize_tree(max_iter=1)` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py) at lines 243 and 266.
@@ -39,7 +37,7 @@ v1: [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood
 
 ## Kingman Coalescent
 
-The Kingman coalescent (Kingman 1982) provides a prior on internal node times based on population genetics. Under neutral evolution, k lineages in a population of effective size N_e merge backward in time at a pairwise rate, producing a total coalescence rate `lambda(t) = k(k-1) / (2*Tc(t))` where Tc is the coalescence time scale (proportional to N_e). The per-lineage merger rate is `kappa(t) = (k(t)-1) / (2*Tc(t))`, and the integral merger rate `I(t) = integral kappa(t') dt'` accumulates the probability of no coalescence up to time t.
+The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[2](#ref-2)]) provides a prior on internal node times based on population genetics. Under neutral evolution, k lineages in a population of effective size N_e merge backward in time at a pairwise rate, producing a total coalescence rate `lambda(t) = k(k-1) / (2*Tc(t))` where Tc is the coalescence time scale (proportional to N_e). The per-lineage merger rate is `kappa(t) = (k(t)-1) / (2*Tc(t))`, and the integral merger rate `I(t) = integral kappa(t') dt'` accumulates the probability of no coalescence up to time t.
 
 The full coalescent neg-log-likelihood decomposes into per-node contributions via algebraic telescoping of the branch survival integrals. Each branch from parent p to child c contributes survival factor `I(t_p) - I(t_c)`. Summing over all branches and grouping by node, the terms telescope into three pieces:
 
@@ -69,22 +67,15 @@ The first timetree pass runs without coalescent to establish node time distribut
 
 v0 applies all three pieces: leaf contributions at `clock_tree.py:499-503` (uncertain dates) and `clock_tree.py:474-480` (precise dates), internal node contributions at `clock_tree.py:505-506`, root correction at `clock_tree.py:518-530`.
 
-References:
-
-- Kingman (1982). "The coalescent." Stochastic Processes and Applications, 13(3):235-248. doi:10.1016/0304-4149(82)90011-4
-- Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042. doi:10.1093/ve/vex042
-
 ---
 
 ## Tc Optimization
 
-Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (Brent 1973). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
+Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
 `optimize_tc()` (`#optimize_tc`) [packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L44-L84](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L44-L84) precomputes lineage counts and per-node branch data, then minimizes negative total coalescent likelihood. The cost function (`TcCostFunction`) builds a constant `Distribution` at each evaluation, computes `compute_integral_merger_rate()`, and sums per-branch costs. Nodes with undetermined branch length are skipped with a warning.
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
-
-Reference: Brent (1973). "Algorithms for Minimization Without Derivatives." Prentice-Hall, Chapter 5.
 
 ---
 
@@ -92,9 +83,9 @@ Reference: Brent (1973). "Algorithms for Minimization Without Derivatives." Pren
 
 Piecewise-varying Tc(t) estimation with smoothness regularization, extending the constant-Tc coalescent to capture population size changes over time.
 
-The classic skyline plot (Pybus, Rambaut & Harvey 2000) estimates a step function for N_e(t) from inter-coalescent intervals. The MLE per interval is `N_hat_k = C(k) * w_k` where C(k) = k(k-1)/2 is the number of lineage pairs and w_k is the interval duration. This is noisy because each interval has at most one coalescent event.
+The classic skyline plot (<a id="cite-5"></a>[Pybus, Rambaut, and Harvey 2000](https://doi.org/10.1093/genetics/155.3.1429) [[5](#ref-5)]) estimates a step function for N_e(t) from inter-coalescent intervals. The MLE per interval is `N_hat_k = C(k) * w_k` where C(k) = k(k-1)/2 is the number of lineage pairs and w_k is the interval duration. This is noisy because each interval has at most one coalescent event.
 
-The Bayesian skyline plot (Drummond, Rambaut, Shapiro & Pybus 2005) reduces noise by grouping neighboring coalescent events into segments with shared N*e parameters, using an autocorrelated exponential prior linking adjacent population sizes. The skyride (Minin, Bloomquist & Suchard 2008) replaces grouping with a Gaussian Markov Random Field (GMRF) prior that penalizes changes per unit time: `pi(gamma|tau) ~ tau^((m-1)/2) * exp(-tau/2 _ sum((gamma_{k+1} - gamma_k)^2 / delta_k))` where tau is a global precision parameter and delta_k are time-aware weights.
+The Bayesian skyline plot (<a id="cite-6"></a>[Drummond et al. 2005](https://doi.org/10.1093/molbev/msi103) [[6](#ref-6)]) reduces noise by grouping neighboring coalescent events into segments with shared N*e parameters, using an autocorrelated exponential prior linking adjacent population sizes. The skyride (<a id="cite-7"></a>[Minin, Bloomquist, and Suchard 2008](https://doi.org/10.1093/molbev/msn090) [[7](#ref-7)]) replaces grouping with a Gaussian Markov Random Field (GMRF) prior that penalizes changes per unit time: `pi(gamma|tau) ~ tau^((m-1)/2) * exp(-tau/2 _ sum((gamma_{k+1} - gamma_k)^2 / delta_k))` where tau is a global precision parameter and delta_k are time-aware weights.
 
 TreeTime's skyline implementation uses a smoothness penalty similar to the GMRF but optimizes via Nelder-Mead rather than MCMC:
 
@@ -114,22 +105,15 @@ v1 uses Nelder-Mead (via `argmin` crate); v0 uses SLSQP (via `scipy.optimize.min
 
 Skyline is re-optimized after the main iteration loop converges with stabilized node times, then a final timetree pass runs with the optimized Tc(t).
 
-References:
-
-- Pybus, Rambaut & Harvey (2000). "An integrated framework for the inference of viral population history from reconstructed genealogies." Genetics, 155(3):1429-1437. doi:10.1093/genetics/155.3.1429
-- Drummond, Rambaut, Shapiro & Pybus (2005). "Bayesian coalescent inference of past population dynamics from molecular sequences." Mol Biol Evol, 22(5):1185-1192. doi:10.1093/molbev/msi103
-- Minin, Bloomquist & Suchard (2008). "Smooth skyride through a rough skyline: Bayesian coalescent-based inference of population dynamics." Mol Biol Evol, 25(7):1459-1471. doi:10.1093/molbev/msn090
-- Strimmer & Pybus (2001). "Exploring the demographic history of DNA sequences using the generalized skyline plot." Mol Biol Evol, 18(12):2298-2305.
-
 ---
 
 ## Relaxed Clock
 
-Relaxed molecular clocks allow the substitution rate to vary across branches, relaxing the strict-clock assumption (Zuckerkandl & Pauling 1962) of a single uniform rate. Rate variation arises from differing generation times, population sizes, metabolic rates, and selective pressures across lineages.
+Relaxed molecular clocks allow the substitution rate to vary across branches, relaxing the strict-clock assumption (<a id="cite-9"></a>[Zuckerkandl and Pauling 1965](https://doi.org/10.1016/B978-1-4832-2734-4.50017-6) [[9](#ref-9)]) of a single uniform rate. Rate variation arises from differing generation times, population sizes, metabolic rates, and selective pressures across lineages.
 
-TreeTime implements an autocorrelated model where descendant branch rates correlate with parent rates, following Thorne, Kishino & Painter (1998). Each branch carries a rate multiplier gamma: `effective_rate = clock_rate * gamma`. The model penalizes deviation from gamma=1 (slack parameter) and rate differences between parent and child (coupling parameter).
+TreeTime implements an autocorrelated model where descendant branch rates correlate with parent rates, following <a id="cite-10"></a>[Thorne, Kishino, and Painter 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025892) [[10](#ref-10)]. Each branch carries a rate multiplier gamma: `effective_rate = clock_rate * gamma`. The model penalizes deviation from gamma=1 (slack parameter) and rate differences between parent and child (coupling parameter).
 
-When coupling > 0, closely related branches have similar rates (autocorrelated clock, matching the biological expectation that rate-influencing traits evolve gradually). When coupling = 0, the model degenerates to an uncorrelated clock where each branch rate is independent (Drummond et al. 2006). Lepage et al. (2007) compared relaxed clock models and found that autocorrelated models perform better when rate variation is driven by lineage-specific traits, while uncorrelated models handle episodic rate changes better.
+When coupling > 0, closely related branches have similar rates (autocorrelated clock, matching the biological expectation that rate-influencing traits evolve gradually). When coupling = 0, the model degenerates to an uncorrelated clock where each branch rate is independent (<a id="cite-11"></a>[Drummond et al. 2006](https://doi.org/10.1371/journal.pbio.0040088) [[11](#ref-11)]). <a id="cite-12"></a>[Lepage et al. 2007](https://doi.org/10.1093/molbev/msm193) [[12](#ref-12)] compared relaxed clock models and found that autocorrelated models perform better when rate variation is driven by lineage-specific traits, while uncorrelated models handle episodic rate changes better.
 
 v1: [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs).
 v0: `TreeTime.relaxed_clock()` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py).
@@ -151,9 +135,6 @@ The `one_mutation` parameter (sum of sequence lengths across all partitions) set
 ### References
 
 - Zuckerkandl & Pauling (1962). "Molecular Disease, Evolution, and Genic Heterogeneity." In Kasha & Pullman (eds.), Horizons in Biochemistry, pp. 189-225. Academic Press
-- Thorne, Kishino & Painter (1998). "Estimating the rate of evolution of the rate of molecular evolution." Mol Biol Evol, 15(12):1647-1657. doi:10.1093/oxfordjournals.molbev.a025892
-- Drummond, Ho, Phillips & Rambaut (2006). "Relaxed phylogenetics and dating with confidence." PLOS Biology, 4(5):e88. doi:10.1371/journal.pbio.0040088
-- Lepage, Bryant, Philippe & Lartillot (2007). "A general comparison of relaxed molecular clock models." Mol Biol Evol, 24(12):2669-2680. doi:10.1093/molbev/msm193
 
 ---
 
@@ -169,7 +150,7 @@ v1: [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../p
 
 The algorithm iterates over all nodes with >2 children. For each polytomy, it computes pairwise likelihood gains for merging each pair of children under a new internal node, selects the pair with the highest gain, and merges them. This repeats until no pair exceeds the resolution threshold (default 0.05 log-likelihood units) or the node becomes binary.
 
-This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree (Sagulenko et al. 2018, Section 2.6).
+This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree ([[3](#ref-3)], Section 2.6).
 
 - `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
 - `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
@@ -217,19 +198,17 @@ v1: [`packages/treetime/src/commands/timetree/convergence/`](../../packages/tree
 
 ## Iterative EM-like Refinement
 
-Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence (Sagulenko et al. 2018, Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
+Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence ([[3](#ref-3)], Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
 
 v1: [`packages/treetime/src/commands/timetree/refinement.rs`](../../packages/treetime/src/commands/timetree/refinement.rs).
 
 - `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/commands/timetree/refinement.rs#L21-L106](../../packages/treetime/src/commands/timetree/refinement.rs#L21-L106): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
 
-Reference: Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.4.
-
 ---
 
 ## Confidence Intervals
 
-Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 2018, Section 2.2):
+Node date uncertainty has two independent sources ([[3](#ref-3)], Section 2.2):
 
 1. Mutation stochasticity. The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. Clock rate uncertainty. The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
@@ -291,14 +270,11 @@ lower = center - sqrt((rate_lo - center)^2 + (mutation_lo - center)^2)
 upper = center + sqrt((rate_hi - center)^2 + (mutation_hi - center)^2)
 ```
 
-Clipped to distribution domain (physical limits). This is a first-order Gaussian approximation (Sagulenko et al. 2018, Section 2.2). The combined interval is wider than either source alone but narrower than the sum of deviations.
+Clipped to distribution domain (physical limits). This is a first-order Gaussian approximation ([[3](#ref-3)], Section 2.2). The combined interval is wider than either source alone but narrower than the sum of deviations.
 
 v0: `combine_confidence()` (`clock_tree.py:1090-1101`). Same formula.
 
 ### References
-
-- Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.2. doi:10.1093/ve/vex042
-- Felsenstein (1985). "Confidence limits on phylogenies: an approach using the bootstrap." Evolution, 39(4):783-791. doi:10.2307/2408678
 
 ---
 
@@ -329,6 +305,24 @@ Clock-based rerooting with partition state update. Searches for the root positio
 v1: [`packages/treetime/src/commands/timetree/optimization/reroot.rs`](../../packages/treetime/src/commands/timetree/optimization/reroot.rs).
 
 - `reroot_tree()` (`#reroot_tree`) [packages/treetime/src/commands/timetree/optimization/reroot.rs#L20-L93](../../packages/treetime/src/commands/timetree/optimization/reroot.rs#L20-L93): performs clock regression with rerooting, applies topology changes to partitions (edge split, edge merge, inverted edges), recomputes marginal messages
+
+---
+
+## References
+
+- <a id="ref-1"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. [↩](#cite-1)
+- <a id="ref-2"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-2)
+- <a id="ref-3"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-3)
+- <a id="ref-4"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 978-0-13-022335-7. [↩](#cite-4)
+- <a id="ref-5"></a>Pybus, Oliver G., Andrew Rambaut, and Paul H. Harvey. 2000. "An Integrated Framework for the Inference of Viral Population History from Reconstructed Genealogies." _Genetics_ 155(3):1429-1437. https://doi.org/10.1093/genetics/155.3.1429 [↩](#cite-5)
+- <a id="ref-6"></a>Drummond, Alexei J., Andrew Rambaut, Beth Shapiro, and Oliver G. Pybus. 2005. "Bayesian Coalescent Inference of Past Population Dynamics from Molecular Sequences." _Molecular Biology and Evolution_ 22(5):1185-1192. https://doi.org/10.1093/molbev/msi103 [↩](#cite-6)
+- <a id="ref-7"></a>Minin, Vladimir N., Erik W. Bloomquist, and Marc A. Suchard. 2008. "Smooth Skyride Through a Rough Skyline: Bayesian Coalescent-Based Inference of Population Dynamics." _Molecular Biology and Evolution_ 25(7):1459-1471. https://doi.org/10.1093/molbev/msn090 [↩](#cite-7)
+- <a id="ref-8"></a>Strimmer, Korbinian, and Oliver G. Pybus. 2001. "Exploring the Demographic History of DNA Sequences Using the Generalized Skyline Plot." _Molecular Biology and Evolution_ 18(12):2298-2305. https://doi.org/10.1093/oxfordjournals.molbev.a003776
+- <a id="ref-9"></a>Zuckerkandl, Emile, and Linus Pauling. 1965. "Evolutionary Divergence and Convergence in Proteins." In _Evolving Genes and Proteins,_ edited by Vernon Bryson and Henry J. Vogel, 97-166. Academic Press. https://doi.org/10.1016/B978-1-4832-2734-4.50017-6 [↩](#cite-9)
+- <a id="ref-10"></a>Thorne, Jeffrey L., Hirohisa Kishino, and Ian S. Painter. 1998. "Estimating the Rate of Evolution of the Rate of Molecular Evolution." _Molecular Biology and Evolution_ 15(12):1647-1657. https://doi.org/10.1093/oxfordjournals.molbev.a025892 [↩](#cite-10)
+- <a id="ref-11"></a>Drummond, Alexei J., Simon Y. W. Ho, Matthew J. Phillips, and Andrew Rambaut. 2006. "Relaxed Phylogenetics and Dating with Confidence." _PLoS Biology_ 4(5):e88. https://doi.org/10.1371/journal.pbio.0040088 [↩](#cite-11)
+- <a id="ref-12"></a>Lepage, Thomas, David Bryant, Herve Philippe, and Nicolas Lartillot. 2007. "A General Comparison of Relaxed Molecular Clock Models." _Molecular Biology and Evolution_ 24(12):2669-2680. https://doi.org/10.1093/molbev/msm193 [↩](#cite-12)
+- <a id="ref-13"></a>Felsenstein, Joseph. 1985. "Confidence Limits on Phylogenies: An Approach Using the Bootstrap." _Evolution_ 39(4):783-791. https://doi.org/10.2307/2408678
 
 ---
 
