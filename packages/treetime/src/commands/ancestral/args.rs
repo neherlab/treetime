@@ -1,20 +1,11 @@
 use crate::alphabet::alphabet::AlphabetName;
+use crate::commands::shared::args::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
-use clap::{Parser, ValueEnum, ValueHint};
-use serde::{Deserialize, Serialize};
+use clap::{Parser, ValueHint};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
-#[derive(Default)]
-pub enum MethodAncestral {
-  Joint,
-  #[default]
-  Marginal,
-  Parsimony,
-}
 
 #[derive(Parser, Debug, Serialize)]
 pub struct TreetimeAncestralArgs {

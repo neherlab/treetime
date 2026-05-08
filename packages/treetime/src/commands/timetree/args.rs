@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::AlphabetName;
-use crate::commands::ancestral::args::MethodAncestral;
+use crate::commands::shared::args::{BranchLengthMode, MethodAncestral, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueEnum, ValueHint};
@@ -18,30 +18,11 @@ fn parse_n_skyline(s: &str) -> Result<usize, String> {
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "kebab-case")]
-pub enum BranchLengthMode {
-  Input,
-  #[default]
-  Marginal,
-}
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
 pub enum TimeMarginalMode {
   #[default]
   Never,
   Always,
   OnlyFinal,
-}
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
-pub enum RerootMode {
-  #[default]
-  LeastSquares,
-  MinDev,
-  Oldest,
-  ClockFilter,
-  Mrca,
 }
 
 #[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]

@@ -1,9 +1,8 @@
-use crate::commands::ancestral::args::MethodAncestral;
 use crate::commands::clock::clock_regression::ClockParams;
 use crate::commands::clock::find_best_root::params::{
   BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod,
 };
-use crate::commands::timetree::args::{BranchLengthMode, RerootMode};
+use crate::commands::shared::args::{BranchLengthMode, MethodAncestral, RerootMode};
 use crate::gtr::get_gtr::GtrModelName;
 use clap::{Args, Parser, ValueHint};
 use serde::Serialize;

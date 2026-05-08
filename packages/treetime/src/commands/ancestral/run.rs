@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::args::{MethodAncestral, TreetimeAncestralArgs};
+use crate::commands::ancestral::args::TreetimeAncestralArgs;
+use crate::commands::shared::args::MethodAncestral;
 use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, get_common_length};
 use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
