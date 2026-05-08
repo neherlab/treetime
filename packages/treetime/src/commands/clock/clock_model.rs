@@ -1,12 +1,12 @@
-use crate::representation::payload::clock_set::ClockSet;
 use crate::make_error;
+use crate::representation::payload::clock_set::ClockSet;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::fmt::float::float_to_significant_digits;
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 /// Regression statistics from clock model estimation
 #[derive(Debug, Clone, Serialize, Deserialize)]

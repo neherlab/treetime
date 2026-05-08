@@ -1,6 +1,6 @@
+use crate::representation::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
 use crate::representation::payload::clock_set::ClockSet;
 use crate::representation::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
-use crate::representation::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;

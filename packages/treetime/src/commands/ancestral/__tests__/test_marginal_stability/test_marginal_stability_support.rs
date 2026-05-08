@@ -4,13 +4,13 @@ pub mod tests {
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::dense::DenseSeqDis;
   use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
-  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use parking_lot::RwLock;

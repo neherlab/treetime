@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::path::Path;
 use strum_macros::Display;
-use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
+use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 
 /// Classification of how the GTR model was obtained.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

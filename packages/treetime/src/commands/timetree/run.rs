@@ -23,10 +23,10 @@ use crate::commands::timetree::output::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
   write_confidence_intervals,
 };
-use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::utils::initialize_clock_totals_from_time_distributions;
 use crate::representation::partition::timetree::GraphTimetree;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::ancestral::annotate_branch_mutations;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;

@@ -1,9 +1,9 @@
 use crate::commands::clock::clock_regression::ClockParams;
-use crate::representation::payload::clock_set::ClockSet;
-use crate::representation::payload::traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::make_error;
+use crate::representation::payload::clock_set::ClockSet;
+use crate::representation::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use log::{debug, info};
 use std::sync::Arc;

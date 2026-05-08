@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
-  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use treetime_io::fasta::read_many_fasta_str;

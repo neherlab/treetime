@@ -18,8 +18,8 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
   /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
@@ -179,7 +179,6 @@ mod tests {
   /// state is preferred when present in the child's state set.
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -244,7 +243,6 @@ mod tests {
   /// observed data) and that internal node sequences match the expected reconstruction.
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -312,7 +310,6 @@ mod tests {
 
   #[test]
   fn test_compress_sequences_retains_internal_exact_sequences() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -365,7 +362,6 @@ mod tests {
   /// indel events.
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A
@@ -439,7 +435,6 @@ mod tests {
   ///   requiring both indel and substitution tracking within the insertion.
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
-
     // Test cases: a) deletions overlap, b) root has a deletion, c) inserted sequence is variable
     // In DE, position 3 is inserted, but it varies in D and E
     let aln = read_many_fasta_str(
@@ -520,7 +515,6 @@ mod tests {
   /// binary tree version.
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
-
     // Test polytomy (node with more than 2 children)
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -606,7 +600,6 @@ mod tests {
   /// - After forward: same variable positions are tracked, but root sequence is fully resolved.
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
         >A

@@ -4,8 +4,8 @@ use crate::gtr::gtr::GTR;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::marginal_passes;
 use crate::representation::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
-  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionOptimizeOps,
+  PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;

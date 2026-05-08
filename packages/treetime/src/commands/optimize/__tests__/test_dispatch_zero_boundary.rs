@@ -10,12 +10,12 @@ mod tests {
     OptimizationContribution, evaluate_mixed, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_branch_optimal,
     reconcile_zero_boundary, run_optimize_mixed,
   };
-  use crate::representation::partition::traits::PartitionOptimizeVec;
   use crate::commands::optimize::run::{collect_optimize_partitions, find_zero_optimal_internal_edges};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::representation::partition::traits::PartitionOptimizeVec;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;

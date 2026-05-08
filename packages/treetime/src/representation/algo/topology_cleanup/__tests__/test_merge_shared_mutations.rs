@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
 
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;

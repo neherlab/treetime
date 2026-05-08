@@ -1,15 +1,15 @@
 use crate::commands::clock::clock_model::ClockModel;
-use crate::representation::payload::traits::ClockNode;
 use crate::commands::optimize::optimize_indel::estimate_indel_rate;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
-use crate::representation::partition::traits::PartitionTimetreeAll;
-use crate::representation::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::make_error;
+use crate::representation::partition::traits::PartitionTimetreeAll;
+use crate::representation::payload::traits::ClockNode;
+use crate::representation::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;

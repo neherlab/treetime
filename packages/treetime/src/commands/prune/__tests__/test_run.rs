@@ -2,16 +2,16 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::commands::prune::run::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
-  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
 
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
-  use crate::pretty_assert_ulps_eq;
   use approx::assert_relative_eq;
   use eyre::Report;
   use itertools::Itertools;

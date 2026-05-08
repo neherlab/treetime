@@ -19,10 +19,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 /// Result of validating weight coverage against unique values.
 #[derive(Debug)]

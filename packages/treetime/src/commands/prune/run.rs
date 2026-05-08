@@ -256,4 +256,3 @@ pub(super) fn collapse_sparse_edges_from_leaf_recursive(
 fn should_collapse_parent(graph: &GraphAncestral, node_key: GraphNodeKey) -> bool {
   graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
 }
-

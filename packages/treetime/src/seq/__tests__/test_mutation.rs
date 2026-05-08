@@ -69,10 +69,22 @@ mod tests {
     // pos 2: chain (A→G + G→T = A→T)
     // pos 4: child only (passthrough)
     // pos 6: cancellation (C→T + T→C = none)
-    let parent = vec![helpers::sub(b'A', 0, b'T'), helpers::sub(b'A', 2, b'G'), helpers::sub(b'C', 6, b'T')];
-    let child = vec![helpers::sub(b'G', 2, b'T'), helpers::sub(b'G', 4, b'C'), helpers::sub(b'T', 6, b'C')];
+    let parent = vec![
+      helpers::sub(b'A', 0, b'T'),
+      helpers::sub(b'A', 2, b'G'),
+      helpers::sub(b'C', 6, b'T'),
+    ];
+    let child = vec![
+      helpers::sub(b'G', 2, b'T'),
+      helpers::sub(b'G', 4, b'C'),
+      helpers::sub(b'T', 6, b'C'),
+    ];
     let result = compose_substitutions(&parent, &child)?;
-    let expected = vec![helpers::sub(b'A', 0, b'T'), helpers::sub(b'A', 2, b'T'), helpers::sub(b'G', 4, b'C')];
+    let expected = vec![
+      helpers::sub(b'A', 0, b'T'),
+      helpers::sub(b'A', 2, b'T'),
+      helpers::sub(b'G', 4, b'C'),
+    ];
     assert_eq!(result, expected);
     Ok(())
   }
@@ -80,8 +92,16 @@ mod tests {
   #[test]
   fn test_mutation_compose_substitutions_output_sorted_by_position() -> Result<(), Report> {
     // Interleaved positions to verify merge order
-    let parent = vec![helpers::sub(b'A', 1, b'T'), helpers::sub(b'G', 3, b'C'), helpers::sub(b'T', 5, b'A')];
-    let child = vec![helpers::sub(b'C', 0, b'G'), helpers::sub(b'A', 2, b'T'), helpers::sub(b'C', 4, b'G')];
+    let parent = vec![
+      helpers::sub(b'A', 1, b'T'),
+      helpers::sub(b'G', 3, b'C'),
+      helpers::sub(b'T', 5, b'A'),
+    ];
+    let child = vec![
+      helpers::sub(b'C', 0, b'G'),
+      helpers::sub(b'A', 2, b'T'),
+      helpers::sub(b'C', 4, b'G'),
+    ];
     let result = compose_substitutions(&parent, &child)?;
     let expected = vec![
       helpers::sub(b'C', 0, b'G'),
@@ -98,8 +118,16 @@ mod tests {
   #[test]
   fn test_mutation_compose_substitutions_all_cancel() -> Result<(), Report> {
     // Every position cancels
-    let parent = vec![helpers::sub(b'A', 0, b'G'), helpers::sub(b'C', 1, b'T'), helpers::sub(b'G', 2, b'A')];
-    let child = vec![helpers::sub(b'G', 0, b'A'), helpers::sub(b'T', 1, b'C'), helpers::sub(b'A', 2, b'G')];
+    let parent = vec![
+      helpers::sub(b'A', 0, b'G'),
+      helpers::sub(b'C', 1, b'T'),
+      helpers::sub(b'G', 2, b'A'),
+    ];
+    let child = vec![
+      helpers::sub(b'G', 0, b'A'),
+      helpers::sub(b'T', 1, b'C'),
+      helpers::sub(b'A', 2, b'G'),
+    ];
     let result = compose_substitutions(&parent, &child)?;
     assert_eq!(result, vec![]);
     Ok(())

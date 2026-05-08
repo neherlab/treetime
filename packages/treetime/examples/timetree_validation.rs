@@ -18,7 +18,6 @@ use treetime::commands::clock::find_best_root::params::BranchPointOptimizationPa
 use treetime::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use treetime::commands::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::commands::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
-use treetime::representation::partition::traits::PartitionTimetreeAll;
 use treetime::commands::timetree::utils::{
   create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
   initialize_node_divergences,
@@ -27,6 +26,7 @@ use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::representation::partition::fitch::PartitionFitch;
 use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::timetree::GraphTimetree;
+use treetime::representation::partition::traits::PartitionTimetreeAll;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;

@@ -1,8 +1,8 @@
+use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
-use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 
 pub fn yaml_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<T, Report> {
   let filepath = filepath.as_ref();

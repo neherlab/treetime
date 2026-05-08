@@ -3,12 +3,12 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::fitch::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
+  use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use maplit::btreemap;

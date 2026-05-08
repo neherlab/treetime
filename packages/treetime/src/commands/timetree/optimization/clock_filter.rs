@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_model::ClockModel;
-use crate::representation::payload::traits::ClockNode;
 use crate::representation::partition::timetree::GraphTimetree;
+use crate::representation::payload::traits::ClockNode;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;

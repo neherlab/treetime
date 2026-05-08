@@ -1,4 +1,3 @@
-use treetime_utils::io::json::{JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str};
 use crate::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, nwk_read_str, nwk_write_str};
 use bytes::Buf;
 use eyre::{Report, WrapErr};
@@ -10,6 +9,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::io::json::{
+  JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
+};
 use treetime_utils::make_error;
 
 pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};

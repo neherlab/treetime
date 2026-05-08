@@ -3,8 +3,8 @@ mod tests {
   use crate::commands::ancestral::marginal::update_marginal;
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;
-  use crate::representation::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
+  use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;

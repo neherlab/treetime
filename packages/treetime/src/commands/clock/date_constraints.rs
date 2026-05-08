@@ -1,12 +1,12 @@
 use crate::make_error;
 use crate::o;
+use crate::representation::payload::traits::DateConstraintNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use crate::representation::payload::traits::DateConstraintNode;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_io::dates_csv::{DateOrRange, DatesMap};

@@ -23,9 +23,9 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -148,7 +148,6 @@ mod tests {
   /// Also verifies the total log-likelihood matches the expected value.
   #[test]
   fn test_ancestral_reconstruction_marginal_sparse() -> Result<(), Report> {
-
     let aln = read_many_fasta_str(
       indoc! {r#"
       >A
@@ -419,7 +418,6 @@ mod tests {
   /// with extreme frequency imbalance.
   #[test]
   fn test_total_likelihood_marginal_sparse_all_triplets() -> Result<(), Report> {
-
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;
 

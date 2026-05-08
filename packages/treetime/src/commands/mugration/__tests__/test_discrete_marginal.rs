@@ -7,9 +7,9 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   #[test]
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {

@@ -5,13 +5,13 @@ mod tests {
   use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::traits::PartitionBranchOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
-  use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;

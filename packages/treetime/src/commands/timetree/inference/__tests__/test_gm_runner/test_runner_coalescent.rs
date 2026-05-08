@@ -9,13 +9,13 @@ mod tests {
   use crate::commands::clock::date_constraints::load_date_constraints;
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::inference::runner::run_timetree;
-  use crate::representation::partition::traits::PartitionTimetreeAll;
   use crate::commands::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::timetree::GraphTimetree;
+  use crate::representation::partition::traits::PartitionTimetreeAll;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
   use maplit::btreemap;

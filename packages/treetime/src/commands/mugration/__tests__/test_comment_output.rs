@@ -5,8 +5,8 @@ mod tests {
   use crate::commands::mugration::run::execute_mugration;
   use eyre::Report;
   use indoc::indoc;
-  use pretty_assertions::assert_eq;
   use maplit::btreemap;
+  use pretty_assertions::assert_eq;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, nwk_read_str};
   use treetime_utils::o;

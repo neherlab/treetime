@@ -403,7 +403,10 @@ mod tests {
     assert!(result.is_err());
     let err = result.unwrap_err();
     let err_chain = format!("{err:?}");
-    assert!(err_chain.contains("empty"), "expected 'empty' in error chain: {err_chain}");
+    assert!(
+      err_chain.contains("empty"),
+      "expected 'empty' in error chain: {err_chain}"
+    );
   }
 
   #[test]

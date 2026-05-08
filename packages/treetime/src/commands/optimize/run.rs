@@ -4,15 +4,15 @@ use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal}
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_inner};
-use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
-use crate::representation::partition::traits::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
+use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::{HasGtr, PartitionBranchOps};
+use crate::representation::partition::traits::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
 use eyre::Report;
 use itertools::{Itertools, chain, izip};
@@ -714,4 +714,3 @@ fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Ar
     }
   }
 }
-

@@ -12,8 +12,8 @@ mod tests {
     OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
     evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,
   };
-  use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

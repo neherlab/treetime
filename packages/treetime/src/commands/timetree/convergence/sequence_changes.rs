@@ -1,5 +1,5 @@
-use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use log::debug;

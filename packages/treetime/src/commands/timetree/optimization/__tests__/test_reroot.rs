@@ -6,13 +6,14 @@ mod tests {
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
-  use crate::representation::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::partition::timetree::GraphTimetree;
+  use crate::representation::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::representation::payload::sparse::{
     MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   };
@@ -21,7 +22,6 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
-  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

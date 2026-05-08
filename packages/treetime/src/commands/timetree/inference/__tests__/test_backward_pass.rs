@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
+  use crate::pretty_assert_ulps_eq;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::test_utils::find_node_key_by_name;
-  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use std::sync::Arc;
   use treetime_distribution::Distribution;

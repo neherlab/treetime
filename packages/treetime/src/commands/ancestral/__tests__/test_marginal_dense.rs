@@ -18,8 +18,8 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Assert that every row of a dense probability matrix is a valid distribution.
   ///
@@ -149,7 +149,6 @@ mod tests {
   /// posteriori) state argmax_s P(s|data) at each position.
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
-
     let expected = read_many_fasta_str(
       indoc! {r#"
       >root
@@ -343,7 +342,6 @@ mod tests {
   /// exponentiated log-likelihoods are summed.
   #[test]
   fn test_total_likelihood_marginal_dense_all_triplets() -> Result<(), Report> {
-
     let alphabet = Alphabet::default();
     let mut total_lh = 0.0;
 

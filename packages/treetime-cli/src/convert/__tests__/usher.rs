@@ -8,8 +8,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeSet;
   use treetime_io::auspice::auspice_read_str;
-  use treetime_utils::io::json::json_read_str;
   use treetime_io::usher_mat::{UsherMatJsonOptions, UsherTree, usher_mat_json_write_str};
+  use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_usher_write_mutations() -> Result<(), Report> {
