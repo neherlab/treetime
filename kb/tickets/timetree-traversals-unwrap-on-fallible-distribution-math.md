@@ -25,4 +25,4 @@ Replace `.unwrap()` calls with error collection: either propagate errors out of 
 ## Related issues
 
 - Source: [M-timetree-inference-unwrap-in-traversals.md](../issues/M-timetree-inference-unwrap-in-traversals.md) -- delete after full resolution
-- [M-optimize-negative-branch-length-validation.md](M-optimize-negative-branch-length-validation.md): missing negative branch-length validation, a trigger for degenerate distribution math
+- [M-optimize-negative-branch-length-validation.md](../issues/M-optimize-negative-branch-length-validation.md): missing negative branch-length validation, a trigger for degenerate distribution math

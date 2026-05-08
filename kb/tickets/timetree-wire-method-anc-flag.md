@@ -17,5 +17,5 @@ The ancestral command implements method selection correctly.
 ## Related issues
 
 - Source: [M-timetree-method-anc-ignored.md](../issues/M-timetree-method-anc-ignored.md) -- delete after full resolution
-- [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md) lists other dead
+- [Dead CLI flags in timetree](../issues/N-timetree-dead-cli-flags.md) lists other dead
   flags in the same pipeline

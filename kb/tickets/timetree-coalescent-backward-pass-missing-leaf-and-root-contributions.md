@@ -82,5 +82,5 @@ Datasets to test: flu/h3n2/20 (heterochronous, moderate tree), ebola (heterochro
 
 - Source: [M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md) -- delete after full resolution
 - Coalescent total likelihood is emitted now, but it is still incomplete when leaf and root contributions are omitted from the backward pass
-- [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md) -- interaction: initial Tc estimate quality depends on completeness of coalescent prior
-- [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md) -- both issues affect how convergence metrics reflect the time-tree objective
+- [--coalescent-opt alone skips initial Tc pass](../issues/M-timetree-coalescent-opt-skips-initial.md) -- interaction: initial Tc estimate quality depends on completeness of coalescent prior
+- [Positional likelihood metric differs from v0](../issues/M-timetree-positional-likelihood-metric.md) -- both issues affect how convergence metrics reflect the time-tree objective

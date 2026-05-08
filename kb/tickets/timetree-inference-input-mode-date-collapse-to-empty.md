@@ -10,7 +10,7 @@ Once a node's distribution becomes `Empty`, it is excluded from the forward pass
 
 ## Impact
 
-Internal node dates are missing from the nexus output. The timetree output contains leaf dates (from the input metadata) but no internal node dates. This is tracked separately in [M-timetree-internal-dates-missing-input-bl.md](M-timetree-internal-dates-missing-input-bl.md) as a symptom; the root cause is the distribution collapse described here.
+Internal node dates are missing from the nexus output. The timetree output contains leaf dates (from the input metadata) but no internal node dates. This is tracked separately in [M-timetree-internal-dates-missing-input-bl.md](../issues/M-timetree-internal-dates-missing-input-bl.md) as a symptom; the root cause is the distribution collapse described here.
 
 ## Fix
 
@@ -19,5 +19,5 @@ Use log-space arithmetic for distribution multiplication, or use a stabilized pr
 ## Related issues
 
 - Source: [M-timetree-inference-input-mode-date-collapse.md](../issues/M-timetree-inference-input-mode-date-collapse.md) -- delete after full resolution
-- [M-timetree-internal-dates-missing-input-bl.md](M-timetree-internal-dates-missing-input-bl.md): output symptom (missing internal dates in nexus)
-- [M-ancestral-marginal-probability-space.md](M-ancestral-marginal-probability-space.md): related probability-space issue in dense marginal
+- [M-timetree-internal-dates-missing-input-bl.md](../issues/M-timetree-internal-dates-missing-input-bl.md): output symptom (missing internal dates in nexus)
+- [M-ancestral-marginal-probability-space.md](../issues/M-ancestral-marginal-probability-space.md): related probability-space issue in dense marginal

@@ -27,4 +27,4 @@ both should find the same global minimum.
 ## Related issues
 
 - Source: [M-timetree-skyline-nelder-mead-optimizer.md](../issues/M-timetree-skyline-nelder-mead-optimizer.md) -- delete after full resolution
-- [H-timetree-skyline-objective-mismatch.md](H-timetree-skyline-objective-mismatch.md): the skyline cost function itself diverges from the per-edge Kingman cost, independent of the optimizer choice
+- [H-timetree-skyline-objective-mismatch.md](../issues/H-timetree-skyline-objective-mismatch.md): the skyline cost function itself diverges from the per-edge Kingman cost, independent of the optimizer choice
