@@ -70,7 +70,6 @@ exactly.
 | Medium     | Optimize       | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)                         |
 | Medium     | Optimize       | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
 | Low        | Core           | [Duplicate `write_graph()` across commands](N-core-duplicate-write-graph.md)                                                                        |
-| Low        | Topology       | [Move `merge_shared_mutation_branches()` to shared topology_cleanup module](N-topology-cleanup-move-merge-shared-mutations.md)                      |
 | Low        | GTR            | [Site-specific GTR not integrated into partition system](N-gtr-site-specific-partition-integration.md)                                              |
 | Low        | GTR            | [Site-specific GTR inference lacks end-to-end test from real tree data](N-gtr-site-specific-e2e-inference-test.md)                                  |
 | Low        | Representation | [`infer_dense()` stub always returns false](N-representation-infer-dense-stub.md)                                                                   |
