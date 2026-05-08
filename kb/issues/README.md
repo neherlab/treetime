@@ -149,7 +149,6 @@ exactly.
 | Negligible | Numerical      | [Numerical stability magic constants](N-numerical-stability-magic-constants.md)                                                                     |
 | Negligible | Coalescent     | [Coalescent skyline robustness deficiencies](N-coalescent-skyline-robustness.md)                                                                    |
 | Negligible | Core           | [Error suppression via unwrap_or_default and silent fallbacks](N-error-suppression-unwrap-or-defaults.md)                                           |
-| Negligible | Core           | [Dead code and orphaned APIs](N-dead-code-orphaned-apis.md)                                                                                         |
 | Negligible | Core           | [Code quality and convention violations](N-code-quality-conventions.md)                                                                             |
 | Negligible | Core           | [Architectural debt (documented, low priority)](N-architectural-debt-documented.md)                                                                 |
 | Negligible | Core           | [Production unwrap/expect/assert audit](N-production-unwrap-expect-audit.md)                                                                        |
