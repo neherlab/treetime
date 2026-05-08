@@ -61,7 +61,7 @@ pub struct DenseSeqDis {
 }
 
 impl DenseSeqDis {
-  pub fn new(dis: Array2<f64>) -> Self {
-    Self { dis, log_lh: 0.0 }
+  pub fn new(dis: Array2<f64>, log_lh: f64) -> Self {
+    Self { dis, log_lh }
   }
 }

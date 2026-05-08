@@ -56,17 +56,17 @@ mod tests {
       nodes: btreemap! {
         parent_key => DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(parent_posterior),
+          profile: DenseSeqDis::new(parent_posterior, 0.0),
         },
         child_key => DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(child_posterior),
+          profile: DenseSeqDis::new(child_posterior, 0.0),
         },
       },
       edges: btreemap! {
         edge_key => DenseEdgePartition {
-          msg_to_parent: DenseSeqDis::new(msg_to_parent),
-          msg_to_child: DenseSeqDis::new(msg_to_child),
+          msg_to_parent: DenseSeqDis::new(msg_to_parent, 0.0),
+          msg_to_child: DenseSeqDis::new(msg_to_child, 0.0),
           ..Default::default()
         },
       },
@@ -114,17 +114,17 @@ mod tests {
       nodes: btreemap! {
         parent_key => DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(parent_posterior),
+          profile: DenseSeqDis::new(parent_posterior, 0.0),
         },
         child_key => DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(child_posterior),
+          profile: DenseSeqDis::new(child_posterior, 0.0),
         },
       },
       edges: btreemap! {
         edge_key => DenseEdgePartition {
-          msg_to_parent: DenseSeqDis::new(msg_to_parent),
-          msg_to_child: DenseSeqDis::new(msg_to_child),
+          msg_to_parent: DenseSeqDis::new(msg_to_parent, 0.0),
+          msg_to_child: DenseSeqDis::new(msg_to_child, 0.0),
           ..Default::default()
         },
       },
@@ -244,11 +244,11 @@ mod tests {
       nodes: btreemap! {
         parent_key => DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(parent_posterior),
+          profile: DenseSeqDis::new(parent_posterior, 0.0),
         },
         child_key => DenseNodePartition {
           seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
-          profile: DenseSeqDis::new(child_posterior),
+          profile: DenseSeqDis::new(child_posterior, 0.0),
         },
       },
       edges: btreemap! {
