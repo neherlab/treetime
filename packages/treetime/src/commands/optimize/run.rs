@@ -19,15 +19,13 @@ use itertools::{Itertools, chain, izip};
 use log::debug;
 use num_traits::pow::pow;
 use parking_lot::RwLock;
-use serde::Serialize;
-use std::path::Path;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::nex::{NexWriteOptions, nex_write_file};
-use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_io::graph::write_graph_files;
+use treetime_io::nwk::nwk_read_file;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -146,7 +144,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   };
   annotate_branch_mutations(&graph, &branch_ops)?;
 
-  write_graph(outdir, &graph)?;
+  write_graph_files(outdir, "annotated_tree", &graph)?;
   Ok(())
 }
 
@@ -717,29 +715,3 @@ fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Ar
   }
 }
 
-fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode + NodeToNwk + Serialize,
-  E: GraphEdge + EdgeToNwk + Serialize,
-  D: Send + Sync + Default + Serialize,
-{
-  // json_write_file(
-  //   outdir.as_ref().join("annotated_tree.graph.json"),
-  //   &graph,
-  //   JsonPretty(true),
-  // )?;
-
-  nwk_write_file(
-    outdir.as_ref().join("annotated_tree.nwk"),
-    graph,
-    &NwkWriteOptions::default(),
-  )?;
-
-  nex_write_file(
-    outdir.as_ref().join("annotated_tree.nexus"),
-    graph,
-    &NexWriteOptions::default(),
-  )?;
-
-  Ok(())
-}

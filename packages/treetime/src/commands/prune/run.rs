@@ -13,16 +13,14 @@ use itertools::Itertools;
 use log::debug;
 use maplit::btreeset;
 use parking_lot::RwLock;
-use serde::Serialize;
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::nex::{NexWriteOptions, nex_write_file};
-use treetime_io::nwk::{EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_io::graph::write_graph_files;
+use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
 pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
@@ -75,7 +73,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     graph.build()?;
   }
 
-  write_graph(outdir, &graph)?;
+  write_graph_files(outdir, "pruned_tree", &graph)?;
 
   Ok(())
 }
@@ -259,23 +257,3 @@ fn should_collapse_parent(graph: &GraphAncestral, node_key: GraphNodeKey) -> boo
   graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
 }
 
-fn write_graph<N, E, D>(outdir: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode + NodeToNwk + Serialize,
-  E: GraphEdge + EdgeToNwk + Serialize,
-  D: Send + Sync + Default + Serialize,
-{
-  nwk_write_file(
-    outdir.as_ref().join("pruned_tree.nwk"),
-    graph,
-    &NwkWriteOptions::default(),
-  )?;
-
-  nex_write_file(
-    outdir.as_ref().join("pruned_tree.nexus"),
-    graph,
-    &NexWriteOptions::default(),
-  )?;
-
-  Ok(())
-}

@@ -37,8 +37,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nex::{NexWriteOptions, nex_write_file};
-use treetime_io::nwk::{NwkWriteOptions, nwk_write_file};
+use treetime_io::graph::write_graph_files;
 
 /// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
@@ -512,13 +511,9 @@ fn write_outputs(
     annotate_branch_mutations(graph, partitions).wrap_err("Failed to annotate branch mutations for tree output")?;
   }
 
-  let out_base = args.outdir.join("timetree");
-  nwk_write_file(out_base.with_extension("nwk"), graph, &NwkWriteOptions::default())
-    .wrap_err("Failed to write Newick output")?;
-  nex_write_file(out_base.with_extension("nexus"), graph, &NexWriteOptions::default())
-    .wrap_err("Failed to write Nexus output")?;
+  write_graph_files(&args.outdir, "timetree", graph).wrap_err("Failed to write tree output")?;
 
-  write_clock_model(clock_model, &out_base)?;
+  write_clock_model(clock_model, &args.outdir.join("timetree"))?;
 
   write_auspice_json(graph, confidence_intervals, &args.outdir)?;
 

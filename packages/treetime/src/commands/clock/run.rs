@@ -16,9 +16,8 @@ use crate::make_report;
 use eyre::{Report, WrapErr};
 use log::info;
 use treetime_io::dates_csv::read_dates;
-use treetime_io::graphviz::graphviz_write_file;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
-use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_write_file};
+use treetime_io::graph::write_graph_files;
+use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::console::is_tty;
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
@@ -94,9 +93,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  nwk_write_file(outdir.join("rerooted.nwk"), &graph, &NwkWriteOptions::default())?;
-  json_write_file(outdir.join("graph_output.json"), &graph, JsonPretty(true))?;
-  graphviz_write_file(outdir.join("graph_output.dot"), &graph)?;
+  write_graph_files(outdir, "rerooted", &graph)?;
 
   write_clock_model(&clock_model, &outdir.join("clock_model"))?;
 
