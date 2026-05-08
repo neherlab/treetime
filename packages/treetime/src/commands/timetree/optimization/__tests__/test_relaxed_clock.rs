@@ -369,8 +369,7 @@ mod tests {
     }
 
     pub fn build_deep_tree() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree =
-        nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
+      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
       for edge in graph.get_edges() {
         let edge = edge.write_arc();
         let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);

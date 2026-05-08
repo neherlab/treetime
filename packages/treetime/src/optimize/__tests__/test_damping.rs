@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::run_loop::run_optimize_loop;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
   use crate::optimize::args::BranchOptMethod;
   use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+  use crate::optimize::run_loop::run_optimize_loop;
   use crate::representation::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;

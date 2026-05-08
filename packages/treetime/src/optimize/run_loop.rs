@@ -1,8 +1,7 @@
 use crate::ancestral::marginal::update_marginal;
 use crate::optimize::args::BranchOptMethod;
 use crate::optimize::iteration::{
-  apply_damping, find_zero_optimal_internal_edges, prune_and_merge_in_loop, restore_branch_lengths,
-  save_branch_lengths,
+  apply_damping, find_zero_optimal_internal_edges, prune_and_merge_in_loop, restore_branch_lengths, save_branch_lengths,
 };
 use crate::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::optimize_unified::run_optimize_mixed_inner;
@@ -140,8 +139,7 @@ pub fn run_optimize_loop(
 
     apply_damping(graph, &old_branch_lengths, damping, i);
 
-    let topology_changed =
-      prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
+    let topology_changed = prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
     if topology_changed {
       best_lh = f64::NEG_INFINITY;
     }

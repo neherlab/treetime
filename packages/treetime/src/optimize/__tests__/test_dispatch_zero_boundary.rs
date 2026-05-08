@@ -2,7 +2,6 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::args::BranchOptMethod;
   use crate::optimize::iteration::find_zero_optimal_internal_edges;
@@ -11,6 +10,7 @@ mod tests {
     evaluate_mixed, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_branch_optimal, reconcile_zero_boundary,
     run_optimize_mixed,
   };
+  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;

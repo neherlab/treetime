@@ -2,13 +2,13 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::args::BranchOptMethod;
   use crate::optimize::iteration::{
     apply_damping, find_zero_optimal_internal_edges, prune_and_merge_in_loop, save_branch_lengths,
   };
   use crate::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;

@@ -2,7 +2,6 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
@@ -13,6 +12,7 @@ mod tests {
     evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best, is_zero_branch_optimal,
     run_optimize_mixed, run_optimize_mixed_with_indel_rate,
   };
+  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::pretty_assert_neg_inf;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
