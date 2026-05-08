@@ -10,5 +10,5 @@ error at runtime with "not yet implemented" via `make_error!()`.
 ## Related issues
 
 - Source: [N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md) -- delete after full resolution
-- [Missing output files compared to v0](timetree-output-missing-files-compared-to-v0.md)
+- [Missing output files compared to v0](timetree-output-add-v0-parity-files.md)
   `root_to_tip_regression.pdf` and `timetree.pdf` listed as missing outputs

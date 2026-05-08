@@ -7,5 +7,5 @@ v0 writes `dates.tsv` with columns including node name, date estimate, and
 ## Related issues
 
 - Source: [N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md) -- delete after full resolution
-- [Missing output files compared to v0](timetree-output-missing-files-compared-to-v0.md)
+- [Missing output files compared to v0](timetree-output-add-v0-parity-files.md)
   umbrella issue for all missing outputs

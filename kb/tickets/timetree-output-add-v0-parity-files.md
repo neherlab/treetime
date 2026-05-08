@@ -5,18 +5,18 @@ v1 produces fewer output files than v0. Several output types are not implemented
 ## v0 outputs not present in v1
 
 - `dates.tsv` - node date estimates in tabular format
-  (see [Node dates output unimplemented](timetree-output-node-dates-unimplemented.md))
+  (see [Node dates output unimplemented](timetree-output-implement-node-dates.md))
 - `ancestral_sequences.fasta` - reconstructed ancestral sequences
 - `branch_mutations.txt` - mutations mapped to branches in tabular form (Nexus `[&mutations=...]` annotations are emitted; only the separate tabular file is missing)
 - `molecular_clock.txt` - clock model summary (v1 has `timetree.json` with more detail)
 - `divergence_tree.nexus` - tree with divergence (not time) branch lengths
 - `sequence_evolution_model.txt` - GTR model details (v1 has `gtr.json`)
 - `root_to_tip_regression.pdf` - RTT regression plot
-  (see [Plot commands unimplemented](timetree-output-plot-rtt-and-plot-tree-unimplemented.md))
+  (see [Plot commands unimplemented](timetree-output-implement-plot-and-rtt.md))
 - `timetree.pdf` - time tree visualization
-  (see [Plot commands unimplemented](timetree-output-plot-rtt-and-plot-tree-unimplemented.md))
+  (see [Plot commands unimplemented](timetree-output-implement-plot-and-rtt.md))
 - `skyline.tsv` - effective population size over time
-  (see [Missing skyline output files](timetree-output-missing-skyline-files.md))
+  (see [Missing skyline output files](timetree-output-add-skyline-files.md))
 - `skyline.pdf` - skyline plot
 
 ## Produced but incomplete

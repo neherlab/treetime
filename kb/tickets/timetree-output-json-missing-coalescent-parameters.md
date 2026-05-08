@@ -18,7 +18,7 @@ v0 records the optimized Tc in `molecular_clock.txt` and the coal_LH in
 ## Related issues
 
 - Source: [N-timetree-json-missing-coalescent.md](../issues/N-timetree-json-missing-coalescent.md) -- delete after full resolution
-- [Missing skyline output files](timetree-output-missing-skyline-files.md)
+- [Missing skyline output files](timetree-output-add-skyline-files.md)
   skyline results not written to any file
-- [Missing output files compared to v0](timetree-output-missing-files-compared-to-v0.md)
+- [Missing output files compared to v0](timetree-output-add-v0-parity-files.md)
   umbrella issue
