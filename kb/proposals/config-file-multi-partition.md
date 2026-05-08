@@ -89,8 +89,8 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 
 ### Design documents
 
-- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source: "For flu, genomes come in segments"
-- [../_raw/optimize.md](../_raw/optimize.md) -- source: "we might need a config file format"
+- [../\_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source: "For flu, genomes come in segments"
+- [../\_raw/optimize.md](../_raw/optimize.md) -- source: "we might need a config file format"
 
 ## References
 
@@ -98,6 +98,6 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 2. <a id="ref-2"></a> Ronquist, Fredrik, and John P. Huelsenbeck. 2003. "MrBayes 3: Bayesian Phylogenetic Inference under Mixed Models." _Bioinformatics_ 19(12):1572-1574. https://doi.org/10.1093/bioinformatics/btg180
 3. <a id="ref-3"></a> Lanfear, Robert, Brett Calcott, Simon Y. W. Ho, and Stephane Guindon. 2012. "PartitionFinder: Combined Selection of Partitioning Schemes and Substitution Models for Phylogenetic Analyses." _Molecular Biology and Evolution_ 29(6):1695-1701. https://doi.org/10.1093/molbev/mss020
 4. <a id="ref-4"></a> Chernomor, Olga, Arndt von Haeseler, and Bui Quang Minh. 2016. "Terrace Aware Data Structure for Phylogenomic Inference from Supermatrices." _Systematic Biology_ 65(6):997-1008. https://doi.org/10.1093/sysbio/syw037
-5. <a id="ref-5"></a> Minh, Bui Quang, Heiko A. Schmidt, Olga Chernomor, Dominik Schrempf, Michael D. Woodhams, Arndt von Haeseler, and Robert Lanfear. 2020. "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." _Molecular Biology and Evolution_ 37(5):1530-1534. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7182206/ (DOI: https://doi.org/10.1093/molbev/msaa015)
+5. <a id="ref-5"></a> Minh, Bui Quang, Heiko A. Schmidt, Olga Chernomor, Dominik Schrempf, Michael D. Woodhams, Arndt von Haeseler, and Robert Lanfear. 2020. "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." _Molecular Biology and Evolution_ 37(5):1530-1534. https://doi.org/10.1093/molbev/msaa015
 6. <a id="ref-6"></a> Kozlov, Alexey M., Diego Darriba, Tomas Flouri, Benoit Morel, and Alexandros Stamatakis. 2019. "RAxML-NG: A Fast, Scalable and User-Friendly Tool for Maximum Likelihood Phylogenetic Inference." _Bioinformatics_ 35(21):4453-4455. https://doi.org/10.1093/bioinformatics/btz305
 7. <a id="ref-7"></a> Drummond, Alexei J., and Andrew Rambaut. 2007. "BEAST: Bayesian Evolutionary Analysis by Sampling Trees." _BMC Evolutionary Biology_ 7:214. https://doi.org/10.1186/1471-2148-7-214

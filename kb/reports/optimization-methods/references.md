@@ -62,7 +62,7 @@ Consolidated bibliography for all chapters. Ordered by first author surname. DOI
 
 29. Sagulenko, P., V. Puller, and R. A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evol._ 4(1):vex042. https://doi.org/10.1093/ve/vex042
 
-30. Siepel, A., and D. Haussler. 2004. "Phylogenetic Estimation of Context-Dependent Substitution Rates by Maximum Likelihood." _Mol. Biol. Evol._ 21(3):468-488. https://doi.org/10.1093/molbev/msh039 (not cited in any chapter; retained for completeness)
+30. Kraft, D. 1988. "A Software Package for Sequential Quadratic Programming." DFVLR-FB 88-28. Deutsche Forschungs- und Versuchsanstalt für Luft- und Raumfahrt, Cologne, Germany
 
 31. Stamatakis, A. 2014. "RAxML Version 8." _Bioinformatics_ 30(9):1312-1313. https://doi.org/10.1093/bioinformatics/btu033
 

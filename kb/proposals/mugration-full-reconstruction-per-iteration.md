@@ -46,5 +46,5 @@ for i in 0..iterations {
 ## References
 
 - Dempster, A.P., Laird, N.M. & Rubin, D.B. (1977). Maximum likelihood from incomplete data via the EM algorithm. _J R Stat Soc B_, 39(1):1-38. [doi:10.1111/j.2517-6161.1977.tb01600.x](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x)
-- Holmes, I. & Rubin, G.M. (2002). An expectation maximization algorithm for training hidden substitution models. _J Mol Biol_, 317(5):753-764. [PMID:11955022](https://pubmed.ncbi.nlm.nih.gov/11955022/)
-- Felsenstein, J. (1981). Evolutionary trees from DNA sequences: a maximum likelihood approach. _J Mol Evol_, 17(6):368-376. [PMID:7288891](https://pubmed.ncbi.nlm.nih.gov/7288891/)
+- Holmes, I. & Rubin, G.M. (2002). An expectation maximization algorithm for training hidden substitution models. _J Mol Biol_, 317(5):753-764. [doi:10.1006/jmbi.2001.5391](https://doi.org/10.1006/jmbi.2001.5391)
+- Felsenstein, J. (1981). Evolutionary trees from DNA sequences: a maximum likelihood approach. _J Mol Evol_, 17(6):368-376. [doi:10.1007/BF01734359](https://doi.org/10.1007/BF01734359)

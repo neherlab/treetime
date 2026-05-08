@@ -23,3 +23,7 @@ TN93 is non-functional. Any analysis specifying `--gtr=tn93` runs with JC69 rate
 ## v1 status
 
 v1's GTR system uses explicit alphabet types with compile-time dimension checks. The mismatch category cannot occur.
+
+## References
+
+- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. doi:10.1093/oxfordjournals.molbev.a040023

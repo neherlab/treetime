@@ -83,7 +83,7 @@ Time-reversibility holds iff $\lambda(\bar{X} - 1) = \mu(\bar{Y} - 1)$, which co
 The intractability of exact GGI has motivated several approximation strategies:
 
 - TKF92: fragments (see above)
-- Knudsen and Miyamoto 2003, Redelings and Suchard 2005/2007 (RS07): guessed pair HMM forms matching GGI moments (see above)
+- <a id="cite-25"></a>Knudsen and Miyamoto 2003 [[25](#ref-25)], Redelings and Suchard 2005/2007 (RS07): guessed pair HMM forms matching GGI moments (see above)
 - De Maio 2021: moment-matching differential equations for best-fit pair HMM. The Cumulative Indel Model approximates GGI dynamics via ODEs with adaptive banding. <a id="cite-21"></a>[De Maio 2021](https://doi.org/10.1093/sysbio/syaa050) [[21](#ref-21)].
 - Holmes 2020: refined ODEs via coarse-graining of pair HMM state spaces. <a id="cite-22"></a>[Holmes 2020](https://doi.org/10.1534/genetics.120.303630) [[22](#ref-22)]. The best known approximation to GGI.
 
@@ -118,5 +118,7 @@ The SID model and GGI describe the same underlying process. "SID" refers to the 
 18. <a id="ref-22"></a> Holmes, Ian. 2020. "A Model of Indel Evolution by Finite-State, Continuous-Time Machines." _Genetics_ 215(4):1187-1204. https://doi.org/10.1534/genetics.120.303630
 19. <a id="ref-23"></a> Redelings, Benjamin D., Ian Holmes, Gerton Lunter, Tal Pupko, and Maria Anisimova. 2024. "Insertions and Deletions." _MBE_ 41(9):msae177. https://doi.org/10.1093/molbev/msae177
 20. <a id="ref-24"></a> Miklos, Istvan, et al. 2004. "A 'Long Indel' Model." _MBE_ 21(3):529-540. https://doi.org/10.1093/molbev/msh043
+
+21. <a id="ref-25"></a> Knudsen, Bjarne, and Michael M. Miyamoto. 2003. "Sequence Alignments and Pair Hidden Markov Models Using Evolutionary History." _J Mol Biol_ 333(2):453-460. https://doi.org/10.1016/j.jmb.2003.08.015
 
 See [consolidated references](references.md) for the complete bibliography.
