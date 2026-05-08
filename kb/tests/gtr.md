@@ -56,8 +56,7 @@ Validates Rust v1 GTR model construction against Python v0 reference outputs.
 | `test_gm_gtr_tn93`   | TN93  | default, kappa1_0_5, kappa2_2_0, both_kappa, custom_pi, full_custom   |
 | `test_gm_gtr_custom` | GTR   | uniform_rates, ts_tv_bias, asymmetric_pi, mu_scaling, random          |
 
-**Tolerance:** 1e-14 (machine precision)
-**Fixtures:** [`gm_gtr_inputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json), [`gm_gtr_outputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json)
+**Tolerance:** 1e-14 (machine precision) **Fixtures:** [`gm_gtr_inputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_inputs.json), [`gm_gtr_outputs.json`](../../packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_outputs.json)
 
 ---
 

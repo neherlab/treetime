@@ -1,20 +1,17 @@
 # Implement stochastic polytomy resolution
 
-v1 implements only greedy deterministic polytomy resolution. v0 supports stochastic
-resolution via coalescent simulation for uncertainty quantification.
+v1 implements only greedy deterministic polytomy resolution. v0 supports stochastic resolution via coalescent simulation for uncertainty quantification.
 
 ## Background
 
 ### Polytomies in phylogenetics
 
-A polytomy (multifurcation) is a node with more than two children in a phylogenetic
-tree. Polytomies arise from:
+A polytomy (multifurcation) is a node with more than two children in a phylogenetic tree. Polytomies arise from:
 
 - Soft polytomies: Insufficient data to resolve true bifurcating topology
 - Hard polytomies: Genuine simultaneous divergence events (rare)
 
-Most phylogenetic methods assume binary trees. Timetree inference requires resolving
-polytomies to estimate divergence times on internal branches.
+Most phylogenetic methods assume binary trees. Timetree inference requires resolving polytomies to estimate divergence times on internal branches.
 
 ### Resolution approaches
 
@@ -40,17 +37,13 @@ from a population. For k lineages, coalescent events occur at rate:
 λ_k = k(k-1) / (2 * N_e)
 ```
 
-where N_e is effective population size. The waiting time to next coalescent is
-exponentially distributed with rate λ_k. At each event, two lineages merge uniformly
-at random.
+where N_e is effective population size. The waiting time to next coalescent is exponentially distributed with rate λ_k. At each event, two lineages merge uniformly at random.
 
-For polytomy resolution, the coalescent provides a principled model for how the
-unresolved lineages relate, given the time constraint from parent to children.
+For polytomy resolution, the coalescent provides a principled model for how the unresolved lineages relate, given the time constraint from parent to children.
 
 ## v0 implementation
 
-`generate_subtree()` (`#generate_subtree`) in
-[`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011):
+`generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011):
 
 1. Sort polytomy children by `time_before_present`
 2. Initialize coalescent rate from `merger_model` (if available) or dummy rate

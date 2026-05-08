@@ -1,8 +1,6 @@
 # write_node_dates() is a todo!() stub
 
-`write_node_dates()` is unimplemented. No `dates.tsv` output file is produced.
-v0 writes `dates.tsv` with columns including node name, date estimate, and
-(with `--confidence --covariation`) lower/upper bounds.
+`write_node_dates()` is unimplemented. No `dates.tsv` output file is produced. v0 writes `dates.tsv` with columns including node name, date estimate, and (with `--confidence --covariation`) lower/upper bounds.
 
 ## Related issues
 

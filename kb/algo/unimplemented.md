@@ -132,9 +132,7 @@ v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no
 Coalescent-based stochastic resolution of polytomies as an alternative to the greedy deterministic method. Produces more realistic tree topologies by sampling from the Kingman coalescent process (Kingman 1982) rather than always merging the highest-gain pair.
 
 v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
-v1: not ported - v1 has greedy deterministic approach only.
-Known issue: [Stochastic polytomy resolution not implemented](../issues/N-timetree-stochastic-polytomy-unimplemented.md).
-CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+v1: not ported - v1 has greedy deterministic approach only. Known issue: [Stochastic polytomy resolution not implemented](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Background
 

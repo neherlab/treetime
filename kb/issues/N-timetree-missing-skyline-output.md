@@ -1,15 +1,10 @@
 # Missing skyline output files
 
-v0 `--coalescent=skyline` produces `skyline.tsv` (effective population size over
-time with confidence bounds) and `skyline.pdf`. v1 computes the `SkylineResult`
-containing `time_grid`, `log_tc_values`, `log_likelihood` in memory but never
-serializes it to disk.
+v0 `--coalescent=skyline` produces `skyline.tsv` (effective population size over time with confidence bounds) and `skyline.pdf`. v1 computes the `SkylineResult` containing `time_grid`, `log_tc_values`, `log_likelihood` in memory but never serializes it to disk.
 
 ## Location
 
-`SkylineResult` computed at
-[`run.rs#L285-L291`](../../packages/treetime/src/commands/timetree/run.rs#L285-L291)
-but not written.
+`SkylineResult` computed at [`run.rs#L285-L291`](../../packages/treetime/src/commands/timetree/run.rs#L285-L291) but not written.
 
 ## Details
 

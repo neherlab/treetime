@@ -32,8 +32,7 @@ Replaced 22 element-by-element loops with `pretty_assert_ulps_eq!` on whole arra
 
 ### GM runner tests use grossly loose tolerance (RESOLVED)
 
-Both tests tightened to `epsilon = 1e-6` and `#[ignore]`d pending fix of
-`kb/issues/M-timetree-branch-grid-uniform-resolution.md`.
+Both tests tightened to `epsilon = 1e-6` and `#[ignore]`d pending fix of `kb/issues/M-timetree-branch-grid-uniform-resolution.md`.
 
 ### Skyline tests are runs-to-completion only
 

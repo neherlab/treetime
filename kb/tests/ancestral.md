@@ -106,8 +106,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 | `test_marginal_dense_sparse_example_gap_free_consistency` | Dense and sparse log-likelihoods agree on fixed input | Unit                  |
 | `test_prop_marginal_dense_sparse_gap_free_consistency`    | Dense and sparse agree across 30 random inputs        | Property, **ignored** |
 
-**Purpose:** Cross-validate sparse optimization against dense reference
-**Known issue:** ~2.5% of random GTR configs show divergence up to 7.6e-6 relative difference
+**Purpose:** Cross-validate sparse optimization against dense reference **Known issue:** ~2.5% of random GTR configs show divergence up to 7.6e-6 relative difference
 
 ---
 

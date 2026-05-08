@@ -1,9 +1,6 @@
 # Branch Length Optimization
 
-v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and
-`optimize_tree_marginal()` perform branch length optimization inline during
-timetree and ancestral workflows. v1 extracts this into a standalone `optimize`
-command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
+v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_tree_marginal()` perform branch length optimization inline during timetree and ancestral workflows. v1 extracts this into a standalone `optimize` command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 
 ## Standalone Command (v1-only)
 
@@ -16,11 +13,7 @@ command and a reusable `PartitionOptimizeOps` trait system shared with timetree.
 
 ## Per-Edge Likelihood (v0 parity via different method)
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with
-Hamming distance bracket. v1 offers six methods via `--opt-method`: Newton and
-Brent in three parameterizations ($t$, $\sqrt{t}$, $\ln(t)$). Default is
-`brent-sqrt` (matches v0). Both v0 and v1 use eigendecomposition-based
-likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers six methods via `--opt-method`: Newton and Brent in three parameterizations ($t$, $\sqrt{t}$, $\ln(t)$). Default is `brent-sqrt` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)

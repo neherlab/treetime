@@ -8,8 +8,7 @@ The optimize command takes one `--aln` argument. The design document (`../_raw/o
 
 ## Design document specification
 
-`../_raw/optimize.md:6`: "alignment(s) (corresponding to partitions)"
-`../_raw/optimize.md:9`: "For more complex inputs (multiple alignments and models along with discrete characters we might need a config file format)."
+`../_raw/optimize.md:6`: "alignment(s) (corresponding to partitions)" `../_raw/optimize.md:9`: "For more complex inputs (multiple alignments and models along with discrete characters we might need a config file format)."
 
 ## Workaround
 

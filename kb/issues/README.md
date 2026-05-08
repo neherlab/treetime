@@ -30,14 +30,11 @@ Files are prefixed with a severity letter so that `ls` sorts high-severity first
 | `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
 | `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic                   |
 
-The letters H < M < N sort alphabetically in severity order. Domain prefix
-(`ancestral-`, `clock-`, `timetree-`, etc.) follows the severity letter, grouping
-related issues within each tier.
+The letters H < M < N sort alphabetically in severity order. Domain prefix (`ancestral-`, `clock-`, `timetree-`, etc.) follows the severity letter, grouping related issues within each tier.
 
 Severity for missing features: a missing feature that most users expect (e.g., a standard phylogenetic capability) is High. A missing feature that affects specific workflows is Medium. A niche or rarely used missing feature is Negligible.
 
-Issue name in the summary table must match the H1 heading in the linked file
-exactly.
+Issue name in the summary table must match the H1 heading in the linked file exactly.
 
 ## Summary
 

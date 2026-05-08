@@ -1,7 +1,6 @@
 # Implement --plot-rtt and --plot-tree
 
-Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but return an
-error at runtime with "not yet implemented" via `make_error!()`.
+Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but return an error at runtime with "not yet implemented" via `make_error!()`.
 
 ## Location
 
