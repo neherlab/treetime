@@ -1,6 +1,6 @@
 # Per-site rate variation not implemented
 
-v1 uses a scalar substitution rate `mu` shared across all alignment positions. The design document (`do../_raw/sequence_evolution.md:87-89`) specifies per-site rate variation via a vector `mu^a`, where each site `a` evolves at its own rate while sharing the same eigendecomposition.
+v1 uses a scalar substitution rate `mu` shared across all alignment positions. The design document (`../_raw/sequence_evolution.md:87-89`) specifies per-site rate variation via a vector `mu^a`, where each site `a` evolves at its own rate while sharing the same eigendecomposition.
 
 ## Background
 
@@ -30,7 +30,7 @@ The rate vector itself can be initialized from v0's approach: gamma-distributed 
 
 ## Site-specific equilibrium frequencies
 
-The design document (`do../_raw/sequence_evolution.md:85-86`) also describes a more general case: "If instead the equilibrium frequencies $\pi$ vary from site to site, then eigenvalues and eigenvectors change along the sequence." This means the matrix $e^{Q^a t}$ becomes site-specific, requiring per-site eigendecomposition rather than just per-site rate scaling.
+The design document (`../_raw/sequence_evolution.md:85-86`) also describes a more general case: "If instead the equilibrium frequencies $\pi$ vary from site to site, then eigenvalues and eigenvectors change along the sequence." This means the matrix $e^{Q^a t}$ becomes site-specific, requiring per-site eigendecomposition rather than just per-site rate scaling.
 
 Per-site $\mu$ (rate only): shared eigendecomposition, scaled eigenvalues. Computational cost: $O(n \cdot L \cdot s)$ where $s$ is alphabet size.
 
@@ -48,7 +48,7 @@ These are two independent decisions:
 ## Related
 
 - [L-gtr-site-specific-partition-integration](N-gtr-site-specific-partition-integration.md) - full site-specific GTR (per-site $\pi$) not yet integrated into partition system
-- [do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying per-site rate variation (lines 81-89)
+- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying per-site rate variation (lines 81-89)
 
 ## References
 

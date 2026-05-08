@@ -8,7 +8,7 @@ v1 uses the parent node's child count for the per-edge multiplicity parameter in
 
 **v1 location**: `collect_coalescent_edges()` at `packages/treetime/src/commands/timetree/coalescent/edge_data.rs`. Looks up the parent node via `graph.get_node(parent_node_key)` and uses `parent.outbound().len()` as the multiplicity.
 
-**v0 erratum**: `do../v0-errata/coalescent-total-lh-fixed-multiplicity.md`.
+**v0 erratum**: `../v0-errata/coalescent-total-lh-fixed-multiplicity.md`.
 
 ## Background
 

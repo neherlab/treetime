@@ -1,6 +1,6 @@
 # Optimize command accepts only a single alignment
 
-The optimize command takes one `--aln` argument. The design document (`do../_raw/optimize.md:6,9`) specifies multiple alignments as partitions and a config file format for complex inputs with "multiple alignments and models along with discrete characters."
+The optimize command takes one `--aln` argument. The design document (`../_raw/optimize.md:6,9`) specifies multiple alignments as partitions and a config file format for complex inputs with "multiple alignments and models along with discrete characters."
 
 ## Current state
 
@@ -8,8 +8,8 @@ The optimize command takes one `--aln` argument. The design document (`do../_raw
 
 ## Design document specification
 
-`do../_raw/optimize.md:6`: "alignment(s) (corresponding to partitions)"
-`do../_raw/optimize.md:9`: "For more complex inputs (multiple alignments and models along with discrete characters we might need a config file format)."
+`../_raw/optimize.md:6`: "alignment(s) (corresponding to partitions)"
+`../_raw/optimize.md:9`: "For more complex inputs (multiple alignments and models along with discrete characters we might need a config file format)."
 
 ## Workaround
 

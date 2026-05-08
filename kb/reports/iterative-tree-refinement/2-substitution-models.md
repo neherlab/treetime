@@ -23,7 +23,7 @@ A substitution model is a continuous-time Markov chain (CTMC) on four states {A,
 - `Q_{ij}` (off-diagonal): the instantaneous rate of substitution from state i to state j
 - `Q_{ii}` (diagonal): set so each row sums to zero (`Q_{ii} = -sum_{j!=i} Q_{ij}`)
 
-Note: the algorithm specification in `do../_raw/sequence_evolution.md` uses the transpose (column-stochastic) convention where `Q_{ij}` is the rate from j to i and columns sum to zero. The two conventions are mathematically equivalent; this chapter uses the row-stochastic form common in phylogenetics textbooks.
+Note: the algorithm specification in `../_raw/sequence_evolution.md` uses the transpose (column-stochastic) convention where `Q_{ij}` is the rate from j to i and columns sum to zero. The two conventions are mathematically equivalent; this chapter uses the row-stochastic form common in phylogenetics textbooks.
 
 The **transition probability matrix** at evolutionary distance t is the matrix exponential:
 

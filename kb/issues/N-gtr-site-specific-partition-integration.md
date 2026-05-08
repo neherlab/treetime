@@ -40,7 +40,7 @@ Study v0's `treeanc.infer_gtr(site_specific=True)` path for the inference-to-tra
 
 - The `is_site_specific: bool` field formerly on `GTR` has been removed
 - [M-gtr-per-site-rate-variation](M-gtr-per-site-rate-variation.md) - simpler feature where only $\mu$ varies per site (shared eigendecomposition); `GTRSiteSpecific` provides the full model (per-site $\mu$ AND per-site $\pi$)
-- [do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying site-specific models
+- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying site-specific models
 
 ## References
 

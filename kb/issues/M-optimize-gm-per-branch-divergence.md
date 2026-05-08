@@ -64,7 +64,7 @@ compromise but introduces a new threshold parameter.
 
 ## Cross-references
 
-- `do../decisions/command-prune-standalone.md` (v1 prune as
+- `../decisions/command-prune-standalone.md` (v1 prune as
   a standalone command, not in the optimize loop)
 - [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs) (shared `collapse_edge()`)
 - `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`

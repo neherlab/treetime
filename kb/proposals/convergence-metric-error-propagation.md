@@ -52,4 +52,4 @@ In practice, coalescent evaluation either works for all iterations or fails for 
 
 ## Related
 
-- `do../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md` - backward pass gap that could cause metric/inference divergence
+- `../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md` - backward pass gap that could cause metric/inference divergence

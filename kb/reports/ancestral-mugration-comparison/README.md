@@ -210,7 +210,7 @@ final marginal reconstruction with refined GTR
 
 Mugration operates on a single "position" with $N$ discrete states. Small shifts in $\pi$ (equilibrium frequencies) or $W$ (rate matrix) substantially change posteriors at ambiguous internal nodes, because there is no averaging across hundreds of alignment columns. Ancestral reconstruction aggregates over many sites, so expected substitution counts constrain the GTR model more tightly from the first inference pass.
 
-A proposal to add iterative GTR refinement to ancestral exists ([do../proposals/ancestral-iterative-gtr-refinement.md](../../proposals/ancestral-iterative-gtr-refinement.md)) but is not accepted. That proposal notes iterative refinement would help ancestral in specific cases: short alignments, strong compositional bias, large alphabets, weakly resolved branches, poor initialization model.
+A proposal to add iterative GTR refinement to ancestral exists ([../proposals/ancestral-iterative-gtr-refinement.md](../../proposals/ancestral-iterative-gtr-refinement.md)) but is not accepted. That proposal notes iterative refinement would help ancestral in specific cases: short alignments, strong compositional bias, large alphabets, weakly resolved branches, poor initialization model.
 
 ## Message passing implementation
 
@@ -280,7 +280,7 @@ Both v0 and v1 share a subtle correctness issue in the iterative GTR refinement 
 - `count_transitions_discrete()` / v0's `infer_gtr()` use these stale forward messages to compute expected transition counts
 - The resulting EM does not satisfy the monotonicity guarantee of a proper EM algorithm
 
-A proposal to fix this exists: [do../proposals/mugration-full-reconstruction-per-iteration.md](../../proposals/mugration-full-reconstruction-per-iteration.md). The fix would insert a full `run_discrete_marginal()` call before each `count_transitions_discrete()` in the iterative loop. Expected impact: correct EM iterations, different fixed point from both current v1 and v0, ~2x computational cost per iteration.
+A proposal to fix this exists: [../proposals/mugration-full-reconstruction-per-iteration.md](../../proposals/mugration-full-reconstruction-per-iteration.md). The fix would insert a full `run_discrete_marginal()` call before each `count_transitions_discrete()` in the iterative loop. Expected impact: correct EM iterations, different fixed point from both current v1 and v0, ~2x computational cost per iteration.
 
 ## Known issues and intentional changes
 

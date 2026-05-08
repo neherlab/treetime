@@ -1,6 +1,6 @@
 # Multi-segment genome input not wired
 
-The design document ([do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md)) asks how flu genome segments should be handled: "should these sequences be saved as list of multiple sequences, or concatenated?"
+The design document ([../_raw/sequence_evolution.md](../_raw/sequence_evolution.md)) asks how flu genome segments should be handled: "should these sequences be saved as list of multiple sequences, or concatenated?"
 
 ## Current state
 
@@ -18,7 +18,7 @@ Concatenate segment alignments into a single FASTA. This loses per-segment model
 
 ## Design document context
 
-[do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md): "For flu, genomes come in segments -- should these sequences be saved as list of multiple sequences, or concatenated? Flu genome segments all use the same alphabet, so this could be implemented either way."
+[../_raw/sequence_evolution.md](../_raw/sequence_evolution.md): "For flu, genomes come in segments -- should these sequences be saved as list of multiple sequences, or concatenated? Flu genome segments all use the same alphabet, so this could be implemented either way."
 
 ## Related
 
@@ -35,4 +35,4 @@ Concatenate segment alignments into a single FASTA. This loses per-segment model
 
 ### Design documents
 
-- [do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source of the multi-segment requirement
+- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source of the multi-segment requirement

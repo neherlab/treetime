@@ -92,7 +92,7 @@ After finding optimal root position `x*`:
 
 Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site, making this cheap to implement.
 
-This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`do../_raw/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
+This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`../_raw/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
 
 v0: per-site `mu` is part of `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py).
 v1: `GTR.mu` (`#mu`) is scalar `f64` at [`packages/treetime/src/gtr/gtr.rs#L173`](../../packages/treetime/src/gtr/gtr.rs#L173). No per-site rate support.

@@ -4,7 +4,7 @@ The `prune --merge-shared-mutations` step groups sibling branches in a polytomy 
 
 ## What the spec says
 
-[do../\_raw/optimize.md](../_raw/optimize.md) proposes the feature for `optimize`:
+[../\_raw/optimize.md](../_raw/optimize.md) proposes the feature for `optimize`:
 
 > scanning for shared subs in children of a polytomy and introducing a new internal node with the individuals that share a sub as children. Initial branch length for this new internal node would be `#shared subs/length`.
 

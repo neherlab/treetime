@@ -89,8 +89,8 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 
 ### Design documents
 
-- [do../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source: "For flu, genomes come in segments"
-- [do../_raw/optimize.md](../_raw/optimize.md) -- source: "we might need a config file format"
+- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source: "For flu, genomes come in segments"
+- [../_raw/optimize.md](../_raw/optimize.md) -- source: "we might need a config file format"
 
 ## References
 

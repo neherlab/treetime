@@ -215,7 +215,7 @@ The optimizer convergence work progressed through three phases:
 - [optimize-indel-contribution-to-likelihood](../decisions/optimize-indel-contribution-to-likelihood.md) -- v1-only Poisson indel term
 - [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md) -- per-method rationale
 - [docs/reports/iterative-tree-refinement/](../reports/iterative-tree-refinement/README.md) -- damping, convergence theory, loop variants
-- [do../_raw/optimize.md](../_raw/optimize.md) -- design document
+- [../_raw/optimize.md](../_raw/optimize.md) -- design document
 
 ## References
 

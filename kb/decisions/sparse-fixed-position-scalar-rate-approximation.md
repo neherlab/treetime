@@ -26,7 +26,7 @@ The approximation affects likelihood magnitude and marginal profiles at all posi
 
 - Log-likelihood values from sparse mode with per-site rates are approximate, not exact. Dense mode produces exact likelihoods.
 - Parent probability distributions at fixed positions are slightly biased toward the mean-rate profile. This bias is largest for sites with extreme rate multipliers on long branches.
-- GTR inference from sparse mutation counts does not account for per-site rates (a separate issue tracked in `do../issues/M-gtr-per-site-rate-variation.md`).
+- GTR inference from sparse mutation counts does not account for per-site rates (a separate issue tracked in `../issues/M-gtr-per-site-rate-variation.md`).
 
 ## Potential improvements
 
