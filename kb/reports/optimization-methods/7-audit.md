@@ -4,7 +4,7 @@
 
 This chapter is the actionable output of the optimization methods audit. It inventories every optimization in v1, identifies inconsistencies across commands, and proposes prioritized refactoring.
 
-The full item-by-item audit with code locations, callers, callees, and convergence criteria was produced during the initial audit session (no longer available).
+A detailed item-by-item audit with code locations, callers, callees, and convergence criteria was compiled separately.
 
 ## Inventory
 

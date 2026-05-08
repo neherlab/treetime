@@ -2,8 +2,6 @@
 
 > **Valid for commit**: `41c0fb16` (rust branch, 2026-03-10)
 
-> **Note**: This document was AI-generated via parallel agent analysis of the codebase. Verify critical details against source code.
-
 Scope: algorithms implemented in v1 (domain files) and v0 algorithms not yet implemented ([unimplemented.md](unimplemented.md)). New v1 features not in v0 belong in [`proposals/`](../proposals/README.md).
 
 ## Summary

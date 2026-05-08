@@ -1,6 +1,6 @@
 # Dense and sparse partition types have structural and naming asymmetries
 
-Dense `edge_effective_length()` ignores unknown (`N`) positions, overcounting effective alignment sites. The two distribution types have inconsistent names (`DenseSeqDis` vs `MarginalSparseSeqDistribution`). Several other structural differences exist but are domain-inherent and require no action.
+The two distribution types have inconsistent names (`DenseSeqDis` vs `MarginalSparseSeqDistribution`). Several other structural differences exist but are domain-inherent and require no action.
 
 ## Type structure
 
@@ -29,10 +29,6 @@ Both partition types implement `PartitionBranchOps`, `PartitionMarginalOps`, `Pa
 
 ## Actionable asymmetries
 
-### ~~Correctness defect: dense `edge_effective_length()` ignores unknowns~~ (RESOLVED)
-
-`DenseSeqInfo` now tracks `unknown`, `non_char`, and `variable_indel` fields matching `SparseSeqInfo`. Both `edge_effective_length()` and `edge_subs()` now use `non_char` (gaps + unknowns). Dense backward pass propagates `unknown` and `non_char` as intersection of children. Tests verify dense/sparse agreement on `edge_effective_length()`.
-
 ### Naming: `DenseSeqDis` vs `MarginalSparseSeqDistribution`
 
 `DenseSeqDis` [packages/treetime/src/representation/payload/dense.rs#L45](../../packages/treetime/src/representation/payload/dense.rs#L45) abbreviates "Distribution" to 3 characters. `MarginalSparseSeqDistribution` [packages/treetime/src/representation/payload/sparse.rs#L159](../../packages/treetime/src/representation/payload/sparse.rs#L159) spells it out and adds a redundant "Marginal" prefix (sparse distributions exist only in marginal context; the Fitch counterpart is separately named `FitchSeqDistribution` [packages/treetime/src/representation/payload/sparse.rs#L187](../../packages/treetime/src/representation/payload/sparse.rs#L187)).
@@ -50,15 +46,8 @@ The remaining differences follow from dense storing full N-by-K matrices while s
 - `PartitionCompressed`: sparse-only [packages/treetime/src/representation/partition/marginal_sparse.rs#L39](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L39). Compression is a sparse concept with no dense counterpart
 - `SparseSeqInfo` has 6 fields vs `DenseSeqInfo` has 5: `DenseSeqInfo` tracks `gaps`, `unknown`, `non_char`, `variable_indel`, `sequence`. `SparseSeqInfo` also has `composition` and `fitch` (sparse bookkeeping)
 
-## Investigation needed
-
-1. Measure impact. Run dense marginal on a dataset with significant `N` content (e.g., `sc2` with masked regions). Compare dense vs sparse `edge_effective_length()`. Quantify overcount and whether it shifts branch-length estimates
-2. v0 oracle. After fix, run golden master tests for `ancestral --dense=true` on all datasets. Confirm branch lengths and log-likelihoods match or improve
-3. treat_gap_as_unknown interaction. Dense assigns uniform profiles to gap positions via `seq2prof()` (comment at [packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93](../../packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93)). Verify explicit unknown tracking does not conflict
-
 ## Tests needed
 
-- Construct a tree with `N` characters at known positions. Before fix: dense `edge_effective_length()` > sparse. After fix: equal
 - Property test: for any random tree with gaps and unknowns, dense and sparse `edge_effective_length()` agree on every edge
 - Golden master: `ancestral --dense=true` and `--dense=false` on `flu/h3n2/20`, `ebola`, `sc2` - branch lengths, log-likelihoods, reconstructed sequences agree within `1e-6` relative
 

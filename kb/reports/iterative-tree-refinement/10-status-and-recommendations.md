@@ -66,37 +66,16 @@
 
 ## Recommendations
 
-### ~~R1 (blocking): Fix composition bug~~ DONE
-
-`collapse_sparse_edge()` now uses `compose_substitutions()`.
-
-### ~~R2 (high): Integrate topology cleanup into optimize loop~~ DONE
-
-`prune_and_merge_in_loop()` collapses zero-optimal edges and merges shared mutations inside each optimize iteration, after damping.
-
-### ~~R3 (high): Extract topology operations to shared module~~ DONE
-
-Both topology cleanup operations now live in `representation/algo/topology_cleanup/`: `collapse_edge()` in `collapse.rs` and `merge_shared_mutation_branches()` in `merge_shared_mutations.rs`. Both commands import from the shared module.
-
-### ~~R4 (medium): Add `--merge-shared-mutations` to optimize command~~ DONE
-
-Shared-mutation merging runs inside the optimize loop via `prune_and_merge_in_loop()`.
-
 ### R5 (low): Implement stochastic polytomy resolution
 
 For SARS-CoV-2-scale datasets. Priority depends on target dataset scale.
 
 ## Ledger cross-references
 
-| Issue                             | File                                                 | Status |
-| --------------------------------- | ---------------------------------------------------- | ------ |
-| ~~Composition bug~~               | ~~`M-prune-collapse-uses-union-not-composition`~~    | Done   |
-| ~~No topology cleanup~~           | ~~`M-optimize-no-topology-cleanup-in-loop`~~         | Done   |
-| ~~Shared collapse_edge~~          | ~~`L-optimize-prune-duplicate-collapse`~~            | Done   |
-| ~~Shared merge_shared_mutations~~ | ~~`L-topology-cleanup-move-merge-shared-mutations`~~ | Done   |
-| Stochastic resolution             | `N-timetree-stochastic-polytomy-unimplemented`       | Open   |
-| Polytomy numerical issues         | `N-timetree-polytomy-numerical-robustness`           | Open   |
-| ~~Optimize loop extraction~~      | ~~`L-optimize-loop-not-extracted`~~                  | Done   |
+| Issue                     | File                                           | Status |
+| ------------------------- | ---------------------------------------------- | ------ |
+| Stochastic resolution     | `N-timetree-stochastic-polytomy-unimplemented` | Open   |
+| Polytomy numerical issues | `N-timetree-polytomy-numerical-robustness`     | Open   |
 
 ## References
 
