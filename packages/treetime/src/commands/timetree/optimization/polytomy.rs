@@ -1,4 +1,4 @@
-use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;

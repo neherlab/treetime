@@ -1,7 +1,7 @@
 use crate::commands::timetree::convergence::likelihood::{
   compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
 };
-use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;

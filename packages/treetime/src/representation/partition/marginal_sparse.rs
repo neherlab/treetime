@@ -1,15 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeOps};
 use crate::gtr::gtr::GTR;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::marginal_passes;
-use crate::representation::partition::traits::BranchTopology;
-use crate::representation::partition::traits::HasGtr;
-use crate::representation::partition::traits::HasLogLh;
-use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
+use crate::representation::partition::traits::{
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+};
 use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};

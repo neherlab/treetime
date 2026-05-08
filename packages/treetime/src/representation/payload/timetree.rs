@@ -1,7 +1,5 @@
-use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
-use crate::commands::clock::date_constraints::DateConstraintNode;
-use crate::commands::timetree::timetree_traits::{TimetreeEdge, TimetreeNode};
+use crate::representation::payload::clock_set::ClockSet;
+use crate::representation::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
 use crate::representation::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
 use eyre::Report;
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_set::ClockSet;
+use crate::representation::payload::clock_set::ClockSet;
 use crate::make_error;
 use eyre::Report;
 use getset::{CopyGetters, Getters};

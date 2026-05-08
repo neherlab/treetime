@@ -5,8 +5,6 @@ pub mod inference;
 pub mod initialization;
 pub mod optimization;
 pub mod output;
-pub mod partition_ops;
 pub mod refinement;
 pub mod run;
-pub mod timetree_traits;
 pub mod utils;

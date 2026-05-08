@@ -10,10 +10,10 @@ use crate::commands::optimize::optimize_sparse;
 use crate::commands::optimize::optimize_sparse_eval::{
   evaluate_sparse_contribution, evaluate_sparse_contribution_impl,
 };
-use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::representation::partition::traits::PartitionOptimizeOps;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use itertools::Either;

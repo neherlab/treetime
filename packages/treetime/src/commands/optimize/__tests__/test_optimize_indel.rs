@@ -68,7 +68,7 @@ mod tests {
     (
       Vec<Arc<RwLock<PartitionMarginalDense>>>,
       Vec<Arc<RwLock<PartitionMarginalSparse>>>,
-      crate::commands::optimize::partition_ops::PartitionOptimizeVec,
+      crate::representation::partition::traits::PartitionOptimizeVec,
     ),
     Report,
   > {

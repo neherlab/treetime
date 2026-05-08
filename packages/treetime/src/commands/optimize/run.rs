@@ -4,7 +4,7 @@ use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal}
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::commands::optimize::optimize_unified::{initial_guess_mixed, run_optimize_mixed_inner};
-use crate::commands::optimize::partition_ops::{PartitionOptimizeOps, PartitionOptimizeVec};
+use crate::representation::partition::traits::{PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::commands::prune::run::merge_shared_mutation_branches;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::representation::algo::infer_dense::infer_dense;

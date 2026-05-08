@@ -1,7 +1,7 @@
 use crate::commands::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::commands::timetree::inference::runner::run_timetree;
-use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
-use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::representation::partition::traits::PartitionTimetreeAll;
+use crate::representation::payload::traits::TimetreeNode;
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;

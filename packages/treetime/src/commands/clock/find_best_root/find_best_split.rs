@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_regression::ClockParams;
-use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::representation::payload::clock_set::ClockSet;
+use crate::representation::payload::traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::inference::runner::create_branch_distributions_input_mode;
-  use crate::commands::timetree::timetree_traits::TimetreeEdge;
+  use crate::representation::payload::traits::TimetreeEdge;
   use crate::representation::payload::timetree::EdgeTimetree;
   use crate::representation::payload::timetree::NodeTimetree;
   use crate::pretty_assert_ulps_eq;

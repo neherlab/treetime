@@ -1,5 +1,5 @@
 use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
-use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::representation::payload::traits::TimetreeNode;
 use eyre::Report;
 use ordered_float::OrderedFloat;
 use treetime_graph::edge::GraphEdge;

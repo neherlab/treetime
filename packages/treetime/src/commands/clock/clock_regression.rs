@@ -1,6 +1,6 @@
 use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::clock_traits::{ClockEdge, ClockNode};
+use crate::representation::payload::clock_set::ClockSet;
+use crate::representation::payload::traits::{ClockEdge, ClockNode};
 use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
 use clap::Args;

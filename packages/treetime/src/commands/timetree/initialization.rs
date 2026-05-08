@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch::get_common_length;
 use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::{BranchLengthMode, TreetimeTimetreeArgs};
-use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::commands::timetree::utils::initialize_node_divergences;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;

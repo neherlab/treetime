@@ -1,6 +1,6 @@
-use crate::commands::clock::clock_set::ClockSet;
-use crate::commands::clock::clock_traits::ClockNode;
-use crate::commands::timetree::timetree_traits::TimetreeNode;
+use crate::representation::payload::clock_set::ClockSet;
+use crate::representation::payload::traits::ClockNode;
+use crate::representation::payload::traits::TimetreeNode;
 use crate::seq::div::{OnlyLeaves, compute_divs};
 use eyre::Report;
 use ndarray::Array1;

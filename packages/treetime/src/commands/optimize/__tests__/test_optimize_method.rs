@@ -12,7 +12,7 @@ mod tests {
     OptimizationContribution, OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only,
     evaluate_with_indels_log_lh_only, min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,
   };
-  use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+  use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
@@ -966,7 +966,7 @@ mod tests {
     pub(super) fn setup_with_indels(
       graph: &GraphAncestral,
       n_indels: usize,
-    ) -> Result<(crate::commands::optimize::partition_ops::PartitionOptimizeVec, f64), Report> {
+    ) -> Result<(crate::representation::partition::traits::PartitionOptimizeVec, f64), Report> {
       let aln = simple_alignment()?;
       let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, &aln)?;
 

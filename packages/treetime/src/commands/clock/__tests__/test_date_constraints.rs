@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::date_constraints::{DateConstraintNode, load_date_constraints};
+  use crate::commands::clock::date_constraints::load_date_constraints;
+  use crate::representation::payload::traits::DateConstraintNode;
   use crate::o;
   use eyre::Report;
   use itertools::Itertools;

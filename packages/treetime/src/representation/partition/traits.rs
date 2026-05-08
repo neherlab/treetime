@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
+use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -173,6 +175,73 @@ pub trait PartitionCompressed: Sync + Send {
 pub trait HasLogLh {
   /// Get the log likelihood contribution for a given node
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64;
+}
+
+/// Operations that `optimize` needs from a sequence partition.
+///
+/// Extends `PartitionBranchOps` (which provides `edge_subs()`,
+/// `edge_effective_length()`, and `sequence_length()`) with
+/// optimize-specific likelihood contribution computation.
+pub trait PartitionOptimizeOps: PartitionBranchOps {
+  /// Return the precomputed likelihood contribution for one edge.
+  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
+
+  /// Return the number of indel events on one edge.
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize;
+}
+
+pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;
+
+/// Trait for partition updates during reroot operations.
+///
+/// Default implementation is a no-op, suitable for dense partitions that don't track mutations.
+/// Sparse partitions override to update mutation assignments when edges are split, merged, or inverted.
+pub trait PartitionRerootOps: Send + Sync {
+  /// Apply all partition updates for a reroot operation.
+  ///
+  /// Called after graph topology changes are complete. The `changes` struct bundles:
+  /// - Edge split info (if a new node was created)
+  /// - Edge merge info (if the old root was removed)
+  /// - Inverted edge keys (path from old to new root)
+  fn apply_reroot(&mut self, _changes: &RerootChanges) -> Result<(), Report> {
+    Ok(())
+  }
+}
+
+/// Trait for timetree-specific partition operations.
+///
+/// Separate from PartitionMarginalOps to avoid polluting the ancestral command.
+pub trait PartitionTimetreeOps<N, E>: PartitionOptimizeOps + Send + Sync
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  /// Ensure partition has entries for all nodes and edges in the graph.
+  ///
+  /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.
+  /// This adds empty/default entries for missing elements and removes stale entries for
+  /// elements no longer in the graph. The subsequent marginal update pass recomputes values.
+  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>);
+}
+
+/// Combined trait for partitions that support both marginal and timetree operations.
+/// This allows trait objects to be used for both ancestral reconstruction and timetree inference.
+/// Includes `PartitionRerootOps` for reroot support with default no-op.
+pub trait PartitionTimetreeAll<N, E>:
+  PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+}
+
+/// Blanket implementation: any type implementing all required traits automatically implements the combined trait
+impl<T, N, E> PartitionTimetreeAll<N, E> for T
+where
+  T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
 }
 
 /// Calculate the total log likelihood of the graph given the partitions

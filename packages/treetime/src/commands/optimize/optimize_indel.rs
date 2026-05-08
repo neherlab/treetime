@@ -1,5 +1,5 @@
 use crate::commands::optimize::optimize_unified::OptimizationMetrics;
-use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
+use crate::representation::partition::traits::PartitionOptimizeOps;
 use parking_lot::RwLock;
 use statrs::function::factorial::ln_factorial;
 use std::sync::Arc;

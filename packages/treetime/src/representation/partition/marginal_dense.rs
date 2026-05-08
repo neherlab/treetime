@@ -1,15 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::commands::optimize::optimize_unified::OptimizationContribution;
-use crate::commands::optimize::partition_ops::PartitionOptimizeOps;
-use crate::commands::timetree::partition_ops::{PartitionRerootOps, PartitionTimetreeOps};
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
-use crate::representation::partition::traits::HasLogLh;
-use crate::representation::partition::traits::PartitionBranchOps;
-use crate::representation::partition::traits::{BranchTopology, HasGtr};
-use crate::representation::partition::traits::{PartitionMarginal, PartitionMarginalOps};
+use crate::representation::partition::traits::{
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+};
 use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::seq::mutation::Sub;
 use eyre::Report;

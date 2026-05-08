@@ -7,7 +7,7 @@ use crate::commands::timetree::convergence::sequence_changes::{capture_ancestral
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::commands::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
-use crate::commands::timetree::partition_ops::PartitionTimetreeAll;
+use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;

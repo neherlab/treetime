@@ -6,12 +6,10 @@ use log::{info, warn};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use crate::representation::payload::traits::DateConstraintNode;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named, TimeConstraint};
 use treetime_io::dates_csv::{DateOrRange, DatesMap};
-
-pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
 
 pub fn date_or_range_to_distribution(date_or_range: &DateOrRange) -> Distribution {
   match date_or_range {

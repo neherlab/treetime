@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::clock::clock_graph::GraphClock;
   use crate::commands::clock::clock_model::ClockModel;
   use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward};
-  use crate::commands::clock::clock_traits::ClockNode;
+  use crate::representation::payload::traits::ClockNode;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use crate::pretty_assert_ulps_eq;
