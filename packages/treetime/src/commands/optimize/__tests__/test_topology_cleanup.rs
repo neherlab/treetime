@@ -9,7 +9,7 @@ mod tests {
     apply_damping, collect_optimize_partitions, find_zero_optimal_internal_edges, prune_and_merge_in_loop,
     save_branch_lengths,
   };
-  use crate::commands::prune::run::merge_shared_mutation_branches;
+  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
