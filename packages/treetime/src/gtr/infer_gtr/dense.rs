@@ -21,6 +21,11 @@ use treetime_utils::array::ndarray::argmax_first;
 /// When `--model=infer --dense=true`, marginal reconstruction runs twice: once to populate profiles
 /// for GTR inference, and again after inferring the GTR. Sparse inference avoids this by tracking
 /// mutations incrementally during Fitch compression.
+///
+/// Not wired into production since PR #623 replaced this path with Fitch-based GTR inference
+/// via `PartitionFitch::infer_gtr`. Retained for potential future use as an alternative to the
+/// Fitch approach when full marginal posterior counts are preferred over parsimony counts.
+#[allow(dead_code)]
 pub fn infer_gtr_dense<N, E, D>(
   partition: &Arc<RwLock<PartitionMarginalDense>>,
   graph: &Graph<N, E, D>,
@@ -135,6 +140,9 @@ pub fn accumulate_mutation_counts(
 /// - `nij`: expected substitutions weighted by posterior P(child=i, parent=j | site)
 /// - `Ti`: time in state using midpoint approximation
 /// - `root_state`: state counts from argmax sequence (matching v0 `cseq` counts)
+///
+/// See `infer_gtr_dense` for production status.
+#[allow(dead_code)]
 pub fn get_mutation_counts_dense<N, E, D>(
   graph: &Graph<N, E, D>,
   partition: &Arc<RwLock<PartitionMarginalDense>>,
