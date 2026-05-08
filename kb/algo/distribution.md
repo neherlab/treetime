@@ -18,7 +18,7 @@ Closed-form convolution of two Gaussians: `G1 * G2 ~ N(mu1 + mu2, sqrt(sigma1^2 
 
 v1: `gaussian_convolution()` (`#gaussian_convolution`) in [`packages/treetime-analytical/src/gaussian.rs#L110-L117`](../../packages/treetime-analytical/src/gaussian.rs#L110-L117).
 
-Reference: Bromiley (2003). "Products and Convolutions of Gaussian PDFs." Tina Memo No. 2003-003.
+Reference: Bromiley (2003). "Products and Convolutions of Gaussian Probability Density Functions." Tina Memo No. 2003-003. https://www.tina-vision.net/docs/memos/2003-003.pdf
 
 ---
 
@@ -28,7 +28,7 @@ Closed-form convolution of two exponential distributions. When rates differ (a !
 
 v1: `exponential_convolution()` (`#exponential_convolution`) in [`packages/treetime-analytical/src/exponential.rs#L28-L37`](../../packages/treetime-analytical/src/exponential.rs#L28-L37).
 
-Reference: Ross (2014). "Introduction to Probability Models." Chapter 5.
+Reference: Ross (2014). "Introduction to Probability Models." 11th ed. Academic Press, Chapter 5. ISBN 978-0-12-407948-9
 
 ---
 
@@ -55,7 +55,7 @@ This operation appears in belief propagation when combining independent messages
 
 v1: `gaussian_product_params()` (`#gaussian_product_params`), `gaussian_product()` (`#gaussian_product`) in [`packages/treetime-analytical/src/gaussian.rs#L30-L63`](../../packages/treetime-analytical/src/gaussian.rs#L30-L63).
 
-Reference: Petersen & Pedersen (2012). "The Matrix Cookbook." Section 8.1.8.
+Reference: Petersen & Pedersen (2012). "The Matrix Cookbook." Section 8.1.8. https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf
 
 ---
 
@@ -65,7 +65,7 @@ Decomposition `P(x) = exp(log_scale) * inner(x)` with `max(inner) = 1.0`. This l
 
 v1: `ScaledDistribution` (`#ScaledDistribution`) in [`packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13`](../../packages/treetime-distribution/src/distribution_scaled/scaled.rs#L13).
 
-Reference: Bishop (2006). "Pattern Recognition and Machine Learning." Section 2.2.
+Reference: Bishop (2006). "Pattern Recognition and Machine Learning." Springer, Section 2.2. ISBN 978-0-387-31073-2
 
 ---
 

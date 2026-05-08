@@ -159,10 +159,10 @@ Sagulenko, Puller & Neher (2018). "TreeTime: Maximum-likelihood phylodynamic ana
 
 ### Phylogeography
 
-- Lemey, Rambaut, Drummond & Suchard (2009). "Bayesian phylogeography finds its roots." PLoS Computational Biology, 5(9):e1000520.
-- Edwards et al. (2011). "Ancient hybridization and an Irish origin for the modern polar bear matriline." Current Biology, 21(15):1251-1258.
+- Lemey, Rambaut, Drummond & Suchard (2009). "Bayesian phylogeography finds its roots." PLoS Computational Biology, 5(9):e1000520. doi:10.1371/journal.pcbi.1000520
+- Edwards et al. (2011). "Ancient hybridization and an Irish origin for the modern polar bear matriline." Current Biology, 21(15):1251-1258. doi:10.1016/j.cub.2011.05.058
 
 ### Missing Data
 
-- Ishikawa et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085.
+- Ishikawa et al. (2019). "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." Mol Biol Evol, 36(9):2069-2085. doi:10.1093/molbev/msz131
 - Vaiente, M.A. & Scotch, M. (2020). "Going back to the roots: Evaluating Bayesian phylogeographic models with discrete trait uncertainty." Infection, Genetics and Evolution, 85:104501. doi:10.1016/j.meegid.2020.104501

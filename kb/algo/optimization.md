@@ -18,8 +18,8 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 
 References:
 
-- Nocedal & Wright. "Numerical Optimization." Chapter 2.
-- Felsenstein (2003). "Inferring Phylogenies." Chapter 16 (branch length optimization in ML phylogenetics).
+- Nocedal & Wright (2006). "Numerical Optimization." 2nd ed. Springer, Chapter 2. ISBN 978-0-387-30303-1
+- Felsenstein (2003). "Inferring Phylogenies." Sinauer Associates, Chapter 16. ISBN 978-0-87893-177-4
 
 ---
 
@@ -39,8 +39,8 @@ Distinct from existing Brent entries for clock root optimization, coalescent Tc 
 
 References:
 
-- Brent RP (1973). _Algorithms for Minimization without Derivatives_. Prentice-Hall.
-- Press et al. (2007). "Numerical Recipes." Section 10.3 (Brent's method).
+- Brent (1973). "Algorithms for Minimization without Derivatives." Prentice-Hall. ISBN 978-0-13-022335-7
+- Press, Teukolsky, Vetterling & Flannery (2007). "Numerical Recipes: The Art of Scientific Computing." 3rd ed. Cambridge University Press, Section 10.3. ISBN 978-0-521-88068-8
 
 ---
 
@@ -78,7 +78,7 @@ O(1) interval lookup via `floor((x - x_min) / dx)` for uniformly spaced grids. U
 
 v1: [`packages/treetime-grid/src/grid_fn.rs#L279-L351`](../../packages/treetime-grid/src/grid_fn.rs#L279-L351).
 
-Reference: Burden & Faires. "Numerical Analysis." Chapter 3.
+Reference: Burden & Faires (2010). "Numerical Analysis." 9th ed. Brooks/Cole, Chapter 3. ISBN 978-0-538-73351-9
 
 ---
 
@@ -122,7 +122,7 @@ Background: the sparse representation classifies alignment positions as variable
 
 References:
 
-- Minh et al. (2020). "IQ-TREE 2." Mol. Biol. Evol. 37(5):1530-1534. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7182206/ (per-round monotonicity check with rollback)
+- Minh et al. (2020). "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." Mol Biol Evol, 37(5):1530-1534. doi:10.1093/molbev/msaa015
 
 ---
 
@@ -157,7 +157,7 @@ v0 does not have an equivalent analytical check. v0 uses `prune_short_branches()
 
 References:
 
-- Zhang, Dinh, and Matsen (2018). "Non-bifurcating Phylogenetic Tree Inference via the Adaptive LASSO." arXiv:1805.11073 (theoretical background on zero-length branch identification)
+- Dinh, Bilge, Zhang & Matsen (2022). "Phylogenetic Tree Inference via the Adaptive LASSO." Annals of Applied Statistics, 16(4):2240-2261. doi:10.1214/21-AOAS1584
 
 ---
 

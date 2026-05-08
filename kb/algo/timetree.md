@@ -150,6 +150,7 @@ The `one_mutation` parameter (sum of sequence lengths across all partitions) set
 
 ### References
 
+- Zuckerkandl & Pauling (1962). "Molecular Disease, Evolution, and Genic Heterogeneity." In Kasha & Pullman (eds.), Horizons in Biochemistry, pp. 189-225. Academic Press
 - Thorne, Kishino & Painter (1998). "Estimating the rate of evolution of the rate of molecular evolution." Mol Biol Evol, 15(12):1647-1657. doi:10.1093/oxfordjournals.molbev.a025892
 - Drummond, Ho, Phillips & Rambaut (2006). "Relaxed phylogenetics and dating with confidence." PLOS Biology, 4(5):e88. doi:10.1371/journal.pbio.0040088
 - Lepage, Bryant, Philippe & Lartillot (2007). "A general comparison of relaxed molecular clock models." Mol Biol Evol, 24(12):2669-2680. doi:10.1093/molbev/msm193

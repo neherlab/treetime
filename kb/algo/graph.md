@@ -8,7 +8,7 @@ Frontier-based parallel breadth-first traversal using Rayon for work distributio
 
 v1: [`packages/treetime-graph/src/breadth_first.rs#L139-L202`](../../packages/treetime-graph/src/breadth_first.rs#L139-L202).
 
-Reference: Leiserson & Schardl (2010). "A Work-Efficient Parallel BFS Algorithm." SPAA 2010.
+Reference: Leiserson & Schardl (2010). "A Work-Efficient Parallel BFS Algorithm." SPAA 2010. doi:10.1145/1810479.1810534
 
 ---
 
@@ -18,7 +18,7 @@ Iterative stack-based depth-first traversal supporting both preorder (parent bef
 
 v1: [`packages/treetime-graph/src/graph_traverse.rs#L256-L321`](../../packages/treetime-graph/src/graph_traverse.rs#L256-L321).
 
-Reference: Cormen, Leiserson, Rivest & Stein. "Introduction to Algorithms." Chapter 22.3.
+Reference: Cormen, Leiserson, Rivest & Stein (2022). "Introduction to Algorithms." 4th ed. MIT Press, Chapter 22.3. ISBN 978-0-262-04630-5
 
 ---
 
@@ -36,7 +36,7 @@ Merges a target node into its source (parent) node by reparenting all of the tar
 
 v1: [`packages/treetime-graph/src/graph_ops.rs#L146-L206`](../../packages/treetime-graph/src/graph_ops.rs#L146-L206).
 
-Reference: Diestel. "Graph Theory." Chapter 1.
+Reference: Diestel (2017). "Graph Theory." 5th ed. Springer, Chapter 1. ISBN 978-3-662-53621-6
 
 ---
 

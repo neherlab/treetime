@@ -57,7 +57,7 @@ Hybrid 1D optimization combining parabolic interpolation (fast convergence near 
 v1: [`packages/treetime/src/commands/clock/find_best_root/method_brent.rs#L36-L78`](../../packages/treetime/src/commands/clock/find_best_root/method_brent.rs#L36-L78).
 v0: `scipy.optimize.minimize_scalar` with `method='bounded'`.
 
-Reference: Brent (1973). "Algorithms for Minimization Without Derivatives." Prentice-Hall, Chapter 5.
+Reference: Brent (1973). "Algorithms for Minimization Without Derivatives." Prentice-Hall, Chapter 5. ISBN 978-0-13-022335-7
 
 ---
 
@@ -67,7 +67,7 @@ Bracket-based 1D optimization with O(log(1/epsilon)) convergence. At each step, 
 
 v1: [`packages/treetime/src/commands/clock/find_best_root/method_golden_section.rs#L36-L81`](../../packages/treetime/src/commands/clock/find_best_root/method_golden_section.rs#L36-L81).
 
-Reference: Kiefer (1953). "Sequential minimax search for a maximum." Proc AMS, 4(3):502-506.
+Reference: Kiefer (1953). "Sequential minimax search for a maximum." Proc AMS, 4(3):502-506. doi:10.2307/2032012
 
 ---
 
@@ -80,7 +80,7 @@ IQD-based detection is nonparametric and does not assume normally distributed re
 v1: [`packages/treetime/src/commands/clock/clock_filter.rs#L21-L105`](../../packages/treetime/src/commands/clock/clock_filter.rs#L21-L105).
 v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40).
 
-Reference: Tukey (1977). "Exploratory Data Analysis." Addison-Wesley.
+Reference: Tukey (1977). "Exploratory Data Analysis." Addison-Wesley. ISBN 978-0-201-07616-5
 
 ---
 

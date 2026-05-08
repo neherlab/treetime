@@ -36,8 +36,8 @@ v1 uses deterministic `get_one()` (`#get_one`) for root state selection when the
 ### References
 
 - Fitch (1971). "Toward Defining the Course of Evolution: Minimum Change for a Specific Tree Topology." Systematic Zoology, 20(4):406-416. doi:10.2307/2412116
-- Farris (1970). "Methods for Computing Wagner Trees." Systematic Zoology, 19(1):83-92. (Independent development of parsimony methods.)
-- Felsenstein (1978). "Cases in which Parsimony or Compatibility Methods Will be Positively Misleading." Systematic Zoology, 27(4):401-410. (Long branch attraction: parsimony is statistically inconsistent when two unrelated long branches are present.)
+- Farris (1970). "Methods for Computing Wagner Trees." Systematic Zoology, 19(1):83-92. doi:10.2307/2412028
+- Felsenstein (1978). "Cases in which Parsimony or Compatibility Methods Will be Positively Misleading." Systematic Zoology, 27(4):401-410. doi:10.2307/2412923
 
 ---
 
@@ -82,7 +82,7 @@ O(n _ k^2 _ L) total for n nodes, k alphabet states (4 for nucleotides, 20 for a
 
 - Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
 - Pearl (1988). "Probabilistic Reasoning in Intelligent Systems." Morgan Kaufmann. (Sum-product / belief propagation on graphical models.)
-- Kschischang, Frey & Loeliger (2001). "Factor Graphs and the Sum-Product Algorithm." IEEE Trans Inform Theory, 47(2):498-519. (Formal connection between Felsenstein pruning and sum-product message passing.)
+- Kschischang, Frey & Loeliger (2001). "Factor Graphs and the Sum-Product Algorithm." IEEE Trans Inform Theory, 47(2):498-519. doi:10.1109/18.910572
 
 ---
 
