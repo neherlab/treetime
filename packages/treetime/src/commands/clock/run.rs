@@ -7,7 +7,7 @@ use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
@@ -19,6 +19,14 @@ use treetime_io::dates_csv::read_dates;
 use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::console::is_tty;
+
+fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
+  match args.method {
+    OptimizationMethod::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone()),
+    OptimizationMethod::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone()),
+    OptimizationMethod::GoldenSection => BranchPointOptimizationParams::golden_section_with(args.golden_params.clone()),
+  }
+}
 
 pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
   let TreetimeClockArgs {
@@ -120,7 +128,7 @@ fn estimate_clock_model_with_prefilter(
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
-      let params = BranchPointOptimizationParams::from(branch_split);
+      let params = branch_split_to_params(branch_split);
       // Allow negative rates during pre-filter root finding. Some datasets (e.g. dengue/100)
       // have negative estimated rate at ALL root positions when outliers are included.
       // The pre-filter clock model only needs to be good enough for IQD-based outlier detection.
@@ -151,7 +159,7 @@ fn estimate_clock_model_with_prefilter(
     })
     .transpose()?;
 
-  let params = BranchPointOptimizationParams::from(branch_split);
+  let params = branch_split_to_params(branch_split);
   let reroot_params = RerootParams {
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()

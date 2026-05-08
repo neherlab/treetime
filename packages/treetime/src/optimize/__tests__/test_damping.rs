@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::run::run_optimize_loop;
+  use crate::optimize::run_loop::run_optimize_loop;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };

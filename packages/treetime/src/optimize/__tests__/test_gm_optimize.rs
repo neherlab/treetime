@@ -173,7 +173,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-    use crate::commands::optimize::run::{collect_optimize_partitions, run_optimize_loop};
+    use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::optimize::args::BranchOptMethod;
     use crate::optimize::optimize_unified::initial_guess_mixed;
@@ -210,7 +210,7 @@ mod tests {
     pub struct OptimizeResult {
       pub graph: GraphAncestral,
       pub lh_history: Vec<f64>,
-      pub stopped_at: Option<(usize, crate::commands::optimize::run::ConvergenceReason)>,
+      pub stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }
 
     pub fn load_gm_inputs() -> BTreeMap<String, GmOptimizeCase> {

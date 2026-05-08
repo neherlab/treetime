@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::run::collect_optimize_partitions;
+  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::optimize_unified::initial_guess_mixed;
   use crate::representation::partition::fitch::PartitionFitch;

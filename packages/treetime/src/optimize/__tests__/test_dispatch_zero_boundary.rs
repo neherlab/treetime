@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::commands::optimize::run::collect_optimize_partitions;
+  use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::args::BranchOptMethod;
   use crate::optimize::iteration::find_zero_optimal_internal_edges;

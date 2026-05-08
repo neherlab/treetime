@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::marginal::update_marginal;
-  use crate::commands::optimize::run::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };

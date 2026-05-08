@@ -1,4 +1,3 @@
-use crate::commands::clock::args::BranchSplitArgs;
 use clap::{Args, ValueEnum};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -59,16 +58,6 @@ impl BranchPointOptimizationParams {
   /// Create grid search with custom parameters
   pub fn grid_with(params: GridSearchParams) -> Self {
     Self::Grid(params)
-  }
-}
-
-impl From<&BranchSplitArgs> for BranchPointOptimizationParams {
-  fn from(args: &BranchSplitArgs) -> Self {
-    match args.method {
-      OptimizationMethod::Grid => Self::Grid(args.grid_params.clone()),
-      OptimizationMethod::Brent => Self::Brent(args.brent_params.clone()),
-      OptimizationMethod::GoldenSection => Self::GoldenSection(args.golden_params.clone()),
-    }
   }
 }
 
