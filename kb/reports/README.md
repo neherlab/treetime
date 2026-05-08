@@ -35,3 +35,11 @@ Analysis of whether the global indel rate $\hat{\mu}$ should be re-estimated eac
 ### [Zero branch length optimization](zero-branch-length-optimization.md)
 
 How TreeTime v1 decides when an edge has zero optimal branch length, handles boundary conditions, and collapses degenerate edges. Covers the derivative-sign shortcut for unimodal models (JC69, F81, binary), post-dispatch reconciliation for non-unimodal models (K80, HKY85, TN93, GTR), grid search fallback, input domain protection, and topology cleanup via edge collapse. Decision matrix for all 6 model/indel/validity combinations.
+
+### [Site-specific models and automatic partitioning](auto-partitioning.md)
+
+Site-specific substitution models and automatic sequence partitioning for TreeTime v1. Covers the mutation-selection balance framework (Halpern-Bruno), the $Q_{ij}^a = \mu^a \pi_i^a W_{ij}$ parametrization, EM-style inference with NMF convergence guarantees, identifiability limits (Darwinian uncertainty principle), and practical thresholds for pathogen genomics. Compares implementations across IQ-TREE (PMSF), RAxML-NG, PhyloBayes (CAT), and BEAST2 with an 8-axis design comparison table. Covers model selection (BIC/AIC, PartitionFinder, k-means clustering), molecular clock integration workflow, two partitioning strategies (rate-based, codon-position), 9 design recommendations, and v1 codebase readiness assessment. 16 references.
+
+### [Substitution model serialization formats](substitution-model-serialization-formats.md)
+
+Survey of file formats for serializing substitution model parameters across phylogenetic software. Covers PAML triangular format (de facto amino acid standard), RAxML-NG model strings, 6-digit model codes (PhyML/IQ-TREE/HyPhy), MrBayes NEXUS blocks, BEAST2 XML, HyPhy NEXUS+HYPHY blocks, TreeTime v0 text format, and IQ-TREE `.sitefreq`. Includes source-verified format examples and a comparison table across 8 formats.
