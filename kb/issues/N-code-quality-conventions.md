@@ -16,18 +16,6 @@ Convention violations across the codebase: fully qualified paths, inconsistent d
 6. `treetime-grid/src/grid_fn.rs:397-401:` manual swap loop instead of `reverse_inplace()`
 7. `treetime-validation/src/testing/metrics/aggregate/domain_agreement/error_stats.rs:43-44:` ndarray to Vec conversion
 
-### Alphabet serde skip fields not rebuilt
-
-`packages/treetime/src/alphabet/alphabet.rs:48-56:`
-
-Four `#[serde(skip)]` fields with no post-deserialization rebuild. If `struct Alphabet` is deserialized, lookup tables are empty/default.
-
-### Missing empty-canonical rejection
-
-`packages/treetime/src/alphabet/alphabet_config.rs:72:`
-
-`fn validate()` does not reject an empty canonical character set. An empty alphabet produces division-by-zero in profile construction.
-
 ### NodeTimetree.nwk_comments() truncates date to 2 decimals
 
 `packages/treetime/src/representation/payload/timetree.rs:135:`
