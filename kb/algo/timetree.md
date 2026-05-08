@@ -228,7 +228,7 @@ Reference: Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):v
 
 ## Confidence Intervals
 
-Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 2018, Section 2.5):
+Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 2018, Section 2.2):
 
 1. **Mutation stochasticity.** The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. **Clock rate uncertainty.** The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
@@ -290,13 +290,13 @@ lower = center - sqrt((rate_lo - center)^2 + (mutation_lo - center)^2)
 upper = center + sqrt((rate_hi - center)^2 + (mutation_hi - center)^2)
 ```
 
-Clipped to distribution domain (physical limits). This is a first-order Gaussian approximation (Sagulenko et al. 2018, Section 2.5). The combined interval is wider than either source alone but narrower than the sum of deviations.
+Clipped to distribution domain (physical limits). This is a first-order Gaussian approximation (Sagulenko et al. 2018, Section 2.2). The combined interval is wider than either source alone but narrower than the sum of deviations.
 
 v0: `combine_confidence()` (`clock_tree.py:1090-1101`). Same formula.
 
 ### References
 
-- Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.5. doi:10.1093/ve/vex042
+- Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):vex042, Section 2.2. doi:10.1093/ve/vex042
 - Felsenstein (1985). "Confidence limits on phylogenies: an approach using the bootstrap." Evolution, 39(4):783-791. doi:10.2307/2408678
 
 ---
