@@ -6,15 +6,16 @@
 
 ## What to move
 
-5 files in `commands/optimize/`:
+4 files in `commands/optimize/`:
 
 - `optimize_unified.rs` (806 lines) -- `run_optimize_mixed()`, `OptimizationContribution`, `evaluate_with_indels_log_lh_only()`
 - `optimize_indel.rs` (188 lines) -- `estimate_indel_rate()`
 - `method_brent.rs` (185 lines) -- Brent optimization method
 - `method_newton.rs` (233 lines) -- Newton optimization method
-- `partition_ops.rs` (21 lines) -- `PartitionOptimizeOps`
 
-Total: 1433 lines.
+Total: 1412 lines.
+
+`PartitionOptimizeOps` already moved to `representation/partition/traits.rs`.
 
 ## Consumers
 
@@ -22,10 +23,11 @@ Total: 1433 lines.
 
 `run_optimize_mixed()`, `OptimizationContribution`, `evaluate_with_indels_log_lh_only()`, `estimate_indel_rate()`, `BranchOptMethod`, `PartitionOptimizeOps`, `apply_damping()`, `save_branch_lengths()`
 
-### representation/partition/ (reverse dependency -- core importing from commands)
+### representation/partition/ (residual reverse dependency)
 
-- `representation/partition/marginal_dense.rs#L2` -> `PartitionOptimizeOps` from `commands/optimize/partition_ops`
-- `representation/partition/marginal_sparse.rs#L3` -> `PartitionOptimizeOps` from `commands/optimize/partition_ops`
+- `representation/partition/marginal_dense.rs` -> `OptimizationContribution` from `commands/optimize/optimize_unified`
+- `representation/partition/marginal_sparse.rs` -> `OptimizationContribution` from `commands/optimize/optimize_unified`
+- `representation/partition/traits.rs` -> `OptimizationContribution` from `commands/optimize/optimize_unified` (return type of `PartitionOptimizeOps::create_edge_contribution`)
 
 ## Target location
 

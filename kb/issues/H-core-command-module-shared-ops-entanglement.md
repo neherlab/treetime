@@ -22,10 +22,11 @@ Six cross-command dependency edges exist in production code (excluding tests):
 Core modules import from `commands/`, inverting the expected dependency direction:
 
 - [packages/treetime/src/representation/partition/fitch_config.rs#L2](../../packages/treetime/src/representation/partition/fitch_config.rs#L2), [packages/treetime/src/representation/partition/likelihood.rs#L2](../../packages/treetime/src/representation/partition/likelihood.rs#L2) -> `get_common_length()` from `commands/ancestral/fitch`
-- [packages/treetime/src/representation/partition/marginal_dense.rs#L2](../../packages/treetime/src/representation/partition/marginal_dense.rs#L2), [packages/treetime/src/representation/partition/marginal_sparse.rs#L3](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L3) -> `PartitionOptimizeOps` from `commands/optimize/partition_ops`
-- [packages/treetime/src/representation/partition/marginal_dense.rs#L3](../../packages/treetime/src/representation/partition/marginal_dense.rs#L3), [packages/treetime/src/representation/partition/marginal_sparse.rs#L4](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L4), [packages/treetime/src/representation/partition/timetree.rs#L1](../../packages/treetime/src/representation/partition/timetree.rs#L1) -> `PartitionRerootOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`
-- ~~`RerootChanges` from `commands/clock/reroot`~~ **Resolved**: `RerootChanges` extracted to `representation/algo/topology_cleanup/reroot`; `marginal_sparse.rs` now imports from `topology_cleanup`
-- [packages/treetime/src/representation/payload/timetree.rs#L1-L4](../../packages/treetime/src/representation/payload/timetree.rs#L1-L4) -> `ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`
+- ~~`PartitionOptimizeOps` from `commands/optimize/partition_ops`~~ **Resolved**: moved to `representation/partition/traits.rs`
+- ~~`PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`~~ **Resolved**: moved to `representation/partition/traits.rs`
+- ~~`RerootChanges` from `commands/clock/reroot`~~ **Resolved**: extracted to `representation/algo/topology_cleanup/reroot`
+- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `representation/payload/clock_set.rs`; traits moved to `representation/payload/traits.rs`
+- `representation/partition/marginal_dense.rs`, `representation/partition/marginal_sparse.rs` -> `OptimizationContribution` from `commands/optimize/optimize_unified` (residual: return type of `PartitionOptimizeOps::create_edge_contribution`)
 - [packages/treetime/src/cli/rtt_chart.rs#L2-L3](../../packages/treetime/src/cli/rtt_chart.rs#L2-L3), [packages/treetime/src/cli/rtt_chart_render.rs#L1-L2](../../packages/treetime/src/cli/rtt_chart_render.rs#L1-L2) -> `ClockModel`, `ClockRegressionResult` from `commands/clock/`
 - [packages/treetime/src/test_utils.rs#L2-L3](../../packages/treetime/src/test_utils.rs#L2-L3) -> `compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` from `commands/ancestral/`
 
@@ -43,9 +44,9 @@ Core modules import from `commands/`, inverting the expected dependency directio
 
 `commands/optimize/` contains shared optimization machinery: [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) (806 lines), [packages/treetime/src/commands/optimize/optimize_indel.rs](../../packages/treetime/src/commands/optimize/optimize_indel.rs) (188 lines), [packages/treetime/src/commands/optimize/method_brent.rs](../../packages/treetime/src/commands/optimize/method_brent.rs) (185 lines), [packages/treetime/src/commands/optimize/method_newton.rs](../../packages/treetime/src/commands/optimize/method_newton.rs) (233 lines), [packages/treetime/src/commands/optimize/partition_ops.rs](../../packages/treetime/src/commands/optimize/partition_ops.rs) (21 lines). Consumed by `timetree` (8 import sites) and `representation/partition/`. The optimization algorithms are domain logic used across commands.
 
-### Partition and payload traits (78 lines)
+### ~~Partition and payload traits~~ **Resolved**
 
-[packages/treetime/src/commands/timetree/partition_ops.rs](../../packages/treetime/src/commands/timetree/partition_ops.rs) (60 lines) and [packages/treetime/src/commands/timetree/timetree_traits.rs](../../packages/treetime/src/commands/timetree/timetree_traits.rs) (18 lines) define traits consumed by `representation/partition/` and `representation/payload/`. These are trait definitions for the representation layer, placed in a command module.
+Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `representation/partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `representation/payload/traits.rs`; `ClockSet` data type to `representation/payload/clock_set.rs`.
 
 ### Topology operations
 

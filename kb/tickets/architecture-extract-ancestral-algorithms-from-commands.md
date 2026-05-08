@@ -7,9 +7,10 @@ The ancestral reconstruction algorithms in `commands/ancestral/` are domain logi
 ## What to move
 
 - `packages/treetime/src/commands/ancestral/fitch.rs` (640 lines) -- core Fitch parsimony algorithm
+- `packages/treetime/src/commands/ancestral/fitch_indel.rs` (120 lines) -- indel resolution for backward/forward passes
 - `packages/treetime/src/commands/ancestral/marginal.rs` (157 lines) -- marginal reconstruction
 
-Total: 797 lines of domain algorithm code.
+Total: 917 lines of domain algorithm code.
 
 ## Consumers (7 modules)
 
@@ -18,8 +19,10 @@ Total: 797 lines of domain algorithm code.
 3. `commands/timetree/` -- 6 import sites: `compress_sequences()` (`fitch.rs#L526`), `get_common_length()` (`fitch.rs#L616`), `initialize_marginal()` (`marginal.rs#L21`), `update_marginal()` (`marginal.rs#L41`)
 4. `commands/prune/` -- consumer of ancestral reconstruction
 5. `representation/` -- reverse dependency (core importing from commands):
-   - `representation/partition/fitch_config.rs#L2` -> `get_common_length()` from `commands/ancestral/fitch`
-   - `representation/partition/likelihood.rs#L2` -> `get_common_length()` from `commands/ancestral/fitch`
+   - `representation/partition/fitch.rs` -> `compress_sequences()`, `get_common_length()` from `commands/ancestral/fitch`
+   - `representation/partition/fitch_config.rs` -> `get_common_length()` from `commands/ancestral/fitch`
+   - `representation/partition/likelihood.rs` -> `get_common_length()` from `commands/ancestral/fitch`
+   - `representation/partition/marginal_dense.rs` -> `resolve_indels_backward()`, `resolve_indels_forward()` from `commands/ancestral/fitch_indel`
 6. `gtr/` -- imports ancestral reconstruction functions
 7. `test_utils.rs#L2-L3` -> `compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` from `commands/ancestral/`
 
