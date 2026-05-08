@@ -139,8 +139,8 @@ CLI: `--relax <SLACK> <COUPLING>` (defaults 1.0, 1.0).
 
 `apply_relaxed_clock()` (`#apply_relaxed_clock`) [packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L25-L125](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L25-L125) runs two passes:
 
-- **Postorder pass** (lines 36-81): computes quadratic penalty coefficients k1, k2 per node. The penalty function is `stiffness * (gamma * actual_len - optimal_len)^2 + slack * (gamma - 1)^2`, with a coupling term `coupling * (gamma - gamma_child)^2`.
-- **Preorder pass** (lines 86-114): computes optimal gamma per branch. Root: `gamma = max(0.1, -0.5 * k1 / k2)`. Non-root: `gamma = max(0.1, (coupling * parent_gamma - 0.5 * k1) / (coupling + k2))`.
+- Postorder pass (lines 36-81): computes quadratic penalty coefficients k1, k2 per node. The penalty function is `stiffness * (gamma * actual_len - optimal_len)^2 + slack * (gamma - 1)^2`, with a coupling term `coupling * (gamma - gamma_child)^2`.
+- Preorder pass (lines 86-114): computes optimal gamma per branch. Root: `gamma = max(0.1, -0.5 * k1 / k2)`. Non-root: `gamma = max(0.1, (coupling * parent_gamma - 0.5 * k1) / (coupling + k2))`.
 
 The `one_mutation` parameter (sum of sequence lengths across all partitions) sets the scale for branch length penalties. Gamma values are clamped to a minimum of 0.1 to prevent degenerate solutions.
 
@@ -230,17 +230,17 @@ Reference: Sagulenko, Puller & Neher (2018). "TreeTime." Virus Evolution, 4(1):v
 
 Node date uncertainty has two independent sources (Sagulenko, Puller & Neher 2018, Section 2.2):
 
-1. **Mutation stochasticity.** The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
-2. **Clock rate uncertainty.** The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
+1. Mutation stochasticity. The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
+2. Clock rate uncertainty. The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
 
 v1: [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs).
 v0: `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`), `combine_confidence()` (`#combine_confidence`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
 
 Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `fraction=0.9` in v0's `get_max_posterior_region`. The derived quantile bounds are `(0.05, 0.95)` (5% in each tail). The two sources use different statistical operations to produce "90% CI":
 
-- **Mutation**: 90% HPD (highest posterior density) - the shortest interval containing 90% of the probability mass. Tighter than equal-tailed CI for skewed distributions.
-- **Rate**: 90% equal-tailed interval via probit scaling - maps ±1 sigma rate sensitivity dates to the 5th/95th percentile using standard normal z-scores (z=±1.645).
-- **Combined**: quadrature sum of deviations - a Gaussian-approximation heuristic, not a formal CI of the joint distribution.
+- Mutation: 90% HPD (highest posterior density) - the shortest interval containing 90% of the probability mass. Tighter than equal-tailed CI for skewed distributions.
+- Rate: 90% equal-tailed interval via probit scaling - maps ±1 sigma rate sensitivity dates to the 5th/95th percentile using standard normal z-scores (z=±1.645).
+- Combined: quadrature sum of deviations - a Gaussian-approximation heuristic, not a formal CI of the joint distribution.
 
 ### Orchestrator
 
@@ -255,10 +255,10 @@ Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `
 
 `Distribution::hpd_region(fraction)` in [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs) finds the narrowest interval containing `fraction` of the probability mass:
 
-- **Interior peak**: bisection on probability threshold. For each candidate threshold, the interval between left and right crossings of the PDF captures a certain probability mass. Bisection finds the threshold where the mass equals `fraction`. Assumes unimodality (returns a single contiguous interval).
-- **Boundary peak**: one-sided quantile fallback. Left boundary: `[t_min, quantile(fraction)]`. Right boundary: `[quantile(1-fraction), t_max]`.
-- **Uniform/Range**: centered interval of width `fraction * range`.
-- **Formula**: equal-tailed fallback `confidence_interval(p_lo, 1-p_lo)`.
+- Interior peak: bisection on probability threshold. For each candidate threshold, the interval between left and right crossings of the PDF captures a certain probability mass. Bisection finds the threshold where the mass equals `fraction`. Assumes unimodality (returns a single contiguous interval).
+- Boundary peak: one-sided quantile fallback. Left boundary: `[t_min, quantile(fraction)]`. Right boundary: `[quantile(1-fraction), t_max]`.
+- Uniform/Range: centered interval of width `fraction * range`.
+- Formula: equal-tailed fallback `confidence_interval(p_lo, 1-p_lo)`.
 
 v0: `get_max_posterior_region(node, fraction=0.9)` (`clock_tree.py:1146-1230`) uses `scipy.optimize.minimize_scalar` (Brent) for the threshold search. v1 uses bisection, which is simpler and sufficient since the target function (CDF mass vs threshold) is monotonic.
 

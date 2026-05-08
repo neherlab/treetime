@@ -36,9 +36,9 @@ The command runs two passes over the tree:
 
 Pass 1: Internal node pruning ([packages/treetime/src/commands/prune/run.rs#L154-L197](../../packages/treetime/src/commands/prune/run.rs#L154-L197)). For each edge targeting an internal node, any of three independent criteria triggers pruning:
 
-- **Short branch**: branch length < user-specified threshold (strict less-than).
-- **Empty branch**: mutation data is present for the edge AND total mutation count is zero across all partitions. Edges with no partition data (`None`) are preserved: unknown is not the same as zero.
-- **Named node**: target node's name appears in the user-provided set.
+- Short branch: branch length < user-specified threshold (strict less-than).
+- Empty branch: mutation data is present for the edge AND total mutation count is zero across all partitions. Edges with no partition data (`None`) are preserved: unknown is not the same as zero.
+- Named node: target node's name appears in the user-provided set.
 
 When an internal node is pruned, its children are reconnected to its parent via `Graph.collapse_edge()` ([packages/treetime-graph/src/graph_ops.rs#L146-L206](../../packages/treetime-graph/src/graph_ops.rs#L146-L206)). Branch lengths are summed when both edges have values. Substitution lists from the removed edge are merged into each reconnected edge using sorted union with deduplication.
 
@@ -52,9 +52,9 @@ Output: `pruned_tree.nwk` and `pruned_tree.nexus` in the output directory.
 
 Branch lengths in phylogenetic trees represent evolutionary distance in substitutions per site. Very short branches indicate negligible observed divergence between ancestor and descendant. These arise from:
 
-- **Insufficient phylogenetic signal.** When an alignment is short relative to the divergence time, many true branching events produce zero or near-zero observed substitutions. The branching order among these nodes is effectively unresolved.
-- **Rapid radiation.** When lineages diverge in quick succession (adaptive radiation, founder events, epidemic expansion), the intervening internal branches are genuinely short, and the tree topology at these nodes is a soft polytomy.
-- **Overresolved input trees.** Parsimony and distance methods can produce fully resolved binary trees even when data support only partial resolution. The spurious internal branches have near-zero lengths.
+- Insufficient phylogenetic signal. When an alignment is short relative to the divergence time, many true branching events produce zero or near-zero observed substitutions. The branching order among these nodes is effectively unresolved.
+- Rapid radiation. When lineages diverge in quick succession (adaptive radiation, founder events, epidemic expansion), the intervening internal branches are genuinely short, and the tree topology at these nodes is a soft polytomy.
+- Overresolved input trees. Parsimony and distance methods can produce fully resolved binary trees even when data support only partial resolution. The spurious internal branches have near-zero lengths.
 
 Collapsing short branches converts the resolved but unsupported binary splits into multifurcations (polytomies) that honestly represent the phylogenetic uncertainty. This is standard practice before downstream analysis: bootstrap support thresholds, Bayesian posterior probability cutoffs, and branch length thresholds all serve the same purpose of removing resolution that the data cannot support.
 

@@ -86,8 +86,8 @@ The current v1 GTR core already performs **inner** iteration on `W`, `pi`, and `
 
 The distinction between the accepted current workflow and the proposed extension is central.
 
-- **Inner GTR iteration** solves for `W`, `pi`, and `mu` while holding expected mutation counts and time-in-state totals fixed.
-- **Outer refinement** recomputes those sufficient statistics after ancestral posteriors change, then re-estimates the model, then reconstructs again.
+- Inner GTR iteration solves for `W`, `pi`, and `mu` while holding expected mutation counts and time-in-state totals fixed.
+- Outer refinement recomputes those sufficient statistics after ancestral posteriors change, then re-estimates the model, then reconstructs again.
 
 In other words:
 

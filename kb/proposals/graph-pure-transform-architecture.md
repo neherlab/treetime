@@ -114,8 +114,8 @@ Topology mutations (reroot, polytomy resolution, collapse) produce a new topolog
 
 Replace `Arc<RwLock<N>>` interior mutability with one of:
 
-- **Transform-based**: traversal callback receives `&InputPayload`, returns `OutputPayload`. The traversal engine collects outputs into a new payload store. No mutation, no locks.
-- **Exclusive-ownership**: traversal engine moves payloads out of the store, hands them to the callback as owned values, collects them back. Single owner at a time, no `Arc`, no `RwLock`, but allocation pattern unchanged.
+- Transform-based: traversal callback receives `&InputPayload`, returns `OutputPayload`. The traversal engine collects outputs into a new payload store. No mutation, no locks.
+- Exclusive-ownership: traversal engine moves payloads out of the store, hands them to the callback as owned values, collects them back. Single owner at a time, no `Arc`, no `RwLock`, but allocation pattern unchanged.
 
 Transform-based is cleaner for reasoning. Exclusive-ownership avoids the allocation of a separate output store.
 
@@ -158,8 +158,8 @@ Current: `BTreeMap<GraphNodeKey, _>` with O(log n) lookup per access.
 
 Alternatives:
 
-- **Dense `Vec`** indexed by `GraphNodeKey.as_usize()`. O(1) lookup, cache-friendly sequential access during traversals. Tombstones for removed nodes (matching the graph's existing `Vec<Option<>>` pattern).
-- **Flat arrays** per field instead of per node. Structure-of-arrays layout for vectorizable traversal kernels.
+- Dense `Vec` indexed by `GraphNodeKey.as_usize()`. O(1) lookup, cache-friendly sequential access during traversals. Tombstones for removed nodes (matching the graph's existing `Vec<Option<>>` pattern).
+- Flat arrays per field instead of per node. Structure-of-arrays layout for vectorizable traversal kernels.
 
 ### D6: Parallel BFS without locks
 
@@ -177,9 +177,9 @@ A middle ground: graph-level data (topology, names, time distributions) as one t
 
 Topology mutations (reroot, polytomy resolution, collapse) cannot produce "new output from old input" without copying the entire graph. Options:
 
-- **Epoch-based**: topology mutations produce a new topology index plus a migration map (old key -> new key). Payload stores are re-indexed. Traversal passes within an epoch operate on immutable topology.
-- **Copy-on-mutate**: topology mutations clone the graph, modify the clone, return it. Expensive for large trees but conceptually clean.
-- **In-place with fence**: topology mutations are the one place that mutates in place, but a type-level fence prevents payload access during topology mutation (the graph is in a "topology-mutable" state that does not expose payload accessors).
+- Epoch-based: topology mutations produce a new topology index plus a migration map (old key -> new key). Payload stores are re-indexed. Traversal passes within an epoch operate on immutable topology.
+- Copy-on-mutate: topology mutations clone the graph, modify the clone, return it. Expensive for large trees but conceptually clean.
+- In-place with fence: topology mutations are the one place that mutates in place, but a type-level fence prevents payload access during topology mutation (the graph is in a "topology-mutable" state that does not expose payload accessors).
 
 Epoch-based is the natural fit: topology changes are infrequent (once per EM iteration), traversal passes are frequent (multiple per iteration).
 

@@ -174,15 +174,15 @@ Datasets disabled via commented-out `#[case]` annotations:
 
 ## Known Test Limitations
 
-1. **Golden-master tolerance variations**: Some datasets require looser tolerances due to:
+1. Golden-master tolerance variations: Some datasets require looser tolerances due to:
    - BLAS drift between NumPy and ndarray (scales with sequence length)
    - Fitch ambiguity resolution differences between dense/sparse
    - Zero-length branch handling differences
 
-2. **Disabled datasets in runner tests**: Several datasets disabled due to zero-length branches:
+2. Disabled datasets in runner tests: Several datasets disabled due to zero-length branches:
    - `dengue_20`, `lassa_L_20`, `rsv_a_20`, `tb_20`, `zika_20`
 
-3. **Dense marginal backward pass**: Crashes on some datasets (documented in validation example)
+3. Dense marginal backward pass: Crashes on some datasets (documented in validation example)
 
 ---
 

@@ -19,10 +19,10 @@ Two-pass dynamic programming on a rooted tree:
 
 ### v1 extensions
 
-- **Sparse representation**: only variable positions (positions that differ from the reference) are stored and processed. Invariant positions carry no phylogenetic signal for parsimony and can be skipped.
-- **Indel handling**: insertions and deletions are tracked alongside substitutions, with majority rule for gap vs non-gap resolution at internal nodes.
-- **`BitSet128` state sets**: character state sets are represented as 128-bit bitmasks, enabling O(1) intersection and union via hardware AND/OR instructions.
-- **Parallel BFS traversal**: nodes at the same tree depth are processed in parallel using Rayon.
+- Sparse representation: only variable positions (positions that differ from the reference) are stored and processed. Invariant positions carry no phylogenetic signal for parsimony and can be skipped.
+- Indel handling: insertions and deletions are tracked alongside substitutions, with majority rule for gap vs non-gap resolution at internal nodes.
+- `BitSet128` state sets: character state sets are represented as 128-bit bitmasks, enabling O(1) intersection and union via hardware AND/OR instructions.
+- Parallel BFS traversal: nodes at the same tree depth are processed in parallel using Rayon.
 
 ### v0 differences
 

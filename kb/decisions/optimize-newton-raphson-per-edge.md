@@ -6,11 +6,11 @@ v1 offers six per-edge branch length optimization methods via `--opt-method`, co
 
 v0 `optimal_t_compressed()` ([packages/legacy/treetime/treetime/gtr.py#L816-L920](../../packages/legacy/treetime/treetime/gtr.py#L816-L920)) optimizes each branch length using Brent's method (Brent, 1973) with three design choices:
 
-1. **sqrt(t) reparameterization.** The objective function takes `s = sqrt(t)` as input and computes likelihood at `t = s^2`. This reshapes the likelihood surface near zero, where `dL/dt` can be steep. The bracket is `[-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]`.
+1. sqrt(t) reparameterization. The objective function takes `s = sqrt(t)` as input and computes likelihood at `t = s^2`. This reshapes the likelihood surface near zero, where `dL/dt` can be steep. The bracket is `[-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]`.
 
-2. **Derivative-free.** Brent's method combines golden section search (linear convergence, ratio ~0.618) with parabolic interpolation (superlinear, order ~1.325). It needs only function evaluations, no derivatives.
+2. Derivative-free. Brent's method combines golden section search (linear convergence, ratio ~0.618) with parabolic interpolation (superlinear, order ~1.325). It needs only function evaluations, no derivatives.
 
-3. **Hamming distance fallback.** If `scipy.optimize.minimize_scalar` reports failure, v0 falls back to the raw Hamming distance between parent and child sequences as the branch length estimate.
+3. Hamming distance fallback. If `scipy.optimize.minimize_scalar` reports failure, v0 falls back to the raw Hamming distance between parent and child sequences as the branch length estimate.
 
 v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marginal profiles (`profiles=True`) to prevent unbounded branch growth.
 
@@ -20,26 +20,26 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_uni
 
 ### Brent methods (derivative-free)
 
-1. **`brent-sqrt` (default).** Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
+1. `brent-sqrt` (default). Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
 
-2. **`brent`.** Brent's method in $t$ space. Derivative-free, bracket-based. Included for completeness; `brent-sqrt` dominates for convergence speed near $t = 0$.
+2. `brent`. Brent's method in $t$ space. Derivative-free, bracket-based. Included for completeness; `brent-sqrt` dominates for convergence speed near $t = 0$.
 
-3. **`brent-log`.** Brent's method in $\ln(t)$ space. The cost function evaluates $-\ell(e^u)$ and bracket endpoints transform as $\ln(\text{lower})$, $\ln(\text{upper})$. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$). Smoothest objective surface of all Brent variants.
+3. `brent-log`. Brent's method in $\ln(t)$ space. The cost function evaluates $-\ell(e^u)$ and bracket endpoints transform as $\ln(\text{lower})$, $\ln(\text{upper})$. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$). Smoothest objective surface of all Brent variants.
 
 ### Newton methods (analytical derivatives)
 
 The substitution Hessian (posterior variance of eigenvalues) is computed in the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$, which avoids the catastrophic cancellation of the two-moment form $E[\lambda^2] - E[\lambda]^2$ when the posterior is tightly peaked.
 
-4. **`newton`.** Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. Baseline matching RAxML-NG/IQ-TREE. The Poisson indel Hessian ($-k/t^2$) can dominate on short branches with indels.
+4. `newton`. Newton-Raphson in $t$ space with analytical derivatives from eigendecomposition-based coefficient caching. Baseline matching RAxML-NG/IQ-TREE. The Poisson indel Hessian ($-k/t^2$) can dominate on short branches with indels.
 
-5. **`newton-sqrt`.** Newton-Raphson in $\sqrt{t}$ space. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$. Reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$.
+5. `newton-sqrt`. Newton-Raphson in $\sqrt{t}$ space. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$. Reduces the indel Hessian singularity from $O(1/t^2)$ to $O(1/t)$.
 
-6. **`newton-log`.** Newton-Raphson in $\ln(t)$ space. Reparameterizes as $u = \ln(t)$ and applies the chain rule: $d\ell/du = t \cdot d\ell/dt$, $d^2\ell/du^2 = t^2 \cdot d^2\ell/dt^2 + t \cdot d\ell/dt$. Eliminates the indel Hessian singularity entirely ($\ell''_{\text{indel}} = -\mu t$, bounded). Best conditioning of all Newton variants.
+6. `newton-log`. Newton-Raphson in $\ln(t)$ space. Reparameterizes as $u = \ln(t)$ and applies the chain rule: $d\ell/du = t \cdot d\ell/dt$, $d^2\ell/du^2 = t^2 \cdot d^2\ell/dt^2 + t \cdot d\ell/dt$. Eliminates the indel Hessian singularity entirely ($\ell''_{\text{indel}} = -\mu t$, bounded). Best conditioning of all Newton variants.
 
 All methods share:
 
-- **Grid search fallback** for non-concave regions (Newton methods only, 100 log-spaced points).
-- **Zero-branch short-circuit** using the derivative-sign criterion at $t = 0$ for unimodal models (JC69, F81).
+- Grid search fallback for non-concave regions (Newton methods only, 100 log-spaced points).
+- Zero-branch short-circuit using the derivative-sign criterion at $t = 0$ for unimodal models (JC69, F81).
 
 ## Why v1 offers method selection
 

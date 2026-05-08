@@ -8,9 +8,9 @@ Ancestral sequence reconstruction infers the nucleotide sequences at internal no
 
 Ancestral reconstruction serves two purposes in tree refinement:
 
-1. **Branch length optimization** ([Chapter 5](5-branch-length-optimization.md)): the per-edge optimizer needs to know what states are at both endpoints of each branch. The ancestral reconstruction provides the internal-node endpoints.
+1. Branch length optimization ([Chapter 5](5-branch-length-optimization.md)): the per-edge optimizer needs to know what states are at both endpoints of each branch. The ancestral reconstruction provides the internal-node endpoints.
 
-2. **Topology cleanup**: the `prune_short_branches()` criterion in v0 evaluates the probability of the parent-child sequence pair at zero distance ([Chapter 6](6-zero-length-branches.md)). The shared-mutation merging algorithm compares substitution sets on sibling branches ([Chapter 7](7-polytomy-resolution.md)). Both require knowing which mutations occurred on which branches, which requires ancestral reconstruction.
+2. Topology cleanup: the `prune_short_branches()` criterion in v0 evaluates the probability of the parent-child sequence pair at zero distance ([Chapter 6](6-zero-length-branches.md)). The shared-mutation merging algorithm compares substitution sets on sibling branches ([Chapter 7](7-polytomy-resolution.md)). Both require knowing which mutations occurred on which branches, which requires ancestral reconstruction.
 
 Two families of methods exist: parsimony (fast, approximate) and maximum likelihood (slower, exact).
 
@@ -53,9 +53,9 @@ O(n \* s) per site, where n is the number of nodes and s is the number of states
 
 Fitch reconstruction is used for:
 
-- **Compression**: identifying variable positions (positions where the state set at the root has more than one element). Invariant positions are skipped in subsequent ML computation.
-- **Initial ancestral assignment**: seeding the ML optimization with a parsimony-based starting point.
-- **Mutation mapping**: determining which branches carry substitutions, used by `--prune-empty` and `--merge-shared-mutations`.
+- Compression: identifying variable positions (positions where the state set at the root has more than one element). Invariant positions are skipped in subsequent ML computation.
+- Initial ancestral assignment: seeding the ML optimization with a parsimony-based starting point.
+- Mutation mapping: determining which branches carry substitutions, used by `--prune-empty` and `--merge-shared-mutations`.
 
 v1 code: [`packages/treetime/src/commands/ancestral/fitch.rs`](../../../packages/treetime/src/commands/ancestral/fitch.rs). The `compress_sequences()` function runs Fitch reconstruction and stores variable-site data in the sparse partition structure.
 
@@ -131,9 +131,9 @@ For tree refinement, marginal reconstruction is standard because:
 
 Ancestral reconstruction and branch length optimization are interdependent:
 
-1. **Reconstruction depends on branch lengths.** The transition probability matrices `P(t) = exp(Q*t)` in the pruning algorithm use the current branch lengths. Different branch lengths produce different posterior profiles at internal nodes.
+1. Reconstruction depends on branch lengths. The transition probability matrices `P(t) = exp(Q*t)` in the pruning algorithm use the current branch lengths. Different branch lengths produce different posterior profiles at internal nodes.
 
-2. **Optimization depends on reconstruction.** The per-edge optimizer ([Chapter 5](5-branch-length-optimization.md)) uses the `msg_to_parent` and `msg_to_child` messages to compute the likelihood and its derivatives. These messages come from the reconstruction.
+2. Optimization depends on reconstruction. The per-edge optimizer ([Chapter 5](5-branch-length-optimization.md)) uses the `msg_to_parent` and `msg_to_child` messages to compute the likelihood and its derivatives. These messages come from the reconstruction.
 
 This circular dependence is why tree refinement requires an iterative loop ([Chapter 9](9-iteration-loop.md)): reconstruct given current branch lengths, optimize branch lengths given current reconstruction, repeat.
 

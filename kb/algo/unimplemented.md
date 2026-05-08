@@ -153,8 +153,8 @@ The function models polytomy resolution as a joint mutation-coalescence process 
    - Sample waiting time: `dt = Exp(1/total_rate)` using `self.rng.exponential`
    - If a `branches_to_come` child appears in the interval, add it and restart
    - Sample event type proportional to rates (`self.rng.random`)
-   - **Mutation event**: pick branch proportional to mutation count, decrement by one
-   - **Coalescent event**: pick two ready branches uniformly (`self.rng.choice`), create new internal node at current time, reparent them, build `BranchLenInterpolator` for the new node
+   - Mutation event: pick branch proportional to mutation count, decrement by one
+   - Coalescent event: pick two ready branches uniformly (`self.rng.choice`), create new internal node at current time, reparent them, build `BranchLenInterpolator` for the new node
 5. Remaining branches become direct children of the parent
 
 ### RNG
@@ -177,9 +177,9 @@ v1: has FFT in treetime-ops but not the delta approximation or tail extrapolatio
 ### Algorithm
 
 1. Determine grid spacing from `min(FWHM_node, FWHM_branch) / FFT_FWHM_GRID_SIZE`
-2. **Delta approximation** (lines 185-200): If node distribution is much narrower than branch distribution (ratio < 1/fft_grid_size), skip FFT and shift branch distribution by node peak location.
-3. **FFT path** (lines 202-240): Evaluate both distributions in plain probability space, zero-pad to `2 * raw_len` to prevent circular convolution, compute `IFFT(FFT(branch) * FFT(node))`, convert to neg-log: `res = -ln(fft_result) + peak_branch + peak_node - ln(dt)`.
-4. **Tail extrapolation** (lines 242-260): Linearly extrapolate distribution tails beyond FFT valid region to maintain proper asymptotic behavior.
+2. Delta approximation (lines 185-200): If node distribution is much narrower than branch distribution (ratio < 1/fft_grid_size), skip FFT and shift branch distribution by node peak location.
+3. FFT path (lines 202-240): Evaluate both distributions in plain probability space, zero-pad to `2 * raw_len` to prevent circular convolution, compute `IFFT(FFT(branch) * FFT(node))`, convert to neg-log: `res = -ln(fft_result) + peak_branch + peak_node - ln(dt)`.
+4. Tail extrapolation (lines 242-260): Linearly extrapolate distribution tails beyond FFT valid region to maintain proper asymptotic behavior.
 
 ---
 

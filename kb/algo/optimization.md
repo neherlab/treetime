@@ -6,9 +6,9 @@
 
 Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. Three parameterizations trade off singularity handling near zero:
 
-- **t-space** (`newton_inner`): update `t_new = t - clamp(f'/f'', -1.0, t)`. Indel Hessian $-k/t^2$ dominates on short branches.
-- **sqrt(t)-space** (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$. Reduces indel singularity from $O(1/t^2)$ to $O(1/t)$.
-- **ln(t)-space** (`newton_log_inner`): chain rule with $u = \ln(t)$. Eliminates indel singularity entirely (bounded curvature $-\mu t$). Correct step clamping: upper $u - u_{\min}$, lower $-\ln(1 + 1/t)$.
+- t-space (`newton_inner`): update `t_new = t - clamp(f'/f'', -1.0, t)`. Indel Hessian $-k/t^2$ dominates on short branches.
+- sqrt(t)-space (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$. Reduces indel singularity from $O(1/t^2)$ to $O(1/t)$.
+- ln(t)-space (`newton_log_inner`): chain rule with $u = \ln(t)$. Eliminates indel singularity entirely (bounded curvature $-\mu t$). Correct step clamping: upper $u - u_{\min}$, lower $-\ln(1 + 1/t)$.
 
 All variants fall back to a 100-point log-spaced grid search when the second derivative is non-negative.
 
@@ -27,9 +27,9 @@ References:
 
 Per-edge branch length optimization using Brent's derivative-free method via `argmin::BrentOpt`. Three parameterizations offer different objective surface smoothing:
 
-- **t-space** (`brent_inner`): bracket $[\text{min\_bl}, \text{upper}]$, cost function evaluates $-\ell(t)$. Baseline derivative-free method.
-- **sqrt(t)-space** (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. **Default method, matches v0 exactly.** Smooths the objective near $t = 0$, giving parabolic interpolation a better fit. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero.
-- **ln(t)-space** (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Smoothest objective surface of all parameterizations. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$).
+- t-space (`brent_inner`): bracket $[\text{min\_bl}, \text{upper}]$, cost function evaluates $-\ell(t)$. Baseline derivative-free method.
+- sqrt(t)-space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. **Default method, matches v0 exactly.** Smooths the objective near $t = 0$, giving parabolic interpolation a better fit. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero.
+- ln(t)-space (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Smoothest objective surface of all parameterizations. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$).
 
 v1: [`packages/treetime/src/commands/optimize/method_brent.rs`](../../packages/treetime/src/commands/optimize/method_brent.rs).
 
@@ -108,9 +108,9 @@ References:
 
 The optimize outer loop uses three orthogonal stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)), where $\mathrm{LH}_i$ is the joint log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold. In indel-bearing runs, $\mathrm{LH}_i$ includes both substitution likelihood from `update_marginal()` and the tree-level Poisson indel contribution from `total_indel_log_lh()` evaluated with the same per-pass `indel_rate` used by the edge optimizer:
 
-- **Converged**: $|\mathrm{LH}_i - \mathrm{LH}_{i-1}| < \mathit{dp}$ (standard monotone convergence)
-- **Oscillating**: $|\mathrm{LH}_i - \mathrm{LH}_{i-2}| < \mathit{dp}$ (detects 2-cycles from the sparse variable/fixed reclassification; requires $i \ge 2$)
-- **Worsened**: $\mathrm{LH}_i < \text{best\_LH}$ (restores branch lengths from the best-observed state and stops; analogous to IQ-TREE's per-round monotonicity check)
+- Converged: $|\mathrm{LH}_i - \mathrm{LH}_{i-1}| < \mathit{dp}$ (standard monotone convergence)
+- Oscillating: $|\mathrm{LH}_i - \mathrm{LH}_{i-2}| < \mathit{dp}$ (detects 2-cycles from the sparse variable/fixed reclassification; requires $i \ge 2$)
+- Worsened: $\mathrm{LH}_i < \text{best\_LH}$ (restores branch lengths from the best-observed state and stops; analogous to IQ-TREE's per-round monotonicity check)
 
 The damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. A NaN/Inf guard breaks immediately on numerical instability.
 

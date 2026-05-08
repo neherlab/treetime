@@ -10,9 +10,9 @@ Over evolutionary time, substitutions accumulate. The longer the time since two 
 
 Not all substitutions are equally likely. Two empirical patterns dominate:
 
-1. **Transition/transversion bias.** Transitions (purine-to-purine: A<->G, or pyrimidine-to-pyrimidine: C<->T) are 2x to 30x more frequent than transversions (purine-to-pyrimidine or vice versa). This reflects the biochemistry of DNA: transitions require only a single tautomeric shift, while transversions require a purine-pyrimidine swap.
+1. Transition/transversion bias. Transitions (purine-to-purine: A<->G, or pyrimidine-to-pyrimidine: C<->T) are 2x to 30x more frequent than transversions (purine-to-pyrimidine or vice versa). This reflects the biochemistry of DNA: transitions require only a single tautomeric shift, while transversions require a purine-pyrimidine swap.
 
-2. **Base composition bias.** The four nucleotides are not equally frequent. AT-rich genomes (many bacteria, mitochondria) have more A and T; GC-rich genomes (some vertebrates) have more G and C. The equilibrium frequencies affect which substitutions are observed.
+2. Base composition bias. The four nucleotides are not equally frequent. AT-rich genomes (many bacteria, mitochondria) have more A and T; GC-rich genomes (some vertebrates) have more G and C. The equilibrium frequencies affect which substitutions are observed.
 
 Substitution models formalize these patterns mathematically.
 

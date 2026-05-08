@@ -71,9 +71,9 @@ With a fixed alignment (treating the alignment as observed data, not marginalizi
 
 TKF91 distinguishes insertions from deletions (separate $\lambda$ and $\mu$), which is more biologically realistic than the Poisson count model's single rate. The pair HMM formalism integrates naturally with tree likelihood computation. The main barriers to adoption in TreeTime:
 
-1. **Architectural mismatch.** TreeTime's per-edge optimizer uses eigendecomposition-based coefficients cached once per edge. TKF91 requires pair HMM DP per edge, which has different data flow (sequence-level, not site-level).
-2. **Parameter estimation.** TKF91 adds two parameters ($\lambda$, $\mu$) that must be estimated jointly with branch lengths. The current Poisson model estimates one parameter ($\mu_{\text{indel}}$) analytically.
-3. **Single-residue limitation.** TKF91 allows only single-residue indels. This is less realistic than the Poisson count model for datasets with multi-residue indels (the Poisson model at least counts each multi-residue event as one event; TKF91 cannot represent them at all without the TKF92 extension).
+1. Architectural mismatch. TreeTime's per-edge optimizer uses eigendecomposition-based coefficients cached once per edge. TKF91 requires pair HMM DP per edge, which has different data flow (sequence-level, not site-level).
+2. Parameter estimation. TKF91 adds two parameters ($\lambda$, $\mu$) that must be estimated jointly with branch lengths. The current Poisson model estimates one parameter ($\mu_{\text{indel}}$) analytically.
+3. Single-residue limitation. TKF91 allows only single-residue indels. This is less realistic than the Poisson count model for datasets with multi-residue indels (the Poisson model at least counts each multi-residue event as one event; TKF91 cannot represent them at all without the TKF92 extension).
 
 ### Additional references
 

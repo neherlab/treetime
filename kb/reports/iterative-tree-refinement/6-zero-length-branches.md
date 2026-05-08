@@ -16,8 +16,8 @@ A **zero-length branch** is an edge in the phylogenetic tree with branch length 
 
 When a branch length is near zero relative to the alignment length, two interpretations exist:
 
-1. **Real short branch.** A and B genuinely diverged from C very recently. Node X existed briefly before splitting into A and B.
-2. **Artifact of binary resolution.** The true tree is a three-way split. The tree builder created X because it only produces binary trees. The branch root-X has near-zero length because X should not exist.
+1. Real short branch. A and B genuinely diverged from C very recently. Node X existed briefly before splitting into A and B.
+2. Artifact of binary resolution. The true tree is a three-way split. The tree builder created X because it only produces binary trees. The branch root-X has near-zero length because X should not exist.
 
 Telling these apart is the central challenge. The detection criterion must be conservative enough to keep real short branches while collapsing artifacts.
 

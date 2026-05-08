@@ -872,11 +872,11 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 
 Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog) against 5 verification criteria:
 
-- **C1: Local optimality**: log-likelihood at optimum exceeds neighbors at 3 delta scales (0.1%, 1%, 10%)
-- **C2: Stationarity** (Newton-specific): implied Newton step at optimum is below tolerance
-- **C3: Cross-method log-likelihood agreement**: all 6 methods produce log-likelihood within 1e-3
-- **C4: Bracket validity** (Brent-specific): optimum log-likelihood exceeds bracket endpoints
-- **C5: Cross-conditioning ordering**: on indel-bearing edges: `lh_newton_log >= lh_newton_sqrt >= lh_newton`
+- C1: Local optimality: log-likelihood at optimum exceeds neighbors at 3 delta scales (0.1%, 1%, 10%)
+- C2: Stationarity (Newton-specific): implied Newton step at optimum is below tolerance
+- C3: Cross-method log-likelihood agreement: all 6 methods produce log-likelihood within 1e-3
+- C4: Bracket validity (Brent-specific): optimum log-likelihood exceeds bracket endpoints
+- C5: Cross-conditioning ordering: on indel-bearing edges: `lh_newton_log >= lh_newton_sqrt >= lh_newton`
 
 ### Chain Rule Tests (sqrt and log transforms)
 

@@ -108,12 +108,12 @@ Key functions: `find_best_root()` (`#find_best_root`), `has_positive_clock_rate(
 
 ## Additional Algorithms
 
-- **Grid Search**: [`packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs`](../../packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs) - Brute-force 1D optimization over a uniform grid of split positions. Fallback when bracket-based methods cannot be applied.
-- **Branch Point Cost Function**: [`packages/treetime/src/commands/clock/find_best_root/cost_function.rs`](../../packages/treetime/src/commands/clock/find_best_root/cost_function.rs) - Chi-squared objective function for root position optimization, computing regression residuals at a candidate split point.
-- **Root-to-Tip Distance**: [`packages/treetime/src/commands/clock/rtt.rs`](../../packages/treetime/src/commands/clock/rtt.rs) - Tree traversal accumulating branch lengths from root to each leaf, producing the divergence values used in clock regression.
-- **Clock Model**: [`packages/treetime/src/commands/clock/clock_model.rs`](../../packages/treetime/src/commands/clock/clock_model.rs) - Rate/intercept estimation with `ClockModelStats::Estimated` (from regression) or `ClockModelStats::Fixed` (from `--clock-rate`) variants.
-- **Clock Traits**: [`packages/treetime/src/commands/clock/clock_traits.rs`](../../packages/treetime/src/commands/clock/clock_traits.rs) - `ClockNode` and `ClockEdge` trait definitions. `ClockEdge::gamma()` provides per-branch relaxed clock rate multiplier (default 1.0).
-- **Date Constraints**: [`packages/treetime/src/commands/clock/date_constraints.rs`](../../packages/treetime/src/commands/clock/date_constraints.rs) - `load_date_constraints()` (`#load_date_constraints`) assigns date distributions to tree nodes with validation.
+- Grid Search: [`packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs`](../../packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs) - Brute-force 1D optimization over a uniform grid of split positions. Fallback when bracket-based methods cannot be applied.
+- Branch Point Cost Function: [`packages/treetime/src/commands/clock/find_best_root/cost_function.rs`](../../packages/treetime/src/commands/clock/find_best_root/cost_function.rs) - Chi-squared objective function for root position optimization, computing regression residuals at a candidate split point.
+- Root-to-Tip Distance: [`packages/treetime/src/commands/clock/rtt.rs`](../../packages/treetime/src/commands/clock/rtt.rs) - Tree traversal accumulating branch lengths from root to each leaf, producing the divergence values used in clock regression.
+- Clock Model: [`packages/treetime/src/commands/clock/clock_model.rs`](../../packages/treetime/src/commands/clock/clock_model.rs) - Rate/intercept estimation with `ClockModelStats::Estimated` (from regression) or `ClockModelStats::Fixed` (from `--clock-rate`) variants.
+- Clock Traits: [`packages/treetime/src/commands/clock/clock_traits.rs`](../../packages/treetime/src/commands/clock/clock_traits.rs) - `ClockNode` and `ClockEdge` trait definitions. `ClockEdge::gamma()` provides per-branch relaxed clock rate multiplier (default 1.0).
+- Date Constraints: [`packages/treetime/src/commands/clock/date_constraints.rs`](../../packages/treetime/src/commands/clock/date_constraints.rs) - `load_date_constraints()` (`#load_date_constraints`) assigns date distributions to tree nodes with validation.
 
 ---
 

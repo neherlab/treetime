@@ -4,10 +4,10 @@ v0 reads trees from Newick and Nexus (via `Bio.Phylo.read()` in [packages/legacy
 
 The motivation is interoperability with the phylogenetics tool landscape. TreeTime sits at the center of multiple workflows: it receives trees from phylogenetic inference tools (IQ-TREE, RAxML, FastTree) and produces timed trees consumed by downstream visualization and surveillance systems. Each of these systems has its own format:
 
-- **Pandemic surveillance** (UShER, PANGOLIN, UCSC) operates on mutation-annotated trees in protobuf, storing millions of SARS-CoV-2 sequences. Reading MAT files lets TreeTime perform molecular clock inference on trees produced by UShER's parsimony placement.
-- **Genomic epidemiology** (Nextstrain, Auspice) uses a JSON format embedding visualization metadata alongside the tree. TreeTime is already the engine behind `augur refine`; bidirectional Auspice JSON support allows reading back previously exported datasets for re-analysis.
-- **Comparative genomics** (Archaeopteryx, Forester, ETE) uses PhyloXML for richly annotated trees carrying taxonomy, sequences, evolutionary events, geographic distributions, and protein domain architecture. PhyloXML support enables TreeTime output to carry structured annotations that Newick comment extensions cannot represent.
-- **Bayesian phylogenetics** (BEAST, MrBayes, FigTree) uses Nexus and Newick with tool-specific comment conventions. These remain the baseline formats.
+- Pandemic surveillance (UShER, PANGOLIN, UCSC) operates on mutation-annotated trees in protobuf, storing millions of SARS-CoV-2 sequences. Reading MAT files lets TreeTime perform molecular clock inference on trees produced by UShER's parsimony placement.
+- Genomic epidemiology (Nextstrain, Auspice) uses a JSON format embedding visualization metadata alongside the tree. TreeTime is already the engine behind `augur refine`; bidirectional Auspice JSON support allows reading back previously exported datasets for re-analysis.
+- Comparative genomics (Archaeopteryx, Forester, ETE) uses PhyloXML for richly annotated trees carrying taxonomy, sequences, evolutionary events, geographic distributions, and protein domain architecture. PhyloXML support enables TreeTime output to carry structured annotations that Newick comment extensions cannot represent.
+- Bayesian phylogenetics (BEAST, MrBayes, FigTree) uses Nexus and Newick with tool-specific comment conventions. These remain the baseline formats.
 
 v0's format support was sufficient when TreeTime operated within the Nextstrain pipeline alone. v1 targets a broader set of workflows where trees arrive from and depart to different tools. The `convert` subcommand ([packages/treetime-cli/src/convert/convert.rs#L71-L97](../../packages/treetime-cli/src/convert/convert.rs#L71-L97)) is a byproduct: once the format adapters exist, exposing them as a standalone conversion tool costs nothing.
 
@@ -33,10 +33,10 @@ Newick is a plain-text parenthetical format where tree topology is encoded by ne
 
 Underscores map to spaces in unquoted labels. Labels containing `()[],;:` or underscores must be single-quoted. The format has no mechanism for metadata beyond topology, labels, and branch lengths. This spawned a family of incompatible comment-based extensions:
 
-- **NHX** (New Hampshire eXtended): `[&&NHX:key=value:key=value:...]` syntax for gene tree/species tree reconciliation metadata. Parsers unaware of NHX treat these as comments and ignore them.
-- **BEAST/MrBayes annotations**: `[&key=value,key=value]` (single `&`). Attributes before the colon apply to the node, after the colon to the branch. Incompatible with NHX syntax.
-- **Extended Newick (eNewick)**: encodes phylogenetic networks (hybridization, lateral gene transfer) via `#` notation for reticulate nodes.
-- **Rich Newick**: adds `[&U]`/`[&R]` prefix for unrooted/rooted designation, plus optional bootstrap and probability fields.
+- NHX (New Hampshire eXtended): `[&&NHX:key=value:key=value:...]` syntax for gene tree/species tree reconciliation metadata. Parsers unaware of NHX treat these as comments and ignore them.
+- BEAST/MrBayes annotations: `[&key=value,key=value]` (single `&`). Attributes before the colon apply to the node, after the colon to the branch. Incompatible with NHX syntax.
+- Extended Newick (eNewick): encodes phylogenetic networks (hybridization, lateral gene transfer) via `#` notation for reticulate nodes.
+- Rich Newick: adds `[&U]`/`[&R]` prefix for unrooted/rooted designation, plus optional bootstrap and probability fields.
 
 These extensions all reuse the comment mechanism `[...]` with different internal conventions. There is no way to distinguish node from branch attributes, no escaping for `]` or `,` inside annotation values, and no formal schema.
 
@@ -68,16 +68,16 @@ v1 does not implement NeXML. It is mentioned here for context as the other XML-b
 
 PhyloXML is an XML language for phylogenetic trees and associated data (Han and Zmasek, 2009 [[3]](#ref-3)), defined by an XSD schema (version 1.20, namespace `http://www.phyloxml.org`). A PhyloXML document contains one or more `<phylogeny>` elements, each holding a recursive `<clade>` tree. Each clade can carry typed, structured annotations:
 
-- **Taxonomy**: scientific name, common name, rank (domain through subspecies), authority, taxonomic identifier, synonyms
-- **Sequences**: molecular sequences (DNA, RNA, protein), accessions, annotations, domain architecture with positions and confidence values
-- **Events**: speciation, duplication, loss, lateral gene transfer, fusion - enabling gene tree/species tree reconciliation
-- **Distributions**: geographic coordinates (latitude/longitude), polygons, geodetic datums
-- **Dates**: temporal data with value, minimum, maximum, and units (e.g. "mya")
-- **Confidence**: bootstrap support, posterior probability, or custom confidence types
-- **Binary characters**: gained/lost/present/absent character tracking
-- **Properties**: arbitrary typed key-value pairs using namespace-prefixed references (e.g. `NOAA:depth`), applicable to phylogenies, clades, nodes, branches, or annotations
-- **Display**: branch color (RGB, cascading to descendants) and width
-- **Cross-references**: clade-to-clade and sequence-to-sequence relations (orthology, paralogy, xenology)
+- Taxonomy: scientific name, common name, rank (domain through subspecies), authority, taxonomic identifier, synonyms
+- Sequences: molecular sequences (DNA, RNA, protein), accessions, annotations, domain architecture with positions and confidence values
+- Events: speciation, duplication, loss, lateral gene transfer, fusion - enabling gene tree/species tree reconciliation
+- Distributions: geographic coordinates (latitude/longitude), polygons, geodetic datums
+- Dates: temporal data with value, minimum, maximum, and units (e.g. "mya")
+- Confidence: bootstrap support, posterior probability, or custom confidence types
+- Binary characters: gained/lost/present/absent character tracking
+- Properties: arbitrary typed key-value pairs using namespace-prefixed references (e.g. `NOAA:depth`), applicable to phylogenies, clades, nodes, branches, or annotations
+- Display: branch color (RGB, cascading to descendants) and width
+- Cross-references: clade-to-clade and sequence-to-sequence relations (orthology, paralogy, xenology)
 
 The `<property>` element is the extensibility mechanism: it accepts any XSD datatype and any namespace-prefixed key, allowing custom annotations without schema modification. The `id_source`/`id_ref` mechanism enables internal cross-linking within a document.
 
@@ -111,10 +111,10 @@ The core data structure is the **mutation-annotated tree (MAT)**: a phylogenetic
 
 The MAT is serialized using Google Protocol Buffers. The `parsimony.proto` schema has four components:
 
-- **`data`** (top-level): a Newick string, per-node mutation lists in preorder traversal order, condensed nodes (groups of identical sequences collapsed into single representatives), and per-node metadata
-- **`mut`**: individual mutation with `position`, `ref_nuc`, `par_nuc` (parent nucleotide), repeated `mut_nuc` (child nucleotides), and `chromosome`. Nucleotide encoding: 0=A, 1=C, 2=G, 3=T
-- **`condensed_node`**: maps a node name to a list of identical leaf names, compacting polytomies of identical sequences
-- **`node_metadata`**: per-node clade annotation strings
+- `data` (top-level): a Newick string, per-node mutation lists in preorder traversal order, condensed nodes (groups of identical sequences collapsed into single representatives), and per-node metadata
+- `mut`: individual mutation with `position`, `ref_nuc`, `par_nuc` (parent nucleotide), repeated `mut_nuc` (child nucleotides), and `chromosome`. Nucleotide encoding: 0=A, 1=C, 2=G, 3=T
+- `condensed_node`: maps a node name to a list of identical leaf names, compacting polytomies of identical sequences
+- `node_metadata`: per-node clade annotation strings
 
 A second schema (`mutation_detailed.proto`) provides a more compact binary representation with packed mutation fields, plus structures for sample placement workflows.
 
@@ -122,11 +122,11 @@ A second schema (`mutation_detailed.proto`) provides a more compact binary repre
 
 UShER operates within the pandemic genomics surveillance ecosystem:
 
-- **GISAID**: primary global repository of SARS-CoV-2 sequences (over 14 million by 2023). UShER processes sequences deposited here.
-- **Nextstrain**: real-time pathogen evolution visualization platform (Hadfield et al., 2018 [[5]](#ref-5)). The `augur refine` step calls TreeTime (Sagulenko et al., 2018 [[8]](#ref-8)) for molecular clock inference.
-- **PANGOLIN**: SARS-CoV-2 lineage assignment tool. UShER serves as an alternative backend for lineage placement, offering faster and more accurate results than the machine learning model for closely related sequences.
-- **Taxonium**: web-based viewer for large mutation-annotated trees, consuming the related `taxodium.proto` schema.
-- **UCSC Genome Browser**: hosts the UShER web interface and maintains daily updated global SARS-CoV-2 phylogenetic trees.
+- GISAID: primary global repository of SARS-CoV-2 sequences (over 14 million by 2023). UShER processes sequences deposited here.
+- Nextstrain: real-time pathogen evolution visualization platform (Hadfield et al., 2018 [[5]](#ref-5)). The `augur refine` step calls TreeTime (Sagulenko et al., 2018 [[8]](#ref-8)) for molecular clock inference.
+- PANGOLIN: SARS-CoV-2 lineage assignment tool. UShER serves as an alternative backend for lineage placement, offering faster and more accurate results than the machine learning model for closely related sequences.
+- Taxonium: web-based viewer for large mutation-annotated trees, consuming the related `taxodium.proto` schema.
+- UCSC Genome Browser: hosts the UShER web interface and maintains daily updated global SARS-CoV-2 phylogenetic trees.
 
 The format's design reflects pandemic-scale constraints: millions of sequences arriving daily, trees updated continuously, and parsimony-based placement as the only tractable approach at this scale. For closely related sequences (SARS-CoV-2 genomes differ by only a handful of mutations), parsimony and likelihood methods converge in accuracy.
 
@@ -156,10 +156,10 @@ Nextstrain was co-developed by Trevor Bedford (Fred Hutchinson Cancer Research C
 
 The Auspice v2 format (schema ID `https://nextstrain.org/schemas/dataset/v2`) combines metadata and tree in a single JSON file with four top-level fields:
 
-- **`version`**: constant `"v2"`
-- **`meta`**: dataset metadata including `updated` date, `panels` (tree, map, frequencies, entropy, measurements), `colorings` (typed color-by options with scales and legends), `geo_resolutions` (geographic trait definitions with latitude/longitude per deme), `genome_annotations` (nucleotide and CDS positions in 1-based GFF convention), `display_defaults` (layout, distance measure, default color-by), `filters`, `maintainers`, and `data_provenance`
-- **`tree`**: recursive node structure where each node has `name`, `node_attrs` (divergence `div`, decimal date `num_date` with confidence intervals, arbitrary traits as `{"value": ..., "confidence": ...}` objects), `branch_attrs` (per-gene mutation lists, branch labels), and optional `children`
-- **`root_sequence`**: optional mapping of gene/segment names to reference sequences
+- `version`: constant `"v2"`
+- `meta`: dataset metadata including `updated` date, `panels` (tree, map, frequencies, entropy, measurements), `colorings` (typed color-by options with scales and legends), `geo_resolutions` (geographic trait definitions with latitude/longitude per deme), `genome_annotations` (nucleotide and CDS positions in 1-based GFF convention), `display_defaults` (layout, distance measure, default color-by), `filters`, `maintainers`, and `data_provenance`
+- `tree`: recursive node structure where each node has `name`, `node_attrs` (divergence `div`, decimal date `num_date` with confidence intervals, arbitrary traits as `{"value": ..., "confidence": ...}` objects), `branch_attrs` (per-gene mutation lists, branch labels), and optional `children`
+- `root_sequence`: optional mapping of gene/segment names to reference sequences
 
 The v2 format replaced the earlier v1 format which split data across two files (`meta.json` + `tree.json`), used 0-based genome annotation positions, and lacked structured `node_attrs`/`branch_attrs`.
 

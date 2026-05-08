@@ -55,9 +55,9 @@ v1's behavior (fail with clear error) is defensible. Silently picking `columns[0
 
 ### Approaches
 
-- **Keep v1 behavior**: require explicit column specification when auto-detection fails. Users get an actionable error message listing available columns.
-- **Add positional fallback with warning**: fall back to `columns[0]`/`columns[1]` but emit a warning. Matches v0 convenience at the cost of silent misuse risk.
-- **Add positional fallback for value column only**: the name column has well-known candidates (`name`, `strain`, `accession`); if none match, an error is appropriate. The attribute column has no well-known candidates, so positional fallback to `columns[1]` is more defensible (v0 behavior). Add a warning.
+- Keep v1 behavior: require explicit column specification when auto-detection fails. Users get an actionable error message listing available columns.
+- Add positional fallback with warning: fall back to `columns[0]`/`columns[1]` but emit a warning. Matches v0 convenience at the cost of silent misuse risk.
+- Add positional fallback for value column only: the name column has well-known candidates (`name`, `strain`, `accession`); if none match, an error is appropriate. The attribute column has no well-known candidates, so positional fallback to `columns[1]` is more defensible (v0 behavior). Add a warning.
 
 ### Recommendation
 

@@ -12,9 +12,9 @@ Revert the hoisting of `estimate_indel_rate()` from before the optimize loop to 
 
 Per-iteration re-estimation is the theoretically correct ECM (Expectation Conditional Maximization) approach. The optimize loop is an ECM algorithm where:
 
-- **E-step**: marginal ancestral reconstruction estimates ancestral sequences given current branch lengths
-- **CM-step 1**: per-edge branch-length optimization maximizes likelihood given reconstructed ancestral sequences, holding the indel rate fixed
-- **CM-step 2**: re-estimate the indel rate $\hat\mu$ at the new branch lengths
+- E-step: marginal ancestral reconstruction estimates ancestral sequences given current branch lengths
+- CM-step 1: per-edge branch-length optimization maximizes likelihood given reconstructed ancestral sequences, holding the indel rate fixed
+- CM-step 2: re-estimate the indel rate $\hat\mu$ at the new branch lengths
 
 ECM preserves EM's monotone convergence guarantee as long as every CM-step executes each iteration ([Meng and Rubin 1993](https://doi.org/10.1093/biomet/80.2.267)). Permanently freezing the indel rate skips CM-step 2, turning the loop into a different (fixed-rate) optimization problem.
 

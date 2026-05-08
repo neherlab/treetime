@@ -52,9 +52,9 @@ The remaining differences follow from dense storing full N-by-K matrices while s
 
 ## Investigation needed
 
-1. **Measure impact.** Run dense marginal on a dataset with significant `N` content (e.g., `sc2` with masked regions). Compare dense vs sparse `edge_effective_length()`. Quantify overcount and whether it shifts branch-length estimates
-2. **v0 oracle.** After fix, run golden master tests for `ancestral --dense=true` on all datasets. Confirm branch lengths and log-likelihoods match or improve
-3. **treat_gap_as_unknown interaction.** Dense assigns uniform profiles to gap positions via `seq2prof()` (comment at [packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93](../../packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93)). Verify explicit unknown tracking does not conflict
+1. Measure impact. Run dense marginal on a dataset with significant `N` content (e.g., `sc2` with masked regions). Compare dense vs sparse `edge_effective_length()`. Quantify overcount and whether it shifts branch-length estimates
+2. v0 oracle. After fix, run golden master tests for `ancestral --dense=true` on all datasets. Confirm branch lengths and log-likelihoods match or improve
+3. treat_gap_as_unknown interaction. Dense assigns uniform profiles to gap positions via `seq2prof()` (comment at [packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93](../../packages/treetime/src/representation/partition/marginal_dense.rs#L91-L93)). Verify explicit unknown tracking does not conflict
 
 ## Tests needed
 

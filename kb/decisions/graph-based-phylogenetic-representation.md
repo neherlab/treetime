@@ -44,8 +44,8 @@ Gene duplication creates paralogous copies within a genome (Wikipedia [[32]](#re
 
 A phylogenetic network is a graph used to represent evolutionary relationships that include reticulation events (Huson et al., 2011 [[4]](#ref-4)). Trees are a special case of networks where every node has at most one parent. In a rooted phylogenetic network:
 
-- **Tree nodes** have exactly one parent (divergence events).
-- **Hybrid nodes** (reticulate nodes) have two or more parents (hybridization, HGT, recombination events).
+- Tree nodes have exactly one parent (divergence events).
+- Hybrid nodes (reticulate nodes) have two or more parents (hybridization, HGT, recombination events).
 - Leaves are bijectively labeled by taxa.
 - The graph is a directed acyclic graph (DAG) (Huson et al., 2011 [[4]](#ref-4)).
 
@@ -53,13 +53,13 @@ A phylogenetic network is a graph used to represent evolutionary relationships t
 
 Network classes form a containment hierarchy, each constraining the allowed reticulation patterns (Huson & Scornavacca, 2011 [[10]](#ref-10)):
 
-- **Trees** (strictest): no reticulate nodes. Each node has at most one parent.
-- **Galled trees**: each reticulate node belongs to a single "gall" (biconnected cycle), and galls share no edges.
-- **Tree-child networks**: every non-leaf node has at least one child that is a tree node (not a reticulate node). Every internal node has a "tree path" to a leaf.
-- **Normal networks**: tree-child with no redundant arcs.
-- **Reticulation-visible networks**: for every reticulate node, there exists a tree node below it that is not below any other reticulate node.
-- **Tree-based networks**: obtainable by adding arcs between arcs of some base tree (Pons et al., 2018 [[11]](#ref-11)). Contains tree-child and reticulation-visible as subclasses.
-- **Level-k networks**: the maximum number of reticulate nodes in any biconnected component is at most k (Huson & Scornavacca, 2011 [[10]](#ref-10)). Level-0 networks are trees. Level-1 networks are close to galled trees.
+- Trees (strictest): no reticulate nodes. Each node has at most one parent.
+- Galled trees: each reticulate node belongs to a single "gall" (biconnected cycle), and galls share no edges.
+- Tree-child networks: every non-leaf node has at least one child that is a tree node (not a reticulate node). Every internal node has a "tree path" to a leaf.
+- Normal networks: tree-child with no redundant arcs.
+- Reticulation-visible networks: for every reticulate node, there exists a tree node below it that is not below any other reticulate node.
+- Tree-based networks: obtainable by adding arcs between arcs of some base tree (Pons et al., 2018 [[11]](#ref-11)). Contains tree-child and reticulation-visible as subclasses.
+- Level-k networks: the maximum number of reticulate nodes in any biconnected component is at most k (Huson & Scornavacca, 2011 [[10]](#ref-10)). Level-0 networks are trees. Level-1 networks are close to galled trees.
 
 The treewidth of level-k networks is bounded by (k+3)/2 (Markin et al., 2024 [[12]](#ref-12)), making many NP-hard problems polynomial for constant k.
 

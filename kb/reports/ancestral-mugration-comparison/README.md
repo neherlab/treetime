@@ -269,8 +269,8 @@ Both commands implement the same Felsenstein pruning algorithm (backward: leaves
 
 ### Missing data handling
 
-- **ancestral**: Ambiguous characters (N, gaps) produce uniform-like profiles at affected positions via `Alphabet.profile_map`. Terminal gap handling controlled by `--keep-overhangs`.
-- **mugration**: Missing data marker (default `"?"`) produces `DiscreteNodeData::missing(n_states)` = uniform profile `1/n_states` across all states. `DiscreteStates` excludes the missing marker from the state set entirely.
+- ancestral: Ambiguous characters (N, gaps) produce uniform-like profiles at affected positions via `Alphabet.profile_map`. Terminal gap handling controlled by `--keep-overhangs`.
+- mugration: Missing data marker (default `"?"`) produces `DiscreteNodeData::missing(n_states)` = uniform profile `1/n_states` across all states. `DiscreteStates` excludes the missing marker from the state set entirely.
 
 ## Stale-messages bug in iterative refinement
 
@@ -327,8 +327,8 @@ None of these affect mugration (mugration uses `PartitionDiscrete`, not the sequ
 
 ### Feature parity with v0
 
-- **Ancestral**: 10/16 features implemented, 6 missing. The missing features are CLI flags that are parsed but not wired: `--keep-overhangs`, `--zero-based`, `--report-ambiguous`, `--seed`, `--gtr-params`, `--aa`, `--vcf-reference`, `--aln`.
-- **Mugration**: 10/10 features implemented, 0 missing.
+- Ancestral: 10/16 features implemented, 6 missing. The missing features are CLI flags that are parsed but not wired: `--keep-overhangs`, `--zero-based`, `--report-ambiguous`, `--seed`, `--gtr-params`, `--aa`, `--vcf-reference`, `--aln`.
+- Mugration: 10/10 features implemented, 0 missing.
 
 ## Architectural observations
 

@@ -44,9 +44,9 @@ The Poisson count model was chosen over more sophisticated approaches. See [inde
 
 Three approaches were evaluated:
 
-1. **Affine gap penalty** - fixed cost per indel event plus per-position extension cost. Not probabilistic; cannot produce a proper likelihood.
-2. **TKF91 birth-death process** - separates insertion rate $\lambda$ from deletion rate $\mu$ with equilibrium constraint $\lambda < \mu$. Tracks individual indel lengths. Computationally expensive ($O(L^N)$ exact), requires restructuring the per-edge likelihood. Over-parameterized for the branch-length-prevents-zero use case.
-3. **Poisson indel count** (chosen) - single rate, each indel event has equal weight. Negligible computational cost. Integrates directly into Newton step via additive log-likelihood term.
+1. Affine gap penalty - fixed cost per indel event plus per-position extension cost. Not probabilistic; cannot produce a proper likelihood.
+2. TKF91 birth-death process - separates insertion rate $\lambda$ from deletion rate $\mu$ with equilibrium constraint $\lambda < \mu$. Tracks individual indel lengths. Computationally expensive ($O(L^N)$ exact), requires restructuring the per-edge likelihood. Over-parameterized for the branch-length-prevents-zero use case.
+3. Poisson indel count (chosen) - single rate, each indel event has equal weight. Negligible computational cost. Integrates directly into Newton step via additive log-likelihood term.
 
 The primary goal is preventing zero-length assignment on branches with only indel evidence, not reconstructing the indel process. The Poisson model achieves this with minimal implementation and computational cost.
 

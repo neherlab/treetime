@@ -27,8 +27,8 @@ p(theta | tau) ~ tau^((m-1)/2) * exp(-tau/2 * theta^T Q theta)
 
 where Q is a tridiagonal precision matrix. Two constructions:
 
-- **Time-weighted (Skyride)**: `Q[i,i+1] = -1/dt_i`. Penalizes rate of change proportionally to time interval.
-- **Uniform (Skygrid, TreeTime)**: `Q[i,i+1] = -1`. Equivalent to time-weighted with uniform spacing.
+- Time-weighted (Skyride): `Q[i,i+1] = -1/dt_i`. Penalizes rate of change proportionally to time interval.
+- Uniform (Skygrid, TreeTime): `Q[i,i+1] = -1`. Equivalent to time-weighted with uniform spacing.
 
 TreeTime v1's stiffness penalty `stiffness * sum(diff(log_Tc)^2)` is the GMRF quadratic form with uniform weights. The boundary penalty (for log_Tc outside [-100, 0]) is TreeTime-specific.
 
@@ -36,9 +36,9 @@ TreeTime v1's stiffness penalty `stiffness * sum(diff(log_Tc)^2)` is the GMRF qu
 
 The coalescent + GMRF gradient is analytically tractable:
 
-- **GMRF penalty**: `d/d(theta_k) [theta^T Q theta] = 2*(Q*theta)_k` = tridiagonal Laplacian, O(n)
-- **Coalescent likelihood**: `d/d(theta_k) = n_coal_k - C_k * exp(-theta_k)` where n_coal_k and C_k are precomputable sufficient statistics
-- **Boundary penalty**: piecewise constant (subgradient)
+- GMRF penalty: `d/d(theta_k) [theta^T Q theta] = 2*(Q*theta)_k` = tridiagonal Laplacian, O(n)
+- Coalescent likelihood: `d/d(theta_k) = n_coal_k - C_k * exp(-theta_k)` where n_coal_k and C_k are precomputable sufficient statistics
+- Boundary penalty: piecewise constant (subgradient)
 
 <a id="cite-9"></a>[Lan et al. 2015](https://doi.org/10.1093/bioinformatics/btv378) [[9](#ref-9)] demonstrated that gradient-based methods (HMC) outperform gradient-free methods for coalescent parameter estimation. <a id="cite-10"></a>[Fourment et al. 2023](https://doi.org/10.1093/gbe/evad099) [[10](#ref-10)] showed hand-coded gradients are faster than autodiff for phylogenetics.
 

@@ -28,9 +28,9 @@ where $\mu_w = \sum_e k_{w,e} / \sum_e t_e$.
 
 Weighting options:
 
-- **Linear**: $w(l) = l$. A 100-base deletion contributes 100x as much as a 1-base deletion. The indel rate $\mu_w$ becomes "total indel bases per unit branch length."
-- **Logarithmic**: $w(l) = \ln(l + 1)$. Diminishing returns for longer indels. Motivated by the observation that long indels are rarer but individually more informative.
-- **Square root**: $w(l) = \sqrt{l}$. Intermediate between count and linear.
+- Linear: $w(l) = l$. A 100-base deletion contributes 100x as much as a 1-base deletion. The indel rate $\mu_w$ becomes "total indel bases per unit branch length."
+- Logarithmic: $w(l) = \ln(l + 1)$. Diminishing returns for longer indels. Motivated by the observation that long indels are rarer but individually more informative.
+- Square root: $w(l) = \sqrt{l}$. Intermediate between count and linear.
 
 The factorial term $\ln(k!)$ in the exact Poisson is not well-defined for non-integer $k_w$. Use the Stirling approximation or drop it (it is $t$-independent and does not affect the Newton step).
 

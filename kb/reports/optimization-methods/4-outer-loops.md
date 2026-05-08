@@ -8,8 +8,8 @@ The per-edge branch length optimization (Chapter 2) runs inside an outer loop th
 
 The phylogenetic likelihood has ancestral states at internal nodes as latent variables. The pruning algorithm marginalizes over them. When branch length optimization is cast as EM:
 
-- **E-step**: compute posterior distribution of ancestral states (marginal reconstruction via backward + forward pruning pass)
-- **M-step**: update branch lengths given expected sufficient statistics (per-edge optimization)
+- E-step: compute posterior distribution of ancestral states (marginal reconstruction via backward + forward pruning pass)
+- M-step: update branch lengths given expected sufficient statistics (per-edge optimization)
 
 <a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)] established the EM algorithm with monotone likelihood increase guarantee. <a id="cite-2"></a>[Wu 1983](https://projecteuclid.org/journals/annals-of-statistics/volume-11/issue-1/On-the-Convergence-Properties-of-the-EM-Algorithm/10.1214/aos/1176346060.full) [[2](#ref-2)] corrected convergence proofs and extended beyond exponential families.
 
@@ -38,17 +38,17 @@ v1 code: [packages/treetime/src/commands/optimize/run.rs#L513-L535](../../../pac
 
 No tool uses pure EM for branch lengths. All use coordinate ascent (one branch at a time) with NR or Brent, iterated over all branches:
 
-- **RAxML-NG**: up to 32 smoothings, adaptive epsilon
-- **IQ-TREE**: up to 100 rounds, rollback if likelihood drops > tolerance\*0.1
-- **PhyML**: until dLH < tolerance, alternating with model parameter optimization
+- RAxML-NG: up to 32 smoothings, adaptive epsilon
+- IQ-TREE: up to 100 rounds, rollback if likelihood drops > tolerance\*0.1
+- PhyML: until dLH < tolerance, alternating with model parameter optimization
 
 ## Acceleration methods
 
 EM acceleration methods exist but are not adopted by any major phylogenetic tool:
 
-- **SQUAREM** (<a id="cite-6"></a>[Varadhan and Roland 2008](https://doi.org/10.1111/j.1467-9469.2007.00585.x) [[6](#ref-6)]): off-the-shelf acceleration achieving superlinear convergence. Mean 18-fold speedup in benchmarks. Requires only the EM mapping function (no gradients).
-- **DAAREM** (<a id="cite-7"></a>[Henderson and Varadhan 2019](https://doi.org/10.1080/10618600.2019.1594835) [[7](#ref-7)]): damped Anderson acceleration with monotonicity control.
-- **Anderson acceleration**: mixing of multiple previous iterates.
+- SQUAREM (<a id="cite-6"></a>[Varadhan and Roland 2008](https://doi.org/10.1111/j.1467-9469.2007.00585.x) [[6](#ref-6)]): off-the-shelf acceleration achieving superlinear convergence. Mean 18-fold speedup in benchmarks. Requires only the EM mapping function (no gradients).
+- DAAREM (<a id="cite-7"></a>[Henderson and Varadhan 2019](https://doi.org/10.1080/10618600.2019.1594835) [[7](#ref-7)]): damped Anderson acceleration with monotonicity control.
+- Anderson acceleration: mixing of multiple previous iterates.
 
 Whether these would accelerate TreeTime's outer loop is unknown. The primary bottleneck is typically the pruning traversal (O(n \* s^2) per site per pass), not the number of outer iterations.
 

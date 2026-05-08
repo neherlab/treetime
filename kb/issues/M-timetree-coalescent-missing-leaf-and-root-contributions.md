@@ -16,11 +16,11 @@ The Kingman coalescent neg-log-likelihood decomposes into three per-node pieces 
 
 v0 applies leaf contributions in two code paths during the backward pass:
 
-1. **Leaves with precise dates** (`clock_tree.py:474-480`): adds `-I(date_peak)` as a constant to the branch length distribution. The constant doesn't change the distribution shape but affects relative weighting between siblings at the parent.
+1. Leaves with precise dates (`clock_tree.py:474-480`): adds `-I(date_peak)` as a constant to the branch length distribution. The constant doesn't change the distribution shape but affects relative weighting between siblings at the parent.
 
-2. **Leaves with uncertain dates** (`clock_tree.py:499-503`): adds `-I(time_points)` as a distribution to the messages being multiplied. This changes the shape within the date range, biasing the effective date.
+2. Leaves with uncertain dates (`clock_tree.py:499-503`): adds `-I(time_points)` as a distribution to the messages being multiplied. This changes the shape within the date range, biasing the effective date.
 
-3. **Root correction** (`clock_tree.py:518-530`): after combining all child messages at the root, multiplies by `Distribution(x, +I(x), is_log=True)`. The comment reads: "Removed merger rate must be added back at the root as no longer an internal node."
+3. Root correction (`clock_tree.py:518-530`): after combining all child messages at the root, multiplies by `Distribution(x, +I(x), is_log=True)`. The comment reads: "Removed merger rate must be added back at the root as no longer an internal node."
 
 ### v1 current state
 
@@ -36,9 +36,9 @@ ln P(tree | Tc) = Σ_{mergers} m_i * ln(λ(t_i)) - Σ_{branches} (I(t_parent) - 
 
 The survival sum telescopes: each node j with k_j children contributes `+k_j * I(t_j)` as parent of k_j branches, and `-I(t_j)` as child of its parent's branch (non-root only). Grouping by node:
 
-- **Internal (non-root)**: net coefficient `k_j - 1 = m_j`. Combined with merger: `m*(ln(λ) - I(t))`. Neg-log: `m*(I(t) - ln(λ))`.
-- **Root**: net coefficient `k_root` (no child subtraction). Combined with merger: `m*ln(λ) - k*I(t)`. Equals `m*(ln(λ) - I(t)) - I(t)`. So: internal formula plus root correction `+I(t)`.
-- **Leaf**: net coefficient `-1` (child only, zero children). Neg-log: `-I(t_leaf)`.
+- Internal (non-root): net coefficient `k_j - 1 = m_j`. Combined with merger: `m*(ln(λ) - I(t))`. Neg-log: `m*(I(t) - ln(λ))`.
+- Root: net coefficient `k_root` (no child subtraction). Combined with merger: `m*ln(λ) - k*I(t)`. Equals `m*(ln(λ) - I(t)) - I(t)`. So: internal formula plus root correction `+I(t)`.
+- Leaf: net coefficient `-1` (child only, zero children). Neg-log: `-I(t_leaf)`.
 
 The three pieces sum to the exact Kingman neg-log-likelihood.
 

@@ -6,9 +6,9 @@
 
 A phylogenetic tree is a diagram showing how organisms are related through evolution. In molecular phylogenetics, organisms are represented by their DNA (or protein) sequences. The tree has three types of elements:
 
-- **Leaves** (tips): observed sequences. Each leaf is a sample -- a virus isolate, a bacterial strain, a patient's tumor, or any other sequenced entity.
-- **Internal nodes**: hypothetical ancestors whose sequences are not directly observed but can be inferred.
-- **Branches** (edges): connections between nodes. Each branch represents an evolutionary lineage -- a line of descent from ancestor to descendant.
+- Leaves (tips): observed sequences. Each leaf is a sample -- a virus isolate, a bacterial strain, a patient's tumor, or any other sequenced entity.
+- Internal nodes: hypothetical ancestors whose sequences are not directly observed but can be inferred.
+- Branches (edges): connections between nodes. Each branch represents an evolutionary lineage -- a line of descent from ancestor to descendant.
 
 ```
         root
@@ -29,9 +29,9 @@ A branch length of 0.01 means roughly 1 substitution per 100 positions. A branch
 
 Branch lengths encode three things:
 
-- **How much evolution happened**: longer branches mean more genetic change
-- **How much time passed** (combined with a molecular clock): branch length / mutation rate = time
-- **How confident we are in the branching order**: very short internal branches mean the topology is uncertain at that split
+- How much evolution happened: longer branches mean more genetic change
+- How much time passed (combined with a molecular clock): branch length / mutation rate = time
+- How confident we are in the branching order: very short internal branches mean the topology is uncertain at that split
 
 ## What is tree refinement?
 
@@ -67,9 +67,9 @@ True history (polytomy):          Tree builder output (arbitrary):
 
 The internal branches root-AB and root-CD have near-zero length because they represent structure the data does not support. Two operations address this:
 
-1. **Prune zero-length branches**: collapse unsupported internal edges, creating polytomies. This admits that the data cannot resolve a particular split. See [Chapter 6](6-zero-length-branches.md).
+1. Prune zero-length branches: collapse unsupported internal edges, creating polytomies. This admits that the data cannot resolve a particular split. See [Chapter 6](6-zero-length-branches.md).
 
-2. **Resolve polytomies by shared mutations**: scan children of a polytomy for shared substitutions and introduce new internal nodes grouping children that share mutations. This uses sequence signal to create binary splits where the data supports them. See [Chapter 7](7-polytomy-resolution.md).
+2. Resolve polytomies by shared mutations: scan children of a polytomy for shared substitutions and introduce new internal nodes grouping children that share mutations. This uses sequence signal to create binary splits where the data supports them. See [Chapter 7](7-polytomy-resolution.md).
 
 These are complementary: pruning removes unsupported structure, and shared-mutation merging adds supported structure.
 
@@ -79,9 +79,9 @@ TreeTime is a phylodynamic analysis tool used in the Nextstrain platform for rea
 
 TreeTime has three commands relevant to tree refinement:
 
-- **`optimize`**: branch length optimization. Takes a tree and alignment, refines branch lengths by maximum likelihood. Topology cleanup (pruning and polytomy resolution) should be integrated here but is not yet fully implemented.
-- **`prune`**: standalone tree cleanup. Removes short branches, empty branches, or named nodes. Can merge sibling branches sharing mutations.
-- **`timetree`**: the main phylodynamic pipeline. Combines branch length optimization with molecular clock inference, polytomy resolution, coalescent modeling, and ancestral reconstruction in an iterative loop.
+- `optimize`: branch length optimization. Takes a tree and alignment, refines branch lengths by maximum likelihood. Topology cleanup (pruning and polytomy resolution) should be integrated here but is not yet fully implemented.
+- `prune`: standalone tree cleanup. Removes short branches, empty branches, or named nodes. Can merge sibling branches sharing mutations.
+- `timetree`: the main phylodynamic pipeline. Combines branch length optimization with molecular clock inference, polytomy resolution, coalescent modeling, and ancestral reconstruction in an iterative loop.
 
 ## What this book covers
 

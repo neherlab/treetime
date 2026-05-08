@@ -21,8 +21,8 @@ Key functions: `run_discrete_marginal()`, `attach_traits()`.
 
 For each leaf node:
 
-- **Known trait**: Create delta profile (one-hot encoding). `profile[i] = 1.0` where `i` is the observed state index, `0.0` elsewhere.
-- **Missing trait ("?")**: Create uniform prior. `profile[i] = 1/n_states` for all states.
+- Known trait: Create delta profile (one-hot encoding). `profile[i] = 1.0` where `i` is the observed state index, `0.0` elsewhere.
+- Missing trait ("?"): Create uniform prior. `profile[i] = 1/n_states` for all states.
 
 This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
 
@@ -133,10 +133,10 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 
 ### Test Gaps
 
-1. **Leaf nodes filtered from golden master comparison**: Test compares only `NODE_*` prefixed names
-2. **Missing data reconstruction not tested**: No cases with `"?"` trait values
-3. **Confidence profiles not validated**: `MugrationOutput.confidence` captured but not asserted
-4. **Degenerate cases not covered**: Single state, all missing, etc.
+1. Leaf nodes filtered from golden master comparison: Test compares only `NODE_*` prefixed names
+2. Missing data reconstruction not tested: No cases with `"?"` trait values
+3. Confidence profiles not validated: `MugrationOutput.confidence` captured but not asserted
+4. Degenerate cases not covered: Single state, all missing, etc.
 
 ---
 

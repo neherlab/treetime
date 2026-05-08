@@ -18,9 +18,9 @@ Re-estimating each iteration is coordinate ascent: optimize branch lengths holdi
 
 The optimize loop is an <a id="gloss-use-1"></a>ECM <sup>[1](#gloss-1)</sup> algorithm (<a id="cite-1"></a>[Meng and Rubin 1993](https://doi.org/10.1093/biomet/80.2.267) [[1](#ref-1)]). The latent data is the set of ancestral sequences. The <a id="gloss-use-2"></a>EM <sup>[2](#gloss-2)</sup> steps map as follows:
 
-- **E-step**: marginal ancestral reconstruction (`update_marginal`) estimates ancestral sequences given current branch lengths
-- **CM-step 1**: per-edge branch-length optimization (`run_optimize_mixed_with_indel_rate`) maximizes likelihood given the reconstructed ancestral sequences, holding the indel rate fixed
-- **CM-step 2**: re-estimate the indel rate $\hat{\mu}$ at the new branch lengths (`estimate_indel_rate`)
+- E-step: marginal ancestral reconstruction (`update_marginal`) estimates ancestral sequences given current branch lengths
+- CM-step 1: per-edge branch-length optimization (`run_optimize_mixed_with_indel_rate`) maximizes likelihood given the reconstructed ancestral sequences, holding the indel rate fixed
+- CM-step 2: re-estimate the indel rate $\hat{\mu}$ at the new branch lengths (`estimate_indel_rate`)
 
 ECM preserves EM's monotone convergence guarantee as long as every CM-step is executed each iteration. Freezing the indel rate permanently skips CM-step 2, turning the loop into a different (fixed-rate) optimization problem.
 

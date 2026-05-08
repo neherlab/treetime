@@ -10,9 +10,9 @@ Each optimize iteration calls `update_marginal()` (backward + forward pass over 
 
 ## Potential optimizations
 
-- **Column compression**: group identical alignment columns and weight by count, as in site pattern compression for likelihood evaluation. The marginal passes currently process every column individually. Compressed columns reduce $L$ to the number of unique patterns.
-- **SIMD vectorization**: the inner loop multiplies profile vectors by transition probability matrices. AVX2/NEON intrinsics could process multiple sites or states per instruction, as demonstrated by the Phylogenetic Likelihood Library <a id="cite-2"></a>[Flouri et al. 2015](https://doi.org/10.1093/sysbio/syu084) [[2](#ref-2)].
-- **Sparse fallback**: for alignments with low diversity, dense mode does redundant work on invariant columns. An adaptive mode could use dense for variable sites and a scalar shortcut for fixed sites.
+- Column compression: group identical alignment columns and weight by count, as in site pattern compression for likelihood evaluation. The marginal passes currently process every column individually. Compressed columns reduce $L$ to the number of unique patterns.
+- SIMD vectorization: the inner loop multiplies profile vectors by transition probability matrices. AVX2/NEON intrinsics could process multiple sites or states per instruction, as demonstrated by the Phylogenetic Likelihood Library <a id="cite-2"></a>[Flouri et al. 2015](https://doi.org/10.1093/sysbio/syu084) [[2](#ref-2)].
+- Sparse fallback: for alignments with low diversity, dense mode does redundant work on invariant columns. An adaptive mode could use dense for variable sites and a scalar shortcut for fixed sites.
 
 ## v0 comparison
 

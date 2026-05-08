@@ -73,19 +73,19 @@ A numeric value of `t = 0.0007` represents:
 
 Running `treetime optimize` on a SARS-CoV-2 tree produced by timetree inference:
 
-1. **Input**: branch lengths in years, `t ≈ 1.0` for a one-year branch.
+1. Input: branch lengths in years, `t ≈ 1.0` for a one-year branch.
 
-2. **GTR inference** (`infer_gtr_dense` / `infer_gtr_sparse`): accumulates `nij` (expected
+2. GTR inference (`infer_gtr_dense` / `infer_gtr_sparse`): accumulates `nij` (expected
    substitution counts) and `Ti` (time in state) from `update_marginal`'s stored `mut_stack`.
    `Ti` is proportional to `BL * state_freq`, so `Ti ~ 1.0 * n_sites`. The ratio
    `nij / Ti ≈ 0.0007 subs/site/year` gives `mu ≈ 0.0007` in the inferred GTR.
 
-3. **`--branch-length-initial-guess=always`**: `initial_guess_mixed(overwrite = true)` replaces
+3. `--branch-length-initial-guess=always`: `initial_guess_mixed(overwrite = true)` replaces
    every edge with `t = subs_count / alignment_length ≈ 0.0007`. This is the ML subs/site
    estimate under `mu = 1`. The computation is numerically correct for that assumption but
    produces a value that is wrong for `update_marginal`'s convention.
 
-4. **Main loop, iteration 1**:
+4. Main loop, iteration 1:
    - `update_marginal(t = 0.0007)` calls `expQt(0.0007)`, computing
      `exp(eigvals * 0.0007 * 0.0007) = exp(eigvals * 4.9e-7)`.
    - At `4.9e-7` expected subs/site, the transition matrix is essentially identity.
@@ -97,7 +97,7 @@ Running `treetime optimize` on a SARS-CoV-2 tree produced by timetree inference:
      independent of `t`, and the ML step pushes branch lengths toward 0.
    - Subsequent iterations start from near-zero branch lengths, collapsing profiles further.
 
-5. **Result**: all branch lengths converge toward 0 or remain near-arbitrary small values.
+5. Result: all branch lengths converge toward 0 or remain near-arbitrary small values.
    The output tree is numerically meaningless.
 
 **`--branch-length-initial-guess=auto` (default, timetree input):**
@@ -149,14 +149,14 @@ regression with no v0 counterpart.
 
 There is no clean workaround at the CLI level:
 
-- **Avoid `--branch-length-initial-guess=always` on timetree input** until this is fixed. The
+- Avoid `--branch-length-initial-guess=always` on timetree input until this is fixed. The
   `auto` default preserves the first iteration's signal and may produce acceptable results for
   well-sampled trees with `max_iter = 1`.
-- **Pre-normalize the input tree**: multiply all branch lengths by the estimated clock rate
+- Pre-normalize the input tree: multiply all branch lengths by the estimated clock rate
   before calling `treetime optimize`. This converts year-scale BLs to subs/site and makes GTR
   inference yield `mu ≈ 1`. Requires an external clock rate estimate (e.g., from `treetime
 clock`).
-- **Use `--branch-length-initial-guess=auto` with `--max-iter=1`**: single iteration uses the
+- Use `--branch-length-initial-guess=auto` with `--max-iter=1`: single iteration uses the
   correct year-scale profiles from `update_marginal` and produces one round of valid optimization.
   Multi-iteration results are unreliable.
 
@@ -198,34 +198,34 @@ branch lengths (see investigation items below).
 
 Before implementing, the following must be confirmed:
 
-1. **Measure actual mu values.** Run `sc2/2844`, `ebola/20`, and `tb/20` with
+1. Measure actual mu values. Run `sc2/2844`, `ebola/20`, and `tb/20` with
    `--branch-length-initial-guess=always -vvv` and capture `gtr.json` for each. Record the
    inferred `mu`. Confirm whether it is systematically far from 1 for timetree inputs across
    datasets, and whether it is close to 1 for non-timetree inputs. This grounds the severity
    assessment.
 
-2. **`auto` mode multi-iteration behavior.** Run `--branch-length-initial-guess=auto` with
+2. `auto` mode multi-iteration behavior. Run `--branch-length-initial-guess=auto` with
    `--max-iter 1`, `--max-iter 2`, `--max-iter 5` on `sc2/2844`. Compare final branch-length
    distributions against v0. Establish whether convergence degrades from iteration 1 to
    iteration 2 and whether the issue affects practically all timetree inputs or only `always`
    mode.
 
-3. **Does `infer_gtr_impl` renormalize mu internally?** Read `infer_gtr_impl` in
+3. Does `infer_gtr_impl` renormalize mu internally? Read `infer_gtr_impl` in
    `packages/treetime/src/gtr/infer_gtr/common.rs` and trace through the mu computation. Check
    whether it imposes any constraint on the output mu, or whether mu is always proportional to
    the observed-rate / Ti ratio (which equals clock_rate for year-scale timetrees). The answer
    determines whether the mismatch is guaranteed to occur for any timetree input.
 
-4. **Sparse vs. dense equivalence.** The repro uses `--dense false`. Confirm that
+4. Sparse vs. dense equivalence. The repro uses `--dense false`. Confirm that
    `evaluate_sparse_contribution` dispatches to the same `evaluate_site_contributions` function
    and therefore omits mu identically. If so, the fix applies uniformly to both paths.
 
-5. **Output branch-length semantics.** Determine what downstream code (Newick writer, diversity
+5. Output branch-length semantics. Determine what downstream code (Newick writer, diversity
    metrics, summary statistics) expects the branch lengths to mean after `treetime optimize`.
    If the expectation is subs/site, option A is correct. If years are expected, option B is
    correct. This governs which fix to implement.
 
-6. **Timetree integration.** The timetree command calls its own internal optimize loop. Check
+6. Timetree integration. The timetree command calls its own internal optimize loop. Check
    whether the same mismatch exists there, or whether timetree's internal loop happens to work
    in a coordinate system where mu = 1 at the point of optimization.
 

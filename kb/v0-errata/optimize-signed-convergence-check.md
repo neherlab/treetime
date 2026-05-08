@@ -27,11 +27,11 @@ The correct convergence criterion for an EM-like algorithm is: the likelihood im
 
 v0's `optimize_tree_marginal` operates in a regime where likelihood decreases are vanishingly rare:
 
-- **Dense-only mode**: v0 has no sparse representation. Dense marginal reconstruction uses full probability matrices (soft-EM), which guarantees monotone likelihood increase before damping.
-- **Damping breaks monotonicity formally but not practically**: exponential damping blends the ML-optimal branch lengths with previous values. This is a relaxation step, not a maximization, so the formal EM guarantee does not hold. In practice, the damped step is a convex combination of the current and previous ML optima, and the likelihood change is almost always positive.
-- **No in-loop topology changes**: v0 calls `prune_short_branches()` after the loop ([packages/legacy/treetime/treetime/treeanc.py#L1434-L1436](../../packages/legacy/treetime/treetime/treeanc.py#L1434-L1436)), not inside it. There are no sudden likelihood drops from edge collapse or sibling merging during iteration.
-- **No indel contribution**: v0 ignores indels in the likelihood. There is no per-iteration indel rate recomputation and no Poisson feedback loop.
-- **Low iteration count**: `max_iter=10` with `damping=0.75` keeps the damping weight at $\ge 0.056$ ($0.75^{10}$) throughout. The optimizer never reaches the fully undamped regime.
+- Dense-only mode: v0 has no sparse representation. Dense marginal reconstruction uses full probability matrices (soft-EM), which guarantees monotone likelihood increase before damping.
+- Damping breaks monotonicity formally but not practically: exponential damping blends the ML-optimal branch lengths with previous values. This is a relaxation step, not a maximization, so the formal EM guarantee does not hold. In practice, the damped step is a convex combination of the current and previous ML optima, and the likelihood change is almost always positive.
+- No in-loop topology changes: v0 calls `prune_short_branches()` after the loop ([packages/legacy/treetime/treetime/treeanc.py#L1434-L1436](../../packages/legacy/treetime/treetime/treeanc.py#L1434-L1436)), not inside it. There are no sudden likelihood drops from edge collapse or sibling merging during iteration.
+- No indel contribution: v0 ignores indels in the likelihood. There is no per-iteration indel rate recomputation and no Poisson feedback loop.
+- Low iteration count: `max_iter=10` with `damping=0.75` keeps the damping weight at $\ge 0.056$ ($0.75^{10}$) throughout. The optimizer never reaches the fully undamped regime.
 
 Under these conditions, $\Delta\text{LH} < 0$ does not occur in normal operation. The signed check fires exclusively via condition 1 (small positive improvement). The deficient condition 2 (negative delta) is dead code.
 

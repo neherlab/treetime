@@ -189,21 +189,21 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 
 ## Validation
 
-- **Dense/sparse equivalence**: compare optimized branch lengths between `--dense true` and `--dense false` on flu/h3n2/20 and sc2/2844. After P2 or P3, results should agree within floating-point tolerance.
-- **Convergence on sc2/2844**: after P1 or P3, the variable position count should be non-decreasing across iterations and the likelihood should be approximately monotone.
-- **v0 parity**: compare v1 output with v0 on sc2/2844 (golden master). See [M-optimize-gm-per-branch-divergence](../issues/M-optimize-gm-per-branch-divergence.md).
-- **No regression**: flu/h3n2/20 should converge identically before and after changes.
-- **Acceleration**: with P5, convergence to the same optimum in fewer iterations on ebola, flu/h3n2/200.
+- Dense/sparse equivalence: compare optimized branch lengths between `--dense true` and `--dense false` on flu/h3n2/20 and sc2/2844. After P2 or P3, results should agree within floating-point tolerance.
+- Convergence on sc2/2844: after P1 or P3, the variable position count should be non-decreasing across iterations and the likelihood should be approximately monotone.
+- v0 parity: compare v1 output with v0 on sc2/2844 (golden master). See [M-optimize-gm-per-branch-divergence](../issues/M-optimize-gm-per-branch-divergence.md).
+- No regression: flu/h3n2/20 should converge identically before and after changes.
+- Acceleration: with P5, convergence to the same optimum in fewer iterations on ebola, flu/h3n2/200.
 
 ## Historical context
 
 The optimizer convergence work progressed through three phases:
 
-1. **Initial convergence fixes**: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping alone is insufficient (see phase 2).
+1. Initial convergence fixes: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping alone is insufficient (see phase 2).
 
-2. **Sparse 2-cycle discovery**: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
+2. Sparse 2-cycle discovery: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 
-3. **Immediate fix** (M-optimize-sparse-em-2-cycle (resolved)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
+3. Immediate fix (M-optimize-sparse-em-2-cycle (resolved)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
 
 ## Related
 

@@ -74,11 +74,11 @@ The `trailing_zeros()` operation returns the index of the lowest set bit, which 
 
 v1 prioritizes reproducibility: identical input always produces identical output, independent of any seed parameter. The systematic preference for lower ASCII codes is acceptable because:
 
-1. **Fitch is a preprocessing step**: In the standard TreeTime pipeline, Fitch parsimony provides initial ancestral estimates that the marginal maximum likelihood pass subsequently refines. The ML pass computes posterior probabilities from the GTR substitution model independently of Fitch assignments.
+1. Fitch is a preprocessing step: In the standard TreeTime pipeline, Fitch parsimony provides initial ancestral estimates that the marginal maximum likelihood pass subsequently refines. The ML pass computes posterior probabilities from the GTR substitution model independently of Fitch assignments.
 
-2. **Parsimony score is unaffected**: All states in an ambiguous set are equally parsimonious by definition. The choice affects only which equally-optimal reconstruction is returned.
+2. Parsimony score is unaffected: All states in an ambiguous set are equally parsimonious by definition. The choice affects only which equally-optimal reconstruction is returned.
 
-3. **Determinism aids validation**: For standalone parsimony usage (`--method-anc parsimony`), deterministic output simplifies testing and debugging. Comparing outputs across runs or implementations does not require controlling for random seed effects.
+3. Determinism aids validation: For standalone parsimony usage (`--method-anc parsimony`), deterministic output simplifies testing and debugging. Comparing outputs across runs or implementations does not require controlling for random seed effects.
 
 ## Numerical Impact
 

@@ -41,9 +41,9 @@ Inference uses <a id="gloss-use-2"></a>ABC <sup>[†2](#gloss-2)</sup> (Approxim
 
 The SIM/RIM findings validate the direction of TreeTime v1's Poisson indel model but highlight its limitations:
 
-1. **Separate rates matter.** The empirical $R_D/R_I \approx 2$ ratio means the symmetric Poisson model's single rate $\mu_{\text{indel}}$ is a compromise between two distinct processes.
-2. **Zipfian lengths matter.** The equal-weight assumption (all events count as 1) discards the signal in indel lengths. A length-weighted Poisson model would better capture the contribution of long indels.
-3. **Rate-relative parameterization.** SIM/RIM parameterize indel rates relative to the substitution rate. This is more interpretable than the absolute rate $\mu_{\text{indel}}$ used in v1, because it scales naturally with evolutionary distance.
+1. Separate rates matter. The empirical $R_D/R_I \approx 2$ ratio means the symmetric Poisson model's single rate $\mu_{\text{indel}}$ is a compromise between two distinct processes.
+2. Zipfian lengths matter. The equal-weight assumption (all events count as 1) discards the signal in indel lengths. A length-weighted Poisson model would better capture the contribution of long indels.
+3. Rate-relative parameterization. SIM/RIM parameterize indel rates relative to the substitution rate. This is more interpretable than the absolute rate $\mu_{\text{indel}}$ used in v1, because it scales naturally with evolutionary distance.
 
 These observations motivate the [extensions E1 and E2 in the alternatives proposal](../../proposals/optimize-indel-model-alternatives.md).
 

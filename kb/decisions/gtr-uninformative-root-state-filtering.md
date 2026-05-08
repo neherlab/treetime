@@ -10,8 +10,8 @@ Datasets with gap-only columns are affected. Measured impact: lassa_L_50 showed 
 
 The General Time Reversible (GTR) model, introduced by Tavaré (1986), describes nucleotide substitution as a continuous-time Markov chain. It is the most general neutral, independent, finite-sites, time-reversible model for DNA sequence evolution. The model has two core components:
 
-- **Equilibrium frequencies (pi)**: A vector where `pi[k]` is the stationary probability of state k. At equilibrium, the fraction of positions in state k converges to `pi[k]`. For DNA, this is a 4-element vector (pi_A, pi_G, pi_C, pi_T) summing to 1.
-- **Exchangeability matrix (W)**: A symmetric matrix where `W[i,j]` describes the relative rate of exchange between states i and j. For DNA, this has 6 independent parameters representing rates between each nucleotide pair.
+- Equilibrium frequencies (pi): A vector where `pi[k]` is the stationary probability of state k. At equilibrium, the fraction of positions in state k converges to `pi[k]`. For DNA, this is a 4-element vector (pi_A, pi_G, pi_C, pi_T) summing to 1.
+- Exchangeability matrix (W): A symmetric matrix where `W[i,j]` describes the relative rate of exchange between states i and j. For DNA, this has 6 independent parameters representing rates between each nucleotide pair.
 
 The instantaneous rate matrix Q combines these: `Q[i,j] = W[i,j] * pi[j]` for i != j, with diagonal elements set so rows sum to zero. The time-reversibility condition requires `pi[i] * Q[i,j] = pi[j] * Q[j,i]` (detailed balance), which allows likelihood calculations without knowing the root position (Tavaré, 1986).
 

@@ -490,11 +490,11 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 ## Known Test Limitations
 
-1. **Golden-master datasets disabled**: Multiple datasets disabled due to zero-length branches:
+1. Golden-master datasets disabled: Multiple datasets disabled due to zero-length branches:
    `dengue_20`, `lassa_L_20`, `mpox_clade_ii_20`, `rsv_a_20`, `tb_20`, `zika_20`
 
-2. **Tolerance variations**: Root node dominates max diff in Poisson mode tests. Non-root nodes agree within 1e-2.
+2. Tolerance variations: Root node dominates max diff in Poisson mode tests. Non-root nodes agree within 1e-2.
 
-3. **Dense marginal**: `ebola_20` disabled due to gap character handling in alphabet.
+3. Dense marginal: `ebola_20` disabled due to gap character handling in alphabet.
 
-4. **Duplicate tests**: [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).
+4. Duplicate tests: [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).

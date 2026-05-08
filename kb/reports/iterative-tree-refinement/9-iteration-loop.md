@@ -6,8 +6,8 @@
 
 Tree refinement alternates between two interdependent operations:
 
-- **E-step:** Given branch lengths, compute ancestral state distributions via marginal reconstruction ([Chapter 4](4-ancestral-reconstruction.md)). This is Felsenstein's pruning algorithm running backward and forward.
-- **M-step:** Given ancestral state distributions, optimize each branch length via Newton-Raphson or Brent's method ([Chapter 5](5-branch-length-optimization.md)).
+- E-step: Given branch lengths, compute ancestral state distributions via marginal reconstruction ([Chapter 4](4-ancestral-reconstruction.md)). This is Felsenstein's pruning algorithm running backward and forward.
+- M-step: Given ancestral state distributions, optimize each branch length via Newton-Raphson or Brent's method ([Chapter 5](5-branch-length-optimization.md)).
 
 Undamped EM guarantees monotone likelihood increase per iteration (Dempster, Laird, and Rubin 1977). The sequence converges to a stationary point of the likelihood surface (Wu 1983). Meng and Rubin (1993) proved that updating parameter blocks sequentially (ECM -- Expectation Conditional Maximization) preserves EM's convergence guarantees.
 

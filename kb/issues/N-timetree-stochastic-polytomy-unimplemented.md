@@ -10,8 +10,8 @@ resolution via coalescent simulation for uncertainty quantification.
 A polytomy (multifurcation) is a node with more than two children in a phylogenetic
 tree. Polytomies arise from:
 
-- **Soft polytomies**: Insufficient data to resolve true bifurcating topology
-- **Hard polytomies**: Genuine simultaneous divergence events (rare)
+- Soft polytomies: Insufficient data to resolve true bifurcating topology
+- Hard polytomies: Genuine simultaneous divergence events (rare)
 
 Most phylogenetic methods assume binary trees. Timetree inference requires resolving
 polytomies to estimate divergence times on internal branches.

@@ -18,19 +18,19 @@ The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences ar
 
 ## Memory characteristics
 
-1. **Peak memory**: approximately 2x sequence data (FASTA records + partition copies)
-2. **Post-attachment**: original `Vec<FastaRecord>` is dropped, partitions remain
-3. **Algorithm phase**: partitions must remain in memory for random access during tree traversal
+1. Peak memory: approximately 2x sequence data (FASTA records + partition copies)
+2. Post-attachment: original `Vec<FastaRecord>` is dropped, partitions remain
+3. Algorithm phase: partitions must remain in memory for random access during tree traversal
 
 ## Why streaming is blocked
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. **Length validation**: `get_common_length()` at [packages/treetime/src/commands/ancestral/fitch.rs#L520](../../packages/treetime/src/commands/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
+1. Length validation: `get_common_length()` at [packages/treetime/src/commands/ancestral/fitch.rs#L520](../../packages/treetime/src/commands/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
 
-2. **Tree-order access**: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
+2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 
-3. **Random access during traversal**: backward and forward passes access arbitrary leaves based on tree structure
+3. Random access during traversal: backward and forward passes access arbitrary leaves based on tree structure
 
 ## Scale considerations
 

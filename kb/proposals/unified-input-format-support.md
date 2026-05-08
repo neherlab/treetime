@@ -20,8 +20,8 @@ Allow analysis commands to accept unified input formats directly. When a unified
 
 Two input paths converge to the same internal representation:
 
-1. **Newick + FASTA** (existing): parse tree, parse sequences, match by name, populate partitions
-2. **Unified format** (proposed): parse tree with embedded data, populate partitions directly
+1. Newick + FASTA (existing): parse tree, parse sequences, match by name, populate partitions
+2. Unified format (proposed): parse tree with embedded data, populate partitions directly
 
 The unified path eliminates the name-matching phase entirely.
 
@@ -89,13 +89,13 @@ For workflows that only need mutations (not full probability distributions), ope
 
 Recommended order for addressing input architecture:
 
-1. **Immediate**: Improve Newick+FASTA attachment (A0 in design). Build name index, detect duplicates, clear errors. This is the primary input path.
+1. Immediate: Improve Newick+FASTA attachment (A0 in design). Build name index, detect duplicates, clear errors. This is the primary input path.
 
-2. **Short-term**: Prototype Auspice JSON input for one analysis command. Validates the unified-format approach with minimal risk.
+2. Short-term: Prototype Auspice JSON input for one analysis command. Validates the unified-format approach with minimal risk.
 
-3. **Medium-term**: Config file format per [config-file-multi-partition](config-file-multi-partition.md). Enables multi-segment and explicit name mappings.
+3. Medium-term: Config file format per [config-file-multi-partition](config-file-multi-partition.md). Enables multi-segment and explicit name mappings.
 
-4. **Long-term**: Out-of-core processing for large datasets (indexed FASTA, memory-mapped access). Requires architectural changes.
+4. Long-term: Out-of-core processing for large datasets (indexed FASTA, memory-mapped access). Requires architectural changes.
 
 ## Orthogonal concerns
 

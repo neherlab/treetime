@@ -6,8 +6,8 @@ Dense and sparse marginal reconstruction produce different log-likelihoods for
 (`#test_prop_marginal_dense_sparse_gap_free_consistency`) detects two distinct
 populations. Under investigation.
 
-- **Population 1 (~97.5%)**: agrees to 0-3 ULPs (floating-point rounding)
-- **Population 2 (~2.5%)**: relative differences up to 7.6e-6 (billions of ULPs)
+- Population 1 (~97.5%): agrees to 0-3 ULPs (floating-point rounding)
+- Population 2 (~2.5%): relative differences up to 7.6e-6 (billions of ULPs)
 
 The test uses `max_relative = 1e-5` to accommodate the worst observed case.
 

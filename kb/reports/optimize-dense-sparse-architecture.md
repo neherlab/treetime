@@ -89,8 +89,8 @@ Output: struct `PartitionContribution` [commands/optimize/optimize_dense.rs#L27]
 
 fn `get_coefficients()` [commands/optimize/optimize_sparse.rs#L45](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L45) reads variable-site maps (`msg_to_child.variable`, `msg_to_parent.variable`), fitch substitutions, and fixed-state counts. Same dot-product math as dense but applied per site or per group:
 
-1. **Variable positions** (union of variable maps and fitch subs): multiplicity 1.0 each
-2. **Fixed-state groups** (positions where parent and child share a fixed state): multiplicity = count of positions in that group
+1. Variable positions (union of variable maps and fitch subs): multiplicity 1.0 each
+2. Fixed-state groups (positions where parent and child share a fixed state): multiplicity = count of positions in that group
 
 Each site produces a struct `SiteContribution` [commands/optimize/optimize_sparse.rs#L35](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L35) `{ multiplicity, coefficients }`.
 

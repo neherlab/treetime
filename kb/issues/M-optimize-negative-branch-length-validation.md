@@ -54,8 +54,8 @@ if branch_length == 0.0 && indel_count > 0 { … }
 
 A negative value reaches `evaluate_with_indels → poisson_indel_log_lh` with `t < 0` and `k > 0`:
 
-- **Debug build**: `debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}")` - **panic/crash**.
-- **Release build**: The assert is compiled out. `ln(mu * t)` with `t < 0` computes `ln(negative)` = `NaN`, which propagates silently through the rest of optimization. Results are silently wrong.
+- Debug build: `debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}")` - **panic/crash**.
+- Release build: The assert is compiled out. `ln(mu * t)` with `t < 0` computes `ln(negative)` = `NaN`, which propagates silently through the rest of optimization. Results are silently wrong.
 
 For edges with no indels in `Never` mode, the substitution-side evaluation (`exp(eigvals * t)` with `t < 0`) produces mathematically valid but physically wrong exponentials. No crash, but the optimizer starts from an incorrect position. **No message emitted.**
 
@@ -95,10 +95,10 @@ v0 does not model indels in branch length optimization. Negative branch lengths 
 
 If you are running `treetime optimize` on a tree produced by a previous timetree inference and observe a panic or unexpected results:
 
-- **`--branch-length-initial-guess=always`** (recommended for timetree input): recomputes all branch lengths from substitution counts before optimization. Eliminates the crash and the wrong-starting-point problem at the cost of discarding timetree-calibrated branch lengths.
-- **`--branch-length-initial-guess=auto`** (default): safe when the tree has no indels on negative-BL edges. Still silently preserves negative values on no-indel edges and produces suboptimal (but usually close) results.
-- **Avoid `--branch-length-initial-guess=never`** with timetree input: negative branch lengths are not caught, leading to a debug panic or silent NaN in release.
-- **As a pre-processing step**, filter or zero-clamp negative branch lengths in the input Newick before passing to `treetime optimize`.
+- `--branch-length-initial-guess=always` (recommended for timetree input): recomputes all branch lengths from substitution counts before optimization. Eliminates the crash and the wrong-starting-point problem at the cost of discarding timetree-calibrated branch lengths.
+- `--branch-length-initial-guess=auto` (default): safe when the tree has no indels on negative-BL edges. Still silently preserves negative values on no-indel edges and produces suboptimal (but usually close) results.
+- Avoid `--branch-length-initial-guess=never` with timetree input: negative branch lengths are not caught, leading to a debug panic or silent NaN in release.
+- As a pre-processing step, filter or zero-clamp negative branch lengths in the input Newick before passing to `treetime optimize`.
 
 ## Proposed solution
 

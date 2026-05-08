@@ -278,9 +278,9 @@ If set to `1`, threaded OpenBLAS is capped to a single thread at runtime, mitiga
 
 Three approaches, from least to most invasive:
 
-1. **Runtime environment variable.** `OPENBLAS_NUM_THREADS=1` disables OpenBLAS internal threading regardless of which variant is linked. Developers can set it in their shell profile, or the treetime binary can set it at startup via `std::env::set_var` before any BLAS call. This is a safety net that works for all users on all platforms without any installation changes.
+1. Runtime environment variable. `OPENBLAS_NUM_THREADS=1` disables OpenBLAS internal threading regardless of which variant is linked. Developers can set it in their shell profile, or the treetime binary can set it at startup via `std::env::set_var` before any BLAS call. This is a safety net that works for all users on all platforms without any installation changes.
 
-2. **Developer guide change.** Replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md). This installs the sequential variant system-wide. Developers who already have `libopenblas-dev` installed can switch with:
+2. Developer guide change. Replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md). This installs the sequential variant system-wide. Developers who already have `libopenblas-dev` installed can switch with:
 
    ```bash
    sudo apt-get install libopenblas-serial-dev
@@ -288,7 +288,7 @@ Three approaches, from least to most invasive:
 
    This only helps new setups and developers who re-read the guide.
 
-3. **Use the binarylandia static library on host.** The same sequential `openblas-static-0.3.28` archive used by Docker can be downloaded and used for host builds. The `openblas-src` crate with `features = ["system"]` respects the `OPENBLAS_LIB_DIR` environment variable (set in [native.dockerfile:76](../../dev/docker/native.dockerfile#L76)). A developer can bypass the system package entirely:
+3. Use the binarylandia static library on host. The same sequential `openblas-static-0.3.28` archive used by Docker can be downloaded and used for host builds. The `openblas-src` crate with `features = ["system"]` respects the `OPENBLAS_LIB_DIR` environment variable (set in [native.dockerfile:76](../../dev/docker/native.dockerfile#L76)). A developer can bypass the system package entirely:
 
    ```bash
    mkdir -p ~/.local
@@ -329,16 +329,16 @@ If `blas_thread_server` does not appear in the profile output, the mitigation is
 
 ### 6.1 Immediate (apply now)
 
-- **Switch Docker builds to sequential OpenBLAS** -- change [`dev/docker/files/install-openblas`](../../dev/docker/files/install-openblas) to download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28`. No code changes required. Eliminates 49.5% CPU waste for Docker-based builds.
-- **Set `OPENBLAS_NUM_THREADS=1` at startup** -- add a one-line `std::env::set_var("OPENBLAS_NUM_THREADS", "1")` early in `main()`. Mitigates threaded OpenBLAS for all users on all platforms, including host builds and pre-built binaries distributed to end users.
-- **Update developer guide** -- replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md) dependency list.
+- Switch Docker builds to sequential OpenBLAS -- change [`dev/docker/files/install-openblas`](../../dev/docker/files/install-openblas) to download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28`. No code changes required. Eliminates 49.5% CPU waste for Docker-based builds.
+- Set `OPENBLAS_NUM_THREADS=1` at startup -- add a one-line `std::env::set_var("OPENBLAS_NUM_THREADS", "1")` early in `main()`. Mitigates threaded OpenBLAS for all users on all platforms, including host builds and pre-built binaries distributed to end users.
+- Update developer guide -- replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md) dependency list.
 
 ### 6.2 Near-term investigation
 
-- **Column compression for dense mode** -- group identical alignment columns and weight by multiplicity. This is what v0 does. Would reduce L (and therefore wall time of marginal passes, GTR inference, and argmax) proportionally to alignment redundancy. For viral datasets, unique column count is typically 5-20% of L.
-- **Profile the mpox dataset** -- the 250x slowdown documented in [M-timetree-marginal-dense-mpox-slow](../issues/M-timetree-marginal-dense-mpox-slow.md) is suspected to come from convolution grid blow-up in the timetree backward pass, not from ancestral reconstruction. A separate profiling session targeting `timetree --dense=true` on mpox would confirm or refute this.
+- Column compression for dense mode -- group identical alignment columns and weight by multiplicity. This is what v0 does. Would reduce L (and therefore wall time of marginal passes, GTR inference, and argmax) proportionally to alignment redundancy. For viral datasets, unique column count is typically 5-20% of L.
+- Profile the mpox dataset -- the 250x slowdown documented in [M-timetree-marginal-dense-mpox-slow](../issues/M-timetree-marginal-dense-mpox-slow.md) is suspected to come from convolution grid blow-up in the timetree backward pass, not from ancestral reconstruction. A separate profiling session targeting `timetree --dense=true` on mpox would confirm or refute this.
 
 ### 6.3 Longer-term
 
-- **Fast log/exp approximations** -- libraries like SLEEF or hand-tuned polynomial approximations could reduce the 36% math primitive cost, at some precision trade-off. Needs error analysis for the marginal inference use case.
-- **Rayon task granularity** -- 9.8% in work-stealing suggests tasks are too fine-grained. Batching nodes or columns into larger work units could reduce synchronization overhead.
+- Fast log/exp approximations -- libraries like SLEEF or hand-tuned polynomial approximations could reduce the 36% math primitive cost, at some precision trade-off. Needs error analysis for the marginal inference use case.
+- Rayon task granularity -- 9.8% in work-stealing suggests tasks are too fine-grained. Batching nodes or columns into larger work units could reduce synchronization overhead.

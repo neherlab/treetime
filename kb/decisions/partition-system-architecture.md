@@ -19,10 +19,10 @@ Phylogenetic trees represent evolutionary relationships inferred from molecular 
 
 Substitution models describe how nucleotides evolve over time via a rate matrix Q and equilibrium frequencies. These models form a nested hierarchy from simplest to most general:
 
-- **JC69** (Jukes & Cantor, 1969): Equal base frequencies (0.25 each), equal substitution rates. Single parameter.
-- **K80/K2P** (Kimura, 1980): Distinguishes transitions (A-G, C-T) from transversions. Equal base frequencies. Two parameters.
-- **HKY85** (Hasegawa, Kishino & Yano, 1985): Variable base frequencies plus transition/transversion distinction. Five parameters.
-- **GTR** (Tavaré, 1986): General Time Reversible model with 6 exchangeability rates and 4 base frequencies. Nine free parameters. Most general time-reversible nucleotide model.
+- JC69 (Jukes & Cantor, 1969): Equal base frequencies (0.25 each), equal substitution rates. Single parameter.
+- K80/K2P (Kimura, 1980): Distinguishes transitions (A-G, C-T) from transversions. Equal base frequencies. Two parameters.
+- HKY85 (Hasegawa, Kishino & Yano, 1985): Variable base frequencies plus transition/transversion distinction. Five parameters.
+- GTR (Tavaré, 1986): General Time Reversible model with 6 exchangeability rates and 4 base frequencies. Nine free parameters. Most general time-reversible nucleotide model.
 
 Different genomic regions (genes, codon positions) can have different evolutionary patterns. Partition models address this by allowing each region to have its own substitution model parameters while sharing the same tree topology (Lanfear et al., 2012). This is standard practice in widely-used phylogenetic software including RAxML, IQ-TREE, and BEAST.
 

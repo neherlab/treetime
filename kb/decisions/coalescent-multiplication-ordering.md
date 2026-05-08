@@ -32,8 +32,8 @@ where κ(t) = (k(t) - 1) / (2 · Tc(t)) is the per-lineage merger rate (rate at 
 
 At an internal node with m children, the coalescent contribution to the node's time distribution is:
 
-- **Probability space**: λ(t)^(m-1) · exp(-I(t) · (m-1))
-- **Neg-log space**: (m-1) · (I(t) - log(λ(t)))
+- Probability space: λ(t)^(m-1) · exp(-I(t) · (m-1))
+- Neg-log space: (m-1) · (I(t) - log(λ(t)))
 
 This contribution is multiplied with the product of child messages to produce the node's time distribution.
 
@@ -106,8 +106,8 @@ Multiplication is commutative and associative. Both orderings compute the same m
 
 The numerical path differs in interpolation:
 
-- **v0**: One interpolation step at the final multiply. The coalescent is evaluated directly on the union grid, preserving all knot points.
-- **v1**: Each multiplication produces a new uniform grid. The coalescent is evaluated on the first child's grid. Subsequent children introduce linear interpolation at each step.
+- v0: One interpolation step at the final multiply. The coalescent is evaluated directly on the union grid, preserving all knot points.
+- v1: Each multiplication produces a new uniform grid. The coalescent is evaluated on the first child's grid. Subsequent children introduce linear interpolation at each step.
 
 For binary nodes (2 children, the common case in phylogenetic trees), both orderings perform similar interpolation. For polytomies (3+ children), v1 accumulates one extra interpolation per child.
 

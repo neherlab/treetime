@@ -33,9 +33,9 @@ Newton-Raphson converges quadratically near the optimum: each iteration doubles 
 
 **Non-concave fallback**: When `f''(t) >= 0`, the surface is not concave and Newton would step toward a minimum. Each tool handles this differently:
 
-- **RAxML-NG** (coraxlib): uses `dx = -f / |df|`, preserving the NR direction but preventing sign inversion. Also has SAFE mode that recomputes likelihood and reverts if it decreased.
-- **IQ-TREE**: falls back to bisection within the sign-change bracket `[xl, xh]`. Adapted from Numerical Recipes `rtsafe`.
-- **TreeTime v1**: falls back to grid search (100 logarithmically spaced points via `geomspace`). This is the least principled fallback - BrentOpt would be more efficient (see [audit proposal P5](7-audit.md)).
+- RAxML-NG (coraxlib): uses `dx = -f / |df|`, preserving the NR direction but preventing sign inversion. Also has SAFE mode that recomputes likelihood and reverts if it decreased.
+- IQ-TREE: falls back to bisection within the sign-change bracket `[xl, xh]`. Adapted from Numerical Recipes `rtsafe`.
+- TreeTime v1: falls back to grid search (100 logarithmically spaced points via `geomspace`). This is the least principled fallback - BrentOpt would be more efficient (see [audit proposal P5](7-audit.md)).
 
 ## Brent's method
 
@@ -59,8 +59,8 @@ The choice of optimizer matters because the 1D likelihood surface can be multimo
 
 <a id="cite-6"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[6](#ref-6)] proved:
 
-- **JC69, F81, binary symmetric**: the 1D likelihood has at most one stationary point. Any optimizer converges to the global MLE.
-- **K2P and above (HKY, GTR)**: explicit counterexamples with two local maxima exist. The space of rescaled 1D likelihoods under K2P is dense in all non-negative continuous functions on [0, infinity). Any shape is possible.
+- JC69, F81, binary symmetric: the 1D likelihood has at most one stationary point. Any optimizer converges to the global MLE.
+- K2P and above (HKY, GTR): explicit counterexamples with two local maxima exist. The space of rescaled 1D likelihoods under K2P is dense in all non-negative continuous functions on [0, infinity). Any shape is possible.
 
 For TreeTime's common use case (JC69 on viral data), NR is provably safe. For GTR models, a grid-search or multi-start fallback is warranted. <a id="cite-7"></a>[Claywell et al. 2018](https://doi.org/10.1093/molbev/msx253) [[7](#ref-7)] developed a four-parameter surrogate function for 1D phylogenetic likelihoods that provides a theoretically grounded fast approximation.
 
