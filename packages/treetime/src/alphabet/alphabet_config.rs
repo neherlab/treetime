@@ -77,6 +77,10 @@ impl AlphabetConfig {
       gap,
     } = self;
 
+    if canonical.is_empty() {
+      return make_error!("Canonical set of characters is empty. At least one canonical character is required.");
+    }
+
     {
       let all = chain![
         self.canonical.iter().copied(),

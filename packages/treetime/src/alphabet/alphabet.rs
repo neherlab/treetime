@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
-use crate::{make_error, make_report, vec_u8};
+use crate::{make_report, vec_u8};
 use clap::ValueEnum;
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
@@ -33,7 +33,8 @@ pub type StateSetMap = IndexMap<AsciiChar, StateSet>;
 pub type CharToSet = IndexMap<AsciiChar, StateSet>;
 pub type SetToChar = IndexMap<StateSet, AsciiChar>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(try_from = "AlphabetConfig")]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
@@ -44,16 +45,25 @@ pub struct Alphabet {
   unknown: AsciiChar,
   gap: AsciiChar,
   profile_map: ProfileMap,
-
-  #[serde(skip)]
   char_to_set: IndexMap<AsciiChar, StateSet>,
-  #[serde(skip)]
   set_to_char: IndexMap<StateSet, AsciiChar>,
-
-  #[serde(skip)]
   char_to_index: Vec<Option<usize>>,
-  #[serde(skip)]
   index_to_char: Vec<AsciiChar>,
+  config: AlphabetConfig,
+}
+
+impl Serialize for Alphabet {
+  fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    self.config.serialize(serializer)
+  }
+}
+
+impl TryFrom<AlphabetConfig> for Alphabet {
+  type Error = Report;
+
+  fn try_from(config: AlphabetConfig) -> Result<Self, Report> {
+    Self::with_config(&config)
+  }
 }
 
 impl Default for Alphabet {
@@ -123,9 +133,6 @@ impl Alphabet {
     let unknown = AsciiChar::try_new(*unknown)?;
 
     let canonical = StateSet::from_iter(canonical);
-    if canonical.is_empty() {
-      return make_error!("When creating alphabet: canonical set of characters is empty. This is not allowed.");
-    }
 
     let ambiguous: IndexMap<AsciiChar, Vec<AsciiChar>> = ambiguous
       .iter()
@@ -147,6 +154,15 @@ impl Alphabet {
 
     let profile_map = config.create_profile_map()?;
 
+    let mut char_to_set: CharToSet = canonical.iter().map(|c| (c, StateSet::from_char(c))).collect();
+    for (key, chars) in &ambiguous {
+      char_to_set.insert(*key, StateSet::from_iter(chars));
+    }
+    char_to_set.insert(gap, StateSet::from_char(gap));
+    char_to_set.insert(unknown, StateSet::from_char(unknown));
+
+    let set_to_char: SetToChar = char_to_set.iter().map(|(&c, &s)| (s, c)).collect();
+
     let mut char_to_index = vec![None; 128];
     let mut index_to_char = Vec::with_capacity(canonical.len());
     for (i, &b) in config.canonical.iter().enumerate() {
@@ -154,18 +170,6 @@ impl Alphabet {
       char_to_index[usize::from(c)] = Some(i);
       index_to_char.push(c);
     }
-
-    let char_to_set = {
-      let mut char_to_set: CharToSet = canonical.iter().map(|c| (c, StateSet::from_char(c))).collect();
-      ambiguous.iter().for_each(|(key, chars)| {
-        char_to_set.insert(*key, StateSet::from_iter(chars));
-      });
-      char_to_set.insert(gap, StateSet::from_char(gap));
-      char_to_set.insert(unknown, StateSet::from_char(unknown));
-      char_to_set
-    };
-
-    let set_to_char: SetToChar = char_to_set.iter().map(|(&c, &s)| (s, c)).collect();
 
     Ok(Self {
       all,
@@ -181,6 +185,7 @@ impl Alphabet {
       set_to_char,
       char_to_index,
       index_to_char,
+      config: config.clone(),
     })
   }
 

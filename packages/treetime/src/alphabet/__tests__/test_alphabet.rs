@@ -4,12 +4,14 @@ mod tests {
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::pretty_assert_ulps_eq;
   use crate::vec_u8;
+  use eyre::Report;
   use indexmap::indexmap;
   use itertools::Itertools;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::{AlphabetLike, AsciiChar};
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
   #[test]
   fn test_alphabet_default() {
@@ -399,8 +401,9 @@ mod tests {
     };
     let result = Alphabet::with_config(&config);
     assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("empty"));
+    let err = result.unwrap_err();
+    let err_chain = format!("{err:?}");
+    assert!(err_chain.contains("empty"), "expected 'empty' in error chain: {err_chain}");
   }
 
   #[test]
@@ -628,5 +631,102 @@ mod tests {
       let idx = alphabet.index(c).unwrap();
       assert_eq!(i, idx);
     }
+  }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_serde_roundtrip_char_to_set(#[case] name: AlphabetName) -> Result<(), Report> {
+    let original = Alphabet::new(name)?;
+    let json = json_write_str(&original, JsonPretty(false))?;
+    let deserialized: Alphabet = json_read_str(&json)?;
+
+    for c in original.chars() {
+      let expected = original.char_to_set(c);
+      let actual = deserialized.char_to_set(c);
+      assert_eq!(expected, actual, "char_to_set mismatch for '{c}'");
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_serde_roundtrip_set_to_char(#[case] name: AlphabetName) -> Result<(), Report> {
+    let original = Alphabet::new(name)?;
+    let json = json_write_str(&original, JsonPretty(false))?;
+    let deserialized: Alphabet = json_read_str(&json)?;
+
+    for c in original.canonical() {
+      let set = original.char_to_set(c);
+      let expected = original.set_to_char(set);
+      let actual = deserialized.set_to_char(set);
+      assert_eq!(expected, actual, "set_to_char mismatch for set of '{c}'");
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_serde_roundtrip_char_index(#[case] name: AlphabetName) -> Result<(), Report> {
+    let original = Alphabet::new(name)?;
+    let json = json_write_str(&original, JsonPretty(false))?;
+    let deserialized: Alphabet = json_read_str(&json)?;
+
+    for i in 0..original.n_canonical() {
+      let expected_char = original.char(i);
+      let actual_char = deserialized.char(i);
+      assert_eq!(expected_char, actual_char, "char({i}) mismatch");
+
+      let expected_index = original.index(expected_char)?;
+      let actual_index = deserialized.index(actual_char)?;
+      assert_eq!(expected_index, actual_index, "index('{expected_char}') mismatch");
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_serde_roundtrip_profiles(#[case] name: AlphabetName) -> Result<(), Report> {
+    let original = Alphabet::new(name)?;
+    let json = json_write_str(&original, JsonPretty(false))?;
+    let deserialized: Alphabet = json_read_str(&json)?;
+
+    for c in original.chars() {
+      let expected = original.get_profile(c)?;
+      let actual = deserialized.get_profile(c)?;
+      pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::nuc(AlphabetName::Nuc)]
+  #[case::aa(AlphabetName::Aa)]
+  #[case::aa_no_stop(AlphabetName::AaNoStop)]
+  #[trace]
+  fn test_alphabet_serde_roundtrip_counts(#[case] name: AlphabetName) -> Result<(), Report> {
+    let original = Alphabet::new(name)?;
+    let json = json_write_str(&original, JsonPretty(false))?;
+    let deserialized: Alphabet = json_read_str(&json)?;
+
+    assert_eq!(original.n_canonical(), deserialized.n_canonical());
+    assert_eq!(original.n_ambiguous(), deserialized.n_ambiguous());
+    assert_eq!(original.n_chars(), deserialized.n_chars());
+    assert_eq!(original.n_determined(), deserialized.n_determined());
+    assert_eq!(original.n_undetermined(), deserialized.n_undetermined());
+    assert_eq!(original.unknown(), deserialized.unknown());
+    assert_eq!(original.gap(), deserialized.gap());
+    Ok(())
   }
 }
