@@ -8,7 +8,7 @@ use crate::representation::payload::sparse::{
 };
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
-use crate::{make_error, make_report};
+use crate::make_report;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
@@ -534,30 +534,4 @@ fn run_fitch_reconstruction(
     visitor(node, &seq.sequence)?;
   }
   Ok(())
-}
-
-pub fn get_common_length(aln: &[FastaRecord]) -> Result<usize, Report> {
-  let lengths = aln
-    .iter()
-    .into_group_map_by(|aln| aln.seq.len())
-    .into_iter()
-    .collect_vec();
-
-  match lengths[..] {
-    [] => Ok(0),
-    [(length, _)] => Ok(length),
-    _ => {
-      let message = lengths
-        .into_iter()
-        .sorted_by_key(|(length, _)| *length)
-        .map(|(length, entries)| {
-          let names = entries.iter().map(|aln| format!("    \"{}\"", aln.seq_name)).join("\n");
-          format!("Length {length}:\n{names}")
-        })
-        .join("\n\n");
-
-      make_error!("Sequences are expected to all have the same length, but found the following lengths:\n\n{message}")
-    },
-  }
-  .wrap_err("When calculating length of sequences")
 }

@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::commands::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::seq::alignment::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;

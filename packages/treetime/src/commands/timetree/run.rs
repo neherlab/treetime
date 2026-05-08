@@ -1,4 +1,4 @@
-use crate::commands::ancestral::fitch::get_common_length;
+use crate::seq::alignment::get_common_length;
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::clock::clock_filter::clock_filter_inplace;
 use crate::commands::clock::clock_model::ClockModel;

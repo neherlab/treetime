@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::get_common_length;
+use crate::seq::alignment::get_common_length;
 use crate::commands::clock::date_constraints::load_date_constraints;
 use crate::commands::shared::args::BranchLengthMode;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;

@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::{compress_sequences, get_common_length};
+use crate::commands::ancestral::fitch::compress_sequences;
+use crate::seq::alignment::get_common_length;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;

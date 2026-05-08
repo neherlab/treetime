@@ -172,7 +172,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::commands::ancestral::fitch::get_common_length;
+    use crate::seq::alignment::get_common_length;
     use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
     use crate::commands::optimize::args::BranchOptMethod;
     use crate::commands::optimize::optimize_unified::initial_guess_mixed;

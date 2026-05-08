@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::seq::alignment::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::args::BranchOptMethod;
   use crate::commands::optimize::optimize_unified::run_optimize_mixed;

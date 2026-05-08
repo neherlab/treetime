@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::get_common_length;
+use crate::seq::alignment::get_common_length;
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::fitch_config::PartitionFitchConfig;
 use eyre::Report;

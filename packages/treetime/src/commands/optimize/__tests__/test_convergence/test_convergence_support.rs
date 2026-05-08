@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::seq::alignment::get_common_length;
   use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::commands::optimize::optimize_unified::initial_guess_mixed;
   use crate::commands::optimize::run::collect_optimize_partitions;

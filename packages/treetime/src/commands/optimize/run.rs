@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::get_common_length;
+use crate::seq::alignment::get_common_length;
 use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::{BranchOptMethod, InitialGuessMode, TreetimeOptimizeArgs};
 use crate::commands::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};

@@ -7,7 +7,7 @@ mod tests {
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::commands::ancestral::fitch::get_common_length;
+  use crate::seq::alignment::get_common_length;
   use crate::commands::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::InferGtrResult;

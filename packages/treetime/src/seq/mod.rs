@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod alignment;
 pub mod composition;
 pub mod div;
 pub mod find_char_ranges;
