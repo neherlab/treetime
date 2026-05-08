@@ -69,7 +69,6 @@ exactly.
 | Medium     | Optimize       | [Indel event count reduced after composition on merged edges](M-optimize-indel-event-count-after-composition.md)                                    |
 | Medium     | Optimize       | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)                         |
 | Medium     | Optimize       | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
-| Low        | Core           | [Duplicate `write_graph()` across commands](N-core-duplicate-write-graph.md)                                                                        |
 | Low        | GTR            | [Site-specific GTR not integrated into partition system](N-gtr-site-specific-partition-integration.md)                                              |
 | Low        | GTR            | [Site-specific GTR inference lacks end-to-end test from real tree data](N-gtr-site-specific-e2e-inference-test.md)                                  |
 | Low        | Representation | [`infer_dense()` stub always returns false](N-representation-infer-dense-stub.md)                                                                   |
@@ -90,6 +89,7 @@ exactly.
 | Negligible | Core           | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                     |
 | Negligible | Dates          | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |
 | Negligible | Distribution   | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                 |
+| Negligible | I/O            | [write_graph_files missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                     |
 | Negligible | I/O            | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O            | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Low        | Optimize       | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |
