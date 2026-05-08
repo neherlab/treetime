@@ -1,6 +1,6 @@
 # Glossary
 
-This glossary is optimized for TreeTime and reflects the local terminology used in this codebase and its documentation. Bioinformatics terminology is often poorly defined, with the same concept called different things by different communities and tools. This is our best effort at a clear, consistent set of definitions for the concepts that matter in TreeTime's context. We do not pretend these definitions are universally accepted or standard, and we are not trying to replace existing terminology -- just to be precise about what we mean when we use these terms.
+This glossary is optimized for TreeTime and reflects the local terminology used in this codebase and its documentation. Bioinformatics terminology is often poorly defined, with the same concept called different things by different communities and tools. This is our best effort at a clear, consistent set of definitions for the concepts that matter in TreeTime's context. We do not pretend these definitions are universally accepted or standard, and we are not trying to replace existing terminology, just to be precise about what we mean when we use these terms.
 
 Terms used throughout the [iterative tree refinement book](README.md). Ordered alphabetically.
 
@@ -168,7 +168,7 @@ The per-edge log-likelihood is guaranteed [unimodal](#unimodal) under F81.
 
 A parsimony method for ancestral state reconstruction that minimizes the total number of state changes on the tree <a id="cite-23"></a>[Fitch 1971](https://doi.org/10.2307/2412116) [[23](#ref-23)].
 
-Two-pass dynamic programming: the backward pass (leaves to [root](#root)) computes the **state set** at each node -- the intersection of children's sets if compatible, or the union if not (incrementing the parsimony score). The forward pass (root to leaves) assigns definite states top-down.
+Two-pass dynamic programming: the backward pass (leaves to [root](#root)) computes the **state set** at each node, taking the intersection of children's sets if compatible or the union if not (incrementing the parsimony score). The forward pass (root to leaves) assigns definite states top-down.
 
 O(n \* s) per site. With bit-set representation (v1 uses `BitSet128`), intersection and union are single AND/OR instructions.
 
@@ -513,7 +513,7 @@ Includes [NNI](#nni-nearest-neighbor-interchange) and [SPR](#spr-subtree-pruning
 
 ## Topology
 
-The branching pattern of a [phylogenetic tree](#phylogenetic-tree) -- which nodes are connected to which -- independent of [branch lengths](#branch-length).
+The branching pattern of a [phylogenetic tree](#phylogenetic-tree) (which nodes are connected to which), independent of [branch lengths](#branch-length).
 
 Two trees have the same topology if they group the same sets of [leaves](#leaf) into the same clades, regardless of edge weights. Tree refinement modifies both topology (by collapsing [zero-length branches](#zero-length-branch) and resolving [polytomies](#polytomy)) and branch lengths (by [per-edge optimization](#per-edge-optimization)).
 
