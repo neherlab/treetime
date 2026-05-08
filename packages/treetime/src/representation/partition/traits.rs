@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
+use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;

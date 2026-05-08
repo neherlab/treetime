@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
   use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
   use crate::o;

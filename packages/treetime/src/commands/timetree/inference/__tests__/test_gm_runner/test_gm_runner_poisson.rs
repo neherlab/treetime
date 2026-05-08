@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_gm_runner_support::support::{OUTPUTS, load_dates_for_dataset};
-  use crate::commands::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::commands::timetree::inference::runner::BRANCH_GRID_SIZE;

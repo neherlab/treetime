@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
-  use crate::commands::clock::clock_model::ClockModel;
+  use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
+  use crate::clock::clock_model::ClockModel;
   use crate::representation::partition::timetree::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;

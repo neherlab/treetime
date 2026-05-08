@@ -1,5 +1,6 @@
-use crate::commands::optimize::optimize_unified::{OptimizationContribution, evaluate_with_indels_log_lh_only};
 use crate::make_error;
+use crate::optimize::optimize_unified::evaluate_with_indels_log_lh_only;
+use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;

@@ -7,14 +7,14 @@ mod tests {
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::seq::alignment::get_common_length;
-  use crate::commands::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::InferGtrResult;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
   use maplit::btreemap;

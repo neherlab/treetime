@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::seq::alignment::get_common_length;
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::fitch_config::PartitionFitchConfig;
+use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use treetime_io::fasta::FastaRecord;
 

@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_model::{ClockModel, ClockModelStats};
+use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::commands::timetree::inference::runner::run_timetree;
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;

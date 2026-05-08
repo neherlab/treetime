@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::optimize::optimize_unified::OptimizationContribution;
 use crate::gtr::gtr::GTR;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::marginal_passes;
+use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use crate::representation::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionOptimizeOps,
   PartitionRerootOps, PartitionTimetreeOps,

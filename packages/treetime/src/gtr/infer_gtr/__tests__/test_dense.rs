@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::seq::alignment::get_common_length;
-  use crate::commands::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::gtr::infer_gtr::dense::{
@@ -12,6 +11,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

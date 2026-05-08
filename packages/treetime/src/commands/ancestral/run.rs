@@ -1,8 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
-use crate::commands::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
-use crate::seq::alignment::get_common_length;
-use crate::commands::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::commands::shared::args::MethodAncestral;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;
@@ -11,6 +10,7 @@ use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::traits::PartitionBranchOps;
 use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
+use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use itertools::Itertools;

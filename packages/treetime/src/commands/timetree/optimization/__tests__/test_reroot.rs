@@ -2,9 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
-  use crate::commands::ancestral::marginal::update_marginal;
-  use crate::commands::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-  use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::ancestral::marginal::update_marginal;
+  use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
+  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;

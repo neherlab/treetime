@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::clock_graph::GraphClock;
+  use crate::clock::clock_graph::GraphClock;
   use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};

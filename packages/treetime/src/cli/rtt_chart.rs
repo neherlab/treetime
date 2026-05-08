@@ -1,6 +1,6 @@
 use crate::cli::rtt_chart_render::draw_chart;
-use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::clock::rtt::ClockRegressionResult;
+use crate::clock::clock_model::ClockModel;
+use crate::clock::rtt::ClockRegressionResult;
 use crate::o;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;

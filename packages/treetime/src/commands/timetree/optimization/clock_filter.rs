@@ -1,4 +1,4 @@
-use crate::commands::clock::clock_model::ClockModel;
+use crate::clock::clock_model::ClockModel;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::payload::traits::ClockNode;
 use itertools::Itertools;

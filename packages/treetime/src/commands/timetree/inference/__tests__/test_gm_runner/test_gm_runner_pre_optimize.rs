@@ -4,17 +4,17 @@ mod tests {
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
 
-  use crate::commands::ancestral::marginal::initialize_marginal;
-  use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
-  use crate::commands::clock::date_constraints::load_date_constraints;
-  use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::commands::optimize::args::BranchOptMethod;
-  use crate::commands::optimize::optimize_unified::run_optimize_mixed;
+  use crate::ancestral::marginal::initialize_marginal;
+  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+  use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::inference::runner::run_timetree;
   use crate::commands::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::representation::partition::traits::PartitionTimetreeAll;
@@ -119,7 +119,7 @@ mod tests {
       .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
       .collect();
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt)?;
-    crate::commands::ancestral::marginal::update_marginal(&graph, &partitions)?;
+    crate::ancestral::marginal::update_marginal(&graph, &partitions)?;
 
     let clock_model = estimate_clock_model_with_reroot(
       &mut graph,

@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::seq::alignment::get_common_length;
-use crate::commands::clock::date_constraints::load_date_constraints;
+use crate::clock::date_constraints::load_date_constraints;
 use crate::commands::shared::args::BranchLengthMode;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::utils::initialize_node_divergences;
@@ -14,6 +13,7 @@ use crate::representation::partition::timetree::{GraphTimetree, PartitionTimetre
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
+use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
 use log::info;

@@ -1,8 +1,8 @@
-use crate::commands::ancestral::marginal::update_marginal;
-use crate::commands::clock::clock_model::ClockModel;
-use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::commands::clock::reroot::RerootParams;
+use crate::ancestral::marginal::update_marginal;
+use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::reroot::RerootParams;
 use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;

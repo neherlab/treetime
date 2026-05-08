@@ -32,14 +32,14 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::seq::alignment::get_common_length;
-  use crate::commands::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::seq::alignment::get_common_length;
 
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;

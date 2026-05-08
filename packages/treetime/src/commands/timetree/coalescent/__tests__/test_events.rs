@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::load_date_constraints;
   use crate::commands::timetree::coalescent::events::collect_tree_events;
   use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
   use crate::pretty_assert_ulps_eq;

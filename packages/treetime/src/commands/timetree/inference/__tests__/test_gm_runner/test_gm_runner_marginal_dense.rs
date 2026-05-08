@@ -3,10 +3,10 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use crate::commands::ancestral::marginal::initialize_marginal;
-  use crate::commands::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
-  use crate::commands::clock::date_constraints::load_date_constraints;
-  use crate::commands::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::ancestral::marginal::initialize_marginal;
+  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+  use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::commands::timetree::inference::runner::run_timetree;
   use crate::commands::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,

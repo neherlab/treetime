@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::seq::alignment::get_common_length;
-use crate::commands::ancestral::marginal::{initialize_marginal, update_marginal};
+use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::gtr::gtr::GTR;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::payload::ancestral::GraphAncestral;
+use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::{Arc, LazyLock};

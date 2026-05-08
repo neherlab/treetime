@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
+  use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
   use crate::commands::timetree::output::confidence::{
     date_uncertainty_due_to_rate, determine_rate_std, quantile_to_zscore,
   };

@@ -12,7 +12,7 @@ use std::fs::{DirEntry, read_dir};
 use std::io::Write;
 use std::path::Path;
 use std::sync::LazyLock;
-use treetime::commands::clock::date_constraints::load_date_constraints;
+use treetime::clock::date_constraints::load_date_constraints;
 use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::o;
 use treetime::representation::partition::timetree::GraphTimetree;

@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::commands::ancestral::fitch::compress_sequences;
-use crate::seq::alignment::get_common_length;
+use crate::ancestral::fitch::compress_sequences;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
@@ -9,6 +8,7 @@ use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::partition::traits::PartitionCompressed;
 use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use maplit::btreemap;
 use parking_lot::RwLock;

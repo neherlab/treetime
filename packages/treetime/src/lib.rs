@@ -1,11 +1,14 @@
 pub mod alphabet;
+pub mod ancestral;
 pub mod cli;
+pub mod clock;
 pub mod commands;
 pub mod constants;
 pub mod graph;
 pub mod gtr;
 pub mod hacks;
 pub mod io;
+pub mod optimize;
 pub mod representation;
 pub mod seq;
 
