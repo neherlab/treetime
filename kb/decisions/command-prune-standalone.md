@@ -15,7 +15,7 @@ v0 does not support pruning by mutation count or by explicit node name. There is
 
 ## What v1 does
 
-v1 adds a dedicated `treetime prune` subcommand ([packages/treetime/src/commands/prune/run.rs#L36-L95](../../packages/treetime/src/commands/prune/run.rs#L36-L95)) that operates on an input tree (and optionally an alignment) and writes a pruned tree.
+v1 adds a dedicated `treetime prune` subcommand ([packages/treetime/src/commands/prune/run.rs#L28-L81](../../packages/treetime/src/commands/prune/run.rs#L28-L81)) that operates on an input tree (and optionally an alignment) and writes a pruned tree.
 
 ### CLI arguments
 
@@ -34,7 +34,7 @@ v1 adds a dedicated `treetime prune` subcommand ([packages/treetime/src/commands
 
 The command runs two passes over the tree:
 
-**Pass 1: Internal node pruning** ([packages/treetime/src/commands/prune/run.rs#L154-L192](../../packages/treetime/src/commands/prune/run.rs#L154-L192)). For each edge targeting an internal node, any of three independent criteria triggers pruning:
+Pass 1: Internal node pruning ([packages/treetime/src/commands/prune/run.rs#L154-L197](../../packages/treetime/src/commands/prune/run.rs#L154-L197)). For each edge targeting an internal node, any of three independent criteria triggers pruning:
 
 - **Short branch**: branch length < user-specified threshold (strict less-than).
 - **Empty branch**: mutation data is present for the edge AND total mutation count is zero across all partitions. Edges with no partition data (`None`) are preserved: unknown is not the same as zero.
@@ -42,7 +42,7 @@ The command runs two passes over the tree:
 
 When an internal node is pruned, its children are reconnected to its parent via `Graph.collapse_edge()` ([packages/treetime-graph/src/graph_ops.rs#L146-L206](../../packages/treetime-graph/src/graph_ops.rs#L146-L206)). Branch lengths are summed when both edges have values. Substitution lists from the removed edge are merged into each reconnected edge using sorted union with deduplication.
 
-**Pass 2: Leaf pruning** ([packages/treetime/src/commands/prune/run.rs#L194-L223](../../packages/treetime/src/commands/prune/run.rs#L194-L223)). Only the named-node criterion applies to leaves. Short-branch and empty-branch pruning do not affect leaves. When a leaf is removed, the algorithm recursively collapses parent nodes that become childless or unary (have at most one child and are not root).
+Pass 2: Leaf pruning ([packages/treetime/src/commands/prune/run.rs#L199-L228](../../packages/treetime/src/commands/prune/run.rs#L199-L228)). Only the named-node criterion applies to leaves. Short-branch and empty-branch pruning do not affect leaves. When a leaf is removed, the algorithm recursively collapses parent nodes that become childless or unary (have at most one child and are not root).
 
 Output: `pruned_tree.nwk` and `pruned_tree.nexus` in the output directory.
 

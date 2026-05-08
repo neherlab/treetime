@@ -4,7 +4,7 @@ The `prune --merge-shared-mutations` step groups sibling branches in a polytomy 
 
 ## What the spec says
 
-[do../_raw/optimize.md](../_raw/optimize.md) proposes the feature for `optimize`:
+[do../\_raw/optimize.md](../_raw/optimize.md) proposes the feature for `optimize`:
 
 > scanning for shared subs in children of a polytomy and introducing a new internal node with the individuals that share a sub as children. Initial branch length for this new internal node would be `#shared subs/length`.
 
@@ -12,11 +12,11 @@ The `prune --merge-shared-mutations` step groups sibling branches in a polytomy 
 
 ## What v1 does
 
-[`merge_sibling_pair()`](../../packages/treetime/src/commands/prune/run.rs#L483) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
+[`merge_sibling_pair()`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L183) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
 
 $$ d = -\frac{k-1}{k} \ln\!\left(1 - \frac{k}{k-1}\, p\right) $$
 
-where $p$ is the pooled p-distance (shared substitutions divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. The formula matches the JC69 model currently hardcoded in [`run_prune()`](../../packages/treetime/src/commands/prune/run.rs#L48) and generalises naturally to amino-acid alphabets (k=20) without code changes.
+where $p$ is the pooled p-distance (shared substitutions divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. The formula matches the JC69 model currently hardcoded in [`run_prune()`](../../packages/treetime/src/commands/prune/run.rs#L53) and generalises naturally to amino-acid alphabets (k=20) without code changes.
 
 Saturation at $p \to (k-1)/k$ is handled by clamping $p$ at $p_{sat}\,(1 - 10^{-6})$ before applying the formula. This keeps the result finite (about 10 substitutions per site for k=4, 13 for k=20), continuous in $p$, and safe from `log(0)` or NaN downstream.
 
@@ -28,10 +28,10 @@ The child-branch adjustment `max(0, original - new_edge_bl)` still clamps at zer
 
 ## Affected commands
 
-- [`prune --merge-shared-mutations`](../../packages/treetime/src/commands/prune/run.rs#L108) - direct user-facing effect
-- [`optimize`](../../packages/treetime/src/commands/optimize/run.rs#L487) - calls `merge_shared_mutation_branches` in its topology-cleanup step before every per-edge optimization pass
+- [`prune --merge-shared-mutations`](../../packages/treetime/src/commands/prune/run.rs#L73) - direct user-facing effect
+- [`optimize`](../../packages/treetime/src/commands/optimize/run.rs#L576) - calls `merge_shared_mutation_branches` in its topology-cleanup step before every per-edge optimization pass
 
 ## Tests
 
 - Unit: [`test_jukes_cantor_distance_*`](../../packages/treetime/src/gtr/jc_distance.rs#L87) cover known analytical values, monotonicity, the $d \ge p$ property, small-$p$ Taylor behaviour, and the saturation clamp.
-- Integration: [`test_merge_branch_length_jc_correction_differs_from_raw`](../../packages/treetime/src/commands/prune/__tests__/test_merge_shared_mutations.rs#L578) exercises a polytomy where $p = 0.1$, regressing if raw p-distance were restored.
+- Integration: [`test_merge_branch_length_jc_correction_differs_from_raw`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs#L581) exercises a polytomy where $p = 0.1$, regressing if raw p-distance were restored.

@@ -14,7 +14,7 @@ Multiple locations suppress errors by substituting default values for semantical
 - `seq/div.rs:26:` parent divergence defaults to 0.0
 - `seq/div.rs:28:` branch length defaults to 0.0
 - `commands/mugration/discrete_marginal.rs:113:` node name defaults to empty string
-- `commands/prune/run.rs:477-478:` indels default to empty
+- `representation/algo/topology_cleanup/merge_shared_mutations.rs:211-212:` indels default to empty
 - `commands/timetree/optimization/relaxed_clock.rs:87:` coefficients default to zero
 
 ### branch_length().unwrap_or(one_mutation) silent fallback

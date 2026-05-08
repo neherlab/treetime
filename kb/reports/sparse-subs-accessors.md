@@ -136,33 +136,33 @@ Reconstruct a node's full sequence by applying fitch subs and indels to the pare
 
 Count total mutations across all partitions for an edge. Used to determine whether a leaf or internal node has enough signal to keep or should be pruned.
 
-- `parse_node_names()` [commands/prune/run.rs#L120](../../packages/treetime/src/commands/prune/run.rs#L120)
-- `edge.fitch_subs().len()` [commands/prune/run.rs#L167](../../packages/treetime/src/commands/prune/run.rs#L167)
+- `parse_node_names()` [commands/prune/run.rs#L99](../../packages/treetime/src/commands/prune/run.rs#L99)
+- `edge.fitch_subs().len()` [commands/prune/run.rs#L146](../../packages/treetime/src/commands/prune/run.rs#L146)
 
 ### Find shared subs between sibling edges
 
 Read fitch subs from both sibling edges and compute their intersection. Shared substitutions will be lifted to the parent edge when siblings are merged.
 
-- `compute_shared_subs_across_partitions()` [commands/prune/run.rs#L406](../../packages/treetime/src/commands/prune/run.rs#L406)
-- `e.fitch_subs()` pair A [commands/prune/run.rs#L416](../../packages/treetime/src/commands/prune/run.rs#L416)
-- `e.fitch_subs()` pair B [commands/prune/run.rs#L417](../../packages/treetime/src/commands/prune/run.rs#L417)
+- `compute_shared_subs_across_partitions()` [topology_cleanup/merge_shared_mutations.rs#L140](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L140)
+- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L150](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L150)
+- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L151](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L151)
 
 ### Compute private mutations per sibling
 
 Read fitch subs from both sibling edges to compute remaining (non-shared) substitutions. Each child keeps only its private mutations after shared ones move to the parent.
 
-- `merge_sibling_pair()` [commands/prune/run.rs#L449](../../packages/treetime/src/commands/prune/run.rs#L449)
-- `e.fitch_subs()` pair A [commands/prune/run.rs#L475](../../packages/treetime/src/commands/prune/run.rs#L475)
-- `e.fitch_subs()` pair B [commands/prune/run.rs#L476](../../packages/treetime/src/commands/prune/run.rs#L476)
+- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L183)
+- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L209](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L209)
+- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L210](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L210)
 
 ### Redistribute shared and private subs after sibling merge
 
 After splitting shared vs private mutations, write the shared set onto the new parent edge and the private remainders onto each child edge. Completes the sibling merge operation.
 
-- `merge_sibling_pair()` [commands/prune/run.rs#L449](../../packages/treetime/src/commands/prune/run.rs#L449)
-- `parent_edge.set_fitch_subs()` shared subs [commands/prune/run.rs#L569](../../packages/treetime/src/commands/prune/run.rs#L569)
-- `edge_a.set_fitch_subs()` remaining A [commands/prune/run.rs#L573](../../packages/treetime/src/commands/prune/run.rs#L573)
-- `edge_b.set_fitch_subs()` remaining B [commands/prune/run.rs#L577](../../packages/treetime/src/commands/prune/run.rs#L577)
+- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L183)
+- `parent_edge.set_fitch_subs()` shared subs [topology_cleanup/merge_shared_mutations.rs#L303](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L303)
+- `edge_a.set_fitch_subs()` remaining A [topology_cleanup/merge_shared_mutations.rs#L307](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L307)
+- `edge_b.set_fitch_subs()` remaining B [topology_cleanup/merge_shared_mutations.rs#L311](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L311)
 
 ### Compose subs when collapsing zero-length edge
 

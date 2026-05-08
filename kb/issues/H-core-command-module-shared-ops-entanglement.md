@@ -6,7 +6,7 @@ This initial sweep is not exhaustive. More investigation and more reorganization
 
 ## Cross-command production imports
 
-Six cross-command dependency edges exist in production code (excluding tests):
+Five cross-command dependency edges exist in production code (excluding tests):
 
 - ~~`clock` -> `ancestral`: `MethodAncestral`~~ **Resolved**: extracted to `commands/shared/args`
 - ~~`clock` -> `timetree`: `BranchLengthMode`, `RerootMode`~~ **Resolved**: extracted to `commands/shared/args`
@@ -14,7 +14,7 @@ Six cross-command dependency edges exist in production code (excluding tests):
 - `timetree` -> `clock` (20 sites): `ClockModel` (`#ClockModel`) [packages/treetime/src/commands/clock/clock_model.rs#L31](../../packages/treetime/src/commands/clock/clock_model.rs#L31), `ClockSet` (`#ClockSet`) [packages/treetime/src/commands/clock/clock_set.rs#L9](../../packages/treetime/src/commands/clock/clock_set.rs#L9), `ClockNode` (`#ClockNode`) [packages/treetime/src/commands/clock/clock_traits.rs#L5](../../packages/treetime/src/commands/clock/clock_traits.rs#L5), `ClockEdge` (`#ClockEdge`) [packages/treetime/src/commands/clock/clock_traits.rs#L16](../../packages/treetime/src/commands/clock/clock_traits.rs#L16), `ClockParams` (`#ClockParams`) [packages/treetime/src/commands/clock/clock_regression.rs#L19](../../packages/treetime/src/commands/clock/clock_regression.rs#L19), `RerootChanges` (`#RerootChanges`) [packages/treetime/src/commands/clock/reroot.rs#L78](../../packages/treetime/src/commands/clock/reroot.rs#L78), `RerootParams` (`#RerootParams`) [packages/treetime/src/commands/clock/reroot.rs#L17](../../packages/treetime/src/commands/clock/reroot.rs#L17), `BranchPointOptimizationParams` (`#BranchPointOptimizationParams`), `clock_filter_inplace()` (`#clock_filter_inplace`) [packages/treetime/src/commands/clock/clock_filter.rs#L21](../../packages/treetime/src/commands/clock/clock_filter.rs#L21), `estimate_clock_model_with_reroot()` (`#estimate_clock_model_with_reroot`) [packages/treetime/src/commands/clock/clock_regression.rs#L131](../../packages/treetime/src/commands/clock/clock_regression.rs#L131), `estimate_clock_model_with_reroot_policy()` (`#estimate_clock_model_with_reroot_policy`) [packages/treetime/src/commands/clock/clock_regression.rs#L161](../../packages/treetime/src/commands/clock/clock_regression.rs#L161), `load_date_constraints()` (`#load_date_constraints`) [packages/treetime/src/commands/clock/date_constraints.rs#L23](../../packages/treetime/src/commands/clock/date_constraints.rs#L23), `write_clock_model()` (`#write_clock_model`) [packages/treetime/src/commands/clock/clock_output.rs#L11](../../packages/treetime/src/commands/clock/clock_output.rs#L11)
 - `timetree` -> `optimize` (8 sites): `run_optimize_mixed()` (`#run_optimize_mixed`) [packages/treetime/src/commands/optimize/optimize_unified.rs#L533](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L533), `OptimizationContribution` (`#OptimizationContribution`) [packages/treetime/src/commands/optimize/optimize_unified.rs#L96](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L96), `evaluate_with_indels_log_lh_only()` (`#evaluate_with_indels_log_lh_only`) [packages/treetime/src/commands/optimize/optimize_unified.rs#L259](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L259), `estimate_indel_rate()` (`#estimate_indel_rate`) [packages/treetime/src/commands/optimize/optimize_indel.rs#L55](../../packages/treetime/src/commands/optimize/optimize_indel.rs#L55), `BranchOptMethod` (`#BranchOptMethod`), `PartitionOptimizeOps` (`#PartitionOptimizeOps`) [packages/treetime/src/commands/optimize/partition_ops.rs#L13](../../packages/treetime/src/commands/optimize/partition_ops.rs#L13), `apply_damping()` (`#apply_damping`) [packages/treetime/src/commands/optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513), `save_branch_lengths()` (`#save_branch_lengths`) [packages/treetime/src/commands/optimize/run.rs#L460](../../packages/treetime/src/commands/optimize/run.rs#L460)
 - `optimize` -> `ancestral` (2 sites): `compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` (same definitions as above)
-- `optimize` -> `prune` (1 site): `merge_shared_mutation_branches()` (`#merge_shared_mutation_branches`) [packages/treetime/src/commands/prune/run.rs#L294](../../packages/treetime/src/commands/prune/run.rs#L294)
+- ~~`optimize` -> `prune` (1 site): `merge_shared_mutation_branches()`~~ **Resolved**: extracted to `representation/algo/topology_cleanup/merge_shared_mutations`
 - `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` (`#TreetimeAncestralArgs`) [packages/treetime/src/commands/ancestral/args.rs#L19](../../packages/treetime/src/commands/ancestral/args.rs#L19)
 
 ## Reverse dependencies (core importing from commands)
@@ -48,9 +48,9 @@ Core modules import from `commands/`, inverting the expected dependency directio
 
 Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `representation/partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `representation/payload/traits.rs`; `ClockSet` data type to `representation/payload/clock_set.rs`.
 
-### Topology operations
+### ~~Topology operations~~ RESOLVED
 
-`merge_shared_mutation_branches()` (`#merge_shared_mutation_branches`) in [packages/treetime/src/commands/prune/run.rs#L294](../../packages/treetime/src/commands/prune/run.rs#L294) is consumed by `commands/optimize/`. Already tracked in [L-topology-cleanup-move-merge-shared-mutations](N-topology-cleanup-move-merge-shared-mutations.md).
+~~`merge_shared_mutation_branches()` extracted to `representation/algo/topology_cleanup/merge_shared_mutations`.~~
 
 ### ~~CLI args shared across commands~~ **Resolved**
 
@@ -78,4 +78,4 @@ Each extraction should be done incrementally. The dependency graph is DAG-shaped
 ## Related
 
 - [L-core-duplicate-write-graph](N-core-duplicate-write-graph.md) - output helper duplication (subset of this issue)
-- [L-topology-cleanup-move-merge-shared-mutations](N-topology-cleanup-move-merge-shared-mutations.md) - topology operation misplacement (subset of this issue)
+- ~~L-topology-cleanup-move-merge-shared-mutations - topology operation misplacement (resolved)~~
