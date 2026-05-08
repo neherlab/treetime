@@ -29,16 +29,9 @@ All iteration helpers in `optimize/iteration.rs` are already `pub` (moved during
 
 Files: `packages/treetime/src/cli/rtt_chart.rs` (177 lines), `packages/treetime/src/cli/rtt_chart_render.rs` (174 lines).
 
-## B3: optimize/run.rs retains domain-ish functions consumed by domain tests
+## B3: (RESOLVED) optimize/run.rs retains domain-ish functions consumed by domain tests
 
-`run_optimize_loop`, `collect_optimize_partitions`, `ConvergenceReason`, `OptimizeLoopResult` live in `commands/optimize/run.rs` but are consumed by tests in `optimize/__tests__/`. Moving commands to `treetime-cli` breaks these test imports.
-
-Options:
-
-- Move these functions to `optimize/` (they're optimization loop logic, arguably domain)
-- Keep tests in `treetime-cli` alongside the functions (but they test domain behavior, not CLI)
-
-Affected test files: `test_gm_optimize.rs`, `test_damping.rs`, `test_run_optimize_loop.rs`, `test_convergence_conditions.rs`, `test_convergence_sc2.rs`, `test_no_indels.rs`, `test_topology_cleanup.rs`, `test_dispatch_zero_boundary.rs`.
+Resolved: `run_optimize_loop`, `collect_optimize_partitions`, `ConvergenceReason`, `OptimizeLoopResult` moved to `optimize/run_loop.rs`. `From<&BranchSplitArgs>` moved from `clock/find_best_root/params.rs` to `commands/clock/run.rs`.
 
 ## Non-blockers (already clean)
 
