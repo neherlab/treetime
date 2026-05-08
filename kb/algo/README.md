@@ -78,30 +78,30 @@ Sagulenko, P., Puller, V., & Neher, R.A. (2018). "TreeTime: Maximum-likelihood p
 
 ### Phylogenetics
 
-- Felsenstein (1981). "Evolutionary trees from DNA sequences." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
+- Felsenstein (1981). "Evolutionary trees from DNA sequences." J Mol Evol, 17(6):368-376. https://doi.org/10.1007/BF01734359
 - Felsenstein (2003). "Inferring Phylogenies." Sinauer Associates. ISBN 978-0-87893-177-4
 - Yang (2006). "Computational Molecular Evolution." Oxford University Press. ISBN 978-0-19-856702-8
 
 ### Substitution Models
 
 - Jukes & Cantor (1969). "Evolution of Protein Molecules." In Munro (ed.), Mammalian Protein Metabolism, vol. 3, pp. 21-132. Academic Press
-- Kimura (1980). "A simple method for estimating evolutionary rates of base substitutions through comparative studies of nucleotide sequences." J Mol Evol, 16(2):111-120. doi:10.1007/BF01731581
-- Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting by a molecular clock of mitochondrial DNA." J Mol Evol, 22(2):160-174. doi:10.1007/BF02101694
-- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. doi:10.1093/oxfordjournals.molbev.a040023
-- Jones, Taylor & Thornton (1992). "The rapid generation of mutation data matrices from protein sequences." CABIOS, 8(3):275-282. doi:10.1093/bioinformatics/8.3.275
+- Kimura (1980). "A simple method for estimating evolutionary rates of base substitutions through comparative studies of nucleotide sequences." J Mol Evol, 16(2):111-120. https://doi.org/10.1007/BF01731581
+- Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting by a molecular clock of mitochondrial DNA." J Mol Evol, 22(2):160-174. https://doi.org/10.1007/BF02101694
+- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. https://doi.org/10.1093/oxfordjournals.molbev.a040023
+- Jones, Taylor & Thornton (1992). "The rapid generation of mutation data matrices from protein sequences." CABIOS, 8(3):275-282. https://doi.org/10.1093/bioinformatics/8.3.275
 
 ### Coalescent
 
-- Kingman (1982). "The coalescent." Stochastic Processes and their Applications, 13(3):235-248. doi:10.1016/0304-4149(82)90011-4
-- Strimmer & Pybus (2001). "Exploring the demographic history of DNA sequences using the generalized skyline plot." Mol Biol Evol, 18(12):2298-2305. doi:10.1093/oxfordjournals.molbev.a003776
-- Drummond, Rambaut, Shapiro & Pybus (2005). "Bayesian coalescent inference of past population dynamics from molecular sequences." Mol Biol Evol, 22(5):1185-1192. doi:10.1093/molbev/msi103
-- Minin, Bloomquist & Suchard (2008). "Smooth skyride through a rough skyline: Bayesian coalescent-based inference of population dynamics." Mol Biol Evol, 25(7):1459-1471. doi:10.1093/molbev/msn090
+- Kingman (1982). "The coalescent." Stochastic Processes and their Applications, 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4
+- Strimmer & Pybus (2001). "Exploring the demographic history of DNA sequences using the generalized skyline plot." Mol Biol Evol, 18(12):2298-2305. https://doi.org/10.1093/oxfordjournals.molbev.a003776
+- Drummond, Rambaut, Shapiro & Pybus (2005). "Bayesian coalescent inference of past population dynamics from molecular sequences." Mol Biol Evol, 22(5):1185-1192. https://doi.org/10.1093/molbev/msi103
+- Minin, Bloomquist & Suchard (2008). "Smooth skyride through a rough skyline: Bayesian coalescent-based inference of population dynamics." Mol Biol Evol, 25(7):1459-1471. https://doi.org/10.1093/molbev/msn090
 
 ### Relaxed Clock
 
-- Thorne, Kishino & Painter (1998). "Estimating the rate of evolution of the rate of molecular evolution." Mol Biol Evol, 15(12):1647-1657. doi:10.1093/oxfordjournals.molbev.a025892
-- Drummond, Ho, Phillips & Rambaut (2006). "Relaxed phylogenetics and dating with confidence." PLOS Biology, 4(5):e88. doi:10.1371/journal.pbio.0040088
-- Lepage, Bryant, Philippe & Lartillot (2007). "A general comparison of relaxed molecular clock models." Mol Biol Evol, 24(12):2669-2680. doi:10.1093/molbev/msm193
+- Thorne, Kishino & Painter (1998). "Estimating the rate of evolution of the rate of molecular evolution." Mol Biol Evol, 15(12):1647-1657. https://doi.org/10.1093/oxfordjournals.molbev.a025892
+- Drummond, Ho, Phillips & Rambaut (2006). "Relaxed phylogenetics and dating with confidence." PLOS Biology, 4(5):e88. https://doi.org/10.1371/journal.pbio.0040088
+- Lepage, Bryant, Philippe & Lartillot (2007). "A general comparison of relaxed molecular clock models." Mol Biol Evol, 24(12):2669-2680. https://doi.org/10.1093/molbev/msm193
 
 ### Numerical Methods
 

@@ -110,9 +110,9 @@ v1 applies the same outer-loop exponential damping as v0 (`--damping`, default 0
 
 ## References
 
-- Felsenstein J (1981). Evolutionary trees from DNA sequences: a maximum likelihood approach. Journal of Molecular Evolution 17(6):368-376.
-- Dinh V, Matsen FA IV (2015). The shape of the one-dimensional phylogenetic likelihood function. arXiv 1507.03647.
-- Clancy KM, Lyu H, Roch S (2025). Sample Complexity of Branch-length Estimation by Maximum Likelihood. arXiv 2507.22038.
-- Stamatakis A (2006). RAxML-VI-HPC: maximum likelihood-based phylogenetic analyses with thousands of taxa and mixed models. Bioinformatics 22(21):2688-2690.
-- Nguyen LT, Schmidt HA, von Haeseler A, Minh BQ (2015). IQ-TREE: A fast and effective stochastic algorithm for estimating maximum-likelihood phylogenies. Mol Biol Evol 32(1):268-274.
-- Guindon S, Gascuel O (2003). A simple, fast, and accurate algorithm to estimate large phylogenies by maximum likelihood. Systematic Biology 52(5):696-704.
+- Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359
+- Dinh, Vu, and Frederick A. Matsen IV. 2015. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." arXiv:1507.03647. https://arxiv.org/abs/1507.03647
+- Clancy, Killian M., Hanlin Lyu, and Sebastien Roch. 2025. "Sample Complexity of Branch-Length Estimation by Maximum Likelihood." arXiv:2507.22038. https://arxiv.org/abs/2507.22038
+- Stamatakis, Alexandros. 2006. "RAxML-VI-HPC: Maximum Likelihood-Based Phylogenetic Analyses with Thousands of Taxa and Mixed Models." _Bioinformatics_ 22(21):2688-2690. https://doi.org/10.1093/bioinformatics/btl446
+- Nguyen, Lam-Tung, Heiko A. Schmidt, Arndt von Haeseler, and Bui Quang Minh. 2015. "IQ-TREE: A Fast and Effective Stochastic Algorithm for Estimating Maximum-Likelihood Phylogenies." _Molecular Biology and Evolution_ 32(1):268-274. https://doi.org/10.1093/molbev/msu300
+- Guindon, Stephane, and Olivier Gascuel. 2003. "A Simple, Fast, and Accurate Algorithm to Estimate Large Phylogenies by Maximum Likelihood." _Systematic Biology_ 52(5):696-704. https://doi.org/10.1080/10635150390235520

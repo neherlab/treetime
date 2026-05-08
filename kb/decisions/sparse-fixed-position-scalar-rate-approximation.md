@@ -35,6 +35,6 @@ The approximation affects likelihood magnitude and marginal profiles at all posi
 
 ## References
 
-- Felsenstein J (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol 17:368-376.
-- Yang Z (1994). "Maximum likelihood phylogenetic estimation from DNA sequences with variable rates over sites: approximate methods." J Mol Evol 39:306-314.
+- Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359
+- Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00178256
 - v0 guard: `packages/legacy/treetime/treetime/treeanc.py:186-187`

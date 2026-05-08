@@ -84,4 +84,4 @@ The `infer_dense()` function (`packages/treetime/src/representation/algo/infer_d
 
 [1] SARS-CoV-2 mutation rate estimate from early pandemic sequences. Wikipedia contributors, "Severe acute respiratory syndrome coronavirus 2," Wikipedia. https://en.wikipedia.org/wiki/SARS-CoV-2
 
-[2] Felsenstein J. Evolutionary trees from DNA sequences: a maximum likelihood approach. J Mol Evol. 1981;17(6):368-76. doi:10.1007/BF01734359. PMID: 7288891.
+[2] Felsenstein J. Evolutionary trees from DNA sequences: a maximum likelihood approach. J Mol Evol. 1981;17(6):368-76. https://doi.org/10.1007/BF01734359. PMID: 7288891.

@@ -400,7 +400,7 @@ When multiple traversals over the same tree are needed (Fitch parsimony pass, ma
 
 <a id="ref-34"></a>[34] Sagulenko, P., Puller, V. & Neher, R.A. (2018). TreeTime: Maximum-likelihood phylodynamic analysis. Virus Evolution 4:vex042.
 
-<a id="ref-35"></a>[35] Kelleher, J., Thornton, K.R., Ashander, J. & Ralph, P.L. (2018). Efficient pedigree recording for fast population genetics simulation. PLOS Computational Biology 14:e1006581. doi:10.1371/journal.pcbi.1006581
+<a id="ref-35"></a>[35] Kelleher, J., Thornton, K.R., Ashander, J. & Ralph, P.L. (2018). Efficient pedigree recording for fast population genetics simulation. PLOS Computational Biology 14:e1006581. https://doi.org/10.1371/journal.pcbi.1006581
 
 <a id="ref-36"></a>[36] Fournier, R. & Larribe, F. (2025). Moonshine.jl: a Julia package for genome-scale model-based ancestral recombination graph inference. arXiv:2511.21124.
 

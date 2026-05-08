@@ -26,4 +26,4 @@ v1's GTR system uses explicit alphabet types with compile-time dimension checks.
 
 ## References
 
-- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. doi:10.1093/oxfordjournals.molbev.a040023
+- Tamura, Koichiro, and Masatoshi Nei. 1993. "Estimation of the Number of Nucleotide Substitutions in the Control Region of Mitochondrial DNA in Humans and Chimpanzees." _Molecular Biology and Evolution_ 10(3):512-526. https://doi.org/10.1093/oxfordjournals.molbev.a040023

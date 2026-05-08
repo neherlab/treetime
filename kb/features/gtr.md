@@ -28,9 +28,9 @@
 ## References
 
 - Jukes & Cantor (1969). "Evolution of Protein Molecules." In Munro (ed.), Mammalian Protein Metabolism, vol. 3, pp. 21-132. Academic Press
-- Kimura (1980). "A simple method for estimating evolutionary rates of base substitutions through comparative studies of nucleotide sequences." J Mol Evol, 16(2):111-120. doi:10.1007/BF01731581
-- Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. doi:10.1007/BF01734359
-- Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting by a molecular clock of mitochondrial DNA." J Mol Evol, 22(2):160-174. doi:10.1007/BF02101694
-- Tamura (1992). "Estimation of the number of nucleotide substitutions when there are strong transition-transversion and G+C-content biases." Mol Biol Evol, 9(4):678-687. doi:10.1093/oxfordjournals.molbev.a040752
-- Jones, Taylor & Thornton (1992). "The rapid generation of mutation data matrices from protein sequences." CABIOS, 8(3):275-282. doi:10.1093/bioinformatics/8.3.275
-- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. doi:10.1093/oxfordjournals.molbev.a040023
+- Kimura (1980). "A simple method for estimating evolutionary rates of base substitutions through comparative studies of nucleotide sequences." J Mol Evol, 16(2):111-120. https://doi.org/10.1007/BF01731581
+- Felsenstein (1981). "Evolutionary trees from DNA sequences: a maximum likelihood approach." J Mol Evol, 17(6):368-376. https://doi.org/10.1007/BF01734359
+- Hasegawa, Kishino & Yano (1985). "Dating of the human-ape splitting by a molecular clock of mitochondrial DNA." J Mol Evol, 22(2):160-174. https://doi.org/10.1007/BF02101694
+- Tamura (1992). "Estimation of the number of nucleotide substitutions when there are strong transition-transversion and G+C-content biases." Mol Biol Evol, 9(4):678-687. https://doi.org/10.1093/oxfordjournals.molbev.a040752
+- Jones, Taylor & Thornton (1992). "The rapid generation of mutation data matrices from protein sequences." CABIOS, 8(3):275-282. https://doi.org/10.1093/bioinformatics/8.3.275
+- Tamura & Nei (1993). "Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees." Mol Biol Evol, 10(3):512-526. https://doi.org/10.1093/oxfordjournals.molbev.a040023

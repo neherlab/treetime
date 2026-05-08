@@ -106,5 +106,5 @@ Test cases in `packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_d
 
 ## References
 
-- Tavaré, S. (1986). Some probabilistic and statistical problems in the analysis of DNA sequences. _Lectures on Mathematics in the Life Sciences_, 17, 57-86.
-- Felsenstein, J. (1981). Evolutionary trees from DNA sequences: A maximum likelihood approach. _Journal of Molecular Evolution_, 17(6), 368-376.
+- Tavaré, Simon. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86.
+- Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359

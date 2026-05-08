@@ -22,7 +22,7 @@ Different genome regions evolve under different substitution models. Protein-cod
 
 ### NEXUS SETS block
 
-The NEXUS file format (Maddison, Swofford, and Maddison 1997, doi:10.1093/sysbio/46.4.590) defines `CHARSET` and `CHARPARTITION` commands for specifying data subsets:
+The NEXUS file format (Maddison, Swofford, and Maddison 1997, https://doi.org/10.1093/sysbio/46.4.590) defines `CHARSET` and `CHARPARTITION` commands for specifying data subsets:
 
 ```
 #nexus
@@ -33,11 +33,11 @@ begin sets;
 end;
 ```
 
-MrBayes (Ronquist and Huelsenbeck 2003, doi:10.1093/bioinformatics/btg180) popularized NEXUS charsets for mixed-model Bayesian partitioned analysis. PartitionFinder (Lanfear et al. 2012, doi:10.1093/molbev/mss020) automates partition scheme selection.
+MrBayes (Ronquist and Huelsenbeck 2003, https://doi.org/10.1093/bioinformatics/btg180) popularized NEXUS charsets for mixed-model Bayesian partitioned analysis. PartitionFinder (Lanfear et al. 2012, https://doi.org/10.1093/molbev/mss020) automates partition scheme selection.
 
 ### IQ-TREE partition modes
 
-IQ-TREE 2 (Minh et al. 2020, doi:10.1093/molbev/msaa015) supports three partition modes: edge-linked proportional (`-spp`), edge-linked equal (`-q`), and edge-unlinked (`-sp`). Terrace-aware search (Chernomor, von Haeseler, and Minh 2016, doi:10.1093/sysbio/syw037) handles partitioned data with missing taxa.
+IQ-TREE 2 (Minh et al. 2020, https://doi.org/10.1093/molbev/msaa015) supports three partition modes: edge-linked proportional (`-spp`), edge-linked equal (`-q`), and edge-unlinked (`-sp`). Terrace-aware search (Chernomor, von Haeseler, and Minh 2016, https://doi.org/10.1093/sysbio/syw037) handles partitioned data with missing taxa.
 
 ### RAxML-NG partition format
 
@@ -46,11 +46,11 @@ GTR+G, gene1 = 1-500
 HKY+I, gene2 = 501-1200
 ```
 
-Column-range-based partitioning of a concatenated alignment. Kozlov et al. 2019, doi:10.1093/bioinformatics/btz305.
+Column-range-based partitioning of a concatenated alignment. Kozlov et al. 2019, https://doi.org/10.1093/bioinformatics/btz305.
 
 ### BEAST XML
 
-Full model hierarchy in XML: sequence data, substitution models, clock models, tree priors, operators. Complete but verbose. Drummond and Rambaut 2007, doi:10.1186/1471-2148-7-214.
+Full model hierarchy in XML: sequence data, substitution models, clock models, tree priors, operators. Complete but verbose. Drummond and Rambaut 2007, https://doi.org/10.1186/1471-2148-7-214.
 
 ## Proposed design
 

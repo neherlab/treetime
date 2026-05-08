@@ -30,12 +30,12 @@ The molecular clock hypothesis (Zuckerkandl & Pauling, 1962) proposes that mutat
 
 ### References
 
-- Jukes TH, Cantor CR (1969). Evolution of protein molecules. Mammalian Protein Metabolism 3:21-132.
-- Kimura M (1980). A simple method for estimating evolutionary rates of base substitutions. J Mol Evol 16:111-120.
-- Hasegawa M, Kishino H, Yano T (1985). Dating of the human-ape splitting by a molecular clock of mitochondrial DNA. J Mol Evol 22:160-174.
-- Tavaré S (1986). Some probabilistic and statistical problems in the analysis of DNA sequences. Lectures on Mathematics in the Life Sciences 17:57-86.
-- Lanfear R, Calcott B, Ho SYW, Guindon S (2012). PartitionFinder: Combined selection of partitioning schemes and substitution models for phylogenetic analyses. Mol Biol Evol 29(6):1695-1701.
-- Zuckerkandl E, Pauling L (1962). Molecular disease, evolution, and genetic heterogeneity. Horizons in Biochemistry, Academic Press, pp. 189-225.
+- Jukes, Thomas H., and Charles R. Cantor. 1969. "Evolution of Protein Molecules." In _Mammalian Protein Metabolism,_ vol. 3, edited by H. N. Munro, 21-132. Academic Press. https://doi.org/10.1016/B978-1-4832-3211-9.50009-7
+- Kimura, Motoo. 1980. "A Simple Method for Estimating Evolutionary Rates of Base Substitutions Through Comparative Studies of Nucleotide Sequences." _Journal of Molecular Evolution_ 16(2):111-120. https://doi.org/10.1007/BF01731581
+- Hasegawa, Masami, Hirohisa Kishino, and Taka-aki Yano. 1985. "Dating of the Human-Ape Splitting by a Molecular Clock of Mitochondrial DNA." _Journal of Molecular Evolution_ 22(2):160-174. https://doi.org/10.1007/BF02101694
+- Tavaré, Simon. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86.
+- Lanfear, Robert, Brett Calcott, Simon Y. W. Ho, and Stephane Guindon. 2012. "PartitionFinder: Combined Selection of Partitioning Schemes and Substitution Models for Phylogenetic Analyses." _Molecular Biology and Evolution_ 29(6):1695-1701. https://doi.org/10.1093/molbev/mss020
+- Zuckerkandl, Emile, and Linus Pauling. 1962. "Molecular Disease, Evolution, and Genetic Heterogeneity." In _Horizons in Biochemistry,_ edited by Michael Kasha and Bernard Pullman, 189-225. Academic Press.
 
 ## What v0 does
 

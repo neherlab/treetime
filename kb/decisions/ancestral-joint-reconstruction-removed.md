@@ -16,7 +16,7 @@ The distinction matters because the most probable state at each position (from m
 
 ## The Pupko et al. 2000 algorithm
 
-Joint reconstruction was formalized by Pupko, Pe'er, Shamir, and Graur in "A fast algorithm for joint reconstruction of ancestral amino acid sequences" (Molecular Biology and Evolution, 2000). Their algorithm runs in O(n _ L _ k^2) time where n is the number of taxa, L is sequence length, and k is alphabet size.
+Joint reconstruction was formalized by <a id="cite-1"></a>[Pupko et al. 2000](https://doi.org/10.1093/oxfordjournals.molbev.a026369) [[1](#ref-1)]. Their algorithm runs in O(n _ L _ k^2) time where n is the number of taxa, L is sequence length, and k is alphabet size.
 
 The algorithm has two passes over the tree:
 
@@ -35,13 +35,13 @@ The v0 implementation at `packages/legacy/treetime/treetime/treeanc.py:960-1063:
 
 ## Why joint reconstruction is statistically inconsistent
 
-Mossel, Roch, and Steel proved in "Shrinkage effect in ancestral maximum likelihood" (IEEE/ACM Transactions on Computational Biology and Bioinformatics, 2009) that joint ancestral maximum likelihood is statistically inconsistent. This means that even with infinite sequence data, the method can produce incorrect results.
+<a id="cite-2"></a>[Mossel, Roch, and Steel 2009](https://doi.org/10.1109/TCBB.2008.107) [[2](#ref-2)] proved that joint ancestral maximum likelihood is statistically inconsistent. This means that even with infinite sequence data, the method can produce incorrect results.
 
 The problem is branch length shrinkage. When jointly optimizing over ancestral states and branch lengths, the optimization systematically underestimates branch lengths. The estimator prefers shorter branches because they make fewer state changes more likely, and when ancestral states are also being optimized, the algorithm can "explain away" the evidence for longer branches by choosing convenient ancestral states.
 
 For certain tree topologies - particularly when one pair of sister branches is long and internal branches are short - the joint method estimates internal branch lengths as exactly zero even with infinite data. This collapses internal resolution, turning a resolved tree into a star tree.
 
-A 2019 follow-up paper (Shaw, Dinh, and Matsen, "Joint Maximum Likelihood of Phylogeny and Ancestral States Is Not Consistent", Molecular Biology and Evolution, doi:10.1093/molbev/msz128) strengthened this result: the only parameter values for which joint inference produces correct branch lengths lie in a set of measure zero. The bias is systematic and downward.
+<a id="cite-3"></a>[Shaw, Dinh, and Matsen 2019](https://doi.org/10.1093/molbev/msz128) [[3](#ref-3)] strengthened this result: the only parameter values for which joint inference produces correct branch lengths lie in a set of measure zero. The bias is systematic and downward.
 
 Marginal reconstruction avoids this problem by integrating over ancestral states rather than optimizing them. The classical Felsenstein pruning algorithm computes marginal likelihoods that are statistically consistent for branch length and topology inference.
 
@@ -72,3 +72,9 @@ Running `treetime ancestral` without `--method-anc` panics because `Joint` is th
 The `timetree` and `clock` commands accept `--method-anc` but ignore it - they always use marginal reconstruction internally. This may change in future versions.
 
 No golden master tests exist for joint reconstruction in v1. Marginal reconstruction is the recommended method for all use cases.
+
+## References
+
+- <a id="ref-1"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-1)
+- <a id="ref-2"></a>Mossel, Elchanan, Sebastien Roch, and Mike Steel. 2009. "Shrinkage Effect in Ancestral Maximum Likelihood." _IEEE/ACM Transactions on Computational Biology and Bioinformatics_ 6(1):126-133. https://doi.org/10.1109/TCBB.2008.107 [↩](#cite-2)
+- <a id="ref-3"></a>Shaw, David, Vu Dinh, and Frederick A. Matsen IV. 2019. "Joint Maximum Likelihood of Phylogeny and Ancestral States Is Not Consistent." _Molecular Biology and Evolution_ 36(11):2613-2619. https://doi.org/10.1093/molbev/msz128 [↩](#cite-3)

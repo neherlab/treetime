@@ -44,7 +44,7 @@ Replace the single rate $\mu$ with separate insertion rate $\lambda$ and deletio
 
 $$\ell_{\text{indel}}(t) = k_{\text{ins}} \ln(\lambda t) - \lambda t + k_{\text{del}} \ln(\delta t) - \delta t - \text{const}$$
 
-Loewenthal et al. 2021 (doi:10.1093/molbev/msab266) found 74% of RIM-supported protein datasets have $R_D > R_I$, with $R_D/R_I \approx 2$ in Drosophilidae. The asymmetry is not universal: Saccharomycetaceae coding genes show $R_I > R_D$ in 56% of RIM datasets.
+<a id="cite-1"></a>[Loewenthal et al. 2021](https://doi.org/10.1093/molbev/msab266) [[1](#ref-1)] found 74% of RIM-supported protein datasets have $R_D > R_I$, with $R_D/R_I \approx 2$ in Drosophilidae. The asymmetry is not universal: Saccharomycetaceae coding genes show $R_I > R_D$ in 56% of RIM datasets.
 
 **Mathematical note**: with global MLE estimation, $\lambda + \delta = \mu$ always holds (the total rate is the same). The per-edge optimum $t^* = (k_{\text{ins}} + k_{\text{del}})/(\lambda + \delta) = k/\mu$ is identical to the current single-rate model. Separate rates do not change branch length estimates under global MLE. The separation is useful for reporting and for downstream analyses that distinguish insertion-dominated from deletion-dominated branches, but it requires per-edge or per-clade rate estimation to affect branch lengths.
 
@@ -62,7 +62,7 @@ This factorizes the indel process into "how many events" (opening) and "how long
 
 **Implementation effort**: moderate. Two rate parameters estimated from the tree. The Newton step gains two terms. Requires the `InDel` struct to store length (already available).
 
-**Mathematical note**: the per-edge optimum $t^* = (k + L_{\text{ext}})/(\mu_o + \mu_e)$. Since $k + L_{\text{ext}} = \sum l_i$, E3 is equivalent to E1 with linear weighting $w(l) = l$ when $\mu_o = \mu_e$. The separate opening/extension rates add a degree of freedom beyond E1: they allow the model to weight short indels (dominated by opening) differently from long indels (dominated by extension). Rivas 2005 showed geometric instantaneous rates do not produce geometric finite-time distributions, so this is an approximation.
+**Mathematical note**: the per-edge optimum $t^* = (k + L_{\text{ext}})/(\mu_o + \mu_e)$. Since $k + L_{\text{ext}} = \sum l_i$, E3 is equivalent to E1 with linear weighting $w(l) = l$ when $\mu_o = \mu_e$. The separate opening/extension rates add a degree of freedom beyond E1: they allow the model to weight short indels (dominated by opening) differently from long indels (dominated by extension). <a id="cite-2"></a>[Rivas 2005](https://doi.org/10.1186/1471-2105-6-236) [[2](#ref-2)] showed geometric instantaneous rates do not produce geometric finite-time distributions, so this is an approximation.
 
 **Tradeoff**: two parameters. More expressive than E1 (separates opening from extension dynamics). Subsumes E1-linear as a special case ($\mu_o = \mu_e$).
 
@@ -110,6 +110,11 @@ Fit indel length distributions (geometric, Zipf/power-law, multi-exponential) fr
    - No regression on datasets where indels are absent (the extension should be a no-op)
 
 3. Compare against v0 (which ignores indels entirely) to quantify the practical impact.
+
+## References
+
+- <a id="ref-1"></a>Loewenthal, Gil, Dana Rapoport, Oren Avram, Alon Moshe, Anat Kreimer, Michal Linial, and Tal Pupko. 2021. "A Probabilistic Model for Indel Evolution: Differentiating Insertions from Deletions." _Molecular Biology and Evolution_ 38(12):5769-5781. https://doi.org/10.1093/molbev/msab266 [↩](#cite-1)
+- <a id="ref-2"></a>Rivas, Elena. 2005. "Evolutionary Models for Insertions and Deletions in a Probabilistic Modeling Framework." _BMC Bioinformatics_ 6:236. https://doi.org/10.1186/1471-2105-6-236 [↩](#cite-2)
 
 ## Related documents
 
