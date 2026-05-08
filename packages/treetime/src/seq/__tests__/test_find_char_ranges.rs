@@ -12,6 +12,7 @@ mod tests {
   #[case::two_ranges("ATGXXXCATGXXXXA",  b'X', vec![(3, 6), (10, 14)])]
   #[case::at_end("GCAXXXX",          b'X', vec![(3, 7)])]
   #[case::at_start("XXXXGCA",          b'X', vec![(0, 4)])]
+  #[trace]
   fn test_find_letter_ranges(#[case] s: &str, #[case] letter: u8, #[case] expected: Vec<(usize, usize)>) {
     let actual = find_letter_ranges(&helpers::seq(s), helpers::c(letter));
     assert_eq!(expected, actual);
@@ -25,6 +26,7 @@ mod tests {
   #[case::two_ranges("ATGNNNCATGNNNNA", vec![(3, 6), (10, 14)])]
   #[case::at_end("GCANNNN",         vec![(3, 7)])]
   #[case::at_start("NNNNGCA",         vec![(0, 4)])]
+  #[trace]
   fn test_find_ambiguous_ranges(#[case] s: &str, #[case] expected: Vec<(usize, usize)>) {
     let actual = find_letter_ranges(&helpers::seq(s), helpers::c(b'N'));
     assert_eq!(expected, actual);
@@ -38,6 +40,7 @@ mod tests {
   #[case::two_ranges("ATG---CATG----A", vec![(3, 6), (10, 14)])]
   #[case::at_end("GCA----",         vec![(3, 7)])]
   #[case::at_start("----GCA",         vec![(0, 4)])]
+  #[trace]
   fn test_find_gap_ranges(#[case] s: &str, #[case] expected: Vec<(usize, usize)>) {
     let actual = find_letter_ranges(&helpers::seq(s), helpers::c(b'-'));
     assert_eq!(expected, actual);
@@ -56,6 +59,7 @@ mod tests {
   #[case::alternating_n_gaps("ANNNNT----GNNNNC", vec![(1, 5), (6, 10), (11, 15)])]
   #[case::n_middle_gaps_end("ATGNNNTTTT---",    vec![(3, 6), (10, 13)])]
   #[case::gaps_middle_n_end("ATG---TTTTNNN",    vec![(3, 6), (10, 13)])]
+  #[trace]
   fn test_find_undetermined_ranges(#[case] s: &str, #[case] expected: Vec<(usize, usize)>) {
     let actual = find_letter_ranges_by(&helpers::seq(s), |ch| ch == helpers::c(b'N') || ch == helpers::c(b'-'));
     assert_eq!(expected, actual);

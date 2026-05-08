@@ -7,33 +7,7 @@ mod tests {
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
 
-  /// Build a simple tree with time_length set on edges
-  fn build_simple_tree() -> Result<GraphTimetree, Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
-
-    // Set time_length on edges (simulating clock inference)
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-      // time_length = branch_length * 100 (arbitrary scaling for testing)
-      edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-    }
-
-    Ok(graph)
-  }
-
-  /// Build a deeper tree with time_length set
-  fn build_deep_tree() -> Result<GraphTimetree, Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
-
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-      edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-    }
-
-    Ok(graph)
-  }
+  use helpers::{build_deep_tree, build_simple_tree, compute_variance};
 
   #[test]
   fn test_relaxed_clock_default_params_produce_reasonable_gamma() -> Result<(), Report> {
@@ -212,12 +186,6 @@ mod tests {
     Ok(())
   }
 
-  fn compute_variance(values: &[f64]) -> f64 {
-    let n = values.len() as f64;
-    let mean = values.iter().sum::<f64>() / n;
-    values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n
-  }
-
   /// Regression test for T3: one_mutation must sum sequence lengths across partitions.
   /// Different one_mutation values produce different gamma values.
   /// This validates that the calculation in refinement.rs matters.
@@ -352,6 +320,12 @@ mod tests {
     let graph: GraphTimetree = nwk_read_str("root:0.0;")?;
     let params = [slack, 1.0];
     apply_relaxed_clock(&graph, &params, one_mutation);
+
+    for edge in graph.get_edges() {
+      let gamma = edge.read_arc().payload().read_arc().gamma;
+      pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
+    }
+
     Ok(())
   }
 
@@ -379,5 +353,36 @@ mod tests {
     pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 
     Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub fn build_simple_tree() -> Result<GraphTimetree, Report> {
+      let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+      for edge in graph.get_edges() {
+        let edge = edge.write_arc();
+        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
+        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
+      }
+      Ok(graph)
+    }
+
+    pub fn build_deep_tree() -> Result<GraphTimetree, Report> {
+      let graph: GraphTimetree =
+        nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
+      for edge in graph.get_edges() {
+        let edge = edge.write_arc();
+        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
+        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
+      }
+      Ok(graph)
+    }
+
+    pub fn compute_variance(values: &[f64]) -> f64 {
+      let n = values.len() as f64;
+      let mean = values.iter().sum::<f64>() / n;
+      values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n
+    }
   }
 }
