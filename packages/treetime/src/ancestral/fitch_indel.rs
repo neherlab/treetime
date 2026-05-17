@@ -103,7 +103,7 @@ pub fn resolve_indels_forward(
     if variable_indel.contains_key(&r) {
       continue;
     }
-    let indel = InDel::del(r, &node_sequence[r.0..r.1]);
+    let indel = InDel::del(r, &parent_sequence[r.0..r.1]);
     indels.push(indel);
   }
 

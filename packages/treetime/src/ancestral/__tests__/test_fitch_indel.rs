@@ -110,7 +110,7 @@ mod tests {
     assert_eq!(indels.len(), 1);
     assert!(indels[0].deletion);
     assert_eq!(indels[0].range, (2, 5));
-    assert_eq!(indels[0].seq, Seq::try_from_str("---").unwrap());
+    assert_eq!(indels[0].seq, Seq::try_from_str("GTA").unwrap());
   }
 
   #[test]
