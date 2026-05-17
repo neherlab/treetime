@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::args::{BranchOptMethod, InitialGuessMode};
+use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueHint};
 use serde::Serialize;
 use std::fmt::Debug;
@@ -105,4 +106,12 @@ pub struct TreetimeOptimizeArgs {
   /// enabling v0 parity testing. Default: indels enabled.
   #[clap(long)]
   pub no_indels: bool,
+
+  /// How to handle gap characters in input sequences
+  ///
+  /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+  /// 'all': replace all gap characters with the ambiguous character.
+  /// 'none': leave all gap characters unchanged.
+  #[clap(long, value_enum, default_value_t = GapFill::default())]
+  pub gap_fill: GapFill,
 }
