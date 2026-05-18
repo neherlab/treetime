@@ -3,7 +3,7 @@
 v1 uses Nelder-Mead (simplex) via `argmin` for skyline Tc optimization. v0 uses SLSQP via `scipy.optimize.minimize`. Both minimize the same objective: negative coalescent log-likelihood plus a stiffness penalty on `log(Tc)` differences.
 
 - v1: `optimize_skyline()` (`#optimize_skyline`) using `NelderMead` at
-  [`packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L126`](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L126)
+  [`packages/treetime/src/coalescent/skyline.rs#L68-L126`](../../packages/treetime/src/coalescent/skyline.rs#L68-L126)
 - v0: `optimize_skyline()` (`#optimize_skyline`) using `method='SLSQP'` at
   [`packages/legacy/treetime/treetime/merger_models.py#L281-L318`](../../packages/legacy/treetime/treetime/merger_models.py#L281-L318)
 

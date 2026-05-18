@@ -15,8 +15,8 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 | E1  | [method_brent.rs#L36-L78](../../../packages/treetime/src/commands/clock/find_best_root/method_brent.rs#L36-L78)                   | `BrentOpt`                | Root-split chi-squared |
 | E2  | [method_golden_section.rs#L36-L81](../../../packages/treetime/src/commands/clock/find_best_root/method_golden_section.rs#L36-L81) | `GoldenSectionSearch`     | Root-split chi-squared |
 | E3  | [method_grid_search.rs#L10-L58](../../../packages/treetime/src/commands/clock/find_best_root/method_grid_search.rs#L10-L58)       | Grid search (hand-rolled) | Root-split chi-squared |
-| E4  | [optimize_tc.rs#L47-L87](../../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L47-L87)                      | `BrentOpt`                | Coalescent Tc          |
-| E5  | [skyline.rs#L68-L157](../../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L157)                            | `NelderMead`              | Skyline Tc(t)          |
+| E4  | [optimize_tc.rs#L47-L87](../../../packages/treetime/src/coalescent/optimize_tc.rs#L47-L87)                      | `BrentOpt`                | Coalescent Tc          |
+| E5  | [skyline.rs#L68-L157](../../../packages/treetime/src/coalescent/skyline.rs#L68-L157)                            | `NelderMead`              | Skyline Tc(t)          |
 | E6  | [polytomy.rs#L239-L289](../../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L239-L289)                      | `BrentOpt`                | Polytomy merge time    |
 
 ### Hand-rolled optimization (H1-H11)

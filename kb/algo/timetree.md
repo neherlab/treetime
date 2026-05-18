@@ -49,17 +49,17 @@ The full coalescent neg-log-likelihood decomposes into per-node contributions vi
 
 These three pieces sum to the exact Kingman neg-log-likelihood. This is not an approximation.
 
-v1: [`packages/treetime/src/commands/timetree/coalescent/`](../../packages/treetime/src/commands/timetree/coalescent/) (9 files).
+v1: [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/) (9 files).
 v0: [`packages/legacy/treetime/treetime/merger_models.py`](../../packages/legacy/treetime/treetime/merger_models.py).
 
 The coalescent contribution pipeline chains four steps:
 
-- `collect_tree_events()` (`#collect_tree_events`) [packages/treetime/src/commands/timetree/coalescent/events.rs#L13-L53](../../packages/treetime/src/commands/timetree/coalescent/events.rs#L13-L53): traverses the graph breadth-first, collecting `(time, delta_branches)` tuples. Leaves get +1, internal nodes with k children get -(k-1).
-- `compute_lineage_count_distribution()` (`#compute_lineage_count_distribution`) [packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs#L14-L41](../../packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs#L14-L41): aggregates events into a `PiecewiseConstantFn` representing k(t).
-- `compute_integral_merger_rate()` (`#compute_integral_merger_rate`) [packages/treetime/src/commands/timetree/coalescent/integration.rs#L44-L94](../../packages/treetime/src/commands/timetree/coalescent/integration.rs#L44-L94): computes I(t) = integral of kappa(t). Clamping `k_clamped = max(0.5, k-1)` matches v0.
-- `compute_node_contributions()` (`#compute_node_contributions`) [packages/treetime/src/commands/timetree/coalescent/contributions.rs#L31-L76](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L31-L76): computes all three pieces (leaf, internal, but not root correction).
+- `collect_tree_events()` (`#collect_tree_events`) [packages/treetime/src/coalescent/events.rs#L13-L53](../../packages/treetime/src/coalescent/events.rs#L13-L53): traverses the graph breadth-first, collecting `(time, delta_branches)` tuples. Leaves get +1, internal nodes with k children get -(k-1).
+- `compute_lineage_count_distribution()` (`#compute_lineage_count_distribution`) [packages/treetime/src/coalescent/lineage_dynamics.rs#L14-L41](../../packages/treetime/src/coalescent/lineage_dynamics.rs#L14-L41): aggregates events into a `PiecewiseConstantFn` representing k(t).
+- `compute_integral_merger_rate()` (`#compute_integral_merger_rate`) [packages/treetime/src/coalescent/integration.rs#L44-L94](../../packages/treetime/src/coalescent/integration.rs#L44-L94): computes I(t) = integral of kappa(t). Clamping `k_clamped = max(0.5, k-1)` matches v0.
+- `compute_node_contributions()` (`#compute_node_contributions`) [packages/treetime/src/coalescent/contributions.rs#L31-L76](../../packages/treetime/src/coalescent/contributions.rs#L31-L76): computes all three pieces (leaf, internal, but not root correction).
 
-`compute_coalescent_contributions()` (`#compute_coalescent_contributions`) [packages/treetime/src/commands/timetree/coalescent/coalescent.rs#L61-L79](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs#L61-L79) orchestrates the full pipeline.
+`compute_coalescent_contributions()` (`#compute_coalescent_contributions`) [packages/treetime/src/coalescent/coalescent.rs#L61-L79](../../packages/treetime/src/coalescent/coalescent.rs#L61-L79) orchestrates the full pipeline.
 
 The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass.
 
@@ -73,7 +73,7 @@ v0 applies all three pieces: leaf contributions at `clock_tree.py:499-503` (unce
 
 Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
-`optimize_tc()` (`#optimize_tc`) [packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L44-L84](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L44-L84) precomputes lineage counts and per-node branch data, then minimizes negative total coalescent likelihood. The cost function (`TcCostFunction`) builds a constant `Distribution` at each evaluation, computes `compute_integral_merger_rate()`, and sums per-branch costs. Nodes with undetermined branch length are skipped with a warning.
+`optimize_tc()` (`#optimize_tc`) [packages/treetime/src/coalescent/optimize_tc.rs#L44-L84](../../packages/treetime/src/coalescent/optimize_tc.rs#L44-L84) precomputes lineage counts and per-node branch data, then minimizes negative total coalescent likelihood. The cost function (`TcCostFunction`) builds a constant `Distribution` at each evaluation, computes `compute_integral_merger_rate()`, and sums per-branch costs. Nodes with undetermined branch length are skipped with a warning.
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
 
@@ -89,7 +89,7 @@ The Bayesian skyline plot (<a id="cite-6"></a>[Drummond et al. 2005](https://doi
 
 TreeTime's skyline implementation uses a smoothness penalty similar to the GMRF but optimizes via Nelder-Mead rather than MCMC:
 
-`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L157](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L68-L157) minimizes:
+`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/coalescent/skyline.rs#L68-L157](../../packages/treetime/src/coalescent/skyline.rs#L68-L157) minimizes:
 
 ```
 cost = -log_likelihood + stiffness * sum(diff(log_Tc)^2) + regularization * boundary_penalty
@@ -97,9 +97,9 @@ cost = -log_likelihood + stiffness * sum(diff(log_Tc)^2) + regularization * boun
 
 The stiffness term penalizes rapid changes in log(Tc) between adjacent grid points (analogous to the GMRF precision). The boundary penalty discourages log(Tc) values outside [-100, 0].
 
-`build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L214-L256](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L214-L256) creates a `Distribution::Formula` with piecewise linear interpolation via binary search, producing a lazy Tc(t) function for the backward pass.
+`build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/coalescent/skyline.rs#L214-L256](../../packages/treetime/src/coalescent/skyline.rs#L214-L256) creates a `Distribution::Formula` with piecewise linear interpolation via binary search, producing a lazy Tc(t) function for the backward pass.
 
-v1: [`packages/treetime/src/commands/timetree/coalescent/skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs).
+v1: [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 v0: [`packages/legacy/treetime/treetime/merger_models.py#L281`](../../packages/legacy/treetime/treetime/merger_models.py#L281).
 v1 uses Nelder-Mead (via `argmin` crate); v0 uses SLSQP (via `scipy.optimize.minimize`). See [known issue](../issues/M-timetree-skyline-nelder-mead-optimizer.md).
 
@@ -190,9 +190,9 @@ v1: [`packages/treetime/src/commands/timetree/convergence/`](../../packages/tree
 - `compute_sequence_likelihood()` (`#compute_sequence_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
 - `compute_positional_likelihood()` (`#compute_positional_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
 - `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
-- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/commands/timetree/coalescent/total_lh.rs](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs): thin wrapper over shared `edge_data` module. Collects tree events, lineage counts, integral merger rate, and per-edge data, then calls `sum_coalescent_cost()`.
-- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/commands/timetree/coalescent/edge_data.rs](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs): collects per-edge TBP time, branch length, and multiplicity from graph traversal. Shared by `total_lh` and `optimize_tc`.
-- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/commands/timetree/coalescent/edge_data.rs](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs): per-edge cost = I(t_merger) - I(t_node) - log(λ(t_merger)) \* (m-1)/m. Uses `eval_left()` for pre-event lineage count at merger times. Accepts any Distribution for Tc.
+- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/coalescent/total_lh.rs](../../packages/treetime/src/coalescent/total_lh.rs): thin wrapper over shared `edge_data` module. Collects tree events, lineage counts, integral merger rate, and per-edge data, then calls `sum_coalescent_cost()`.
+- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): collects per-edge TBP time, branch length, and multiplicity from graph traversal. Shared by `total_lh` and `optimize_tc`.
+- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): per-edge cost = I(t_merger) - I(t_node) - log(λ(t_merger)) \* (m-1)/m. Uses `eval_left()` for pre-event lineage count at merger times. Accepts any Distribution for Tc.
 
 ---
 
@@ -331,7 +331,7 @@ v1: [`packages/treetime/src/commands/timetree/optimization/reroot.rs`](../../pac
 | File                                                                                                                   | Algorithms                                                            |
 | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | [`packages/treetime/src/commands/timetree/inference/`](../../packages/treetime/src/commands/timetree/inference/)       | Belief propagation, branch distributions, timetree runner             |
-| [`packages/treetime/src/commands/timetree/coalescent/`](../../packages/treetime/src/commands/timetree/coalescent/)     | Kingman coalescent, skyline, Tc optimization                          |
+| [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)     | Kingman coalescent, skyline, Tc optimization                          |
 | [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
 | [`packages/treetime/src/commands/timetree/convergence/`](../../packages/treetime/src/commands/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
 | [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/)             | Confidence intervals, date output, plots                              |

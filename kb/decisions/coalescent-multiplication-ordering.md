@@ -86,7 +86,7 @@ return NodeInterpolator(t, y, is_log=True)
 
 The grid comes from `product_of_child_messages.x`, so the coalescent is evaluated at all the knot points that resulted from combining child messages.
 
-**v1** uses lazy evaluation. `compute_internal_contribution_single` in `packages/treetime/src/commands/timetree/coalescent/contributions.rs:93-146` returns a `Distribution::Formula` - a closure that captures the merger rate interpolators and evaluates the formula on demand:
+**v1** uses lazy evaluation. `compute_internal_contribution_single` in `packages/treetime/src/coalescent/contributions.rs:93-146` returns a `Distribution::Formula` - a closure that captures the merger rate interpolators and evaluates the formula on demand:
 
 ```rust
 let eval_fn = move |t: f64| -> eyre::Result<f64> {

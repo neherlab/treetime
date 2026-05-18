@@ -26,9 +26,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Piecewise Constant Function
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/coalescent/__tests__/test_piecewise_constant_fn.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/piecewise_constant_fn.rs)
+**Impl:** [`packages/treetime/src/coalescent/piecewise_constant_fn.rs`](../../packages/treetime/src/coalescent/piecewise_constant_fn.rs)
 
 | Test                                | Purpose                                    |
 | ----------------------------------- | ------------------------------------------ |
@@ -39,9 +39,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Piecewise Linear Function
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_linear_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_linear_fn.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_piecewise_linear_fn.rs`](../../packages/treetime/src/coalescent/__tests__/test_piecewise_linear_fn.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/piecewise_linear_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/piecewise_linear_fn.rs)
+**Impl:** [`packages/treetime/src/coalescent/piecewise_linear_fn.rs`](../../packages/treetime/src/coalescent/piecewise_linear_fn.rs)
 
 | Test                                           | Purpose                               |
 | ---------------------------------------------- | ------------------------------------- |
@@ -55,9 +55,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Event Collection
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_events.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_events.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_events.rs`](../../packages/treetime/src/coalescent/__tests__/test_events.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/events.rs`](../../packages/treetime/src/commands/timetree/coalescent/events.rs)
+**Impl:** [`packages/treetime/src/coalescent/events.rs`](../../packages/treetime/src/coalescent/events.rs)
 
 | Test                                           | Purpose                      |
 | ---------------------------------------------- | ---------------------------- |
@@ -70,9 +70,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Lineage Dynamics
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/coalescent/__tests__/test_lineage_dynamics.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/lineage_dynamics.rs)
+**Impl:** [`packages/treetime/src/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/coalescent/lineage_dynamics.rs)
 
 | Test                                            | Purpose                                                       |
 | ----------------------------------------------- | ------------------------------------------------------------- |
@@ -90,9 +90,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Integration (Merger Rates)
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_integration.rs`](../../packages/treetime/src/coalescent/__tests__/test_integration.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/integration.rs`](../../packages/treetime/src/commands/timetree/coalescent/integration.rs)
+**Impl:** [`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs)
 
 | Test                                                         | Purpose                                     |
 | ------------------------------------------------------------ | ------------------------------------------- |
@@ -109,9 +109,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Tc Optimization
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_optimize_tc.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_optimize_tc.rs`](../../packages/treetime/src/coalescent/__tests__/test_optimize_tc.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs`](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs)
+**Impl:** [`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs)
 
 | Test                                                 | Purpose                                               |
 | ---------------------------------------------------- | ----------------------------------------------------- |
@@ -122,9 +122,9 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Skyline Optimization
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_skyline.rs`](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/skyline.rs`](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs)
+**Impl:** [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs)
 
 | Test                                               | Purpose                              |
 | -------------------------------------------------- | ------------------------------------ |
@@ -137,23 +137,23 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ### Golden-Master Coalescent
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_coalescent.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_gm_coalescent.rs`](../../packages/treetime/src/coalescent/__tests__/test_gm_coalescent.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs)
+**Impl:** [`packages/treetime/src/coalescent/coalescent.rs`](../../packages/treetime/src/coalescent/coalescent.rs)
 
 | Test                 | Datasets and Tc values                                                                                                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `test_gm_coalescent` | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
 
-Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/).
+Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/coalescent/__tests__/__fixtures__/).
 
 ---
 
 ## Total Log-Likelihood
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_total_lh.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_total_lh.rs`](../../packages/treetime/src/coalescent/__tests__/test_total_lh.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs)
+**Impl:** [`packages/treetime/src/coalescent/total_lh.rs`](../../packages/treetime/src/coalescent/total_lh.rs)
 
 | Test                                           | Purpose                                                      |
 | ---------------------------------------------- | ------------------------------------------------------------ |
@@ -165,9 +165,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 | `test_total_lh_matches_optimize_tc_likelihood` | compute_coalescent_total_lh matches optimize_tc output       |
 | `test_total_lh_with_formula_distribution`      | Constant Formula distribution matches Distribution::constant |
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_gm_total_lh.rs)
+**Test:** [`packages/treetime/src/coalescent/__tests__/test_gm_total_lh.rs`](../../packages/treetime/src/coalescent/__tests__/test_gm_total_lh.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/total_lh.rs`](../../packages/treetime/src/commands/timetree/coalescent/total_lh.rs)
+**Impl:** [`packages/treetime/src/coalescent/total_lh.rs`](../../packages/treetime/src/coalescent/total_lh.rs)
 
 | Test                        | Purpose                                                            |
 | --------------------------- | ------------------------------------------------------------------ |
@@ -178,9 +178,9 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ## Time Coordinate
 
-**Test:** [`packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/coalescent/time_coordinate.rs`](../../packages/treetime/src/coalescent/time_coordinate.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs`](../../packages/treetime/src/commands/timetree/coalescent/time_coordinate.rs)
+**Impl:** [`packages/treetime/src/coalescent/time_coordinate.rs`](../../packages/treetime/src/coalescent/time_coordinate.rs)
 
 | Test                             | Purpose                                                       |
 | -------------------------------- | ------------------------------------------------------------- |
@@ -479,7 +479,7 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 | Directory                                                                                                                              | Module declarations                                                                                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`coalescent/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/mod.rs)                             | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
+| [`coalescent/__tests__/mod.rs`](../../packages/treetime/src/coalescent/__tests__/mod.rs)                             | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
 | [`inference/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/mod.rs)                               | `test_backward_pass`, `test_branch_length_likelihood`, `test_gm_runner`, `test_runner`                                                                                                                                         |
 | [`inference/__tests__/test_gm_runner/mod.rs`](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/mod.rs) | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_pre_optimize`, `test_gm_runner_support`, `test_runner_coalescent`                                                 |
 | [`convergence/__tests__/mod.rs`](../../packages/treetime/src/commands/timetree/convergence/__tests__/mod.rs)                           | `test_metrics`, `test_pipeline`                                                                                                                                                                                                |
@@ -497,4 +497,4 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 3. Dense marginal: `ebola_20` disabled due to gap character handling in alphabet.
 
-4. Duplicate tests: [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_piecewise_constant_fn.rs).
+4. Duplicate tests: [`packages/treetime/src/coalescent/__tests__/test_lineage_dynamics.rs`](../../packages/treetime/src/coalescent/__tests__/test_lineage_dynamics.rs) contains 2 piecewise constant tests that duplicate those in [`packages/treetime/src/coalescent/__tests__/test_piecewise_constant_fn.rs`](../../packages/treetime/src/coalescent/__tests__/test_piecewise_constant_fn.rs).

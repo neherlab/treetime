@@ -25,7 +25,7 @@ Approximately 75 production `unwrap()`/`expect()`/`assert!()` calls panic instea
 | `seq/div.rs`                                    | 2         | `.unwrap()` on graph lookups                                  |
 | `seq/indel.rs`                                  | 1         | `assert!()` on range validity                                 |
 | `commands/ancestral/fitch.rs`                   | 3         | `.unwrap()` on node operations                                |
-| `commands/timetree/coalescent/contributions.rs` | 1         | `.unwrap()` on Result in parallel traversal                   |
+| `coalescent/contributions.rs` | 1         | `.unwrap()` on Result in parallel traversal                   |
 | `commands/timetree/inference/backward_pass.rs`  | 1         | `.unwrap()` on Result                                         |
 | `commands/timetree/inference/forward_pass.rs`   | 1         | `.unwrap()` on Result                                         |
 | `treetime-cli/src/cli/verbosity.rs`             | 1         | `.unwrap()` on parse                                          |

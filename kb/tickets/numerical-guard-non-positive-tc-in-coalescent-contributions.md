@@ -2,7 +2,7 @@
 
 `fn compute_internal_contribution_single()` has no guard on non-positive Tc. When Tc(t) <= 0, lambda(t) goes negative or infinite, and `ln()` yields NaN or negative infinity. Callers do not validate Tc positivity before invoking.
 
-v1: [`packages/treetime/src/commands/timetree/coalescent/contributions.rs#L117-L178`](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L117-L178)
+v1: [`packages/treetime/src/coalescent/contributions.rs#L117-L178`](../../packages/treetime/src/coalescent/contributions.rs#L117-L178)
 
 ## Impact
 

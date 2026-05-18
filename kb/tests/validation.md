@@ -87,7 +87,7 @@ Three execution modes:
 
 **Test:** [`packages/treetime/examples/coalescent_validation.rs`](../../packages/treetime/examples/coalescent_validation.rs)
 
-**Impl:** [`packages/treetime/src/commands/timetree/coalescent/coalescent.rs`](../../packages/treetime/src/commands/timetree/coalescent/coalescent.rs)
+**Impl:** [`packages/treetime/src/coalescent/coalescent.rs`](../../packages/treetime/src/coalescent/coalescent.rs)
 
 Golden-master comparison of v1 coalescent model contributions against v0 Python golden outputs. Tests piecewise constant and skyline coalescent on multiple datasets with varying Tc parameters.
 

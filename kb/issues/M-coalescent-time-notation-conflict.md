@@ -6,7 +6,7 @@ Signed time (negative = past) coexists with time-before-present (TBP, positive =
 
 ## Details
 
-`packages/treetime/src/commands/timetree/coalescent/`
+`packages/treetime/src/coalescent/`
 
 Two conventions are used simultaneously:
 

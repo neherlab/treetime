@@ -31,7 +31,6 @@ Nothing from `commands/`. The library crate exposes domain modules only:
 All of these must be completed first:
 
 - `architecture-remove-clap-from-domain-types.md`
-- `architecture-extract-coalescent-from-timetree.md`
 - `architecture-extract-timetree-inference-from-commands.md`
 - `architecture-extract-mugration-domain-logic.md`
 - `architecture-break-representation-gtr-cycle.md`

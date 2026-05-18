@@ -1,14 +1,14 @@
 # Fix skyline objective to match per-edge coalescent cost
 
-`skyline::compute_total_neg_log_lh` at [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L261-L295](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L261-L295) iterates lineage-count breakpoints and adds one `-ln(lambda)` per merger event. When a polytomy at a single breakpoint merges `m` lineages simultaneously (`k(t1) < k(t0)` with `delta > 1`), the cost function adds only one `-ln(lambda)` term. The Kingman coalescent requires `(m-1)` merger factors for an `m`-merger event.
+`skyline::compute_total_neg_log_lh` at [packages/treetime/src/coalescent/skyline.rs#L261-L295](../../packages/treetime/src/coalescent/skyline.rs#L261-L295) iterates lineage-count breakpoints and adds one `-ln(lambda)` per merger event. When a polytomy at a single breakpoint merges `m` lineages simultaneously (`k(t1) < k(t0)` with `delta > 1`), the cost function adds only one `-ln(lambda)` term. The Kingman coalescent requires `(m-1)` merger factors for an `m`-merger event.
 
-The authoritative per-edge cost function `sum_coalescent_cost` at [packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L112-L146](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L112-L146) correctly uses per-edge contributions and is used by `optimize_tc` and `compute_coalescent_total_lh`. The skyline optimizer maximizes a different quantity than the one reported and cross-compared in convergence metrics.
+The authoritative per-edge cost function `sum_coalescent_cost` at [packages/treetime/src/coalescent/edge_data.rs#L112-L146](../../packages/treetime/src/coalescent/edge_data.rs#L112-L146) correctly uses per-edge contributions and is used by `optimize_tc` and `compute_coalescent_total_lh`. The skyline optimizer maximizes a different quantity than the one reported and cross-compared in convergence metrics.
 
 ## Details
 
 `compute_total_neg_log_lh` detects mergers by checking `k(t1) < k(t0)` and computes `k_clamped = max(0.5, k(t1))`, recovering the pre-event pair count only for binary mergers. For polytomies, a single `delta < 0` breakpoint absorbs multiple simultaneous mergers but the cost adds only one `-ln(lambda)` term.
 
-Skyline log-likelihood reconstruction at [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L134-L144](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L134-L144) mixes clamped and unclamped parameters: the likelihood and smoothness terms use `log_tc_clamped` while the boundary penalty uses unclamped `log_tc`. The subtraction to recover `neg_log_lh` from `final_cost` is correct only when `best_param` stays inside the clamping range `[-200, 100]`.
+Skyline log-likelihood reconstruction at [packages/treetime/src/coalescent/skyline.rs#L134-L144](../../packages/treetime/src/coalescent/skyline.rs#L134-L144) mixes clamped and unclamped parameters: the likelihood and smoothness terms use `log_tc_clamped` while the boundary penalty uses unclamped `log_tc`. The subtraction to recover `neg_log_lh` from `final_cost` is correct only when `best_param` stays inside the clamping range `[-200, 100]`.
 
 ## Impact
 
@@ -18,9 +18,9 @@ Skyline log-likelihood reconstruction at [packages/treetime/src/commands/timetre
 
 ## Affected code
 
-- Skyline cost: [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L261-L295](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L261-L295)
-- Clamped/unclamped mixing: [packages/treetime/src/commands/timetree/coalescent/skyline.rs#L134-L144](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L134-L144), [skyline.rs#L173-L197](../../packages/treetime/src/commands/timetree/coalescent/skyline.rs#L173-L197)
-- Authoritative per-edge cost: [packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L112-L146](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L112-L146)
+- Skyline cost: [packages/treetime/src/coalescent/skyline.rs#L261-L295](../../packages/treetime/src/coalescent/skyline.rs#L261-L295)
+- Clamped/unclamped mixing: [packages/treetime/src/coalescent/skyline.rs#L134-L144](../../packages/treetime/src/coalescent/skyline.rs#L134-L144), [skyline.rs#L173-L197](../../packages/treetime/src/coalescent/skyline.rs#L173-L197)
+- Authoritative per-edge cost: [packages/treetime/src/coalescent/edge_data.rs#L112-L146](../../packages/treetime/src/coalescent/edge_data.rs#L112-L146)
 
 ## Fix
 

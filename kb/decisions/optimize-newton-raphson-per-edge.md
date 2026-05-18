@@ -55,7 +55,7 @@ All methods share:
 
 **sqrt(t) reparameterization.** Available as `brent-sqrt` (default, matches v0 on the success path; on solver failure v1 returns `Err(Report)` rather than v0's silent Hamming-distance fallback) and `newton-sqrt`.
 
-**New: ln(t) reparameterization.** Available as `brent-log` and `newton-log`. Eliminates the indel Hessian singularity entirely. Not present in v0 or other phylogenetic tools for branch length optimization. Precedented by coalescent Tc optimization in this codebase ([packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62](../../packages/treetime/src/commands/timetree/coalescent/optimize_tc.rs#L62)).
+**New: ln(t) reparameterization.** Available as `brent-log` and `newton-log`. Eliminates the indel Hessian singularity entirely. Not present in v0 or other phylogenetic tools for branch length optimization. Precedented by coalescent Tc optimization in this codebase ([packages/treetime/src/coalescent/optimize_tc.rs#L62](../../packages/treetime/src/coalescent/optimize_tc.rs#L62)).
 
 **Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 

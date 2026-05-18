@@ -29,4 +29,4 @@
 
 ## v1 status
 
-[packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L84-L96](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L84-L96) collects actual child count per edge, and [packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L141](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L141) uses `(edge.multiplicity - 1.0) / edge.multiplicity` in the cost computation. Both `optimize_tc.rs` and `total_lh.rs` delegate to `sum_coalescent_cost()` in `edge_data.rs`.
+[packages/treetime/src/coalescent/edge_data.rs#L84-L96](../../packages/treetime/src/coalescent/edge_data.rs#L84-L96) collects actual child count per edge, and [packages/treetime/src/coalescent/edge_data.rs#L141](../../packages/treetime/src/coalescent/edge_data.rs#L141) uses `(edge.multiplicity - 1.0) / edge.multiplicity` in the cost computation. Both `optimize_tc.rs` and `total_lh.rs` delegate to `sum_coalescent_cost()` in `edge_data.rs`.

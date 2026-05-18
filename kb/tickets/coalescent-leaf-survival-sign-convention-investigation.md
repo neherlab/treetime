@@ -6,7 +6,7 @@ The coalescent contribution functions use different sign conventions for leaf vs
 
 ## Details
 
-`packages/treetime/src/commands/timetree/coalescent/contributions.rs`
+`packages/treetime/src/coalescent/contributions.rs`
 
 The docstring states:
 

@@ -30,16 +30,15 @@ The `From<&BranchSplitArgs> for BranchPointOptimizationParams` impl lives in the
 
 ## Domain logic trapped in commands/
 
-### commands/timetree/ (4900 lines)
+### commands/timetree/ (~3500 lines)
 
 Contains domain algorithms that should be top-level modules:
 
-- `coalescent/` (1444 lines) - population genetics models, skyline fitting, Tc optimization. Self-contained: zero imports from args/run. Largest single block that can move mechanically.
 - `inference/` (479 lines) - backward/forward passes, branch length likelihood, `run_timetree()` runner. Core time-tree inference algorithm.
 - `optimization/` (802 lines) - polytomy resolution (469), relaxed clock (125), clock filter (104), reroot wrapper (97). Timetree-specific optimization steps.
 - `convergence/` (334 lines) - iteration metrics, likelihood tracking. Consumed only by timetree run.
 
-After extracting coalescent, inference, and optimization, `commands/timetree/` drops from ~4900 to ~1900 lines (args, run, output, convergence).
+After extracting inference and optimization, `commands/timetree/` drops to ~1900 lines (args, run, output, convergence).
 
 ### commands/mugration/ (1227 lines)
 

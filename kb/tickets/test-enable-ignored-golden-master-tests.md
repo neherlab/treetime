@@ -18,7 +18,7 @@
 
 ### Blocked by midpoint-rule discretization
 
-- [packages/treetime/src/commands/timetree/coalescent/\_\_tests\_\_/test_integration.rs](../../packages/treetime/src/commands/timetree/coalescent/__tests__/test_integration.rs) `#[ignore]` at 1e-6. Midpoint-rule error 1.6e-4 on hyperbolic integrand. Related: `N-timetree-coalescent-integration-grossly-loose-tolerance.md`.
+- [packages/treetime/src/coalescent/\_\_tests\_\_/test_integration.rs](../../packages/treetime/src/coalescent/__tests__/test_integration.rs) `#[ignore]` at 1e-6. Midpoint-rule error 1.6e-4 on hyperbolic integrand. Related: `N-timetree-coalescent-integration-grossly-loose-tolerance.md`.
 
 ### Other
 

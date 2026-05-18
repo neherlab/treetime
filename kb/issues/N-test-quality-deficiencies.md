@@ -14,7 +14,7 @@ Both test functions compute expected values using `gtr.expQt_with_rate()`, the s
 
 ### Skyline tests are runs-to-completion only
 
-`packages/treetime/src/commands/timetree/coalescent/__tests__/test_skyline.rs`
+`packages/treetime/src/coalescent/__tests__/test_skyline.rs`
 
 Assert finite/positive only, no numerical verification against known values.
 

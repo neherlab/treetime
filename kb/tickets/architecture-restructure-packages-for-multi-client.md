@@ -18,9 +18,8 @@ Remove `clap` from `treetime` crate's `[dependencies]`. Move CLI-specific derive
 
 ### 2. Extract remaining domain logic from commands/
 
-Three extraction tickets, independent of each other but all depend on step 1:
+Two remaining extraction tickets, independent of each other but both depend on step 1:
 
-- `architecture-extract-coalescent-from-timetree.md` - move `commands/timetree/coalescent/` (1444 lines) to `src/coalescent/`
 - `architecture-extract-timetree-inference-from-commands.md` - move inference (479 lines) and optimization (802 lines) to `src/timetree/`
 - `architecture-extract-mugration-domain-logic.md` - move GTR refinement (381 lines) and discrete marginal (170 lines) to `src/mugration/`
 
@@ -96,7 +95,6 @@ Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi
 Coordinates:
 
 - [architecture-remove-clap-from-domain-types.md](architecture-remove-clap-from-domain-types.md)
-- [architecture-extract-coalescent-from-timetree.md](architecture-extract-coalescent-from-timetree.md)
 - [architecture-extract-timetree-inference-from-commands.md](architecture-extract-timetree-inference-from-commands.md)
 - [architecture-extract-mugration-domain-logic.md](architecture-extract-mugration-domain-logic.md)
 - [architecture-break-representation-gtr-cycle.md](architecture-break-representation-gtr-cycle.md)

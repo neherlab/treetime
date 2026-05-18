@@ -1,6 +1,6 @@
 # sum_coalescent_cost silently clamps negative branch lengths
 
-`sum_coalescent_cost` at [packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L121](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L121) uses `branch_length.max(0.0)` to clamp negative branch lengths to zero. When a parent node has a younger time than its child (a transient state during optimization), the clamped branch length produces `t_merger == t_node`, so the integral `I(t_merger) - I(t_node) = 0` and the `-log(lambda)` merger cost is still added.
+`sum_coalescent_cost` at [packages/treetime/src/coalescent/edge_data.rs#L121](../../packages/treetime/src/coalescent/edge_data.rs#L121) uses `branch_length.max(0.0)` to clamp negative branch lengths to zero. When a parent node has a younger time than its child (a transient state during optimization), the clamped branch length produces `t_merger == t_node`, so the integral `I(t_merger) - I(t_node) = 0` and the `-log(lambda)` merger cost is still added.
 
 ## Impact
 
@@ -8,7 +8,7 @@ This silent clamping hides parent-younger-than-child topology-time inconsistenci
 
 ## Affected code
 
-- Clamp site: [packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L121](../../packages/treetime/src/commands/timetree/coalescent/edge_data.rs#L121)
+- Clamp site: [packages/treetime/src/coalescent/edge_data.rs#L121](../../packages/treetime/src/coalescent/edge_data.rs#L121)
 
 ## Fix
 

@@ -6,7 +6,7 @@ v1 uses the parent node's child count for the per-edge multiplicity parameter in
 
 **v0 location**: `MergerModel.total_LH()` at `packages/legacy/treetime/treetime/merger_models.py#L252-L257`. Calls `self.cost(node.time_before_present, node.branch_length)` without passing `multiplicity`, getting the default `multiplicity=2.0`.
 
-**v1 location**: `collect_coalescent_edges()` at `packages/treetime/src/commands/timetree/coalescent/edge_data.rs`. Looks up the parent node via `graph.get_node(parent_node_key)` and uses `parent.outbound().len()` as the multiplicity.
+**v1 location**: `collect_coalescent_edges()` at `packages/treetime/src/coalescent/edge_data.rs`. Looks up the parent node via `graph.get_node(parent_node_key)` and uses `parent.outbound().len()` as the multiplicity.
 
 **v0 erratum**: `../v0-errata/coalescent-total-lh-fixed-multiplicity.md`.
 

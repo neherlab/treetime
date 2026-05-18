@@ -6,7 +6,7 @@ The backward and forward marginal passes in the timetree inference pipeline use 
 
 - Backward pass: `.unwrap()` on distribution math results inside `backward_pass` traversal closure
 - Forward pass: `.unwrap()` on distribution math results inside `forward_pass` traversal closure
-- `compute_node_contributions`: `.unwrap()` inside breadth-first traversal closure at [packages/treetime/src/commands/timetree/coalescent/contributions.rs#L62-L70](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L62-L70)
+- `compute_node_contributions`: `.unwrap()` inside breadth-first traversal closure at [packages/treetime/src/coalescent/contributions.rs#L62-L70](../../packages/treetime/src/coalescent/contributions.rs#L62-L70)
 
 ## Impact
 
@@ -20,7 +20,7 @@ Triggering conditions include:
 
 ## Fix
 
-Replace `.unwrap()` calls with error collection: either propagate errors out of the traversal by collecting into a `Vec<Report>` and returning them after the traversal completes, or refactor the traversal API to support fallible callbacks. The `compute_node_contributions` case at [contributions.rs#L62-L70](../../packages/treetime/src/commands/timetree/coalescent/contributions.rs#L62-L70) uses `.unwrap()` because `iter_breadth_first_forward` expects an infallible callback.
+Replace `.unwrap()` calls with error collection: either propagate errors out of the traversal by collecting into a `Vec<Report>` and returning them after the traversal completes, or refactor the traversal API to support fallible callbacks. The `compute_node_contributions` case at [contributions.rs#L62-L70](../../packages/treetime/src/coalescent/contributions.rs#L62-L70) uses `.unwrap()` because `iter_breadth_first_forward` expects an infallible callback.
 
 ## Related
 
