@@ -905,4 +905,122 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
+    // A, B, C all share {A0T}. Group merge puts all 3 under one new node.
+    // Pairwise merge would pick 2, leaving the third at root level.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub(b'A', 0, b'T')]),
+        ("root", "B", vec![sub(b'A', 0, b'T')]),
+        ("root", "C", vec![sub(b'A', 0, b'T')]),
+        ("root", "D", vec![sub(b'G', 5, b'C')]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    assert_eq!(merged, 1);
+    graph.build()?;
+
+    let unnamed = find_unnamed_internal_nodes(&graph);
+    assert_eq!(unnamed.len(), 1);
+
+    let new_node = graph.get_node(unnamed[0]).unwrap();
+    let children_count = new_node.read_arc().degree_out();
+    assert_eq!(children_count, 3, "group merge should place all 3 sharing siblings under one node");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_shared_indels_only() -> Result<(), Report> {
+    // A and B share an identical deletion but no substitutions.
+    // Only merges when indels participate in sharing detection.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![]),
+        ("root", "B", vec![]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+
+    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap());
+    {
+      let mut p = partition.write_arc();
+      let edge_a = find_edge_key(&graph, "root", "A").unwrap();
+      let edge_b = find_edge_key(&graph, "root", "B").unwrap();
+      p.edges.get_mut(&edge_a).unwrap().indels = vec![shared_indel.clone()];
+      p.edges.get_mut(&edge_b).unwrap().indels = vec![shared_indel];
+    }
+
+    let partitions = vec![partition];
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    assert_eq!(merged, 1, "siblings sharing only indels should merge");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
+    // A and B share 1 sub + 1 indel. A also has 1 unique sub.
+    // After merge: parent edge carries the shared sub AND the shared indel.
+    // Child A edge carries the unique sub and no indels.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 15, b'C')]),
+        ("root", "B", vec![sub(b'A', 0, b'T')]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+
+    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap());
+    {
+      let mut p = partition.write_arc();
+      let edge_a = find_edge_key(&graph, "root", "A").unwrap();
+      let edge_b = find_edge_key(&graph, "root", "B").unwrap();
+      p.edges.get_mut(&edge_a).unwrap().indels = vec![shared_indel.clone()];
+      p.edges.get_mut(&edge_b).unwrap().indels = vec![shared_indel];
+    }
+
+    let partitions = vec![partition];
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    let p = partitions[0].read_arc();
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      if let Some(edge_data) = p.edges.get(&edge.key()) {
+        match target_name.as_deref() {
+          None => {
+            assert_eq!(edge_data.fitch_subs().len(), 1, "parent edge: 1 shared sub");
+            assert_eq!(edge_data.indels.len(), 1, "parent edge: 1 shared indel");
+          },
+          Some("A") => {
+            assert_eq!(edge_data.fitch_subs().len(), 1, "A: 1 unique sub remaining");
+            assert_eq!(edge_data.indels.len(), 0, "A: no remaining indels");
+          },
+          Some("B") => {
+            assert_eq!(edge_data.fitch_subs().len(), 0, "B: no remaining subs");
+            assert_eq!(edge_data.indels.len(), 0, "B: no remaining indels");
+          },
+          _ => {},
+        }
+      }
+    }
+
+    Ok(())
+  }
 }
