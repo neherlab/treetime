@@ -1,3 +1,5 @@
+use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+use crate::representation::algo::topology_cleanup::reroot::remove_node_if_trivial;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
@@ -5,7 +7,6 @@ use crate::representation::payload::timetree::NodeTimetree;
 use argmin::core::{CostFunction, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use itertools::Itertools;
 use log::debug;
 use ndarray::Array2;
 use parking_lot::RwLock;
@@ -73,8 +74,7 @@ pub fn resolve_polytomies_with_options(
     debug!("Polytomy at node {node_key}: {prior_n_children} -> {new_n_children} children, resolved {n_resolved}");
   }
 
-  // Remove obsolete nodes (single-child internal nodes created during resolution)
-  let obsolete_count = remove_obsolete_nodes(graph)?;
+  let obsolete_count = remove_single_child_nodes(graph)?;
   if obsolete_count > 0 {
     debug!("Removed {obsolete_count} obsolete single-child nodes");
   }
@@ -86,18 +86,6 @@ pub fn resolve_polytomies_with_options(
   }
 
   Ok(total_resolved)
-}
-
-/// Find all nodes with more than 2 children (polytomies).
-fn find_polytomy_nodes(graph: &GraphTimetree) -> Vec<GraphNodeKey> {
-  graph
-    .get_nodes()
-    .into_iter()
-    .filter_map(|node| {
-      let node = node.read_arc();
-      (node.degree_out() > 2).then_some(node.key())
-    })
-    .collect_vec()
 }
 
 /// Child info needed for polytomy resolution.
@@ -476,36 +464,28 @@ fn merge_children(
   Ok(())
 }
 
-/// Remove obsolete single-child internal nodes.
+/// Remove single-child internal nodes left by polytomy resolution.
 ///
-/// After polytomy resolution, some nodes may have only one child. These should
-/// be collapsed by connecting their parent directly to their child.
-fn remove_obsolete_nodes(graph: &mut GraphTimetree) -> Result<usize, Report> {
+/// Uses `remove_node_if_trivial` which properly sums branch lengths into the
+/// merged edge and calls `graph.build()` per removal.
+fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report> {
   let mut removed_count = 0;
 
   loop {
-    // Find a single-child internal node (not root)
     let obsolete_key = graph.get_nodes().into_iter().find_map(|node| {
       let node = node.read_arc();
-      let is_single_child = node.has_one_child();
-      let is_internal = !node.is_root() && !node.is_leaf();
-      (is_single_child && is_internal).then_some(node.key())
+      let is_trivial = node.inbound().len() == 1 && node.outbound().len() == 1;
+      is_trivial.then_some(node.key())
     });
 
     let Some(node_key) = obsolete_key else {
       break;
     };
 
-    // Collapse this node: connect parent directly to child
-    let inbound_edge_key = graph
-      .parent_inbound_edge(node_key)?
-      .expect("Internal node must have parent");
-    graph.collapse_edge(inbound_edge_key)?;
-    removed_count += 1;
+    if remove_node_if_trivial(graph, node_key)?.is_some() {
+      removed_count += 1;
+    }
   }
-
-  // Rebuild roots/leaves lists after topology changes
-  graph.build()?;
 
   Ok(removed_count)
 }

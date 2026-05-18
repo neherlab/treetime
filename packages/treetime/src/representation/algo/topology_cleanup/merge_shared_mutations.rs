@@ -1,4 +1,5 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
+use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::representation::payload::sparse::SparseNodePartition;
@@ -47,17 +48,6 @@ pub fn merge_shared_mutation_branches(
   }
 
   Ok(total_merged)
-}
-
-fn find_polytomy_nodes(graph: &GraphAncestral) -> Vec<GraphNodeKey> {
-  graph
-    .get_nodes()
-    .into_iter()
-    .filter_map(|node| {
-      let node = node.read_arc();
-      (node.degree_out() > 2).then_some(node.key())
-    })
-    .collect_vec()
 }
 
 /// Resolve one polytomy by greedy batch merging of siblings sharing mutations.
