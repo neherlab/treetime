@@ -1,4 +1,4 @@
-use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::partition::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -26,13 +26,13 @@ pub struct MugrationGtrOutput {
 }
 
 impl MugrationGtrOutput {
-  pub fn new(partition: &PartitionDiscrete, attribute: &str) -> Self {
+  pub fn new(partition: &PartitionMarginalDiscrete, attribute: &str) -> Self {
     Self {
       attribute: attribute.to_owned(),
       n_states: partition.n_states(),
       states: partition.states.iter().map(|s| s.to_owned()).collect(),
-      pi: partition.gtr.pi.clone(),
-      mu: partition.gtr.mu,
+      pi: partition.data.gtr.pi.clone(),
+      mu: partition.data.gtr.mu,
     }
   }
 }
@@ -56,7 +56,7 @@ pub struct MugrationConfidenceOutput {
 }
 
 impl MugrationConfidenceOutput {
-  pub fn new(graph: &GraphAncestral, partition: &PartitionDiscrete) -> Self {
+  pub fn new(graph: &GraphAncestral, partition: &PartitionMarginalDiscrete) -> Self {
     let states: Vec<String> = partition.states.iter().map(|s| s.to_owned()).collect();
 
     let rows: Vec<ConfidenceRow> = graph
@@ -72,7 +72,7 @@ impl MugrationConfidenceOutput {
 
         partition.get_confidence(node_key).map(|profile| ConfidenceRow {
           node: node_name,
-          profile: profile.clone(),
+          profile,
         })
       })
       .collect();
@@ -152,11 +152,11 @@ pub struct MugrationResult {
   /// The graph with ancestral state data (for tree rendering).
   pub graph: GraphAncestral,
   /// The partition with discrete reconstruction (for tree rendering).
-  pub partition: PartitionDiscrete,
+  pub partition: PartitionMarginalDiscrete,
 }
 
 impl MugrationResult {
-  pub fn new(graph: GraphAncestral, partition: PartitionDiscrete, attribute: &str, log_lh: f64) -> Self {
+  pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: f64) -> Self {
     let gtr = MugrationGtrOutput::new(&partition, attribute);
     let assignments = extract_trait_assignments(&graph, &partition);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
@@ -178,7 +178,7 @@ impl MugrationResult {
   }
 }
 
-fn extract_trait_assignments(graph: &GraphAncestral, partition: &PartitionDiscrete) -> IndexMap<String, String> {
+fn extract_trait_assignments(graph: &GraphAncestral, partition: &PartitionMarginalDiscrete) -> IndexMap<String, String> {
   graph
     .get_nodes()
     .iter()

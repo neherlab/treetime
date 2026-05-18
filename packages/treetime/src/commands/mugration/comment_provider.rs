@@ -1,17 +1,16 @@
-use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NodeCommentProvider;
 
-/// Provide reconstructed discrete traits as node comments during tree serialization.
 pub struct PartitionCommentProvider<'a> {
-  partition: &'a PartitionDiscrete,
+  partition: &'a PartitionMarginalDiscrete,
   attribute: &'a str,
 }
 
 impl<'a> PartitionCommentProvider<'a> {
-  pub fn new(partition: &'a PartitionDiscrete, attribute: &'a str) -> Self {
+  pub fn new(partition: &'a PartitionMarginalDiscrete, attribute: &'a str) -> Self {
     Self { partition, attribute }
   }
 }

@@ -1,12 +1,13 @@
+use crate::ancestral::marginal::update_marginal_mut;
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::comment_provider::PartitionCommentProvider;
-use crate::commands::mugration::discrete_marginal::{attach_traits, run_discrete_marginal};
-use crate::commands::mugration::gtr_refinement::refine_gtr_iterative;
 use crate::commands::mugration::input::MugrationInput;
 use crate::commands::mugration::output::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
+use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::discrete_states::DiscreteStates;
-use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::partition::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use eyre::Report;
@@ -24,19 +25,12 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-/// Result of validating weight coverage against unique values.
 #[derive(Debug)]
 pub struct WeightCoverageResult {
-  /// Values present in unique_values but missing from weights.
   pub missing_values: IndexSet<String>,
-  /// Ratio of missing values to total unique values.
   pub missing_ratio: f64,
 }
 
-/// Validate that weights cover enough of the unique values.
-///
-/// Returns the set of missing values and the missing ratio.
-/// Returns an error if the missing ratio exceeds the threshold.
 pub fn validate_weight_coverage(
   unique_values: &IndexSet<String>,
   weights_keys: &IndexSet<String>,
@@ -64,9 +58,6 @@ pub fn validate_weight_coverage(
   })
 }
 
-/// Compute equilibrium frequencies (pi) from a weights map.
-///
-/// For states not present in the weights map, uses the mean weight as fallback.
 pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {
   let mean_weight = weights.values().mean();
 
@@ -79,14 +70,10 @@ pub fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<Strin
   weights_arr / sum
 }
 
-/// Compute uniform equilibrium frequencies (pi) for n states.
 pub fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
   Array1::from_elem(n_states, 1.0 / n_states as f64)
 }
 
-/// Apply pseudo-counts to equilibrium frequencies and re-normalize.
-///
-/// If `pc` is None, returns the input unchanged.
 pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
   match pc {
     Some(pc_val) => {
@@ -98,10 +85,6 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
   }
 }
 
-/// Parse CLI arguments into a MugrationInput struct.
-///
-/// Reads tree, trait values, and optional weights from files and assembles
-/// them into an in-memory input suitable for the execution layer.
 pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationInput, Report> {
   let TreetimeMugrationArgs {
     tree,
@@ -115,16 +98,13 @@ pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationIn
     ..
   } = args;
 
-  // Read tree
   let tree_path = tree.as_ref().ok_or_else(|| make_report!("Tree file is required"))?;
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
 
-  // Read trait values
   let (attr_values, _attr_name) =
     read_discrete_attrs::<String>(states, name_column, &Some(attribute.clone()), |s| Ok(s.to_owned()))?;
   let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
 
-  // Read weights if provided
   let weights_map = if let Some(weights_filepath) = weights {
     let (map, _) = read_discrete_attrs::<f64>(
       weights_filepath,
@@ -150,10 +130,6 @@ pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationIn
   })
 }
 
-/// Execute mugration from parsed input and return structured results.
-///
-/// This is the reusable execution core that can be called by tests directly
-/// without file I/O. The command wrapper handles parsing and output writing.
 pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Report> {
   let MugrationInput {
     graph,
@@ -193,7 +169,6 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     None => observed_values,
   };
 
-  // Build DiscreteStates
   let discrete_states = DiscreteStates::from_values(model_values.iter().map(String::as_str), &missing_data);
   let n_states = discrete_states.len();
 
@@ -208,42 +183,28 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     discrete_states.iter().join(", ")
   );
 
-  // Compute equilibrium frequencies (pi)
   let pi = match &weights {
     Some(weights_map) => compute_pi_from_weights(&discrete_states, weights_map),
     None => compute_pi_uniform(n_states),
   };
 
-  // fixed_pi for iterative GTR: with weights, keep pi at the user-provided values
-  // (before pseudo-counts, matching v0's fixed_pi=weights); without weights, estimate from data
   let fixed_pi = weights.as_ref().map(|_| pi.clone());
 
-  // Add pseudo-counts if specified
   let pi = apply_pseudo_counts(pi, pc);
 
-  // Create GTR model
   let gtr = GTR::new(GTRParams {
     n_states,
     mu: 1.0,
-    W: None, // uniform rates
+    W: None,
     pi,
   })?;
 
-  // Create partition and attach traits
-  let mut partition = PartitionDiscrete::new(0, gtr, discrete_states);
+  let mut partition = PartitionMarginalDiscrete::new(gtr, discrete_states, MIN_BRANCH_LENGTH_FRACTION);
+  partition.attach_traits(&graph, &traits)?;
 
-  // Minimum branch length for mugration transition matrix computations, applied per-use
-  // without modifying the graph. In v0, `_branch_length_to_gtr()` returns
-  // `max(MIN_BRANCH_LENGTH * one_mutation, branch_length)` where `MIN_BRANCH_LENGTH = 1e-3`
-  // and `one_mutation = 1.0 / full_length = 1.0` for mugration's single-position pseudo-sequence.
-  partition.min_branch_length = 0.001;
-  attach_traits(&mut partition, &graph, &traits)?;
-
-  // Initial marginal reconstruction
-  let log_lh = run_discrete_marginal(&graph, &mut partition)?;
+  let log_lh = update_marginal_mut(&graph, &mut partition)?;
   info!("Mugration: initial log likelihood = {log_lh:.4}");
 
-  // Iterative GTR refinement: re-estimate rate matrix from data
   let log_lh = refine_gtr_iterative(
     &graph,
     &mut partition,
@@ -260,11 +221,9 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   let outdir = &mugration_args.outdir;
   fs::create_dir_all(outdir)?;
 
-  // Parse input and execute
   let input = parse_mugration_input(mugration_args)?;
   let result = execute_mugration(input)?;
 
-  // Write output files
   write_annotated_tree(&result.graph, &result.partition, &result.traits, outdir)?;
   write_gtr_json_file(&result.gtr, outdir)?;
 
@@ -278,7 +237,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
 
 fn write_annotated_tree(
   graph: &GraphAncestral,
-  partition: &PartitionDiscrete,
+  partition: &PartitionMarginalDiscrete,
   traits: &MugrationTraitsOutput,
   outdir: &Path,
 ) -> Result<(), Report> {
@@ -287,7 +246,6 @@ fn write_annotated_tree(
   let nexus = nex_write_str_with(graph, &NexWriteOptions::default(), &providers)?;
   fs::write(outdir.join("annotated_tree.nexus"), format!("{nexus}\n"))?;
 
-  // Write trait assignments as separate CSV
   fs::write(outdir.join("traits.csv"), traits.render_csv())?;
 
   Ok(())

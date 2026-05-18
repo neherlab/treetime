@@ -1,0 +1,202 @@
+use crate::gtr::gtr::GTR;
+use crate::make_error;
+use crate::partition::discrete_states::DiscreteStates;
+use crate::partition::marginal_core::{
+  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
+};
+use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses};
+use eyre::Report;
+use indexmap::IndexSet;
+use itertools::Itertools;
+use maplit::btreemap;
+use ndarray::{Array1, Array2};
+use std::collections::BTreeMap;
+use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::graph::Graph;
+use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_utils::array::ndarray::argmax_first;
+
+#[derive(Clone, Debug)]
+pub struct PartitionMarginalDiscrete {
+  pub data: MarginalData,
+  pub states: DiscreteStates,
+}
+
+impl PartitionMarginalDiscrete {
+  pub fn new(gtr: GTR, states: DiscreteStates, min_branch_length: f64) -> Self {
+    Self {
+      data: MarginalData {
+        gtr,
+        nodes: btreemap! {},
+        edges: btreemap! {},
+        min_branch_length,
+      },
+      states,
+    }
+  }
+
+  pub fn n_states(&self) -> usize {
+    self.states.len()
+  }
+
+  pub fn attach_traits<N, E>(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    traits: &BTreeMap<String, String>,
+  ) -> Result<(), Report>
+  where
+    N: GraphNode + Named,
+    E: EdgeOptimizeOps,
+  {
+    let n_states = self.n_states();
+    validate_trait_names(graph, traits)?;
+
+    for leaf in graph.get_leaves() {
+      let leaf_guard = leaf.read_arc();
+      let leaf_key = leaf_guard.key();
+      let leaf_payload = leaf_guard.payload().read_arc();
+      let leaf_name = leaf_payload.name().map(|n| n.as_ref().to_owned()).unwrap_or_default();
+
+      let profile = if let Some(trait_value) = traits.get(&leaf_name) {
+        if let Some(index) = self.states.get_index(trait_value) {
+          one_hot_profile(index, n_states)
+        } else {
+          uniform_profile(n_states)
+        }
+      } else {
+        uniform_profile(n_states)
+      };
+
+      self.data.nodes.insert(
+        leaf_key,
+        DenseNodePartition {
+          seq: DenseSeqInfo::default(),
+          profile: DenseSeqDis::new(profile, 0.0),
+        },
+      );
+    }
+
+    for edge in graph.get_edges() {
+      let edge_key = edge.read_arc().key();
+      self.data.edges.insert(edge_key, DenseEdgePartition::default());
+    }
+
+    Ok(())
+  }
+
+  pub fn get_reconstructed_trait(&self, node_key: GraphNodeKey) -> Option<String> {
+    let node = self.data.nodes.get(&node_key)?;
+    let row = node.profile.dis.row(0);
+    let argmax = argmax_first(&row)?;
+    Some(self.states.get_name(argmax).to_owned())
+  }
+
+  pub fn get_confidence(&self, node_key: GraphNodeKey) -> Option<Array1<f64>> {
+    let node = self.data.nodes.get(&node_key)?;
+    Some(node.profile.dis.row(0).to_owned())
+  }
+}
+
+impl HasGtr for PartitionMarginalDiscrete {
+  fn gtr(&self) -> &GTR {
+    &self.data.gtr
+  }
+
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.data.gtr
+  }
+
+  fn sequence_length(&self) -> usize {
+    1
+  }
+}
+
+impl HasLogLh for PartitionMarginalDiscrete {
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
+    self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  }
+}
+
+impl<N, E> MarginalPartition<N, E> for PartitionMarginalDiscrete
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  fn marginal_data(&self) -> &MarginalData {
+    &self.data
+  }
+
+  fn marginal_data_mut(&mut self) -> &mut MarginalData {
+    &mut self.data
+  }
+
+  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDis, Report> {
+    let node = &self.data.nodes[&node_key];
+    Ok(node.profile.clone())
+  }
+}
+
+impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalDiscrete
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
+    marginal_process_node_backward(self, node)
+  }
+
+  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
+    marginal_process_node_forward(self, graph, node)
+  }
+
+  fn get_sequence_length(&self) -> usize {
+    1
+  }
+}
+
+fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
+  let mut profile = Array2::zeros((1, n_states));
+  profile[[0, index]] = 1.0;
+  profile
+}
+
+fn uniform_profile(n_states: usize) -> Array2<f64> {
+  Array2::from_elem((1, n_states), 1.0 / n_states as f64)
+}
+
+fn validate_trait_names<N, E>(graph: &Graph<N, E, ()>, traits: &BTreeMap<String, String>) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let leaf_names: IndexSet<String> = graph
+    .get_leaves()
+    .iter()
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      let payload = leaf.payload().read_arc();
+      payload.name().map(|name| name.as_ref().to_owned()).unwrap_or_default()
+    })
+    .collect();
+  let trait_names: IndexSet<String> = traits.keys().cloned().collect();
+
+  let missing_in_metadata: IndexSet<String> = leaf_names.difference(&trait_names).cloned().collect();
+  if !missing_in_metadata.is_empty() {
+    return make_error!(
+      "Mugration: tree leaves missing from metadata: {}",
+      missing_in_metadata.iter().join(", ")
+    );
+  }
+
+  let missing_in_tree: IndexSet<String> = trait_names.difference(&leaf_names).cloned().collect();
+  if !missing_in_tree.is_empty() {
+    return make_error!(
+      "Mugration: metadata names missing from tree leaves: {}",
+      missing_in_tree.iter().join(", ")
+    );
+  }
+
+  Ok(())
+}
