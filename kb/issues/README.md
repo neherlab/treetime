@@ -148,6 +148,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Alphabet       | [Alphabet serialization format design](N-alphabet-serialization-format-design.md)                                                                   |
 | Negligible | Core           | [Code quality and convention violations](N-code-quality-conventions.md)                                                                             |
 | Negligible | Core           | [Architectural debt (documented, low priority)](N-architectural-debt-documented.md)                                                                 |
+| Negligible | Optimize       | [optimize/ internal file cohesion](N-optimize-internal-file-cohesion.md)                                                                            |
 | Negligible | Core           | [Production unwrap/expect/assert audit](N-production-unwrap-expect-audit.md)                                                                        |
 | Negligible | Test           | [Test coverage gaps across production functions](N-test-coverage-gaps.md)                                                                           |
 | Negligible | Test           | [Test quality deficiencies](N-test-quality-deficiencies.md)                                                                                         |
