@@ -38,3 +38,4 @@ Create top-level `src/timetree/` domain module. Move inference (479 lines), opti
 ## Related issues
 
 - Source: [M-core-remaining-architectural-debt-after-extraction](../issues/M-core-remaining-architectural-debt-after-extraction.md)
+- Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)

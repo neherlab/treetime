@@ -17,6 +17,14 @@
 
 Create CLI wrapper types in `commands/` args files with `ValueEnum`/`Args` derives. Use `From` impls to convert to domain types. Domain types keep `Serialize`/`Deserialize` but drop `clap` dependency.
 
+## Validation
+
+- `clap` removed from `treetime` crate `[dependencies]` in `Cargo.toml`
+- `cargo build` succeeds
+- All existing tests pass
+- CLI behavior unchanged
+
 ## Related issues
 
 - Source: [M-core-remaining-architectural-debt-after-extraction](../issues/M-core-remaining-architectural-debt-after-extraction.md)
+- Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)

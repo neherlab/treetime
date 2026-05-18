@@ -23,3 +23,4 @@ Move `commands/timetree/coalescent/` (1444 lines, 13 files) to top-level `src/co
 ## Related issues
 
 - Source: [M-core-remaining-architectural-debt-after-extraction](../issues/M-core-remaining-architectural-debt-after-extraction.md)
+- Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)

@@ -21,3 +21,4 @@ Move domain algorithms from `commands/mugration/` to top-level `src/mugration/`.
 ## Related issues
 
 - Source: [M-core-remaining-architectural-debt-after-extraction](../issues/M-core-remaining-architectural-debt-after-extraction.md)
+- Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)
