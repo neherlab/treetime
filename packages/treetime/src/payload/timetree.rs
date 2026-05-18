@@ -1,6 +1,6 @@
-use crate::partition::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
-use crate::partition::payload::clock_set::ClockSet;
-use crate::partition::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
+use crate::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
+use crate::payload::clock_set::ClockSet;
+use crate::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -290,8 +290,8 @@ mod tests {
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::timetree::GraphTimetree;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::payload::ancestral::annotate_branch_mutations;
-  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::annotate_branch_mutations;
+  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use indoc::indoc;

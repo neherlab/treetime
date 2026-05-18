@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::marginal::update_marginal_mut;
   use crate::o;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::partition::traits::PartitionMarginalPasses;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -138,7 +138,7 @@ mod tests {
     use crate::o;
     use crate::partition::discrete_states::DiscreteStates;
     use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
-    use crate::partition::payload::ancestral::GraphAncestral;
+    use crate::payload::ancestral::GraphAncestral;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;

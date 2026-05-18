@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::partition::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::traits::{ClockEdge, ClockNode};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use treetime_graph::breadth_first::GraphTraversalContinuation;

@@ -6,7 +6,7 @@ use crate::partition::marginal_core::{
   MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
-use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,

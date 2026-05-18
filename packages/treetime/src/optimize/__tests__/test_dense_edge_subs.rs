@@ -7,8 +7,8 @@ mod tests {
   use crate::partition::marginal_core::MarginalData;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::payload::ancestral::GraphAncestral;
-  use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+  use crate::payload::ancestral::GraphAncestral;
+  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -322,7 +322,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::partition::payload::dense::DenseNodePartition;
+    use crate::partition::dense::DenseNodePartition;
     use crate::seq::mutation::Sub;
     use treetime_utils::array::ndarray::argmax_first;
 

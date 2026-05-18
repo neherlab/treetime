@@ -3,7 +3,7 @@ use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
-use crate::partition::payload::traits::TimetreeNode;
+use crate::payload::traits::TimetreeNode;
 use crate::{make_error, make_report};
 use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::neldermead::NelderMead;

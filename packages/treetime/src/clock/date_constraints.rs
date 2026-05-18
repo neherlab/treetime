@@ -1,6 +1,6 @@
 use crate::make_error;
 use crate::o;
-use crate::partition::payload::traits::DateConstraintNode;
+use crate::payload::traits::DateConstraintNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};

@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;

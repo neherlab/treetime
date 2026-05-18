@@ -1,5 +1,5 @@
 use crate::gtr::gtr::GTR;
-use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use eyre::Report;
 use itertools::izip;
 use ndarray::prelude::*;

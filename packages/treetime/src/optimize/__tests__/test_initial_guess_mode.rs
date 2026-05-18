@@ -9,7 +9,7 @@ mod tests {
   };
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

@@ -1,7 +1,7 @@
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
-use crate::partition::payload::timetree::EdgeTimetree;
-use crate::partition::payload::timetree::NodeTimetree;
+use crate::payload::timetree::EdgeTimetree;
+use crate::payload::timetree::NodeTimetree;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;

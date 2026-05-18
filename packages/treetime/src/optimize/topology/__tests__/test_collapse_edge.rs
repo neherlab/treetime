@@ -6,9 +6,9 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
 
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::payload::ancestral::GraphAncestral;
-  use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
-  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::GraphAncestral;
+  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_abs_diff_eq;

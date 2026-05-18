@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   
   use parking_lot::RwLock;
   use std::sync::Arc;

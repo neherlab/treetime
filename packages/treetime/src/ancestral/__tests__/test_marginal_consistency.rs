@@ -9,7 +9,7 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
@@ -339,8 +339,8 @@ mod tests {
   ) -> Result<BTreeMap<String, String>, Report>
   where
     P: crate::partition::traits::PartitionMarginalOps<
-        crate::partition::payload::ancestral::NodeAncestral,
-        crate::partition::payload::ancestral::EdgeAncestral,
+        crate::payload::ancestral::NodeAncestral,
+        crate::payload::ancestral::EdgeAncestral,
       > + crate::partition::traits::HasLogLh,
   {
     let mut actual = BTreeMap::new();

@@ -3,7 +3,7 @@ mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input_small;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::ancestral::marginal::update_marginal;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use proptest::prelude::*;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::prop_assert_abs_diff_eq;

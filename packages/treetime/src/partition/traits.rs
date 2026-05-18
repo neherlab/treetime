@@ -4,7 +4,7 @@ use crate::make_internal_error;
 use crate::make_internal_report;
 use treetime_graph::reroot::RerootChanges;
 use crate::partition::optimization_contribution::OptimizationContribution;
-use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use parking_lot::RwLock;

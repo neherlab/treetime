@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::payload::clock_set::ClockSet;
+  use crate::payload::clock_set::ClockSet;
   use ndarray::array;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 

@@ -4,7 +4,7 @@ pub mod tests {
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   

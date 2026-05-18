@@ -1,5 +1,5 @@
-use crate::partition::payload::clock_set::ClockSet;
-use crate::partition::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::clock_set::ClockSet;
+use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

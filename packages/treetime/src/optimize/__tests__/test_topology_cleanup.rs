@@ -12,8 +12,8 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::payload::ancestral::GraphAncestral;
-  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::GraphAncestral;
+  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};

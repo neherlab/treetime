@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::timetree::output::auspice::write_auspice_json;
   use crate::commands::timetree::output::confidence::NodeConfidenceInterval;
   use crate::partition::timetree::GraphTimetree;
-  use crate::partition::payload::timetree::NodeTimetree;
+  use crate::payload::timetree::NodeTimetree;
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
 
@@ -287,7 +287,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
+    use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use treetime_graph::node::Named;
 
     pub fn make_named_node(name: &str, time: f64, div: f64) -> NodeTimetree {

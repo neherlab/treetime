@@ -1,6 +1,6 @@
 use crate::partition::traits::PartitionTimetreeAll;
-use crate::partition::payload::timetree::EdgeTimetree;
-use crate::partition::payload::timetree::NodeTimetree;
+use crate::payload::timetree::EdgeTimetree;
+use crate::payload::timetree::NodeTimetree;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::graph::Graph;

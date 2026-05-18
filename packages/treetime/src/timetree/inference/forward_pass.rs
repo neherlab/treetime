@@ -1,4 +1,4 @@
-use crate::partition::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use std::sync::Arc;
 use treetime_distribution::distribution_convolution;

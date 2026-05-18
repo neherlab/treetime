@@ -3,7 +3,7 @@ mod tests {
   use treetime_graph::reroot::{
     apply_reroot_topology, remove_node_if_trivial, split_edge,
   };
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_abs_diff_eq;
   use eyre::Report;

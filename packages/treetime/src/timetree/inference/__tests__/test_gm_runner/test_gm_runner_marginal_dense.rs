@@ -11,7 +11,7 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::timetree::GraphTimetree;
   use crate::partition::traits::PartitionTimetreeAll;
-  use crate::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,

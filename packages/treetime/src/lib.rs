@@ -11,6 +11,7 @@ pub mod hacks;
 pub mod io;
 pub mod optimize;
 pub mod partition;
+pub mod payload;
 pub mod seq;
 pub mod timetree;
 

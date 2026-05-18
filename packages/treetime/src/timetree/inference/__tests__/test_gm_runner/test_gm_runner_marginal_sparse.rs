@@ -17,7 +17,7 @@ mod tests {
   };
 
   use crate::partition::timetree::GraphTimetree;
-  use crate::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
 
   use parking_lot::RwLock;

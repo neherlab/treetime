@@ -7,7 +7,7 @@ mod tests {
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

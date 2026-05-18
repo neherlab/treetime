@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::partition::traits::PartitionCompressed;
 use eyre::Report;
 use std::collections::BTreeMap;

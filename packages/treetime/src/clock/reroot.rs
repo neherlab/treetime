@@ -5,8 +5,8 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime_graph::reroot::{
   self as topology_reroot, remove_node_if_trivial, split_edge,
 };
-use crate::partition::payload::clock_set::ClockSet;
-use crate::partition::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::clock_set::ClockSet;
+use crate::payload::traits::{ClockEdge, ClockNode};
 use approx::ulps_eq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};

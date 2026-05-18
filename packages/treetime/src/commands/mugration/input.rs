@@ -1,4 +1,4 @@
-use crate::partition::payload::ancestral::GraphAncestral;
+use crate::payload::ancestral::GraphAncestral;
 use std::collections::BTreeMap;
 
 /// Parsed mugration input for the execution layer.

@@ -3,7 +3,7 @@ mod tests {
   use crate::ancestral::marginal::update_marginal;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;

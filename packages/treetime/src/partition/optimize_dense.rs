@@ -21,7 +21,7 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::gtr::gtr::GTR;
-use crate::partition::payload::dense::DenseSeqDis;
+use crate::partition::dense::DenseSeqDis;
 use ndarray::Array2;
 
 pub struct PartitionContribution {

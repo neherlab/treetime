@@ -2,7 +2,7 @@ use crate::coalescent::edge_data::{collect_coalescent_edges, sum_coalescent_cost
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::partition::payload::traits::TimetreeNode;
+use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, TimeLength};

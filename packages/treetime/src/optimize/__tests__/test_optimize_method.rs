@@ -15,7 +15,7 @@ mod tests {
   use crate::partition::optimization_contribution::OptimizationContribution;
   use crate::partition::optimize_dense;
   use crate::partition::traits::PartitionOptimizeOps;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;

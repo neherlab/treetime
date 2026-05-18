@@ -2,7 +2,7 @@ use crate::coalescent::contributions::compute_node_contributions;
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::partition::payload::traits::TimetreeNode;
+use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;

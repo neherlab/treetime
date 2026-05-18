@@ -1,6 +1,6 @@
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::payload::ancestral::GraphAncestral;
+use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;

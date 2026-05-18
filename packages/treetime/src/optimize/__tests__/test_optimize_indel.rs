@@ -18,7 +18,7 @@ mod tests {
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::optimization_contribution::OptimizationContribution;
   use crate::partition::optimize_dense;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

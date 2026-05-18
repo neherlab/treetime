@@ -19,7 +19,7 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

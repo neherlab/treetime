@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::partition::payload::sparse::{SparseEdgePartition, SparseSeqInfo};
+use crate::partition::sparse::{SparseEdgePartition, SparseSeqInfo};
 use crate::seq::indel::Deletion;
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;

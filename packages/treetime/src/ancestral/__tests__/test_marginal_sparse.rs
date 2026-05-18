@@ -9,8 +9,8 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::payload::ancestral::GraphAncestral;
-  use crate::partition::payload::sparse::MarginalSparseSeqDistribution;
+  use crate::payload::ancestral::GraphAncestral;
+  use crate::partition::sparse::MarginalSparseSeqDistribution;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;

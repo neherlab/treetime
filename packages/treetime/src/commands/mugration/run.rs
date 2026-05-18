@@ -8,7 +8,7 @@ use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
-use crate::partition::payload::ancestral::GraphAncestral;
+use crate::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_report};
 use eyre::Report;
 use indexmap::IndexSet;

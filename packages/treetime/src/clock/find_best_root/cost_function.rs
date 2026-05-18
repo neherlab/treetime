@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockParams;
-use crate::partition::payload::clock_set::ClockSet;
-use crate::partition::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::clock_set::ClockSet;
+use crate::payload::traits::{ClockEdge, ClockNode};
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};

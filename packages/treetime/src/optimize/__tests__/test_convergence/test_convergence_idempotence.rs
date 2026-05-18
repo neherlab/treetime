@@ -4,7 +4,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;

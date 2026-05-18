@@ -7,7 +7,7 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
-use crate::partition::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
+use crate::partition::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;

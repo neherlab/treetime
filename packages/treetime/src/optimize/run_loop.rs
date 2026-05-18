@@ -9,7 +9,7 @@ use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_bra
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps, PartitionOptimizeVec};
-use crate::partition::payload::ancestral::GraphAncestral;
+use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::{Itertools, chain};
 use log::debug;

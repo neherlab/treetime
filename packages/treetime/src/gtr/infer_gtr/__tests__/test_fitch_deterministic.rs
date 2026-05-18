@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
   use rstest::rstest;

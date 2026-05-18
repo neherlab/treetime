@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::{arb_marginal_input, arb_marginal_input_small};
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::partition::payload::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::sparse::MarginalSparseSeqDistribution;
   use ndarray::Array2;
   use proptest::prelude::*;
 

@@ -8,8 +8,8 @@ use crate::ancestral::fitch_sub::{
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
 use crate::partition::traits::PartitionCompressed;
-use crate::partition::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::partition::payload::sparse::{
+use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::partition::sparse::{
   FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
 };
 use crate::seq::composition::Composition;

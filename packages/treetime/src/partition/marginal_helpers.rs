@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::partition::payload::sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::partition::sparse::{MarginalSparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;

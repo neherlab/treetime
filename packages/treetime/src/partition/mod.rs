@@ -2,6 +2,7 @@
 mod __tests__;
 
 pub mod algo;
+pub mod dense;
 pub mod discrete_states;
 pub mod fitch;
 pub mod fitch_config;
@@ -15,6 +16,6 @@ pub mod marginal_sparse;
 pub mod optimization_contribution;
 pub mod optimize_dense;
 pub mod optimize_sparse;
-pub mod payload;
+pub mod sparse;
 pub mod timetree;
 pub mod traits;

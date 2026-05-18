@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::timetree::convergence::metrics::TimetreeOptimizer;
   use crate::partition::timetree::GraphTimetree;
-  use crate::partition::payload::timetree::NodeTimetree;
+  use crate::payload::timetree::NodeTimetree;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
