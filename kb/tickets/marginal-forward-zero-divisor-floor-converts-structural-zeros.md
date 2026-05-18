@@ -7,8 +7,7 @@ The floor converts structurally impossible states (probability exactly zero) int
 ## Affected code
 
 - Sparse: [packages/treetime/src/partition/marginal_passes.rs#L295](../../packages/treetime/src/partition/marginal_passes.rs#L295)
-- Dense: [packages/treetime/src/partition/marginal_dense.rs#L324](../../packages/treetime/src/partition/marginal_dense.rs#L324)
-- Discrete: [packages/treetime/src/partition/discrete.rs#L206](../../packages/treetime/src/partition/discrete.rs#L206)
+- Dense + discrete (shared): [packages/treetime/src/partition/marginal_core.rs#L163](../../packages/treetime/src/partition/marginal_core.rs#L163)
 
 ## Impact
 

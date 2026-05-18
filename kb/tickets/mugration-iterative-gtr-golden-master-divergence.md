@@ -4,9 +4,9 @@ v1 implements iterative GTR inference for mugration, matching v0's `reconstruct_
 
 ## Intentional v1 improvements (D1, D2)
 
-1. Pseudo-count smoothing on initial pi ([packages/treetime/src/commands/mugration/run.rs#L221](../../packages/treetime/src/commands/mugration/run.rs#L221)): v1 applies `apply_pseudo_counts(pi, pc)` before the initial GTR model, giving a smoother prior for the first reconstruction. v0 passes raw weights directly to `GTR.custom()` and reserves `pc` for `infer_gtr()` regularization only.
+1. Pseudo-count smoothing on initial pi ([packages/treetime/src/commands/mugration/run.rs#L193](../../packages/treetime/src/commands/mugration/run.rs#L193)): v1 applies `apply_pseudo_counts(pi, pc)` before the initial GTR model, giving a smoother prior for the first reconstruction. v0 passes raw weights directly to `GTR.custom()` and reserves `pc` for `infer_gtr()` regularization only.
 
-2. Root state uniform-threshold filtering ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L144-L150](../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L144-L150)): v1 skips the root state contribution to pi estimation when the root posterior is near-uniform (max probability at or below `1/n_states + 1e-10`). v0 always converts the root MAP state to a one-hot count, which injects state-order bias when the root is uninformative. Matches the dense GTR inference path at [packages/treetime/src/gtr/infer_gtr/dense.rs#L158-L166](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L158-L166).
+2. Root state uniform-threshold filtering ([packages/treetime/src/gtr/refinement.rs#L104-L108](../../packages/treetime/src/gtr/refinement.rs#L104-L108)): v1 skips the root state contribution to pi estimation when the root posterior is near-uniform (max probability at or below `1/n_states + 1e-10`). v0 always converts the root MAP state to a one-hot count, which injects state-order bias when the root is uninformative. Matches the dense GTR inference path at [packages/treetime/src/ancestral/gtr_inference_dense.rs#L169](../../packages/treetime/src/ancestral/gtr_inference_dense.rs#L169).
 
 Both produce scientifically defensible results but shift posterior probabilities at ambiguous internal nodes.
 
@@ -17,5 +17,5 @@ Both produce scientifically defensible results but shift posterior probabilities
 
 ## Related issues
 
-- Source: [M-mugration-iterative-gtr.md](../issues/M-mugration-iterative-gtr.md) -- delete after full resolution
+- Source: [M-mugration-iterative-gtr.md](../issues/M-mugration-iterative-gtr.md)
 - [Full forward-backward reconstruction proposal](../proposals/mugration-full-reconstruction-per-iteration.md)

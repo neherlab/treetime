@@ -4,15 +4,15 @@
 
 ## Summary
 
-| Category                                                        | Type                                           |
-| --------------------------------------------------------------- | ---------------------------------------------- |
-| [Golden master (v0 parity)](#golden-master-v0-parity)           | Golden-master                                  |
-| [Structural / unit](#structural--unit)                          | Unit                                           |
-| [Algorithm invariants](#algorithm-invariants)                   | Unit                                           |
-| [Discrete marginal](#discrete-marginal)                         | Unit                                           |
-| [Comment output](#comment-output)                               | Unit                                           |
-| [Brent optimizer](#brent-optimizer)                             | Unit                                           |
-| [Partition / discrete](representation.md#normalize-discrete-1d) | Unit (see [Representation](representation.md)) |
+| Category                                              | Type          |
+| ----------------------------------------------------- | ------------- |
+| [Golden master (v0 parity)](#golden-master-v0-parity) | Golden-master |
+| [Structural / unit](#structural--unit)                | Unit          |
+| [Algorithm invariants](#algorithm-invariants)         | Unit          |
+| [Discrete marginal](#discrete-marginal)               | Unit          |
+| [Comment output](#comment-output)                     | Unit          |
+| [Brent optimizer](#brent-optimizer)                   | Unit          |
+| [Normalize (shared core)](#normalize-shared-core)     | Unit          |
 
 ---
 
@@ -80,7 +80,7 @@
 
 **Test:** [`packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs)
 
-**Impl:** [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs)
+**Impl:** [`packages/treetime/src/partition/marginal_discrete.rs`](../../packages/treetime/src/partition/marginal_discrete.rs) + [`packages/treetime/src/partition/marginal_core.rs`](../../packages/treetime/src/partition/marginal_core.rs)
 
 | Test                                                                               | Purpose                                          |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -106,9 +106,9 @@
 
 ## Brent Optimizer
 
-**Test:** [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/commands/mugration/gtr_refinement.rs`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs)
+**Impl:** [`packages/treetime/src/gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs)
 
 | Test                                                 | Purpose                                        |
 | ---------------------------------------------------- | ---------------------------------------------- |
@@ -119,6 +119,6 @@
 
 ---
 
-## Partition / Discrete
+## Normalize (shared core)
 
-Moved to [Representation Tests: Normalize (Discrete 1D)](representation.md#normalize-discrete-1d).
+Normalize functions (`normalize_inplace`, `normalize_from_log`) are tested inline in [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs) `mod tests`. The old discrete 1D normalization tests are no longer applicable (1D variants deleted, unified into 2D in `marginal_core.rs`).

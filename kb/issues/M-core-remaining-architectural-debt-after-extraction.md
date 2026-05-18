@@ -28,14 +28,9 @@ Module renamed from `representation/` to `partition/`, inner `partition/` subdir
 
 Extracted to top-level `timetree/` domain module.
 
-### commands/mugration/ (1227 lines)
+### commands/mugration/ (resolved)
 
-Contains domain algorithms:
-
-- `gtr_refinement.rs` (381 lines) - iterative GTR inference from discrete trait data
-- `discrete_marginal.rs` (170 lines) - discrete-trait marginal reconstruction
-
-These import only from `gtr/` and `partition/discrete` - no args coupling.
+Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete.rs`, and `partition/payload/discrete.rs` are deleted.
 
 ## Visibility and coupling issues
 

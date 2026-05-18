@@ -28,12 +28,6 @@ Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pa
 
 `BrentOpt::new(parent_time + 1e-10, child_min_time - 1e-10)` uses absolute epsilon. For calendar times (e.g., 2020.5), 1e-10 is below f64 precision at that magnitude.
 
-### Normalize helpers duplicated in discrete.rs
-
-`packages/treetime/src/partition/discrete.rs:223,232:`
-
-`fn normalize_inplace_1d` and `fn normalize_from_log_1d` are Array1 analogs of the Array2 versions in `marginal_dense.rs:493,514:`. The 1D versions add error handling that the 2D versions lack. Should be unified.
-
 ### edge_effective_length saturating_sub clamps to 0
 
 `packages/treetime/src/partition/marginal_sparse.rs:255:` and `marginal_dense.rs:153:`

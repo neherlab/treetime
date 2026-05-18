@@ -6,7 +6,7 @@
 
 ## Details
 
-`packages/treetime/src/partition/marginal_dense.rs:390:`
+`packages/treetime/src/partition/marginal_core.rs:175:`
 
 The function iterates rows, normalizing each to sum to 1.0. For rows where the sum is zero or non-finite, it fills the row with a uniform distribution (1/n_cols) and adds `NEG_INFINITY` to the running `log_lh` total.
 

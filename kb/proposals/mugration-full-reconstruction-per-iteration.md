@@ -8,9 +8,9 @@ Convergence guarantees require that the E-step uses messages computed under a si
 
 ## Current behavior
 
-The iterative GTR refinement in `refine_gtr_iterative()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs](../../packages/treetime/src/commands/mugration/gtr_refinement.rs)) uses stale forward-pass messages (`msg_to_child`) from the initial reconstruction. Each iteration updates backward messages via rate optimization but does not refresh forward messages. This matches v0's behavior: `infer_gtr(marginal=True)` ([packages/legacy/treetime/treetime/treeanc.py#L1543-L1545](../../packages/legacy/treetime/treetime/treeanc.py#L1543-L1545)) skips `_ml_anc_marginal()` when `sequence_reconstruction == 'marginal'`.
+The iterative GTR refinement in `refine_gtr_iterative()` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) uses stale forward-pass messages (`msg_to_child`) from the initial reconstruction. Each iteration updates backward messages via rate optimization but does not refresh forward messages. This matches v0's behavior: `infer_gtr(marginal=True)` ([packages/legacy/treetime/treetime/treeanc.py#L1543-L1545](../../packages/legacy/treetime/treetime/treeanc.py#L1543-L1545)) skips `_ml_anc_marginal()` when `sequence_reconstruction == 'marginal'`.
 
-The mutation counting formula in `get_branch_mutation_matrix()` ([packages/treetime/src/gtr/infer_gtr/dense.rs#L63](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L63)) computes the joint `P(child=i, parent=j | data)` from three components that may be under different GTR models:
+The mutation counting formula in `get_branch_mutation_matrix()` ([packages/treetime/src/ancestral/gtr_inference_dense.rs#L56](../../packages/treetime/src/ancestral/gtr_inference_dense.rs#L56)) computes the joint `P(child=i, parent=j | data)` from three components that may be under different GTR models:
 
 - `msg_to_parent[i]`: subtree likelihood from backward pass with current GTR (fresh)
 - `exp_qt[i,j]`: transition matrix from current GTR (fresh)
@@ -18,12 +18,12 @@ The mutation counting formula in `get_branch_mutation_matrix()` ([packages/treet
 
 ## Proposed change
 
-Insert `run_discrete_marginal(graph, partition)?` before each `count_transitions_discrete()` in the iterative loop:
+Insert `update_marginal_mut(graph, partition)?` before each `count_transitions()` in the iterative loop:
 
 ```rust
 for i in 0..iterations {
-    run_discrete_marginal(graph, partition)?;
-    let counts = count_transitions_discrete(graph, partition)?;
+    update_marginal_mut(graph, partition)?;
+    let counts = count_transitions(graph, partition)?;
     // ...
 }
 ```

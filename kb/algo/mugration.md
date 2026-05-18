@@ -10,14 +10,14 @@ Discrete trait ancestral reconstruction treats categorical metadata (locations, 
 
 Felsenstein pruning (<a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)]) applied to discrete categorical traits rather than nucleotide sequences. The algorithm is identical to marginal ML ancestral reconstruction but operates on a discrete state alphabet (e.g., country names) with a GTR-like transition matrix.
 
-v1: [`packages/treetime/src/commands/mugration/discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs).
+v1: shared marginal infrastructure in [`packages/treetime/src/partition/marginal_core.rs`](../../packages/treetime/src/partition/marginal_core.rs) with discrete-specific partition [`packages/treetime/src/partition/marginal_discrete.rs`](../../packages/treetime/src/partition/marginal_discrete.rs).
 v0: [`packages/legacy/treetime/treetime/wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811).
 
-Key functions: `run_discrete_marginal()`, `attach_traits()`.
+Key functions: `update_marginal_mut()`, `PartitionMarginalDiscrete::attach_traits()`.
 
 ### Algorithm
 
-**Initialization** (`attach_traits()` in [`packages/treetime/src/commands/mugration/discrete_marginal.rs#L96`](../../packages/treetime/src/commands/mugration/discrete_marginal.rs#L96)):
+Initialization (`attach_traits()` in [`packages/treetime/src/partition/marginal_discrete.rs#L44`](../../packages/treetime/src/partition/marginal_discrete.rs#L44)):
 
 For each leaf node:
 
@@ -26,7 +26,7 @@ For each leaf node:
 
 This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
 
-**Backward pass** (postorder, leaves to root) (`process_node_backward()` in [`packages/treetime/src/partition/discrete.rs#L60`](../../packages/treetime/src/partition/discrete.rs#L60)):
+Backward pass (postorder, leaves to root) (`marginal_process_node_backward()` in [`packages/treetime/src/partition/marginal_core.rs#L45`](../../packages/treetime/src/partition/marginal_core.rs#L45)):
 
 For each node in postorder:
 
@@ -46,7 +46,7 @@ For each node in postorder:
    ```
    where `P = exp(Q*t)` is the transition probability matrix for branch length `t`.
 
-**Forward pass** (preorder, root to leaves) (`process_node_forward()` in [`packages/treetime/src/partition/discrete.rs#L150`](../../packages/treetime/src/partition/discrete.rs#L150)):
+Forward pass (preorder, root to leaves) (`marginal_process_node_forward()` in [`packages/treetime/src/partition/marginal_core.rs#L117`](../../packages/treetime/src/partition/marginal_core.rs#L117)):
 
 For each node in preorder:
 
@@ -61,7 +61,7 @@ For each node in preorder:
    msg_to_child = normalize(profile / msg_from_child)
    ```
 
-**Trait assignment** (`get_reconstructed_trait()` in [`packages/treetime/src/partition/discrete.rs#L50`](../../packages/treetime/src/partition/discrete.rs#L50)):
+Trait assignment (`get_reconstructed_trait()` in [`packages/treetime/src/partition/marginal_discrete.rs#L89`](../../packages/treetime/src/partition/marginal_discrete.rs#L89)):
 
 After forward-backward passes, each node has a posterior probability distribution over states. The assigned trait is `argmax(profile)`.
 
@@ -83,19 +83,27 @@ Supporting references for missing data treatment:
 
 ---
 
+## Architecture
+
+The discrete partition (`PartitionMarginalDiscrete`) reuses the shared marginal infrastructure (`MarginalData`, `MarginalPartition` trait) from `marginal_core.rs`. Discrete traits are represented as `Array2(1, n_states)` profiles using the same `DenseNodePartition`/`DenseEdgePartition` types as sequence marginal inference. The `MarginalPartition` trait hooks (`leaf_profile`, `backward_internal_pre`, `forward_post`) default to no-ops for discrete partitions (no indels, no sequence reconstruction).
+
+GTR refinement lives in `gtr/refinement.rs` as a domain-level algorithm operating on `PartitionMarginalDiscrete`, called from the mugration command.
+
+---
+
 ## GTR Model Construction
 
 Constructs a GTR-like transition model for discrete traits.
 
-v1: [`packages/treetime/src/commands/mugration/run.rs#L223`](../../packages/treetime/src/commands/mugration/run.rs#L223).
+v1: [`packages/treetime/src/commands/mugration/run.rs#L183`](../../packages/treetime/src/commands/mugration/run.rs#L183).
 
-**v1 implementation**:
+v1 implementation:
 
 - Equilibrium frequencies `pi`: uniform (1/n_states) or from weights file, with pseudo-count smoothing
 - Exchangeability matrix `W`: uniform (all transitions equally likely)
-- Initial forward-backward pass with uniform model, then iterative GTR refinement via `refine_gtr_iterative()` ([`packages/treetime/src/commands/mugration/gtr_refinement.rs#L28`](../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L28))
+- Initial forward-backward pass with uniform model, then iterative GTR refinement via `refine_gtr_iterative()` ([`packages/treetime/src/gtr/refinement.rs#L18`](../../packages/treetime/src/gtr/refinement.rs#L18))
 
-**v0 implementation** (see [Iterative GTR for Discrete Traits](unimplemented.md#iterative-gtr-for-discrete-traits-ported)):
+v0 implementation (see [Iterative GTR for Discrete Traits](unimplemented.md#iterative-gtr-for-discrete-traits-ported)):
 
 - Initial reconstruction with uniform model
 - 5 iterations of `infer_gtr()` + `optimize_gtr_rate()` re-estimation
@@ -107,7 +115,7 @@ Both v0 and v1 perform iterative GTR refinement. v1's implementation includes tw
 
 ## Confidence Profiles
 
-After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/partition/discrete.rs#L56`](../../packages/treetime/src/partition/discrete.rs#L56). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
+After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/partition/marginal_discrete.rs#L96`](../../packages/treetime/src/partition/marginal_discrete.rs#L96). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
 
 ---
 
@@ -125,11 +133,12 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 
 ## Test Coverage
 
-| Test Type     | Location                                                                                                          | Coverage                               |
-| ------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Golden master | [`__tests__/test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs) | Internal nodes only (filtered)         |
-| Command       | [`__tests__/test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs)                   | Output file existence, basic structure |
-| Partition     | [`partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs)        | Unit tests for node data, profiles     |
+| Test Type     | Location                                                                                                                    | Coverage                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Golden master | [`__tests__/test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs)           | Internal nodes only (filtered)                     |
+| Command       | [`__tests__/test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs)                             | Output file existence, basic structure             |
+| Partition     | [`__tests__/test_discrete_marginal.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs) | Unit tests for attach, backward/forward, full pass |
+| Brent         | inline tests in [`gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs)                                        | Pure math optimizer tests                          |
 
 ### Test Gaps
 
@@ -137,12 +146,14 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 2. Missing data reconstruction not tested: No cases with `"?"` trait values
 3. Confidence profiles not validated: `MugrationOutput.confidence` captured but not asserted
 4. Degenerate cases not covered: Single state, all missing, etc.
+5. `count_transitions()` has no direct unit test ([N-mugration-count-transitions-untested](../issues/N-mugration-count-transitions-untested.md))
 
 ---
 
 ## Known Issues
 
 - [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md) - iterative GTR implemented but two intentional v1 improvements cause argmax divergence at ambiguous internal nodes for 5/7 test datasets
+- [Mugration count_transitions lacks direct unit test](../issues/N-mugration-count-transitions-untested.md)
 
 ---
 

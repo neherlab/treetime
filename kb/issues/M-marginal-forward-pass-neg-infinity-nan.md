@@ -10,7 +10,7 @@ Two related defects in the forward pass:
 
 ### NaN from log_lh subtraction
 
-`packages/treetime/src/partition/marginal_passes.rs:355:` and `marginal_dense.rs:327:`
+`packages/treetime/src/partition/marginal_passes.rs:355:` (sparse) and `packages/treetime/src/partition/marginal_core.rs:168:` (dense + discrete)
 
 The forward pass computes:
 

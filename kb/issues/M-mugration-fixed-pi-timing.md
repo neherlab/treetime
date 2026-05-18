@@ -1,13 +1,13 @@
 # Mugration fixed_pi capture happens before pseudo-count smoothing
 
-In `execute_mugration` at [packages/treetime/src/commands/mugration/run.rs#L216-L221](../../packages/treetime/src/commands/mugration/run.rs#L216-L221), `fixed_pi` is captured as `weights.as_ref().map(|_| pi.clone())` before `apply_pseudo_counts` is called. The captured `fixed_pi` preserves the raw weighted pi (pre-pseudo-count), matching v0's `fixed_pi=weights` intent.
+In `execute_mugration` at [packages/treetime/src/commands/mugration/run.rs#L191-L193](../../packages/treetime/src/commands/mugration/run.rs#L191-L193), `fixed_pi` is captured as `weights.as_ref().map(|_| pi.clone())` before `apply_pseudo_counts` is called. The captured `fixed_pi` preserves the raw weighted pi (pre-pseudo-count), matching v0's `fixed_pi=weights` intent.
 
-The default pseudo-count `pc.unwrap_or(1.0)` at [run.rs#L251](../../packages/treetime/src/commands/mugration/run.rs#L251) is forwarded to `refine_gtr_iterative` regardless of whether the user set `--pc`. The CLI `--pc` arg at [args.rs#L40](../../packages/treetime/src/commands/mugration/args.rs#L40) has no `default_value`, leaving `pc: Option<f64>`. Users passing no `--pc` flag get `pc=1.0` inside refinement but `pc=None` (no smoothing) in `apply_pseudo_counts`, creating an inconsistency between the two pi-smoothing paths.
+The default pseudo-count `pc.unwrap_or(1.0)` at [run.rs#L213](../../packages/treetime/src/commands/mugration/run.rs#L213) is forwarded to `refine_gtr_iterative` regardless of whether the user set `--pc`. The CLI `--pc` arg at [args.rs#L40](../../packages/treetime/src/commands/mugration/args.rs#L40) has no `default_value`, leaving `pc: Option<f64>`. Users passing no `--pc` flag get `pc=1.0` inside refinement but `pc=None` (no smoothing) in `apply_pseudo_counts`, creating an inconsistency between the two pi-smoothing paths.
 
 ## Affected code
 
-- `fixed_pi` capture: [packages/treetime/src/commands/mugration/run.rs#L216-L221](../../packages/treetime/src/commands/mugration/run.rs#L216-L221)
-- Default pseudo-count: [packages/treetime/src/commands/mugration/run.rs#L251](../../packages/treetime/src/commands/mugration/run.rs#L251)
+- `fixed_pi` capture: [packages/treetime/src/commands/mugration/run.rs#L191-L193](../../packages/treetime/src/commands/mugration/run.rs#L191-L193)
+- Default pseudo-count: [packages/treetime/src/commands/mugration/run.rs#L213](../../packages/treetime/src/commands/mugration/run.rs#L213)
 - CLI arg: [packages/treetime/src/commands/mugration/args.rs#L40](../../packages/treetime/src/commands/mugration/args.rs#L40)
 
 ## Fix

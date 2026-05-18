@@ -18,11 +18,11 @@ Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishand
 
 Three locations use `1e-10` as a denominator floor. No named constant. Related to the unit mismatch in `H-timetree-relaxed-clock-unit-mismatch.md`.
 
-### Discrete MIN_POSITIVE clamp biases near-zero divisor
+### Shared marginal forward pass MIN_POSITIVE clamp biases near-zero divisor
 
-`packages/treetime/src/partition/discrete.rs:207:`
+`packages/treetime/src/partition/marginal_core.rs:163:`
 
-Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating information about the degenerate log-likelihood to callers.
+Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating information about the degenerate log-likelihood to callers. Used by both dense and discrete partitions.
 
 ### SUPERTINY_NUMBER distorts column-stochastic normalization
 

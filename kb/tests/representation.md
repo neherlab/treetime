@@ -4,19 +4,19 @@
 
 ## Summary
 
-| Category                                                             | Type                 |
-| -------------------------------------------------------------------- | -------------------- |
-| [Substitution composition](#substitution-composition)                | Unit + Parameterized |
-| [Discrete states](#discrete-states)                                  | Unit                 |
-| [Normalize from log (dense 2D)](#normalize-from-log-dense-2d)        | Unit                 |
-| [Normalize inplace (dense 2D)](#normalize-inplace-dense-2d)          | Unit                 |
-| [Normalize (discrete 1D)](#normalize-discrete-1d)                    | Unit                 |
-| [Per-site rate propagation](#per-site-rate-propagation)              | Unit                 |
-| [Topology cleanup / edge collapse](#topology-cleanup--edge-collapse) | Unit                 |
-| [Topology cleanup / reroot](#topology-cleanup--reroot)               | Unit                 |
-| [Payload: ancestral annotation](#payload-ancestral-annotation)       | Unit                 |
-| [Payload: discrete data](#payload-discrete-data)                     | Unit                 |
-| [Payload: timetree annotation](#payload-timetree-annotation)         | Unit                 |
+| Category                                                              | Type                 |
+| --------------------------------------------------------------------- | -------------------- |
+| [Substitution composition](#substitution-composition)                 | Unit + Parameterized |
+| [Discrete states](#discrete-states)                                   | Unit                 |
+| [Normalize from log (dense 2D)](#normalize-from-log-dense-2d)         | Unit                 |
+| [Normalize inplace (dense 2D)](#normalize-inplace-dense-2d)           | Unit                 |
+| [Normalize (discrete 1D) - Removed](#normalize-discrete-1d---removed) | -                    |
+| [Per-site rate propagation](#per-site-rate-propagation)               | Unit                 |
+| [Topology cleanup / edge collapse](#topology-cleanup--edge-collapse)  | Unit                 |
+| [Topology cleanup / reroot](#topology-cleanup--reroot)                | Unit                 |
+| [Payload: ancestral annotation](#payload-ancestral-annotation)        | Unit                 |
+| [Payload: discrete data - Removed](#payload-discrete-data)            | -                    |
+| [Payload: timetree annotation](#payload-timetree-annotation)          | Unit                 |
 
 Support files (helpers only, no tests): [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs) contains inline helpers `c()`, `sub()`, `populate_test_nodes()`, `make_sparse_partition()`.
 
@@ -101,25 +101,9 @@ Support files (helpers only, no tests): [`packages/treetime/src/partition/algo/t
 
 ---
 
-## Normalize (Discrete 1D)
+## Normalize (Discrete 1D) - Removed
 
-**Test:** [`packages/treetime/src/partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs)
-
-| Test                                                   | Purpose                                     |
-| ------------------------------------------------------ | ------------------------------------------- |
-| `test_new_partition`                                   | Constructor defaults                        |
-| `test_get_reconstructed_trait`                         | Argmax state extraction                     |
-| `test_get_confidence`                                  | Confidence profile access                   |
-| `test_get_log_lh`                                      | Log-likelihood access                       |
-| `test_discrete_argmax_first`                           | Deterministic tie-breaking (shared utility) |
-| `test_normalize_inplace_1d_zero_sum_returns_error`     | Zero-sum normalization returns error        |
-| `test_normalize_from_log_1d_all_neg_inf_returns_error` | All-neg-inf log normalization returns error |
-| `test_normalize_inplace_1d_valid_input`                | Valid normalization sums to 1               |
-| `test_normalize_from_log_1d_valid_input`               | Valid log normalization sums to 1           |
-
-Also cross-referenced from [Mugration Tests](mugration.md#partition--discrete).
+The old `PartitionDiscrete` and its 1D normalize tests were deleted. Discrete trait reconstruction now uses the shared 2D normalization in `partition/marginal_core.rs`. Tests are in [Mugration Tests: Normalize (shared core)](mugration.md#normalize-shared-core).
 
 ---
 
@@ -198,16 +182,7 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Payload: Discrete Data
 
-**Test:** [`packages/treetime/src/partition/payload/discrete.rs`](../../packages/treetime/src/partition/payload/discrete.rs) (inline `#[cfg(test)]`)
-
-**Impl:** [`packages/treetime/src/partition/payload/discrete.rs`](../../packages/treetime/src/partition/payload/discrete.rs)
-
-| Test                                         | Purpose                                             |
-| -------------------------------------------- | --------------------------------------------------- |
-| `test_from_observed_creates_one_hot_profile` | Observed index creates one-hot profile              |
-| `test_missing_creates_uniform_profile`       | Missing creates uniform profile                     |
-| `test_default_node_data`                     | Default node data has empty profile and zero log_lh |
-| `test_default_edge_data`                     | Default edge data has empty arrays and zero log_lh  |
+Deleted. `DiscreteNodeData` and `DiscreteEdgeData` replaced by `DenseNodePartition` and `DenseEdgePartition` via `PartitionMarginalDiscrete`. Tests moved to [Mugration Tests: Discrete Marginal](mugration.md#discrete-marginal).
 
 ---
 
