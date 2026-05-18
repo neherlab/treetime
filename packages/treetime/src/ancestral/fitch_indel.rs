@@ -2,7 +2,6 @@ use crate::representation::payload::sparse::Deletion;
 use crate::seq::indel::InDel;
 use std::collections::BTreeMap;
 use itertools::Itertools;
-use log::debug;
 use treetime_primitives::Seq;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
@@ -57,9 +56,6 @@ pub fn resolve_indels_backward(
   child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
   length: usize,
 ) -> IndelsBackward {
-  debug!(
-    "resolve_indels_backward: length={length}, consensus_gaps={consensus_gaps:?}, child_gaps={child_gaps:?}, child_unknown={child_unknown:?}, child_variable_indels={child_variable_indels:?}"
-  );
   let n_children = child_gaps.len();
 
   // Collect all interval breakpoints from every child source so we can sweep
@@ -158,9 +154,6 @@ pub fn resolve_indels_backward(
   }
   flush(pending, &mut variable_indel, &mut resolved_gaps, n_children);
 
-  debug!(
-    "resolve_indels_backward result: variable_indel={variable_indel:?}, resolved_gaps={resolved_gaps:?}"
-  );
   IndelsBackward {
     variable_indel,
     resolved_gaps,
@@ -187,15 +180,11 @@ pub fn resolve_indels_forward(
   node_sequence: &Seq,
 ) -> Vec<InDel> {
   let mut indels = Vec::new();
-  debug!("resolve_indels_forward");
+
   // Process variable indels using parent context for tiebreaking
   for (r, indel) in variable_indel {
     let gap_in_parent = if parent_gaps.contains(r) { 1 } else { 0 };
-    debug!(
-      "resolve_indels_forward variable_indel: range={r:?}, indel={indel:?}, gap_in_parent={gap_in_parent}, parent_seq={:?}, node_seq={:?}",
-      Seq::from(&parent_sequence[r.0..r.1]).as_str(),
-      Seq::from(&node_sequence[r.0..r.1]).as_str(),
-    );
+
     if indel.deleted + gap_in_parent > indel.present {
       node_gaps.push(*r);
       if gap_in_parent == 0 {
