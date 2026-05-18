@@ -297,7 +297,7 @@ fn merge_sibling_group(
         .map(|&ek| {
           let edge = partition.edges.get(&ek);
           let all_subs = edge.map_or(empty_subs, |e| e.fitch_subs());
-          let all_indels = edge.map(|e| e.indels.as_slice()).unwrap_or(empty_indels);
+          let all_indels = edge.map_or(empty_indels, |e| e.indels.as_slice());
           let shared_subs = &group.shared_subs[pi];
           let shared_indels = &group.shared_indels[pi];
           let remaining_subs = iterator_difference(all_subs, shared_subs).cloned().collect_vec();
