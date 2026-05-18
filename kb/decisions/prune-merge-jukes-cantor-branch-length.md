@@ -24,7 +24,7 @@ Saturation at $p \to (k-1)/k$ is handled by clamping $p$ at $p_{sat}\,(1 - 10^{-
 
 Raw p-distance systematically underestimates evolutionary distance. Under JC69 the bias reaches 7% at $p = 0.1$ and 22% at $p = 0.25$. The corrected value is the maximum-likelihood estimate of the branch length under the model the prune command is already assuming (JC69), so applying it at edge creation time is strictly better than deferring the correction to a later ML optimization pass.
 
-The child-branch adjustment `max(0, original - new_edge_bl)` still clamps at zero, so the sum of the new internal edge and a child edge may differ slightly from the child's original length when the correction pushes the internal edge longer than the child. This is unchanged from the raw p-distance behaviour: the same clamp applied before the fix.
+Child branch lengths are computed from remaining (non-shared) mutations using the same JC69 correction: `jc(remaining_mutations / total_alignment_length)`. Remaining mutations include both substitutions and indels on the child edge. This replaces the earlier `max(0, original_newick_bl - new_edge_bl)` formula, which depended on the input tree's branch lengths and ignored per-child mutation counts.
 
 ## Affected commands
 
