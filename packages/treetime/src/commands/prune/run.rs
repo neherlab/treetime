@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::fitch::create_fitch_partition;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::gtr::get_gtr::{GtrModelName, log_gtr, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;
 use crate::partition::algo::topology_cleanup::collapse::collapse_edge;
 use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
-use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::payload::ancestral::GraphAncestral;
@@ -47,8 +47,8 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
     let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
     let aln = read_many_fasta(input_fastas, &alphabet)?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-    let gtr = fitch.resolve_gtr(&graph, GtrModelName::JC69)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let gtr = get_gtr_by_name(GtrModelName::JC69)?;
     log_gtr(&gtr, GtrModelName::JC69);
     write_gtr_json(&gtr, GtrModelName::JC69, outdir, None)?;
     let partition = fitch.into_marginal_sparse(gtr, &graph)?;

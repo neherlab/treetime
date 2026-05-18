@@ -13,7 +13,7 @@ mod tests {
   use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::pretty_assert_neg_inf;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::optimization_contribution::OptimizationContribution;
@@ -85,7 +85,7 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    let fitch = PartitionFitch::compress(graph, 1, alphabet_sparse, &aln)?;
+    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];

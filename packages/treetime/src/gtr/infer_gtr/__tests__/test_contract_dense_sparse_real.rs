@@ -37,7 +37,7 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
@@ -138,7 +138,7 @@ mod tests {
 
     let sparse = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = PartitionFitch::compress(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln)?;
+      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln)?;
       infer_gtr_fitch(&fitch, &graph)?
     };
 

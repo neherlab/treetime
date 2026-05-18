@@ -1,4 +1,5 @@
-use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR};
+use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
+use crate::seq::alignment::get_common_length;
 use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
@@ -27,6 +28,30 @@ use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::sync::mutex::extract_parallel_error;
+
+pub fn create_fitch_partition<N, E>(
+  graph: &Graph<N, E, ()>,
+  index: usize,
+  alphabet: Alphabet,
+  aln: &[FastaRecord],
+) -> Result<PartitionFitch, Report>
+where
+  N: NodeAncestralOps,
+  E: GraphEdge,
+{
+  let length = get_common_length(aln)?;
+  let partition = Arc::new(RwLock::new(PartitionFitch {
+    index,
+    alphabet,
+    length,
+    nodes: btreemap! {},
+    edges: btreemap! {},
+  }));
+  compress_sequences(graph, std::slice::from_ref(&partition), aln)?;
+  Arc::try_unwrap(partition)
+    .map(|rw| rw.into_inner())
+    .map_err(|_arc| make_report!("create_fitch_partition: Arc still shared after compress_sequences"))
+}
 
 pub(crate) fn attach_seqs_to_graph<N, E, P>(
   graph: &Graph<N, E, ()>,

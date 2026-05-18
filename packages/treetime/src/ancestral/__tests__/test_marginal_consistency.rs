@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
@@ -124,7 +124,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalSparse>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 

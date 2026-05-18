@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::gtr::gtr::GTR;
-use crate::partition::fitch::PartitionFitch;
+use crate::ancestral::fitch::create_fitch_partition;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
@@ -42,7 +42,7 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
   let partition = fitch.into_marginal_sparse(gtr, &graph)?;
   let partitions = [Arc::new(RwLock::new(partition))];
 

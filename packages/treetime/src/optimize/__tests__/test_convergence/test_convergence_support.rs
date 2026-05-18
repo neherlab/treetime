@@ -5,7 +5,7 @@ pub mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionOptimizeVec;
@@ -62,7 +62,7 @@ pub mod tests {
       edges: btreemap! {},
     }))];
 
-    let fitch = PartitionFitch::compress(graph, 1, alphabet_sparse, aln)?;
+    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];

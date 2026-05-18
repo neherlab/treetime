@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
 
   use eyre::Report;
 
@@ -37,7 +37,7 @@ mod tests {
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
     let mut graph = nwk_read_file(&tree_path)?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -86,7 +86,7 @@ mod tests {
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
     let mut graph = nwk_read_file(&tree_path)?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];

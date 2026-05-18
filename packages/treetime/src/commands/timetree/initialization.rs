@@ -1,4 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::fitch::create_fitch_partition;
+use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::clock::date_constraints::load_date_constraints;
 use crate::commands::shared::args::BranchLengthMode;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
@@ -6,7 +8,6 @@ use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json
 use crate::make_error;
 use crate::make_report;
 use crate::partition::algo::infer_dense::infer_dense;
-use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
 use crate::partition::traits::PartitionTimetreeAll;
@@ -85,10 +86,11 @@ pub fn initialize_partitions(
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
-    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln_data)?;
-    let gtr = fitch
-      .resolve_gtr(graph, model_name)
-      .wrap_err("When resolving GTR model for sparse partition")?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
+    let gtr = match model_name {
+      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph)?,
+      _ => get_gtr_by_name(model_name)?,
+    };
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_sparse(gtr, graph)?;
 
@@ -99,10 +101,8 @@ pub fn initialize_partitions(
     Ok(vec![sparse_partition])
   } else if model_name == GtrModelName::Infer {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
-    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln_data)?;
-    let gtr = fitch
-      .infer_gtr(graph)
-      .wrap_err("When inferring GTR model from Fitch data for dense partition")?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
+    let gtr = infer_gtr_fitch(&fitch, graph)?;
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 

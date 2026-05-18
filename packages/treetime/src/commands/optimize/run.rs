@@ -1,11 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::fitch::create_fitch_partition;
+use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates};
 use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
 use crate::partition::algo::infer_dense::infer_dense;
-use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::traits::PartitionBranchOps;
@@ -52,8 +53,11 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   let mut graph: GraphAncestral = nwk_read_file(tree)?;
 
   let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if !dense {
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
-    let gtr = fitch.resolve_gtr(&graph, *model_name)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln)?;
+    let gtr = match *model_name {
+      GtrModelName::Infer => infer_gtr_fitch(&fitch, &graph)?,
+      _ => get_gtr_by_name(*model_name)?,
+    };
     log_gtr(&gtr, *model_name);
     let partition = fitch.into_marginal_sparse(gtr, &graph)?;
     vec![Arc::new(RwLock::new(partition))]
@@ -63,8 +67,8 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = if dense {
     if *model_name == GtrModelName::Infer {
-      let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-      let gtr = fitch.infer_gtr(&graph)?;
+      let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+      let gtr = infer_gtr_fitch(&fitch, &graph)?;
       log_gtr(&gtr, *model_name);
       let partition = fitch.into_marginal_dense(gtr);
       vec![Arc::new(RwLock::new(partition))]

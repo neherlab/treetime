@@ -6,7 +6,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::partition::payload::ancestral::GraphAncestral;
@@ -118,7 +118,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
     let alphabet = Alphabet::default();
-    let fitch = PartitionFitch::compress(graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
     let log_lh = update_marginal(graph, &partitions)?;
     Ok((log_lh, partitions))
@@ -181,7 +181,7 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions_marginal_sparse = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -278,7 +278,7 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
 
     let log_lh_first = update_marginal(&graph, &partitions)?;
@@ -440,7 +440,7 @@ mod tests {
           // Create alignment with single position containing this triplet
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
-          let fitch = PartitionFitch::compress(&graph, 0, alphabet.clone(), &aln)?;
+          let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln)?;
           let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
 
           let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
@@ -479,7 +479,7 @@ mod tests {
     )?;
 
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let fitch = PartitionFitch::compress(&graph, 0, Alphabet::default(), &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln)?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
     ))];

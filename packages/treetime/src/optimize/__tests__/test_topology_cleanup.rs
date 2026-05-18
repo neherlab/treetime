@@ -9,7 +9,7 @@ mod tests {
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::payload::ancestral::GraphAncestral;
@@ -220,7 +220,7 @@ mod tests {
     // A and B are identical: the internal edge AB should be optimized to zero
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
 
@@ -298,7 +298,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     update_marginal(&graph, &sparse_partitions)?;
 
@@ -362,7 +362,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];

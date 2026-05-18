@@ -6,7 +6,7 @@ mod tests {
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
@@ -38,7 +38,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch)?;
     pretty_assert_ulps_eq!(
@@ -80,7 +80,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let alphabet = Alphabet::default();
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch)?;
     let actual = infer_gtr_impl(

@@ -1,11 +1,9 @@
-//! Verify that PartitionFitch GTR inference is deterministic: independent compress + infer
-//! cycles on the same input data produce bit-identical GTR parameters (mu, pi, W).
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
+  use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::fitch::PartitionFitch;
   use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -41,20 +39,19 @@ mod tests {
 
     let gtr_a = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = PartitionFitch::compress(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
-      fitch.infer_gtr(&graph)?
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
+      infer_gtr_fitch(&fitch, &graph)?
     };
 
     let gtr_b = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = PartitionFitch::compress(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
-      fitch.infer_gtr(&graph)?
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
+      infer_gtr_fitch(&fitch, &graph)?
     };
 
     pretty_assert_ulps_eq!(gtr_a.mu, gtr_b.mu, epsilon = 1e-15);
     pretty_assert_ulps_eq!(gtr_a.pi, gtr_b.pi, epsilon = 1e-15);
     pretty_assert_ulps_eq!(gtr_a.W, gtr_b.W, epsilon = 1e-15);
-
     Ok(())
   }
 }

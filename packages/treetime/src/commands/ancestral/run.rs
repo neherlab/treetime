@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, create_fitch_partition};
+use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::shared::args::MethodAncestral;
@@ -105,8 +106,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     },
     MethodAncestral::Marginal => {
       if !dense {
-        let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-        let gtr = fitch.resolve_gtr(&graph, *model_name)?;
+        let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+        let gtr = match *model_name {
+          GtrModelName::Infer => infer_gtr_fitch(&fitch, &graph)?,
+          _ => get_gtr_by_name(*model_name)?,
+        };
         write_gtr_json(&gtr, *model_name, outdir, None)?;
         log_gtr(&gtr, *model_name);
         let partition = fitch.into_marginal_sparse(gtr, &graph)?;
@@ -125,8 +129,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           .collect_vec();
         annotate_branch_mutations(&graph, &branch_ops)?;
       } else if *model_name == GtrModelName::Infer {
-        let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
-        let gtr = fitch.infer_gtr(&graph)?;
+        let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+        let gtr = infer_gtr_fitch(&fitch, &graph)?;
         write_gtr_json(&gtr, *model_name, outdir, None)?;
         log_gtr(&gtr, *model_name);
         let partition = fitch.into_marginal_dense(gtr);

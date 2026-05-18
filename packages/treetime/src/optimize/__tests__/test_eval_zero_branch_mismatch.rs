@@ -6,7 +6,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
@@ -58,7 +58,7 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    let fitch = PartitionFitch::compress(&graph, 1, alphabet_sparse, &aln)?;
+    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];

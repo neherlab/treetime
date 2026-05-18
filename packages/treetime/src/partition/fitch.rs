@@ -1,23 +1,14 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::compress_sequences;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name};
 use crate::gtr::gtr::GTR;
-use crate::ancestral::gtr_inference::infer_gtr_fitch;
-use crate::make_report;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::traits::PartitionCompressed;
 use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::seq::alignment::get_common_length;
+use crate::partition::traits::PartitionCompressed;
 use eyre::Report;
-use maplit::btreemap;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
-use treetime_io::fasta::FastaRecord;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_primitives::seq;
 
 #[derive(Clone, Debug)]
@@ -30,55 +21,6 @@ pub struct PartitionFitch {
 }
 
 impl PartitionFitch {
-  /// Phase 1: construct and compress in one step.
-  pub fn compress<N, E>(
-    graph: &Graph<N, E, ()>,
-    index: usize,
-    alphabet: Alphabet,
-    aln: &[FastaRecord],
-  ) -> Result<Self, Report>
-  where
-    N: NodeAncestralOps,
-    E: GraphEdge,
-  {
-    let length = get_common_length(aln)?;
-    let partition = Arc::new(RwLock::new(Self {
-      index,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
-    compress_sequences(graph, std::slice::from_ref(&partition), aln)?;
-    Arc::try_unwrap(partition)
-      .map(|rw| rw.into_inner())
-      .map_err(|_arc| make_report!("PartitionFitch::compress: Arc still shared after compress_sequences"))
-  }
-
-  /// Phase 2: infer GTR from Fitch substitution counts.
-  pub fn infer_gtr<N, E, D>(&self, graph: &Graph<N, E, D>) -> Result<GTR, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge + HasBranchLength,
-    D: Send + Sync,
-  {
-    infer_gtr_fitch(self, graph)
-  }
-
-  /// Phase 2 (dispatch): infer or resolve named model.
-  pub fn resolve_gtr<N, E, D>(&self, graph: &Graph<N, E, D>, model_name: GtrModelName) -> Result<GTR, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge + HasBranchLength,
-    D: Send + Sync,
-  {
-    match model_name {
-      GtrModelName::Infer => self.infer_gtr(graph),
-      _ => get_gtr_by_name(model_name),
-    }
-  }
-
-  /// Phase 3 (sparse): move Fitch data into marginal partition (zero-copy for fields).
   pub fn into_marginal_sparse<N, E>(self, gtr: GTR, graph: &Graph<N, E, ()>) -> Result<PartitionMarginalSparse, Report>
   where
     N: GraphNode,
@@ -103,7 +45,6 @@ impl PartitionFitch {
     })
   }
 
-  /// Phase 3 (dense): take config, discard Fitch data.
   pub fn into_marginal_dense(self, gtr: GTR) -> PartitionMarginalDense {
     PartitionMarginalDense::new(self.index, gtr, self.alphabet, self.length)
   }

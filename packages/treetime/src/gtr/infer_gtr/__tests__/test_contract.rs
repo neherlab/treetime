@@ -15,6 +15,7 @@ mod tests {
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
@@ -65,7 +66,7 @@ mod tests {
   fn setup_sparse(tree_nwk: &str, aln: &[FastaRecord]) -> Result<(GraphAncestral, PartitionFitch), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
     let alphabet = Alphabet::default();
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, aln)?;
     Ok((graph, fitch))
   }
 

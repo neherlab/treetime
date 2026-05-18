@@ -11,7 +11,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::partition::traits::PartitionTimetreeAll;
   use crate::timetree::inference::runner::run_timetree;
@@ -53,7 +53,7 @@ mod tests {
 
     let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
     let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = PartitionFitch::compress(&graph, 0, ALPHABET.clone(), &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
@@ -104,7 +104,7 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = PartitionFitch::compress(&graph, 0, ALPHABET.clone(), &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =

@@ -16,7 +16,7 @@ use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_r
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::partition::fitch::PartitionFitch;
+use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::partition::marginal_dense::PartitionMarginalDense;
 use treetime::partition::timetree::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
@@ -293,7 +293,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   let alphabet = Alphabet::default();
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
-  let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
   let sparse_partition = Arc::new(RwLock::new(
     fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
   ));

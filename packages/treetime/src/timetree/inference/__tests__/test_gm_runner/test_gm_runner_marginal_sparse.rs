@@ -9,7 +9,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::traits::PartitionTimetreeAll;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
@@ -56,7 +56,7 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = PartitionFitch::compress(&graph, 0, ALPHABET.clone(), &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];

@@ -10,7 +10,7 @@ mod tests {
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::optimization_contribution::OptimizationContribution;
@@ -77,7 +77,7 @@ mod tests {
       edges: btreemap! {},
     }))];
 
-    let fitch = PartitionFitch::compress(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
+    let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?,
     ))];

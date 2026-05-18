@@ -9,7 +9,7 @@ mod tests {
   use crate::o;
   use crate::pretty_assert_ulps_eq;
   use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::timetree::GraphTimetree;
   use crate::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
@@ -89,7 +89,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();
@@ -484,7 +484,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();

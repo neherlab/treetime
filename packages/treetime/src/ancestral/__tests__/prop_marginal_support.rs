@@ -3,7 +3,7 @@ pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::partition::fitch::PartitionFitch;
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::payload::ancestral::GraphAncestral;
@@ -81,7 +81,7 @@ pub mod tests {
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 
-    let fitch = PartitionFitch::compress(&graph, 0, alphabet, &input.alignment)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment)?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];
