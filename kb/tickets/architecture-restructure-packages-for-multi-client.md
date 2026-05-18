@@ -18,23 +18,22 @@ Remove `clap` from `treetime` crate's `[dependencies]`. Move CLI-specific derive
 
 ### 2. Extract remaining domain logic from commands/
 
-Two remaining extraction tickets, independent of each other but both depend on step 1:
+Three extraction tickets, independent of each other:
 
-- `architecture-extract-timetree-inference-from-commands.md` - move inference (479 lines) and optimization (802 lines) to `src/timetree/`
-- `architecture-extract-mugration-domain-logic.md` - move GTR refinement (381 lines) and discrete marginal (170 lines) to `src/mugration/`
+- `architecture-extract-timetree-convergence-confidence.md` - move convergence metrics/likelihood and confidence/rate-susceptibility to `src/timetree/`
+- `architecture-extract-mugration-domain-logic.md` - move mugration business logic to `src/mugration/`
+- `architecture-extract-prune-domain-logic.md` - move pruning algorithms to `src/prune/`
 
-### 3. Break dependency cycles in library
+### 3. Move shared domain enums and remove clap from domain
 
-Two tickets, independent of each other, depend on step 2:
-
-- `architecture-break-representation-gtr-cycle.md` - parameterize GTR inference over iterators
-- `architecture-break-representation-ancestral-cycle.md` - move pure functions to `seq/`
+- `architecture-move-shared-domain-enums-from-commands.md` - move `BranchLengthMode`, `RerootMode`, `MethodAncestral` to domain modules
+- `architecture-remove-clap-from-domain-types.md` - strip clap from 6 domain files, use strum
 
 ### 4. Move commands/ shell to CLI crate
 
 After steps 1-3, `commands/` contains only thin orchestration (`args.rs`, `run.rs`, `output/`). Move the entire `commands/` module to `treetime-cli`. The library crate no longer has a `commands/` module.
 
-No existing ticket for this step - create when prerequisites are met.
+Ticket: `architecture-move-commands-to-cli-crate.md`
 
 ### 5. Add client crates
 
@@ -94,10 +93,11 @@ Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi
 
 Coordinates:
 
-- [architecture-remove-clap-from-domain-types.md](architecture-remove-clap-from-domain-types.md)
-- [architecture-extract-timetree-inference-from-commands.md](architecture-extract-timetree-inference-from-commands.md)
+- [architecture-extract-timetree-convergence-confidence.md](architecture-extract-timetree-convergence-confidence.md)
 - [architecture-extract-mugration-domain-logic.md](architecture-extract-mugration-domain-logic.md)
-- [architecture-break-representation-gtr-cycle.md](architecture-break-representation-gtr-cycle.md)
-- [architecture-break-representation-ancestral-cycle.md](architecture-break-representation-ancestral-cycle.md)
+- [architecture-extract-prune-domain-logic.md](architecture-extract-prune-domain-logic.md)
+- [architecture-move-shared-domain-enums-from-commands.md](architecture-move-shared-domain-enums-from-commands.md)
+- [architecture-remove-clap-from-domain-types.md](architecture-remove-clap-from-domain-types.md)
+- [architecture-move-commands-to-cli-crate.md](architecture-move-commands-to-cli-crate.md)
 - [architecture-add-treetime-python-crate.md](architecture-add-treetime-python-crate.md)
 - [architecture-add-treetime-desktop-crate.md](architecture-add-treetime-desktop-crate.md)
