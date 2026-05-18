@@ -120,7 +120,7 @@ fn evaluate_mixed_impl(
 }
 
 /// Evaluate substitution + indel contributions for a given branch length.
-pub(crate) fn evaluate_with_indels(
+pub fn evaluate_with_indels(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -132,7 +132,7 @@ pub(crate) fn evaluate_with_indels(
 }
 
 /// Log-likelihood only (no derivatives) for substitution + indel contributions.
-pub(crate) fn evaluate_with_indels_log_lh_only(
+pub fn evaluate_with_indels_log_lh_only(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -425,8 +425,7 @@ where
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
-#[cfg(test)]
-pub(crate) fn run_optimize_mixed_with_indel_rate<N, E, P>(
+pub fn run_optimize_mixed_with_indel_rate<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
@@ -440,7 +439,7 @@ where
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
-pub(crate) fn run_optimize_mixed_inner<N, E, P>(
+pub fn run_optimize_mixed_inner<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
