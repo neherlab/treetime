@@ -109,27 +109,28 @@ v1: not implemented. Tracked as `N-timetree-stochastic-polytomy-unimplemented`.
 
 ## Strategy 4: Shared-mutation merging (sequence-based)
 
-This strategy does not use time or likelihood. It examines the substitution sets on child branches and groups siblings sharing identical mutations:
+This strategy does not use time or likelihood. It examines the mutation sets (substitutions and indels) on child branches and groups siblings sharing identical mutations:
 
 ```
-Before (A and B share G100T):      After merging:
+Before (A, B, C share G100T):      After merging:
 
-      P                                  P
-    / | \                               / \
-   A  B  C                            N   C
-   |  |  |                           / \
-  G100T  G100T  A200C               A   B
+      P                                    P
+    / | \ \                               / \
+   A  B  C  D                           N    D
+   |  |  |                             / | \
+  G100T  G100T  G100T  A200C         A   B   C
   A200C  T300G
                                     Edge P-N: G100T (shared)
                                     Edge N-A: A200C (unique)
                                     Edge N-B: T300G (unique)
+                                    Edge N-C: (none)
 ```
 
-New branch length = `#shared_mutations / alignment_length`.
+New branch length = JC69-corrected distance from `#shared_mutations / alignment_length`.
 
-The algorithm finds all polytomy nodes, computes substitution intersections for all child pairs, greedily merges the pair with the most shared mutations, and repeats until no pair shares mutations.
+The algorithm builds a mutation index mapping each (partition, mutation) to its carrier edges, finds candidate groups of k >= 2 siblings whose mutation sets share a non-empty intersection, selects a disjoint set of groups via greedy matching, and merges each group under one new internal node. Repeats until no siblings share mutations. Both substitutions and indels participate in sharing detection.
 
-**Complexity:** O(n^2 \* m) where n is polytomy degree and m is mutations per branch.
+**Complexity:** O(n \* m) per round where n is the child count and m is the average number of mutations per edge.
 
 v0: no formal implementation. The design document describes "ad-hoc scripts" in nextstrain pipelines. See the [nextstrain ad-hoc scripts](#the-nextstrain-ad-hoc-scripts) section below for the script locations.
 
@@ -139,7 +140,7 @@ v1 code: `merge_shared_mutation_branches()` in [`packages/treetime/src/represent
 
 | Aspect           | NJ                   | Greedy temporal          | Stochastic coalescent   | Shared-mutation           |
 | ---------------- | -------------------- | ------------------------ | ----------------------- | ------------------------- |
-| Input data       | Distance matrix      | Time distributions       | Mutation counts + times | Substitution sets         |
+| Input data       | Distance matrix      | Time distributions       | Mutation counts + times | Substitution + indel sets |
 | Criterion        | Minimize tree length | Maximize likelihood gain | Simulate coalescent     | Maximize shared mutations |
 | Complexity       | O(n^3)               | O(n^2)                   | O(n)                    | O(n^2 \* m)               |
 | Deterministic    | Yes                  | Yes                      | No                      | Yes                       |

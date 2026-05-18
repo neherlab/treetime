@@ -12,11 +12,11 @@ The `prune --merge-shared-mutations` step groups sibling branches in a polytomy 
 
 ## What v1 does
 
-[`merge_sibling_pair()`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs#L183) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
+[`merge_sibling_group()`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
 
 $$ d = -\frac{k-1}{k} \ln\!\left(1 - \frac{k}{k-1}\, p\right) $$
 
-where $p$ is the pooled p-distance (shared substitutions divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. The formula matches the JC69 model currently hardcoded in [`run_prune()`](../../packages/treetime/src/commands/prune/run.rs#L53) and generalises naturally to amino-acid alphabets (k=20) without code changes.
+where $p$ is the pooled p-distance (shared mutations divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. Both substitutions and indels contribute to the shared and remaining mutation counts. The formula matches the JC69 model currently hardcoded in [`run_prune()`](../../packages/treetime/src/commands/prune/run.rs#L53) and generalises naturally to amino-acid alphabets (k=20) without code changes.
 
 Saturation at $p \to (k-1)/k$ is handled by clamping $p$ at $p_{sat}\,(1 - 10^{-6})$ before applying the formula. This keeps the result finite (about 10 substitutions per site for k=4, 13 for k=20), continuous in $p$, and safe from `log(0)` or NaN downstream.
 
