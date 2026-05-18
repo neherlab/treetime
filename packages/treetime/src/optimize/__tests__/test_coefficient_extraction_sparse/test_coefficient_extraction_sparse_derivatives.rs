@@ -3,9 +3,9 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::pretty_assert_ulps_eq;
   use crate::partition::optimize_dense;
   use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+  use crate::pretty_assert_ulps_eq;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
   use rstest::rstest;

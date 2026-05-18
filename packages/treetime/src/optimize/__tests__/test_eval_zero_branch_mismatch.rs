@@ -1,19 +1,19 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
@@ -49,7 +49,12 @@ mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(&aln)?)))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet_dense,
+      get_common_length(&aln)?,
+    )))];
 
     let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(

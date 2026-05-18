@@ -17,7 +17,7 @@ mod tests {
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
   use eyre::Report;
-  
+
   use parking_lot::RwLock;
   use rstest::rstest;
   use std::sync::Arc;

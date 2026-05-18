@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
@@ -11,7 +11,7 @@ mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  
+
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
@@ -35,7 +35,12 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length)));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet,
+      length,
+    )));
 
     initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
     Ok((graph, partition))
@@ -157,7 +162,12 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length)));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet,
+      length,
+    )));
 
     initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
     Ok((graph, partition))

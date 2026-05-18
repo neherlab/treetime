@@ -5,11 +5,11 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
-  use treetime_graph::reroot::remove_node_if_trivial;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::node::Named;
+  use treetime_graph::reroot::remove_node_if_trivial;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]

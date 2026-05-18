@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::method_newton::NEWTON_REL_TOL;
   use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::method_newton::NEWTON_REL_TOL;
   use crate::optimize::method_newton::{newton_tolerance_log, newton_tolerance_sqrt, newton_tolerance_t};
   use approx::assert_abs_diff_eq;
   use ndarray::array;

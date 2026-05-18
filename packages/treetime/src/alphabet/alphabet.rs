@@ -15,9 +15,7 @@ pub const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(
-  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum AlphabetName {

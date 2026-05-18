@@ -303,13 +303,31 @@ mod tests {
     let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
     for (name, time) in tip_times {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(time);
     }
     if let Some(key) = find_node_key_by_name(&graph, "ABC") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2010.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2010.0);
     }
     if let Some(key) = find_node_key_by_name(&graph, "root") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2000.0);
     }
 
     for edge in graph.get_edges() {
@@ -325,10 +343,12 @@ mod tests {
     }
 
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
-    assert_eq!(n_resolved, 0, "Equal mutation_length and clock_length should classify as compressed, not merged");
+    assert_eq!(
+      n_resolved, 0,
+      "Equal mutation_length and clock_length should classify as compressed, not merged"
+    );
     Ok(())
   }
 
@@ -455,14 +475,32 @@ mod tests {
     let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
     for (name, time) in tip_times {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(time);
     }
 
     let abcd_key = find_node_key_by_name(&graph, "ABCD").ok_or_else(|| make_report!("ABCD not found"))?;
-    graph.get_node(abcd_key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2005.0);
+    graph
+      .get_node(abcd_key)
+      .expect("Node must exist")
+      .write_arc()
+      .payload()
+      .write_arc()
+      .time = Some(2005.0);
 
     if let Some(key) = find_node_key_by_name(&graph, "root") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2000.0);
     }
 
     let d_key = find_node_key_by_name(&graph, "D").ok_or_else(|| make_report!("D not found"))?;
@@ -475,14 +513,22 @@ mod tests {
     }
 
     // Make D compressed: high mutation_length
-    let d_edge_key = graph.get_node(abcd_key).expect("Node must exist")
+    let d_edge_key = graph
+      .get_node(abcd_key)
+      .expect("Node must exist")
       .read_arc()
       .outbound()
       .iter()
       .copied()
       .find(|&ek| graph.get_edge(ek).expect("Edge must exist").read_arc().target() == d_key)
       .expect("D edge must exist");
-    graph.get_edge(d_edge_key).expect("Edge must exist").write_arc().payload().write_arc().set_branch_length(Some(1.0));
+    graph
+      .get_edge(d_edge_key)
+      .expect("Edge must exist")
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(1.0));
 
     let partitions = vec![];
     // merge_compressed=false: only stretched children (A,B,C) should merge
@@ -490,14 +536,26 @@ mod tests {
 
     // 3 stretched children merge down to 1 subtree (isall=false, min_remaining=1)
     // producing 2 new nodes: (A,B)->N1, (N1,C)->N2 (or similar)
-    assert_eq!(n_resolved, 2, "3 stretched children should produce 2 merges (subset merges to 1)");
+    assert_eq!(
+      n_resolved, 2,
+      "3 stretched children should produce 2 merges (subset merges to 1)"
+    );
 
     // ABCD should have 2 children: the stretched subtree + D
-    let final_children = graph.get_node(abcd_key).expect("Node must exist").read_arc().degree_out();
-    assert_eq!(final_children, 2, "ABCD should have 2 children: stretched subtree + compressed D");
+    let final_children = graph
+      .get_node(abcd_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
+    assert_eq!(
+      final_children, 2,
+      "ABCD should have 2 children: stretched subtree + compressed D"
+    );
 
     // D should still be a direct child of ABCD
-    let d_still_child = graph.get_node(abcd_key).expect("Node must exist")
+    let d_still_child = graph
+      .get_node(abcd_key)
+      .expect("Node must exist")
       .read_arc()
       .outbound()
       .iter()
@@ -512,36 +570,67 @@ mod tests {
     let mut graph = helpers::create_polytomy_tree()?;
 
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    let abc_time = graph.get_node(abc_key).expect("Node must exist").read_arc().payload().read_arc().time.unwrap_or(0.0);
+    let abc_time = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .payload()
+      .read_arc()
+      .time
+      .unwrap_or(0.0);
 
     let partitions = vec![];
     resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     // Find the new unnamed internal node
-    let new_node = graph.get_nodes().into_iter().find(|n| {
-      let n = n.read_arc();
-      let payload = n.payload().read_arc();
-      !n.is_leaf() && !n.is_root() && payload.name().is_none()
-    }).expect("New node must exist");
+    let new_node = graph
+      .get_nodes()
+      .into_iter()
+      .find(|n| {
+        let n = n.read_arc();
+        let payload = n.payload().read_arc();
+        !n.is_leaf() && !n.is_root() && payload.name().is_none()
+      })
+      .expect("New node must exist");
 
     let new_node_key = new_node.read_arc().key();
     let new_node_time = new_node.read_arc().payload().read_arc().time.unwrap_or(0.0);
 
     // Edge from ABC to new node: time_length = new_node_time - abc_time
     let parent_edge_key = new_node.read_arc().inbound()[0];
-    let parent_edge_time_length = graph.get_edge(parent_edge_key).expect("Edge must exist")
-      .read_arc().payload().read_arc().time_length.expect("time_length must be set");
+    let parent_edge_time_length = graph
+      .get_edge(parent_edge_key)
+      .expect("Edge must exist")
+      .read_arc()
+      .payload()
+      .read_arc()
+      .time_length
+      .expect("time_length must be set");
     let expected_parent_tl = new_node_time - abc_time;
     pretty_assert_abs_diff_eq!(parent_edge_time_length, expected_parent_tl, epsilon = 1e-10);
-    assert!(parent_edge_time_length > 0.0, "Parent edge time_length must be positive");
+    assert!(
+      parent_edge_time_length > 0.0,
+      "Parent edge time_length must be positive"
+    );
 
     // Edges from new node to children: time_length = child_time - new_node_time
     for &ek in new_node.read_arc().outbound() {
       let edge = graph.get_edge(ek).expect("Edge must exist");
       let child_key = edge.read_arc().target();
-      let child_time = graph.get_node(child_key).expect("Node must exist")
-        .read_arc().payload().read_arc().time.unwrap_or(0.0);
-      let child_edge_tl = edge.read_arc().payload().read_arc().time_length.expect("time_length must be set");
+      let child_time = graph
+        .get_node(child_key)
+        .expect("Node must exist")
+        .read_arc()
+        .payload()
+        .read_arc()
+        .time
+        .unwrap_or(0.0);
+      let child_edge_tl = edge
+        .read_arc()
+        .payload()
+        .read_arc()
+        .time_length
+        .expect("time_length must be set");
       let expected_child_tl = child_time - new_node_time;
       pretty_assert_abs_diff_eq!(child_edge_tl, expected_child_tl, epsilon = 1e-10);
       assert!(child_edge_tl > 0.0, "Child edge time_length must be positive");
@@ -559,14 +648,32 @@ mod tests {
     let tip_times = [("A", 2010.0), ("B", 2010.0), ("C", 2010.0)];
     for (name, time) in tip_times {
       if let Some(key) = find_node_key_by_name(&graph, name) {
-        graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+        graph
+          .get_node(key)
+          .expect("Node must exist")
+          .write_arc()
+          .payload()
+          .write_arc()
+          .time = Some(time);
       }
     }
     if let Some(key) = find_node_key_by_name(&graph, "ABC") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2020.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2020.0);
     }
     if let Some(key) = find_node_key_by_name(&graph, "root") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2000.0);
     }
 
     for edge in graph.get_edges() {
@@ -592,14 +699,32 @@ mod tests {
     let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
     for (name, time) in tip_times {
       if let Some(key) = find_node_key_by_name(&graph, name) {
-        graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+        graph
+          .get_node(key)
+          .expect("Node must exist")
+          .write_arc()
+          .payload()
+          .write_arc()
+          .time = Some(time);
       }
     }
     if let Some(key) = find_node_key_by_name(&graph, "ABCD") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2005.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2005.0);
     }
     if let Some(key) = find_node_key_by_name(&graph, "root") {
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(2000.0);
     }
 
     let x = Array1::linspace(0.0, 25.0, 200);
@@ -620,7 +745,11 @@ mod tests {
 
     // 4-way -> 2 children requires 2 merges
     assert_eq!(n_resolved, 2, "4-way polytomy should produce 2 merges");
-    let final_children = graph.get_node(abcd_key).expect("Node must exist").read_arc().degree_out();
+    let final_children = graph
+      .get_node(abcd_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(final_children, 2, "ABCD should have 2 children after resolution");
 
     Ok(())

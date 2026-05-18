@@ -5,10 +5,10 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 
-  use crate::pretty_assert_ulps_eq;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};

@@ -6,8 +6,8 @@ mod tests {
     resolve_root_forward, resolve_variable_positions_backward,
   };
   use crate::partition::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
-  use crate::seq::indel::Deletion;
   use crate::seq::composition::Composition;
+  use crate::seq::indel::Deletion;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

@@ -59,11 +59,11 @@ mod tests {
   }
 
   mod helpers {
-    use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial};
     use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use itertools::Itertools;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial};
     use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
     /// Reroot a tree at a non-root internal node and return the new Newick string.

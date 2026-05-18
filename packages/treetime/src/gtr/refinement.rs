@@ -1,10 +1,10 @@
-use crate::gtr::infer_gtr::common::{
-  InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative,
-};
 use crate::ancestral::gtr_inference_dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
 use crate::ancestral::marginal::{marginal_backward_mut, update_marginal_mut};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
+use crate::gtr::infer_gtr::common::{
+  InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative,
+};
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::partition::traits::HasLogLh;
 use eyre::Report;
@@ -54,7 +54,10 @@ where
     partition.data.gtr = build_gtr_from_inference(n_states, &result)?;
 
     optimize_gtr_rate(graph, partition)?;
-    debug!("Mugration GTR refinement: iteration {i}, mu = {:.6}", partition.data.gtr.mu);
+    debug!(
+      "Mugration GTR refinement: iteration {i}, mu = {:.6}",
+      partition.data.gtr.mu
+    );
   }
 
   if let Some(correction) = sampling_bias_correction {
@@ -89,7 +92,9 @@ where
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = partition.data.effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
+    let branch_length = partition
+      .data
+      .effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
     let edge_key = edge_arc.key();
 
     let edge_data = &partition.data.edges[&edge_key];

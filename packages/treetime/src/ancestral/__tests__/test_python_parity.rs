@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::pretty_assert_ulps_eq;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
 
   use crate::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  
+
   use ndarray::array;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -70,7 +70,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -170,7 +175,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -211,7 +221,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -248,7 +263,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -286,7 +306,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -328,7 +353,12 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Create two partitions with different F81 models
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length)));
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr1,
+      alphabet.clone(),
+      length,
+    )));
 
     let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
 
@@ -385,7 +415,12 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length)));
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr1,
+      alphabet.clone(),
+      length,
+    )));
 
     let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
 
@@ -440,7 +475,12 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Dense partition
-    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length)));
+    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr.clone(),
+      alphabet.clone(),
+      length,
+    )));
 
     let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?;
 

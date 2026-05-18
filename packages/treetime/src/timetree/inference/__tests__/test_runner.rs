@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::pretty_assert_ulps_eq;
   use crate::payload::timetree::EdgeTimetree;
   use crate::payload::timetree::NodeTimetree;
   use crate::payload::traits::TimetreeEdge;
+  use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
   use approx::assert_abs_diff_eq;
   use bio::io::newick;

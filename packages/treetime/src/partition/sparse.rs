@@ -215,4 +215,3 @@ impl VarPos {
     Self { dis, state }
   }
 }
-

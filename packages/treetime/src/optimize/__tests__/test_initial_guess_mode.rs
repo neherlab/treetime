@@ -3,11 +3,11 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::InitialGuessMode;
   use crate::optimize::run_loop::{
     any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
   };
-  use crate::optimize::dispatch::initial_guess_mixed;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
@@ -15,7 +15,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
@@ -273,7 +273,12 @@ mod tests {
       let aln = test_alignment()?;
       let graph: GraphAncestral = nwk_read_str(newick)?;
 
-      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?)))];
+      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+        0,
+        jc69(JC69Params::default())?,
+        alphabet,
+        get_common_length(&aln)?,
+      )))];
 
       initialize_marginal(&graph, &partitions, &aln)?;
       update_marginal(&graph, &partitions)?;

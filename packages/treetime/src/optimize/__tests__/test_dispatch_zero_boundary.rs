@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
-  use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::find_zero_optimal_internal_edges;
-  use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
-  use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
+  use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::ancestral::fitch::create_fitch_partition;
+  use crate::optimize::run_loop::find_zero_optimal_internal_edges;
+  use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::optimization_contribution::OptimizationContribution;
@@ -20,7 +20,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -68,7 +68,12 @@ mod tests {
   > {
     let aln = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, get_gtr_by_name(model)?, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?)))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      get_gtr_by_name(model)?,
+      Alphabet::new(AlphabetName::Nuc)?,
+      get_common_length(&aln)?,
+    )))];
 
     let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(

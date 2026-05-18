@@ -4,12 +4,12 @@ mod tests {
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
 
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::traits::PartitionTimetreeAll;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{

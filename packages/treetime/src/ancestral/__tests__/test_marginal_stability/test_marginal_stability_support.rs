@@ -1,18 +1,18 @@
 #[cfg(test)]
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
-  use crate::pretty_assert_ulps_eq;
-  use crate::ancestral::fitch::create_fitch_partition;
+  use crate::partition::dense::DenseSeqDistribution;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::dense::DenseSeqDistribution;
   use crate::partition::sparse::SparseSeqDistribution;
+  use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  
+
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
@@ -90,7 +90,12 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )))];
 
     let log_lh = initialize_marginal(&graph, &partitions, &aln)?;
     Ok((log_lh, partitions))

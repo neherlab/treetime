@@ -4,11 +4,11 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::marginal_core::MarginalData;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -160,7 +160,12 @@ mod tests {
   fn test_dense_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
     let aln = divergent_alignment()?;
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?)))];
+    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      Alphabet::new(AlphabetName::Nuc)?,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
     update_marginal(&graph, &partitions)?;
@@ -278,7 +283,12 @@ mod tests {
   fn test_dense_edge_subs_is_canonical_filter_present() -> Result<(), Report> {
     let aln = divergent_alignment()?;
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?)))];
+    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      Alphabet::new(AlphabetName::Nuc)?,
+      get_common_length(&aln)?,
+    )))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
     update_marginal(&graph, &partitions)?;

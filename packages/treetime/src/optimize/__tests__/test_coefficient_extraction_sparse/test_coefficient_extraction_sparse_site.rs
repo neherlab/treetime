@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::pretty_assert_ulps_eq;
   use crate::partition::optimize_sparse::SiteContribution;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]

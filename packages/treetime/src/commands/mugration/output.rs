@@ -178,7 +178,10 @@ impl MugrationResult {
   }
 }
 
-fn extract_trait_assignments(graph: &GraphAncestral, partition: &PartitionMarginalDiscrete) -> IndexMap<String, String> {
+fn extract_trait_assignments(
+  graph: &GraphAncestral,
+  partition: &PartitionMarginalDiscrete,
+) -> IndexMap<String, String> {
   graph
     .get_nodes()
     .iter()

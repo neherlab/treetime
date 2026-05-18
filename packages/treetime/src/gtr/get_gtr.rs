@@ -83,9 +83,7 @@ pub fn write_gtr_json(
   json_write_file(path, &output, JsonPretty(true))
 }
 
-#[derive(
-  Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.

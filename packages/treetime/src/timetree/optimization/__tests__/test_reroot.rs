@@ -2,22 +2,19 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::update_marginal;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
-  use crate::pretty_assert_ulps_eq;
-  use treetime_graph::reroot::RerootChanges;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
   use crate::partition::timetree::GraphTimetree;
   use crate::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
-  use crate::partition::sparse::{
-    SparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
-  };
   use crate::payload::timetree::EdgeTimetree;
   use crate::payload::timetree::NodeTimetree;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
@@ -30,6 +27,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::{Named, TimeConstraint};
+  use treetime_graph::reroot::RerootChanges;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, Seq, seq};

@@ -1,5 +1,5 @@
-use crate::partition::traits::{PartitionMarginalOps, PartitionMarginalPasses};
 use crate::partition::traits::graph_log_lh;
+use crate::partition::traits::{PartitionMarginalOps, PartitionMarginalPasses};
 use eyre::Report;
 use log::trace;
 use parking_lot::{Mutex, RwLock};

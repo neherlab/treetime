@@ -32,19 +32,19 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
+  use crate::ancestral::gtr_inference::infer_gtr_fitch;
+  use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
-  use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
-  
+
   use ndarray::{Array1, Array2};
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -121,10 +121,15 @@ mod tests {
 
     let dense = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params {
+      let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+        0,
+        jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
           ..JC69Params::default()
-        })?, DENSE_NUC_ALPHABET.clone(), get_common_length(&aln)?)));
+        })?,
+        DENSE_NUC_ALPHABET.clone(),
+        get_common_length(&aln)?,
+      )));
       initialize_marginal(&graph, from_ref(&partition), &aln)?;
       infer_gtr_dense(&partition, &graph)?
     };

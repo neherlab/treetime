@@ -10,7 +10,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
@@ -105,7 +105,12 @@ mod tests {
       )?;
       let graph: GraphAncestral = nwk_read_str(newick)?;
 
-      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?)))];
+      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+        0,
+        jc69(JC69Params::default())?,
+        alphabet,
+        get_common_length(&aln)?,
+      )))];
 
       initialize_marginal(&graph, &partitions, &aln)?;
       update_marginal(&graph, &partitions)?;

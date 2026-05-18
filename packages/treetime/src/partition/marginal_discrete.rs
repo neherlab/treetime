@@ -1,10 +1,10 @@
 use crate::gtr::gtr::GTR;
 use crate::make_error;
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_core::{
   MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
-use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses};
 use eyre::Report;
 use indexmap::IndexSet;

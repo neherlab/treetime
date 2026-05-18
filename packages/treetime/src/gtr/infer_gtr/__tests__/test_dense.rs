@@ -1,21 +1,21 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::initialize_marginal;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::ancestral::gtr_inference_dense::{
     accumulate_mutation_counts, get_branch_mutation_matrix, get_mutation_counts_dense,
   };
-  use crate::pretty_assert_abs_diff_eq;
-  use crate::pretty_assert_ulps_eq;
+  use crate::ancestral::marginal::initialize_marginal;
+  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_abs_diff_eq;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
-  
+
   use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
   use std::slice::from_ref;
@@ -39,7 +39,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(aln)?,
+    )));
 
     initialize_marginal(&graph, from_ref(&partition), aln)?;
     Ok((graph, partition))

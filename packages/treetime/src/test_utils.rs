@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::gtr::gtr::GTR;
-use crate::ancestral::fitch::create_fitch_partition;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;

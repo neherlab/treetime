@@ -1,13 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use treetime_graph::reroot::RerootChanges;
 use crate::partition::marginal_passes;
 use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
-  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
+  PartitionMarginalPasses, PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
-use crate::partition::sparse::{SparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -17,6 +16,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;

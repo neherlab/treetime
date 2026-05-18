@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::marginal::update_marginal;
-  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::pretty_assert_ulps_eq;
+  use crate::optimize::params::BranchOptMethod;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;

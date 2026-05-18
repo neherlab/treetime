@@ -4,8 +4,8 @@ mod tests {
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::pretty_assert_ulps_eq;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;

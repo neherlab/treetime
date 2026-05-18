@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
-use treetime_graph::reroot::RerootChanges;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
@@ -14,6 +13,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 

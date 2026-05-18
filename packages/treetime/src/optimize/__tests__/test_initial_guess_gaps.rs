@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
@@ -13,7 +13,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
@@ -96,7 +96,12 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?)))];
+    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet,
+      get_common_length(aln)?,
+    )))];
 
     initialize_marginal(graph, &partitions, aln)?;
 

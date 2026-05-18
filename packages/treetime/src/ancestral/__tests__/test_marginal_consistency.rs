@@ -1,21 +1,21 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::pretty_assert_ulps_eq;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -91,7 +91,12 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(aln)?,
+    )));
     let partitions = [Arc::clone(&partition)];
 
     let log_lh = initialize_marginal(graph, &partitions, aln)?;
@@ -439,7 +444,12 @@ mod tests {
       &alphabet,
     )?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(&aln)?,
+    )));
     let partitions = [Arc::clone(&partition)];
 
     initialize_marginal(&graph, &partitions, &aln)?;

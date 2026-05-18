@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::pretty_assert_ulps_eq;
   use crate::partition::optimize_dense::PartitionContribution;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
   #[test]

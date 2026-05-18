@@ -1,5 +1,4 @@
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use treetime_graph::reroot::remove_node_if_trivial;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::timetree::EdgeTimetree;
@@ -7,7 +6,6 @@ use crate::payload::timetree::NodeTimetree;
 use argmin::core::{CostFunction, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use treetime_utils::make_internal_error;
 use log::debug;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
@@ -15,6 +13,8 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::reroot::remove_node_if_trivial;
+use treetime_utils::make_internal_error;
 
 /// Default minimum likelihood gain required to merge two children.
 pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;

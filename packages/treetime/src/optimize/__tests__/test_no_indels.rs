@@ -6,9 +6,9 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
+  use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
   use crate::optimize::run_loop::apply_initial_guess_mode;
-  use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
@@ -16,7 +16,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  
+
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
@@ -45,8 +45,13 @@ mod tests {
     partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   ) -> Result<(), Report> {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    partitions[0].write_arc().data.edges.get_mut(&first_edge_key).unwrap().indels =
-      vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
+    partitions[0]
+      .write_arc()
+      .data
+      .edges
+      .get_mut(&first_edge_key)
+      .unwrap()
+      .indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
     Ok(())
   }
 

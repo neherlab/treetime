@@ -1,3 +1,4 @@
+use crate::make_error;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
@@ -6,7 +7,6 @@ use crate::optimize::params::BranchOptMethod;
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::PartitionOptimizeOps;
-use crate::make_error;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;

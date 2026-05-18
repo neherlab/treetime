@@ -1,8 +1,8 @@
-use eyre::Report;
-use serde::{Deserialize, Serialize};
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength, invert_edge};
 use crate::graph::Graph;
 use crate::node::{GraphNode, GraphNodeKey};
+use eyre::Report;
+use serde::{Deserialize, Serialize};
 
 /// Information about an edge split during reroot.
 #[derive(Clone, Debug, Serialize, Deserialize)]

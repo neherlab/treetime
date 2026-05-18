@@ -5,13 +5,13 @@ mod tests {
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::pretty_assert_ulps_eq;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use ndarray::prelude::*;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -81,7 +81,12 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      gtr,
+      alphabet,
+      get_common_length(aln)?,
+    )))];
 
     let log_lh = initialize_marginal(graph, &partitions, aln)?;
     Ok((log_lh, partitions))

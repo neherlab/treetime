@@ -172,12 +172,12 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
+    use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::marginal::{initialize_marginal, update_marginal};
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::optimize::params::BranchOptMethod;
     use crate::optimize::dispatch::initial_guess_mixed;
+    use crate::optimize::params::BranchOptMethod;
     use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
-    use crate::ancestral::fitch::create_fitch_partition;
     use crate::partition::marginal_dense::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
 

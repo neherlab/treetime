@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use crate::seq::alignment::get_common_length;
 use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
@@ -7,11 +6,12 @@ use crate::ancestral::fitch_sub::{
 };
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
+use crate::partition::sparse::{
+  FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
+};
 use crate::partition::traits::PartitionCompressed;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::partition::sparse::{
-  FitchSeqDistribution, SparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
-};
+use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;

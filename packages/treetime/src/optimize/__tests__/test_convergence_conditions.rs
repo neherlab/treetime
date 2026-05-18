@@ -3,8 +3,8 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, restore_branch_lengths, save_branch_lengths};
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::{ConvergenceReason, collect_optimize_partitions, run_optimize_loop};
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;

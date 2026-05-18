@@ -5,10 +5,10 @@ mod tests {
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal_dense::PartitionMarginalDense;
 
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_abs_diff_eq;
@@ -122,7 +122,8 @@ mod tests {
     let ri_key = find_edge_key(&graph, "root", "I").unwrap();
     let i_key = find_node_key_by_name(&graph, "I").unwrap();
 
-    let mut dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 10);
+    let mut dense_partition =
+      PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 10);
 
     for node in graph.get_nodes() {
       let key = node.read_arc().key();

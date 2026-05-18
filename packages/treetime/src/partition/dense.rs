@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::seq::indel::Deletion;
 use crate::seq::find_char_ranges::find_letter_ranges;
+use crate::seq::indel::Deletion;
 use crate::seq::indel::InDel;
 use eyre::Report;
 use ndarray::Array2;

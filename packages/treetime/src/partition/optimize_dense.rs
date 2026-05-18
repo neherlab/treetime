@@ -35,7 +35,11 @@ impl PartitionContribution {
   }
 }
 
-pub fn get_coefficients(msg_to_parent: &DenseSeqDistribution, msg_to_child: &DenseSeqDistribution, gtr: &GTR) -> PartitionContribution {
+pub fn get_coefficients(
+  msg_to_parent: &DenseSeqDistribution,
+  msg_to_child: &DenseSeqDistribution,
+  gtr: &GTR,
+) -> PartitionContribution {
   // Multiply the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows:
   //    s_a eQt_{ab} r_b =  \sum_{abc} s_a v_{ac} e^{\lambda_c t} vinv_{cb} r_b
   let coefficients = msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t());

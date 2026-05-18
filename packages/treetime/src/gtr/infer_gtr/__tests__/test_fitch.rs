@@ -3,11 +3,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
-  use crate::pretty_assert_ulps_eq;
   use crate::ancestral::fitch::create_fitch_partition;
+  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;

@@ -1,19 +1,19 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::iteration::{apply_damping, save_branch_lengths};
-  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};

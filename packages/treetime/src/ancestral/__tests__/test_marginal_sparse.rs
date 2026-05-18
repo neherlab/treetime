@@ -2,15 +2,15 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
-  use crate::pretty_assert_ulps_eq;
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::sparse::SparseSeqDistribution;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::sparse::SparseSeqDistribution;
+  use crate::pretty_assert_ulps_eq;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;

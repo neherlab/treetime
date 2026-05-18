@@ -2,8 +2,8 @@
 mod tests {
   use crate::ancestral::marginal::update_marginal_mut;
   use crate::o;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::partition::traits::PartitionMarginalPasses;
+  use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -158,7 +158,11 @@ mod tests {
         pi: Array1::from_elem(n_states, 1.0 / n_states as f64),
       })?;
 
-      Ok(PartitionMarginalDiscrete::new(gtr, discrete_states, MIN_BRANCH_LENGTH_FRACTION))
+      Ok(PartitionMarginalDiscrete::new(
+        gtr,
+        discrete_states,
+        MIN_BRANCH_LENGTH_FRACTION,
+      ))
     }
 
     pub(super) fn make_fixture_graph() -> Result<GraphAncestral, Report> {

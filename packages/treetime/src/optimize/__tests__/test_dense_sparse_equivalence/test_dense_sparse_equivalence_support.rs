@@ -14,16 +14,16 @@ pub mod tests {
   //! 4. Final log-LH difference should be bounded
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  
+
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::edge::HasBranchLength;
@@ -54,7 +54,12 @@ pub mod tests {
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?)))];
+    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet,
+      get_common_length(aln)?,
+    )))];
 
     initialize_marginal(graph, &partitions, aln)?;
 

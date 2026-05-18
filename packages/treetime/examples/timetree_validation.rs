@@ -10,12 +10,12 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::initialize_marginal;
 use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::partition::marginal_dense::PartitionMarginalDense;
 use treetime::partition::timetree::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
@@ -344,7 +344,12 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   let alphabet = Alphabet::default();
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
-  let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, config.sequence_length)));
+  let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+    0,
+    jc69(JC69Params::default())?,
+    alphabet,
+    config.sequence_length,
+  )));
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
 

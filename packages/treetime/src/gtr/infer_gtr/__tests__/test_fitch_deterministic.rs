@@ -3,8 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::pretty_assert_ulps_eq;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
   use rstest::rstest;

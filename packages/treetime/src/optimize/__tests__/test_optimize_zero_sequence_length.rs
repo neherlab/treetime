@@ -2,20 +2,25 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
-  
+
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   fn zero_length_partitions(graph: &GraphAncestral) -> crate::partition::traits::PartitionOptimizeVec {
-    let dense = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default()).unwrap(), Alphabet::new(AlphabetName::Nuc).unwrap(), 0)))];
+    let dense = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default()).unwrap(),
+      Alphabet::new(AlphabetName::Nuc).unwrap(),
+      0,
+    )))];
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     collect_optimize_partitions(&dense, &sparse)
   }

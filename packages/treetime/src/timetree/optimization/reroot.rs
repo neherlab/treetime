@@ -3,7 +3,6 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
-use treetime_graph::reroot::RerootChanges;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::timetree::EdgeTimetree;
@@ -13,6 +12,7 @@ use itertools::Itertools;
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::reroot::RerootChanges;
 
 /// Reroot tree for optimal temporal signal and update partition state.
 ///

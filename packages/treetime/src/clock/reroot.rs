@@ -2,9 +2,6 @@ use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime_graph::reroot::{
-  self as topology_reroot, remove_node_if_trivial, split_edge,
-};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use approx::ulps_eq;
@@ -14,6 +11,7 @@ use smart_default::SmartDefault;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
 
 pub use topology_reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges, RerootResult};
 
