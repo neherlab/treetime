@@ -3,12 +3,12 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
-  use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
+  use crate::test_utils::{TestEdge, TestNode};
   use treetime_graph::edge::{GraphEdgeKey, invert_edge};
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
-  fn edge_inverts() -> Result<(), Report> {
+  fn test_edge_inverts() -> Result<(), Report> {
     let mut graph =
       nwk_read_str::<TestNode, TestEdge, ()>("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?;
 

@@ -750,7 +750,7 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Graph
 
-**Test:** [`packages/treetime/src/graph/__tests__/graph.rs`](../../packages/treetime/src/graph/__tests__/graph.rs)
+**Test:** [`packages/treetime/src/graph/__tests__/test_graph.rs`](../../packages/treetime/src/graph/__tests__/test_graph.rs)
 
 **Impl:**
 
@@ -758,31 +758,35 @@ Unit and parameterized tests for all BitSet128 operations.
 - [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs)
 - [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)
 
-| Test                                                  | Purpose                                |
-| ----------------------------------------------------- | -------------------------------------- |
-| `test_traversal_serial_depth_first_preorder_forward`  | DFS preorder visits root first         |
-| `test_traversal_serial_depth_first_postorder_forward` | DFS postorder visits leaves first      |
-| `test_traversal_serial_breadth_first_forward`         | BFS forward visits by level            |
-| `test_traversal_serial_breadth_first_reverse`         | BFS reverse visits deepest first       |
-| `test_traversal_parallel_breadth_first_forward`       | Parallel BFS forward order             |
-| `test_traversal_parallel_breadth_first_backward`      | Parallel BFS backward order            |
-| `test_collapse_edge_simple_chain`                     | Collapse single edge in chain          |
-| `test_collapse_edge_binary_tree`                      | Collapse internal node in binary tree  |
-| `test_collapse_edge_complex_tree`                     | Collapse promotes children to parent   |
-| `test_collapse_edge_invalid_edge`                     | Invalid edge key errors                |
-| `test_collapse_edge_leaf_edge`                        | Collapse edge to leaf removes leaf     |
-| `test_collapse_edge_no_duplicate_edges`               | No duplicate edges after collapse      |
-| `test_collapse_edge_adjacency_lists_maintained`       | Adjacency lists correct after collapse |
-| `test_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
-| `test_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
+**Fixtures:** [`packages/treetime/src/test_utils/graph_fixtures.rs`](../../packages/treetime/src/test_utils/graph_fixtures.rs) (`TestNode`, `TestEdge`)
+
+**Helpers:** [`packages/treetime/src/test_utils/graph_lookup.rs`](../../packages/treetime/src/test_utils/graph_lookup.rs) (`find_node_key_by_name`, `find_edge_key`)
+
+| Test                                                        | Purpose                                |
+| ----------------------------------------------------------- | -------------------------------------- |
+| `test_graph_traversal_serial_depth_first_preorder_forward`  | DFS preorder visits root first         |
+| `test_graph_traversal_serial_depth_first_postorder_forward` | DFS postorder visits leaves first      |
+| `test_graph_traversal_serial_breadth_first_forward`         | BFS forward visits by level            |
+| `test_graph_traversal_serial_breadth_first_reverse`         | BFS reverse visits deepest first       |
+| `test_graph_traversal_parallel_breadth_first_forward`       | Parallel BFS forward order             |
+| `test_graph_traversal_parallel_breadth_first_backward`      | Parallel BFS backward order            |
+| `test_graph_collapse_edge_simple_chain`                     | Collapse single edge in chain          |
+| `test_graph_collapse_edge_binary_tree`                      | Collapse internal node in binary tree  |
+| `test_graph_collapse_edge_complex_tree`                     | Collapse promotes children to parent   |
+| `test_graph_collapse_edge_invalid_edge`                     | Invalid edge key errors                |
+| `test_graph_collapse_edge_leaf_edge`                        | Collapse edge to leaf removes leaf     |
+| `test_graph_collapse_edge_no_duplicate_edges`               | No duplicate edges after collapse      |
+| `test_graph_collapse_edge_adjacency_lists_maintained`       | Adjacency lists correct after collapse |
+| `test_graph_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
+| `test_graph_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
 
 **Test:** [`packages/treetime/src/graph/__tests__/test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
 
 **Impl:** [`packages/treetime-graph/src/edge.rs`](../../packages/treetime-graph/src/edge.rs)
 
-| Test           | Purpose                                |
-| -------------- | -------------------------------------- |
-| `edge_inverts` | Edge inversion swaps source and target |
+| Test                | Purpose                                |
+| ------------------- | -------------------------------------- |
+| `test_edge_inverts` | Edge inversion swaps source and target |
 
 ### Commands: Prune
 

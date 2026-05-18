@@ -5,7 +5,6 @@ pub mod coalescent;
 #[cfg(feature = "clap")]
 pub mod commands;
 pub mod constants;
-pub mod graph;
 pub mod gtr;
 pub mod hacks;
 pub mod io;
@@ -17,6 +16,9 @@ pub mod timetree;
 
 #[cfg(test)]
 pub mod test_utils;
+
+#[cfg(test)]
+mod graph;
 
 pub use treetime_utils::{
   make_error, make_internal_error, make_internal_report, make_report, o, pretty_assert_abs_diff_eq,

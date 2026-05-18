@@ -1,2 +1,2 @@
 #[cfg(test)]
-pub(crate) mod __tests__;
+mod __tests__;

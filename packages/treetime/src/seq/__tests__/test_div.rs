@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_graph::GraphClock;
-  use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
+  use crate::test_utils::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;

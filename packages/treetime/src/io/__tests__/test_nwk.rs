@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::graph::__tests__::graph::tests::{TestEdge, TestNode};
+  use crate::test_utils::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;

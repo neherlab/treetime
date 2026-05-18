@@ -1,2 +1,2 @@
-pub mod graph;
 mod test_edge;
+mod test_graph;
