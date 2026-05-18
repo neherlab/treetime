@@ -229,8 +229,14 @@ fn merge_sibling_pair(
   };
 
   let new_edge_bl = jc_bl(pair.total_shared);
-  let remaining_a: usize = old_partition_data.iter().map(|d| d.remaining_subs_a.len() + d.indels_a.len()).sum();
-  let remaining_b: usize = old_partition_data.iter().map(|d| d.remaining_subs_b.len() + d.indels_b.len()).sum();
+  let remaining_a: usize = old_partition_data
+    .iter()
+    .map(|d| d.remaining_subs_a.len() + d.indels_a.len())
+    .sum();
+  let remaining_b: usize = old_partition_data
+    .iter()
+    .map(|d| d.remaining_subs_b.len() + d.indels_b.len())
+    .sum();
   let bl_a_adjusted = jc_bl(remaining_a);
   let bl_b_adjusted = jc_bl(remaining_b);
 

@@ -10,7 +10,6 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
-  use treetime_primitives::Seq;
   use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -19,8 +18,8 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
+  use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -48,7 +47,7 @@ mod tests {
     // Build root reference sequence consistent with edge subs.
     // Set each position to the sub's ref character so that edge_subs()
     // produces the same mutations as the stored subs.
-    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
+    let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, _, subs) in edge_mutations {
       for s in subs {
         if s.pos() < length {
@@ -395,7 +394,7 @@ mod tests {
       edges: btreemap! {},
       root_sequence: seq![],
     };
-    let mut p2_ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
+    let mut p2_ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
     p2_ref_seq[50] = c(b'C'); // sub C50G uses ref='C'
     p2_inner.root_sequence = p2_ref_seq.clone();
     for node in graph.get_nodes() {
@@ -631,7 +630,11 @@ mod tests {
       100,
       &[
         ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
-        ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        (
+          "root",
+          "B",
+          vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')],
+        ),
         ("root", "C", vec![sub(b'T', 20, b'A')]),
       ],
     )?;
@@ -756,7 +759,11 @@ mod tests {
       100,
       &[
         ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
-        ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        (
+          "root",
+          "B",
+          vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')],
+        ),
         ("root", "C", vec![sub(b'T', 20, b'A')]),
       ],
     )?;
@@ -836,7 +843,11 @@ mod tests {
       &graph,
       100,
       &[
-        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        (
+          "root",
+          "A",
+          vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')],
+        ),
         ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
         ("root", "C", vec![sub(b'T', 20, b'A')]),
       ],
