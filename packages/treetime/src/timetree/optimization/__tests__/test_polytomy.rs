@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{
@@ -19,29 +20,16 @@ mod tests {
   #[test]
   fn test_find_polytomy_nodes_detects_multifurcation() -> Result<(), Report> {
     let graph = helpers::create_polytomy_tree()?;
-
-    // Count nodes with >2 children
-    let polytomy_count = graph
-      .get_nodes()
-      .into_iter()
-      .filter(|n| n.read_arc().degree_out() > 2)
-      .count();
-
-    assert_eq!(polytomy_count, 1, "Should detect exactly one polytomy (ABC node)");
+    let polytomy_keys = find_polytomy_nodes(&graph);
+    assert_eq!(polytomy_keys.len(), 1, "Should detect exactly one polytomy (ABC node)");
     Ok(())
   }
 
   #[test]
   fn test_find_polytomy_nodes_returns_empty_for_binary_tree() -> Result<(), Report> {
     let graph = helpers::create_binary_tree()?;
-
-    let polytomy_count = graph
-      .get_nodes()
-      .into_iter()
-      .filter(|n| n.read_arc().degree_out() > 2)
-      .count();
-
-    assert_eq!(polytomy_count, 0, "Binary tree should have no polytomies");
+    let polytomy_keys = find_polytomy_nodes(&graph);
+    assert_eq!(polytomy_keys.len(), 0, "Binary tree should have no polytomies");
     Ok(())
   }
 
@@ -331,9 +319,9 @@ mod tests {
     let partitions = vec![];
     let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 0.01, TEST_CLOCK_RATE, true)?;
 
-    assert!(
-      n_resolved > 0,
-      "Compressed children should be merged when merge_compressed=true"
+    assert_eq!(
+      n_resolved, 1,
+      "Compressed 3-way polytomy should produce exactly 1 merge"
     );
     Ok(())
   }
@@ -344,7 +332,7 @@ mod tests {
     let partitions = vec![];
     let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
-    assert!(n_resolved > 0, "Stretched children should be merged by default");
+    assert_eq!(n_resolved, 1, "Stretched 3-way polytomy should produce exactly 1 merge");
     Ok(())
   }
 
@@ -416,6 +404,191 @@ mod tests {
       );
       assert!(payload.msg_to_parent.is_none(), "Edge msg_to_parent must be cleared");
     }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_mixed_stretched_compressed_merges_only_stretched() -> Result<(), Report> {
+    // 4-way polytomy: A,B,C stretched (mutation_length=0), D compressed (mutation_length=1.0)
+    let mut graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15,D:0.12)ABCD:0.05)root;")?;
+
+    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
+    for (name, time) in tip_times {
+      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+    }
+
+    let abcd_key = find_node_key_by_name(&graph, "ABCD").ok_or_else(|| make_report!("ABCD not found"))?;
+    graph.get_node(abcd_key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2005.0);
+
+    if let Some(key) = find_node_key_by_name(&graph, "root") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+    }
+
+    let d_key = find_node_key_by_name(&graph, "D").ok_or_else(|| make_report!("D not found"))?;
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let mut payload = edge.payload().write_arc();
+      payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+      payload.time_length = payload.branch_length();
+      payload.set_branch_length(Some(0.0));
+    }
+
+    // Make D compressed: high mutation_length
+    let d_edge_key = graph.get_node(abcd_key).expect("Node must exist")
+      .read_arc()
+      .outbound()
+      .iter()
+      .copied()
+      .find(|&ek| graph.get_edge(ek).expect("Edge must exist").read_arc().target() == d_key)
+      .expect("D edge must exist");
+    graph.get_edge(d_edge_key).expect("Edge must exist").write_arc().payload().write_arc().set_branch_length(Some(1.0));
+
+    let partitions = vec![];
+    // merge_compressed=false: only stretched children (A,B,C) should merge
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+
+    // 3 stretched children merge down to 1 subtree (isall=false, min_remaining=1)
+    // producing 2 new nodes: (A,B)->N1, (N1,C)->N2 (or similar)
+    assert_eq!(n_resolved, 2, "3 stretched children should produce 2 merges (subset merges to 1)");
+
+    // ABCD should have 2 children: the stretched subtree + D
+    let final_children = graph.get_node(abcd_key).expect("Node must exist").read_arc().degree_out();
+    assert_eq!(final_children, 2, "ABCD should have 2 children: stretched subtree + compressed D");
+
+    // D should still be a direct child of ABCD
+    let d_still_child = graph.get_node(abcd_key).expect("Node must exist")
+      .read_arc()
+      .outbound()
+      .iter()
+      .any(|&ek| graph.get_edge(ek).expect("Edge must exist").read_arc().target() == d_key);
+    assert!(d_still_child, "Compressed child D should remain a direct child of ABCD");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_new_node_edge_time_lengths_correct() -> Result<(), Report> {
+    let mut graph = helpers::create_polytomy_tree()?;
+
+    let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
+    let abc_time = graph.get_node(abc_key).expect("Node must exist").read_arc().payload().read_arc().time.unwrap_or(0.0);
+
+    let partitions = vec![];
+    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+
+    // Find the new unnamed internal node
+    let new_node = graph.get_nodes().into_iter().find(|n| {
+      let n = n.read_arc();
+      let payload = n.payload().read_arc();
+      !n.is_leaf() && !n.is_root() && payload.name().is_none()
+    }).expect("New node must exist");
+
+    let new_node_key = new_node.read_arc().key();
+    let new_node_time = new_node.read_arc().payload().read_arc().time.unwrap_or(0.0);
+
+    // Edge from ABC to new node: time_length = new_node_time - abc_time
+    let parent_edge_key = new_node.read_arc().inbound()[0];
+    let parent_edge_time_length = graph.get_edge(parent_edge_key).expect("Edge must exist")
+      .read_arc().payload().read_arc().time_length.expect("time_length must be set");
+    let expected_parent_tl = new_node_time - abc_time;
+    assert!(
+      (parent_edge_time_length - expected_parent_tl).abs() < 1e-10,
+      "Parent edge time_length ({parent_edge_time_length}) should equal new_node_time - abc_time ({expected_parent_tl})"
+    );
+    assert!(parent_edge_time_length > 0.0, "Parent edge time_length must be positive");
+
+    // Edges from new node to children: time_length = child_time - new_node_time
+    for &ek in new_node.read_arc().outbound() {
+      let edge = graph.get_edge(ek).expect("Edge must exist");
+      let child_key = edge.read_arc().target();
+      let child_time = graph.get_node(child_key).expect("Node must exist")
+        .read_arc().payload().read_arc().time.unwrap_or(0.0);
+      let child_edge_tl = edge.read_arc().payload().read_arc().time_length.expect("time_length must be set");
+      let expected_child_tl = child_time - new_node_time;
+      assert!(
+        (child_edge_tl - expected_child_tl).abs() < 1e-10,
+        "Child edge time_length ({child_edge_tl}) should equal child_time - new_node_time ({expected_child_tl})"
+      );
+      assert!(child_edge_tl > 0.0, "Child edge time_length must be positive");
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_guard_parent_time_ge_child_time() -> Result<(), Report> {
+    // Parent time >= child time should prevent merging (guard returns None)
+    let mut graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+    // Set parent time AFTER children (reversed time constraint)
+    let tip_times = [("A", 2010.0), ("B", 2010.0), ("C", 2010.0)];
+    for (name, time) in tip_times {
+      if let Some(key) = find_node_key_by_name(&graph, name) {
+        graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+      }
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "ABC") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2020.0);
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "root") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+    }
+
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let mut payload = edge.payload().write_arc();
+      payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+      payload.time_length = payload.branch_length();
+      payload.set_branch_length(Some(0.0));
+    }
+
+    let partitions = vec![];
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+
+    assert_eq!(n_resolved, 0, "Should not merge when parent time >= child time");
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_4way_with_realistic_distributions() -> Result<(), Report> {
+    // 4-way all-stretched polytomy with realistic distributions exercises incremental gains
+    let mut graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15,D:0.12)ABCD:0.05)root;")?;
+
+    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("D", 2012.0)];
+    for (name, time) in tip_times {
+      if let Some(key) = find_node_key_by_name(&graph, name) {
+        graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+      }
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "ABCD") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2005.0);
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "root") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+    }
+
+    let x = Array1::linspace(0.0, 25.0, 200);
+    let y = x.mapv(|t: f64| (-0.5 * t).exp());
+    let dist = Arc::new(Distribution::function(x, y)?);
+
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let mut payload = edge.payload().write_arc();
+      payload.branch_length_distribution = Some(Arc::clone(&dist));
+      payload.time_length = payload.branch_length();
+      payload.set_branch_length(Some(0.0));
+    }
+
+    let abcd_key = find_node_key_by_name(&graph, "ABCD").ok_or_else(|| make_report!("ABCD not found"))?;
+    let partitions = vec![];
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 0.01, TEST_CLOCK_RATE, false)?;
+
+    // 4-way -> 2 children requires 2 merges
+    assert_eq!(n_resolved, 2, "4-way polytomy should produce 2 merges");
+    let final_children = graph.get_node(abcd_key).expect("Node must exist").read_arc().degree_out();
+    assert_eq!(final_children, 2, "ABCD should have 2 children after resolution");
 
     Ok(())
   }
