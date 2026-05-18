@@ -26,12 +26,10 @@ auto_ops = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
-comfy-table = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
-image = { workspace = true, optional = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
@@ -40,11 +38,9 @@ num = { workspace = true }
 num-traits = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
-plotters = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 regex = { workspace = true }
-rgb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smart-default = { workspace = true }
@@ -63,18 +59,13 @@ tikv-jemallocator = { workspace = true }
 [target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
 tikv-jemallocator = { workspace = true }
 
-[features]
-"png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 blas-src = { workspace = true }
-crossterm = { workspace = true }
 ndarray = { workspace = true }
 ndarray-linalg = { workspace = true }
 ndarray-stats = { workspace = true }
 openblas-src = { workspace = true }
 statrs = { workspace = true }
-textplots = { workspace = true }
 
 [dev-dependencies]
 bio = { workspace = true }

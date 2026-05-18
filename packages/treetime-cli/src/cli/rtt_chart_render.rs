@@ -1,5 +1,5 @@
-use crate::clock::clock_model::ClockModel;
-use crate::clock::rtt::ClockRegressionResult;
+use treetime::clock::clock_model::ClockModel;
+use treetime::clock::rtt::ClockRegressionResult;
 use eyre::Report;
 use plotters::coord::Shift;
 use plotters::coord::types::RangedCoordf32;

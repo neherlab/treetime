@@ -1,6 +1,3 @@
-use crate::cli::rtt_chart::{
-  print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
-};
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_graph::GraphClock;
@@ -9,7 +6,7 @@ use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::clock::reroot::RerootParams;
-use crate::clock::rtt::{gather_clock_regression_results, write_clock_regression_result_csv};
+use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::make_error;
 use crate::make_report;
@@ -18,7 +15,11 @@ use log::info;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
-use treetime_utils::io::console::is_tty;
+
+pub struct ClockResult {
+  pub clock_model: ClockModel,
+  pub regression_results: Vec<ClockRegressionResult>,
+}
 
 fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
   match args.method {
@@ -28,7 +29,7 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
   }
 }
 
-pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
+pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> {
   let TreetimeClockArgs {
     aln,
     tree,
@@ -65,7 +66,6 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
     assign_dates(&graph, &dates)?;
   }
 
-  // Split workflow into a separate blocks depending whether covariation is used or not
   let (clock_model, new_outliers) = if *covariation {
     let seq_len = sequence_length
       .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?
@@ -105,17 +105,14 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<(), Report> {
 
   write_clock_model(&clock_model, &outdir.join("clock_model"))?;
 
-  let results = gather_clock_regression_results(&graph, &clock_model);
+  let regression_results = gather_clock_regression_results(&graph, &clock_model);
 
-  write_clock_regression_result_csv(&results, outdir.join("clock.csv"), b',')?;
-  write_clock_regression_chart_svg(&results, &clock_model, outdir.join("clock.svg"))?;
-  write_clock_regression_chart_png(&results, &clock_model, outdir.join("clock.png"))?;
+  write_clock_regression_result_csv(&regression_results, outdir.join("clock.csv"), b',')?;
 
-  if is_tty() {
-    print_clock_regression_chart(&results, &clock_model)?;
-  }
-
-  Ok(())
+  Ok(ClockResult {
+    clock_model,
+    regression_results,
+  })
 }
 
 fn estimate_clock_model_with_prefilter(

@@ -8,9 +8,13 @@ use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
+use treetime_cli::cli::rtt_chart::{
+  print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
+};
 use treetime_cli::cli::treetime_cli::{TreetimeCommands, generate_shell_completions, treetime_parse_cli_args};
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
+use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[ctor]
@@ -49,7 +53,13 @@ fn main() -> Result<(), Report> {
       run_ancestral_reconstruction(&ancestral_args)?;
     },
     TreetimeCommands::Clock(clock_args) => {
-      run_clock(&clock_args)?;
+      let result = run_clock(&clock_args)?;
+      let outdir = &clock_args.outdir;
+      write_clock_regression_chart_svg(&result.regression_results, &result.clock_model, outdir.join("clock.svg"))?;
+      write_clock_regression_chart_png(&result.regression_results, &result.clock_model, outdir.join("clock.png"))?;
+      if is_tty() {
+        print_clock_regression_chart(&result.regression_results, &result.clock_model)?;
+      }
     },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
       run_homoplasy(homoplasy_args)?;

@@ -23,15 +23,25 @@ clap = { workspace = true }
 clap_complete = { workspace = true }
 clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
+comfy-table = { workspace = true }
+crossterm = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
+image = { workspace = true, optional = true }
 indoc = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
+num-traits = { workspace = true }
+plotters = { workspace = true }
 rayon = { workspace = true }
+rgb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+textplots = { workspace = true }
+
+[features]
+"png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
