@@ -299,11 +299,9 @@ mod tests {
 
   #[test]
   fn test_merge_branch_length_adjustment() -> Result<(), Report> {
-    // A and B share 2 mutations out of length 100 => p = 2/100 = 0.02
-    // Jukes-Cantor 1969 correction with k=4 states:
-    //   d = -3/4 * ln(1 - 4*0.02/3) = 0.02027025193702054...
-    // A original bl = 0.1, adjusted = max(0, 0.1 - d) ≈ 0.0797297480629...
-    // B original bl = 0.2, adjusted = max(0, 0.2 - d) ≈ 0.1797297480629...
+    // A and B share 2 mutations out of length 100. Both have 0 unique mutations.
+    // Parent edge: jc(2/100).
+    // Child edges: jc(0/100) = 0.0 (no remaining mutations).
     let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
@@ -327,14 +325,10 @@ mod tests {
       let target_name = target.read_arc().payload().read_arc().name.clone();
       let bl = edge.payload().read_arc().branch_length;
 
-      // The new internal edge length `d` is computed from integer mutation
-      // counts and pure f64 arithmetic, matching 1e-15. The child edges and C
-      // carry newick-parsed branch lengths, so their comparison tolerance is
-      // set to 1e-6 to accommodate the parser's f32-level precision.
       match target_name.as_deref() {
         None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
-        Some("A") => assert_relative_eq!(bl.unwrap(), 0.1 - d, epsilon = 1e-6),
-        Some("B") => assert_relative_eq!(bl.unwrap(), 0.2 - d, epsilon = 1e-6),
+        Some("A") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
         Some("C") => assert_relative_eq!(bl.unwrap(), 0.3, epsilon = 1e-6),
         _ => {},
       }
@@ -344,10 +338,9 @@ mod tests {
   }
 
   #[test]
-  fn test_merge_branch_length_clamp_to_zero() -> Result<(), Report> {
-    // 10 shared mutations out of length 100 => p = 0.1
-    // JC69 correction: d = -3/4 * ln(1 - 4*0.1/3) ≈ 0.1073
-    // A original bl = 0.05 < d, so adjusted clamps to 0.0
+  fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
+    // 10 shared mutations out of length 100. Both children have only shared
+    // mutations (0 remaining), so child BLs are jc(0) = 0.0.
     let mut graph: GraphAncestral = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
@@ -582,11 +575,8 @@ mod tests {
   #[test]
   fn test_merge_branch_length_jc_correction_differs_from_raw() -> Result<(), Report> {
     // 10 shared mutations out of length 100 places the pooled p-distance at
-    // 0.10, where Jukes-Cantor 1969 correction differs from the raw ratio by
-    // about 7%. The new internal edge must carry the corrected distance, and
-    // the child adjustment must subtract that same corrected distance - any
-    // regression to raw p = 0.1 would show up as a 7% discrepancy between
-    // both assertions below.
+    // 0.10, where JC69 correction differs from the raw ratio by about 7%.
+    // Both children have 0 unique mutations, so child BLs are 0.0.
     let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
@@ -614,10 +604,7 @@ mod tests {
 
       match target_name.as_deref() {
         None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
-        // Child edges inherit newick-parsed branch lengths, so 1e-6
-        // accommodates the parser's f32-level precision. The distance `d` is
-        // computed from integer mutation counts in pure f64 arithmetic.
-        Some("A" | "B") => assert_relative_eq!(bl.unwrap(), 0.5 - d, epsilon = 1e-6),
+        Some("A" | "B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
         _ => {},
       }
     }
