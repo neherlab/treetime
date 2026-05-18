@@ -1,7 +1,7 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
-use crate::partition::sparse::{MarginalSparseSeqDistribution, SparseNodePartition, VarPos};
+use crate::partition::sparse::{SparseSeqDistribution, SparseNodePartition, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
@@ -157,7 +157,7 @@ where
       })
       .collect();
 
-    MarginalSparseSeqDistribution {
+    SparseSeqDistribution {
       fixed_counts: node_data.seq.composition.clone(),
       variable,
       variable_indel: btreemap! {},
@@ -167,7 +167,7 @@ where
   } else {
     let mut variable_pos = btreemap! {};
     let mut child_states = vec![];
-    let mut child_messages: Vec<MarginalSparseSeqDistribution> = vec![];
+    let mut child_messages: Vec<SparseSeqDistribution> = vec![];
     for (ci, (_child_key, edge_key)) in node.child_keys.iter().enumerate() {
       child_states.push(btreemap! {});
       let edge_data = &partition.edges[edge_key];
@@ -259,7 +259,7 @@ where
   if !node.is_root {
     let mut variable_pos = btreemap! {};
     let mut ref_states: Vec<BTreeMap<usize, AsciiChar>> = vec![];
-    let mut msgs_to_combine: Vec<MarginalSparseSeqDistribution> = vec![];
+    let mut msgs_to_combine: Vec<SparseSeqDistribution> = vec![];
     let mut removed_edges = vec![];
     for (parent_key, edge_key) in &node.parent_keys {
       let mut parent_state: BTreeMap<usize, AsciiChar> = btreemap! {};
@@ -348,7 +348,7 @@ where
   for child_edge_key in &node.child_edge_keys {
     let child_edge_data = partition.edges.remove(child_edge_key).unwrap();
     let seq_info = &partition.nodes[&node.key];
-    let mut seq_dis = MarginalSparseSeqDistribution {
+    let mut seq_dis = SparseSeqDistribution {
       variable: btreemap! {},
       variable_indel: btreemap! {},
       fixed: btreemap! {},

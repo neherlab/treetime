@@ -8,7 +8,7 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -56,17 +56,17 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDis::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDis::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, 0.0),
           },
         },
         edges: btreemap! {
           edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDis::new(msg_to_parent, 0.0),
-            msg_to_child: DenseSeqDis::new(msg_to_child, 0.0),
+            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, 0.0),
+            msg_to_child: DenseSeqDistribution::new(msg_to_child, 0.0),
             ..Default::default()
           },
         },
@@ -116,17 +116,17 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDis::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDis::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, 0.0),
           },
         },
         edges: btreemap! {
           edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDis::new(msg_to_parent, 0.0),
-            msg_to_child: DenseSeqDis::new(msg_to_child, 0.0),
+            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, 0.0),
+            msg_to_child: DenseSeqDistribution::new(msg_to_child, 0.0),
             ..Default::default()
           },
         },
@@ -242,11 +242,11 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDis::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
-            profile: DenseSeqDis::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, 0.0),
           },
         },
         edges: btreemap! {

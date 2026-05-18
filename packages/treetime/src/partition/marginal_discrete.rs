@@ -4,7 +4,7 @@ use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_core::{
   MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
-use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses};
 use eyre::Report;
 use indexmap::IndexSet;
@@ -73,7 +73,7 @@ impl PartitionMarginalDiscrete {
         leaf_key,
         DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::new(profile, 0.0),
+          profile: DenseSeqDistribution::new(profile, 0.0),
         },
       );
     }
@@ -132,7 +132,7 @@ where
     &mut self.data
   }
 
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDis, Report> {
+  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report> {
     let node = &self.data.nodes[&node_key];
     Ok(node.profile.clone())
   }

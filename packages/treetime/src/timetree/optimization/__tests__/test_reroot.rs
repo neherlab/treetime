@@ -14,7 +14,7 @@ mod tests {
   use crate::partition::timetree::GraphTimetree;
   use crate::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
   use crate::partition::sparse::{
-    MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
+    SparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   };
   use crate::payload::timetree::EdgeTimetree;
   use crate::payload::timetree::NodeTimetree;
@@ -208,9 +208,9 @@ mod tests {
       edges: btreemap! {
         edge_to_a_key => {
           let mut edge = SparseEdgePartition::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]);
-          edge.msg_from_child = MarginalSparseSeqDistribution {
+          edge.msg_from_child = SparseSeqDistribution {
             log_lh: 1.0, // non-default to verify it gets cleared
-            ..MarginalSparseSeqDistribution::default()
+            ..SparseSeqDistribution::default()
           };
           edge
         },

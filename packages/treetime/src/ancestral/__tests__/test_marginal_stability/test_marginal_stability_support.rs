@@ -8,8 +8,8 @@ pub mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::dense::DenseSeqDis;
-  use crate::partition::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::dense::DenseSeqDistribution;
+  use crate::partition::sparse::SparseSeqDistribution;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   
@@ -21,7 +21,7 @@ pub mod tests {
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   /// Assert that a dense marginal profile is numerically stable.
-  pub fn assert_dense_profile_stable(profile: &DenseSeqDis, max_ulps: u32) {
+  pub fn assert_dense_profile_stable(profile: &DenseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.is_finite(),
       "Profile log_lh is not finite: {}",
@@ -42,7 +42,7 @@ pub mod tests {
   }
 
   /// Assert that a sparse marginal profile is numerically stable.
-  pub fn assert_sparse_profile_stable(profile: &MarginalSparseSeqDistribution, max_ulps: u32) {
+  pub fn assert_sparse_profile_stable(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.is_finite(),
       "Profile log_lh is not finite: {}",

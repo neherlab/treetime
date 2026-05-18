@@ -21,7 +21,7 @@ pub struct DenseSeqInfo {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DenseNodePartition {
   pub seq: DenseSeqInfo,
-  pub profile: DenseSeqDis,
+  pub profile: DenseSeqDistribution,
 }
 
 impl DenseNodePartition {
@@ -38,7 +38,7 @@ impl DenseNodePartition {
         variable_indel: BTreeMap::new(),
         sequence: seq.to_owned(),
       },
-      profile: DenseSeqDis::default(),
+      profile: DenseSeqDistribution::default(),
     })
   }
 }
@@ -47,20 +47,20 @@ impl DenseNodePartition {
 pub struct DenseEdgePartition {
   pub indels: Vec<InDel>,
   pub transmission: Option<Vec<(usize, usize)>>,
-  pub msg_to_child: DenseSeqDis,
-  pub msg_to_parent: DenseSeqDis,
-  pub msg_from_child: DenseSeqDis,
+  pub msg_to_child: DenseSeqDistribution,
+  pub msg_to_parent: DenseSeqDistribution,
+  pub msg_from_child: DenseSeqDistribution,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseSeqDis {
+pub struct DenseSeqDistribution {
   pub dis: Array2<f64>,
 
   /// Total log likelihood
   pub log_lh: f64,
 }
 
-impl DenseSeqDis {
+impl DenseSeqDistribution {
   pub fn new(dis: Array2<f64>, log_lh: f64) -> Self {
     Self { dis, log_lh }
   }

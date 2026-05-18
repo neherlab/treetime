@@ -21,7 +21,7 @@
 //!   d^2logLh/dt^2 = sum_i sum_j \sum_c k_c \lambda_c*\lambda^i_c exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t) - k_c \lambda_c*\exp(\lambda^i_c t) / \sum_c k_c exp(\lambda^i_c t)
 //!
 use crate::gtr::gtr::GTR;
-use crate::partition::dense::DenseSeqDis;
+use crate::partition::dense::DenseSeqDistribution;
 use ndarray::Array2;
 
 pub struct PartitionContribution {
@@ -35,7 +35,7 @@ impl PartitionContribution {
   }
 }
 
-pub fn get_coefficients(msg_to_parent: &DenseSeqDis, msg_to_child: &DenseSeqDis, gtr: &GTR) -> PartitionContribution {
+pub fn get_coefficients(msg_to_parent: &DenseSeqDistribution, msg_to_child: &DenseSeqDistribution, gtr: &GTR) -> PartitionContribution {
   // Multiply the messages by the eigenvectors of the GTR matrix, multiply elementwise, and sum over the rows:
   //    s_a eQt_{ab} r_b =  \sum_{abc} s_a v_{ac} e^{\lambda_c t} vinv_{cb} r_b
   let coefficients = msg_to_child.dis.dot(&gtr.v) * msg_to_parent.dis.dot(&gtr.v_inv.t());

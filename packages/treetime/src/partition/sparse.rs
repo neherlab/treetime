@@ -15,7 +15,7 @@ use treetime_utils::interval::range_union::range_union;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodePartition {
   pub seq: SparseSeqInfo,
-  pub profile: MarginalSparseSeqDistribution,
+  pub profile: SparseSeqDistribution,
 }
 
 impl SparseNodePartition {
@@ -36,7 +36,7 @@ impl SparseNodePartition {
           chosen_state: btreemap! {},
         },
       },
-      profile: MarginalSparseSeqDistribution::default(),
+      profile: SparseSeqDistribution::default(),
     }
   }
 
@@ -68,7 +68,7 @@ impl SparseNodePartition {
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
       },
-      profile: MarginalSparseSeqDistribution {
+      profile: SparseSeqDistribution {
         variable: btreemap! {},
         variable_indel: btreemap! {},
         fixed: btreemap! {},
@@ -95,9 +95,9 @@ pub struct SparseEdgePartition {
   subs_fitch: Vec<Sub>,
   subs_ml: Option<Vec<Sub>>,
   pub indels: Vec<InDel>,
-  pub msg_to_parent: MarginalSparseSeqDistribution,
-  pub msg_to_child: MarginalSparseSeqDistribution,
-  pub msg_from_child: MarginalSparseSeqDistribution,
+  pub msg_to_parent: SparseSeqDistribution,
+  pub msg_to_child: SparseSeqDistribution,
+  pub msg_from_child: SparseSeqDistribution,
   pub transmission: Option<Vec<(usize, usize)>>,
 }
 
@@ -164,7 +164,7 @@ impl SparseEdgePartition {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MarginalSparseSeqDistribution {
+pub struct SparseSeqDistribution {
   /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, VarPos>,
 
@@ -179,7 +179,7 @@ pub struct MarginalSparseSeqDistribution {
   pub log_lh: f64,
 }
 
-impl Default for MarginalSparseSeqDistribution {
+impl Default for SparseSeqDistribution {
   fn default() -> Self {
     Self {
       variable: btreemap! {},

@@ -7,7 +7,7 @@ mod tests {
 
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -130,7 +130,7 @@ mod tests {
         key,
         DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDis::default(),
+          profile: DenseSeqDistribution::default(),
         },
       );
     }

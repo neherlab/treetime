@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::{arb_marginal_input, arb_marginal_input_small};
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::partition::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::sparse::SparseSeqDistribution;
   use ndarray::Array2;
   use proptest::prelude::*;
 
@@ -45,7 +45,7 @@ mod tests {
   /// - All values are finite and >= -1e-14 (allows roundoff-level negative values).
   ///
   /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
-  fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution) -> Result<(), TestCaseError> {
+  fn assert_sparse_profile_normalized(profile: &SparseSeqDistribution) -> Result<(), TestCaseError> {
     prop_assert!(
       profile.log_lh.is_finite(),
       "Profile log_lh non-finite: {}",

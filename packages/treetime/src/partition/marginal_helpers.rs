@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::partition::sparse::{MarginalSparseSeqDistribution, VarPos};
+use crate::partition::sparse::{SparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;
@@ -16,13 +16,13 @@ pub const EPS: f64 = 1e-4;
 
 pub fn combine_messages(
   composition: &Composition,
-  messages: &[MarginalSparseSeqDistribution],
+  messages: &[SparseSeqDistribution],
   variable_pos: &BTreeMap<usize, AsciiChar>,
   reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
-) -> Result<MarginalSparseSeqDistribution, Report> {
-  let mut seq_dis = MarginalSparseSeqDistribution {
+) -> Result<SparseSeqDistribution, Report> {
+  let mut seq_dis = SparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
@@ -89,10 +89,10 @@ pub fn combine_messages(
 
 pub fn propagate_raw(
   exp_qt: &Array2<f64>,
-  seq_dis: &MarginalSparseSeqDistribution,
+  seq_dis: &SparseSeqDistribution,
   transmission: Option<&[(usize, usize)]>,
-) -> MarginalSparseSeqDistribution {
-  let mut message = MarginalSparseSeqDistribution {
+) -> SparseSeqDistribution {
+  let mut message = SparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
@@ -139,9 +139,9 @@ pub fn propagate_raw_per_site(
   gtr: &GTR,
   branch_length: f64,
   transpose: bool,
-  seq_dis: &MarginalSparseSeqDistribution,
+  seq_dis: &SparseSeqDistribution,
   transmission: Option<&[(usize, usize)]>,
-) -> MarginalSparseSeqDistribution {
+) -> SparseSeqDistribution {
   let site_rates = gtr
     .site_rates
     .as_ref()
@@ -152,7 +152,7 @@ pub fn propagate_raw_per_site(
     gtr.expQt(branch_length)
   };
 
-  let mut message = MarginalSparseSeqDistribution {
+  let mut message = SparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: btreemap! {},
     fixed: btreemap! {},
@@ -223,7 +223,7 @@ mod tests {
       10_usize => VarPos { dis: array![0.05, 0.05, 0.8, 0.1 ], state: g },
     };
 
-    let seq_dis = MarginalSparseSeqDistribution {
+    let seq_dis = SparseSeqDistribution {
       variable,
       variable_indel: btreemap! {},
       fixed: btreemap! {},
@@ -279,7 +279,7 @@ mod tests {
       10_usize => VarPos { dis: array![0.05, 0.05, 0.8, 0.1 ], state: g },
     };
 
-    let seq_dis = MarginalSparseSeqDistribution {
+    let seq_dis = SparseSeqDistribution {
       variable,
       variable_indel: btreemap! {},
       fixed: btreemap! {},

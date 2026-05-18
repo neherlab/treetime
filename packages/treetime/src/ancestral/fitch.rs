@@ -10,7 +10,7 @@ use crate::partition::fitch::PartitionFitch;
 use crate::partition::traits::PartitionCompressed;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::partition::sparse::{
-  FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
+  FitchSeqDistribution, SparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
 };
 use crate::seq::composition::Composition;
 use eyre::{Report, WrapErr};
@@ -174,7 +174,7 @@ where
         sequence,
         composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
       },
-      profile: MarginalSparseSeqDistribution {
+      profile: SparseSeqDistribution {
         variable: btreemap! {},
         variable_indel: btreemap! {},
         fixed: btreemap! {},

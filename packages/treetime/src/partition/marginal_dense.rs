@@ -6,7 +6,7 @@ use crate::partition::marginal_core::{
   MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
-use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
@@ -150,7 +150,7 @@ where
     for &key in &graph_node_keys {
       self.data.nodes.entry(key).or_insert_with(|| DenseNodePartition {
         seq: DenseSeqInfo::default(),
-        profile: DenseSeqDis::default(),
+        profile: DenseSeqDistribution::default(),
       });
     }
 
@@ -176,9 +176,9 @@ where
     &mut self.data
   }
 
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDis, Report> {
+  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report> {
     let seq_info = &self.data.nodes[&node_key];
-    Ok(DenseSeqDis {
+    Ok(DenseSeqDistribution {
       dis: self.alphabet.seq2prof(&seq_info.seq.sequence)?,
       log_lh: 0.0,
     })
@@ -229,7 +229,7 @@ where
       node.key,
       DenseNodePartition {
         seq,
-        profile: DenseSeqDis::default(),
+        profile: DenseSeqDistribution::default(),
       },
     );
   }
@@ -378,7 +378,7 @@ fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
   seq
 }
 
-fn prof2seq(profile: &DenseSeqDis, alphabet: &Alphabet) -> Seq {
+fn prof2seq(profile: &DenseSeqDistribution, alphabet: &Alphabet) -> Seq {
   let mut seq = seq! {};
   for row in profile.dis.rows() {
     let argmax = argmax_first(&row).unwrap_or(0);

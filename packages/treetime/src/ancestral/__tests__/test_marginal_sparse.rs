@@ -10,7 +10,7 @@ mod tests {
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::partition::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::sparse::SparseSeqDistribution;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -41,7 +41,7 @@ mod tests {
   /// - Elements sum to 1.0 within the given ULP tolerance
   ///
   /// Kolmogorov axioms: P(s) >= 0 for all states s, and sum_s P(s) = 1.
-  fn assert_sparse_profile_normalized(profile: &MarginalSparseSeqDistribution, max_ulps: u32) {
+  fn assert_sparse_profile_normalized(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
       profile.log_lh.is_finite(),
       "Profile log_lh is not finite: {}",

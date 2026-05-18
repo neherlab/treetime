@@ -1,5 +1,5 @@
 use crate::gtr::gtr::GTR;
-use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use eyre::Report;
 use itertools::izip;
 use ndarray::prelude::*;
@@ -33,7 +33,7 @@ where
   fn marginal_data(&self) -> &MarginalData;
   fn marginal_data_mut(&mut self) -> &mut MarginalData;
 
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDis, Report>;
+  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report>;
 
   fn backward_internal_pre(&mut self, _node: &GraphNodeBackward<N, E, ()>) {}
 
@@ -59,7 +59,7 @@ where
 
     data.nodes.entry(node.key).or_insert_with(|| DenseNodePartition {
       seq: DenseSeqInfo::default(),
-      profile: DenseSeqDis::default(),
+      profile: DenseSeqDistribution::default(),
     });
 
     let mut child_iter = node.child_keys.iter();
@@ -77,12 +77,12 @@ where
       .sum();
 
     let node_data = data.nodes.get_mut(&node.key).unwrap();
-    node_data.profile = DenseSeqDis {
+    node_data.profile = DenseSeqDistribution {
       dis: dis.clone(),
       log_lh: log_lh + delta_ll,
     };
 
-    DenseSeqDis {
+    DenseSeqDistribution {
       dis,
       log_lh: log_lh + delta_ll,
     }
@@ -106,7 +106,7 @@ where
 
     let log_lh = msg_to_parent.log_lh;
     let dis = data.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false);
-    edge_data.msg_from_child = DenseSeqDis { dis, log_lh };
+    edge_data.msg_from_child = DenseSeqDistribution { dis, log_lh };
     edge_data.msg_to_parent = msg_to_parent;
     data.edges.insert(*edge_key, edge_data);
   }
@@ -148,7 +148,7 @@ where
     log_lh += delta_ll;
 
     let data = partition.marginal_data_mut();
-    data.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDis { dis, log_lh };
+    data.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDistribution { dis, log_lh };
   }
 
   partition.forward_post(graph, node)?;
@@ -163,7 +163,7 @@ where
     let safe_child = child_edge_data.msg_from_child.dis.mapv(|v| v.max(f64::MIN_POSITIVE));
     let mut dis = &node_profile_dis / &safe_child;
     let delta_ll = normalize_inplace(&mut dis);
-    child_edge_data.msg_to_child = DenseSeqDis {
+    child_edge_data.msg_to_child = DenseSeqDistribution {
       dis,
       log_lh: node_profile_log_lh - child_edge_data.msg_from_child.log_lh + delta_ll,
     };

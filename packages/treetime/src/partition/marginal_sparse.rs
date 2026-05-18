@@ -7,7 +7,7 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
-use crate::partition::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
+use crate::partition::sparse::{SparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -184,7 +184,7 @@ impl PartitionRerootOps for PartitionMarginalSparse {
       mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
 
       // Reset msg_from_child (stale propagated message cache)
-      edge_data.msg_from_child = MarginalSparseSeqDistribution::default();
+      edge_data.msg_from_child = SparseSeqDistribution::default();
     }
 
     // Derive root sequence for the new root from the old root sequence.
