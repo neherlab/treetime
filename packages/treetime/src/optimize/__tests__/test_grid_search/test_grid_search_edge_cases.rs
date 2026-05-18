@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::optimize_unified::grid_search_branch_lengths;
+  use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use ndarray::array;
   use rstest::rstest;
 

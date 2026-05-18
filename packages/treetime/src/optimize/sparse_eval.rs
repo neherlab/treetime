@@ -1,5 +1,5 @@
 use crate::optimize::eval::evaluate_site_contributions;
-use crate::optimize::optimize_unified::OptimizationMetrics;
+use crate::optimize::likelihood::OptimizationMetrics;
 use crate::representation::partition::optimize_sparse;
 
 /// Evaluate sparse contribution for a given branch length (with derivatives).

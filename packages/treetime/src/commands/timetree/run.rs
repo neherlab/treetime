@@ -19,7 +19,7 @@ use crate::commands::timetree::output::confidence::{
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::optimize::params::BranchOptMethod;
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
-use crate::optimize::optimize_unified::{run_optimize_mixed, run_optimize_mixed_inner};
+use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::ancestral::annotate_branch_mutations;

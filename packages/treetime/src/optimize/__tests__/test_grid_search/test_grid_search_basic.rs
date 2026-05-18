@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::optimize_unified::{evaluate_mixed, grid_search_branch_lengths};
+  use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use ndarray::array;
 
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::optimize_unified::evaluate_mixed;
+  use crate::optimize::likelihood::evaluate_mixed;
   use ndarray::array;
 
   use super::super::test_newton_convergence_support::tests::make_dense_contribution;

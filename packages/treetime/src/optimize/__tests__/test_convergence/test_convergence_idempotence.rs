@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::marginal::update_marginal;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::optimize_unified::run_optimize_mixed;
+  use crate::optimize::dispatch::run_optimize_mixed;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;

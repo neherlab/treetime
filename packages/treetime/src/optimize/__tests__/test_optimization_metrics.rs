@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::optimize_unified::OptimizationMetrics;
+  use crate::optimize::likelihood::OptimizationMetrics;
   use crate::pretty_assert_ulps_eq;
 
   #[test]

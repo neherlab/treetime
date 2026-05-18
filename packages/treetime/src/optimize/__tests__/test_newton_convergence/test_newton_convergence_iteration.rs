@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::optimize_unified::{evaluate_with_indels, newton_tolerance_t};
+  use crate::optimize::likelihood::evaluate_with_indels;
+  use crate::optimize::method_newton::newton_tolerance_t;
   use ndarray::array;
   use num::clamp;
 
@@ -8,7 +9,7 @@ mod tests {
 
   #[test]
   fn test_newton_iteration_converges_within_bounds() {
-    // Simulate the Newton loop from optimize_unified.rs
+    // Simulate the Newton loop from method_newton.rs
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04], [0.1, 0.1, 0.7, 0.1],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];

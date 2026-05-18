@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::iteration::{
     any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
   };
-  use crate::optimize::optimize_unified::initial_guess_mixed;
+  use crate::optimize::dispatch::initial_guess_mixed;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

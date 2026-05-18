@@ -5,7 +5,8 @@ mod tests {
     t92, tn93,
   };
   use crate::gtr::gtr::GTR;
-  use crate::optimize::optimize_unified::{evaluate_mixed_log_lh_only, is_zero_branch_optimal};
+  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
+  use crate::optimize::zero_boundary::is_zero_branch_optimal;
   use crate::representation::partition::optimization_contribution::OptimizationContribution;
   use crate::representation::partition::optimize_dense;
   use crate::representation::partition::optimize_sparse;
@@ -213,7 +214,7 @@ mod tests {
 
   /// Coefficients that produce a positive finite L_i(0) but overflow in the
   /// derivative ratio. This exercises the `derivative.is_finite()` guard at
-  /// optimize_unified.rs which would otherwise be a dead code path.
+  /// zero_boundary.rs which would otherwise be a dead code path.
   ///
   /// With JC69's equal non-zero eigenvalues (-4/3), the per-site derivative
   /// ratio is always bounded between -4/3 and 0, so overflow is impossible.

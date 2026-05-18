@@ -1,5 +1,5 @@
 use crate::optimize::params::InitialGuessMode;
-use crate::optimize::optimize_unified::initial_guess_mixed;
+use crate::optimize::dispatch::initial_guess_mixed;
 use crate::representation::algo::topology_cleanup::collapse::collapse_edge;
 use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;

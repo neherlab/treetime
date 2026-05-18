@@ -1,7 +1,8 @@
 #[cfg(test)]
 pub mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::optimize_unified::{evaluate_mixed, grid_search_branch_lengths};
+  use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use crate::representation::partition::optimization_contribution::OptimizationContribution;
   use crate::representation::partition::optimize_dense;
   use ndarray::Array2;

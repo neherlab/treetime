@@ -8,10 +8,9 @@ mod tests {
   };
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
-  use crate::optimize::optimize_unified::{
-    evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best, is_zero_branch_optimal,
-    run_optimize_mixed, run_optimize_mixed_with_indel_rate,
-  };
+  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
+  use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::pretty_assert_neg_inf;
   use crate::representation::partition::fitch::PartitionFitch;

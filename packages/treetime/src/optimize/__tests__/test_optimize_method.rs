@@ -8,10 +8,10 @@ mod tests {
   use crate::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
-  use crate::optimize::optimize_unified::{
-    OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only,
-    min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,
-  };
+  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only};
+  use crate::optimize::method_newton::newton_tolerance_t;
+  use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use crate::representation::partition::optimization_contribution::OptimizationContribution;
   use crate::representation::partition::optimize_dense;
   use crate::representation::partition::traits::PartitionOptimizeOps;

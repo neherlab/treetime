@@ -1,4 +1,4 @@
-use crate::optimize::optimize_unified::OptimizationMetrics;
+use crate::optimize::likelihood::OptimizationMetrics;
 use itertools::izip;
 use ndarray::{Array1, ArrayView1};
 

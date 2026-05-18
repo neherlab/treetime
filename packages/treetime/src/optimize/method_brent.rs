@@ -1,4 +1,5 @@
-use crate::optimize::optimize_unified::{GRID_SEARCH_MIN_UPPER, evaluate_with_indels_log_lh_only};
+use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
+use crate::optimize::zero_boundary::GRID_SEARCH_MIN_UPPER;
 use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use crate::{make_internal_report, make_report};
 use argmin::core::{CostFunction, Error, Executor};

@@ -6,10 +6,9 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::iteration::find_zero_optimal_internal_edges;
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
-  use crate::optimize::optimize_unified::{
-    evaluate_mixed, evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_branch_optimal, reconcile_zero_boundary,
-    run_optimize_mixed,
-  };
+  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
+  use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;

@@ -1,4 +1,4 @@
-use crate::optimize::optimize_unified::OptimizationMetrics;
+use crate::optimize::likelihood::OptimizationMetrics;
 use crate::representation::partition::traits::PartitionOptimizeOps;
 use parking_lot::RwLock;
 use statrs::function::factorial::ln_factorial;

@@ -1,8 +1,6 @@
 use crate::make_internal_error;
-use crate::optimize::optimize_unified::{
-  OptimizationMetrics, evaluate_with_indels, grid_search_inner, newton_tolerance_log, newton_tolerance_sqrt,
-  newton_tolerance_t,
-};
+use crate::optimize::likelihood::{OptimizationMetrics, evaluate_with_indels};
+use crate::optimize::zero_boundary::grid_search_inner;
 use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
 use num::clamp;
@@ -19,6 +17,34 @@ pub(crate) const NEWTON_ABS_TOL: f64 = 1e-8;
 
 /// Maximum iterations for Newton inner loop.
 pub(crate) const NEWTON_MAX_ITER: usize = 10;
+
+/// Newton convergence tolerance in $t$-space.
+///
+/// A step $|\Delta t| \leq \eta t$ corresponds to relative tolerance $\eta$
+/// in branch-length space. The absolute floor prevents degeneration at $t = 0$.
+pub(crate) fn newton_tolerance_t(t: f64) -> f64 {
+  f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
+}
+
+/// Newton convergence tolerance in $\sqrt{t}$-space.
+///
+/// Since $\Delta t / t \approx 2 \Delta s / s$ for small steps, matching the
+/// target relative tolerance $\eta$ in branch-length space requires
+/// $|\Delta s| \leq \frac{\eta}{2} s$. The factor 0.5 corrects the
+/// coordinate-space scaling.
+pub(crate) fn newton_tolerance_sqrt(s: f64) -> f64 {
+  f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
+}
+
+/// Newton convergence tolerance in $\ln(t)$-space.
+///
+/// Since $\Delta t / t \approx \Delta u$ for small steps, a constant tolerance
+/// $\eta$ in $u$-space directly corresponds to relative tolerance $\eta$ in
+/// branch-length space, regardless of $|u|$. No scaling by the current value.
+pub(crate) fn newton_tolerance_log() -> f64 {
+  // ln(1 + η) ≈ η for small η; use the exact form for correctness
+  NEWTON_REL_TOL.ln_1p()
+}
 
 /// Newton-Raphson inner loop in $t$-space.
 ///
