@@ -7,8 +7,10 @@ mod tests {
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
+  use treetime_primitives::Seq;
   use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -616,6 +618,289 @@ mod tests {
         // accommodates the parser's f32-level precision. The distance `d` is
         // computed from integer mutation counts in pure f64 arithmetic.
         Some("A" | "B") => assert_relative_eq!(bl.unwrap(), 0.5 - d, epsilon = 1e-6),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  fn jc_bl(count: usize, length: usize) -> f64 {
+    if length == 0 || count == 0 {
+      return 0.0;
+    }
+    let p = count as f64 / length as f64;
+    -0.75 * f64::ln(1.0 - 4.0 * p / 3.0)
+  }
+
+  #[test]
+  fn test_merge_child_bl_from_remaining_mutations() -> Result<(), Report> {
+    // A has 2 shared subs only, B has 2 shared + 1 unique.
+    //   bl_a = jc(0/100) = 0.0
+    //   bl_b = jc(1/100)
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
+        ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), jc_bl(0, 100), epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), jc_bl(1, 100), epsilon = 1e-15),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_child_bl_zero_when_no_unique_mutations() -> Result<(), Report> {
+    // Both children have only shared mutations. Newick BLs are nonzero (0.1, 0.2).
+    // New formula: jc(0) = 0.0 regardless of original BL.
+    // Old formula: max(0, 0.1 - d) and max(0, 0.2 - d) -- both positive.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", shared.clone()),
+        ("root", "B", shared),
+        ("root", "C", vec![sub(b'T', 10, b'A')]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_child_bl_asymmetric_remaining() -> Result<(), Report> {
+    // A has 3 shared + 2 unique, B has 3 shared + 5 unique.
+    // Each child's BL reflects its own remaining mutation count.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')];
+    let unique_a = vec![sub(b'C', 20, b'G'), sub(b'A', 25, b'T')];
+    let unique_b = vec![
+      sub(b'C', 30, b'G'),
+      sub(b'A', 35, b'T'),
+      sub(b'G', 40, b'C'),
+      sub(b'T', 45, b'A'),
+      sub(b'C', 50, b'G'),
+    ];
+
+    let mut subs_a = shared.clone();
+    subs_a.extend(unique_a);
+    subs_a.sort();
+
+    let mut subs_b = shared;
+    subs_b.extend(unique_b);
+    subs_b.sort();
+
+    let partition = make_partition(
+      &graph,
+      1000,
+      &[
+        ("root", "A", subs_a),
+        ("root", "B", subs_b),
+        ("root", "C", vec![sub(b'A', 60, b'T')]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), jc_bl(2, 1000), epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), jc_bl(5, 1000), epsilon = 1e-15),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_child_bl_independent_of_newick_branch_length() -> Result<(), Report> {
+    // Newick BL is deliberately extreme (99.0). Child BL should still be
+    // jc(remaining/length), proving the formula ignores original branch lengths.
+    let mut graph: GraphAncestral = nwk_read_str("(A:99.0,B:99.0,C:0.1)root;")?;
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
+        ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), jc_bl(0, 100), epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), jc_bl(1, 100), epsilon = 1e-15),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
+    // A has 2 shared subs + 1 indel (not shared, counted in remaining).
+    // B has 2 shared subs only.
+    //   bl_a = jc((0 remaining subs + 1 indel) / 100) = jc(1/100)
+    //   bl_b = jc(0/100) = 0.0
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
+    let partition = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", shared.clone()),
+        ("root", "B", shared),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+
+    {
+      let mut p = partition.write_arc();
+      let edge_a = find_edge_key(&graph, "root", "A").unwrap();
+      p.edges.get_mut(&edge_a).unwrap().indels = vec![InDel::del((10, 13), Seq::try_from_str("GTA").unwrap())];
+    }
+
+    let partitions = vec![partition];
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), jc_bl(1, 100), epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), jc_bl(0, 100), epsilon = 1e-15),
+        _ => {},
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
+    // Two partitions: A has 1 unique sub in p1, 2 unique subs in p2.
+    // Total remaining for A = 3 across total length 100 + 200 = 300.
+    // bl_a = jc(3/300)
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+
+    let p1 = make_partition(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
+    )?;
+
+    let mut p2_inner = PartitionMarginalSparse {
+      index: 1,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
+      length: 200,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+    let mut p2_ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
+    p2_ref_seq[50] = c(b'C');
+    p2_ref_seq[60] = c(b'G');
+    p2_ref_seq[70] = c(b'T');
+    p2_inner.root_sequence = p2_ref_seq.clone();
+    for node in graph.get_nodes() {
+      let key = node.read_arc().key();
+      let mut node_part = SparseNodePartition::empty(&p2_inner.alphabet);
+      node_part.seq.sequence = p2_ref_seq.clone();
+      p2_inner.nodes.insert(key, node_part);
+    }
+    let edge_a = find_edge_key(&graph, "root", "A").unwrap();
+    let edge_b = find_edge_key(&graph, "root", "B").unwrap();
+    let edge_c = find_edge_key(&graph, "root", "C").unwrap();
+    p2_inner.edges.insert(
+      edge_a,
+      SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G'), sub(b'G', 60, b'T'), sub(b'T', 70, b'A')]),
+    );
+    p2_inner
+      .edges
+      .insert(edge_b, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
+    p2_inner.edges.insert(edge_c, SparseEdgePartition::default());
+    let p2 = Arc::new(RwLock::new(p2_inner));
+
+    let partitions = vec![p1, p2];
+    merge_shared_mutation_branches(&mut graph, &partitions)?;
+    graph.build()?;
+
+    for edge in graph.get_edges() {
+      let edge = edge.read_arc();
+      let target = graph.get_node(edge.target()).unwrap();
+      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let bl = edge.payload().read_arc().branch_length;
+
+      match target_name.as_deref() {
+        Some("A") => assert_relative_eq!(bl.unwrap(), jc_bl(3, 300), epsilon = 1e-15),
+        Some("B") => assert_relative_eq!(bl.unwrap(), jc_bl(0, 300), epsilon = 1e-15),
         _ => {},
       }
     }
