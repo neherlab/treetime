@@ -1,4 +1,3 @@
-use clap::{Args, ValueEnum};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
@@ -17,7 +16,8 @@ pub enum BranchPointOptimizationParams {
 }
 
 /// Optimization method selection
-#[derive(Debug, Clone, ValueEnum, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
   #[default]
@@ -25,7 +25,7 @@ pub enum OptimizationMethod {
   /// Brent's method for robust 1D optimization
   Brent,
   /// Golden section search optimization
-  #[clap(name = "golden-section")]
+  #[cfg_attr(feature = "clap", clap(name = "golden-section"))]
   GoldenSection,
 }
 
@@ -62,36 +62,39 @@ impl BranchPointOptimizationParams {
 }
 
 /// Configuration for grid search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GridSearchParams {
   /// Number of equally-spaced points to evaluate (grid method only)
-  #[clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParams::default().n_points)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-grid-n-points", default_value_t = GridSearchParams::default().n_points))]
   #[default = 11]
   pub n_points: usize,
 }
 
 /// Configuration for Brent's method optimization
-#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BrentParams {
   /// Maximum number of iterations for Brent's method
-  #[clap(long = "branch-split-brent-max-iters", default_value_t = BrentParams::default().brent_max_iters)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-max-iters", default_value_t = BrentParams::default().brent_max_iters))]
   #[default = 50]
   pub brent_max_iters: usize,
   /// Convergence tolerance for Brent's method
-  #[clap(long = "branch-split-brent-tolerance", default_value_t = BrentParams::default().brent_tolerance)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-brent-tolerance", default_value_t = BrentParams::default().brent_tolerance))]
   #[default = 1e-12]
   pub brent_tolerance: f64,
 }
 
 /// Configuration for golden section search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GoldenSectionParams {
   /// Maximum number of iterations for golden section search
-  #[clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParams::default().golden_max_iters)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-max-iters", default_value_t = GoldenSectionParams::default().golden_max_iters))]
   #[default = 50]
   pub golden_max_iters: usize,
   /// Convergence tolerance for golden section search
-  #[clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParams::default().golden_tolerance)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-golden-tolerance", default_value_t = GoldenSectionParams::default().golden_tolerance))]
   #[default = 1e-12]
   pub golden_tolerance: f64,
 }

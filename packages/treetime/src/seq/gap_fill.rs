@@ -1,9 +1,9 @@
-use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use treetime_primitives::{AsciiChar, Seq};
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum GapFill {
   #[default]
   OnlyTerminal,

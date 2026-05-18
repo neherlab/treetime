@@ -2,6 +2,7 @@ pub mod alphabet;
 pub mod ancestral;
 pub mod clock;
 pub mod coalescent;
+#[cfg(feature = "clap")]
 pub mod commands;
 pub mod constants;
 pub mod graph;

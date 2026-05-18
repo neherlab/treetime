@@ -3,7 +3,6 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
 use crate::partition::payload::clock_set::ClockSet;
 use crate::partition::payload::traits::{ClockEdge, ClockNode};
-use clap::Args;
 use eyre::Report;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -15,20 +14,21 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockParams {
   /// Variance scaling factor proportional to branch length
-  #[clap(long, default_value_t = ClockParams::default().variance_factor)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_factor))]
   #[default = 0.0]
   pub variance_factor: f64,
 
   /// Constant variance offset for all branches
-  #[clap(long, default_value_t = ClockParams::default().variance_offset)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_offset))]
   #[default = 0.0]
   pub variance_offset: f64,
 
   /// Additional variance offset for leaf (terminal) nodes
-  #[clap(long, default_value_t = ClockParams::default().variance_offset_leaf)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = ClockParams::default().variance_offset_leaf))]
   #[default = 1.0]
   pub variance_offset_leaf: f64,
 }

@@ -13,7 +13,7 @@ version.workspace = true
 
 [dependencies]
 # [internal]
-treetime = { workspace = true }
+treetime = { workspace = true, features = ["clap"] }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
 treetime-utils = { workspace = true }

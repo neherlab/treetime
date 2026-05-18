@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::make_error;
-use clap::ValueEnum;
 use eyre::Report;
 use log::info;
 use ndarray::{Array1, Array2, array};
@@ -85,8 +84,9 @@ pub fn write_gtr_json(
 }
 
 #[derive(
-  Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, SmartDefault, Display, Serialize, Deserialize,
+  Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize,
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
@@ -97,7 +97,7 @@ pub enum GtrModelName {
   HKY85,
   T92,
   TN93,
-  #[value(name = "jtt92")]
+  #[cfg_attr(feature = "clap", value(name = "jtt92"))]
   Jtt92,
 }
 
