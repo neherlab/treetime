@@ -6,6 +6,7 @@ mod tests {
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_edge_key;
   use eyre::Report;
@@ -20,7 +21,7 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::seq;
-  use treetime_primitives::AsciiChar;
+  use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -282,6 +283,111 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
+    // Two independent polytomies: root has {I, D, E, F}, I has {A, B, C}.
+    // A,B share sub0 under I. D,E share sub1 under root.
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
+    let partition = helpers::make_partition_from_static(
+      &graph,
+      100,
+      &[
+        ("root", "I", vec![]),
+        ("I", "A", vec![sub_at(0)]),
+        ("I", "B", vec![sub_at(0)]),
+        ("I", "C", vec![sub_at(5)]),
+        ("root", "D", vec![sub_at(1)]),
+        ("root", "E", vec![sub_at(1)]),
+        ("root", "F", vec![sub_at(6)]),
+      ],
+    )?;
+    let partitions = vec![partition];
+
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    assert_eq!(merged, 2);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
+    // A,B share a sub. C,D share an indel. No overlap between groups.
+    // Both groups should merge (possibly in one round).
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let partition = helpers::make_partition_from_static(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub_at(0)]),
+        ("root", "B", vec![sub_at(0)]),
+        ("root", "C", vec![]),
+        ("root", "D", vec![]),
+        ("root", "E", vec![sub_at(5)]),
+      ],
+    )?;
+
+    let shared_indel = InDel::del((10, 13), Seq::try_from_str("GTA").unwrap());
+    {
+      let mut p = partition.write_arc();
+      let edge_c = find_edge_key(&graph, "root", "C").expect("edge root->C");
+      let edge_d = find_edge_key(&graph, "root", "D").expect("edge root->D");
+      p.edges.get_mut(&edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
+      p.edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
+    }
+
+    let partitions = vec![partition];
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    assert_eq!(merged, 2);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_merge_multi_partition_asymmetric_sharing() -> Result<(), Report> {
+    // Partition 1: A,B share sub at pos 0. Partition 2: A,C share sub at pos 50.
+    // Total shared(A,B) = 1 (from p1). Total shared(A,C) = 1 (from p2).
+    // Both groups have equal score. Greedy picks one.
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+
+    let p1 = helpers::make_partition_from_static(
+      &graph,
+      100,
+      &[
+        ("root", "A", vec![sub_at(0)]),
+        ("root", "B", vec![sub_at(0)]),
+        ("root", "C", vec![sub_at(5)]),
+        ("root", "D", vec![sub_at(6)]),
+      ],
+    )?;
+
+    let p2 = helpers::make_partition_from_static_indexed(
+      &graph,
+      1,
+      200,
+      &[
+        ("root", "A", vec![Sub::new(c(b'C'), 50_usize, c(b'G')).unwrap()]),
+        ("root", "B", vec![Sub::new(c(b'G'), 60_usize, c(b'T')).unwrap()]),
+        ("root", "C", vec![Sub::new(c(b'C'), 50_usize, c(b'G')).unwrap()]),
+        ("root", "D", vec![Sub::new(c(b'T'), 70_usize, c(b'A')).unwrap()]),
+      ],
+    )?;
+
+    let partitions = vec![p1, p2];
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    assert!(merged >= 1);
+    graph.build()?;
+
+    // A must be in exactly one merged group, not both.
+    let leaf_count = graph
+      .get_leaves()
+      .iter()
+      .filter(|n| n.read_arc().payload().read_arc().name().is_some())
+      .count();
+    assert_eq!(leaf_count, 4);
+
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -297,13 +403,8 @@ mod tests {
       let graph: GraphAncestral = nwk_read_str(&newick).unwrap();
 
       let mut pos_counter = 0_usize;
-      let shared: Vec<Sub> = (0..n_shared)
-        .map(|_| {
-          let s = sub_at(pos_counter);
-          pos_counter += 1;
-          s
-        })
-        .collect();
+      let shared: Vec<Sub> = (pos_counter..pos_counter + n_shared).map(sub_at).collect();
+      pos_counter += n_shared;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = Vec::new();
       for (i, name) in names.iter().enumerate() {
@@ -338,8 +439,17 @@ mod tests {
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
+      make_partition_from_static_indexed(graph, 0, length, edge_mutations)
+    }
+
+    pub fn make_partition_from_static_indexed(
+      graph: &GraphAncestral,
+      index: usize,
+      length: usize,
+      edge_mutations: &[(&str, &str, Vec<Sub>)],
+    ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
       let mut partition = PartitionMarginalSparse {
-        index: 0,
+        index,
         gtr: jc69(JC69Params::default())?,
         alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
         length,
@@ -348,7 +458,7 @@ mod tests {
         root_sequence: seq![],
       };
 
-      let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
+      let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
       for (_, _, subs) in edge_mutations {
         for s in subs {
           if s.pos() < length {

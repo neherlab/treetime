@@ -825,7 +825,7 @@ mod tests {
           let target = graph.get_node(edge.target())?;
           let name = target.read_arc().payload().read_arc().name.clone()?;
           let bl = edge.payload().read_arc().branch_length?;
-          Some((name.to_owned(), bl))
+          Some((name, bl))
         })
         .collect()
     }
