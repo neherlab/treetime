@@ -163,7 +163,7 @@ where
   let root_state = {
     let root = graph.get_exactly_one_root()?;
     let root_key = root.read_arc().key();
-    let root_profile = &partition.nodes[&root_key].profile.dis;
+    let root_profile = &partition.data.nodes[&root_key].profile.dis;
     let mut counts = Array1::zeros(n_states);
     for row in root_profile.rows() {
       if is_profile_informative(row, n_states) {
@@ -200,11 +200,11 @@ where
     let branch_length = fix_branch_length(length, edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
     let edge_key = edge_arc.key();
 
-    let edge_partition = &partition.edges[&edge_key];
+    let edge_partition = &partition.data.edges[&edge_key];
     let msg_to_child = &edge_partition.msg_to_child.dis;
     let msg_to_parent = &edge_partition.msg_to_parent.dis;
 
-    let exp_qt = partition.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
+    let exp_qt = partition.data.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
     let mut_stack = get_branch_mutation_matrix(msg_to_child, msg_to_parent, &exp_qt);
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }

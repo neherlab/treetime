@@ -4,8 +4,8 @@ use treetime_graph::reroot::RerootChanges;
 use crate::partition::marginal_passes;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionOptimizeOps,
-  PartitionRerootOps, PartitionTimetreeOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionMarginalPasses,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::partition::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
@@ -292,16 +292,11 @@ where
   }
 }
 
-impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
+impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalSparse
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn attach_sequences(&mut self, _graph: &Graph<N, E, ()>, _aln: &[FastaRecord]) -> Result<(), Report> {
-    // Sparse partitions get sequences attached during compression phase
-    Ok(())
-  }
-
   fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
     marginal_passes::process_node_backward(self, node)
   }
@@ -310,12 +305,25 @@ where
     marginal_passes::process_node_forward(self, graph, node)
   }
 
+  fn get_sequence_length(&self) -> usize {
+    self.length
+  }
+}
+
+impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  fn attach_sequences(&mut self, _graph: &Graph<N, E, ()>, _aln: &[FastaRecord]) -> Result<(), Report> {
+    Ok(())
+  }
+
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     if let Some(node_data) = self.nodes.get(&node_key) {
       if !node_data.seq.sequence.is_empty() {
         node_data.seq.sequence.clone()
       } else {
-        // Return empty seq to be filled later by the reconstruction algorithm
         seq![]
       }
     } else {
@@ -344,9 +352,5 @@ where
     self.nodes.insert(node.key, node_data);
 
     Some(seq)
-  }
-
-  fn get_sequence_length(&self) -> usize {
-    self.length
   }
 }

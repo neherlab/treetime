@@ -9,7 +9,7 @@ pub mod tests {
   use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
@@ -43,14 +43,7 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: input.gtr.clone(),
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length)))];
 
     let log_lh = initialize_marginal(&graph, &partitions, &input.alignment)?;
     Ok((log_lh, partitions))

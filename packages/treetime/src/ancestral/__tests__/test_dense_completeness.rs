@@ -11,7 +11,7 @@ mod tests {
   use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
@@ -35,14 +35,7 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length)));
 
     initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
     Ok((graph, partition))
@@ -79,7 +72,7 @@ NNGTACGTAC
     let p = partition.read_arc();
 
     // Find leaf A's node (has "NN" at positions 4-5)
-    let leaf_a = p.nodes.values().find(|n| n.seq.unknown.contains(&(4, 6)));
+    let leaf_a = p.data.nodes.values().find(|n| n.seq.unknown.contains(&(4, 6)));
     assert!(leaf_a.is_some(), "Leaf A should have unknown range (4,6)");
 
     let leaf_a = leaf_a.unwrap();
@@ -164,14 +157,7 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length)));
 
     initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
     Ok((graph, partition))
@@ -185,14 +171,14 @@ ACGTACGTAC
     // Alignment: A=ACGT--ACGT, B=ACGTACACGT, C=AC--ACGTAC, D=ACGTACGTAC
     // A has gap at (4,6), C has gap at (2,4). B and D have no gaps.
     // Indels should appear on edges connecting to A and C.
-    let total_indels: usize = p.edges.values().map(|e| e.indels.len()).sum();
+    let total_indels: usize = p.data.edges.values().map(|e| e.indels.len()).sum();
     assert!(
       total_indels >= 2,
       "Expected at least 2 indels (one for A's gap, one for C's gap), got {total_indels}"
     );
 
     // Verify indel directions exist (at least one deletion)
-    let has_deletion = p.edges.values().any(|e| e.indels.iter().any(|i| i.deletion));
+    let has_deletion = p.data.edges.values().any(|e| e.indels.iter().any(|i| i.deletion));
     assert!(
       has_deletion,
       "At least one deletion should be detected from gap-bearing leaves"

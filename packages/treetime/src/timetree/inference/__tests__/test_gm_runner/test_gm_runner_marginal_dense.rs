@@ -17,7 +17,7 @@ mod tests {
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
   use eyre::Report;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use rstest::rstest;
   use std::sync::Arc;
@@ -50,14 +50,12 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: ALPHABET.clone(),
-      length: case.sequence_length(),
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      ALPHABET.clone(),
+      case.sequence_length(),
+    )));
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
     initialize_marginal(&graph, &partitions, &aln)?;

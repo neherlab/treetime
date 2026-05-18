@@ -74,8 +74,8 @@ pub fn collapse_edge(
   }
   for partition in dense_partitions {
     let mut partition = partition.write_arc();
-    partition.nodes.remove(&target_node_key);
-    partition.edges.remove(&edge_key);
+    partition.data.nodes.remove(&target_node_key);
+    partition.data.edges.remove(&edge_key);
   }
 
   Ok(())

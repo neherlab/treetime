@@ -20,11 +20,11 @@ impl OptimizationContribution {
   /// Extracts the message data from the partition edge and computes the coefficient
   /// matrix using the dense optimization approach.
   pub fn from_dense(edge_key: GraphEdgeKey, partition: &PartitionMarginalDense) -> Self {
-    let edge_partition = &partition.edges[&edge_key];
+    let edge_partition = &partition.data.edges[&edge_key];
     let contribution = optimize_dense::get_coefficients(
       &edge_partition.msg_to_parent,
       &edge_partition.msg_to_child,
-      &partition.gtr,
+      &partition.data.gtr,
     );
     OptimizationContribution::Dense(contribution)
   }

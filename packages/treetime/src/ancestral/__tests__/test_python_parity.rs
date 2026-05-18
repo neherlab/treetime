@@ -12,7 +12,7 @@ mod tests {
   use crate::partition::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use maplit::btreemap;
+  
   use ndarray::array;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -70,14 +70,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
@@ -177,21 +170,14 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
     let partition = partitions[0].read_arc();
-    let ab_profile = &partition.nodes[&ab_key].profile.dis;
+    let ab_profile = &partition.data.nodes[&ab_key].profile.dis;
 
     // Position 0 is variable in Python (first variable position)
     // Python: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
@@ -225,21 +211,14 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
     let partition = partitions[0].read_arc();
-    let root_profile = &partition.nodes[&root_key].profile.dis;
+    let root_profile = &partition.data.nodes[&root_key].profile.dis;
 
     // Position 0 profile
     // Python: [0.28212327, 0.21643546, 0.13800802, 0.36343326]
@@ -269,20 +248,13 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
     let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let partition = partitions[0].read_arc();
-    let cd_profile = &partition.nodes[&cd_key].profile.dis;
+    let cd_profile = &partition.data.nodes[&cd_key].profile.dis;
 
     // Verify all positions are normalized and valid
     for (pos, row) in cd_profile.rows().into_iter().enumerate() {
@@ -314,20 +286,13 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
     let partition = partitions[0].read_arc();
 
-    for (key, node_data) in &partition.nodes {
+    for (key, node_data) in &partition.data.nodes {
       let profile = &node_data.profile.dis;
       for (pos, row) in profile.rows().into_iter().enumerate() {
         let sum: f64 = row.sum();
@@ -363,36 +328,20 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Create two partitions with different F81 models
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: gtr1,
-      alphabet: alphabet.clone(),
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length)));
 
-    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 1,
-      gtr: gtr2,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
     initialize_marginal(&graph, &partitions, &aln)?;
-
-    // Check root profiles differ between partitions
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
     let p1 = partition1.read_arc();
     let p2 = partition2.read_arc();
 
-    let root1 = &p1.nodes[&root_key].profile.dis;
-    let root2 = &p2.nodes[&root_key].profile.dis;
+    let root1 = &p1.data.nodes[&root_key].profile.dis;
+    let root2 = &p2.data.nodes[&root_key].profile.dis;
 
     // Position 0 profiles should differ due to different pi values
     // Python F81 (pi1): [0.28212327, 0.21643546, 0.13800802, 0.36343326]
@@ -436,23 +385,9 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: gtr1,
-      alphabet: alphabet.clone(),
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length)));
 
-    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 1,
-      gtr: gtr2,
-      alphabet,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
@@ -460,9 +395,8 @@ mod tests {
 
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
-    // Partition 1: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
     let p1 = partition1.read_arc();
-    let ab1 = &p1.nodes[&ab_key].profile.dis;
+    let ab1 = &p1.data.nodes[&ab_key].profile.dis;
     let pos0_ab1 = ab1.row(0);
 
     pretty_assert_ulps_eq!(pos0_ab1[0], 0.51275208, epsilon = 1e-6);
@@ -472,7 +406,7 @@ mod tests {
 
     // Partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
     let p2 = partition2.read_arc();
-    let ab2 = &p2.nodes[&ab_key].profile.dis;
+    let ab2 = &p2.data.nodes[&ab_key].profile.dis;
     let pos0_ab2 = ab2.row(0);
 
     pretty_assert_ulps_eq!(pos0_ab2[0], 0.52331521, epsilon = 1e-6);
@@ -506,14 +440,7 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Dense partition
-    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: gtr.clone(),
-      alphabet: alphabet.clone(),
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length)));
 
     let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?;
 

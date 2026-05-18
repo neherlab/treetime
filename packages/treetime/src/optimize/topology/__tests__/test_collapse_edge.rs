@@ -122,18 +122,11 @@ mod tests {
     let ri_key = find_edge_key(&graph, "root", "I").unwrap();
     let i_key = find_node_key_by_name(&graph, "I").unwrap();
 
-    let mut dense_partition = PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: 10,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
+    let mut dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 10);
 
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
-      dense_partition.nodes.insert(
+      dense_partition.data.nodes.insert(
         key,
         DenseNodePartition {
           seq: DenseSeqInfo::default(),
@@ -143,7 +136,7 @@ mod tests {
     }
     for edge in graph.get_edges() {
       let key = edge.read_arc().key();
-      dense_partition.edges.insert(key, DenseEdgePartition::default());
+      dense_partition.data.edges.insert(key, DenseEdgePartition::default());
     }
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
@@ -153,8 +146,8 @@ mod tests {
     graph.build()?;
 
     let d = dense[0].read_arc();
-    assert!(!d.nodes.contains_key(&i_key), "removed node should be cleaned up");
-    assert!(!d.edges.contains_key(&ri_key), "removed edge should be cleaned up");
+    assert!(!d.data.nodes.contains_key(&i_key), "removed node should be cleaned up");
+    assert!(!d.data.edges.contains_key(&ri_key), "removed edge should be cleaned up");
 
     Ok(())
   }

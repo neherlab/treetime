@@ -10,7 +10,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
@@ -49,10 +49,10 @@ mod tests {
     let edge_key = graph.get_edges()[0].read_arc().key();
     {
       let partition = partitions[0].write_arc();
-      let edge_data = partition.edges[&edge_key].clone();
+      let edge_data = partition.data.edges[&edge_key].clone();
       drop(partition);
       let mut partition = partitions[0].write_arc();
-      let edge_entry = partition.edges.entry(edge_key).or_insert(edge_data);
+      let edge_entry = partition.data.edges.entry(edge_key).or_insert(edge_data);
       edge_entry.indels.push(InDel {
         range: (4, 7),
         seq: Seq::default(),
@@ -105,14 +105,7 @@ mod tests {
       )?;
       let graph: GraphAncestral = nwk_read_str(newick)?;
 
-      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        length: get_common_length(&aln)?,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }))];
+      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?)))];
 
       initialize_marginal(&graph, &partitions, &aln)?;
       update_marginal(&graph, &partitions)?;

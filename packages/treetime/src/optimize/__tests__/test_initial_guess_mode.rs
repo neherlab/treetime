@@ -15,7 +15,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
@@ -261,7 +261,7 @@ mod tests {
       let edge_key = graph.get_edges()[0].read_arc().key();
       for partition in partitions {
         let mut partition = partition.write_arc();
-        partition.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)];
+        partition.data.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)];
       }
       Ok(())
     }
@@ -273,14 +273,7 @@ mod tests {
       let aln = test_alignment()?;
       let graph: GraphAncestral = nwk_read_str(newick)?;
 
-      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet,
-        length: get_common_length(&aln)?,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }))];
+      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?)))];
 
       initialize_marginal(&graph, &partitions, &aln)?;
       update_marginal(&graph, &partitions)?;

@@ -101,7 +101,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     write_gtr_json(&partition.read_arc().gtr, *model_name, outdir, None)?;
   }
   for partition in &dense_partitions {
-    write_gtr_json(&partition.read_arc().gtr, *model_name, outdir, None)?;
+    write_gtr_json(&partition.read_arc().data.gtr, *model_name, outdir, None)?;
   }
 
   apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess, *no_indels)?;

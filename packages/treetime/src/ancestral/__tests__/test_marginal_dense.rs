@@ -11,7 +11,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use ndarray::prelude::*;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -81,14 +81,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)))];
 
     let log_lh = initialize_marginal(graph, &partitions, aln)?;
     Ok((log_lh, partitions))
@@ -216,14 +209,14 @@ mod tests {
     let max_ulps = 4;
 
     // Node profiles: marginal posterior P(s|data) at each position
-    for node_data in partition.nodes.values() {
+    for node_data in partition.data.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         assert_dense_rows_normalized(&node_data.profile.dis, max_ulps);
       }
     }
 
     // Edge messages: outgroup message from parent toward child subtree
-    for edge_data in partition.edges.values() {
+    for edge_data in partition.data.edges.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
       }

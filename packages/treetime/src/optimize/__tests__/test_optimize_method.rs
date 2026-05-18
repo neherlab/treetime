@@ -977,7 +977,7 @@ mod tests {
         .collect();
 
       for p in &dense_partitions {
-        p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+        p.write_arc().data.edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();
       }
       for p in &sparse_partitions {
         p.write_arc().edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();

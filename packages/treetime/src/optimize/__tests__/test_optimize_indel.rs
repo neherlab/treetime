@@ -23,7 +23,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use maplit::btreemap;
+  
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -43,7 +43,7 @@ mod tests {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     for partition in dense_partitions {
       let mut p = partition.write_arc();
-      p.edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
+      p.data.edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
     }
     for partition in sparse_partitions {
       let mut p = partition.write_arc();
@@ -76,14 +76,7 @@ mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: alphabet_dense,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(&aln)?)))];
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(

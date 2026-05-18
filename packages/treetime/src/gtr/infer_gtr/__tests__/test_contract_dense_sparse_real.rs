@@ -44,7 +44,7 @@ mod tests {
   use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
-  use maplit::btreemap;
+  
   use ndarray::{Array1, Array2};
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -121,17 +121,10 @@ mod tests {
 
     let dense = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-        index: 0,
-        gtr: jc69(JC69Params {
+      let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
           ..JC69Params::default()
-        })?,
-        alphabet: DENSE_NUC_ALPHABET.clone(),
-        length: get_common_length(&aln)?,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }));
+        })?, DENSE_NUC_ALPHABET.clone(), get_common_length(&aln)?)));
       initialize_marginal(&graph, from_ref(&partition), &aln)?;
       infer_gtr_dense(&partition, &graph)?
     };

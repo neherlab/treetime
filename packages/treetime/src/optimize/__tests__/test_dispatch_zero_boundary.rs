@@ -20,7 +20,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -68,14 +68,7 @@ mod tests {
   > {
     let aln = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: get_gtr_by_name(model)?,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, get_gtr_by_name(model)?, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?)))];
 
     let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
@@ -173,7 +166,7 @@ mod tests {
     // the pre-dispatch shortcut is bypassed and the post-dispatch
     // reconciliation is exercised.
     assert!(
-      !dense_partitions[0].read_arc().gtr.unimodal_branch_likelihood,
+      !dense_partitions[0].read_arc().data.gtr.unimodal_branch_likelihood,
       "precondition: {model:?} must be classified as non-unimodal"
     );
 
@@ -207,7 +200,7 @@ mod tests {
     let (dense_partitions, _, mixed_partitions) = setup_identical_partitions(&graph, GtrModelName::JC69)?;
 
     assert!(
-      dense_partitions[0].read_arc().gtr.unimodal_branch_likelihood,
+      dense_partitions[0].read_arc().data.gtr.unimodal_branch_likelihood,
       "precondition: JC69 must be classified as unimodal"
     );
 

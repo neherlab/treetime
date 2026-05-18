@@ -17,7 +17,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use rstest::rstest;
   use serde::Deserialize;
@@ -135,14 +135,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)));
 
     initialize_marginal(&graph, from_ref(&partition), aln)?;
     Ok((graph, partition))
@@ -163,14 +156,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet: NUC_ALPHABET.clone(),
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?)));
 
     initialize_marginal(&graph, from_ref(&partition), &aln)?;
     Ok((graph, partition))

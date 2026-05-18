@@ -15,7 +15,7 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -91,14 +91,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)));
     let partitions = [Arc::clone(&partition)];
 
     let log_lh = initialize_marginal(graph, &partitions, aln)?;
@@ -198,7 +191,7 @@ mod tests {
     let sparse = sparse_partition.read_arc();
 
     for node_key in [root_key, ab_key] {
-      let dense_node = &dense.nodes[&node_key];
+      let dense_node = &dense.data.nodes[&node_key];
       let sparse_node = &sparse.nodes[&node_key];
 
       for (&pos, var_pos) in &sparse_node.profile.variable {
@@ -271,7 +264,7 @@ mod tests {
     let dense = dense_partition.read_arc();
     let sparse = sparse_partition.read_arc();
 
-    for node_data in dense.nodes.values() {
+    for node_data in dense.data.nodes.values() {
       if !node_data.profile.dis.is_empty() {
         for row in node_data.profile.dis.rows() {
           let sum: f64 = row.sum();
@@ -446,21 +439,14 @@ mod tests {
       &alphabet,
     )?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)));
     let partitions = [Arc::clone(&partition)];
 
     initialize_marginal(&graph, &partitions, &aln)?;
 
     // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();
-    for (node_key, node_data) in &partition.nodes {
+    for (node_key, node_data) in &partition.data.nodes {
       if node_data.profile.dis.is_empty() {
         continue;
       }

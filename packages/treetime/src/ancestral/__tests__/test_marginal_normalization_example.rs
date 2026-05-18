@@ -94,7 +94,7 @@ ACGTACGC
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
     let partition = partitions[0].read_arc();
-    for node_data in partition.nodes.values() {
+    for node_data in partition.data.nodes.values() {
       if node_data.profile.dis.is_empty() {
         continue;
       }
@@ -107,7 +107,7 @@ ACGTACGC
         }
       }
     }
-    for edge_data in partition.edges.values() {
+    for edge_data in partition.data.edges.values() {
       if edge_data.msg_to_child.dis.is_empty() {
         continue;
       }

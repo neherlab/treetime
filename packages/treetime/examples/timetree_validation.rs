@@ -1,7 +1,6 @@
 use clap::Parser;
 use ctor::ctor;
 use eyre::Report;
-use maplit::btreemap;
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -345,14 +344,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   let alphabet = Alphabet::default();
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
-  let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense {
-    index: 0,
-    gtr: jc69(JC69Params::default())?,
-    alphabet,
-    length: config.sequence_length,
-    nodes: btreemap! {},
-    edges: btreemap! {},
-  }));
+  let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, config.sequence_length)));
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
 

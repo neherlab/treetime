@@ -450,14 +450,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: nuc,
-      length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &dense_partitions, &aln)?;
     update_marginal(&graph, &dense_partitions)?;

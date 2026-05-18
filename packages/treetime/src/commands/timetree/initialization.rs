@@ -106,7 +106,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 
-    write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.data.gtr, model_name, &args.outdir, None)?;
 
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
@@ -117,7 +117,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
 
-    write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.data.gtr, model_name, &args.outdir, None)?;
 
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));

@@ -15,7 +15,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
-  use maplit::btreemap;
+  
   use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
   use std::slice::from_ref;
@@ -39,14 +39,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }));
+    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)));
 
     initialize_marginal(&graph, from_ref(&partition), aln)?;
     Ok((graph, partition))

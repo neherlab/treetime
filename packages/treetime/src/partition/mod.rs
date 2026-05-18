@@ -7,6 +7,7 @@ pub mod discrete_states;
 pub mod fitch;
 pub mod fitch_config;
 pub mod likelihood;
+pub mod marginal_core;
 pub mod marginal_dense;
 pub(crate) mod marginal_helpers;
 mod marginal_passes;

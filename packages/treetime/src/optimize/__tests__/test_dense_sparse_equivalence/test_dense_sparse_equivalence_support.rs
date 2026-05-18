@@ -23,7 +23,7 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::edge::HasBranchLength;
@@ -54,14 +54,7 @@ pub mod tests {
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?)))];
 
     initialize_marginal(graph, &partitions, aln)?;
 

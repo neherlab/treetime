@@ -13,7 +13,7 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -53,14 +53,7 @@ pub mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: alphabet_dense,
-      length: get_common_length(aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    }))];
+    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(aln)?)))];
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
