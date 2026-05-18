@@ -14,6 +14,7 @@ use crate::representation::payload::sparse::{
 use crate::seq::composition::Composition;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use log::debug;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -25,7 +26,9 @@ use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
-use treetime_utils::interval::range_intersection::range_intersection_iter;
+use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
+use treetime_utils::interval::range_union::range_union_iter;
 use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub(crate) fn attach_seqs_to_graph<N, E, P>(
@@ -109,11 +112,15 @@ where
       .map(|(child, edge)| (&partition.node(child).seq, partition.edge(edge)))
       .collect_vec();
 
-    // determine parts of the sequence that are unknown, gaps in all children
-    let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
-    let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
-    // non_char are ranges that are either unknown or gaps in all children (can differ from the union of gaps and unknown)
+    // A position is non_char in the parent when ALL children lack data (gap or unknown).
     let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
+    // Among non_char positions, gap beats unknown: if at least one child has a gap there
+    // (and the rest are also non_char), we only have evidence for gap and treat these ranges as gaps.
+    // whatever is left in the non_char collection after removing the gaps is unknown.
+    let gap_union = range_union_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
+    let mut gaps = range_intersection(&[non_char.clone(), gap_union]);
+    // Unknown: all children non_char but no child has a gap there.
+    let unknown = range_difference(&non_char, &gaps);
 
     let mut sequence = seq![FILL_CHAR; partition.length()];
     for r in &non_char {
@@ -128,9 +135,10 @@ where
 
     // Resolve variable indels from child gap disagreements
     let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
+    let child_unknown_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.unknown.clone()).collect_vec();
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
-    let indels_bw = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
+    let indels_bw = resolve_indels_backward(gaps.clone(), &child_gaps_vec, &child_unknown_vec, &child_variable_indels, partition.length());
 
     let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {
@@ -193,7 +201,7 @@ where
     let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
 
     let mut node_data = partition.nodes_mut().remove(&node.key).unwrap();
-
+    debug!("Running fitch forward on node {:?} (root={:?}, leaf={:?})", node.key, node.is_root, node.is_leaf);
     if node.is_root {
       let seq = &mut node_data.seq;
       resolve_root_forward(
@@ -202,6 +210,7 @@ where
         &seq.fitch.variable,
         &seq.fitch.variable_indel,
         &mut seq.fitch.chosen_state,
+        alphabet,
       );
     } else {
       let (parent_key, edge_key) =
@@ -231,6 +240,7 @@ where
       let indels = resolve_indels_forward(
         &seq.fitch.variable_indel,
         &mut seq.gaps,
+        &seq.non_char,
         &parent.gaps,
         &parent.sequence,
         &seq.sequence,

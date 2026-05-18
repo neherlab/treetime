@@ -25,8 +25,9 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
-use treetime_utils::interval::range_union::range_union;
+use treetime_utils::interval::range_union::{range_union, range_union_iter};
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDense {
@@ -245,15 +246,18 @@ where
         .iter()
         .map(|(child_key, _)| self.nodes[child_key].seq.gaps.clone())
         .collect_vec();
-      let mut gaps = range_intersection(&child_gaps);
+      let child_unknown: Vec<Vec<(usize, usize)>> = node
+        .child_keys
+        .iter()
+        .map(|(child_key, _)| self.nodes[child_key].seq.unknown.clone())
+        .collect_vec();
+      let child_variable_indels: Vec<&BTreeMap<(usize, usize), _>> = node
+        .child_keys
+        .iter()
+        .map(|(child_key, _)| &self.nodes[child_key].seq.variable_indel)
+        .collect_vec();
 
-      let unknown = range_intersection_iter(
-        node
-          .child_keys
-          .iter()
-          .map(|(child_key, _)| &self.nodes[child_key].seq.unknown),
-      )
-      .collect_vec();
+      // Mirror the sparse fitch backward: gap beats unknown.
       let non_char = range_intersection_iter(
         node
           .child_keys
@@ -261,14 +265,12 @@ where
           .map(|(child_key, _)| &self.nodes[child_key].seq.non_char),
       )
       .collect_vec();
+      let gap_union = range_union_iter(child_gaps.iter()).collect_vec();
+      let consensus_gaps = range_intersection(&[non_char.clone(), gap_union]);
+      let unknown = range_difference(&non_char, &consensus_gaps);
 
-      let child_variable_indels: Vec<&BTreeMap<(usize, usize), _>> = node
-        .child_keys
-        .iter()
-        .map(|(child_key, _)| &self.nodes[child_key].seq.variable_indel)
-        .collect_vec();
-
-      let indels_bw = resolve_indels_backward(&child_gaps, &child_variable_indels, length);
+      let indels_bw = resolve_indels_backward(consensus_gaps.clone(), &child_gaps, &child_unknown, &child_variable_indels, length);
+      let mut gaps = consensus_gaps;
       gaps.extend(indels_bw.resolved_gaps);
       let variable_indel = indels_bw.variable_indel;
 
@@ -391,9 +393,11 @@ where
       let node_gaps = &mut node_data.seq.gaps;
       let node_sequence = &node_data.seq.sequence;
 
+      let node_non_char = node_data.seq.non_char.clone();
       let indels = resolve_indels_forward(
         &variable_indel,
         node_gaps,
+        &node_non_char,
         &parent_gaps,
         &parent_sequence,
         node_sequence,

@@ -1,3 +1,4 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use treetime_primitives::Seq;
@@ -22,6 +23,12 @@ impl InDel {
     let seq = seq.into();
     assert!(range.0 <= range.1);
     assert_eq!(seq.len(), range.1 - range.0);
+    debug!(
+      "InDel::new: kind={}, range={:?}, seq={}",
+      if deletion { "del" } else { "ins" },
+      range,
+      seq.as_str(),
+    );
     Self { range, seq, deletion }
   }
 
