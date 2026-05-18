@@ -1,5 +1,5 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
-use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::partition::payload::sparse::SparseNodePartition;

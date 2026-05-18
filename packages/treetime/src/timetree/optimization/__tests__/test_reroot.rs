@@ -8,7 +8,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
-  use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
+  use treetime_graph::reroot::RerootChanges;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::timetree::GraphTimetree;

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+  use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
   use crate::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{

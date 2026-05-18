@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
-use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
+use treetime_graph::reroot::RerootChanges;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;

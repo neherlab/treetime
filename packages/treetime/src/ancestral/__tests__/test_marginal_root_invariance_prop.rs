@@ -59,7 +59,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::partition::algo::topology_cleanup::reroot::{apply_reroot_topology, remove_node_if_trivial};
+    use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial};
     use crate::partition::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use itertools::Itertools;

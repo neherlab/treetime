@@ -1,5 +1,5 @@
-use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::algo::topology_cleanup::reroot::remove_node_if_trivial;
+use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
+use treetime_graph::reroot::remove_node_if_trivial;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::partition::payload::timetree::EdgeTimetree;

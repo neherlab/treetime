@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
+use treetime_graph::reroot::RerootChanges;
 use crate::partition::marginal_passes;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{

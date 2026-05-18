@@ -2,7 +2,7 @@ use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::partition::algo::topology_cleanup::reroot::{
+use treetime_graph::reroot::{
   self as topology_reroot, remove_node_if_trivial, split_edge,
 };
 use crate::partition::payload::clock_set::ClockSet;

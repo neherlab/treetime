@@ -12,4 +12,5 @@ pub mod method_newton;
 pub mod params;
 pub mod run_loop;
 pub mod sparse_eval;
+pub mod topology;
 pub mod zero_boundary;

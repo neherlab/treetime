@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::algo::topology_cleanup::reroot::{
+  use treetime_graph::reroot::{
     apply_reroot_topology, remove_node_if_trivial, split_edge,
   };
   use crate::partition::payload::ancestral::GraphAncestral;

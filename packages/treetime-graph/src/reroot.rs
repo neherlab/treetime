@@ -1,8 +1,8 @@
 use eyre::Report;
 use serde::{Deserialize, Serialize};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength, invert_edge};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength, invert_edge};
+use crate::graph::Graph;
+use crate::node::{GraphNode, GraphNodeKey};
 
 /// Information about an edge split during reroot.
 #[derive(Clone, Debug, Serialize, Deserialize)]

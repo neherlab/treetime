@@ -8,7 +8,7 @@ mod tests {
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
+  use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;

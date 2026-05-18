@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::algo::topology_cleanup::collapse::collapse_edge;
+  use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal_dense::PartitionMarginalDense;
 
   use crate::partition::marginal_sparse::PartitionMarginalSparse;

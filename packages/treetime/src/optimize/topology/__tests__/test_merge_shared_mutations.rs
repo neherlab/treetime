@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
+  use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 
   use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
