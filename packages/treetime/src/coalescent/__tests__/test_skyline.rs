@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::commands::timetree::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::representation::partition::timetree::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;

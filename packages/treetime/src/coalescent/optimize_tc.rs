@@ -1,10 +1,8 @@
-use crate::commands::timetree::coalescent::edge_data::{
-  CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost,
-};
-use crate::commands::timetree::coalescent::events::collect_tree_events;
-use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
-use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
+use crate::coalescent::events::collect_tree_events;
+use crate::coalescent::integration::compute_integral_merger_rate;
+use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::make_report;
 use crate::representation::payload::traits::TimetreeNode;
 use argmin::core::observers::{Observe, ObserverMode};

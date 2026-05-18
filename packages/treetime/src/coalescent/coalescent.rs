@@ -1,7 +1,7 @@
-use crate::commands::timetree::coalescent::contributions::compute_node_contributions;
-use crate::commands::timetree::coalescent::events::collect_tree_events;
-use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
-use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::contributions::compute_node_contributions;
+use crate::coalescent::events::collect_tree_events;
+use crate::coalescent::integration::compute_integral_merger_rate;
+use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::representation::payload::traits::TimetreeNode;
 use eyre::Report;
 use indexmap::IndexMap;

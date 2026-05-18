@@ -1,4 +1,4 @@
-use crate::commands::timetree::coalescent::time_coordinate::CalendarTime;
+use crate::coalescent::time_coordinate::CalendarTime;
 use crate::representation::payload::traits::TimetreeNode;
 use eyre::Report;
 use ordered_float::OrderedFloat;

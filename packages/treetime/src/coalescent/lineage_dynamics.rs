@@ -1,5 +1,5 @@
-use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::commands::timetree::coalescent::time_coordinate::Tbp;
+use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::coalescent::time_coordinate::Tbp;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;

@@ -1,4 +1,4 @@
-use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
+use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::partition::traits::graph_log_lh;

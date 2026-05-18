@@ -1,5 +1,5 @@
-use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
+use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use eyre::Report;
 use ndarray::Array1;
 use treetime_distribution::Distribution;

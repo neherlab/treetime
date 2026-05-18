@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
-  use crate::commands::timetree::coalescent::time_coordinate::{CalendarTime, Tbp};
+  use crate::coalescent::coalescent::compute_coalescent_contributions;
+  use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
   use crate::o;
   use crate::representation::partition::timetree::GraphTimetree;
   use eyre::{Report, WrapErr};
@@ -107,10 +107,7 @@ mod tests {
     Ok(())
   }
 
-  const FIXTURES_DIR: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/src/commands/timetree/coalescent/__tests__/__fixtures__"
-  );
+  const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/coalescent/__tests__/__fixtures__");
 
   #[derive(Debug, Deserialize)]
   struct Snapshot {

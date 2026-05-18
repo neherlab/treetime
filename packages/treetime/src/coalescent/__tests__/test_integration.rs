@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
-  use crate::commands::timetree::coalescent::integration::compute_merger_rates;
-  use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+  use crate::coalescent::integration::compute_integral_merger_rate;
+  use crate::coalescent::integration::compute_merger_rates;
+  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;

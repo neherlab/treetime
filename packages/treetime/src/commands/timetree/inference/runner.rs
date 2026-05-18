@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
+use crate::coalescent::coalescent::compute_coalescent_contributions;
 use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::commands::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;

@@ -1,6 +1,7 @@
 pub mod alphabet;
 pub mod ancestral;
 pub mod clock;
+pub mod coalescent;
 pub mod commands;
 pub mod constants;
 pub mod graph;

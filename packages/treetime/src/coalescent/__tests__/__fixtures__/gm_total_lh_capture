@@ -2,7 +2,7 @@
 """Capture v0 merger_model.total_LH() reference values for golden master tests.
 
 Procedure:
-  ./dev/docker/python python packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_total_lh_capture
+  ./dev/docker/python python packages/treetime/src/coalescent/__tests__/__fixtures__/gm_total_lh_capture
 
 Two test trees:
   1. Binary tree: all nodes have 0 or 2 children. All multiplicity

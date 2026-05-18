@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-  use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-  use crate::commands::timetree::coalescent::time_coordinate::Tbp;
+  use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+  use crate::coalescent::time_coordinate::Tbp;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;

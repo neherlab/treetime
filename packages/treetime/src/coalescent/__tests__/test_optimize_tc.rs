@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::helpers::setup_graph;
-  use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
+  use crate::coalescent::optimize_tc::optimize_tc;
   use eyre::Report;
   use rstest::rstest;
 

@@ -1,8 +1,8 @@
-use crate::commands::timetree::coalescent::events::collect_tree_events;
-use crate::commands::timetree::coalescent::integration::compute_integral_merger_rate;
-use crate::commands::timetree::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::commands::timetree::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
+use crate::coalescent::events::collect_tree_events;
+use crate::coalescent::integration::compute_integral_merger_rate;
+use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::representation::payload::traits::TimetreeNode;
 use crate::{make_error, make_report};
 use argmin::core::{CostFunction, Error, Executor};

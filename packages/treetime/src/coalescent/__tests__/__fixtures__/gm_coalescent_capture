@@ -24,13 +24,13 @@ Data generation steps (reproducible per dataset):
 
 3. Copy output files to __fixtures__/:
    cp tmp/coalescent_capture/$slug/rerooted.newick \
-      packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_tree.nwk
+      packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_tree.nwk
    cut -f1,3 tmp/coalescent_capture/$slug/timetree/dates.tsv \
       | sed 's/#node/name/' \
-      > packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_dates.tsv
+      > packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_${slug}_dates.tsv
 
 4. Run this script:
-   ./dev/docker/python python packages/treetime/src/commands/timetree/coalescent/__tests__/__fixtures__/gm_coalescent_capture
+   ./dev/docker/python python packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_capture
 
 Input data (per dataset):
     - gm_coalescent_${slug}_tree.nwk: Rerooted tree file

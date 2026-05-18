@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use super::super::helpers::setup_graph;
-  use crate::commands::timetree::coalescent::optimize_tc::optimize_tc;
-  use crate::commands::timetree::coalescent::total_lh::compute_coalescent_total_lh;
+  use crate::coalescent::optimize_tc::optimize_tc;
+  use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;

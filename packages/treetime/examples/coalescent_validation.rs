@@ -13,7 +13,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::LazyLock;
 use treetime::clock::date_constraints::load_date_constraints;
-use treetime::commands::timetree::coalescent::coalescent::compute_coalescent_contributions;
+use treetime::coalescent::coalescent::compute_coalescent_contributions;
 use treetime::o;
 use treetime::representation::partition::timetree::GraphTimetree;
 use treetime_distribution::Distribution;
@@ -719,10 +719,7 @@ fn write_statistics_to_file(path: &str, results: &[TestResult]) -> Result<(), Re
   Ok(())
 }
 
-const SNAPSHOTS_DIR: &str = concat!(
-  env!("CARGO_MANIFEST_DIR"),
-  "/src/commands/timetree/coalescent/__tests__/__fixtures__"
-);
+const SNAPSHOTS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/coalescent/__tests__/__fixtures__");
 
 static COALESCENT_POSSIBLE_VIRUS_PATHS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
   let snapshots_dir = Path::new(SNAPSHOTS_DIR);

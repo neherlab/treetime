@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
+  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
   use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 
