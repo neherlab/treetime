@@ -1,9 +1,9 @@
-use treetime::clock::clock_model::ClockModel;
-use treetime::clock::rtt::ClockRegressionResult;
 use eyre::Report;
 use plotters::coord::Shift;
 use plotters::coord::types::RangedCoordf32;
 use plotters::prelude::*;
+use treetime::clock::clock_model::ClockModel;
+use treetime::clock::rtt::ClockRegressionResult;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 use crate::cli::rtt_chart::{PointsResult, gather_points};

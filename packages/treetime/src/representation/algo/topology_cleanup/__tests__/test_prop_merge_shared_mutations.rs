@@ -476,8 +476,8 @@ mod tests {
       }
 
       for (source, target, subs) in edge_mutations {
-        let edge_key = find_edge_key(graph, source, target)
-          .unwrap_or_else(|| panic!("edge {source}->{target} not found"));
+        let edge_key =
+          find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));
         partition
           .edges
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));

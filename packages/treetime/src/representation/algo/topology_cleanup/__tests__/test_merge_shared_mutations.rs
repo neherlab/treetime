@@ -4,10 +4,10 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
 
+  use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::representation::payload::ancestral::GraphAncestral;
   use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -691,17 +691,28 @@ mod tests {
       &graph,
       100,
       &[
-        ("root", "A", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')]),
+        (
+          "root",
+          "A",
+          vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C'), sub(b'T', 10, b'A')],
+        ),
         ("root", "B", vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]),
         ("root", "C", vec![sub(b'T', 20, b'A')]),
       ],
     )?;
 
-    let p2 = helpers::make_second_partition(&graph, 200, &[
-      (("root", "A"), vec![sub(b'C', 50, b'G'), sub(b'G', 60, b'T'), sub(b'T', 70, b'A')]),
-      (("root", "B"), vec![sub(b'C', 50, b'G')]),
-      (("root", "C"), vec![]),
-    ])?;
+    let p2 = helpers::make_second_partition(
+      &graph,
+      200,
+      &[
+        (
+          ("root", "A"),
+          vec![sub(b'C', 50, b'G'), sub(b'G', 60, b'T'), sub(b'T', 70, b'A')],
+        ),
+        (("root", "B"), vec![sub(b'C', 50, b'G')]),
+        (("root", "C"), vec![]),
+      ],
+    )?;
 
     let partitions = vec![p1, p2];
     merge_shared_mutation_branches(&mut graph, &partitions)?;
@@ -752,7 +763,11 @@ mod tests {
     let partition = make_partition(
       &graph,
       100,
-      &[("root", "A", vec![]), ("root", "B", vec![]), ("root", "C", vec![sub(b'T', 20, b'A')])],
+      &[
+        ("root", "A", vec![]),
+        ("root", "B", vec![]),
+        ("root", "C", vec![sub(b'T', 20, b'A')]),
+      ],
     )?;
 
     let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap());
@@ -799,9 +814,9 @@ mod tests {
     graph.build()?;
 
     let edge_data = helpers::extract_edge_mutation_counts(&graph, &partitions[0]);
-    assert_eq!(edge_data[&None],       (1, 1), "parent edge: 1 shared sub, 1 shared indel");
-    assert_eq!(edge_data[&Some("A")],  (1, 0), "A: 1 unique sub, no indels");
-    assert_eq!(edge_data[&Some("B")],  (0, 0), "B: no remaining mutations");
+    assert_eq!(edge_data[&None], (1, 1), "parent edge: 1 shared sub, 1 shared indel");
+    assert_eq!(edge_data[&Some("A")], (1, 0), "A: 1 unique sub, no indels");
+    assert_eq!(edge_data[&Some("B")], (0, 0), "B: no remaining mutations");
 
     Ok(())
   }
@@ -861,9 +876,7 @@ mod tests {
       n_unique_b: usize,
     ) -> Vec<(&'a str, &'a str, Vec<Sub>)> {
       let nucs = [b'A', b'C', b'G', b'T'];
-      let shared: Vec<Sub> = (0..n_shared)
-        .map(|i| sub(nucs[i % 4], i, nucs[(i + 1) % 4]))
-        .collect();
+      let shared: Vec<Sub> = (0..n_shared).map(|i| sub(nucs[i % 4], i, nucs[(i + 1) % 4])).collect();
 
       let mut subs_a = shared.clone();
       for i in 0..n_unique_a {
@@ -920,8 +933,8 @@ mod tests {
       }
 
       for ((source, target), subs) in edge_subs {
-        let edge_key = find_edge_key(graph, source, target)
-          .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
+        let edge_key =
+          find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
         partition
           .edges
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));

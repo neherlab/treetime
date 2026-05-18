@@ -218,13 +218,17 @@ mod tests {
   fn test_fitch_sub_root_forward_resolves_variable() {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
     let mut gaps = vec![];
-    let variable = btreemap! { 0usize => stateset! {b'A', b'G'} };
+    let variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
     let variable_indel = BTreeMap::new();
     let mut chosen_state = BTreeMap::new();
 
     resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
 
-    assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'), "get_one picks alphabetically first");
+    assert_eq!(
+      sequence[0],
+      AsciiChar::from_byte_unchecked(b'A'),
+      "get_one picks alphabetically first"
+    );
     assert_eq!(chosen_state[&0], AsciiChar::from_byte_unchecked(b'A'));
   }
 
@@ -233,7 +237,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("ACGT").unwrap();
     let mut gaps = vec![];
     let variable = BTreeMap::new();
-    let variable_indel = btreemap! { (1usize, 3usize) => Deletion { deleted: 3, present: 1 } };
+    let variable_indel = btreemap! { (1_usize, 3_usize) => Deletion { deleted: 3, present: 1 } };
     let mut chosen_state = BTreeMap::new();
 
     resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
@@ -246,7 +250,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("ACGT").unwrap();
     let mut gaps = vec![];
     let variable = BTreeMap::new();
-    let variable_indel = btreemap! { (1usize, 3usize) => Deletion { deleted: 1, present: 3 } };
+    let variable_indel = btreemap! { (1_usize, 3_usize) => Deletion { deleted: 1, present: 3 } };
     let mut chosen_state = BTreeMap::new();
 
     resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
@@ -259,14 +263,21 @@ mod tests {
   #[test]
   fn test_fitch_sub_nonroot_forward_parent_in_child_set() -> Result<(), Report> {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
-    let mut variable = btreemap! { 0usize => stateset! {b'A', b'G'} };
+    let mut variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
     let mut chosen_state = BTreeMap::new();
     let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
 
     let parent = make_seq_info("ACGT");
 
-    let subs =
-      resolve_nonroot_substitutions_forward(&mut sequence, &[], &mut variable, &mut chosen_state, &mut composition, &parent, &NUC_ALPHABET)?;
+    let subs = resolve_nonroot_substitutions_forward(
+      &mut sequence,
+      &[],
+      &mut variable,
+      &mut chosen_state,
+      &mut composition,
+      &parent,
+      &NUC_ALPHABET,
+    )?;
 
     assert!(subs.is_empty(), "Parent state A is in child set, no substitution");
     assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
@@ -277,14 +288,21 @@ mod tests {
   #[test]
   fn test_fitch_sub_nonroot_forward_parent_not_in_child_set() -> Result<(), Report> {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
-    let mut variable = btreemap! { 0usize => stateset! {b'C', b'G'} };
+    let mut variable = btreemap! { 0_usize => stateset! {b'C', b'G'} };
     let mut chosen_state = BTreeMap::new();
     let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
 
     let parent = make_seq_info("ACGT");
 
-    let subs =
-      resolve_nonroot_substitutions_forward(&mut sequence, &[], &mut variable, &mut chosen_state, &mut composition, &parent, &NUC_ALPHABET)?;
+    let subs = resolve_nonroot_substitutions_forward(
+      &mut sequence,
+      &[],
+      &mut variable,
+      &mut chosen_state,
+      &mut composition,
+      &parent,
+      &NUC_ALPHABET,
+    )?;
 
     assert_eq!(subs.len(), 1);
     assert_eq!(subs[0].to_string(), "A1C");
@@ -302,8 +320,15 @@ mod tests {
     let mut parent = make_seq_info("ACGT");
     parent.fitch.variable.insert(0, stateset! {b'A', b'G'});
 
-    let subs =
-      resolve_nonroot_substitutions_forward(&mut sequence, &[], &mut variable, &mut chosen_state, &mut composition, &parent, &NUC_ALPHABET)?;
+    let subs = resolve_nonroot_substitutions_forward(
+      &mut sequence,
+      &[],
+      &mut variable,
+      &mut chosen_state,
+      &mut composition,
+      &parent,
+      &NUC_ALPHABET,
+    )?;
 
     assert_eq!(subs.len(), 1);
     assert_eq!(subs[0].to_string(), "A1G");
@@ -313,15 +338,22 @@ mod tests {
   #[test]
   fn test_fitch_sub_nonroot_forward_subs_sorted_by_position() -> Result<(), Report> {
     let mut sequence = Seq::try_from_str("GCGA").unwrap();
-    let mut variable = btreemap! { 3usize => stateset! {b'A'} };
+    let mut variable = btreemap! { 3_usize => stateset! {b'A'} };
     let mut chosen_state = BTreeMap::new();
     let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
 
     let mut parent = make_seq_info("ACGT");
     parent.fitch.variable.insert(0, stateset! {b'A', b'G'});
 
-    let subs =
-      resolve_nonroot_substitutions_forward(&mut sequence, &[], &mut variable, &mut chosen_state, &mut composition, &parent, &NUC_ALPHABET)?;
+    let subs = resolve_nonroot_substitutions_forward(
+      &mut sequence,
+      &[],
+      &mut variable,
+      &mut chosen_state,
+      &mut composition,
+      &parent,
+      &NUC_ALPHABET,
+    )?;
 
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].to_string(), "A1G", "Position 0 first");
@@ -344,7 +376,11 @@ mod tests {
     assert_eq!(sequence[2], NUC_ALPHABET.gap());
     assert_eq!(sequence[5], NUC_ALPHABET.unknown());
     assert_eq!(sequence[6], NUC_ALPHABET.unknown());
-    assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'), "Non-gap/unknown positions unchanged");
+    assert_eq!(
+      sequence[0],
+      AsciiChar::from_byte_unchecked(b'A'),
+      "Non-gap/unknown positions unchanged"
+    );
   }
 
   #[test]
@@ -368,6 +404,10 @@ mod tests {
     finalize_sequence_forward(&mut sequence, &[], &[], &mut composition, &NUC_ALPHABET, false);
 
     let counts = composition.counts();
-    assert_eq!(counts[&AsciiChar::from_byte_unchecked(b'A')], 0, "Non-root does not recompute composition");
+    assert_eq!(
+      counts[&AsciiChar::from_byte_unchecked(b'A')],
+      0,
+      "Non-root does not recompute composition"
+    );
   }
 }

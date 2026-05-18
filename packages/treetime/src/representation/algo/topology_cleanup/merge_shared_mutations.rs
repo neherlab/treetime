@@ -158,11 +158,17 @@ fn build_mutation_index(
       let empty_subs: &[Sub] = &[];
       let edge = partition.edges.get(&edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
-        index.entry((pi, MutationKey::Sub(sub.clone()))).or_default().push(edge_key);
+        index
+          .entry((pi, MutationKey::Sub(sub.clone())))
+          .or_default()
+          .push(edge_key);
       }
       let empty_indels: &[InDel] = &[];
       for indel in edge.map_or(empty_indels, |e| e.indels.as_slice()) {
-        index.entry((pi, MutationKey::InDel(indel.clone()))).or_default().push(edge_key);
+        index
+          .entry((pi, MutationKey::InDel(indel.clone())))
+          .or_default()
+          .push(edge_key);
       }
     }
   }
@@ -301,7 +307,9 @@ fn merge_sibling_group(
           let shared_subs = &group.shared_subs[pi];
           let shared_indels = &group.shared_indels[pi];
           let remaining_subs = iterator_difference(all_subs, shared_subs).cloned().collect_vec();
-          let remaining_indels = iterator_difference(all_indels, shared_indels.as_slice()).cloned().collect_vec();
+          let remaining_indels = iterator_difference(all_indels, shared_indels.as_slice())
+            .cloned()
+            .collect_vec();
           ChildEdgeData {
             remaining_subs,
             remaining_indels,

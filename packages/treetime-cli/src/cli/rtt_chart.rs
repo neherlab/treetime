@@ -1,7 +1,4 @@
 use crate::cli::rtt_chart_render::draw_chart;
-use treetime::clock::clock_model::ClockModel;
-use treetime::clock::rtt::ClockRegressionResult;
-use treetime::o;
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{ContentArrangement, Table};
@@ -13,6 +10,9 @@ use plotters::prelude::*;
 use rgb::RGB8;
 use std::path::Path;
 use textplots::{Chart, ColorPlot, Shape};
+use treetime::clock::clock_model::ClockModel;
+use treetime::clock::rtt::ClockRegressionResult;
+use treetime::o;
 
 #[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};

@@ -243,7 +243,9 @@ where
         for pos in r.0..r.1 {
           seq.composition.adjust_count(seq.sequence[pos], -1);
         }
-        seq.composition.adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+        seq
+          .composition
+          .adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
       }
 
       let edge = partition.edge_mut(edge_key);
