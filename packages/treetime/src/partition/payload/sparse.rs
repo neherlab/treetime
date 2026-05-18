@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::indel::{InDel, compose_indels, sort_indels};
+use crate::seq::indel::{Deletion, InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use maplit::btreemap;
@@ -216,8 +216,3 @@ impl VarPos {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Deletion {
-  pub deleted: usize, // number of times deletion is observed
-  pub present: usize, // or not
-}

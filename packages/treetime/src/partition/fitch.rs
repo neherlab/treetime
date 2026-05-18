@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::compress_sequences;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name};
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
+use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::make_report;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;

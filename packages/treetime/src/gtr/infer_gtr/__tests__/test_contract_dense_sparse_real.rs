@@ -35,8 +35,8 @@ mod tests {
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::gtr::infer_gtr::dense::infer_gtr_dense;
-  use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
+  use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
+  use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::partition::fitch::PartitionFitch;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;

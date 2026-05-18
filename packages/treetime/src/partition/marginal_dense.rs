@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
+use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;

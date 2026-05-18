@@ -4,7 +4,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
+  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::partition::fitch::PartitionFitch;
   use crate::partition::payload::ancestral::GraphAncestral;

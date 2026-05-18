@@ -11,8 +11,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::dense::get_mutation_counts_dense;
-  use crate::gtr::infer_gtr::fitch::get_mutation_counts_fitch;
+  use crate::ancestral::gtr_inference_dense::get_mutation_counts_dense;
+  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::pretty_assert_ulps_eq;
   use crate::partition::fitch::PartitionFitch;
   use crate::partition::marginal_dense::PartitionMarginalDense;

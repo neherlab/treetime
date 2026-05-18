@@ -4,7 +4,7 @@ use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{
   InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative,
 };
-use crate::gtr::infer_gtr::dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
+use crate::ancestral::gtr_inference_dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
 use crate::make_report;
 use crate::partition::discrete::PartitionDiscrete;
 use crate::partition::traits::HasLogLh;

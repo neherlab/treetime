@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::gtr::infer_gtr::dense::{
+  use crate::ancestral::gtr_inference_dense::{
     accumulate_mutation_counts, get_branch_mutation_matrix, get_mutation_counts_dense,
   };
   use crate::pretty_assert_abs_diff_eq;
