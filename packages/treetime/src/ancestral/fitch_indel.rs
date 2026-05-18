@@ -1,9 +1,12 @@
 use crate::representation::payload::sparse::Deletion;
 use crate::seq::indel::InDel;
 use std::collections::BTreeMap;
+use itertools::Itertools;
 use log::debug;
 use treetime_primitives::Seq;
 use treetime_utils::interval::range_difference::range_difference;
+use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
+use treetime_utils::interval::range_union::range_union_iter;
 
 /// Returns true when `[lo, hi)` lies entirely within some range of `ranges`.
 fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
@@ -13,6 +16,28 @@ fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
 /// Returns true when `[lo, hi)` lies entirely within some key of `vi`.
 fn interval_in_vi(vi: &BTreeMap<(usize, usize), Deletion>, lo: usize, hi: usize) -> bool {
   vi.keys().any(|&(a, b)| a <= lo && hi <= b)
+}
+
+/// Ranges describing a parent node's gap/unknown/non_char state, derived from its children.
+pub struct NodeRanges {
+  /// Positions where all children lack data (gap or unknown).
+  pub non_char: Vec<(usize, usize)>,
+  /// Positions in non_char where at least one child has a gap (gap beats unknown).
+  pub consensus_gaps: Vec<(usize, usize)>,
+  /// Positions in non_char where no child has a gap.
+  pub unknown: Vec<(usize, usize)>,
+}
+
+/// Compute the parent node's non_char, consensus_gaps, and unknown ranges from child data.
+pub fn compute_node_ranges(
+  child_non_chars: &[&Vec<(usize, usize)>],
+  child_gaps: &[&Vec<(usize, usize)>],
+) -> NodeRanges {
+  let non_char = range_intersection_iter(child_non_chars.iter().copied()).collect_vec();
+  let gap_union = range_union_iter(child_gaps.iter().copied()).collect_vec();
+  let consensus_gaps = range_intersection(&[non_char.clone(), gap_union]);
+  let unknown = range_difference(&non_char, &consensus_gaps);
+  NodeRanges { non_char, consensus_gaps, unknown }
 }
 
 pub struct IndelsBackward {
@@ -27,8 +52,8 @@ pub struct IndelsBackward {
 /// where all children agree on gap).
 pub fn resolve_indels_backward(
   consensus_gaps: Vec<(usize, usize)>,
-  child_gaps: &[Vec<(usize, usize)>],
-  child_unknown: &[Vec<(usize, usize)>],
+  child_gaps: &[&Vec<(usize, usize)>],
+  child_unknown: &[&Vec<(usize, usize)>],
   child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
   length: usize,
 ) -> IndelsBackward {
@@ -45,13 +70,13 @@ pub fn resolve_indels_backward(
     breakpoints.push(hi);
   }
   for child_gap in child_gaps {
-    for &(lo, hi) in child_gap {
+    for &(lo, hi) in *child_gap {
       breakpoints.push(lo);
       breakpoints.push(hi);
     }
   }
   for child_unk in child_unknown {
-    for &(lo, hi) in child_unk {
+    for &(lo, hi) in *child_unk {
       breakpoints.push(lo);
       breakpoints.push(hi);
     }

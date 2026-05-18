@@ -14,7 +14,9 @@ mod tests {
     let empty0 = BTreeMap::new();
     let empty1 = BTreeMap::new();
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &empty1];
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps, &child_unknown, &child_vis, 10).variable_indel;
+    let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
+    let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
+    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
     assert!(result.is_empty(), "No disagreement when all children have same gaps");
   }
 
@@ -26,7 +28,9 @@ mod tests {
     let empty0 = BTreeMap::new();
     let empty1 = BTreeMap::new();
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &empty1];
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps, &child_unknown, &child_vis, 10).variable_indel;
+    let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
+    let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
+    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
     assert_eq!(result.len(), 1);
     let del = &result[&(2, 4)];
     assert_eq!(del.deleted, 1);
@@ -42,10 +46,12 @@ mod tests {
     let empty1 = BTreeMap::new();
     let empty2 = BTreeMap::new();
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &empty1, &empty2];
+    let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
+    let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
 
     // consensus gaps = intersection = [(2,4)], so this range is skipped.
     // No disagreement ranges produced.
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps, &child_unknown, &child_vis, 10).variable_indel;
+    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
     assert!(result.is_empty(), "All children agree on gap, no variable indels");
   }
 
@@ -60,7 +66,9 @@ mod tests {
     let mut child1_vi = BTreeMap::new();
     child1_vi.insert((2, 4), Deletion { deleted: 1, present: 1 });
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &child1_vi];
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps, &child_unknown, &child_vis, 10);
+    let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
+    let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
+    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10);
 
     // deleted=2 (child 0 gap + child 1 variable indel), present=0
     // deleted == n_children: resolved as consensus gap, removed from variable_indel
