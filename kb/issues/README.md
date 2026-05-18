@@ -116,7 +116,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree       | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                                                 |
 | Negligible | Timetree       | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                             |
 | Negligible | Timetree       | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                   |
-| Negligible | Timetree       | [Polytomy resolution recomputes full gain matrix each iteration](N-timetree-polytomy-quadratic-gain-matrix.md)                                      |
 | Medium     | Timetree       | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                       |
 | Medium     | Timetree       | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                         |
 | Medium     | Timetree       | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)                            |
