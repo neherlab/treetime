@@ -2,7 +2,7 @@
 
 Several defensive programming gaps in polytomy resolution code. None are active bugs in the current call sequence, but they create latent defects that would activate if the call sequence changes or inputs are degenerate.
 
-v1: [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs)
+v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs)
 
 ## Items
 

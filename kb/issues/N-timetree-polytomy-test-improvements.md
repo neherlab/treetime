@@ -2,7 +2,7 @@
 
 Test coverage gaps and quality issues in polytomy resolution tests.
 
-v1 tests: [`packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs)
+v1 tests: [`packages/treetime/src/timetree/optimization/__tests__/test_polytomy.rs`](../../packages/treetime/src/timetree/optimization/__tests__/test_polytomy.rs)
 
 ## Items
 

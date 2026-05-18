@@ -116,6 +116,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree       | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                                                 |
 | Negligible | Timetree       | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                             |
 | Negligible | Timetree       | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                   |
+| Negligible | Timetree       | [Polytomy resolution duplicates topology primitives](N-timetree-polytomy-duplicated-topology-primitives.md)                                         |
+| Negligible | Timetree       | [Polytomy resolution recomputes full gain matrix each iteration](N-timetree-polytomy-quadratic-gain-matrix.md)                                      |
 | Medium     | Timetree       | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                       |
 | Medium     | Timetree       | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                         |
 | Medium     | Timetree       | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)                            |
@@ -135,6 +137,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Marginal       | [Marginal forward pass NEG_INFINITY produces NaN](M-marginal-forward-pass-neg-infinity-nan.md)                                                      |
 | Medium     | Marginal       | [normalize_inplace NEG_INFINITY masks all contributions](M-marginal-normalize-neg-infinity-masks-total.md)                                          |
 | Medium     | Timetree       | [Polytomy resolution leaves stale fields after topology change](M-timetree-polytomy-stale-fields-after-topology-change.md)                          |
+| Medium     | Timetree       | [Polytomy resolution merges all children indiscriminately](M-timetree-polytomy-missing-stretched-compressed-split.md)                               |
 | Medium     | Timetree       | [Timetree convergence metric deficiencies](M-timetree-convergence-metric-deficiencies.md)                                                           |
 | Medium     | Timetree       | [Timetree confidence interval computation deficiencies](M-timetree-confidence-interval-deficiencies.md)                                             |
 | Medium     | Coalescent     | [Coalescent leaf survival formula sign convention requires investigation](M-coalescent-leaf-survival-sign-convention.md)                            |
