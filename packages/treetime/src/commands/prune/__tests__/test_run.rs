@@ -1263,9 +1263,8 @@ mod tests {
     let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
     graph.build()?;
 
-    // Greedy merge: first A&B (or any pair sharing A0T), then the merged
-    // node and C also share A0T → two pairwise merges total.
-    assert_eq!(merged, 2, "two pairwise merges should group A, B, C together");
+    // Group merge: A, B, C all share A0T and form one group.
+    assert_eq!(merged, 1, "one group merge should place A, B, C under one node");
 
     // Root should have exactly 2 children: the merged subtree and D
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
