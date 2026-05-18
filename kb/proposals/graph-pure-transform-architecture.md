@@ -44,7 +44,7 @@ pub struct Node<N: GraphNode> {
 
 Each `struct Edge<E>` [packages/treetime-graph/src/edge.rs#L71](../../packages/treetime-graph/src/edge.rs#L71) has the same pattern: `data: Arc<RwLock<E>>`.
 
-Concrete payload types: `struct NodeAncestral` [packages/treetime/src/partition/payload/ancestral.rs#L28](../../packages/treetime/src/partition/payload/ancestral.rs#L28), `struct NodeTimetree` [packages/treetime/src/partition/payload/timetree.rs#L17](../../packages/treetime/src/partition/payload/timetree.rs#L17), `struct EdgeTimetree` [packages/treetime/src/partition/payload/timetree.rs#L163](../../packages/treetime/src/partition/payload/timetree.rs#L163). These carry tree-level data: names, time distributions, divergence, clock sets, branch length distributions, clock messages.
+Concrete payload types: `struct NodeAncestral` [packages/treetime/src/payload/ancestral.rs#L28](../../packages/treetime/src/payload/ancestral.rs#L28), `struct NodeTimetree` [packages/treetime/src/payload/timetree.rs#L17](../../packages/treetime/src/payload/timetree.rs#L17), `struct EdgeTimetree` [packages/treetime/src/payload/timetree.rs#L163](../../packages/treetime/src/payload/timetree.rs#L163). These carry tree-level data: names, time distributions, divergence, clock sets, branch length distributions, clock messages.
 
 ### Partition data plane
 

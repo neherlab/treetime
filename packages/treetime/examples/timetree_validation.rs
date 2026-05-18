@@ -19,7 +19,7 @@ use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::partition::marginal_dense::PartitionMarginalDense;
 use treetime::partition::timetree::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
-use treetime::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
+use treetime::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime::timetree::inference::backward_pass::propagate_distributions_backward;
 use treetime::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};

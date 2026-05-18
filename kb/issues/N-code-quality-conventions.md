@@ -18,7 +18,7 @@ Convention violations across the codebase: fully qualified paths, inconsistent d
 
 ### NodeTimetree.nwk_comments() truncates date to 2 decimals
 
-`packages/treetime/src/partition/payload/timetree.rs:135:`
+`packages/treetime/src/payload/timetree.rs:135:`
 
 Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pathogens sampled days apart.
 

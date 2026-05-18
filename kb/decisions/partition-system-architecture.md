@@ -11,7 +11,7 @@ v0 source files:
 v1 source files:
 
 - Partition types and traits in `packages/treetime/src/partition/`
-- Per-node/edge data structs in `packages/treetime/src/partition/payload/`
+- Per-node/edge data structs in `packages/treetime/src/payload/`
 
 ## Background: partition models in phylogenetics
 
@@ -149,17 +149,17 @@ pub struct PartitionMarginalSparse {
 
 ### Per-node and per-edge payload structures
 
-Dense payloads in `packages/treetime/src/partition/payload/dense.rs`:
+Dense payloads in `packages/treetime/src/partition/dense.rs`:
 
-- `DenseNodePartition` (`dense.rs:16-19:1:`) contains `seq: DenseSeqInfo` (gap positions and full sequence) and `profile: DenseSeqDis` (probability matrix over all positions)
+- `DenseNodePartition` (`dense.rs:16-19:1:`) contains `seq: DenseSeqInfo` (gap positions and full sequence) and `profile: DenseSeqDistribution` (probability matrix over all positions)
 - `DenseEdgePartition` (`dense.rs:37-44:1:`) contains `msg_to_child`, `msg_to_parent`, `msg_from_child` (probability matrices for message passing) and `indels`
-- `DenseSeqDis` (`dense.rs:46-52:1:`) contains `dis: Array2<f64>` (positions x states) and `log_lh: f64`
+- `DenseSeqDistribution` (`dense.rs:46-52:1:`) contains `dis: Array2<f64>` (positions x states) and `log_lh: f64`
 
-Sparse payloads in `packages/treetime/src/partition/payload/sparse.rs`:
+Sparse payloads in `packages/treetime/src/partition/sparse.rs`:
 
-- `SparseNodePartition` (`sparse.rs:16-19:1:`) contains `seq: SparseSeqInfo` (gap/unknown ranges, composition, Fitch state) and `profile: MarginalSparseSeqDistribution`
+- `SparseNodePartition` (`sparse.rs:16-19:1:`) contains `seq: SparseSeqInfo` (gap/unknown ranges, composition, Fitch state) and `profile: SparseSeqDistribution`
 - `SparseEdgePartition` (`sparse.rs:98-106:1:`) contains `subs: Vec<Sub>` (substitutions), `indels: Vec<InDel>`, and directional messages
-- `MarginalSparseSeqDistribution` (`sparse.rs:108-122:1:`) contains `variable: BTreeMap<usize, VarPos>` (probability vectors only at variable positions), `fixed: BTreeMap<AsciiChar, Array1<f64>>`, and `log_lh: f64`
+- `SparseSeqDistribution` (`sparse.rs:108-122:1:`) contains `variable: BTreeMap<usize, VarPos>` (probability vectors only at variable positions), `fixed: BTreeMap<AsciiChar, Array1<f64>>`, and `log_lh: f64`
 
 ### Trait-based behavior
 
@@ -221,7 +221,7 @@ pub type PartitionTimetreeAllVec = Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeT
 
 **Separation of concerns.** v0's `TreeAnc` mixes tree topology management, sequence data storage, multiple reconstruction algorithms, GTR inference, and branch length optimization in a single 1800-line class. Each concern cannot be tested, replaced, or extended independently. v1 separates: `Graph` owns topology; partition structs own reconstruction state; traits define operations.
 
-**Type safety.** v0 relies on dynamic attributes (`hasattr` checks at `clock_tree.py:348:1:`, `__delattr__` at `treeanc.py:353:1:`, monkey-patched properties at `treeanc.py:45-47:1:`). Whether `node.marginal_profile` exists depends on which method ran last. v1's partition structs make all data statically typed. `DenseNodePartition` always has `seq: DenseSeqInfo` and `profile: DenseSeqDis`. The compiler enforces field presence.
+**Type safety.** v0 relies on dynamic attributes (`hasattr` checks at `clock_tree.py:348:1:`, `__delattr__` at `treeanc.py:353:1:`, monkey-patched properties at `treeanc.py:45-47:1:`). Whether `node.marginal_profile` exists depends on which method ran last. v1's partition structs make all data statically typed. `DenseNodePartition` always has `seq: DenseSeqInfo` and `profile: DenseSeqDistribution`. The compiler enforces field presence.
 
 **Multi-partition support.** v0 processes one alignment at a time with a single GTR model. v1 can attach multiple partitions to the same tree, each with its own alphabet, GTR model, and reconstruction state. Tree traversals visit each node once and update all partitions, enabling joint analysis of heterogeneous data (e.g., different genes with different substitution models).
 

@@ -138,7 +138,7 @@ Pipeline:
 
 ### Used by both commands
 
-- `GraphAncestral` type alias ([packages/treetime/src/partition/payload/ancestral.rs#L15](../../../packages/treetime/src/partition/payload/ancestral.rs#L15)) -- both use the same graph with `NodeAncestral` / `EdgeAncestral` payloads
+- `GraphAncestral` type alias ([packages/treetime/src/payload/ancestral.rs#L15](../../../packages/treetime/src/payload/ancestral.rs#L15)) -- both use the same graph with `NodeAncestral` / `EdgeAncestral` payloads
 - `nwk_read_file()` -- tree input
 - `GTR` struct and `GTR::new()` constructor ([packages/treetime/src/gtr/gtr.rs](../../../packages/treetime/src/gtr/gtr.rs))
 - `infer_gtr_impl()` from `gtr/infer_gtr/common` -- core GTR inference algorithm, called by ancestral (via `infer_gtr_dense` / `infer_gtr_sparse`) and by mugration (via `gtr_refinement.rs`)
@@ -157,7 +157,7 @@ Pipeline:
 
 - `PartitionDiscrete` with self-contained `process_node_backward()` / `process_node_forward()` ([packages/treetime/src/partition/discrete.rs](../../../packages/treetime/src/partition/discrete.rs))
 - `DiscreteStates` instead of `Alphabet` ([packages/treetime/src/partition/discrete_states.rs](../../../packages/treetime/src/partition/discrete_states.rs))
-- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/partition/payload/discrete.rs](../../../packages/treetime/src/partition/payload/discrete.rs))
+- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/partition/discrete.rs](../../../packages/treetime/src/partition/discrete.rs))
 - Iterative GTR refinement with custom Brent optimizer ([packages/treetime/src/commands/mugration/gtr_refinement.rs](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs))
 - Sampling bias correction
 - Weight-based pi computation with pseudo-count smoothing

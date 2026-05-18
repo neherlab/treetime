@@ -1,6 +1,6 @@
 # Dense and sparse partition types have structural and naming asymmetries
 
-Dense `edge_effective_length()` ignores unknown (`N`) positions, overcounting effective alignment sites. The two distribution types have inconsistent names (`DenseSeqDis` vs `MarginalSparseSeqDistribution`). Several other structural differences exist but are domain-inherent and require no action.
+Dense `edge_effective_length()` ignores unknown (`N`) positions, overcounting effective alignment sites. Several structural differences exist but are domain-inherent and require no action.
 
 ## Type structure
 
@@ -10,7 +10,7 @@ graph LR
         direction TB
         D_P["PartitionMarginalDense"] --> D_N["DenseNodePartition"]
         D_P --> D_E["DenseEdgePartition"]
-        D_N --> D_dis["DenseSeqDis<br/>Array2 + log_lh"]
+        D_N --> D_dis["DenseSeqDistribution<br/>Array2 + log_lh"]
         D_N --> D_seq["DenseSeqInfo<br/>gaps, unknown, non_char,<br/>variable_indel, sequence"]
         D_E --> D_dis
     end
@@ -19,7 +19,7 @@ graph LR
         direction TB
         S_P["PartitionMarginalSparse"] --> S_N["SparseNodePartition"]
         S_P --> S_E["SparseEdgePartition"]
-        S_N --> S_dis["MarginalSparseSeqDistribution<br/>variable, fixed, fixed_counts, log_lh"]
+        S_N --> S_dis["SparseSeqDistribution<br/>variable, fixed, fixed_counts, log_lh"]
         S_N --> S_seq["SparseSeqInfo<br/>gaps, unknown, non_char,<br/>composition, sequence, fitch"]
         S_E --> S_dis
     end
@@ -33,11 +33,9 @@ Both partition types implement `PartitionBranchOps`, `PartitionMarginalOps`, `Pa
 
 `DenseSeqInfo` now tracks `unknown`, `non_char`, and `variable_indel` fields matching `SparseSeqInfo`. Both `edge_effective_length()` and `edge_subs()` now use `non_char` (gaps + unknowns). Dense backward pass propagates `unknown` and `non_char` as intersection of children. Tests verify dense/sparse agreement on `edge_effective_length()`.
 
-### Naming: `DenseSeqDis` vs `MarginalSparseSeqDistribution`
+### ~~Naming: `DenseSeqDis` vs `MarginalSparseSeqDistribution`~~ (RESOLVED)
 
-`DenseSeqDis` [packages/treetime/src/partition/payload/dense.rs#L45](../../packages/treetime/src/partition/payload/dense.rs#L45) abbreviates "Distribution" to 3 characters. `MarginalSparseSeqDistribution` [packages/treetime/src/partition/payload/sparse.rs#L159](../../packages/treetime/src/partition/payload/sparse.rs#L159) spells it out and adds a redundant "Marginal" prefix (sparse distributions exist only in marginal context; the Fitch counterpart is separately named `FitchSeqDistribution` [packages/treetime/src/partition/payload/sparse.rs#L187](../../packages/treetime/src/partition/payload/sparse.rs#L187)).
-
-**Fix:** rename to `DenseSeqDistribution` and `SparseSeqDistribution`. Pure mechanical rename, ~17 files, zero functional change.
+Renamed to `DenseSeqDistribution` and `SparseSeqDistribution`. Both now follow the same `<Mode>SeqDistribution` pattern. The redundant "Marginal" prefix on the sparse type is removed (sparse distributions exist only in marginal context).
 
 ## Domain-inherent asymmetries (no action needed)
 

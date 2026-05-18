@@ -2,7 +2,7 @@
 
 Production call sites for `ml_subs` and `fitch_subs` on `SparseEdgePartition`, excluding tests.
 
-Definitions: [packages/treetime/src/partition/payload/sparse.rs](../../packages/treetime/src/partition/payload/sparse.rs)
+Definitions: [packages/treetime/src/partition/sparse.rs](../../packages/treetime/src/partition/sparse.rs)
 
 ## ML subs writes (5)
 
@@ -42,8 +42,8 @@ Count discrete substitutions per edge across all partitions to estimate initial 
 
 Collect all ML subs across partitions for each edge and write them as comma-separated mutation strings onto the graph nodes. Used for output in `ancestral`, `optimize`, and `timetree` commands.
 
-- `annotate_branch_mutations()` [partition/payload/ancestral.rs#L152](../../packages/treetime/src/partition/payload/ancestral.rs#L152)
-- `partition.edge_subs()` [partition/payload/ancestral.rs#L170](../../packages/treetime/src/partition/payload/ancestral.rs#L170)
+- `annotate_branch_mutations()` [payload/ancestral.rs#L152](../../packages/treetime/src/payload/ancestral.rs#L152)
+- `partition.edge_subs()` [payload/ancestral.rs#L170](../../packages/treetime/src/payload/ancestral.rs#L170)
 - `edge.ml_subs()` [partition/marginal_sparse.rs#L269](../../packages/treetime/src/partition/marginal_sparse.rs#L269)
 
 ## Fitch subs call sites (22)

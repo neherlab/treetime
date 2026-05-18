@@ -30,7 +30,7 @@ Extracted to top-level `timetree/` domain module.
 
 ### commands/mugration/ (resolved)
 
-Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete.rs`, and `partition/payload/discrete.rs` are deleted.
+Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete.rs`, and `partition/discrete.rs` are deleted.
 
 ## Visibility and coupling issues
 

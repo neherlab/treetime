@@ -166,9 +166,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Payload: Ancestral Annotation
 
-**Test:** [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/payload/ancestral.rs`](../../packages/treetime/src/payload/ancestral.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs)
+**Impl:** [`packages/treetime/src/payload/ancestral.rs`](../../packages/treetime/src/payload/ancestral.rs)
 
 | Test                                                       | Purpose                                              |
 | ---------------------------------------------------------- | ---------------------------------------------------- |
@@ -188,9 +188,9 @@ Deleted. `DiscreteNodeData` and `DiscreteEdgeData` replaced by `DenseNodePartiti
 
 ## Payload: Timetree Annotation
 
-**Test:** [`packages/treetime/src/partition/payload/timetree.rs`](../../packages/treetime/src/partition/payload/timetree.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/payload/timetree.rs`](../../packages/treetime/src/payload/timetree.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/partition/payload/timetree.rs`](../../packages/treetime/src/partition/payload/timetree.rs)
+**Impl:** [`packages/treetime/src/payload/timetree.rs`](../../packages/treetime/src/payload/timetree.rs)
 
 | Test                                                           | Purpose                                                         |
 | -------------------------------------------------------------- | --------------------------------------------------------------- |

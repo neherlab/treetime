@@ -1,6 +1,6 @@
 # Dense and sparse sequence representation
 
-v1 introduces a sparse sequence representation (`SparseNodePartition` in `packages/treetime/src/partition/payload/sparse.rs:16-84`) alongside the dense representation (`DenseNodePartition` in `packages/treetime/src/partition/payload/dense.rs:16-33`). The sparse path stores probability vectors only for positions where the ancestral state is uncertain, while invariant positions share per-character vectors. This architectural change reduces memory usage proportionally to the fraction of variable sites in the alignment, which ranges from 0.1% to 5% in viral datasets.
+v1 introduces a sparse sequence representation (`SparseNodePartition` in `packages/treetime/src/partition/sparse.rs:16-84`) alongside the dense representation (`DenseNodePartition` in `packages/treetime/src/partition/dense.rs:16-33`). The sparse path stores probability vectors only for positions where the ancestral state is uncertain, while invariant positions share per-character vectors. This architectural change reduces memory usage proportionally to the fraction of variable sites in the alignment, which ranges from 0.1% to 5% in viral datasets.
 
 v0 uses only dense representation: `seq2array()` (`packages/legacy/treetime/treetime/seq_utils.py:152-204`) converts sequences to NumPy character arrays, and `seq2prof()` (`packages/legacy/treetime/treetime/seq_utils.py:207-229`) converts those to 2D probability matrices of shape `(L, K)` where L is the alignment length and K is the alphabet size (5 for nucleotides including gap, 22 for amino acids). The `SequenceData.make_compressed_alignment()` method (`packages/legacy/treetime/treetime/sequence_data.py:325-464`) groups identical alignment columns and tracks multiplicity, but this column deduplication still stores a full K-width probability vector for each unique column pattern.
 
@@ -28,11 +28,11 @@ v1 stores sequences as `Seq` (`packages/treetime-primitives/src/seq.rs:7-11`), a
 
 ### Dense representation
 
-`DenseNodePartition` contains `DenseSeqInfo` (the sequence and gap ranges) and `DenseSeqDis` (an `Array2<f64>` of shape `(L, K)`). This matches v0's memory layout. The dense path in `PartitionMarginalDense` (`packages/treetime/src/partition/marginal_dense.rs:24-31`) stores full probability matrices at every node and uses the same belief propagation algorithm as v0.
+`DenseNodePartition` contains `DenseSeqInfo` (the sequence and gap ranges) and `DenseSeqDistribution` (an `Array2<f64>` of shape `(L, K)`). This matches v0's memory layout. The dense path in `PartitionMarginalDense` (`packages/treetime/src/partition/marginal_dense.rs:24-31`) stores full probability matrices at every node and uses the same belief propagation algorithm as v0.
 
 ### Sparse representation
 
-`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `MarginalSparseSeqDistribution` (`packages/treetime/src/partition/payload/sparse.rs:108-134`). The sparse distribution has:
+`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `SparseSeqDistribution` (`packages/treetime/src/partition/sparse.rs:108-134`). The sparse distribution has:
 
 - `variable: BTreeMap<usize, VarPos>` - position index to probability vector and current state, for positions where parsimony is ambiguous
 - `fixed: BTreeMap<AsciiChar, Array1<f64>>` - one shared K-element vector per character type, covering all invariant positions of that character
@@ -48,7 +48,7 @@ Marginal belief propagation (`packages/treetime/src/partition/marginal_passes.rs
 
 ### Mutation storage
 
-Sparse edge partitions (`SparseEdgePartition` in `packages/treetime/src/partition/payload/sparse.rs:98-106`) store explicit substitution lists (`Vec<Sub>`) rather than requiring full sequence comparison. This enables efficient extraction of mutations between parent and child nodes.
+Sparse edge partitions (`SparseEdgePartition` in `packages/treetime/src/partition/sparse.rs:98-106`) store explicit substitution lists (`Vec<Sub>`) rather than requiring full sequence comparison. This enables efficient extraction of mutations between parent and child nodes.
 
 ## Memory comparison
 

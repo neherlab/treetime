@@ -23,7 +23,7 @@ Five cross-command dependency edges exist in production code (excluding tests):
 - ~~`PartitionOptimizeOps` from `commands/optimize/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
 - ~~`PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
 - ~~`RerootChanges` from `commands/clock/reroot`~~ **Resolved**: extracted to `partition/algo/topology_cleanup/reroot`
-- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `partition/payload/clock_set.rs`; traits moved to `partition/payload/traits.rs`
+- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `payload/clock_set.rs`; traits moved to `payload/traits.rs`
 - ~~`OptimizationContribution` from `commands/optimize/optimize_unified`~~ **Resolved**: `OptimizationContribution` type + constructors moved to `partition/optimization_contribution.rs`; evaluation methods in `optimize/optimize_unified.rs` via split impl block
 - ~~`ClockModel`, `ClockRegressionResult` from `commands/clock/`~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
 - ~~`compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` from `commands/ancestral/`~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
@@ -44,7 +44,7 @@ Extracted to top-level `src/optimize/` module: `optimize_unified.rs`, `optimize_
 
 ### ~~Partition and payload traits~~ **Resolved**
 
-Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `partition/payload/traits.rs`; `ClockSet` data type to `partition/payload/clock_set.rs`.
+Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `payload/traits.rs`; `ClockSet` data type to `payload/clock_set.rs`.
 
 ### ~~Topology operations~~ **Resolved**
 

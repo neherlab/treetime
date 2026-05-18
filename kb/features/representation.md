@@ -10,8 +10,8 @@
 
 ## Payloads
 
-- [x] Dense payloads (DenseNodePartition, DenseEdgePartition, DenseSeqDis)
-- [x] Sparse payloads (SparseNodePartition, SparseEdgePartition, MarginalSparseSeqDistribution)
+- [x] Dense payloads (DenseNodePartition, DenseEdgePartition, DenseSeqDistribution)
+- [x] Sparse payloads (SparseNodePartition, SparseEdgePartition, SparseSeqDistribution)
 - [x] Node payloads (NodeAncestral, NodeTimetree with time distributions)
 - [x] Edge payloads (EdgeAncestral, EdgeTimetree with branch distributions and messages)
 

@@ -105,7 +105,7 @@ See [unimplemented](unimplemented.md#joint-ml) for full v0 algorithm details.
 
 After ancestral reconstruction (Fitch or marginal), branch mutations are extracted from partition data and attached to tree nodes for Newick/Nexus output. The annotation pipeline is shared across all commands that output annotated trees (ancestral, timetree, optimize).
 
-v1: [`packages/treetime/src/partition/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/partition/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
+v1: [`packages/treetime/src/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
 v0: annotation is inline in `treeanc.py` tree-writing methods.
 
 ### Algorithm
@@ -159,5 +159,5 @@ Both implementations produce the same mutation set for the same reconstruction. 
 | [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
 | [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)   | Sparse message passing                                                           |
 | [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
-| [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
+| [`packages/treetime/src/payload/ancestral.rs`](../../packages/treetime/src/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
 | [`packages/treetime/src/partition/traits.rs`](../../packages/treetime/src/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |
