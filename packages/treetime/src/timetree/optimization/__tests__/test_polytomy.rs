@@ -14,6 +14,7 @@ mod tests {
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::make_report;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   const TEST_CLOCK_RATE: f64 = 0.001;
 
@@ -245,7 +246,7 @@ mod tests {
   fn test_resolve_polytomies_zero_branch_slope_affects_merge_gain() -> Result<(), Report> {
     let partitions = vec![];
 
-    // Large slope: penalty dominates branch length improvement → no merge
+    // Large slope: penalty dominates branch length improvement, no merge
     let mut graph_high = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let n_high = resolve_polytomies_with_options(
       &mut graph_high,
@@ -290,6 +291,44 @@ mod tests {
     )?;
 
     assert_eq!(n_resolved, 1, "Zero slope should allow merge");
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_equal_mutation_clock_length_is_compressed() -> Result<(), Report> {
+    // mutation_length == clock_length classifies as compressed (not stretched)
+    // is_stretched requires strict less-than
+    let mut graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+    let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
+    for (name, time) in tip_times {
+      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "ABC") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2010.0);
+    }
+    if let Some(key) = find_node_key_by_name(&graph, "root") {
+      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(2000.0);
+    }
+
+    for edge in graph.get_edges() {
+      let edge = edge.write_arc();
+      let mut payload = edge.payload().write_arc();
+      payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+      let bl = payload.branch_length().unwrap_or(0.0);
+      payload.time_length = Some(bl);
+      // mutation_length == clock_length: bl == time_length * clock_rate
+      // With TEST_CLOCK_RATE=0.001 and time_length=bl, clock_length = bl * 0.001
+      // Set branch_length = bl * 0.001 so mutation_length == clock_length
+      payload.set_branch_length(Some(bl * TEST_CLOCK_RATE));
+    }
+
+    let partitions = vec![];
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+
+    assert_eq!(n_resolved, 0, "Equal mutation_length and clock_length should classify as compressed, not merged");
     Ok(())
   }
 
@@ -493,10 +532,7 @@ mod tests {
     let parent_edge_time_length = graph.get_edge(parent_edge_key).expect("Edge must exist")
       .read_arc().payload().read_arc().time_length.expect("time_length must be set");
     let expected_parent_tl = new_node_time - abc_time;
-    assert!(
-      (parent_edge_time_length - expected_parent_tl).abs() < 1e-10,
-      "Parent edge time_length ({parent_edge_time_length}) should equal new_node_time - abc_time ({expected_parent_tl})"
-    );
+    pretty_assert_abs_diff_eq!(parent_edge_time_length, expected_parent_tl, epsilon = 1e-10);
     assert!(parent_edge_time_length > 0.0, "Parent edge time_length must be positive");
 
     // Edges from new node to children: time_length = child_time - new_node_time
@@ -507,10 +543,7 @@ mod tests {
         .read_arc().payload().read_arc().time.unwrap_or(0.0);
       let child_edge_tl = edge.read_arc().payload().read_arc().time_length.expect("time_length must be set");
       let expected_child_tl = child_time - new_node_time;
-      assert!(
-        (child_edge_tl - expected_child_tl).abs() < 1e-10,
-        "Child edge time_length ({child_edge_tl}) should equal child_time - new_node_time ({expected_child_tl})"
-      );
+      pretty_assert_abs_diff_eq!(child_edge_tl, expected_child_tl, epsilon = 1e-10);
       assert!(child_edge_tl > 0.0, "Child edge time_length must be positive");
     }
 
