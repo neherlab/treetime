@@ -107,7 +107,7 @@ The MAP states define the reconstructed ancestral sequence. Branch substitutions
 
 v1 code:
 
-- Backward pass: `process_node_backward()` in [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../../packages/treetime/src/representation/partition/marginal_passes.rs)
+- Backward pass: `process_node_backward()` in [`packages/treetime/src/partition/marginal_passes.rs`](../../../packages/treetime/src/partition/marginal_passes.rs)
 - Forward pass: `process_node_forward()` in the same file
 - Marginal orchestration: `update_marginal()` in [`packages/treetime/src/commands/ancestral/marginal.rs`](../../../packages/treetime/src/commands/ancestral/marginal.rs)
 - Dense edge substitutions: `edge_subs()` on `PartitionMarginalDense` compares MAP states at parent and child node posteriors

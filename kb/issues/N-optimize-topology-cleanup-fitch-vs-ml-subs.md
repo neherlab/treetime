@@ -26,9 +26,9 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 - Zero-optimal edge identification: [`packages/treetime/src/commands/optimize/run.rs#L563-L598`](../../packages/treetime/src/commands/optimize/run.rs#L563-L598) (`find_zero_optimal_internal_edges`)
 - Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L599-L642`](../../packages/treetime/src/commands/optimize/run.rs#L599-L642) (`prune_and_merge_in_loop`)
-- Edge collapse: [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs)
-- Shared mutation merge: [`packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
-- Fitch/ML accessors: [`packages/treetime/src/representation/payload/sparse.rs#L112-L163`](../../packages/treetime/src/representation/payload/sparse.rs#L112-L163) (`SparseEdgePartition`)
+- Edge collapse: [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs)
+- Shared mutation merge: [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
+- Fitch/ML accessors: [`packages/treetime/src/partition/payload/sparse.rs#L112-L163`](../../packages/treetime/src/partition/payload/sparse.rs#L112-L163) (`SparseEdgePartition`)
 
 ## Related
 

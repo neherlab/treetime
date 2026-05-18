@@ -1,4 +1,4 @@
-use crate::representation::partition::timetree::GraphTimetree;
+use crate::partition::timetree::GraphTimetree;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{HasBranchLength, TimeLength};
 use treetime_graph::node::GraphNodeKey;

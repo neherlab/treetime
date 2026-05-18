@@ -5,7 +5,7 @@ v1 dense forward pass operates in plain probability space (multiply/divide proba
 The backward pass uses log-space arithmetic in both dense (`normalize_from_log()`) and sparse (`softmax_with_log_norm()` in `combine_messages()`) modes.
 
 - v1 dense forward pass: divides child message in probability space
-  in [`packages/treetime/src/representation/partition/marginal_dense.rs#L213-L253`](../../packages/treetime/src/representation/partition/marginal_dense.rs#L213-L253)
+  in [`packages/treetime/src/partition/marginal_dense.rs#L213-L253`](../../packages/treetime/src/partition/marginal_dense.rs#L213-L253)
 - v0 preorder: divides in log-space, multiplies back in probability space
   at [`packages/legacy/treetime/treetime/treeanc.py#L880-L917`](../../packages/legacy/treetime/treetime/treeanc.py#L880-L917)
 

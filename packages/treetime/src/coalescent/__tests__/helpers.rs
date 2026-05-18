@@ -1,5 +1,5 @@
 use crate::clock::date_constraints::load_date_constraints;
-use crate::representation::partition::timetree::GraphTimetree;
+use crate::partition::timetree::GraphTimetree;
 use eyre::Report;
 use maplit::btreemap;
 use treetime_io::dates_csv::DateOrRange;

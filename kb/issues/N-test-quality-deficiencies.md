@@ -8,7 +8,7 @@ Remaining test quality issues: circular tests, weak assertions, and missing cove
 
 ### propagate_raw_per_site tests are circular
 
-`packages/treetime/src/representation/partition/marginal_helpers.rs:209,245:`
+`packages/treetime/src/partition/marginal_helpers.rs:209,245:`
 
 Both test functions compute expected values using `gtr.expQt_with_rate()`, the same function called internally by the SUT. Tautological verification.
 

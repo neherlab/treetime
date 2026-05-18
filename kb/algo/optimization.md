@@ -117,7 +117,7 @@ IQ-TREE's per-round monotonicity check described in <a id="cite-9"></a>[Minh et 
 
 Canonical edge-collapse operation for zero-length or near-zero-length internal edges. Reparents children to the grandparent, updates branch lengths (summing parent and child), and cleans up stale partition entries for both sparse (sub composition) and dense representations. Shared across the optimize and prune commands.
 
-v1: `collapse_edge()` in [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs).
+v1: `collapse_edge()` in [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs).
 
 v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
@@ -127,8 +127,8 @@ v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/tr
 
 The sparse and dense forward-pass marginal divisions can produce zero divisors when a child's message assigns zero probability to all states. Clamp divisors to `f64::MIN_POSITIVE` in both paths to prevent NaN propagation. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows, matching `softmax_with_log_norm` degenerate-row semantics.
 
-v1 sparse: [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs).
-v1 dense: [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs).
+v1 sparse: [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs).
+v1 dense: [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs).
 
 v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
 
@@ -160,7 +160,7 @@ v1: Not implemented in the optimize loop. The prune command has `--prune-short` 
 
 Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node whose branch length is the Jukes-Cantor 1969 correction of the pooled p-distance `#shared_mutations / alignment_length` (see [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs)). Shared mutations move to the new parent edge; remaining unique mutations stay on child edges. See [the corresponding intentional change](../decisions/prune-merge-jukes-cantor-branch-length.md) for the rationale for correcting the raw ratio specified in `../_raw/optimize.md`.
 
-v1: [`packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
+v1: [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
 
 v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrain pathogen pipelines.
 
@@ -209,6 +209,6 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 | [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
 | [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                             | Shared-mutation merging                                                                |
 | [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/)             | Greedy temporal polytomy resolution                                                    |
-| [`packages/treetime/src/representation/algo/topology_cleanup/`](../../packages/treetime/src/representation/algo/topology_cleanup/) | Edge collapse (shared)                                                                 |
-| [`packages/treetime/src/representation/partition/`](../../packages/treetime/src/representation/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
+| [`packages/treetime/src/partition/algo/topology_cleanup/`](../../packages/treetime/src/partition/algo/topology_cleanup/) | Edge collapse (shared)                                                                 |
+| [`packages/treetime/src/partition/`](../../packages/treetime/src/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
 | [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                 | Interpolation (uniform, non-uniform)                                                   |

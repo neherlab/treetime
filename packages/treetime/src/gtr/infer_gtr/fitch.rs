@@ -1,6 +1,6 @@
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
-use crate::representation::partition::traits::PartitionCompressed;
+use crate::partition::traits::PartitionCompressed;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};

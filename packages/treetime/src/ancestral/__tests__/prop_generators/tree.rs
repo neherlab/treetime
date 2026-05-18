@@ -6,7 +6,7 @@
 //! - Caterpillar: maximally unbalanced (for edge cases)
 
 use crate::ancestral::__tests__::prop_generators::branch_length::arb_branch_length;
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::partition::payload::ancestral::GraphAncestral;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::node::Named;

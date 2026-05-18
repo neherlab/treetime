@@ -1,6 +1,6 @@
 use crate::optimize::eval::evaluate_site_contributions;
 use crate::optimize::likelihood::OptimizationMetrics;
-use crate::representation::partition::optimize_dense;
+use crate::partition::optimize_dense;
 
 /// Evaluate dense contribution for a given branch length (with derivatives).
 pub fn evaluate_dense_contribution(

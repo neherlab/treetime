@@ -17,8 +17,8 @@ Breakable: parameterize GTR inference over iterators instead of concrete partiti
 
 ### representation/ <-> ancestral/ (2 upward imports)
 
-- `representation/partition/fitch.rs:2:` -> `ancestral::fitch::compress_sequences`
-- `representation/partition/marginal_dense.rs:4:` -> `ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward}`
+- `partition/fitch.rs:2:` -> `ancestral::fitch::compress_sequences`
+- `partition/marginal_dense.rs:4:` -> `ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward}`
 
 Breakable: `resolve_indels_*` are pure functions on gap ranges (`Vec<(usize, usize)>`, `BTreeMap<(usize, usize), Deletion>`) - move to `seq/` or `representation/`. `compress_sequences` is called by `PartitionFitch::compress()` convenience constructor - remove the convenience method or invert the call direction.
 
@@ -41,7 +41,7 @@ Contains domain algorithms:
 - `gtr_refinement.rs` (381 lines) - iterative GTR inference from discrete trait data
 - `discrete_marginal.rs` (170 lines) - discrete-trait marginal reconstruction
 
-These import only from `gtr/` and `representation/partition/discrete` - no args coupling.
+These import only from `gtr/` and `partition/discrete` - no args coupling.
 
 ## representation/ is not a coherent module
 
@@ -74,7 +74,7 @@ Domain types should not depend on CLI parsing. Library consumers pull in `clap` 
 
 ## Dead code and cosmetic
 
-- `PartitionMarginal` in `representation/partition/traits.rs:115:` is a dead marker trait. Empty impl on both partition types, used only as supertrait bound on `PartitionMarginalOps`. Safe to remove.
-- `clock/reroot.rs` re-exports `EdgeMergeInfo`, `EdgeSplitInfo`, `RerootChanges`, `RerootResult` from `representation/algo/topology_cleanup/reroot`. Creates dual import paths. No production caller uses the re-export. Remove.
+- `PartitionMarginal` in `partition/traits.rs:115:` is a dead marker trait. Empty impl on both partition types, used only as supertrait bound on `PartitionMarginalOps`. Safe to remove.
+- `clock/reroot.rs` re-exports `EdgeMergeInfo`, `EdgeSplitInfo`, `RerootChanges`, `RerootResult` from `partition/algo/topology_cleanup/reroot`. Creates dual import paths. No production caller uses the re-export. Remove.
 - `hacks/` module contains one 14-line function (`fix_branch_length`). Module name normalizes technical debt. Relocate to `seq/` or inline at 3 call sites.
 - `discrete_states.rs` in `representation/` used exclusively by mugration. Move to `commands/mugration/` or future `mugration/` domain module.

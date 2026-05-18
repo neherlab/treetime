@@ -175,7 +175,7 @@ The graph stores root and leaf key vectors (`roots: Vec<GraphNodeKey>`, `leaves:
 
 ### Typed payloads
 
-Node and edge payloads are concrete types per algorithm stage. `NodeAncestral` (`#NodeAncestral`) and `EdgeAncestral` (`#EdgeAncestral`) in [packages/treetime/src/representation/payload/ancestral.rs#L14-L72](../../packages/treetime/src/representation/payload/ancestral.rs#L14-L72) provide minimal fields for ancestral reconstruction. `NodeTimetree` (`#NodeTimetree`) and `EdgeTimetree` (`#EdgeTimetree`) in [packages/treetime/src/representation/payload/timetree.rs#L18-L158](../../packages/treetime/src/representation/payload/timetree.rs#L18-L158) extend these with time-related fields.
+Node and edge payloads are concrete types per algorithm stage. `NodeAncestral` (`#NodeAncestral`) and `EdgeAncestral` (`#EdgeAncestral`) in [packages/treetime/src/partition/payload/ancestral.rs#L14-L72](../../packages/treetime/src/partition/payload/ancestral.rs#L14-L72) provide minimal fields for ancestral reconstruction. `NodeTimetree` (`#NodeTimetree`) and `EdgeTimetree` (`#EdgeTimetree`) in [packages/treetime/src/partition/payload/timetree.rs#L18-L158](../../packages/treetime/src/partition/payload/timetree.rs#L18-L158) extend these with time-related fields.
 
 Traits define typed access to domain-specific fields:
 

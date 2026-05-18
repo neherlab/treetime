@@ -8,10 +8,10 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use crate::representation::partition::traits::PartitionTimetreeAll;
-  use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::traits::PartitionTimetreeAll;
+  use crate::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,

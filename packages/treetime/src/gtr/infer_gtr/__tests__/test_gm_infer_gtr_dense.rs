@@ -12,8 +12,8 @@ mod tests {
   use crate::gtr::infer_gtr::common::InferGtrResult;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;

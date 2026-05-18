@@ -1,9 +1,9 @@
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::representation::partition::timetree::GraphTimetree;
-use crate::representation::partition::traits::PartitionTimetreeAll;
-use crate::representation::partition::traits::graph_log_lh;
-use crate::representation::payload::timetree::EdgeTimetree;
-use crate::representation::payload::timetree::NodeTimetree;
+use crate::partition::timetree::GraphTimetree;
+use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::traits::graph_log_lh;
+use crate::partition::payload::timetree::EdgeTimetree;
+use crate::partition::payload::timetree::NodeTimetree;
 use log::{debug, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;

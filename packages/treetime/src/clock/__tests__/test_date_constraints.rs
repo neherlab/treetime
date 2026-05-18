@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::o;
-  use crate::representation::payload::traits::DateConstraintNode;
+  use crate::partition::payload::traits::DateConstraintNode;
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;

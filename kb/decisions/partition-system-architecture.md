@@ -10,8 +10,8 @@ v0 source files:
 
 v1 source files:
 
-- Partition types and traits in `packages/treetime/src/representation/partition/`
-- Per-node/edge data structs in `packages/treetime/src/representation/payload/`
+- Partition types and traits in `packages/treetime/src/partition/`
+- Per-node/edge data structs in `packages/treetime/src/partition/payload/`
 
 ## Background: partition models in phylogenetics
 
@@ -107,9 +107,9 @@ v1 separates tree structure from per-partition reconstruction state. The generic
 
 ### Partition types
 
-The partition types in `packages/treetime/src/representation/partition/` form a hierarchy matching the reconstruction pipeline:
+The partition types in `packages/treetime/src/partition/` form a hierarchy matching the reconstruction pipeline:
 
-`PartitionFitch` in `packages/treetime/src/representation/partition/fitch.rs:8-15:1:` stores parsimony reconstruction state:
+`PartitionFitch` in `packages/treetime/src/partition/fitch.rs:8-15:1:` stores parsimony reconstruction state:
 
 ```rust
 pub struct PartitionFitch {
@@ -121,7 +121,7 @@ pub struct PartitionFitch {
 }
 ```
 
-`PartitionMarginalDense` in `packages/treetime/src/representation/partition/marginal_dense.rs:23-31:1:` stores full probability matrices for all positions:
+`PartitionMarginalDense` in `packages/treetime/src/partition/marginal_dense.rs:23-31:1:` stores full probability matrices for all positions:
 
 ```rust
 pub struct PartitionMarginalDense {
@@ -134,7 +134,7 @@ pub struct PartitionMarginalDense {
 }
 ```
 
-`PartitionMarginalSparse` in `packages/treetime/src/representation/partition/marginal_sparse.rs:24-32:1:` stores only variable positions:
+`PartitionMarginalSparse` in `packages/treetime/src/partition/marginal_sparse.rs:24-32:1:` stores only variable positions:
 
 ```rust
 pub struct PartitionMarginalSparse {
@@ -149,13 +149,13 @@ pub struct PartitionMarginalSparse {
 
 ### Per-node and per-edge payload structures
 
-Dense payloads in `packages/treetime/src/representation/payload/dense.rs`:
+Dense payloads in `packages/treetime/src/partition/payload/dense.rs`:
 
 - `DenseNodePartition` (`dense.rs:16-19:1:`) contains `seq: DenseSeqInfo` (gap positions and full sequence) and `profile: DenseSeqDis` (probability matrix over all positions)
 - `DenseEdgePartition` (`dense.rs:37-44:1:`) contains `msg_to_child`, `msg_to_parent`, `msg_from_child` (probability matrices for message passing) and `indels`
 - `DenseSeqDis` (`dense.rs:46-52:1:`) contains `dis: Array2<f64>` (positions x states) and `log_lh: f64`
 
-Sparse payloads in `packages/treetime/src/representation/payload/sparse.rs`:
+Sparse payloads in `packages/treetime/src/partition/payload/sparse.rs`:
 
 - `SparseNodePartition` (`sparse.rs:16-19:1:`) contains `seq: SparseSeqInfo` (gap/unknown ranges, composition, Fitch state) and `profile: MarginalSparseSeqDistribution`
 - `SparseEdgePartition` (`sparse.rs:98-106:1:`) contains `subs: Vec<Sub>` (substitutions), `indels: Vec<InDel>`, and directional messages
@@ -163,7 +163,7 @@ Sparse payloads in `packages/treetime/src/representation/payload/sparse.rs`:
 
 ### Trait-based behavior
 
-Behavior is defined through traits in `packages/treetime/src/representation/partition/traits.rs` and `packages/treetime/src/commands/timetree/partition_ops.rs`, not inheritance:
+Behavior is defined through traits in `packages/treetime/src/partition/traits.rs` and `packages/treetime/src/commands/timetree/partition_ops.rs`, not inheritance:
 
 `PartitionMarginalOps<N, E>` (`traits.rs:18-40:1:`) defines:
 
@@ -210,7 +210,7 @@ where
 }
 ```
 
-Type aliases in `packages/treetime/src/representation/partition/timetree.rs:8-9:1:` simplify common combinations:
+Type aliases in `packages/treetime/src/partition/timetree.rs:8-9:1:` simplify common combinations:
 
 ```rust
 pub type GraphTimetree = Graph<NodeTimetree, EdgeTimetree, ()>;

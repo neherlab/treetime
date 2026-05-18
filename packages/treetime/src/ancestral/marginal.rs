@@ -1,6 +1,6 @@
-use crate::representation::partition::traits::HasLogLh;
-use crate::representation::partition::traits::PartitionMarginalOps;
-use crate::representation::partition::traits::graph_log_lh;
+use crate::partition::traits::HasLogLh;
+use crate::partition::traits::PartitionMarginalOps;
+use crate::partition::traits::graph_log_lh;
 use eyre::Report;
 use log::trace;
 use parking_lot::{Mutex, RwLock};

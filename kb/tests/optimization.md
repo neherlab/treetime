@@ -746,7 +746,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 **Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs)
 
-**Impl:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+**Impl:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
 | Test                                                                 | Purpose                                                                         |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------- |

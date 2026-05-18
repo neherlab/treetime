@@ -4,7 +4,7 @@ mod tests {
   use crate::coalescent::events::collect_tree_events;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

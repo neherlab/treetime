@@ -3,8 +3,8 @@ pub mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::likelihood::evaluate_mixed;
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
-  use crate::representation::partition::optimization_contribution::OptimizationContribution;
-  use crate::representation::partition::optimize_dense;
+  use crate::partition::optimization_contribution::OptimizationContribution;
+  use crate::partition::optimize_dense;
   use ndarray::Array2;
   use ordered_float::OrderedFloat;
 

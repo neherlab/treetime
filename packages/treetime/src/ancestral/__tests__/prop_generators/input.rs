@@ -4,7 +4,7 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::partition::payload::ancestral::GraphAncestral;
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;

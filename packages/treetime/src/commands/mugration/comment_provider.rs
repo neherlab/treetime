@@ -1,4 +1,4 @@
-use crate::representation::partition::discrete::PartitionDiscrete;
+use crate::partition::discrete::PartitionDiscrete;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;

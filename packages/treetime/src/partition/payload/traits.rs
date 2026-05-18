@@ -1,4 +1,4 @@
-use crate::representation::payload::clock_set::ClockSet;
+use crate::partition::payload::clock_set::ClockSet;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};

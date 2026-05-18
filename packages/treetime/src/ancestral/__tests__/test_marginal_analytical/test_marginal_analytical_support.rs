@@ -3,8 +3,8 @@ pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::gtr::GTR;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use maplit::btreemap;

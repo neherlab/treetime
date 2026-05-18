@@ -6,8 +6,8 @@ use crate::gtr::infer_gtr::common::{
 };
 use crate::gtr::infer_gtr::dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
 use crate::make_report;
-use crate::representation::partition::discrete::PartitionDiscrete;
-use crate::representation::partition::traits::HasLogLh;
+use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::traits::HasLogLh;
 use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::{Array1, Array2};

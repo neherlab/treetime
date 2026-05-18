@@ -5,10 +5,10 @@ use crate::ancestral::fitch_sub::{
   resolve_root_forward, resolve_variable_positions_backward,
 };
 use crate::make_report;
-use crate::representation::partition::fitch::PartitionFitch;
-use crate::representation::partition::traits::PartitionCompressed;
-use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::representation::payload::sparse::{
+use crate::partition::fitch::PartitionFitch;
+use crate::partition::traits::PartitionCompressed;
+use crate::partition::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::partition::payload::sparse::{
   FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
 };
 use crate::seq::composition::Composition;

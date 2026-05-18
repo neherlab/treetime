@@ -134,7 +134,7 @@ The algorithm builds a mutation index mapping each (partition, mutation) to its 
 
 v0: no formal implementation. The design document describes "ad-hoc scripts" in nextstrain pipelines. See the [nextstrain ad-hoc scripts](#the-nextstrain-ad-hoc-scripts) section below for the script locations.
 
-v1 code: `merge_shared_mutation_branches()` in [`packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs`](../../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs). Available as `--merge-shared-mutations` on the `prune` command and in the `optimize` topology-cleanup loop.
+v1 code: `merge_shared_mutation_branches()` in [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs). Available as `--merge-shared-mutations` on the `prune` command and in the `optimize` topology-cleanup loop.
 
 ## Comparison
 

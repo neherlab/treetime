@@ -1,4 +1,4 @@
-use crate::representation::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::partition::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use indexmap::IndexMap;
 use std::sync::Arc;

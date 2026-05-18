@@ -1,13 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
-use crate::representation::partition::marginal_passes;
-use crate::representation::partition::optimization_contribution::OptimizationContribution;
-use crate::representation::partition::traits::{
+use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
+use crate::partition::marginal_passes;
+use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionOptimizeOps,
   PartitionRerootOps, PartitionTimetreeOps,
 };
-use crate::representation::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
+use crate::partition::payload::sparse::{MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;

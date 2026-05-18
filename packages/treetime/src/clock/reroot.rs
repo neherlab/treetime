@@ -2,11 +2,11 @@ use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::representation::algo::topology_cleanup::reroot::{
+use crate::partition::algo::topology_cleanup::reroot::{
   self as topology_reroot, remove_node_if_trivial, split_edge,
 };
-use crate::representation::payload::clock_set::ClockSet;
-use crate::representation::payload::traits::{ClockEdge, ClockNode};
+use crate::partition::payload::clock_set::ClockSet;
+use crate::partition::payload::traits::{ClockEdge, ClockNode};
 use approx::ulps_eq;
 use eyre::Report;
 use serde::{Deserialize, Serialize};

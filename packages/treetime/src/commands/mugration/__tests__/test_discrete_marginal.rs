@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::mugration::discrete_marginal::{attach_traits, run_discrete_marginal};
   use crate::o;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -147,10 +147,10 @@ mod tests {
   mod helpers {
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::o;
-    use crate::representation::discrete_states::DiscreteStates;
-    use crate::representation::partition::discrete::PartitionDiscrete;
-    use crate::representation::payload::ancestral::GraphAncestral;
-    use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
+    use crate::partition::discrete_states::DiscreteStates;
+    use crate::partition::discrete::PartitionDiscrete;
+    use crate::partition::payload::ancestral::GraphAncestral;
+    use crate::partition::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;

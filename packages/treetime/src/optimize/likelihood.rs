@@ -1,7 +1,7 @@
 use crate::optimize::dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
 use crate::optimize::indel::poisson_indel_log_lh;
 use crate::optimize::sparse_eval::{evaluate_sparse_contribution, evaluate_sparse_contribution_impl};
-use crate::representation::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimization_contribution::OptimizationContribution;
 
 /// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]

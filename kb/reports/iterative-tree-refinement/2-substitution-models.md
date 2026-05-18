@@ -79,7 +79,7 @@ Three cases arise when composing substitutions at the same position:
 
 Set-union produces correct results only for convergent mutations at the same position. For chains and cancellations, it produces incorrect mutation counts and incorrect ancestral state assignments.
 
-v1 implements composition via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs). Both the prune and optimize commands delegate to this shared function so sparse edge collapse stays composition-correct across the codebase.
+v1 implements composition via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs). Both the prune and optimize commands delegate to this shared function so sparse edge collapse stays composition-correct across the codebase.
 
 ## The model hierarchy
 

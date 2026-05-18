@@ -6,7 +6,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, restore_branch_lengths, save_branch_lengths};
   use crate::optimize::run_loop::{ConvergenceReason, collect_optimize_partitions, run_optimize_loop};
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use itertools::izip;

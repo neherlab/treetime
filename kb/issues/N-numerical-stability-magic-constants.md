@@ -20,7 +20,7 @@ Three locations use `1e-10` as a denominator floor. No named constant. Related t
 
 ### Discrete MIN_POSITIVE clamp biases near-zero divisor
 
-`packages/treetime/src/representation/partition/discrete.rs:207:`
+`packages/treetime/src/partition/discrete.rs:207:`
 
 Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating information about the degenerate log-likelihood to callers.
 

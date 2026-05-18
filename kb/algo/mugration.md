@@ -26,7 +26,7 @@ For each leaf node:
 
 This follows Felsenstein's treatment of ambiguous data: unknown states receive equal probability across all possibilities, enabling marginalization during message passing.
 
-**Backward pass** (postorder, leaves to root) (`process_node_backward()` in [`packages/treetime/src/representation/partition/discrete.rs#L60`](../../packages/treetime/src/representation/partition/discrete.rs#L60)):
+**Backward pass** (postorder, leaves to root) (`process_node_backward()` in [`packages/treetime/src/partition/discrete.rs#L60`](../../packages/treetime/src/partition/discrete.rs#L60)):
 
 For each node in postorder:
 
@@ -46,7 +46,7 @@ For each node in postorder:
    ```
    where `P = exp(Q*t)` is the transition probability matrix for branch length `t`.
 
-**Forward pass** (preorder, root to leaves) (`process_node_forward()` in [`packages/treetime/src/representation/partition/discrete.rs#L150`](../../packages/treetime/src/representation/partition/discrete.rs#L150)):
+**Forward pass** (preorder, root to leaves) (`process_node_forward()` in [`packages/treetime/src/partition/discrete.rs#L150`](../../packages/treetime/src/partition/discrete.rs#L150)):
 
 For each node in preorder:
 
@@ -61,7 +61,7 @@ For each node in preorder:
    msg_to_child = normalize(profile / msg_from_child)
    ```
 
-**Trait assignment** (`get_reconstructed_trait()` in [`packages/treetime/src/representation/partition/discrete.rs#L50`](../../packages/treetime/src/representation/partition/discrete.rs#L50)):
+**Trait assignment** (`get_reconstructed_trait()` in [`packages/treetime/src/partition/discrete.rs#L50`](../../packages/treetime/src/partition/discrete.rs#L50)):
 
 After forward-backward passes, each node has a posterior probability distribution over states. The assigned trait is `argmax(profile)`.
 
@@ -107,7 +107,7 @@ Both v0 and v1 perform iterative GTR refinement. v1's implementation includes tw
 
 ## Confidence Profiles
 
-After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/representation/partition/discrete.rs#L56`](../../packages/treetime/src/representation/partition/discrete.rs#L56). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
+After forward-backward, `get_confidence(node_key)` returns the full posterior distribution `profile[n_states]` at [`packages/treetime/src/partition/discrete.rs#L56`](../../packages/treetime/src/partition/discrete.rs#L56). This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles).
 
 ---
 
@@ -129,7 +129,7 @@ After forward-backward, `get_confidence(node_key)` returns the full posterior di
 | ------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | Golden master | [`__tests__/test_gm_mugration.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_gm_mugration.rs) | Internal nodes only (filtered)         |
 | Command       | [`__tests__/test_run.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_run.rs)                   | Output file existence, basic structure |
-| Partition     | [`representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs)        | Unit tests for node data, profiles     |
+| Partition     | [`partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs)        | Unit tests for node data, profiles     |
 
 ### Test Gaps
 

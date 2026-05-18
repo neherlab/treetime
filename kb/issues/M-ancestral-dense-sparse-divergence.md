@@ -21,7 +21,7 @@ Candidates for root cause (from test file comments):
 The bimodal distribution (clean separation between populations 1 and 2) suggests a discrete trigger rather than continuous numerical drift.
 
 4. Sparse EPS demotion: `combine_messages()` demotes variable sites to fixed
-   when posterior peak exceeds `1 - EPS` (`EPS = 1e-4` at `packages/treetime/src/representation/partition/marginal_helpers.rs#L15`). This is an approximation not present in the dense path, which retains full per-position probability vectors. The demotion replaces a position-specific posterior with a shared per-character vector, introducing a small error proportional to the distance between the position posterior and the shared vector.
+   when posterior peak exceeds `1 - EPS` (`EPS = 1e-4` at `packages/treetime/src/partition/marginal_helpers.rs#L15`). This is an approximation not present in the dense path, which retains full per-position probability vectors. The demotion replaces a position-specific posterior with a shared per-character vector, introducing a small error proportional to the distance between the position posterior and the shared vector.
 
 ## Excluded cause
 

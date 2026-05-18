@@ -13,12 +13,12 @@ mod tests {
   use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::pretty_assert_neg_inf;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::optimization_contribution::OptimizationContribution;
-  use crate::representation::partition::optimize_dense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::optimization_contribution::OptimizationContribution;
+  use crate::partition::optimize_dense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
@@ -68,7 +68,7 @@ mod tests {
     (
       Vec<Arc<RwLock<PartitionMarginalDense>>>,
       Vec<Arc<RwLock<PartitionMarginalSparse>>>,
-      crate::representation::partition::traits::PartitionOptimizeVec,
+      crate::partition::traits::PartitionOptimizeVec,
     ),
     Report,
   > {

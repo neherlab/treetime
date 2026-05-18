@@ -4,7 +4,7 @@ mod tests {
   use crate::coalescent::coalescent::compute_coalescent_contributions;
   use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
   use crate::o;
-  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::GraphTimetree;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
   use itertools::Itertools;

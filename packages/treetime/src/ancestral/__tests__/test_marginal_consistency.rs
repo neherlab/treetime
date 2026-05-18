@@ -5,11 +5,11 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
@@ -345,10 +345,10 @@ mod tests {
     partitions: &[Arc<RwLock<P>>],
   ) -> Result<BTreeMap<String, String>, Report>
   where
-    P: crate::representation::partition::traits::PartitionMarginalOps<
-        crate::representation::payload::ancestral::NodeAncestral,
-        crate::representation::payload::ancestral::EdgeAncestral,
-      > + crate::representation::partition::traits::HasLogLh,
+    P: crate::partition::traits::PartitionMarginalOps<
+        crate::partition::payload::ancestral::NodeAncestral,
+        crate::partition::payload::ancestral::EdgeAncestral,
+      > + crate::partition::traits::HasLogLh,
   {
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(graph, false, partitions, |node, seq| {

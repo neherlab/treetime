@@ -79,7 +79,7 @@ profile(u, i)[a] = msg_to_parent(u, i)[a] * msg_to_child(u, i)[a] / normalizatio
 
 v1 code:
 
-- Backward pass: `process_node_backward()` in [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../../packages/treetime/src/representation/partition/marginal_passes.rs)
+- Backward pass: `process_node_backward()` in [`packages/treetime/src/partition/marginal_passes.rs`](../../../packages/treetime/src/partition/marginal_passes.rs)
 - Forward pass: `process_node_forward()` in the same file
 - The `update_marginal()` function in [`packages/treetime/src/commands/ancestral/marginal.rs`](../../../packages/treetime/src/commands/ancestral/marginal.rs) orchestrates both passes
 
@@ -101,7 +101,7 @@ Each site likelihood is computed normally (it is a sum of s terms, not a product
 
 Within a single site, the conditional likelihood vector entries can also underflow for deep trees with many nodes. The remedy is **scaling**: multiply each node's conditional likelihood vector by a scaling factor to keep values in a representable range, then account for the scaling factors in the final log-likelihood. This technique was introduced by Felsenstein (1981) and is standard in all ML phylogenetic software.
 
-v1 code: The sparse representation in v1 uses log-space arithmetic with `logsumexp` normalization in [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../../packages/treetime/src/representation/partition/marginal_helpers.rs). The `softmax_with_log_norm()` function handles numerical stability for the backward and forward passes.
+v1 code: The sparse representation in v1 uses log-space arithmetic with `logsumexp` normalization in [`packages/treetime/src/partition/marginal_helpers.rs`](../../../packages/treetime/src/partition/marginal_helpers.rs). The `softmax_with_log_norm()` function handles numerical stability for the backward and forward passes.
 
 ### Sparse vs dense representation
 
@@ -113,8 +113,8 @@ TreeTime supports two representations of sequence data on the tree:
 
 v1 code:
 
-- Dense: `PartitionMarginalDense` in [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- Sparse: `PartitionMarginalSparse` in [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- Dense: `PartitionMarginalDense` in [`packages/treetime/src/partition/marginal_dense.rs`](../../../packages/treetime/src/partition/marginal_dense.rs)
+- Sparse: `PartitionMarginalSparse` in [`packages/treetime/src/partition/marginal_sparse.rs`](../../../packages/treetime/src/partition/marginal_sparse.rs)
 
 ## The likelihood surface
 

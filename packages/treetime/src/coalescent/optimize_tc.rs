@@ -4,7 +4,7 @@ use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::make_report;
-use crate::representation::payload::traits::TimetreeNode;
+use crate::partition::payload::traits::TimetreeNode;
 use argmin::core::observers::{Observe, ObserverMode};
 use argmin::core::{CostFunction, Error, Executor, State};
 use argmin::solver::brent::BrentOpt;

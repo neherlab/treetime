@@ -122,7 +122,7 @@ Cases 1, 2, and 7 are expected to dominate in phylogenetic data. Cases 4 and 5 r
 ### Implementation
 
 - `fn compose_indels(parent: &[InDel], child: &[InDel]) -> Vec<InDel>` in [packages/treetime/src/seq/indel.rs](../../packages/treetime/src/seq/indel.rs), following the merge-sort pattern of `fn compose_substitutions()`
-- `fn chain_fitch_indels()` on `SparseEdgePartition` ([packages/treetime/src/representation/payload/sparse.rs](../../packages/treetime/src/representation/payload/sparse.rs)), analogous to `fn chain_fitch_subs()`
+- `fn chain_fitch_indels()` on `SparseEdgePartition` ([packages/treetime/src/partition/payload/sparse.rs](../../packages/treetime/src/partition/payload/sparse.rs)), analogous to `fn chain_fitch_subs()`
 - Call sites: `fn collapse_edge()` and `fn PartitionMarginalSparse::apply_reroot()`
 
 ## Glossary

@@ -5,16 +5,16 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use maplit::btreemap;
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
-  fn zero_length_partitions(graph: &GraphAncestral) -> crate::representation::partition::traits::PartitionOptimizeVec {
+  fn zero_length_partitions(graph: &GraphAncestral) -> crate::partition::traits::PartitionOptimizeVec {
     let dense = vec![Arc::new(RwLock::new(PartitionMarginalDense {
       index: 0,
       gtr: jc69(JC69Params::default()).unwrap(),

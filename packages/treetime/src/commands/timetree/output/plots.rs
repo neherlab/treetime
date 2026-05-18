@@ -1,4 +1,4 @@
-use crate::representation::partition::timetree::GraphTimetree;
+use crate::partition::timetree::GraphTimetree;
 use eyre::Report;
 use std::path::Path;
 

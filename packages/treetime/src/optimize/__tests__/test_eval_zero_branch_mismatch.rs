@@ -6,11 +6,11 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

@@ -2,7 +2,7 @@
 
 ## Description
 
-`hacks/` contains one 14-line function `fix_branch_length` that clamps branch lengths to a minimum. Used by 3 callers: `representation/partition/marginal_passes.rs`, `representation/partition/marginal_dense.rs`, `gtr/infer_gtr/dense.rs`. Module name normalizes technical debt.
+`hacks/` contains one 14-line function `fix_branch_length` that clamps branch lengths to a minimum. Used by 3 callers: `partition/marginal_passes.rs`, `partition/marginal_dense.rs`, `gtr/infer_gtr/dense.rs`. Module name normalizes technical debt.
 
 ## Fix
 

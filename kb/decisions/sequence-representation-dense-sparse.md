@@ -1,6 +1,6 @@
 # Dense and sparse sequence representation
 
-v1 introduces a sparse sequence representation (`SparseNodePartition` in `packages/treetime/src/representation/payload/sparse.rs:16-84`) alongside the dense representation (`DenseNodePartition` in `packages/treetime/src/representation/payload/dense.rs:16-33`). The sparse path stores probability vectors only for positions where the ancestral state is uncertain, while invariant positions share per-character vectors. This architectural change reduces memory usage proportionally to the fraction of variable sites in the alignment, which ranges from 0.1% to 5% in viral datasets.
+v1 introduces a sparse sequence representation (`SparseNodePartition` in `packages/treetime/src/partition/payload/sparse.rs:16-84`) alongside the dense representation (`DenseNodePartition` in `packages/treetime/src/partition/payload/dense.rs:16-33`). The sparse path stores probability vectors only for positions where the ancestral state is uncertain, while invariant positions share per-character vectors. This architectural change reduces memory usage proportionally to the fraction of variable sites in the alignment, which ranges from 0.1% to 5% in viral datasets.
 
 v0 uses only dense representation: `seq2array()` (`packages/legacy/treetime/treetime/seq_utils.py:152-204`) converts sequences to NumPy character arrays, and `seq2prof()` (`packages/legacy/treetime/treetime/seq_utils.py:207-229`) converts those to 2D probability matrices of shape `(L, K)` where L is the alignment length and K is the alphabet size (5 for nucleotides including gap, 22 for amino acids). The `SequenceData.make_compressed_alignment()` method (`packages/legacy/treetime/treetime/sequence_data.py:325-464`) groups identical alignment columns and tracks multiplicity, but this column deduplication still stores a full K-width probability vector for each unique column pattern.
 
@@ -28,11 +28,11 @@ v1 stores sequences as `Seq` (`packages/treetime-primitives/src/seq.rs:7-11`), a
 
 ### Dense representation
 
-`DenseNodePartition` contains `DenseSeqInfo` (the sequence and gap ranges) and `DenseSeqDis` (an `Array2<f64>` of shape `(L, K)`). This matches v0's memory layout. The dense path in `PartitionMarginalDense` (`packages/treetime/src/representation/partition/marginal_dense.rs:24-31`) stores full probability matrices at every node and uses the same belief propagation algorithm as v0.
+`DenseNodePartition` contains `DenseSeqInfo` (the sequence and gap ranges) and `DenseSeqDis` (an `Array2<f64>` of shape `(L, K)`). This matches v0's memory layout. The dense path in `PartitionMarginalDense` (`packages/treetime/src/partition/marginal_dense.rs:24-31`) stores full probability matrices at every node and uses the same belief propagation algorithm as v0.
 
 ### Sparse representation
 
-`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `MarginalSparseSeqDistribution` (`packages/treetime/src/representation/payload/sparse.rs:108-134`). The sparse distribution has:
+`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `MarginalSparseSeqDistribution` (`packages/treetime/src/partition/payload/sparse.rs:108-134`). The sparse distribution has:
 
 - `variable: BTreeMap<usize, VarPos>` - position index to probability vector and current state, for positions where parsimony is ambiguous
 - `fixed: BTreeMap<AsciiChar, Array1<f64>>` - one shared K-element vector per character type, covering all invariant positions of that character
@@ -44,11 +44,11 @@ The `Composition` struct (`packages/treetime/src/seq/composition.rs:9-12`) track
 
 The sparse path runs `compress_sequences()` (`packages/treetime/src/commands/ancestral/fitch.rs:520-546`) before marginal reconstruction. This performs Fitch parsimony (backward and forward passes) to identify variable positions. A position is variable if parsimony cannot unambiguously assign a single state. The result populates `SparseSeqInfo.fitch.variable` with a `BTreeMap<usize, StateSet>` containing only positions that vary across the tree.
 
-Marginal belief propagation (`packages/treetime/src/representation/partition/marginal_passes.rs:16-128`) operates on this compressed representation. The backward pass combines child messages, tracking only variable positions explicitly. Fixed positions contribute through the per-character shared vectors weighted by counts. The forward pass propagates parent information to children, again operating only on variable positions.
+Marginal belief propagation (`packages/treetime/src/partition/marginal_passes.rs:16-128`) operates on this compressed representation. The backward pass combines child messages, tracking only variable positions explicitly. Fixed positions contribute through the per-character shared vectors weighted by counts. The forward pass propagates parent information to children, again operating only on variable positions.
 
 ### Mutation storage
 
-Sparse edge partitions (`SparseEdgePartition` in `packages/treetime/src/representation/payload/sparse.rs:98-106`) store explicit substitution lists (`Vec<Sub>`) rather than requiring full sequence comparison. This enables efficient extraction of mutations between parent and child nodes.
+Sparse edge partitions (`SparseEdgePartition` in `packages/treetime/src/partition/payload/sparse.rs:98-106`) store explicit substitution lists (`Vec<Sub>`) rather than requiring full sequence comparison. This enables efficient extraction of mutations between parent and child nodes.
 
 ## Memory comparison
 
@@ -71,7 +71,7 @@ Sparse and dense paths produce identical results. The test suite verifies this i
 
 ## Dense mode selection
 
-The `infer_dense()` function (`packages/treetime/src/representation/algo/infer_dense.rs:1-7`) returns `false` unconditionally. A planned heuristic will select dense mode when tree branches are long enough that most positions become variable, negating the benefit of sparse representation. The threshold depends on branch lengths and mutation rates: when the expected number of mutations per branch approaches the sequence length, sparse representation loses its advantage.
+The `infer_dense()` function (`packages/treetime/src/partition/algo/infer_dense.rs:1-7`) returns `false` unconditionally. A planned heuristic will select dense mode when tree branches are long enough that most positions become variable, negating the benefit of sparse representation. The threshold depends on branch lengths and mutation rates: when the expected number of mutations per branch approaches the sequence length, sparse representation loses its advantage.
 
 ## Practical considerations
 

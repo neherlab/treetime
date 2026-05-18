@@ -5,8 +5,8 @@ mod tests {
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
   };
   use crate::o;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;

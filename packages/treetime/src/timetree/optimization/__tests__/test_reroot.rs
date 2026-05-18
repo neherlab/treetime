@@ -8,16 +8,16 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::algo::topology_cleanup::reroot::RerootChanges;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use crate::representation::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
-  use crate::representation::payload::sparse::{
+  use crate::partition::algo::topology_cleanup::reroot::RerootChanges;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
+  use crate::partition::payload::sparse::{
     MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition,
   };
-  use crate::representation::payload::timetree::EdgeTimetree;
-  use crate::representation::payload::timetree::NodeTimetree;
+  use crate::partition::payload::timetree::EdgeTimetree;
+  use crate::partition::payload::timetree::NodeTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;

@@ -1,4 +1,4 @@
-use crate::representation::payload::sparse::Deletion;
+use crate::partition::payload::sparse::Deletion;
 use crate::seq::indel::InDel;
 use std::collections::BTreeMap;
 use treetime_primitives::Seq;

@@ -3,12 +3,12 @@ use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forw
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_report;
-use crate::representation::partition::optimization_contribution::OptimizationContribution;
-use crate::representation::partition::traits::{
+use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps, PartitionOptimizeOps,
   PartitionRerootOps, PartitionTimetreeOps,
 };
-use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};

@@ -14,7 +14,7 @@ for leaf in graph.get_leaves() {           // O(n) leaves
 }
 ```
 
-The same pattern appears in dense marginal initialization at [packages/treetime/src/representation/partition/marginal_dense.rs#L191-L195](../../packages/treetime/src/representation/partition/marginal_dense.rs#L191-L195).
+The same pattern appears in dense marginal initialization at [packages/treetime/src/partition/marginal_dense.rs#L191-L195](../../packages/treetime/src/partition/marginal_dense.rs#L191-L195).
 
 ## Impact
 

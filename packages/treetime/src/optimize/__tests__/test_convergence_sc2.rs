@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
-  use crate::representation::partition::fitch::PartitionFitch;
+  use crate::partition::fitch::PartitionFitch;
 
   use eyre::Report;
 

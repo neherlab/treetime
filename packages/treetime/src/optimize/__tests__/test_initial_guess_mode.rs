@@ -8,8 +8,8 @@ mod tests {
     any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
   };
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

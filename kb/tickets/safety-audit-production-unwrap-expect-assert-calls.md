@@ -8,11 +8,11 @@ Approximately 75 production `unwrap()`/`expect()`/`assert!()` calls panic instea
 
 | File                                            | Instances | Pattern                                                       |
 | :---------------------------------------------- | :-------- | :------------------------------------------------------------ |
-| `representation/partition/marginal_passes.rs`   | 10        | `.unwrap()` / `.expect()` on node/edge lookup                 |
-| `representation/partition/marginal_dense.rs`    | 8         | `.unwrap()` / `.expect()` on node/edge lookup                 |
+| `partition/marginal_passes.rs`   | 10        | `.unwrap()` / `.expect()` on node/edge lookup                 |
+| `partition/marginal_dense.rs`    | 8         | `.unwrap()` / `.expect()` on node/edge lookup                 |
 | `commands/clock/reroot.rs`                      | 6         | `.expect("Edge not found")`                                   |
 | `commands/timetree/optimization/polytomy.rs`    | 5         | `.expect("Node must exist")`                                  |
-| `representation/partition/traits.rs`            | 4         | `.expect()` on `node()`, `edge()`, `node_mut()`, `edge_mut()` |
+| `partition/traits.rs`            | 4         | `.expect()` on `node()`, `edge()`, `node_mut()`, `edge_mut()` |
 | `treetime-grid/src/grid.rs`                     | 5         | `T::from(...).unwrap()` numeric conversions                   |
 | `treetime-grid/src/grid_fn.rs`                  | 3         | `.unwrap()` on numeric conversions                            |
 | `commands/clock/clock_regression.rs`            | 3         | `.expect()` / `.unwrap()`                                     |

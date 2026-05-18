@@ -1,7 +1,7 @@
 use crate::make_internal_error;
 use crate::optimize::likelihood::{OptimizationMetrics, evaluate_with_indels};
 use crate::optimize::zero_boundary::grid_search_inner;
-use crate::representation::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
 use num::clamp;
 

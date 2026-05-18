@@ -4,8 +4,8 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;

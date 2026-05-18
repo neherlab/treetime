@@ -2,7 +2,7 @@
 
 ## Description
 
-10+ files in `representation/partition/` import `GTR` from `gtr/`. Two files in `gtr/infer_gtr/` import back from `representation/`, forming a bidirectional cycle.
+10+ files in `partition/` import `GTR` from `gtr/`. Two files in `gtr/infer_gtr/` import back from `representation/`, forming a bidirectional cycle.
 
 ## Reverse direction (breakable)
 

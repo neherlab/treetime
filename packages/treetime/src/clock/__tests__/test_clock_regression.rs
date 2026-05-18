@@ -5,7 +5,7 @@ mod tests {
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::payload::traits::ClockNode;
+  use crate::partition::payload::traits::ClockNode;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use eyre::Report;
   use maplit::btreemap;

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::convergence::metrics::TimetreeOptimizer;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use crate::representation::payload::timetree::NodeTimetree;
+  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::payload::timetree::NodeTimetree;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;

@@ -31,7 +31,7 @@ Both partition types implement `PartitionBranchOps`, `PartitionMarginalOps`, `Pa
 
 ### Naming: `DenseSeqDis` vs `MarginalSparseSeqDistribution`
 
-`DenseSeqDis` [packages/treetime/src/representation/payload/dense.rs#L45](../../packages/treetime/src/representation/payload/dense.rs#L45) abbreviates "Distribution" to 3 characters. `MarginalSparseSeqDistribution` [packages/treetime/src/representation/payload/sparse.rs#L159](../../packages/treetime/src/representation/payload/sparse.rs#L159) spells it out and adds a redundant "Marginal" prefix (sparse distributions exist only in marginal context; the Fitch counterpart is separately named `FitchSeqDistribution` [packages/treetime/src/representation/payload/sparse.rs#L187](../../packages/treetime/src/representation/payload/sparse.rs#L187)).
+`DenseSeqDis` [packages/treetime/src/partition/payload/dense.rs#L45](../../packages/treetime/src/partition/payload/dense.rs#L45) abbreviates "Distribution" to 3 characters. `MarginalSparseSeqDistribution` [packages/treetime/src/partition/payload/sparse.rs#L159](../../packages/treetime/src/partition/payload/sparse.rs#L159) spells it out and adds a redundant "Marginal" prefix (sparse distributions exist only in marginal context; the Fitch counterpart is separately named `FitchSeqDistribution` [packages/treetime/src/partition/payload/sparse.rs#L187](../../packages/treetime/src/partition/payload/sparse.rs#L187)).
 
 **Fix:** rename to `DenseSeqDistribution` and `SparseSeqDistribution`. Pure mechanical rename, ~17 files, zero functional change.
 
@@ -42,8 +42,8 @@ The remaining differences follow from dense storing full N-by-K matrices while s
 - Node/edge inner types differ: dense uses `Array2<f64>` profiles, sparse uses `BTreeMap<usize, VarPos>` variable-site maps + `BTreeMap<AsciiChar, Array1<f64>>` fixed-state vectors. Same `profile`/`msg_*` field names, different inner types. This is the representation difference itself
 - Fitch substitution storage: sparse edges carry `subs_fitch`/`subs_ml` with composition/inversion/chaining methods. Dense edges have none - substitutions are derived on-the-fly by argmax comparison of endpoint posteriors
 - Composition tracking: sparse carries explicit `Composition` counts. Dense does not need them - character frequencies are implicit in the full matrix
-- Reroot: `PartitionRerootOps` is a no-op for dense [packages/treetime/src/representation/partition/marginal_dense.rs#L55](../../packages/treetime/src/representation/partition/marginal_dense.rs#L55), ~120 lines for sparse [packages/treetime/src/representation/partition/marginal_sparse.rs#L133](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L133). Dense recomputes profiles from scratch after topology changes; sparse must update mutation lists, edge messages, and root sequence
-- `PartitionCompressed`: sparse-only [packages/treetime/src/representation/partition/marginal_sparse.rs#L39](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L39). Compression is a sparse concept with no dense counterpart
+- Reroot: `PartitionRerootOps` is a no-op for dense [packages/treetime/src/partition/marginal_dense.rs#L55](../../packages/treetime/src/partition/marginal_dense.rs#L55), ~120 lines for sparse [packages/treetime/src/partition/marginal_sparse.rs#L133](../../packages/treetime/src/partition/marginal_sparse.rs#L133). Dense recomputes profiles from scratch after topology changes; sparse must update mutation lists, edge messages, and root sequence
+- `PartitionCompressed`: sparse-only [packages/treetime/src/partition/marginal_sparse.rs#L39](../../packages/treetime/src/partition/marginal_sparse.rs#L39). Compression is a sparse concept with no dense counterpart
 - `SparseSeqInfo` has 6 fields vs `DenseSeqInfo` has 5: `DenseSeqInfo` tracks `gaps`, `unknown`, `non_char`, `variable_indel`, `sequence`. `SparseSeqInfo` also has `composition` and `fitch` (sparse bookkeeping)
 
 ## Tests needed

@@ -10,7 +10,7 @@ Practical magnitude is small: only variable sites differ between Fitch and margi
 
 ## Root cause
 
-`SparseSeqInfo.composition` is set during Fitch compression ([packages/treetime/src/commands/ancestral/fitch.rs](../../packages/treetime/src/commands/ancestral/fitch.rs)) and never updated. `reconstruct_node_sequence()` rewrites `seq.sequence` but not `seq.composition` ([packages/treetime/src/representation/partition/marginal_sparse.rs](../../packages/treetime/src/representation/partition/marginal_sparse.rs)).
+`SparseSeqInfo.composition` is set during Fitch compression ([packages/treetime/src/commands/ancestral/fitch.rs](../../packages/treetime/src/commands/ancestral/fitch.rs)) and never updated. `reconstruct_node_sequence()` rewrites `seq.sequence` but not `seq.composition` ([packages/treetime/src/partition/marginal_sparse.rs](../../packages/treetime/src/partition/marginal_sparse.rs)).
 
 ## Fix
 

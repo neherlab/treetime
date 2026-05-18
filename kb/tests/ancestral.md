@@ -55,7 +55,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
 | Test                                                          | Purpose                                            |
 | ------------------------------------------------------------- | -------------------------------------------------- |
@@ -76,7 +76,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                                           | Purpose                                           |
 | -------------------------------------------------------------- | ------------------------------------------------- |
@@ -98,8 +98,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                                      | Purpose                                               | Type                  |
 | --------------------------------------------------------- | ----------------------------------------------------- | --------------------- |
@@ -117,8 +117,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                       | Purpose                                                           | Type     |
 | ------------------------------------------ | ----------------------------------------------------------------- | -------- |
@@ -138,8 +138,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                                    | Purpose                                          | Type     |
 | ------------------------------------------------------- | ------------------------------------------------ | -------- |
@@ -161,8 +161,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                                     | Purpose                                             | Type                         |
 | -------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
@@ -183,8 +183,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 
 - [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                            | Purpose                                                        |
 | ----------------------------------------------- | -------------------------------------------------------------- |
@@ -207,8 +207,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 
 - [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 | Test                                                                     | Purpose                                                                 |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
@@ -227,8 +227,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 ### Equilibrium Convergence
 
@@ -261,8 +261,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 ### Caterpillar Trees
 
@@ -301,8 +301,8 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)
 
 ### Extreme Branches
 
@@ -344,7 +344,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/commands/ancestr
 **Impl:**
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
 ### Two-Taxon
 

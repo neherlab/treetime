@@ -1,6 +1,6 @@
-use crate::representation::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
-use crate::representation::payload::clock_set::ClockSet;
-use crate::representation::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
+use crate::partition::payload::ancestral::{EdgeAncestral, HasBranchMutations, NodeAncestral};
+use crate::partition::payload::clock_set::ClockSet;
+use crate::partition::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -287,11 +287,11 @@ impl TimetreeEdge for EdgeTimetree {
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::annotate_branch_mutations;
-  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::payload::ancestral::annotate_branch_mutations;
+  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use indoc::indoc;

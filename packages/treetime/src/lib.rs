@@ -9,7 +9,7 @@ pub mod gtr;
 pub mod hacks;
 pub mod io;
 pub mod optimize;
-pub mod representation;
+pub mod partition;
 pub mod seq;
 pub mod timetree;
 

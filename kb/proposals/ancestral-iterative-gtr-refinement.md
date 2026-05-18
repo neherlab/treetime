@@ -121,8 +121,8 @@ The proposal is still scientifically plausible, but the expected payoff is conce
 ### v1 marginal passes
 
 - [`packages/treetime/src/commands/ancestral/marginal.rs#L17-L49`](../../packages/treetime/src/commands/ancestral/marginal.rs#L17-L49): `initialize_marginal()` and `update_marginal()`
-- [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
-- [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs)
+- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
+- [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)
 
 ### v0 precedent
 

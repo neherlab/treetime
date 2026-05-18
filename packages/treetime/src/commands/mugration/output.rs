@@ -1,5 +1,5 @@
-use crate::representation::partition::discrete::PartitionDiscrete;
-use crate::representation::payload::ancestral::GraphAncestral;
+use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;

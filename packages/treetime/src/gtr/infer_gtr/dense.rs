@@ -5,7 +5,7 @@ use crate::gtr::infer_gtr::common::{
 };
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::make_internal_report;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal_dense::PartitionMarginalDense;
 use eyre::Report;
 use ndarray::{Array1, Array2, Array3};
 use parking_lot::RwLock;

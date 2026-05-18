@@ -12,7 +12,7 @@ The old concatenation approach preserved the raw event count but double-counted 
 
 ## Affected code
 
-- `fn edge_indel_count()` at `packages/treetime/src/representation/partition/marginal_sparse.rs` returns `indels.len()`
+- `fn edge_indel_count()` at `packages/treetime/src/partition/marginal_sparse.rs` returns `indels.len()`
 - `fn estimate_indel_rate()` at `packages/treetime/src/commands/optimize/optimize_indel.rs` sums `edge_indel_count()` across all edges
 - `fn total_indel_log_lh()` at `packages/treetime/src/commands/optimize/optimize_indel.rs` uses `edge_indel_count()` per edge
 

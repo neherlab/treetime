@@ -4,8 +4,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::representation::partition::optimize_dense::{PartitionContribution, get_coefficients};
-  use crate::representation::partition::optimize_sparse;
+  use crate::partition::optimize_dense::{PartitionContribution, get_coefficients};
+  use crate::partition::optimize_sparse;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, Axis, array, concatenate};
   use rstest::rstest;

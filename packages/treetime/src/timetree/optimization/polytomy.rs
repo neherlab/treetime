@@ -1,9 +1,9 @@
-use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
-use crate::representation::algo::topology_cleanup::reroot::remove_node_if_trivial;
-use crate::representation::partition::timetree::GraphTimetree;
-use crate::representation::partition::traits::PartitionTimetreeAll;
-use crate::representation::payload::timetree::EdgeTimetree;
-use crate::representation::payload::timetree::NodeTimetree;
+use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+use crate::partition::algo::topology_cleanup::reroot::remove_node_if_trivial;
+use crate::partition::timetree::GraphTimetree;
+use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::payload::timetree::EdgeTimetree;
+use crate::partition::payload::timetree::NodeTimetree;
 use argmin::core::{CostFunction, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;

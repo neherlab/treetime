@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
-  use crate::representation::payload::sparse::Deletion;
+  use crate::partition::payload::sparse::Deletion;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_primitives::Seq;

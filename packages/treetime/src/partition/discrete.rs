@@ -1,9 +1,9 @@
 use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
-use crate::representation::discrete_states::DiscreteStates;
-use crate::representation::partition::traits::HasLogLh;
-use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
+use crate::partition::discrete_states::DiscreteStates;
+use crate::partition::traits::HasLogLh;
+use crate::partition::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
 use ndarray::Array1;
 use std::collections::BTreeMap;

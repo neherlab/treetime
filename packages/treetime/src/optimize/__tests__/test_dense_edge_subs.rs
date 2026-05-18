@@ -3,10 +3,10 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDis, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -326,7 +326,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::representation::payload::dense::DenseNodePartition;
+    use crate::partition::payload::dense::DenseNodePartition;
     use crate::seq::mutation::Sub;
     use treetime_utils::array::ndarray::argmax_first;
 

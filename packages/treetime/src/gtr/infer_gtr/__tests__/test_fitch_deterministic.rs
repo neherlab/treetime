@@ -5,8 +5,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
   use rstest::rstest;

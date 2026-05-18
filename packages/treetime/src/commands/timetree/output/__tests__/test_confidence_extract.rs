@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::output::confidence::extract_confidence_intervals;
-  use crate::representation::partition::timetree::GraphTimetree;
-  use crate::representation::payload::timetree::NodeTimetree;
+  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::payload::timetree::NodeTimetree;
   use approx::assert_relative_eq;
   use helpers::{make_node, make_node_with_rate_dates};
   use ndarray::Array1;
@@ -234,7 +234,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::representation::payload::timetree::NodeTimetree;
+    use crate::partition::payload::timetree::NodeTimetree;
     use std::sync::Arc;
     use treetime_distribution::Distribution;
     use treetime_graph::node::Named;

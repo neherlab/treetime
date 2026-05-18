@@ -28,7 +28,7 @@ for i in 0..max_iter:
 
 ### Sparse representation
 
-The sparse E-step ([packages/treetime/src/representation/partition/marginal_passes.rs](../../packages/treetime/src/representation/partition/marginal_passes.rs)) propagates messages carrying:
+The sparse E-step ([packages/treetime/src/partition/marginal_passes.rs](../../packages/treetime/src/partition/marginal_passes.rs)) propagates messages carrying:
 
 - `variable: BTreeMap<usize, VarPos>` -- per-position posterior `dis: Array1<f64>` and reference state
 - `fixed: BTreeMap<AsciiChar, Array1<f64>>` -- one propagated profile per canonical state, shared by all same-state positions
@@ -40,7 +40,7 @@ The sparse M-step evaluator ([packages/treetime/src/commands/optimize/optimize_s
 
 ### Dense representation
 
-The dense E-step ([packages/treetime/src/representation/partition/marginal_dense.rs](../../packages/treetime/src/representation/partition/marginal_dense.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/commands/optimize/optimize_dense.rs](../../packages/treetime/src/commands/optimize/optimize_dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
+The dense E-step ([packages/treetime/src/partition/marginal_dense.rs](../../packages/treetime/src/partition/marginal_dense.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/commands/optimize/optimize_dense.rs](../../packages/treetime/src/commands/optimize/optimize_dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
 
 ### Indel contribution
 
@@ -74,7 +74,7 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 
 - Addresses: the discrete variable/fixed reclassification that causes the likelihood 2-cycle
 - Evidence: variable count oscillates 35095/35109 on sc2/2844 in lockstep with the 2-cycle; stable at 1121 on flu/h3n2/20 where convergence is normal
-- Implementation: ~30 lines in [representation/partition/marginal_passes.rs](../../packages/treetime/src/representation/partition/marginal_passes.rs). Store previous variable keys per edge. Reinstate previously-variable positions with the canonical-state profile if absent from the new variable map.
+- Implementation: ~30 lines in [partition/marginal_passes.rs](../../packages/treetime/src/partition/marginal_passes.rs). Store previous variable keys per edge. Reinstate previously-variable positions with the canonical-state profile if absent from the new variable map.
 - Pros: eliminates the discrete jump at its source. Minimal performance cost (~14 extra positions out of ~35000).
 - Cons: makes the sparse approximation history-dependent -- which positions are treated individually depends on early iterations, not only on the current posterior. The ~14 oscillating positions are genuinely ambiguous (near-equal posterior for two states), so promoting them to individual evaluation is the more accurate classification. After 1-2 iterations the set stabilizes.
 - Note: this is a model change, not a neutral fix. The immediate bug fix in M-optimize-sparse-em-2-cycle (resolved) addresses convergence through loop robustness instead, without changing the sparse model.

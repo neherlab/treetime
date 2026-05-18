@@ -14,17 +14,17 @@ Five cross-command dependency edges exist in production code (excluding tests):
 - ~~`timetree` -> `clock` (20 sites)~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
 - ~~`timetree` -> `optimize` (8 sites)~~ **Resolved**: optimization machinery extracted to top-level `src/optimize/`; iteration helpers to `src/optimize/iteration.rs`
 - ~~`optimize` -> `ancestral` (2 sites)~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
-- ~~`optimize` -> `prune` (1 site): `merge_shared_mutation_branches()`~~ **Resolved**: extracted to `representation/algo/topology_cleanup/merge_shared_mutations`
+- ~~`optimize` -> `prune` (1 site): `merge_shared_mutation_branches()`~~ **Resolved**: extracted to `partition/algo/topology_cleanup/merge_shared_mutations`
 - `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` - remaining cross-command arg dependency (minor: CLI struct embedding)
 
 ## Reverse dependencies (core importing from commands)
 
-- ~~`representation/partition/fitch_config.rs`, `representation/partition/likelihood.rs` -> `get_common_length()` from `commands/ancestral/fitch`~~ **Resolved**: moved to `seq/alignment`
-- ~~`PartitionOptimizeOps` from `commands/optimize/partition_ops`~~ **Resolved**: moved to `representation/partition/traits.rs`
-- ~~`PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`~~ **Resolved**: moved to `representation/partition/traits.rs`
-- ~~`RerootChanges` from `commands/clock/reroot`~~ **Resolved**: extracted to `representation/algo/topology_cleanup/reroot`
-- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `representation/payload/clock_set.rs`; traits moved to `representation/payload/traits.rs`
-- ~~`OptimizationContribution` from `commands/optimize/optimize_unified`~~ **Resolved**: `OptimizationContribution` type + constructors moved to `representation/partition/optimization_contribution.rs`; evaluation methods in `optimize/optimize_unified.rs` via split impl block
+- ~~`partition/fitch_config.rs`, `partition/likelihood.rs` -> `get_common_length()` from `commands/ancestral/fitch`~~ **Resolved**: moved to `seq/alignment`
+- ~~`PartitionOptimizeOps` from `commands/optimize/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
+- ~~`PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
+- ~~`RerootChanges` from `commands/clock/reroot`~~ **Resolved**: extracted to `partition/algo/topology_cleanup/reroot`
+- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `commands/clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `partition/payload/clock_set.rs`; traits moved to `partition/payload/traits.rs`
+- ~~`OptimizationContribution` from `commands/optimize/optimize_unified`~~ **Resolved**: `OptimizationContribution` type + constructors moved to `partition/optimization_contribution.rs`; evaluation methods in `optimize/optimize_unified.rs` via split impl block
 - ~~`ClockModel`, `ClockRegressionResult` from `commands/clock/`~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
 - ~~`compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` from `commands/ancestral/`~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
 
@@ -40,15 +40,15 @@ Extracted to top-level `src/clock/` module: `clock_model.rs`, `clock_regression.
 
 ### ~~Branch length optimization~~ **Resolved**
 
-Extracted to top-level `src/optimize/` module: `optimize_unified.rs`, `optimize_indel.rs`, `method_brent.rs`, `method_newton.rs`, `optimize_eval.rs`, `optimize_dense_eval.rs`, `optimize_sparse_eval.rs`. Coefficient extraction types (`optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`) moved to `representation/partition/`. Iteration helpers (`save_branch_lengths`, `apply_damping`, topology cleanup) to `optimize/iteration.rs`. Domain arg types (`BranchOptMethod`, `InitialGuessMode`) to `optimize/args.rs`. `commands/optimize/` retains only `args.rs` and `run.rs`.
+Extracted to top-level `src/optimize/` module: `optimize_unified.rs`, `optimize_indel.rs`, `method_brent.rs`, `method_newton.rs`, `optimize_eval.rs`, `optimize_dense_eval.rs`, `optimize_sparse_eval.rs`. Coefficient extraction types (`optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`) moved to `partition/`. Iteration helpers (`save_branch_lengths`, `apply_damping`, topology cleanup) to `optimize/iteration.rs`. Domain arg types (`BranchOptMethod`, `InitialGuessMode`) to `optimize/args.rs`. `commands/optimize/` retains only `args.rs` and `run.rs`.
 
 ### ~~Partition and payload traits~~ **Resolved**
 
-Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `representation/partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `representation/payload/traits.rs`; `ClockSet` data type to `representation/payload/clock_set.rs`.
+Traits and types moved to `representation/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `partition/payload/traits.rs`; `ClockSet` data type to `partition/payload/clock_set.rs`.
 
 ### ~~Topology operations~~ **Resolved**
 
-`merge_shared_mutation_branches()` extracted to `representation/algo/topology_cleanup/merge_shared_mutations`.
+`merge_shared_mutation_branches()` extracted to `partition/algo/topology_cleanup/merge_shared_mutations`.
 
 ### ~~CLI args shared across commands~~ **Resolved**
 

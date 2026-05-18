@@ -25,7 +25,7 @@
 //! each site's contribution; the squared term applies only to the per-site ratio.
 //!
 use crate::gtr::gtr::GTR;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;

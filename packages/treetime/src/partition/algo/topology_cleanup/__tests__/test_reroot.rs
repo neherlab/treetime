@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::representation::algo::topology_cleanup::reroot::{
+  use crate::partition::algo::topology_cleanup::reroot::{
     apply_reroot_topology, remove_node_if_trivial, split_edge,
   };
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_abs_diff_eq;
   use eyre::Report;

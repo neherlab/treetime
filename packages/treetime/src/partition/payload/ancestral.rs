@@ -1,5 +1,5 @@
 use crate::o;
-use crate::representation::partition::traits::PartitionBranchOps;
+use crate::partition::traits::PartitionBranchOps;
 use eyre::Report;
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -189,10 +189,10 @@ where
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
-  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
+  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use maplit::btreemap;

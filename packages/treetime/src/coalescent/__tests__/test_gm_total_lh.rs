@@ -15,7 +15,7 @@ mod tests {
   use super::super::helpers::setup_graph;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
-  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::GraphTimetree;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;

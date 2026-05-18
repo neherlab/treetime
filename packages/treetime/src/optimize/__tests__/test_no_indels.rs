@@ -10,8 +10,8 @@ mod tests {
   use crate::optimize::run_loop::apply_initial_guess_mode;
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::run_loop::run_optimize_loop;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

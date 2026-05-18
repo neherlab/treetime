@@ -1,7 +1,7 @@
 use crate::make_error;
-use crate::representation::partition::discrete::PartitionDiscrete;
-use crate::representation::partition::traits::HasLogLh;
-use crate::representation::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
+use crate::partition::discrete::PartitionDiscrete;
+use crate::partition::traits::HasLogLh;
+use crate::partition::payload::discrete::{DiscreteEdgeData, DiscreteNodeData};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;

@@ -3,7 +3,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+  use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
   use ndarray::array;
 
   #[test]

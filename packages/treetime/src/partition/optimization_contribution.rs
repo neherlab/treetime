@@ -1,8 +1,8 @@
 use crate::gtr::gtr::GTR;
-use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::partition::optimize_dense;
-use crate::representation::partition::optimize_sparse;
+use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::optimize_dense;
+use crate::partition::optimize_sparse;
 use eyre::Report;
 use itertools::Either;
 use ndarray::ArrayView1;

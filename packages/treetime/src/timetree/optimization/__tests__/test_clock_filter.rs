@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
   use crate::clock::clock_model::ClockModel;
-  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

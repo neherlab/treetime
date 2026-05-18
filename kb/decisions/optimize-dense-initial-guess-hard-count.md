@@ -22,7 +22,7 @@ eff_length   = sum of edge_effective_length() across partitions
 branch_length = sub_count / eff_length
 ```
 
-`edge_subs()` on dense partitions ([packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112](../../packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112)) takes the hard `argmax` of parent and child profiles and counts positions where the MAP states differ (excluding gaps, ambiguous, and non-canonical states). `edge_effective_length()` counts non-gap positions.
+`edge_subs()` on dense partitions ([packages/treetime/src/partition/marginal_dense.rs#L81-L112](../../packages/treetime/src/partition/marginal_dense.rs#L81-L112)) takes the hard `argmax` of parent and child profiles and counts positions where the MAP states differ (excluding gaps, ambiguous, and non-canonical states). `edge_effective_length()` counts non-gap positions.
 
 This is a hard Hamming distance: each position contributes 0 (same MAP state) or 1 (different MAP state), with no fractional contributions from uncertain profiles.
 

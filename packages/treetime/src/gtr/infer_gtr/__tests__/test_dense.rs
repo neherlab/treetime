@@ -9,8 +9,8 @@ mod tests {
   };
   use crate::pretty_assert_abs_diff_eq;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;

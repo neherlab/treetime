@@ -138,12 +138,12 @@ Pipeline:
 
 ### Used by both commands
 
-- `GraphAncestral` type alias ([packages/treetime/src/representation/payload/ancestral.rs#L15](../../../packages/treetime/src/representation/payload/ancestral.rs#L15)) -- both use the same graph with `NodeAncestral` / `EdgeAncestral` payloads
+- `GraphAncestral` type alias ([packages/treetime/src/partition/payload/ancestral.rs#L15](../../../packages/treetime/src/partition/payload/ancestral.rs#L15)) -- both use the same graph with `NodeAncestral` / `EdgeAncestral` payloads
 - `nwk_read_file()` -- tree input
 - `GTR` struct and `GTR::new()` constructor ([packages/treetime/src/gtr/gtr.rs](../../../packages/treetime/src/gtr/gtr.rs))
 - `infer_gtr_impl()` from `gtr/infer_gtr/common` -- core GTR inference algorithm, called by ancestral (via `infer_gtr_dense` / `infer_gtr_sparse`) and by mugration (via `gtr_refinement.rs`)
 - `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L98](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L98))
-- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` via `normalize_from_log_1d()` ([packages/treetime/src/representation/partition/discrete.rs#L83](../../../packages/treetime/src/representation/partition/discrete.rs#L83))
+- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` via `normalize_from_log_1d()` ([packages/treetime/src/partition/discrete.rs#L83](../../../packages/treetime/src/partition/discrete.rs#L83))
 
 ### Ancestral only
 
@@ -155,9 +155,9 @@ Pipeline:
 
 ### Mugration only
 
-- `PartitionDiscrete` with self-contained `process_node_backward()` / `process_node_forward()` ([packages/treetime/src/representation/partition/discrete.rs](../../../packages/treetime/src/representation/partition/discrete.rs))
-- `DiscreteStates` instead of `Alphabet` ([packages/treetime/src/representation/discrete_states.rs](../../../packages/treetime/src/representation/discrete_states.rs))
-- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/representation/payload/discrete.rs](../../../packages/treetime/src/representation/payload/discrete.rs))
+- `PartitionDiscrete` with self-contained `process_node_backward()` / `process_node_forward()` ([packages/treetime/src/partition/discrete.rs](../../../packages/treetime/src/partition/discrete.rs))
+- `DiscreteStates` instead of `Alphabet` ([packages/treetime/src/partition/discrete_states.rs](../../../packages/treetime/src/partition/discrete_states.rs))
+- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/partition/payload/discrete.rs](../../../packages/treetime/src/partition/payload/discrete.rs))
 - Iterative GTR refinement with custom Brent optimizer ([packages/treetime/src/commands/mugration/gtr_refinement.rs](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs))
 - Sampling bias correction
 - Weight-based pi computation with pseudo-count smoothing
@@ -226,7 +226,7 @@ Both commands implement the same Felsenstein pruning algorithm (backward: leaves
 ### mugration (direct on `PartitionDiscrete`)
 
 - Profiles are 1D arrays: `(n_states,)`
-- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/representation/partition/discrete.rs#L60-L214](../../../packages/treetime/src/representation/partition/discrete.rs#L60-L214))
+- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/partition/discrete.rs#L60-L214](../../../packages/treetime/src/partition/discrete.rs#L60-L214))
 - Does not implement `PartitionMarginalOps`
 - Traversal uses `Arc<Mutex<&mut Partition>>` instead of `Arc<RwLock<Partition>>`
 - Single transition matrix $e^{Qt}$ per edge (one "position")

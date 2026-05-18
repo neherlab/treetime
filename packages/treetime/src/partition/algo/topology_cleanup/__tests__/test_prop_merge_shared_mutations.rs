@@ -2,10 +2,10 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_edge_key;

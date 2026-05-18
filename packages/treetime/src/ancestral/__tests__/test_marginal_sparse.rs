@@ -6,11 +6,11 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::partition::traits::PartitionBranchOps;
-  use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::sparse::MarginalSparseSeqDistribution;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;

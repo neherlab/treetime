@@ -1,8 +1,8 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
-use crate::representation::payload::clock_set::ClockSet;
-use crate::representation::payload::traits::{ClockEdge, ClockNode};
+use crate::partition::payload::clock_set::ClockSet;
+use crate::partition::payload::traits::{ClockEdge, ClockNode};
 use clap::Args;
 use eyre::Report;
 use log::{debug, info};

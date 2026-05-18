@@ -4,8 +4,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::representation::partition::optimize_dense::get_coefficients;
-  use crate::representation::partition::optimize_sparse;
+  use crate::partition::optimize_dense::get_coefficients;
+  use crate::partition::optimize_sparse;
   use ndarray::{Array1, Axis, array, concatenate};
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -75,7 +75,7 @@ mod tests {
   mod prop_tests {
     use super::generators;
     use super::*;
-    use crate::representation::partition::optimize_dense::PartitionContribution;
+    use crate::partition::optimize_dense::PartitionContribution;
     use proptest::prelude::*;
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 
@@ -286,7 +286,7 @@ mod tests {
   mod cancellation_regime {
     use super::*;
     use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-    use crate::representation::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+    use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
     use approx::assert_abs_diff_eq;
     use rstest::rstest;
 

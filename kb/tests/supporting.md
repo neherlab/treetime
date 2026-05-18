@@ -835,9 +835,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_collapse_edge_compose_cancellation`                                    | Cancellation (A->G + G->A = none) through edge collapse      |
 | `test_collapse_edge_compose_multiple_partitions`                             | Composition applied independently per partition              |
 
-**Test:** [`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs)
+**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs)
 
-**Impl:** [`packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs)
+**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs)
 
 | Test                                                      | Purpose                                               |
 | --------------------------------------------------------- | ----------------------------------------------------- |

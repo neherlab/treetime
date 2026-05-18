@@ -57,9 +57,9 @@ The backward pass (leaf-to-root) computes partial likelihoods. The forward pass 
 
 ### v1 implementations
 
-**Dense** (all positions): [`packages/treetime/src/representation/partition/marginal_dense.rs#L87-L281`](../../packages/treetime/src/representation/partition/marginal_dense.rs#L87-L281). Stores full probability vectors at every alignment position. Used when the full profile is needed (e.g., GTR inference from data).
+**Dense** (all positions): [`packages/treetime/src/partition/marginal_dense.rs#L87-L281`](../../packages/treetime/src/partition/marginal_dense.rs#L87-L281). Stores full probability vectors at every alignment position. Used when the full profile is needed (e.g., GTR inference from data).
 
-**Sparse** (variable positions only): [`packages/treetime/src/representation/partition/marginal_passes.rs#L16-L250`](../../packages/treetime/src/representation/partition/marginal_passes.rs#L16-L250). Stores profiles only at positions that vary from the Fitch reference. Much faster for conserved alignments where >90% of positions are invariant.
+**Sparse** (variable positions only): [`packages/treetime/src/partition/marginal_passes.rs#L16-L250`](../../packages/treetime/src/partition/marginal_passes.rs#L16-L250). Stores profiles only at positions that vary from the Fitch reference. Much faster for conserved alignments where >90% of positions are invariant.
 
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L762-L927`](../../packages/legacy/treetime/treetime/treeanc.py#L762-L927).
 
@@ -105,7 +105,7 @@ See [unimplemented](unimplemented.md#joint-ml) for full v0 algorithm details.
 
 After ancestral reconstruction (Fitch or marginal), branch mutations are extracted from partition data and attached to tree nodes for Newick/Nexus output. The annotation pipeline is shared across all commands that output annotated trees (ancestral, timetree, optimize).
 
-v1: [`packages/treetime/src/representation/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/representation/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
+v1: [`packages/treetime/src/partition/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/partition/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
 v0: annotation is inline in `treeanc.py` tree-writing methods.
 
 ### Algorithm
@@ -116,15 +116,15 @@ Both dense and sparse `edge_subs()` implementations apply the same filtering: on
 
 ### Dense `edge_subs()`
 
-[`packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112`](../../packages/treetime/src/representation/partition/marginal_dense.rs#L81-L112)
+[`packages/treetime/src/partition/marginal_dense.rs#L81-L112`](../../packages/treetime/src/partition/marginal_dense.rs#L81-L112)
 
 Iterates every alignment position (0..L where L = number of rows in the profile matrix). At each position, takes the MAP state (`argmax_first()` of the posterior profile) for both parent and child. Skips positions that fall within either endpoint's original gap ranges (`DenseSeqInfo.gaps`), because gap positions receive uniform profiles under `treat_gap_as_unknown` and their argmax would return an arbitrary canonical state.
 
 ### Sparse `edge_subs()`
 
-[`packages/treetime/src/representation/partition/marginal_sparse.rs#L233-L239`](../../packages/treetime/src/representation/partition/marginal_sparse.rs#L233-L239)
+[`packages/treetime/src/partition/marginal_sparse.rs#L233-L239`](../../packages/treetime/src/partition/marginal_sparse.rs#L233-L239)
 
-Returns MAP-derived substitutions stored in `subs_ml`. Requires marginal inference to have run (errors if `subs_ml` is `None`). The ML subs are computed during the marginal forward pass by `compute_ml_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). ML subs are cleared automatically by any fitch-sub mutation and by `clear_ml_subs()` during reroot.
+Returns MAP-derived substitutions stored in `subs_ml`. Requires marginal inference to have run (errors if `subs_ml` is `None`). The ML subs are computed during the marginal forward pass by `compute_ml_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). ML subs are cleared automatically by any fitch-sub mutation and by `clear_ml_subs()` during reroot.
 
 The candidate set is complete: any position where parent and child could differ must appear as a variable site on at least one endpoint or as a Fitch substitution on the edge.
 
@@ -155,9 +155,9 @@ Both implementations produce the same mutation set for the same reconstruction. 
 | [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)                                   | Fitch parsimony (backward, forward, cleanup)                                     |
 | [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)                             | Marginal ML orchestration                                                        |
 | [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs)                                       | Ancestral command entry point, method dispatch                                   |
-| [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
-| [`packages/treetime/src/representation/partition/marginal_sparse.rs`](../../packages/treetime/src/representation/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
-| [`packages/treetime/src/representation/partition/marginal_passes.rs`](../../packages/treetime/src/representation/partition/marginal_passes.rs)   | Sparse message passing                                                           |
-| [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
-| [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
-| [`packages/treetime/src/representation/partition/traits.rs`](../../packages/treetime/src/representation/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |
+| [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
+| [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
+| [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)   | Sparse message passing                                                           |
+| [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
+| [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
+| [`packages/treetime/src/partition/traits.rs`](../../packages/treetime/src/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |

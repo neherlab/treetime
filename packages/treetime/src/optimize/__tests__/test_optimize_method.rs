@@ -12,10 +12,10 @@ mod tests {
   use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only};
   use crate::optimize::method_newton::newton_tolerance_t;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
-  use crate::representation::partition::optimization_contribution::OptimizationContribution;
-  use crate::representation::partition::optimize_dense;
-  use crate::representation::partition::traits::PartitionOptimizeOps;
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::optimization_contribution::OptimizationContribution;
+  use crate::partition::optimize_dense;
+  use crate::partition::traits::PartitionOptimizeOps;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -967,7 +967,7 @@ mod tests {
     pub(super) fn setup_with_indels(
       graph: &GraphAncestral,
       n_indels: usize,
-    ) -> Result<(crate::representation::partition::traits::PartitionOptimizeVec, f64), Report> {
+    ) -> Result<(crate::partition::traits::PartitionOptimizeVec, f64), Report> {
       let aln = simple_alignment()?;
       let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, &aln)?;
 

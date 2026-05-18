@@ -8,12 +8,12 @@ mod tests {
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};

@@ -12,7 +12,7 @@ The `prune --merge-shared-mutations` step groups sibling branches in a polytomy 
 
 ## What v1 does
 
-[`merge_sibling_group()`](../../packages/treetime/src/representation/algo/topology_cleanup/merge_shared_mutations.rs) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
+[`merge_sibling_group()`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs) applies the Jukes-Cantor 1969 correction through [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs#L50):
 
 $$ d = -\frac{k-1}{k} \ln\!\left(1 - \frac{k}{k-1}\, p\right) $$
 
@@ -34,4 +34,4 @@ Child branch lengths are computed from remaining (non-shared) mutations using th
 ## Tests
 
 - Unit: [`test_jukes_cantor_distance_*`](../../packages/treetime/src/gtr/jc_distance.rs#L87) cover known analytical values, monotonicity, the $d \ge p$ property, small-$p$ Taylor behaviour, and the saturation clamp.
-- Integration: [`test_merge_branch_length_jc_correction_differs_from_raw`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs#L581) exercises a polytomy where $p = 0.1$, regressing if raw p-distance were restored.
+- Integration: [`test_merge_branch_length_jc_correction_differs_from_raw`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs#L581) exercises a polytomy where $p = 0.1$, regressing if raw p-distance were restored.

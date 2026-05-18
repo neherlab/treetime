@@ -1,8 +1,8 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
-use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
-use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::representation::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
-use crate::representation::payload::sparse::SparseNodePartition;
+use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::partition::payload::sparse::SparseNodePartition;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;

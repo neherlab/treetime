@@ -2,7 +2,7 @@
 
 Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating information about the degenerate log-likelihood to callers.
 
-v1: [`packages/treetime/src/representation/partition/discrete.rs#L207`](../../packages/treetime/src/representation/partition/discrete.rs#L207)
+v1: [`packages/treetime/src/partition/discrete.rs#L207`](../../packages/treetime/src/partition/discrete.rs#L207)
 
 ## Impact
 

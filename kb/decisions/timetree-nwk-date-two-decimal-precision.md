@@ -20,7 +20,7 @@ v1 matches v0's Newick format exactly:
 comments.insert("date".to_owned(), format!("{time:.2}"));
 ```
 
-At `packages/treetime/src/representation/payload/timetree.rs#L135`.
+At `packages/treetime/src/partition/payload/timetree.rs#L135`.
 
 ## Rationale
 

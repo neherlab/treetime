@@ -1,6 +1,6 @@
 # Implement infer_dense() heuristic or remove abstraction
 
-`representation/algo/infer_dense.rs` exports `infer_dense()` as the shared dense-vs-sparse selector, but the function always returns `false`. Three user-facing commands use it as the default when `--dense` is omitted: `ancestral`, `optimize`, and `timetree`.
+`partition/algo/infer_dense.rs` exports `infer_dense()` as the shared dense-vs-sparse selector, but the function always returns `false`. Three user-facing commands use it as the default when `--dense` is omitted: `ancestral`, `optimize`, and `timetree`.
 
 ## Impact
 
@@ -16,7 +16,7 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 
 ## Locations
 
-- Stub: `packages/treetime/src/representation/algo/infer_dense.rs`
+- Stub: `packages/treetime/src/partition/algo/infer_dense.rs`
 - Consumers: `packages/treetime/src/commands/ancestral/run.rs`, `packages/treetime/src/commands/optimize/run.rs`, `packages/treetime/src/commands/timetree/initialization.rs`
 
 ## Related issues

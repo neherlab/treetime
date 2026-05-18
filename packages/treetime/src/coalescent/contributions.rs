@@ -2,7 +2,7 @@ use crate::coalescent::integration::compute_merger_rates;
 use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
-use crate::representation::payload::traits::TimetreeNode;
+use crate::partition::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
 use indexmap::IndexMap;
 use ndarray::Array1;

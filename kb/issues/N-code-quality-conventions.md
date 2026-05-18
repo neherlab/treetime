@@ -18,7 +18,7 @@ Convention violations across the codebase: fully qualified paths, inconsistent d
 
 ### NodeTimetree.nwk_comments() truncates date to 2 decimals
 
-`packages/treetime/src/representation/payload/timetree.rs:135:`
+`packages/treetime/src/partition/payload/timetree.rs:135:`
 
 Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pathogens sampled days apart.
 
@@ -30,13 +30,13 @@ Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pa
 
 ### Normalize helpers duplicated in discrete.rs
 
-`packages/treetime/src/representation/partition/discrete.rs:223,232:`
+`packages/treetime/src/partition/discrete.rs:223,232:`
 
 `fn normalize_inplace_1d` and `fn normalize_from_log_1d` are Array1 analogs of the Array2 versions in `marginal_dense.rs:493,514:`. The 1D versions add error handling that the 2D versions lack. Should be unified.
 
 ### edge_effective_length saturating_sub clamps to 0
 
-`packages/treetime/src/representation/partition/marginal_sparse.rs:255:` and `marginal_dense.rs:153:`
+`packages/treetime/src/partition/marginal_sparse.rs:255:` and `marginal_dense.rs:153:`
 
 Returns 0 when non-char positions exceed sequence length. Used as denominator in `edge_subs().len() / edge_effective_length()`, producing division by zero.
 
@@ -62,7 +62,7 @@ Silently prevents merges when branch-length distributions are Empty. Should log 
 
 ### edge_effective_length clones gap vectors
 
-`packages/treetime/src/representation/partition/marginal_dense.rs:122:` and `marginal_sparse.rs:380:`
+`packages/treetime/src/partition/marginal_dense.rs:122:` and `marginal_sparse.rs:380:`
 
 `fn range_union` clones both gap vectors on every call. Allocation pressure on heavily gapped alignments.
 

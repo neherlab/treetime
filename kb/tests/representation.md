@@ -18,13 +18,13 @@
 | [Payload: discrete data](#payload-discrete-data)                     | Unit                 |
 | [Payload: timetree annotation](#payload-timetree-annotation)         | Unit                 |
 
-Support files (helpers only, no tests): [`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs) contains inline helpers `c()`, `sub()`, `populate_test_nodes()`, `make_sparse_partition()`.
+Support files (helpers only, no tests): [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs) contains inline helpers `c()`, `sub()`, `populate_test_nodes()`, `make_sparse_partition()`.
 
 ---
 
 ## Substitution Composition
 
-**Test:** [`packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs`](../../packages/treetime/src/representation/__tests__/test_partition_marginal_sparse.rs)
+**Test:** [`packages/treetime/src/partition/__tests__/test_partition_marginal_sparse.rs`](../../packages/treetime/src/partition/__tests__/test_partition_marginal_sparse.rs)
 
 **Impl:** [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)
 
@@ -45,9 +45,9 @@ Support files (helpers only, no tests): [`packages/treetime/src/representation/a
 
 ## Discrete States
 
-**Test:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/discrete_states.rs`](../../packages/treetime/src/partition/discrete_states.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/discrete_states.rs`](../../packages/treetime/src/representation/discrete_states.rs)
+**Impl:** [`packages/treetime/src/partition/discrete_states.rs`](../../packages/treetime/src/partition/discrete_states.rs)
 
 | Test                                            | Purpose                                                  |
 | ----------------------------------------------- | -------------------------------------------------------- |
@@ -64,9 +64,9 @@ Support files (helpers only, no tests): [`packages/treetime/src/representation/a
 
 ## Normalize from Log (Dense 2D)
 
-**Test:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+**Impl:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
 | Test                                                      | Purpose                                                            |
 | --------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -85,9 +85,9 @@ Support files (helpers only, no tests): [`packages/treetime/src/representation/a
 
 ## Normalize Inplace (Dense 2D)
 
-**Test:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs) (inline `#[cfg(test)]`, same module)
+**Test:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs) (inline `#[cfg(test)]`, same module)
 
-**Impl:** [`packages/treetime/src/representation/partition/marginal_dense.rs`](../../packages/treetime/src/representation/partition/marginal_dense.rs)
+**Impl:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
 | Test                                                | Purpose                                              |
 | --------------------------------------------------- | ---------------------------------------------------- |
@@ -103,9 +103,9 @@ Support files (helpers only, no tests): [`packages/treetime/src/representation/a
 
 ## Normalize (Discrete 1D)
 
-**Test:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/partition/discrete.rs`](../../packages/treetime/src/representation/partition/discrete.rs)
+**Impl:** [`packages/treetime/src/partition/discrete.rs`](../../packages/treetime/src/partition/discrete.rs)
 
 | Test                                                   | Purpose                                     |
 | ------------------------------------------------------ | ------------------------------------------- |
@@ -125,9 +125,9 @@ Also cross-referenced from [Mugration Tests](mugration.md#partition--discrete).
 
 ## Per-Site Rate Propagation
 
-**Test:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/partition/marginal_helpers.rs`](../../packages/treetime/src/representation/partition/marginal_helpers.rs)
+**Impl:** [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs)
 
 | Test                                   | Purpose                                                                    |
 | -------------------------------------- | -------------------------------------------------------------------------- |
@@ -140,9 +140,9 @@ Also cross-referenced from [Mugration Tests](mugration.md#partition--discrete).
 
 ## Topology Cleanup / Edge Collapse
 
-**Test:** [`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_collapse_edge.rs)
+**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs)
 
-**Impl:** [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs)
+**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs)
 
 | Test                                                      | Purpose                                                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -161,9 +161,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Topology Cleanup / Reroot
 
-**Test:** [`packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_reroot.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/__tests__/test_reroot.rs)
+**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_reroot.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_reroot.rs)
 
-**Impl:** [`packages/treetime/src/representation/algo/topology_cleanup/reroot.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/reroot.rs)
+**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/reroot.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/reroot.rs)
 
 | Test                                                          | Purpose                                                               |
 | ------------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -182,9 +182,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Payload: Ancestral Annotation
 
-**Test:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/payload/ancestral.rs`](../../packages/treetime/src/representation/payload/ancestral.rs)
+**Impl:** [`packages/treetime/src/partition/payload/ancestral.rs`](../../packages/treetime/src/partition/payload/ancestral.rs)
 
 | Test                                                       | Purpose                                              |
 | ---------------------------------------------------------- | ---------------------------------------------------- |
@@ -198,9 +198,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Payload: Discrete Data
 
-**Test:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/payload/discrete.rs`](../../packages/treetime/src/partition/payload/discrete.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/payload/discrete.rs`](../../packages/treetime/src/representation/payload/discrete.rs)
+**Impl:** [`packages/treetime/src/partition/payload/discrete.rs`](../../packages/treetime/src/partition/payload/discrete.rs)
 
 | Test                                         | Purpose                                             |
 | -------------------------------------------- | --------------------------------------------------- |
@@ -213,9 +213,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Payload: Timetree Annotation
 
-**Test:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/partition/payload/timetree.rs`](../../packages/treetime/src/partition/payload/timetree.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/representation/payload/timetree.rs`](../../packages/treetime/src/representation/payload/timetree.rs)
+**Impl:** [`packages/treetime/src/partition/payload/timetree.rs`](../../packages/treetime/src/partition/payload/timetree.rs)
 
 | Test                                                           | Purpose                                                         |
 | -------------------------------------------------------------- | --------------------------------------------------------------- |

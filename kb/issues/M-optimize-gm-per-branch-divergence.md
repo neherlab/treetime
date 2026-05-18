@@ -38,7 +38,7 @@ Option 1 is the most aligned with the porting goal. Option 2 is the fastest path
 
 - `../decisions/command-prune-standalone.md` (v1 prune as
   a standalone command, not in the optimize loop)
-- [`packages/treetime/src/representation/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/representation/algo/topology_cleanup/collapse.rs) (shared `collapse_edge()`)
+- [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs) (shared `collapse_edge()`)
 - `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`
   and `prune_and_merge_in_loop`
 - `packages/legacy/treetime/treetime/treeanc.py` `prune_short_branches` (line 1475)

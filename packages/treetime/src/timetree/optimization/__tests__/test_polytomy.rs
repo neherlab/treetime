@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::representation::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
-  use crate::representation::partition::timetree::GraphTimetree;
+  use crate::partition::algo::topology_cleanup::polytomy_nodes::find_polytomy_nodes;
+  use crate::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{
     DEFAULT_RESOLUTION_THRESHOLD, prepare_tree_after_topology_change, resolve_polytomies_with_options,

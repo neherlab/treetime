@@ -4,8 +4,8 @@ use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inn
 use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt_inner};
 use crate::optimize::params::BranchOptMethod;
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
-use crate::representation::partition::optimization_contribution::OptimizationContribution;
-use crate::representation::partition::traits::PartitionOptimizeOps;
+use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::traits::PartitionOptimizeOps;
 use crate::make_error;
 use eyre::Report;
 use parking_lot::RwLock;

@@ -37,11 +37,11 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::dense::infer_gtr_dense;
   use crate::gtr::infer_gtr::fitch::infer_gtr_fitch;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
-  use crate::representation::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
   use maplit::btreemap;

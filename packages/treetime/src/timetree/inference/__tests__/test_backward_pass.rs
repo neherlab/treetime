@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::partition::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use eyre::Report;

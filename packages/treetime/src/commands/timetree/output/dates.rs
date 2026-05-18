@@ -1,7 +1,7 @@
-use crate::representation::partition::timetree::GraphTimetree;
-use crate::representation::partition::traits::PartitionTimetreeAll;
-use crate::representation::payload::timetree::EdgeTimetree;
-use crate::representation::payload::timetree::NodeTimetree;
+use crate::partition::timetree::GraphTimetree;
+use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::payload::timetree::EdgeTimetree;
+use crate::partition::payload::timetree::NodeTimetree;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::path::Path;

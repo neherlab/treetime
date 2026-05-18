@@ -10,7 +10,7 @@ Two related defects in the forward pass:
 
 ### NaN from log_lh subtraction
 
-`packages/treetime/src/representation/partition/marginal_passes.rs:355:` and `marginal_dense.rs:327:`
+`packages/treetime/src/partition/marginal_passes.rs:355:` and `marginal_dense.rs:327:`
 
 The forward pass computes:
 
@@ -22,7 +22,7 @@ When both values are `f64::NEG_INFINITY` (degenerate node), the subtraction prod
 
 ### NEG_INFINITY poisons delta_ll accumulator
 
-`packages/treetime/src/representation/partition/marginal_passes.rs:406:`
+`packages/treetime/src/partition/marginal_passes.rs:406:`
 
 The sparse forward pass adds `NEG_INFINITY` directly into the `delta_ll` accumulator. A single degenerate site contribution poisons the `log_lh` for the entire child message, making the total log-likelihood meaningless for downstream convergence checks.
 

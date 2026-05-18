@@ -4,12 +4,12 @@ pub mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
   use crate::pretty_assert_ulps_eq;
-  use crate::representation::partition::fitch::PartitionFitch;
-  use crate::representation::partition::marginal_dense::PartitionMarginalDense;
-  use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::representation::payload::ancestral::GraphAncestral;
-  use crate::representation::payload::dense::DenseSeqDis;
-  use crate::representation::payload::sparse::MarginalSparseSeqDistribution;
+  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::payload::ancestral::GraphAncestral;
+  use crate::partition::payload::dense::DenseSeqDis;
+  use crate::partition::payload::sparse::MarginalSparseSeqDistribution;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use maplit::btreemap;

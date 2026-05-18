@@ -1,5 +1,5 @@
 use crate::make_error;
-use crate::representation::payload::clock_set::ClockSet;
+use crate::partition::payload::clock_set::ClockSet;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use log::debug;
