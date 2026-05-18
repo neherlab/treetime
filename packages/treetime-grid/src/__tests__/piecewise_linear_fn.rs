@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
-  use crate::pretty_assert_ulps_eq;
+  use crate::piecewise_linear_fn::PiecewiseLinearFn;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_piecewise_linear_eval_interpolation() {

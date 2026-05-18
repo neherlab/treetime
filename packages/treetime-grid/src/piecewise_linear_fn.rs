@@ -1,12 +1,30 @@
 use ndarray::Array1;
 
-/// Piecewise linear function represented by breakpoints and values.
+/// Piecewise linear function on non-uniform breakpoints with constant extrapolation.
 ///
-/// For n breakpoints, there are n values (one per breakpoint).
-/// Evaluation uses linear interpolation between breakpoints.
-/// Extrapolation uses constant values at boundaries.
+/// Represents a continuous function f: R -> R defined by n breakpoints and n values
+/// (one value per breakpoint). Between consecutive breakpoints the function
+/// interpolates linearly. Outside the breakpoint range the function extends at the
+/// boundary values (constant extrapolation):
 ///
-/// Breakpoints must be sorted in ascending order.
+/// ```text
+///   f(t) = values[0]                                    for t <= breakpoints[0]
+///   f(t) = lerp(values[i], values[i+1], alpha)          for breakpoints[i] <= t <= breakpoints[i+1]
+///   f(t) = values[n-1]                                  for t >= breakpoints[n-1]
+/// ```
+///
+/// where `alpha = (t - breakpoints[i]) / (breakpoints[i+1] - breakpoints[i])`.
+///
+/// This is the non-uniform counterpart of [`GridFn`](crate::GridFn), which
+/// represents the same kind of function on a uniform grid and uses index
+/// arithmetic for O(1) point location. `PiecewiseLinearFn` imposes no spacing
+/// constraint and uses binary search for point location in O(log n).
+///
+/// # Invariants
+///
+/// - `breakpoints` is strictly ascending (enforced by debug assertion)
+/// - `breakpoints.len() == values.len()`
+/// - At least 2 breakpoints
 #[derive(Debug, Clone)]
 pub struct PiecewiseLinearFn {
   breakpoints: Array1<f64>,
@@ -17,7 +35,7 @@ impl PiecewiseLinearFn {
   /// Create from breakpoints and values.
   ///
   /// # Arguments
-  /// - `breakpoints`: sorted ascending, n elements (n >= 2)
+  /// - `breakpoints`: sorted strictly ascending, n elements (n >= 2)
   /// - `values`: n elements, one per breakpoint
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(
@@ -39,18 +57,21 @@ impl PiecewiseLinearFn {
     Self { breakpoints, values }
   }
 
-  /// Get breakpoint times.
+  /// Breakpoint positions where the slope may change.
   pub fn breakpoints(&self) -> &Array1<f64> {
     &self.breakpoints
   }
 
-  /// Get values at breakpoints.
+  /// Values at breakpoints.
   #[allow(dead_code)]
   pub fn values(&self) -> &Array1<f64> {
     &self.values
   }
 
   /// Evaluate at a single point using linear interpolation.
+  ///
+  /// Returns the linearly interpolated value within the enclosing segment,
+  /// or the nearest boundary value when `t` falls outside the breakpoint range.
   pub fn eval(&self, t: f64) -> f64 {
     let n = self.breakpoints.len();
 
@@ -73,7 +94,14 @@ impl PiecewiseLinearFn {
     y0 + alpha * (y1 - y0)
   }
 
-  /// Evaluate at multiple points (must be monotonically sorted ascending).
+  /// Evaluate at multiple points in a single sweep.
+  ///
+  /// Takes advantage of sorted queries to walk the breakpoint array in tandem,
+  /// achieving O(n + m) total time instead of O(m log n) for independent lookups.
+  ///
+  /// # Precondition
+  ///
+  /// `queries` must be sorted in non-decreasing order (debug-asserted).
   #[allow(dead_code)]
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));

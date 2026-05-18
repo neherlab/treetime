@@ -2,7 +2,6 @@ use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges,
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::make_report;
 use crate::payload::traits::TimetreeNode;
 use argmin::core::observers::{Observe, ObserverMode};
@@ -14,6 +13,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 /// Result of Tc optimization.
 pub struct OptimizeTcResult {

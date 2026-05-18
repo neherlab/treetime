@@ -1,6 +1,4 @@
 use crate::coalescent::integration::compute_merger_rates;
-use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
@@ -12,6 +10,8 @@ use treetime_distribution::{Distribution, DistributionNegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 
 /// Computes coalescent prior contributions for all nodes.
 ///

@@ -2,6 +2,8 @@ pub mod grid;
 pub mod grid_fn;
 pub mod grid_iter;
 pub mod interp_nonuniform;
+pub mod piecewise_constant_fn;
+pub mod piecewise_linear_fn;
 
 use num_traits::{Num, NumCast};
 use std::fmt::Debug;

@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
   use crate::coalescent::time_coordinate::Tbp;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
   #[test]
   fn test_piecewise_constant_eval() {

@@ -1,4 +1,3 @@
-use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
 use crate::coalescent::time_coordinate::Tbp;
 use eyre::Report;
 use itertools::Itertools;
@@ -6,6 +5,7 @@ use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::iter::once;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
 /// Computes k(t) distribution from tree events in TBP coordinates.

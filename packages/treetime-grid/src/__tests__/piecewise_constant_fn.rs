@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-  use crate::pretty_assert_ulps_eq;
+  use crate::piecewise_constant_fn::PiecewiseConstantFn;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_piecewise_constant_eval() {

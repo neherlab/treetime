@@ -1,5 +1,3 @@
-use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -8,6 +6,8 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 use treetime_utils::make_error;
 
 /// Per-edge data needed for coalescent likelihood computation.

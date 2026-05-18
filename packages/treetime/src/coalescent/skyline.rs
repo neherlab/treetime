@@ -1,8 +1,6 @@
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
-use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
-use crate::coalescent::piecewise_linear_fn::PiecewiseLinearFn;
 use crate::payload::traits::TimetreeNode;
 use crate::{make_error, make_report};
 use argmin::core::{CostFunction, Error, Executor};
@@ -15,6 +13,8 @@ use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 
 /// Parameters for skyline optimization.
 #[derive(Debug, Clone)]

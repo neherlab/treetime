@@ -2,12 +2,12 @@
 mod tests {
   use crate::coalescent::integration::compute_integral_merger_rate;
   use crate::coalescent::integration::compute_merger_rates;
-  use crate::coalescent::piecewise_constant_fn::PiecewiseConstantFn;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use ndarray::array;
   use treetime_distribution::Distribution;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
