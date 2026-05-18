@@ -1,5 +1,9 @@
-use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR};
 use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
+use crate::ancestral::fitch_sub::{
+  finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
+  resolve_root_forward, resolve_variable_positions_backward,
+};
 use crate::make_report;
 use crate::representation::partition::fitch::PartitionFitch;
 use crate::representation::partition::traits::PartitionCompressed;
@@ -8,7 +12,6 @@ use crate::representation::payload::sparse::{
   FitchSeqDistribution, MarginalSparseSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqInfo,
 };
 use crate::seq::composition::Composition;
-use crate::seq::mutation::Sub;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
@@ -20,10 +23,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::AlphabetLike;
-use treetime_primitives::{BitSet128, Seq, StateSet, StateSetStatus, seq, stateset};
+use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
-use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::sync::mutex::extract_parallel_error;
 
@@ -102,8 +103,6 @@ where
   for partition in partitions {
     let mut partition = partition.write_arc();
 
-    let n_children = node.child_keys.len();
-
     let children = node
       .child_keys
       .iter()
@@ -116,7 +115,6 @@ where
     // non_char are ranges that are either unknown or gaps in all children (can differ from the union of gaps and unknown)
     let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
 
-    // what follows could be a function that returns `sequence` and `variable`, takes as arguments children, non_char, alphabet
     let mut sequence = seq![FILL_CHAR; partition.length()];
     for r in &non_char {
       sequence[r.0..r.1].fill(NON_CHAR);
@@ -124,98 +122,30 @@ where
 
     // Process all positions where the children are variable.
     // Need to account for parts of the sequence transmitted along edges.
-    let variable_positions = children
-      .iter()
-      .flat_map(|(c, _)| c.fitch.variable.keys().copied())
-      .unique()
-      .collect_vec();
-
-    // Initialization of target data structure (could be done later)
-    let mut seq_dis = FitchSeqDistribution {
-      variable: btreemap! {},
-      variable_indel: btreemap! {},
-      composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
-      chosen_state: btreemap! {},
-    };
-
-    for pos in variable_positions {
-      // Collect child profiles (1D vectors)
-      let child_profiles = children
-        .iter()
-        .filter_map(|(child, edge)| {
-          if let Some(transmission) = &edge.transmission {
-            if range_contains(transmission, pos) {
-              return None; // transmission field is not currently used
-            }
-          }
-          if range_contains(&child.non_char, pos) {
-            return None; // this position does not have character state information
-          }
-          let state = match child.fitch.variable.get(&pos) {
-            Some(var_pos) => *var_pos,
-            None => StateSet::from_char(child.sequence[pos]),
-          };
-          Some(state)
-        })
-        .collect_vec();
-
-      // Calculate Fitch parsimony.
-      // If we save the states of the children for each position that is variable in the node,
-      // then we would not need the full sequences in the forward pass.
-      let intersection = StateSet::from_intersection(&child_profiles);
-
-      match intersection.get() {
-        StateSetStatus::Unambiguous(state) => {
-          // intersection has a single state, write it
-          sequence[pos] = state;
-        },
-        StateSetStatus::Ambiguous(_) => {
-          // more than one possible states
-          seq_dis.variable.insert(pos, intersection);
-          sequence[pos] = VARIABLE_CHAR;
-        },
-        StateSetStatus::Empty => {
-          let union = StateSet::from_union(&child_profiles);
-          seq_dis.variable.insert(pos, union);
-          sequence[pos] = VARIABLE_CHAR;
-        },
-      }
-    }
-
+    let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
     // Process all positions where the children are fixed or completely unknown in some children.
-    for &(child, _) in &children {
-      for (pos, parent_state) in sequence.iter_mut().enumerate() {
-        let child_state = child.sequence[pos];
-        if *parent_state == child_state || *parent_state == NON_CHAR {
-          continue; // if parent is equal to child state or we know it's a non-char, skip
-        }
-        if partition.alphabet().is_canonical(child_state) {
-          if *parent_state == FILL_CHAR {
-            // if child state is canonical and parent is still FILL_CHAR, set parent_state
-            *parent_state = child_state;
-          } else {
-            // otherwise set or update the variable state
-            *seq_dis.variable.entry(pos).or_insert_with(|| stateset! {*parent_state}) += child_state;
-            *parent_state = VARIABLE_CHAR;
-          }
-        }
-      }
-    }
+    resolve_fixed_positions_backward(&children, partition.alphabet(), &mut sequence, &mut variable);
 
     // Resolve variable indels from child gap disagreements
     let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
     let indels_bw = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
-    seq_dis.variable_indel = indels_bw.variable_indel;
-    gaps.extend(indels_bw.resolved_gaps);
 
     let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {
-        gaps,
+        gaps: {
+          gaps.extend(indels_bw.resolved_gaps);
+          gaps
+        },
         unknown,
         non_char,
-        fitch: seq_dis,
+        fitch: FitchSeqDistribution {
+          variable,
+          variable_indel: indels_bw.variable_indel,
+          composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
+          chosen_state: btreemap! {},
+        },
         sequence,
         composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
       },
@@ -265,142 +195,71 @@ where
     let mut node_data = partition.nodes_mut().remove(&node.key).unwrap();
 
     if node.is_root {
-      let SparseSeqInfo {
-        gaps,
-        sequence,
-        fitch:
-          FitchSeqDistribution {
-            variable,
-            variable_indel,
-            chosen_state,
-            ..
-          },
-        ..
-      } = &mut node_data.seq;
-
-      for (pos, states) in variable {
-        let chosen = states.get_one();
-        sequence[*pos] = chosen;
-        chosen_state.insert(*pos, chosen);
-      }
-      // process indels as majority rule at the root
-      for (r, indel) in variable_indel.iter() {
-        if indel.deleted > indel.present {
-          gaps.push(*r);
-        }
-      }
+      let seq = &mut node_data.seq;
+      resolve_root_forward(
+        &mut seq.sequence,
+        &mut seq.gaps,
+        &seq.fitch.variable,
+        &seq.fitch.variable_indel,
+        &mut seq.fitch.chosen_state,
+      );
     } else {
-      let SparseSeqInfo {
-        gaps,
-        unknown,
-        sequence,
-        composition,
-        non_char,
-        fitch:
-          FitchSeqDistribution {
-            variable,
-            variable_indel,
-            chosen_state,
-            ..
-          },
-      } = &mut node_data.seq;
-
       let (parent_key, edge_key) =
         get_exactly_one(&node.parent_keys).wrap_err("Multiple parent nodes are not yet supported")?;
 
-      let mut subs = vec![];
-      let mut indels = vec![];
-
       let parent = &partition.node(parent_key).seq;
-      *composition = parent.composition.clone();
+
+      let seq = &mut node_data.seq;
+      seq.composition = parent.composition.clone();
 
       // fill in the indeterminate positions by copying the parent (new gaps in the node will be introduced later)
-      for r in non_char {
-        sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
+      for r in &seq.non_char {
+        seq.sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
       }
 
-      // the following two loops modify the sequence, composition, and edge in place and process variable position.
-      // for each variable position, pick a state or a mutation
-      for (pos, states) in variable.iter_mut() {
-        let pnuc = parent.sequence[*pos];
-        if alphabet.is_canonical(pnuc) {
-          // check whether parent is in child profile (sum>0 --> parent state is in profile)
-          if states.contains(pnuc) {
-            sequence[*pos] = pnuc;
-          } else {
-            let cnuc = states.get_one();
-            sequence[*pos] = cnuc;
-            let m = Sub::new(pnuc, *pos, cnuc)?;
-            m.check_determined(alphabet)?;
-            composition.add_sub(&m);
-            subs.push(m);
-          }
-        } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
-          // if parent is gap, but child isn't, we need to resolve variable states
-          sequence[*pos] = states.get_one();
-        }
-        chosen_state.insert(*pos, sequence[*pos]);
-      }
-
-      for &pos in parent.fitch.variable.keys() {
-        if variable.contains_key(&pos) || range_contains(&parent.gaps, pos) {
-          continue;
-        }
-
-        // NOTE: access to full_seq would not be necessary if we had saved the
-        // child state of variable positions in the backward pass
-        let node_nuc = sequence[pos];
-        if alphabet.is_canonical(node_nuc) && parent.sequence[pos] != node_nuc {
-          let m = Sub::new(parent.sequence[pos], pos, node_nuc)?;
-          m.check_determined(alphabet)?;
-          composition.add_sub(&m);
-          subs.push(m);
-        }
-      }
+      let subs = resolve_nonroot_substitutions_forward(
+        &mut seq.sequence,
+        &seq.gaps,
+        &mut seq.fitch.variable,
+        &mut seq.fitch.chosen_state,
+        &mut seq.composition,
+        parent,
+        alphabet,
+      )?;
 
       // Resolve variable indels using parent gap context
-      indels = resolve_indels_forward(variable_indel, gaps, &parent.gaps, &parent.sequence, sequence);
+      let indels = resolve_indels_forward(
+        &seq.fitch.variable_indel,
+        &mut seq.gaps,
+        &parent.gaps,
+        &parent.sequence,
+        &seq.sequence,
+      );
       for indel in &indels {
-        composition.add_indel(indel);
+        seq.composition.add_indel(indel);
       }
-      for r in unknown.iter() {
+      for r in &seq.unknown {
         // this might result in compensating addition/deletions of Ns already present in the parent
         for pos in r.0..r.1 {
-          composition.adjust_count(sequence[pos], -1);
+          seq.composition.adjust_count(seq.sequence[pos], -1);
         }
-        composition.adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+        seq.composition.adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
       }
 
-      {
-        // Sort by position: the two loops above (child variable, then parent-only variable)
-        // can emit positions out of order when parent-only positions precede child positions.
-        subs.sort();
-        let edge = partition.edge_mut(edge_key);
-        edge.extend_fitch_subs(subs);
-        edge.indels.extend(indels);
-      }
+      let edge = partition.edge_mut(edge_key);
+      edge.extend_fitch_subs(subs);
+      edge.indels.extend(indels);
     }
 
-    let SparseSeqInfo {
-      gaps,
-      unknown,
-      sequence,
-      composition,
-      ..
-    } = &mut node_data.seq;
-
-    // fill in the gapped positions. this is done for all nodes, including the root, the composition of non-root nodes is already correct
-    for r in gaps.iter() {
-      sequence[r.0..r.1].fill(alphabet.gap());
-    }
-    for r in unknown.iter() {
-      // composition is already adjusted
-      sequence[r.0..r.1].fill(alphabet.unknown());
-    }
-    if node.is_root {
-      // if the node is the root, the composition is calculated from the full sequence
-      *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
-    }
+    let seq = &mut node_data.seq;
+    finalize_sequence_forward(
+      &mut seq.sequence,
+      &seq.gaps,
+      &seq.unknown,
+      &mut seq.composition,
+      alphabet,
+      node.is_root,
+    );
 
     partition.nodes_mut().insert(node.key, node_data);
   }
