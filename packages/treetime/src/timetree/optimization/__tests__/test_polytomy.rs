@@ -9,9 +9,12 @@ mod tests {
   use ndarray::Array1;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::make_report;
+
+  const TEST_CLOCK_RATE: f64 = 0.001;
 
   #[test]
   fn test_find_polytomy_nodes_detects_multifurcation() -> Result<(), Report> {
@@ -57,7 +60,7 @@ mod tests {
 
     // Resolve with very low threshold (should merge all possible pairs)
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     // After resolution, ABC should have 2 children (one merge happened)
     let final_children = graph
@@ -77,7 +80,7 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0, TEST_CLOCK_RATE, false)?;
 
     assert_eq!(n_resolved, 0, "Binary tree should have no resolutions");
     assert_eq!(
@@ -95,7 +98,7 @@ mod tests {
 
     // With very high threshold, no merges should occur
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, 1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     assert_eq!(n_resolved, 0, "Very high threshold should prevent any merges");
 
@@ -142,7 +145,7 @@ mod tests {
 
     // Resolve polytomy
     let partitions = vec![];
-    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
+    resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     // Find the new internal node (not ABC, not a leaf, not root)
     // New nodes created by polytomy resolution don't have a name set
@@ -207,11 +210,12 @@ mod tests {
       node.write_arc().payload().write_arc().time = Some(2000.0);
     }
 
-    // Set branch length distributions
     for edge in graph.get_edges() {
       let edge = edge.write_arc();
       let mut payload = edge.payload().write_arc();
       payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+      payload.time_length = payload.branch_length();
+      payload.set_branch_length(Some(0.0));
     }
 
     let abcde_key = find_node_key_by_name(&graph, "ABCDE").ok_or_else(|| make_report!("ABCDE not found"))?;
@@ -224,7 +228,7 @@ mod tests {
 
     // Resolve with very low threshold
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     // 5-way polytomy needs 3 merges to become binary (5->4->3->2)
     assert_eq!(n_resolved, 3, "Should create 3 new nodes to resolve 5-way polytomy");
@@ -248,11 +252,11 @@ mod tests {
 
     // Large slope: penalty dominates branch length improvement → no merge
     let mut graph_high = helpers::create_polytomy_tree_with_realistic_distributions()?;
-    let n_high = resolve_polytomies_with_options(&mut graph_high, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 1000.0)?;
+    let n_high = resolve_polytomies_with_options(&mut graph_high, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 1000.0, TEST_CLOCK_RATE, false)?;
 
     // Small slope: penalty negligible, branch redistribution drives merge
     let mut graph_low = helpers::create_polytomy_tree_with_realistic_distributions()?;
-    let n_low = resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01)?;
+    let n_low = resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01, TEST_CLOCK_RATE, false)?;
 
     assert!(
       n_low > n_high,
@@ -267,9 +271,42 @@ mod tests {
   fn test_resolve_polytomies_zero_slope_no_penalty() -> Result<(), Report> {
     let mut graph = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0, TEST_CLOCK_RATE, false)?;
 
     assert_eq!(n_resolved, 1, "Zero slope should allow merge");
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_compressed_children_skipped_by_default() -> Result<(), Report> {
+    let mut graph = helpers::create_compressed_polytomy_tree()?;
+    let partitions = vec![];
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01, TEST_CLOCK_RATE, false)?;
+
+    assert_eq!(n_resolved, 0, "Compressed children should not be merged when merge_compressed=false");
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_compressed_children_merged_when_enabled() -> Result<(), Report> {
+    let mut graph = helpers::create_compressed_polytomy_tree()?;
+    let partitions = vec![];
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 0.01, TEST_CLOCK_RATE, true)?;
+
+    assert!(n_resolved > 0, "Compressed children should be merged when merge_compressed=true");
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_stretched_children_merged_by_default() -> Result<(), Report> {
+    let mut graph = helpers::create_polytomy_tree()?;
+    let partitions = vec![];
+    let n_resolved =
+      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+
+    assert!(n_resolved > 0, "Stretched children should be merged by default");
     Ok(())
   }
 
@@ -350,11 +387,13 @@ mod tests {
 
     /// Create a tree with a polytomy (node with 3+ children).
     /// Tree: ((A,B,C)ABC)root where ABC has 3 children
+    ///
+    /// All children are "stretched" by default: branch_length (mutation_length) is
+    /// set lower than time_length * clock_rate so the split classifies them as
+    /// stretched. This matches the most common test scenario.
     pub fn create_polytomy_tree() -> Result<GraphTimetree, Report> {
-      // Newick with 3 children at ABC node
       let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
 
-      // Set times for all nodes (tips have explicit times, internals derived)
       let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
       for (name, time) in tip_times {
         let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
@@ -362,7 +401,6 @@ mod tests {
         node.write_arc().payload().write_arc().time = Some(time);
       }
 
-      // Set internal node times
       if let Some(abc_key) = find_node_key_by_name(&graph, "ABC") {
         let node = graph.get_node(abc_key).expect("Node must exist");
         node.write_arc().payload().write_arc().time = Some(2010.0);
@@ -373,12 +411,16 @@ mod tests {
         node.write_arc().payload().write_arc().time = Some(2000.0);
       }
 
-      // Set branch length distributions on edges
       for edge in graph.get_edges() {
         let edge = edge.write_arc();
         let mut payload = edge.payload().write_arc();
-        // Simple uniform distribution for branch lengths
         payload.branch_length_distribution = Some(Arc::new(Distribution::point(0.1, 1.0)));
+        // Ensure children are "stretched": mutation_length < time_length * clock_rate.
+        // Newick branch lengths become time_length. With TEST_CLOCK_RATE=0.001,
+        // clock_length = time_length * 0.001 which is tiny. Set mutation_length even
+        // smaller to guarantee stretched.
+        payload.time_length = payload.branch_length();
+        payload.set_branch_length(Some(0.0));
       }
 
       Ok(graph)
@@ -401,6 +443,7 @@ mod tests {
 
     /// Create a polytomy tree with branch length distributions that produce genuine
     /// cost improvement from splitting (exponential decay: short branches more probable).
+    /// All children are stretched (mutation_length=0 < clock_length).
     pub fn create_polytomy_tree_with_realistic_distributions() -> Result<GraphTimetree, Report> {
       let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
 
@@ -421,9 +464,6 @@ mod tests {
         node.write_arc().payload().write_arc().time = Some(2000.0);
       }
 
-      // Exponential decay distribution: shorter branches are more probable.
-      // This gives the optimizer incentive to split long branches, creating
-      // genuine cost improvement that competes with the zero-branch penalty.
       let x = Array1::linspace(0.0, 25.0, 200);
       let y = x.mapv(|t: f64| (-0.5 * t).exp());
       let dist = Arc::new(Distribution::function(x, y)?);
@@ -432,6 +472,46 @@ mod tests {
         let edge = edge.write_arc();
         let mut payload = edge.payload().write_arc();
         payload.branch_length_distribution = Some(Arc::clone(&dist));
+        payload.time_length = payload.branch_length();
+        payload.set_branch_length(Some(0.0));
+      }
+
+      Ok(graph)
+    }
+
+    /// Create a polytomy tree where all children are "compressed"
+    /// (mutation_length >= clock_length).
+    pub fn create_compressed_polytomy_tree() -> Result<GraphTimetree, Report> {
+      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+
+      let tip_times = [("A", 2020.0), ("B", 2015.0), ("C", 2018.0)];
+      for (name, time) in tip_times {
+        let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(time);
+      }
+
+      if let Some(key) = find_node_key_by_name(&graph, "ABC") {
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2010.0);
+      }
+
+      if let Some(key) = find_node_key_by_name(&graph, "root") {
+        let node = graph.get_node(key).expect("Node must exist");
+        node.write_arc().payload().write_arc().time = Some(2000.0);
+      }
+
+      let x = Array1::linspace(0.0, 25.0, 200);
+      let y = x.mapv(|t: f64| (-0.5 * t).exp());
+      let dist = Arc::new(Distribution::function(x, y)?);
+
+      for edge in graph.get_edges() {
+        let edge = edge.write_arc();
+        let mut payload = edge.payload().write_arc();
+        payload.branch_length_distribution = Some(Arc::clone(&dist));
+        payload.time_length = payload.branch_length();
+        // High mutation_length makes children "compressed"
+        payload.set_branch_length(Some(1.0));
       }
 
       Ok(graph)

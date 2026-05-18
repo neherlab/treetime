@@ -49,7 +49,8 @@ pub fn run_refinement_iteration(
 
   let n_resolved = if args.resolve_polytomies {
     let zero_branch_slope = clock_model.clock_rate() * total_length as f64;
-    let n = resolve_polytomies(graph, partitions, zero_branch_slope).wrap_err("Polytomy resolution failed")?;
+    let n = resolve_polytomies(graph, partitions, zero_branch_slope, clock_model.clock_rate())
+      .wrap_err("Polytomy resolution failed")?;
     if n > 0 {
       info!("Resolved polytomies, introduced {n} new nodes");
       prepare_tree_after_topology_change(graph).wrap_err("Failed to prepare tree after topology change")?;

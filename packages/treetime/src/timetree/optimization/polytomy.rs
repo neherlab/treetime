@@ -11,7 +11,7 @@ use ndarray::Array2;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
 
 /// Default minimum likelihood gain required to merge two children.
@@ -20,31 +20,36 @@ pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 /// Resolve multifurcations using temporal constraints and sequence data.
 ///
 /// Scans tree for polytomies (nodes with >2 children), resolves them using greedy
-/// pairwise merging based on likelihood gain. Resolution stops when no pair exceeds
-/// the threshold. After resolution, removes obsolete single-child internal nodes.
+/// pairwise merging based on likelihood gain. Only "stretched" children (fewer
+/// mutations than clock predicts) are merged by default, matching v0 behavior.
+/// Resolution stops when no pair exceeds the threshold. After resolution, removes
+/// obsolete single-child internal nodes.
 ///
-/// `zero_branch_slope` is the expected substitutions per unit time for the full
-/// alignment (`clock_rate * sequence_length`). Scales the penalty for zero-mutation
-/// branches introduced during resolution.
-///
-/// Returns count of new nodes inserted.
+/// `zero_branch_slope` = `clock_rate * sequence_length`.
+/// `clock_rate` = substitutions per site per time unit.
 pub fn resolve_polytomies(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   zero_branch_slope: f64,
+  clock_rate: f64,
 ) -> Result<usize, Report> {
-  resolve_polytomies_with_options(graph, partitions, DEFAULT_RESOLUTION_THRESHOLD, zero_branch_slope)
+  resolve_polytomies_with_options(graph, partitions, DEFAULT_RESOLUTION_THRESHOLD, zero_branch_slope, clock_rate, false)
 }
 
 /// Resolve polytomies with configurable options.
 ///
 /// - `resolution_threshold`: minimum delta LH to merge a pair (default 0.05)
 /// - `zero_branch_slope`: expected substitutions per unit time (`clock_rate * sequence_length`)
+/// - `clock_rate`: substitutions per site per time unit, used to classify children
+///   as "stretched" (mutation_length < clock_length) vs "compressed"
+/// - `merge_compressed`: if true, also merge compressed children after stretched
 pub fn resolve_polytomies_with_options(
   graph: &mut GraphTimetree,
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   resolution_threshold: f64,
   zero_branch_slope: f64,
+  clock_rate: f64,
+  merge_compressed: bool,
 ) -> Result<usize, Report> {
   let mut total_resolved = 0;
 
@@ -54,8 +59,14 @@ pub fn resolve_polytomies_with_options(
   for node_key in polytomy_keys {
     let prior_n_children = graph.degree_out(node_key)?;
 
-    // Resolve this polytomy using greedy pairwise merging
-    let n_resolved = resolve_single_polytomy(graph, node_key, resolution_threshold, zero_branch_slope)?;
+    let n_resolved = resolve_single_polytomy(
+      graph,
+      node_key,
+      resolution_threshold,
+      zero_branch_slope,
+      clock_rate,
+      merge_compressed,
+    )?;
     total_resolved += n_resolved;
 
     let new_n_children = graph.degree_out(node_key)?;
@@ -95,6 +106,17 @@ struct ChildInfo {
   edge_key: GraphEdgeKey,
   time: f64,
   branch_dist: Arc<Distribution>,
+  /// Observed substitutions per site on this branch.
+  mutation_length: f64,
+  /// Clock-expected substitutions per site (`time_length * clock_rate`).
+  clock_length: f64,
+}
+
+impl ChildInfo {
+  /// A "stretched" branch has fewer mutations than the clock predicts.
+  fn is_stretched(&self) -> bool {
+    self.mutation_length < self.clock_length
+  }
 }
 
 /// Result of computing cost gain for merging two children.
@@ -112,39 +134,82 @@ struct BestPair {
 
 /// Resolve a single polytomy node using greedy pairwise merging.
 ///
-/// For each pair of children, compute cost gain from merging them under a new
-/// internal node. Greedily merge the pair with highest gain until no pair
-/// exceeds the threshold.
+/// Children are classified as "stretched" (fewer mutations than clock predicts)
+/// or "compressed". Only stretched children are merged by default. When
+/// `merge_compressed` is true, compressed children are also merged in a second pass.
 ///
-/// Returns count of new nodes created.
+/// Within each group, the loop merges the pair with the highest likelihood gain
+/// until gain drops below the threshold or fewer than 2 candidates remain. When
+/// merging a subset (not all children), the group is merged down to 1 remaining
+/// child (creating one subtree node). When merging all children, resolution stops
+/// at 2 remaining (normal bifurcation).
 fn resolve_single_polytomy(
   graph: &mut GraphTimetree,
   node_key: GraphNodeKey,
   resolution_threshold: f64,
   zero_branch_slope: f64,
+  clock_rate: f64,
+  merge_compressed: bool,
+) -> Result<usize, Report> {
+  let mut nodes_created = 0;
+
+  // Merge stretched children
+  nodes_created += merge_child_group(graph, node_key, resolution_threshold, zero_branch_slope, clock_rate, true)?;
+
+  // Optionally merge compressed children
+  if merge_compressed {
+    nodes_created +=
+      merge_child_group(graph, node_key, resolution_threshold, zero_branch_slope, clock_rate, false)?;
+  }
+
+  Ok(nodes_created)
+}
+
+/// Merge one group (stretched or compressed) of a polytomy's children.
+///
+/// When `select_stretched` is true, only stretched children are candidates.
+/// When false, only compressed children are candidates.
+///
+/// The stopping condition depends on whether the group covers all children:
+/// - All children in group: stop at 2 remaining (normal bifurcation)
+/// - Subset: stop at 1 remaining (merge entire subset into one subtree)
+fn merge_child_group(
+  graph: &mut GraphTimetree,
+  node_key: GraphNodeKey,
+  resolution_threshold: f64,
+  zero_branch_slope: f64,
+  clock_rate: f64,
+  select_stretched: bool,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
   loop {
-    // Get current children info
     let parent_time = {
       let node = graph.get_node(node_key).expect("Node must exist");
       node.read_arc().payload().read_arc().time.unwrap_or(0.0)
     };
 
-    let children = collect_children_info(graph, node_key)?;
-    if children.len() <= 2 {
-      break; // No longer a polytomy
+    let all_children = collect_children_info(graph, node_key, clock_rate)?;
+    if all_children.len() <= 2 {
+      break;
     }
 
-    // Compute pairwise cost gain matrix
-    let n = children.len();
+    let candidates: Vec<_> = all_children
+      .into_iter()
+      .filter(|c| c.is_stretched() == select_stretched)
+      .collect();
+
+    if candidates.len() < 2 {
+      break;
+    }
+
+    let n = candidates.len();
     let mut gains = Array2::<f64>::from_elem((n, n), f64::NEG_INFINITY);
     let mut optimal_times = Array2::<f64>::zeros((n, n));
 
     for i in 0..n {
       for j in (i + 1)..n {
-        if let Some(candidate) = compute_merge_gain(&children[i], &children[j], parent_time, zero_branch_slope) {
+        if let Some(candidate) = compute_merge_gain(&candidates[i], &candidates[j], parent_time, zero_branch_slope) {
           gains[[i, j]] = candidate.cost_gain;
           gains[[j, i]] = candidate.cost_gain;
           optimal_times[[i, j]] = candidate.optimal_time;
@@ -153,7 +218,6 @@ fn resolve_single_polytomy(
       }
     }
 
-    // Find best pair
     let BestPair {
       child_idx_a,
       child_idx_b,
@@ -167,15 +231,14 @@ fn resolve_single_polytomy(
     let optimal_time = optimal_times[[child_idx_a, child_idx_b]];
     debug!(
       "Merging children {} and {} with gain {likelihood_gain:.4} at time {optimal_time:.4}",
-      children[child_idx_a].node_key, children[child_idx_b].node_key
+      candidates[child_idx_a].node_key, candidates[child_idx_b].node_key
     );
 
-    // Create new internal node and reparent the two children
     merge_children(
       graph,
       node_key,
-      &children[child_idx_a],
-      &children[child_idx_b],
+      &candidates[child_idx_a],
+      &candidates[child_idx_b],
       optimal_time,
       parent_time,
     )?;
@@ -186,7 +249,11 @@ fn resolve_single_polytomy(
 }
 
 /// Collect information about all children of a node.
-fn collect_children_info(graph: &GraphTimetree, node_key: GraphNodeKey) -> Result<Vec<ChildInfo>, Report> {
+fn collect_children_info(
+  graph: &GraphTimetree,
+  node_key: GraphNodeKey,
+  clock_rate: f64,
+) -> Result<Vec<ChildInfo>, Report> {
   let node = graph.get_node(node_key).expect("Node must exist");
   let node = node.read_arc();
 
@@ -205,12 +272,17 @@ fn collect_children_info(graph: &GraphTimetree, node_key: GraphNodeKey) -> Resul
       .branch_length_distribution
       .clone()
       .unwrap_or_else(|| Arc::new(Distribution::Empty));
+    let mutation_length = edge_payload.branch_length().unwrap_or(0.0);
+    let time_length = edge_payload.time_length.unwrap_or(0.0);
+    let clock_length = time_length * clock_rate;
 
     children.push(ChildInfo {
       node_key: child_key,
       edge_key,
       time,
       branch_dist,
+      mutation_length,
+      clock_length,
     });
   }
 
