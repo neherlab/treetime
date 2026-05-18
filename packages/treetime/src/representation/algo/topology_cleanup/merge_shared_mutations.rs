@@ -9,7 +9,7 @@ use itertools::Itertools;
 use log::debug;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::iterator::difference::iterator_difference;
 use treetime_utils::iterator::intersection::iterator_intersection;
@@ -190,14 +190,6 @@ fn merge_sibling_pair(
   let child_key_a = graph.get_target_node_key(pair.edge_key_a)?;
   let child_key_b = graph.get_target_node_key(pair.edge_key_b)?;
 
-  // Read original branch lengths before removing edges
-  let bl_a = graph
-    .get_edge(pair.edge_key_a)
-    .and_then(|e| e.read_arc().payload().read_arc().branch_length());
-  let bl_b = graph
-    .get_edge(pair.edge_key_b)
-    .and_then(|e| e.read_arc().payload().read_arc().branch_length());
-
   let old_partition_data: Vec<_> = partitions
     .iter()
     .enumerate()
@@ -222,28 +214,25 @@ fn merge_sibling_pair(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  // Compute new branch length from the pooled p-distance across partitions.
-  // The raw Hamming ratio shared/length underestimates evolutionary distance
-  // because multiple substitutions at the same site can revert or mask earlier
-  // ones. The Jukes-Cantor 1969 correction inverts the JC substitution model
-  // to recover expected substitutions per site from observed differences.
-  //
   // Pooling across partitions assumes they share an alphabet size, which holds
   // for every current caller: `prune` hardcodes JC69 over a single alphabet,
   // and `optimize` reuses this path with a single partition set under one
   // model name. `n_states` is read from the first partition accordingly.
   let total_alignment_length: usize = partitions.iter().map(|p| p.read_arc().length).sum();
-  let new_edge_bl = if total_alignment_length > 0 {
-    let p = pair.total_shared as f64 / total_alignment_length as f64;
-    let n_states = partitions[0].read_arc().alphabet.n_canonical();
-    jukes_cantor_distance(p, n_states)
-  } else {
-    0.0
+  let n_states = partitions[0].read_arc().alphabet.n_canonical();
+  let jc_bl = |count: usize| -> f64 {
+    if total_alignment_length > 0 {
+      jukes_cantor_distance(count as f64 / total_alignment_length as f64, n_states)
+    } else {
+      0.0
+    }
   };
 
-  // Adjust children branch lengths
-  let bl_a_adjusted = bl_a.map(|bl| f64::max(0.0, bl - new_edge_bl));
-  let bl_b_adjusted = bl_b.map(|bl| f64::max(0.0, bl - new_edge_bl));
+  let new_edge_bl = jc_bl(pair.total_shared);
+  let remaining_a: usize = old_partition_data.iter().map(|d| d.remaining_subs_a.len() + d.indels_a.len()).sum();
+  let remaining_b: usize = old_partition_data.iter().map(|d| d.remaining_subs_b.len() + d.indels_b.len()).sum();
+  let bl_a_adjusted = jc_bl(remaining_a);
+  let bl_b_adjusted = jc_bl(remaining_b);
 
   // Remove old edges from parent to children
   graph.remove_edge(pair.edge_key_a)?;
@@ -266,7 +255,7 @@ fn merge_sibling_pair(
     new_node_key,
     child_key_a,
     EdgeAncestral {
-      branch_length: bl_a_adjusted,
+      branch_length: Some(bl_a_adjusted),
     },
   )?;
 
@@ -275,7 +264,7 @@ fn merge_sibling_pair(
     new_node_key,
     child_key_b,
     EdgeAncestral {
-      branch_length: bl_b_adjusted,
+      branch_length: Some(bl_b_adjusted),
     },
   )?;
 
