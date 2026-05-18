@@ -7,7 +7,7 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
-  use crate::optimize::iteration::apply_initial_guess_mode;
+  use crate::optimize::run_loop::apply_initial_guess_mode;
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::representation::partition::marginal_dense::PartitionMarginalDense;

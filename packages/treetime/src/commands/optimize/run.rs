@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
-use crate::optimize::iteration::{apply_initial_guess_mode, normalize_partition_rates};
+use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates};
 use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
 use crate::representation::algo::infer_dense::infer_dense;
 use crate::representation::partition::fitch::PartitionFitch;

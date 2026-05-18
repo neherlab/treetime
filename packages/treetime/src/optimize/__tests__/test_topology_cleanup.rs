@@ -4,9 +4,8 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::iteration::{
-    apply_damping, find_zero_optimal_internal_edges, prune_and_merge_in_loop, save_branch_lengths,
-  };
+  use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::representation::algo::topology_cleanup::merge_shared_mutations::merge_shared_mutation_branches;
