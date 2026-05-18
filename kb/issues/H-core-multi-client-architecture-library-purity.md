@@ -10,18 +10,9 @@ An AI refactoring agent moved the entire timetree implementation from the librar
 
 ## Scope
 
-### clap contamination in library domain types
+### ~~clap contamination in library domain types~~ (resolved)
 
-6 domain-layer files outside `commands/` use `clap::ValueEnum` or `clap::Args`:
-
-- `alphabet/alphabet.rs` - `AlphabetName`
-- `gtr/get_gtr.rs` - `GtrModelName`
-- `seq/gap_fill.rs` - `GapFillMode`
-- `optimize/args.rs` - `BranchOptMethod`, `InitialGuessMode`
-- `clock/clock_regression.rs` - `ClockParams` has `#[derive(Args)]`
-- `clock/find_best_root/params.rs` - 5 types with `ValueEnum`/`Args`
-
-Library consumers pull in `clap` as transitive dependency. Domain types should not depend on CLI parsing.
+Resolved: `clap` is now an optional dependency behind a `clap` feature flag. Domain types use `#[cfg_attr(feature = "clap", ...)]` for CLI derives. The `commands/` module is gated behind the same feature. Library consumers no longer pull in `clap`.
 
 ### Domain logic in commands/
 

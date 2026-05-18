@@ -43,18 +43,9 @@ These import only from `gtr/` and `partition/discrete` - no args coupling.
 
 Most are internal helpers (`newton_tolerance_*`, `chain_rule_*`, `brent_bracket`, etc.) that no code outside `optimize/` calls. True API functions (`run_optimize_mixed`, `evaluate_with_indels_log_lh_only`) used by timetree need `pub` for future crate split.
 
-### clap derives in domain types
+### ~~clap derives in domain types~~ Resolved
 
-6 domain-layer files have `use clap::ValueEnum` or `use clap::Args`:
-
-- `clock/clock_regression.rs` - `ClockParams` has `#[derive(Args)]`
-- `clock/find_best_root/params.rs` - 5 types with `ValueEnum`/`Args`
-- `optimize/args.rs` - `BranchOptMethod`, `InitialGuessMode`
-- `alphabet/alphabet.rs` - `AlphabetName`
-- `gtr/get_gtr.rs` - `GtrModelName`
-- `seq/gap_fill.rs` - `GapFillMode`
-
-Domain types should not depend on CLI parsing. Library consumers pull in `clap` as transitive dependency.
+`clap` is now an optional dependency behind a `clap` feature flag. Domain types use `#[cfg_attr(feature = "clap", ...)]` for CLI derives. The `commands/` module is gated behind the same feature.
 
 ## Dead code and cosmetic
 
