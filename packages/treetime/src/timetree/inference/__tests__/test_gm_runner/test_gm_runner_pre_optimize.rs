@@ -9,7 +9,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::traits::PartitionOptimizeOps;

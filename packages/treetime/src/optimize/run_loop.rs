@@ -1,9 +1,9 @@
 use crate::ancestral::marginal::update_marginal;
-use crate::optimize::args::BranchOptMethod;
+use crate::optimize::params::BranchOptMethod;
 use crate::optimize::iteration::{
   apply_damping, find_zero_optimal_internal_edges, prune_and_merge_in_loop, restore_branch_lengths, save_branch_lengths,
 };
-use crate::optimize::optimize_indel::{estimate_indel_rate, total_indel_log_lh};
+use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::optimize_unified::run_optimize_mixed_inner;
 use crate::representation::partition::marginal_dense::PartitionMarginalDense;
 use crate::representation::partition::marginal_sparse::PartitionMarginalSparse;

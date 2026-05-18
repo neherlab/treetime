@@ -6,8 +6,8 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::args::BranchOptMethod;
-  use crate::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
+  use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::optimize::optimize_unified::{
     evaluate_mixed_log_lh_only, initial_guess_mixed, is_zero_better_than_grid_best, is_zero_branch_optimal,
     run_optimize_mixed, run_optimize_mixed_with_indel_rate,
@@ -679,7 +679,7 @@ mod tests {
 
   mod prop_tests {
     use super::generators;
-    use crate::optimize::optimize_indel::poisson_indel_log_lh;
+    use crate::optimize::indel::poisson_indel_log_lh;
     use proptest::prelude::*;
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 

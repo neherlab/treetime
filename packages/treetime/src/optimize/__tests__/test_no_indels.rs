@@ -6,7 +6,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::args::{BranchOptMethod, InitialGuessMode};
+  use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
   use crate::optimize::iteration::apply_initial_guess_mode;
   use crate::optimize::optimize_unified::run_optimize_mixed_inner;
   use crate::optimize::run_loop::run_optimize_loop;

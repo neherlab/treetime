@@ -2,8 +2,8 @@
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::optimize::optimize_dense_eval::evaluate_dense_contribution;
-  use crate::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
+  use crate::optimize::dense_eval::evaluate_dense_contribution;
+  use crate::optimize::sparse_eval::evaluate_sparse_contribution;
   use crate::representation::partition::optimize_dense::{PartitionContribution, get_coefficients};
   use crate::representation::partition::optimize_sparse;
   use approx::assert_abs_diff_eq;

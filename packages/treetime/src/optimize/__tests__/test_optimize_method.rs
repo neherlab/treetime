@@ -4,10 +4,10 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
-  use crate::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
+  use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::optimize::optimize_unified::{
     OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only,
     min_branch_length_for_indels, newton_tolerance_t, run_optimize_mixed,

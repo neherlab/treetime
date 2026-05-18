@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::args::TreetimeOptimizeArgs;
-  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::params::BranchOptMethod;
   use clap::Parser;
   use pretty_assertions::assert_eq;
   use rstest::rstest;

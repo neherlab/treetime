@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
-  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::iteration::find_zero_optimal_internal_edges;
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::optimize_unified::{

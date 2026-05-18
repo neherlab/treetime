@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::args::BranchOptMethod;
+  use crate::optimize::params::BranchOptMethod;
   use crate::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::payload::ancestral::GraphAncestral;
   use eyre::Report;

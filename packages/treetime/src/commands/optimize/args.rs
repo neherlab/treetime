@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::optimize::args::{BranchOptMethod, InitialGuessMode};
+use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use clap::{Parser, ValueHint};
 use serde::Serialize;
 use std::fmt::Debug;

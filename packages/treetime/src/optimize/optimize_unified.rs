@@ -1,11 +1,11 @@
-use crate::optimize::args::BranchOptMethod;
+use crate::optimize::params::BranchOptMethod;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
 use crate::optimize::method_newton::{
   NEWTON_ABS_TOL, NEWTON_REL_TOL, newton_inner, newton_log_inner, newton_sqrt_inner,
 };
-use crate::optimize::optimize_dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
-use crate::optimize::optimize_indel::{estimate_indel_rate, poisson_indel_log_lh};
-use crate::optimize::optimize_sparse_eval::{evaluate_sparse_contribution, evaluate_sparse_contribution_impl};
+use crate::optimize::dense_eval::{evaluate_dense_contribution, evaluate_dense_contribution_impl};
+use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
+use crate::optimize::sparse_eval::{evaluate_sparse_contribution, evaluate_sparse_contribution_impl};
 use crate::representation::partition::optimization_contribution::OptimizationContribution;
 use crate::representation::partition::traits::PartitionOptimizeOps;
 use crate::{make_error, make_internal_report};

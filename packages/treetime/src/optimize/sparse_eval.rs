@@ -1,4 +1,4 @@
-use crate::optimize::optimize_eval::evaluate_site_contributions;
+use crate::optimize::eval::evaluate_site_contributions;
 use crate::optimize::optimize_unified::OptimizationMetrics;
 use crate::representation::partition::optimize_sparse;
 

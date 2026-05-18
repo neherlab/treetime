@@ -2,8 +2,8 @@
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::optimize::optimize_dense_eval::evaluate_dense_contribution;
-  use crate::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
+  use crate::optimize::dense_eval::evaluate_dense_contribution;
+  use crate::optimize::sparse_eval::evaluate_sparse_contribution;
   use crate::representation::partition::optimize_dense::get_coefficients;
   use crate::representation::partition::optimize_sparse;
   use ndarray::{Array1, Axis, array, concatenate};
@@ -285,7 +285,7 @@ mod tests {
   // moments approach `16/9` while the variance is `O(epsilon)`.
   mod cancellation_regime {
     use super::*;
-    use crate::optimize::optimize_sparse_eval::evaluate_sparse_contribution;
+    use crate::optimize::sparse_eval::evaluate_sparse_contribution;
     use crate::representation::partition::optimize_sparse::{PartitionContribution, SiteContribution};
     use approx::assert_abs_diff_eq;
     use rstest::rstest;

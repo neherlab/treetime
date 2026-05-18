@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::args::InitialGuessMode;
+  use crate::optimize::params::InitialGuessMode;
   use crate::optimize::iteration::{
     any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
   };
