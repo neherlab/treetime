@@ -2,37 +2,31 @@
 
 After extracting `ancestral/`, `optimize/`, `clock/` from `commands/`, and breaking the `representation/ <-> optimize/` cycle, several structural issues remain. Identified by 6 independent peer reviews (3 Claude, 3 Codex).
 
-## Dependency cycles
+## ~~Dependency cycles~~ Resolved
 
-Three bidirectional dependency cycles remain between top-level modules:
+All three dependency cycles have been broken:
 
-### representation/ <-> gtr/ (10+ import lines)
+### ~~partition/ <-> gtr/~~ Resolved
 
-Every partition file imports `GTR` from `gtr/`. Two files in `gtr/infer_gtr/` import back from `representation/`:
+GTR mutation counting (`infer_gtr_fitch`, `get_mutation_counts_fitch`) moved from `gtr/infer_gtr/` to `ancestral/gtr_inference`. The pure math solver stays in `gtr/infer_gtr/common`. `gtr/` no longer imports from `partition/`.
 
-- `gtr/infer_gtr/dense.rs` -> `representation::partition::marginal_dense::PartitionMarginalDense`
-- `gtr/infer_gtr/fitch.rs` -> `representation::partition::traits::PartitionCompressed`
+### ~~partition/ <-> ancestral/~~ Resolved
 
-Breakable: parameterize GTR inference over iterators instead of concrete partition types. `infer_gtr/dense.rs` reads `(msg_to_parent, msg_to_child)` pairs - accepting `impl Iterator<Item = (&Array2<f64>, &Array2<f64>)>` breaks the reverse direction.
+`resolve_indels_backward/forward` and `Deletion` moved from `ancestral/fitch_indel` to `seq/indel` (pure sequence operations). `PartitionFitch::compress()` convenience method removed; `create_fitch_partition()` in `ancestral/fitch` replaces it. `partition/` no longer imports from `ancestral/`.
 
-### representation/ <-> ancestral/ (2 upward imports)
+### ~~clock/ -> commands/~~ Resolved
 
-- `partition/fitch.rs:2:` -> `ancestral::fitch::compress_sequences`
-- `partition/marginal_dense.rs:4:` -> `ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward}`
+`From<BranchSplitArgs>` moved to `commands/clock/run.rs` as `branch_split_to_params` in prior work.
 
-Breakable: `resolve_indels_*` are pure functions on gap ranges (`Vec<(usize, usize)>`, `BTreeMap<(usize, usize), Deletion>`) - move to `seq/` or `representation/`. `compress_sequences` is called by `PartitionFitch::compress()` convenience constructor - remove the convenience method or invert the call direction.
+## ~~representation/ renamed to partition/, restructured~~ Resolved
 
-### clock/ -> commands/ (1 import)
-
-- `clock/find_best_root/params.rs:1:` -> `commands::clock::args::BranchSplitArgs`
-
-The `From<&BranchSplitArgs> for BranchPointOptimizationParams` impl lives in the domain module. Move it to `commands/clock/`.
+Module renamed from `representation/` to `partition/`, inner `partition/` subdirectory flattened. Topology cleanup (`collapse`, `merge_shared_mutations`, `polytomy_nodes`) moved to `optimize/topology/`. Reroot types and functions moved to `treetime_graph::reroot`. `partition/algo/` retains only `infer_dense`.
 
 ## Domain logic trapped in commands/
 
-### ~~commands/timetree/~~ **Resolved**
+### ~~commands/timetree/~~ Resolved
 
-Extracted to top-level `timetree/` domain module: `inference/` (backward/forward passes, branch length likelihood, runner), `optimization/` (polytomy, relaxed clock, clock filter, reroot), `utils.rs`. `commands/timetree/` retains CLI-coupled modules (args, run, output, convergence, initialization, refinement).
+Extracted to top-level `timetree/` domain module.
 
 ### commands/mugration/ (1227 lines)
 
@@ -42,16 +36,6 @@ Contains domain algorithms:
 - `discrete_marginal.rs` (170 lines) - discrete-trait marginal reconstruction
 
 These import only from `gtr/` and `partition/discrete` - no args coupling.
-
-## representation/ is not a coherent module
-
-5100 lines mixing three concerns under a vague name:
-
-- `payload/` (1385 lines) - node/edge data types. Pure data.
-- `partition/` (2956 lines) - partition types AND marginal inference algorithms (1811 lines of science code) AND optimization coefficient types (268 lines)
-- `algo/` (603 lines) - topology cleanup operations
-
-The marginal inference algorithms (`marginal_dense.rs` 711 lines, `marginal_passes.rs` 432 lines, `marginal_helpers.rs` 316 lines) are the densest scientific code in the project. They live in `representation/` as trait implementations on partition types while `ancestral/marginal.rs` (160 lines) is a thin tree-walking orchestrator. The architecture is inverted: the "domain module" wraps, the "data module" computes.
 
 ## Visibility and coupling issues
 
@@ -75,6 +59,6 @@ Domain types should not depend on CLI parsing. Library consumers pull in `clap` 
 ## Dead code and cosmetic
 
 - `PartitionMarginal` in `partition/traits.rs:115:` is a dead marker trait. Empty impl on both partition types, used only as supertrait bound on `PartitionMarginalOps`. Safe to remove.
-- `clock/reroot.rs` re-exports `EdgeMergeInfo`, `EdgeSplitInfo`, `RerootChanges`, `RerootResult` from `partition/algo/topology_cleanup/reroot`. Creates dual import paths. No production caller uses the re-export. Remove.
+- `clock/reroot.rs` re-exports `EdgeMergeInfo`, `EdgeSplitInfo`, `RerootChanges`, `RerootResult` from `treetime_graph::reroot`. Creates dual import paths. No production caller uses the re-export. Remove.
 - `hacks/` module contains one 14-line function (`fix_branch_length`). Module name normalizes technical debt. Relocate to `seq/` or inline at 3 call sites.
-- `discrete_states.rs` in `representation/` used exclusively by mugration. Move to `commands/mugration/` or future `mugration/` domain module.
+- `discrete_states.rs` in `partition/` used exclusively by mugration. Move to `commands/mugration/` or future `mugration/` domain module.
