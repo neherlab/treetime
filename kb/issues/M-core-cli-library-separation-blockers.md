@@ -6,11 +6,9 @@ After extracting domain modules (`ancestral/`, `clock/`, `optimize/`) from `comm
 
 Resolved: `run_optimize_mixed_inner`, `run_optimize_mixed_with_indel_rate`, `evaluate_with_indels_log_lh_only`, `evaluate_with_indels` promoted to `pub` in `optimize/optimize_unified.rs`. Internal helpers (`newton_tolerance_*`, `grid_search_*`, `reconcile_zero_boundary`, `is_zero_better_than_grid_best`, `min_branch_length_for_indels`, `GRID_SEARCH_MIN_UPPER`) remain `pub(crate)`.
 
-## B2: cli/ module serves commands only but lives in treetime crate
+## B2: (RESOLVED) cli/ module serves commands only but lives in treetime crate
 
-`cli/rtt_chart.rs` and `cli/rtt_chart_render.rs` render root-to-tip regression charts. Called exclusively by `commands/clock/run.rs`. Import from `clock/` domain module (not from commands). If commands moves to `treetime-cli`, `cli/` goes with it or becomes public API.
-
-Files: `packages/treetime/src/cli/rtt_chart.rs` (177 lines), `packages/treetime/src/cli/rtt_chart_render.rs` (174 lines).
+Resolved: `cli/rtt_chart.rs` and `cli/rtt_chart_render.rs` moved to `treetime-cli` crate. `run_clock` returns `ClockResult` and the CLI binary handles chart rendering. The `cli/` module and chart dependencies removed from `treetime` crate.
 
 ## B3: (RESOLVED) optimize/run.rs retains domain-ish functions consumed by domain tests
 
