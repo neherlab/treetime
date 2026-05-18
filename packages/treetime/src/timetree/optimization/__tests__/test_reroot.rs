@@ -5,7 +5,6 @@ mod tests {
   use crate::ancestral::marginal::update_marginal;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::commands::timetree::optimization::reroot::reroot_tree;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
@@ -22,6 +21,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::optimization::reroot::reroot_tree;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

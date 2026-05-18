@@ -1,9 +1,6 @@
 pub mod args;
 pub mod convergence;
-pub mod inference;
 pub mod initialization;
-pub mod optimization;
 pub mod output;
 pub mod refinement;
 pub mod run;
-pub mod utils;

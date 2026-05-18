@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use crate::pretty_assert_ulps_eq;
   use crate::representation::partition::timetree::GraphTimetree;
+  use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;

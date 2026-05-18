@@ -8,16 +8,16 @@ mod tests {
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::commands::timetree::inference::runner::run_timetree;
-  use crate::commands::timetree::utils::{
-    extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
-  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::args::BranchOptMethod;
   use crate::optimize::optimize_unified::run_optimize_mixed;
   use crate::representation::partition::fitch::PartitionFitch;
   use crate::representation::partition::traits::PartitionOptimizeOps;
   use crate::representation::partition::traits::PartitionTimetreeAll;
+  use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::utils::{
+    extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
+  };
 
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::representation::payload::timetree::{EdgeTimetree, NodeTimetree};

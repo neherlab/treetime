@@ -1,11 +1,11 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
-use crate::commands::timetree::inference::runner::run_timetree;
 use crate::make_error;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
 use crate::representation::payload::traits::TimetreeNode;
+use crate::timetree::inference::runner::run_timetree;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::{info, warn};

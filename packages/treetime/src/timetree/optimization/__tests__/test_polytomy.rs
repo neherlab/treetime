@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::optimization::polytomy::{
-    DEFAULT_RESOLUTION_THRESHOLD, prepare_tree_after_topology_change, resolve_polytomies_with_options,
-  };
   use crate::representation::partition::timetree::GraphTimetree;
   use crate::test_utils::find_node_key_by_name;
+  use crate::timetree::optimization::polytomy::{
+    DEFAULT_RESOLUTION_THRESHOLD, prepare_tree_after_topology_change, resolve_polytomies_with_options,
+  };
   use eyre::Report;
   use ndarray::Array1;
   use std::sync::Arc;

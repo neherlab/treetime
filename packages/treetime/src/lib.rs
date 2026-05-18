@@ -11,6 +11,7 @@ pub mod io;
 pub mod optimize;
 pub mod representation;
 pub mod seq;
+pub mod timetree;
 
 #[cfg(test)]
 pub mod test_utils;

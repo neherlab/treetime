@@ -4,13 +4,13 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::commands::timetree::inference::runner::run_timetree;
-use crate::commands::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
-use crate::commands::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::representation::partition::timetree::GraphTimetree;
 use crate::representation::partition::traits::PartitionTimetreeAll;
 use crate::representation::payload::timetree::EdgeTimetree;
 use crate::representation::payload::timetree::NodeTimetree;
+use crate::timetree::inference::runner::run_timetree;
+use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
+use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;

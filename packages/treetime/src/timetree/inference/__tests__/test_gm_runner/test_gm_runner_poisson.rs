@@ -2,11 +2,11 @@
 mod tests {
   use super::super::test_gm_runner_support::support::{OUTPUTS, load_dates_for_dataset};
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::commands::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::commands::timetree::inference::forward_pass::propagate_distributions_forward;
-  use crate::commands::timetree::inference::runner::BRANCH_GRID_SIZE;
-  use crate::commands::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use crate::representation::partition::timetree::GraphTimetree;
+  use crate::timetree::inference::backward_pass::propagate_distributions_backward;
+  use crate::timetree::inference::forward_pass::propagate_distributions_forward;
+  use crate::timetree::inference::runner::BRANCH_GRID_SIZE;
+  use crate::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;

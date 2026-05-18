@@ -15,19 +15,19 @@ use treetime::ancestral::marginal::initialize_marginal;
 use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
-use treetime::commands::timetree::inference::backward_pass::propagate_distributions_backward;
-use treetime::commands::timetree::inference::forward_pass::propagate_distributions_forward;
-use treetime::commands::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
-use treetime::commands::timetree::utils::{
-  create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
-  initialize_node_divergences,
-};
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::representation::partition::fitch::PartitionFitch;
 use treetime::representation::partition::marginal_dense::PartitionMarginalDense;
 use treetime::representation::partition::timetree::GraphTimetree;
 use treetime::representation::partition::traits::PartitionTimetreeAll;
 use treetime::representation::payload::timetree::{EdgeTimetree, NodeTimetree};
+use treetime::timetree::inference::backward_pass::propagate_distributions_backward;
+use treetime::timetree::inference::forward_pass::propagate_distributions_forward;
+use treetime::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
+use treetime::timetree::utils::{
+  create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
+  initialize_node_divergences,
+};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::nwk_read_str;
@@ -42,7 +42,7 @@ fn init() {
 
 const FIXTURES_DIR: &str = concat!(
   env!("CARGO_MANIFEST_DIR"),
-  "/src/commands/timetree/inference/__tests__/__fixtures__"
+  "/src/timetree/inference/__tests__/__fixtures__"
 );
 
 #[derive(Parser, Clone, Serialize, Deserialize)]

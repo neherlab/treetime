@@ -31,7 +31,7 @@ pub mod support {
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/src/commands/timetree/inference/__tests__/__fixtures__"
+    "/src/timetree/inference/__tests__/__fixtures__"
   );
 
   pub static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
