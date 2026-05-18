@@ -80,7 +80,14 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 10.0, TEST_CLOCK_RATE, false)?;
+    let n_resolved = resolve_polytomies_with_options(
+      &mut graph,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      10.0,
+      TEST_CLOCK_RATE,
+      false,
+    )?;
 
     assert_eq!(n_resolved, 0, "Binary tree should have no resolutions");
     assert_eq!(
@@ -252,11 +259,25 @@ mod tests {
 
     // Large slope: penalty dominates branch length improvement → no merge
     let mut graph_high = helpers::create_polytomy_tree_with_realistic_distributions()?;
-    let n_high = resolve_polytomies_with_options(&mut graph_high, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 1000.0, TEST_CLOCK_RATE, false)?;
+    let n_high = resolve_polytomies_with_options(
+      &mut graph_high,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      1000.0,
+      TEST_CLOCK_RATE,
+      false,
+    )?;
 
     // Small slope: penalty negligible, branch redistribution drives merge
     let mut graph_low = helpers::create_polytomy_tree_with_realistic_distributions()?;
-    let n_low = resolve_polytomies_with_options(&mut graph_low, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01, TEST_CLOCK_RATE, false)?;
+    let n_low = resolve_polytomies_with_options(
+      &mut graph_low,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      0.01,
+      TEST_CLOCK_RATE,
+      false,
+    )?;
 
     assert!(
       n_low > n_high,
@@ -271,7 +292,14 @@ mod tests {
   fn test_resolve_polytomies_zero_slope_no_penalty() -> Result<(), Report> {
     let mut graph = helpers::create_polytomy_tree_with_realistic_distributions()?;
     let partitions = vec![];
-    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.0, TEST_CLOCK_RATE, false)?;
+    let n_resolved = resolve_polytomies_with_options(
+      &mut graph,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      0.0,
+      TEST_CLOCK_RATE,
+      false,
+    )?;
 
     assert_eq!(n_resolved, 1, "Zero slope should allow merge");
     Ok(())
@@ -281,10 +309,19 @@ mod tests {
   fn test_resolve_polytomies_compressed_children_skipped_by_default() -> Result<(), Report> {
     let mut graph = helpers::create_compressed_polytomy_tree()?;
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, DEFAULT_RESOLUTION_THRESHOLD, 0.01, TEST_CLOCK_RATE, false)?;
+    let n_resolved = resolve_polytomies_with_options(
+      &mut graph,
+      &partitions,
+      DEFAULT_RESOLUTION_THRESHOLD,
+      0.01,
+      TEST_CLOCK_RATE,
+      false,
+    )?;
 
-    assert_eq!(n_resolved, 0, "Compressed children should not be merged when merge_compressed=false");
+    assert_eq!(
+      n_resolved, 0,
+      "Compressed children should not be merged when merge_compressed=false"
+    );
     Ok(())
   }
 
@@ -292,10 +329,12 @@ mod tests {
   fn test_resolve_polytomies_compressed_children_merged_when_enabled() -> Result<(), Report> {
     let mut graph = helpers::create_compressed_polytomy_tree()?;
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 0.01, TEST_CLOCK_RATE, true)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 0.01, TEST_CLOCK_RATE, true)?;
 
-    assert!(n_resolved > 0, "Compressed children should be merged when merge_compressed=true");
+    assert!(
+      n_resolved > 0,
+      "Compressed children should be merged when merge_compressed=true"
+    );
     Ok(())
   }
 
@@ -303,8 +342,7 @@ mod tests {
   fn test_resolve_polytomies_stretched_children_merged_by_default() -> Result<(), Report> {
     let mut graph = helpers::create_polytomy_tree()?;
     let partitions = vec![];
-    let n_resolved =
-      resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
 
     assert!(n_resolved > 0, "Stretched children should be merged by default");
     Ok(())

@@ -7,9 +7,10 @@ use crate::representation::payload::timetree::NodeTimetree;
 use argmin::core::{CostFunction, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
+use treetime_utils::make_internal_error;
 use log::debug;
-use ndarray::Array2;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
@@ -34,7 +35,14 @@ pub fn resolve_polytomies(
   zero_branch_slope: f64,
   clock_rate: f64,
 ) -> Result<usize, Report> {
-  resolve_polytomies_with_options(graph, partitions, DEFAULT_RESOLUTION_THRESHOLD, zero_branch_slope, clock_rate, false)
+  resolve_polytomies_with_options(
+    graph,
+    partitions,
+    DEFAULT_RESOLUTION_THRESHOLD,
+    zero_branch_slope,
+    clock_rate,
+    false,
+  )
 }
 
 /// Resolve polytomies with configurable options.
@@ -113,11 +121,9 @@ struct MergeCandidate {
   cost_gain: f64,
 }
 
-/// Result of finding the best pair of children to merge.
-struct BestPair {
-  child_idx_a: usize,
-  child_idx_b: usize,
-  likelihood_gain: f64,
+/// Canonical key for a pair of children, ordered so first < second.
+fn gain_key(a: GraphNodeKey, b: GraphNodeKey) -> (GraphNodeKey, GraphNodeKey) {
+  if a < b { (a, b) } else { (b, a) }
 }
 
 /// Resolve a single polytomy node using greedy pairwise merging.
@@ -142,12 +148,25 @@ fn resolve_single_polytomy(
   let mut nodes_created = 0;
 
   // Merge stretched children
-  nodes_created += merge_child_group(graph, node_key, resolution_threshold, zero_branch_slope, clock_rate, true)?;
+  nodes_created += merge_child_group(
+    graph,
+    node_key,
+    resolution_threshold,
+    zero_branch_slope,
+    clock_rate,
+    true,
+  )?;
 
   // Optionally merge compressed children
   if merge_compressed {
-    nodes_created +=
-      merge_child_group(graph, node_key, resolution_threshold, zero_branch_slope, clock_rate, false)?;
+    nodes_created += merge_child_group(
+      graph,
+      node_key,
+      resolution_threshold,
+      zero_branch_slope,
+      clock_rate,
+      false,
+    )?;
   }
 
   Ok(nodes_created)
@@ -155,10 +174,11 @@ fn resolve_single_polytomy(
 
 /// Merge one group (stretched or compressed) of a polytomy's children.
 ///
-/// When `select_stretched` is true, only stretched children are candidates.
-/// When false, only compressed children are candidates.
+/// Uses an incremental gain matrix: after each merge, only O(n) new gain
+/// evaluations are needed (for the new node vs each remaining child) instead
+/// of recomputing the full O(n^2) matrix. Matches v0's incremental approach.
 ///
-/// The stopping condition depends on whether the group covers all children:
+/// Stopping condition depends on whether this group covers all children:
 /// - All children in group: stop at 2 remaining (normal bifurcation)
 /// - Subset: stop at 1 remaining (merge entire subset into one subtree)
 fn merge_child_group(
@@ -169,68 +189,94 @@ fn merge_child_group(
   clock_rate: f64,
   select_stretched: bool,
 ) -> Result<usize, Report> {
+  let parent_time = {
+    let node = graph.get_node(node_key).expect("Node must exist");
+    node.read_arc().payload().read_arc().time.unwrap_or(0.0)
+  };
+
+  let all_children = collect_children_info(graph, node_key, clock_rate)?;
+  let n_total = all_children.len();
+  if n_total <= 2 {
+    return Ok(0);
+  }
+
+  let mut children: BTreeMap<GraphNodeKey, ChildInfo> = all_children
+    .into_iter()
+    .filter(|c| c.is_stretched() == select_stretched)
+    .map(|c| (c.node_key, c))
+    .collect();
+
+  let is_all = children.len() == n_total;
+  let min_remaining = if is_all { 2 } else { 1 };
+
+  if children.len() < 2 {
+    return Ok(0);
+  }
+
+  // Initial full computation of pairwise gains
+  let mut gains: BTreeMap<(GraphNodeKey, GraphNodeKey), MergeCandidate> = BTreeMap::new();
+  let child_keys: Vec<GraphNodeKey> = children.keys().copied().collect();
+  for (i, &ka) in child_keys.iter().enumerate() {
+    for &kb in &child_keys[i + 1..] {
+      if let Some(candidate) = compute_merge_gain(&children[&ka], &children[&kb], parent_time, zero_branch_slope) {
+        gains.insert(gain_key(ka, kb), candidate);
+      }
+    }
+  }
+
   let mut nodes_created = 0;
 
   loop {
-    let parent_time = {
-      let node = graph.get_node(node_key).expect("Node must exist");
-      node.read_arc().payload().read_arc().time.unwrap_or(0.0)
+    if children.len() <= min_remaining {
+      break;
+    }
+
+    // Find best pair from current gains
+    let best = gains.iter().max_by(|(_, a), (_, b)| {
+      a.cost_gain
+        .partial_cmp(&b.cost_gain)
+        .unwrap_or(std::cmp::Ordering::Less)
+    });
+
+    let Some((&(key_a, key_b), best_candidate)) = best else {
+      break;
     };
 
-    let all_children = collect_children_info(graph, node_key, clock_rate)?;
-    if all_children.len() <= 2 {
+    if best_candidate.cost_gain < resolution_threshold {
+      debug!(
+        "Best gain {:.4} below threshold {resolution_threshold:.4}, stopping",
+        best_candidate.cost_gain
+      );
       break;
     }
 
-    let candidates: Vec<_> = all_children
-      .into_iter()
-      .filter(|c| c.is_stretched() == select_stretched)
-      .collect();
+    let optimal_time = best_candidate.optimal_time;
+    let likelihood_gain = best_candidate.cost_gain;
+    debug!("Merging children {key_a} and {key_b} with gain {likelihood_gain:.4} at time {optimal_time:.4}");
 
-    if candidates.len() < 2 {
-      break;
-    }
-
-    let n = candidates.len();
-    let mut gains = Array2::<f64>::from_elem((n, n), f64::NEG_INFINITY);
-    let mut optimal_times = Array2::<f64>::zeros((n, n));
-
-    for i in 0..n {
-      for j in (i + 1)..n {
-        if let Some(candidate) = compute_merge_gain(&candidates[i], &candidates[j], parent_time, zero_branch_slope) {
-          gains[[i, j]] = candidate.cost_gain;
-          gains[[j, i]] = candidate.cost_gain;
-          optimal_times[[i, j]] = candidate.optimal_time;
-          optimal_times[[j, i]] = candidate.optimal_time;
-        }
-      }
-    }
-
-    let BestPair {
-      child_idx_a,
-      child_idx_b,
-      likelihood_gain,
-    } = find_best_pair(&gains);
-    if likelihood_gain < resolution_threshold {
-      debug!("Best gain {likelihood_gain:.4} below threshold {resolution_threshold:.4}, stopping");
-      break;
-    }
-
-    let optimal_time = optimal_times[[child_idx_a, child_idx_b]];
-    debug!(
-      "Merging children {} and {} with gain {likelihood_gain:.4} at time {optimal_time:.4}",
-      candidates[child_idx_a].node_key, candidates[child_idx_b].node_key
-    );
-
-    merge_children(
+    let new_node_key = merge_children(
       graph,
       node_key,
-      &candidates[child_idx_a],
-      &candidates[child_idx_b],
+      &children[&key_a],
+      &children[&key_b],
       optimal_time,
       parent_time,
     )?;
     nodes_created += 1;
+
+    // Remove merged children and all their gain entries
+    children.remove(&key_a);
+    children.remove(&key_b);
+    gains.retain(|&(a, b), _| a != key_a && a != key_b && b != key_a && b != key_b);
+
+    // Build info for new node and compute its gains against remaining children
+    let new_child = collect_single_child_info(graph, node_key, new_node_key, clock_rate)?;
+    for (&ck, child) in &children {
+      if let Some(candidate) = compute_merge_gain(&new_child, child, parent_time, zero_branch_slope) {
+        gains.insert(gain_key(new_node_key, ck), candidate);
+      }
+    }
+    children.insert(new_node_key, new_child);
   }
 
   Ok(nodes_created)
@@ -247,34 +293,59 @@ fn collect_children_info(
 
   let mut children = Vec::new();
   for &edge_key in node.outbound() {
-    let edge = graph.get_edge(edge_key).expect("Edge must exist");
-    let edge = edge.read_arc();
-    let child_key = edge.target();
-
-    let child_node = graph.get_node(child_key).expect("Child must exist");
-    let child_payload = child_node.read_arc().payload().read_arc();
-    let edge_payload = edge.payload().read_arc();
-
-    let time = child_payload.time.unwrap_or(0.0);
-    let branch_dist = edge_payload
-      .branch_length_distribution
-      .clone()
-      .unwrap_or_else(|| Arc::new(Distribution::Empty));
-    let mutation_length = edge_payload.branch_length().unwrap_or(0.0);
-    let time_length = edge_payload.time_length.unwrap_or(0.0);
-    let clock_length = time_length * clock_rate;
-
-    children.push(ChildInfo {
-      node_key: child_key,
-      edge_key,
-      time,
-      branch_dist,
-      mutation_length,
-      clock_length,
-    });
+    children.push(build_child_info(graph, edge_key, clock_rate));
   }
 
   Ok(children)
+}
+
+/// Build ChildInfo for a single child identified by its parent edge.
+fn build_child_info(graph: &GraphTimetree, edge_key: GraphEdgeKey, clock_rate: f64) -> ChildInfo {
+  let edge = graph.get_edge(edge_key).expect("Edge must exist");
+  let edge = edge.read_arc();
+  let child_key = edge.target();
+
+  let child_node = graph.get_node(child_key).expect("Child must exist");
+  let child_payload = child_node.read_arc().payload().read_arc();
+  let edge_payload = edge.payload().read_arc();
+
+  let time = child_payload.time.unwrap_or(0.0);
+  let branch_dist = edge_payload
+    .branch_length_distribution
+    .clone()
+    .unwrap_or_else(|| Arc::new(Distribution::Empty));
+  let mutation_length = edge_payload.branch_length().unwrap_or(0.0);
+  let time_length = edge_payload.time_length.unwrap_or(0.0);
+  let clock_length = time_length * clock_rate;
+
+  ChildInfo {
+    node_key: child_key,
+    edge_key,
+    time,
+    branch_dist,
+    mutation_length,
+    clock_length,
+  }
+}
+
+/// Collect ChildInfo for a specific child node of a parent.
+fn collect_single_child_info(
+  graph: &GraphTimetree,
+  parent_key: GraphNodeKey,
+  child_key: GraphNodeKey,
+  clock_rate: f64,
+) -> Result<ChildInfo, Report> {
+  let parent = graph.get_node(parent_key).expect("Node must exist");
+  let parent = parent.read_arc();
+
+  for &edge_key in parent.outbound() {
+    let edge = graph.get_edge(edge_key).expect("Edge must exist");
+    if edge.read_arc().target() == child_key {
+      return Ok(build_child_info(graph, edge_key, clock_rate));
+    }
+  }
+
+  make_internal_error!("Child {child_key} not found among children of {parent_key}")
 }
 
 /// Compute cost gain from merging two children under a new internal node.
@@ -392,31 +463,12 @@ impl CostFunction for MergeCostFunction<'_> {
   }
 }
 
-/// Find the pair with maximum cost gain.
-fn find_best_pair(gains: &Array2<f64>) -> BestPair {
-  let n = gains.nrows();
-  let mut child_idx_a = 0;
-  let mut child_idx_b = 1;
-  let mut likelihood_gain = f64::NEG_INFINITY;
-
-  for i in 0..n {
-    for j in (i + 1)..n {
-      if gains[[i, j]] > likelihood_gain {
-        likelihood_gain = gains[[i, j]];
-        child_idx_a = i;
-        child_idx_b = j;
-      }
-    }
-  }
-
-  BestPair {
-    child_idx_a,
-    child_idx_b,
-    likelihood_gain,
-  }
-}
-
-/// Merge two children under a new internal node.
+/// Merge two children under a new internal node. Returns the new node's key.
+///
+/// Graph surgery: create new node N, edge parent->N, remove old edges parent->child1
+/// and parent->child2, create edges N->child1 and N->child2.
+/// Branch lengths are calendar-time differences (child_time - parent_time, positive
+/// because children are in the future relative to parent).
 fn merge_children(
   graph: &mut GraphTimetree,
   parent_key: GraphNodeKey,
@@ -424,16 +476,14 @@ fn merge_children(
   child2: &ChildInfo,
   new_node_time: f64,
   parent_time: f64,
-) -> Result<(), Report> {
-  // Create new internal node
+) -> Result<GraphNodeKey, Report> {
   let new_payload = NodeTimetree {
     time: Some(new_node_time),
     ..NodeTimetree::default()
   };
   let new_node_key = graph.add_node(new_payload);
 
-  // Create edge from parent to new node
-  // Branch length in calendar time: child - parent (new_node is the "child" of parent)
+  // Edge parent -> new node: time_length = new_node_time - parent_time
   let new_branch_length = new_node_time - parent_time;
   let new_edge_payload = EdgeTimetree {
     time_length: Some(new_branch_length),
@@ -441,8 +491,7 @@ fn merge_children(
   };
   graph.add_edge(parent_key, new_node_key, new_edge_payload)?;
 
-  // Reparent child1: remove old edge from parent, create edge from new node
-  // Branch length: child1.time - new_node_time
+  // Reparent child1: remove parent->child1, add new_node->child1
   let new_branch1_length = child1.time - new_node_time;
   graph.remove_edge(child1.edge_key)?;
   let child1_edge_payload = EdgeTimetree {
@@ -451,8 +500,7 @@ fn merge_children(
   };
   graph.add_edge(new_node_key, child1.node_key, child1_edge_payload)?;
 
-  // Reparent child2: remove old edge from parent, create edge from new node
-  // Branch length: child2.time - new_node_time
+  // Reparent child2: remove parent->child2, add new_node->child2
   let new_branch2_length = child2.time - new_node_time;
   graph.remove_edge(child2.edge_key)?;
   let child2_edge_payload = EdgeTimetree {
@@ -461,7 +509,7 @@ fn merge_children(
   };
   graph.add_edge(new_node_key, child2.node_key, child2_edge_payload)?;
 
-  Ok(())
+  Ok(new_node_key)
 }
 
 /// Remove single-child internal nodes left by polytomy resolution.
