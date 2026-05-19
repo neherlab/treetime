@@ -41,6 +41,9 @@ pub struct RerootResult {
   pub edge_split: Option<EdgeSplitInfo>,
   /// Information about edge merge, if a trivial node was removed.
   pub edge_merge: Option<EdgeMergeInfo>,
+  /// Keys of edges whose direction was inverted during rerooting.
+  /// Empty when root did not change.
+  pub inverted_edge_keys: Vec<GraphEdgeKey>,
 }
 
 /// Bundles all topology changes from a reroot operation for partition updates.

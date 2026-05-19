@@ -57,6 +57,7 @@ where
       new_root_key: old_root_key,
       edge_split: None,
       edge_merge: None,
+      inverted_edge_keys: vec![],
     });
   };
 
@@ -82,22 +83,30 @@ where
     (if split < 0.5 { target_key } else { source_key }, None)
   };
 
-  let edge_merge = if new_root_key != old_root_key {
-    apply_reroot(graph, old_root_key, new_root_key, options)?;
+  let (inverted_edge_keys, edge_merge) = if new_root_key != old_root_key {
+    let mut inverted = apply_reroot(graph, old_root_key, new_root_key, options)?;
 
-    if reroot_params.remove_trivial_root {
+    let merge = if reroot_params.remove_trivial_root {
       remove_node_if_trivial(graph, old_root_key)?
     } else {
       None
+    };
+
+    // Remove edges consumed by the merge (they no longer exist in the graph)
+    if let Some(merge) = &merge {
+      inverted.retain(|k| *k != merge.parent_edge_key && *k != merge.child_edge_key);
     }
+
+    (inverted, merge)
   } else {
-    None
+    (vec![], None)
   };
 
   Ok(RerootResult {
     new_root_key,
     edge_split,
     edge_merge,
+    inverted_edge_keys,
   })
 }
 
@@ -131,16 +140,14 @@ fn apply_reroot<N, E, D>(
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
   options: &ClockParams,
-) -> Result<(), Report>
+) -> Result<Vec<GraphEdgeKey>, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  // Invert edges along the path (generic topology operation)
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
 
-  // Update clock-specific edge messages for inverted edges
   for edge_key in &inverted_edge_keys {
     let edge = graph.get_edge(*edge_key).expect("Inverted edge not found");
     let mut edge_payload = edge.read_arc().payload().write_arc();
@@ -152,5 +159,5 @@ where
     *edge_payload.from_child_mut() = edge_payload.to_parent().propagate_averages(edge_len, branch_variance);
   }
 
-  Ok(())
+  Ok(inverted_edge_keys)
 }
