@@ -78,7 +78,7 @@ pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
   for leaf in graph.get_leaves() {
     let node = leaf.read_arc();
     let mut payload = node.payload().write_arc();
-    if payload.is_outlier {
+    if payload.is_outlier() {
       payload.bad_branch = true;
     }
   }
