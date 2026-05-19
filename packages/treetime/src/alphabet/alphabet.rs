@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
 use crate::{make_report, vec_u8};
+use clap::ValueEnum;
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
 use itertools::Itertools;
@@ -15,14 +16,15 @@ pub const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[derive(
+  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, ValueEnum, Serialize, Deserialize,
+)]
+#[value(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,
   Aa,
-  #[cfg_attr(feature = "clap", value(name = "aa-no-stop"))]
+  #[value(name = "aa-no-stop")]
   AaNoStop,
 }
 

@@ -10,9 +10,6 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
-[features]
-clap = ["dep:clap"]
-
 [dependencies]
 # [internal]
 treetime-distribution = { workspace = true }
@@ -28,7 +25,7 @@ argmin = { workspace = true }
 argmin-math = { workspace = true }
 auto_ops = { workspace = true }
 chrono = { workspace = true }
-clap = { workspace = true, optional = true }
+clap = { workspace = true }
 color-eyre = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }

@@ -1,4 +1,4 @@
-#[cfg(all(test, feature = "clap"))]
+#[cfg(test)]
 mod tests {
   use crate::commands::optimize::args::TreetimeOptimizeArgs;
   use crate::optimize::params::BranchOptMethod;
