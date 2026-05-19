@@ -13,7 +13,7 @@ All of `packages/treetime/src/commands/` to `packages/treetime-cli/src/commands/
 - `ancestral/` - args.rs, run.rs
 - `clock/` - args.rs, run.rs
 - `homoplasy/` - args.rs, run.rs
-- `mugration/` - args.rs, run.rs, input.rs, output.rs
+- `mugration/` - args.rs, run.rs, comment_provider.rs
 - `optimize/` - args.rs, run.rs
 - `prune/` - args.rs, run.rs
 - `timetree/` - args.rs, run.rs, output/, convergence/
@@ -32,7 +32,7 @@ All of these must be completed first:
 
 - `architecture-remove-clap-from-domain-types.md`
 - `architecture-extract-timetree-inference-from-commands.md`
-- `architecture-extract-mugration-domain-logic.md`
+- ~~`architecture-extract-mugration-domain-logic.md`~~ (resolved)
 - `architecture-break-representation-gtr-cycle.md`
 - `architecture-break-representation-ancestral-cycle.md`
 
