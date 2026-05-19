@@ -261,11 +261,10 @@ where
         .collect_vec();
 
       let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
-      let (non_char, consensus_gaps, unknown) = (ranges.non_char, ranges.consensus_gaps, ranges.unknown);
+      let (non_char, unknown) = (ranges.non_char, ranges.unknown);
 
-      let indels_bw = resolve_indels_backward(consensus_gaps.clone(), &child_gaps, &child_unknown, &child_variable_indels, length);
-      let mut gaps = consensus_gaps;
-      gaps.extend(indels_bw.resolved_gaps);
+      let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, length);
+      let gaps = indels_bw.resolved_gaps;
       let variable_indel = indels_bw.variable_indel;
 
       let seq = DenseSeqInfo {
@@ -384,18 +383,17 @@ where
 
       let node_data = self.nodes.get_mut(&node.key).unwrap();
       let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
-      let node_gaps = &mut node_data.seq.gaps;
-      let node_sequence = &node_data.seq.sequence;
 
       let node_non_char = node_data.seq.non_char.clone();
-      let indels = resolve_indels_forward(
+      let (indels, new_gaps) = resolve_indels_forward(
         &variable_indel,
-        node_gaps,
+        &node_data.seq.gaps,
         &node_non_char,
         &parent_gaps,
         &parent_sequence,
-        node_sequence,
+        &node_data.seq.sequence,
       );
+      node_data.seq.gaps = new_gaps;
 
       let node_data = self.nodes.get_mut(&node.key).unwrap();
       node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);

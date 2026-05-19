@@ -14,7 +14,6 @@ use crate::representation::payload::sparse::{
 use crate::seq::composition::Composition;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use log::debug;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -115,7 +114,7 @@ where
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
     let ranges = compute_node_ranges(&child_non_chars, &child_gaps_vec);
-    let (non_char, consensus_gaps, unknown) = (ranges.non_char, ranges.consensus_gaps, ranges.unknown);
+    let (non_char, unknown) = (ranges.non_char, ranges.unknown);
 
     let mut sequence = seq![FILL_CHAR; partition.length()];
     for r in &non_char {
@@ -128,15 +127,11 @@ where
     // Process all positions where the children are fixed or completely unknown in some children.
     resolve_fixed_positions_backward(&children, partition.alphabet(), &mut sequence, &mut variable);
 
-    let indels_bw = resolve_indels_backward(consensus_gaps.clone(), &child_gaps_vec, &child_unknown_vec, &child_variable_indels, partition.length());
+    let indels_bw = resolve_indels_backward(&child_gaps_vec, &child_unknown_vec, &child_variable_indels, partition.length());
 
     let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {
-        gaps: {
-          let mut gaps = consensus_gaps;
-          gaps.extend(indels_bw.resolved_gaps);
-          gaps
-        },
+        gaps: indels_bw.resolved_gaps,
         unknown,
         non_char,
         fitch: FitchSeqDistribution {
@@ -192,7 +187,7 @@ where
     let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
 
     let mut node_data = partition.nodes_mut().remove(&node.key).unwrap();
-    debug!("Running fitch forward on node {:?} (root={:?}, leaf={:?})", node.key, node.is_root, node.is_leaf);
+
     if node.is_root {
       let seq = &mut node_data.seq;
       resolve_root_forward(
@@ -228,14 +223,15 @@ where
       )?;
 
       // Resolve variable indels using parent gap context
-      let indels = resolve_indels_forward(
+      let (indels, new_gaps) = resolve_indels_forward(
         &seq.fitch.variable_indel,
-        &mut seq.gaps,
+        &seq.gaps,
         &seq.non_char,
         &parent.gaps,
         &parent.sequence,
         &seq.sequence,
       );
+      seq.gaps = new_gaps;
       for indel in &indels {
         seq.composition.add_indel(indel);
       }

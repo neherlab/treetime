@@ -7,6 +7,14 @@ use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use treetime_utils::interval::range_union::range_union_iter;
 
+/// Collect sorted, deduplicated breakpoints from an iterator of `(lo, hi)` ranges.
+fn collect_breakpoints(ranges: impl Iterator<Item = (usize, usize)>) -> Vec<usize> {
+  let mut bp: Vec<usize> = ranges.flat_map(|(lo, hi)| [lo, hi]).collect();
+  bp.sort_unstable();
+  bp.dedup();
+  bp
+}
+
 /// Returns true when `[lo, hi)` lies entirely within some range of `ranges`.
 fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
   ranges.iter().any(|&(a, b)| a <= lo && hi <= b)
@@ -16,6 +24,7 @@ fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
 fn interval_in_vi(vi: &BTreeMap<(usize, usize), Deletion>, lo: usize, hi: usize) -> bool {
   vi.keys().any(|&(a, b)| a <= lo && hi <= b)
 }
+
 
 /// Ranges describing a parent node's gap/unknown/non_char state, derived from its children.
 pub struct NodeRanges {
@@ -50,7 +59,6 @@ pub struct IndelsBackward {
 /// Returns variable indels (unresolved disagreements) and resolved gaps (ranges
 /// where all children agree on gap).
 pub fn resolve_indels_backward(
-  consensus_gaps: Vec<(usize, usize)>,
   child_gaps: &[&Vec<(usize, usize)>],
   child_unknown: &[&Vec<(usize, usize)>],
   child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
@@ -58,63 +66,29 @@ pub fn resolve_indels_backward(
 ) -> IndelsBackward {
   let n_children = child_gaps.len();
 
-  // Collect all interval breakpoints from every child source so we can sweep
-  // over non-overlapping atomic sub-intervals.
-  let mut breakpoints: Vec<usize> = vec![0, length];
-  for &(lo, hi) in &consensus_gaps {
-    breakpoints.push(lo);
-    breakpoints.push(hi);
+  if n_children == 1 {
+    return IndelsBackward {
+      variable_indel: child_variable_indels[0].clone(),
+      resolved_gaps: vec![],
+    };
   }
-  for child_gap in child_gaps {
-    for &(lo, hi) in *child_gap {
-      breakpoints.push(lo);
-      breakpoints.push(hi);
-    }
-  }
-  for child_unk in child_unknown {
-    for &(lo, hi) in *child_unk {
-      breakpoints.push(lo);
-      breakpoints.push(hi);
-    }
-  }
-  for child_vi in child_variable_indels {
-    for &(lo, hi) in child_vi.keys() {
-      breakpoints.push(lo);
-      breakpoints.push(hi);
-    }
-  }
-  breakpoints.sort_unstable();
-  breakpoints.dedup();
 
-  // Sweep over atomic intervals, accumulating deletion counts for each.
-  // We merge consecutive intervals that carry identical counts as we go.
+  // Collect all interval breakpoints from every child source so we can sweep
+  // over non-overlapping atomic sub-intervals, one entry per interval.
+  let breakpoints = collect_breakpoints(
+    std::iter::once((0, length))
+      .chain(child_gaps.iter().flat_map(|g| g.iter().copied()))
+      .chain(child_unknown.iter().flat_map(|u| u.iter().copied()))
+      .chain(child_variable_indels.iter().flat_map(|vi| vi.keys().copied())),
+  );
+
+  // Sweep over atomic intervals, classifying each by child gap evidence.
+  // Collect and merge intervals as resolved consensus gaps, unresolved variable indels, or skip for no deletion
   let mut variable_indel: BTreeMap<(usize, usize), Deletion> = BTreeMap::new();
   let mut resolved_gaps: Vec<(usize, usize)> = Vec::new();
 
-  // `pending` holds the current merged interval being built.
-  let mut pending: Option<((usize, usize), Deletion)> = None;
-
-  let flush = |pending: Option<((usize, usize), Deletion)>,
-                   variable_indel: &mut BTreeMap<(usize, usize), Deletion>,
-                   resolved_gaps: &mut Vec<(usize, usize)>,
-                   n_children: usize| {
-    if let Some(((lo, hi), del)) = pending {
-      if del.deleted == n_children {
-        resolved_gaps.push((lo, hi));
-      } else {
-        variable_indel.insert((lo, hi), del);
-      }
-    }
-  };
-
   for w in breakpoints.windows(2) {
     let (lo, hi) = (w[0], w[1]);
-
-    // Skip intervals that fall inside the consensus gaps.
-    if interval_in(&consensus_gaps, lo, hi) {
-      flush(pending.take(), &mut variable_indel, &mut resolved_gaps, n_children);
-      continue;
-    }
 
     // Classify each child's state at [lo, hi).
     // Priority: gapped > variable_indel > unknown > char.
@@ -131,29 +105,31 @@ pub fn resolve_indels_backward(
       }
     }
 
-    // No gap evidence at this interval: nothing to record.
-    if n_gapped == 0 && n_variable == 0 {
-      flush(pending.take(), &mut variable_indel, &mut resolved_gaps, n_children);
+    // No gap evidence at this interval, but at least one child as sequence --> no gap at parent.
+    if n_gapped == 0 && (n_variable + n_unknown < n_children) {
       continue;
     }
 
-    // Unknowns and child variable indels lean toward "deleted" (gap-beats-unknown rule).
-    let n_deleted = n_gapped + n_unknown + n_variable;
-    let del = Deletion { deleted: n_deleted, present: n_children - n_deleted };
-
-    // Merge with the pending interval if it is adjacent and has the same counts.
-    match &mut pending {
-      Some(((_, cur_hi), cur_del)) if *cur_hi == lo && cur_del.deleted == del.deleted => {
-        *cur_hi = hi;
-      },
-      _ => {
-        flush(pending.take(), &mut variable_indel, &mut resolved_gaps, n_children);
-        pending = Some(((lo, hi), del));
-      },
+    let n_no_seq = n_gapped + n_unknown;
+    if n_gapped > 0 && (n_no_seq + n_variable == n_children) { // Evidence for gap and all children compatible with gap --> resolved gap
+      if let Some(last) = resolved_gaps.last_mut() {
+        if last.1 == lo {
+          last.1 = hi;
+        } else {
+          resolved_gaps.push((lo, hi));
+        }
+      } else {
+        resolved_gaps.push((lo, hi));
+      }
+    } else { // if n_gapped==0, there n_variable + n_unknown == n_children --> can't resolve, keep variable.
+             // If n_gapped>0, then n_no_seq + n_variable < n_children --> there are children with and without sequence --> variable
+      let del = Deletion { deleted: n_no_seq, present: n_children - n_no_seq };
+      variable_indel.insert((lo, hi), del);
     }
   }
-  flush(pending, &mut variable_indel, &mut resolved_gaps, n_children);
 
+  // debug!("resolve_indels_backward: consensus_gaps={consensus_gaps:?}, n_children={n_children}");
+  // debug!("resolve_indels_backward: variable_indel={variable_indel:?}, resolved_gaps={resolved_gaps:?}");
   IndelsBackward {
     variable_indel,
     resolved_gaps,
@@ -173,50 +149,77 @@ pub fn resolve_indels_backward(
 /// We populate it for consistency with sparse indels.
 pub fn resolve_indels_forward(
   variable_indel: &BTreeMap<(usize, usize), Deletion>,
-  node_gaps: &mut Vec<(usize, usize)>,
+  node_gaps: &[(usize, usize)],
   node_non_char: &[(usize, usize)],
   parent_gaps: &[(usize, usize)],
   parent_sequence: &Seq,
   node_sequence: &Seq,
-) -> Vec<InDel> {
-  let mut indels = Vec::new();
+) -> (Vec<InDel>, Vec<(usize, usize)>) {
+  // Collect all breakpoints from every relevant source.
+  let breakpoints = collect_breakpoints(
+    parent_gaps.iter().copied()
+      .chain(node_gaps.iter().copied())
+      .chain(node_non_char.iter().copied())
+      .chain(variable_indel.keys().copied()),
+  );
 
-  // Process variable indels using parent context for tiebreaking
-  for (r, indel) in variable_indel {
-    let gap_in_parent = if parent_gaps.contains(r) { 1 } else { 0 };
+  let mut new_node_gaps: Vec<(usize, usize)> = Vec::new();
+  let mut deletions: Vec<InDel> = Vec::new();
+  let mut insertions: Vec<InDel> = Vec::new();
 
-    if indel.deleted + gap_in_parent > indel.present {
-      node_gaps.push(*r);
-      if gap_in_parent == 0 {
-        let indel = InDel::del(*r, &parent_sequence[r.0..r.1]);
-        indels.push(indel);
+  for w in breakpoints.windows(2) {
+    // the semantics here refer to an interval [lo, hi) and generally to the presence of gap
+    let (lo, hi) = (w[0], w[1]);
+    let in_parent = interval_in(parent_gaps, lo, hi);
+    let in_node = interval_in(node_gaps, lo, hi);
+    let in_non_char = interval_in(node_non_char, lo, hi);
+    let in_vi = interval_in_vi(variable_indel, lo, hi);
+
+    if in_node && !in_parent {
+      // Node has gap, parent doesn't: deletion on this edge.
+      if let Some(last) = deletions.last_mut().filter(|d| d.range.1 == lo) {
+        last.range.1 = hi;
+        last.seq.extend(parent_sequence[lo..hi].iter().copied());
+      } else {
+        deletions.push(InDel::del((lo, hi), &parent_sequence[lo..hi]));
       }
-    } else if gap_in_parent > 0 && !interval_in(node_non_char, r.0, r.1) {
-      let indel = InDel::ins(*r, &node_sequence[r.0..r.1]);
-      indels.push(indel);
+      // Gap persists in the node.
+      if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
+        last.1 = hi;
+      } else {
+        new_node_gaps.push((lo, hi));
+      }
+    } else if in_parent && !in_node && !in_non_char && !in_vi {
+      // Parent has gap, node is not gap-compatible: insertion on this edge.
+      if let Some(last) = insertions.last_mut().filter(|i| i.range.1 == lo) {
+        last.range.1 = hi;
+        last.seq.extend(node_sequence[lo..hi].iter().copied());
+      } else {
+        insertions.push(InDel::ins((lo, hi), &node_sequence[lo..hi]));
+      }
+    } else if in_parent {
+      // Parent has gap; node is gapped, non_char, or variable → inherit parent gap.
+      if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
+        last.1 = hi;
+      } else {
+        new_node_gaps.push((lo, hi));
+      }
     }
+    // !in_parent && !in_node: no gap on either side, nothing to do.
   }
 
-  // Process consensus gaps in node that are not in parent (deletions)
-  for r in range_difference(node_gaps, parent_gaps) {
-    if variable_indel.contains_key(&r) {
-      continue;
-    }
-    let indel = InDel::del(r, &parent_sequence[r.0..r.1]);
-    indels.push(indel);
+  let indels: Vec<InDel> = deletions.into_iter().chain(insertions).collect();
+
+  let mut sorted = indels.iter().map(|i| i.range).collect::<Vec<_>>();
+  sorted.sort_unstable();
+  for w in sorted.windows(2) {
+    assert!(
+      w[1].0 >= w[0].1,
+      "resolve_indels_forward: overlapping indel ranges: {:?} and {:?}",
+      w[0],
+      w[1]
+    );
   }
 
-  // Process gaps in parent that are not in node (insertions).
-  // Skip ranges where the node has no known sequence (non_char): those positions
-  // were filled from the parent during the forward pass and do not represent
-  // an actual insertion of new sequence.
-  for r in range_difference(parent_gaps, node_gaps) {
-    if variable_indel.contains_key(&r) || interval_in(node_non_char, r.0, r.1) {
-      continue;
-    }
-    let indel = InDel::ins(r, &node_sequence[r.0..r.1]);
-    indels.push(indel);
-  }
-
-  indels
+  (indels, new_node_gaps)
 }

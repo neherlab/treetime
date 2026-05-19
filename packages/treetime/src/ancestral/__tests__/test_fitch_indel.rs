@@ -9,28 +9,27 @@ mod tests {
   #[test]
   fn test_fitch_indel_backward_no_disagreement() {
     let child_gaps = vec![vec![(2, 4)], vec![(2, 4)]];
-    let consensus_gaps = vec![(2, 4)];
     let child_unknown = vec![vec![], vec![]];
     let empty0 = BTreeMap::new();
     let empty1 = BTreeMap::new();
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &empty1];
     let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
     let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
-    assert!(result.is_empty(), "No disagreement when all children have same gaps");
+    let result = resolve_indels_backward(&child_gaps_ref, &child_unknown_ref, &child_vis, 10);
+    assert!(result.variable_indel.is_empty(), "No disagreement when all children have same gaps");
+    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }
 
   #[test]
   fn test_fitch_indel_backward_one_child_has_gap() {
     let child_gaps = vec![vec![(2, 4)], vec![]];
-    let consensus_gaps = vec![];
     let child_unknown = vec![vec![], vec![]];
     let empty0 = BTreeMap::new();
     let empty1 = BTreeMap::new();
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &empty1];
     let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
     let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
+    let result = resolve_indels_backward(&child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
     assert_eq!(result.len(), 1);
     let del = &result[&(2, 4)];
     assert_eq!(del.deleted, 1);
@@ -40,7 +39,6 @@ mod tests {
   #[test]
   fn test_fitch_indel_backward_all_children_deleted() {
     let child_gaps = vec![vec![(2, 4)], vec![(2, 4)], vec![(2, 4)]];
-    let consensus_gaps = vec![(2, 4)];
     let child_unknown = vec![vec![], vec![], vec![]];
     let empty0 = BTreeMap::new();
     let empty1 = BTreeMap::new();
@@ -49,10 +47,9 @@ mod tests {
     let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
     let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
 
-    // consensus gaps = intersection = [(2,4)], so this range is skipped.
-    // No disagreement ranges produced.
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10).variable_indel;
-    assert!(result.is_empty(), "All children agree on gap, no variable indels");
+    let result = resolve_indels_backward(&child_gaps_ref, &child_unknown_ref, &child_vis, 10);
+    assert!(result.variable_indel.is_empty(), "All children agree on gap, no variable indels");
+    assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }
 
   #[test]
@@ -60,7 +57,6 @@ mod tests {
     // Child 0 has gap at (2,4), child 1 does not.
     // Child 1 has variable indel at (2,4).
     let child_gaps = vec![vec![(2, 4)], vec![]];
-    let consensus_gaps = vec![];
     let child_unknown = vec![vec![], vec![]];
     let empty0 = BTreeMap::new();
     let mut child1_vi = BTreeMap::new();
@@ -68,7 +64,7 @@ mod tests {
     let child_vis: Vec<&BTreeMap<(usize, usize), Deletion>> = vec![&empty0, &child1_vi];
     let child_gaps_ref: Vec<&Vec<_>> = child_gaps.iter().collect();
     let child_unknown_ref: Vec<&Vec<_>> = child_unknown.iter().collect();
-    let result = resolve_indels_backward(consensus_gaps, &child_gaps_ref, &child_unknown_ref, &child_vis, 10);
+    let result = resolve_indels_backward(&child_gaps_ref, &child_unknown_ref, &child_vis, 10);
 
     // deleted=2 (child 0 gap + child 1 variable indel), present=0
     // deleted == n_children: resolved as consensus gap, removed from variable_indel
@@ -77,40 +73,37 @@ mod tests {
   }
 
   #[test]
-  fn test_fitch_indel_forward_deletion_from_variable() {
+  fn test_fitch_indel_forward_variable_parent_has_sequence() {
+    // Variable indel (majority deleted), parent has sequence: parent wins → no deletion, no gap.
     let mut variable_indel = BTreeMap::new();
     variable_indel.insert((2, 5), Deletion { deleted: 2, present: 1 });
 
     let parent_gaps: Vec<(usize, usize)> = vec![];
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
-    let mut node_gaps: Vec<(usize, usize)> = vec![];
+    let node_gaps: Vec<(usize, usize)> = vec![];
 
-    let indels = resolve_indels_forward(&variable_indel, &mut node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
+    let (indels, node_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
 
-    assert_eq!(indels.len(), 1);
-    assert!(indels[0].deletion);
-    assert_eq!(indels[0].range, (2, 5));
-    assert_eq!(indels[0].seq, Seq::try_from_str("GTA").unwrap());
-    assert_eq!(node_gaps, vec![(2, 5)]);
+    assert!(indels.is_empty());
+    assert!(node_gaps.is_empty());
   }
 
   #[test]
-  fn test_fitch_indel_forward_insertion_from_variable() {
+  fn test_fitch_indel_forward_variable_parent_has_gap() {
+    // Variable indel (majority present), parent has gap: parent wins → node inherits gap, no insertion.
     let mut variable_indel = BTreeMap::new();
     variable_indel.insert((2, 5), Deletion { deleted: 1, present: 2 });
 
     let parent_gaps = vec![(2, 5)];
     let parent_seq = Seq::try_from_str("AC---CGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
-    let mut node_gaps: Vec<(usize, usize)> = vec![];
+    let node_gaps: Vec<(usize, usize)> = vec![];
 
-    let indels = resolve_indels_forward(&variable_indel, &mut node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
+    let (indels, node_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
 
-    assert_eq!(indels.len(), 1);
-    assert!(!indels[0].deletion);
-    assert_eq!(indels[0].range, (2, 5));
-    assert_eq!(indels[0].seq, Seq::try_from_str("GTA").unwrap());
+    assert!(indels.is_empty());
+    assert_eq!(node_gaps, vec![(2, 5)]);
   }
 
   #[test]
@@ -119,9 +112,9 @@ mod tests {
     let parent_gaps: Vec<(usize, usize)> = vec![];
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("AC---CGTAC").unwrap();
-    let mut node_gaps = vec![(2, 5)];
+    let node_gaps = vec![(2, 5)];
 
-    let indels = resolve_indels_forward(&variable_indel, &mut node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
+    let (indels, node_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
 
     assert_eq!(indels.len(), 1);
     assert!(indels[0].deletion);
@@ -135,9 +128,9 @@ mod tests {
     let parent_gaps = vec![(2, 5)];
     let parent_seq = Seq::try_from_str("AC---CGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
-    let mut node_gaps: Vec<(usize, usize)> = vec![];
+    let node_gaps: Vec<(usize, usize)> = vec![];
 
-    let indels = resolve_indels_forward(&variable_indel, &mut node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
+    let (indels, node_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
 
     assert_eq!(indels.len(), 1);
     assert!(!indels[0].deletion);
@@ -151,9 +144,9 @@ mod tests {
     let parent_gaps: Vec<(usize, usize)> = vec![];
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
-    let mut node_gaps: Vec<(usize, usize)> = vec![];
+    let node_gaps: Vec<(usize, usize)> = vec![];
 
-    let indels = resolve_indels_forward(&variable_indel, &mut node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
+    let (indels, node_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &parent_gaps, &parent_seq, &node_seq);
 
     assert!(indels.is_empty());
   }
