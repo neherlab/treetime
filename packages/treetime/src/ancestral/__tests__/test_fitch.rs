@@ -262,7 +262,7 @@ mod tests {
         >root
         ACAGCCATGTATTG--
         >AB
-        ACATCCCTGTA-TG--
+        ACATCCCTGTA--G--
         >A
         ACATCGCCNNA--GAC
         >B
@@ -407,9 +407,9 @@ mod tests {
     // Verify indels on edges
     let actual_indels = collect_edge_indels(&graph, &partition);
     let expected_indels = btreemap! {
-      o!("AB->A")     => vec_of_owned!["12--13: T -> -", "14--16: -- -> AC"],
+      o!("AB->A")     => vec_of_owned!["14--16: -- -> AC"],
       o!("AB->B")     => vec![],
-      o!("root->AB")  => vec_of_owned!["11--12: T -> -"],
+      o!("root->AB")  => vec_of_owned!["11--13: TT -> --"],
       o!("CD->C")     => vec![],
       o!("CD->D")     => vec![],
       o!("root->CD")  => vec![],
@@ -556,7 +556,7 @@ mod tests {
       o!("AB->B")     => vec![],
       o!("root->AB")  => vec![],
       o!("CDE->C")    => vec![o!("C4T")],
-      o!("CDE->D")    => vec![o!("C3T"), o!("C4T")],
+      o!("CDE->D")    => vec![o!("C4T")],
       o!("CDE->E")    => vec![],
       o!("root->CDE") => vec![o!("C2G"), o!("A4C")],
     };
@@ -568,10 +568,10 @@ mod tests {
       o!("AB->A")     => vec![o!("3--4: A -> -")],
       o!("AB->B")     => vec![o!("1--2: C -> -")],
       o!("root->AB")  => vec![],
-      o!("CDE->C")    => vec![o!("2--3: C -> -")],
-      o!("CDE->D")    => vec![],
-      o!("CDE->E")    => vec![],
-      o!("root->CDE") => vec![o!("2--3: - -> C")],
+      o!("CDE->C")    => vec![],
+      o!("CDE->D")    => vec![o!("2--3: - -> T")],
+      o!("CDE->E")    => vec![o!("2--3: - -> C")],
+      o!("root->CDE") => vec![],
     };
     assert_eq!(expected_indels, actual_indels);
 

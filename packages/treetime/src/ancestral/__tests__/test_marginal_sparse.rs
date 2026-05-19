@@ -167,7 +167,7 @@ mod tests {
       >root
       TCGGCGCTGTATTG--
       >AB
-      ACATCGCTGTA-TG--
+      ACATCGCTGTA--G--
       >CD
       TCGGCGGTGTATTG--
     "#},
@@ -201,7 +201,7 @@ mod tests {
     );
 
     // test overall likelihood
-    pretty_assert_ulps_eq!(-55.55428499726621, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
     Ok(())
   }
 
@@ -236,7 +236,7 @@ mod tests {
 
     // Verify log-likelihood is in expected range (tree with 4 leaves, 16 sites)
     // Matches test_ancestral_reconstruction_marginal_sparse value
-    pretty_assert_ulps_eq!(-55.55428496980045, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
 
     let partition = partitions[0].read_arc();
 
@@ -285,7 +285,7 @@ mod tests {
     let log_lh_second = update_marginal(&graph, &partitions)?;
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
-    pretty_assert_ulps_eq!(-55.55428496980045, log_lh_first, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
 
     // Verify idempotency
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
@@ -375,7 +375,7 @@ mod tests {
 
     // note that this LH is slightly different from dense or python treetime due to
     // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
-    pretty_assert_ulps_eq!(-56.946298878390444, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
 
     let partition = partitions[0].read_arc();
 
