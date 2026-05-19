@@ -14,7 +14,7 @@ const GRID_SEARCH_POINTS: usize = 100;
 /// subs/site are rare in real phylogenies; the proportional upper
 /// bound `1.5 * branch_length + one_mutation` extends beyond this
 /// when the current estimate is already large.
-pub(crate) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
+pub(super) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
 /// Lower bound on the per-edge branch length used by Newton/Brent dispatch.
 ///
@@ -24,7 +24,7 @@ pub(crate) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 /// length ($1/L \sim 10^{-4}$ for $L = 10^4$) yet far enough from zero to
 /// keep the indel Hessian finite. On no-indel edges zero is admissible, so
 /// the floor is zero.
-pub(crate) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64) -> f64 {
+pub(super) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64) -> f64 {
   if indel_count > 0 { one_mutation * 0.01 } else { 0.0 }
 }
 
@@ -41,7 +41,7 @@ pub(crate) fn min_branch_length_for_indels(indel_count: usize, one_mutation: f64
 ///
 /// Errors when `one_mutation <= 0` produces non-positive grid bounds (which would
 /// make `geomspace` undefined).
-pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Result<Array1<f64>, Report> {
+pub(super) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Result<Array1<f64>, Report> {
   let lower = 0.1 * one_mutation;
   let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
   Array1::geomspace(lower, upper, GRID_SEARCH_POINTS).ok_or_else(|| {
@@ -52,7 +52,7 @@ pub(crate) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) 
 }
 
 /// Grid search fallback for non-concave regions.
-pub(crate) fn grid_search_inner(
+pub(super) fn grid_search_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indel_count: usize,
@@ -87,7 +87,7 @@ pub(crate) fn grid_search_inner(
 /// When `indel_count == 0`, both sides of the comparison use the indel-aware
 /// evaluator for consistency with the grid evaluation, though the Poisson
 /// contribution is zero in that case.
-pub(crate) fn is_zero_better_than_grid_best(
+pub(super) fn is_zero_better_than_grid_best(
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
@@ -236,7 +236,7 @@ pub fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> boo
 /// identical sequences) the helper is a no-op: the optimizer already
 /// reached zero through its own grid-search fallback, and the
 /// exact-zero re-verification returns zero.
-pub(crate) fn reconcile_zero_boundary(
+pub(super) fn reconcile_zero_boundary(
   candidate: f64,
   branch_length_for_extent: f64,
   contributions: &[OptimizationContribution],

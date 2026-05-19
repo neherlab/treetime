@@ -6,23 +6,23 @@ use eyre::Report;
 use num::clamp;
 
 /// Relative tolerance for Newton inner-loop convergence.
-pub(crate) const NEWTON_REL_TOL: f64 = 0.001;
+pub(super) const NEWTON_REL_TOL: f64 = 0.001;
 
 /// Absolute tolerance floor for Newton inner-loop convergence (subs/site).
 /// Prevents the purely relative tolerance from degenerating to zero when
 /// the current branch length is zero or very small. The value 1e-8 is well
 /// below the smallest meaningful branch length (1/L ~ 1e-4 for L=10000)
 /// so it does not mask real convergence.
-pub(crate) const NEWTON_ABS_TOL: f64 = 1e-8;
+const NEWTON_ABS_TOL: f64 = 1e-8;
 
 /// Maximum iterations for Newton inner loop.
-pub(crate) const NEWTON_MAX_ITER: usize = 10;
+const NEWTON_MAX_ITER: usize = 10;
 
 /// Newton convergence tolerance in $t$-space.
 ///
 /// A step $|\Delta t| \leq \eta t$ corresponds to relative tolerance $\eta$
 /// in branch-length space. The absolute floor prevents degeneration at $t = 0$.
-pub(crate) fn newton_tolerance_t(t: f64) -> f64 {
+pub(super) fn newton_tolerance_t(t: f64) -> f64 {
   f64::max(NEWTON_REL_TOL * t, NEWTON_ABS_TOL)
 }
 
@@ -32,7 +32,7 @@ pub(crate) fn newton_tolerance_t(t: f64) -> f64 {
 /// target relative tolerance $\eta$ in branch-length space requires
 /// $|\Delta s| \leq \frac{\eta}{2} s$. The factor 0.5 corrects the
 /// coordinate-space scaling.
-pub(crate) fn newton_tolerance_sqrt(s: f64) -> f64 {
+pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
   f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
 }
 
@@ -41,7 +41,7 @@ pub(crate) fn newton_tolerance_sqrt(s: f64) -> f64 {
 /// Since $\Delta t / t \approx \Delta u$ for small steps, a constant tolerance
 /// $\eta$ in $u$-space directly corresponds to relative tolerance $\eta$ in
 /// branch-length space, regardless of $|u|$. No scaling by the current value.
-pub(crate) fn newton_tolerance_log() -> f64 {
+pub(super) fn newton_tolerance_log() -> f64 {
   // ln(1 + η) ≈ η for small η; use the exact form for correctness
   NEWTON_REL_TOL.ln_1p()
 }
@@ -56,7 +56,7 @@ pub(crate) fn newton_tolerance_log() -> f64 {
 /// **Convergence tolerance:** Step-size in $t$-space. Relative 0.1% of current $t$
 /// with absolute floor 1e-8 subs/site: $\text{tol}(t) = \max(0.001 \cdot t, 10^{-8})$.
 /// The tolerance is the same in both parameterized space and $t$-space (identity map).
-pub(crate) fn newton_inner(
+pub(super) fn newton_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
   contributions: &[OptimizationContribution],
@@ -103,7 +103,7 @@ pub(crate) fn newton_inner(
 /// Maps to tighter $t$-tolerance near zero because $ds/dt = 1/(2\sqrt{t})$ amplifies
 /// precision: a step $\Delta s$ in $s$-space corresponds to $\Delta t \approx 2s \cdot \Delta s$
 /// in $t$-space. At $s = 0.1$ ($t = 0.01$), tolerance 5e-5 in $s$ yields ~1e-5 in $t$.
-pub(crate) fn newton_sqrt_inner(
+pub(super) fn newton_sqrt_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
   contributions: &[OptimizationContribution],
@@ -148,7 +148,7 @@ pub(crate) fn newton_sqrt_inner(
 /// Derived from $(s - \delta_s)^2 - s^2 \leq 1$, giving
 /// $\delta_s \geq s - \sqrt{s^2 + 1}$.
 /// Always negative (permits $s$ to increase).
-pub(crate) fn sqrt_step_lower_bound(s: f64) -> f64 {
+pub(super) fn sqrt_step_lower_bound(s: f64) -> f64 {
   s - (s * s + 1.0).sqrt()
 }
 
@@ -158,7 +158,7 @@ pub(crate) fn sqrt_step_lower_bound(s: f64) -> f64 {
 /// Derived from $e^{u - \delta_u} - e^u \leq 1$, giving
 /// $\delta_u \geq -\ln(1 + 1/t)$. Uses `ln_1p` for accuracy at small $1/t$.
 /// Always negative for $t > 0$ (permits $u$ to increase).
-pub(crate) fn log_step_lower_bound(t: f64) -> f64 {
+pub(super) fn log_step_lower_bound(t: f64) -> f64 {
   -(1.0 / t).ln_1p()
 }
 
@@ -167,7 +167,7 @@ pub(crate) fn log_step_lower_bound(t: f64) -> f64 {
 /// Given $s = \sqrt{t}$:
 ///   $d\ell/ds = 2s \cdot d\ell/dt$
 ///   $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$
-pub(crate) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
+pub(super) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
   let dl_ds = 2.0 * s * dl_dt;
   let d2l_ds2 = 4.0 * s * s * d2l_dt2 + 2.0 * dl_dt;
   (dl_ds, d2l_ds2)
@@ -181,7 +181,7 @@ pub(crate) fn chain_rule_sqrt(s: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
 ///
 /// The Poisson indel Hessian in $u$-space becomes $-\mu t$ (bounded),
 /// eliminating the $O(1/t^2)$ singularity that dominates in $t$-space.
-pub(crate) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
+pub(super) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
   let dl_du = t * dl_dt;
   let d2l_du2 = t * t * d2l_dt2 + t * dl_dt;
   (dl_du, d2l_du2)
@@ -207,7 +207,7 @@ pub(crate) fn chain_rule_log(t: f64, dl_dt: f64, d2l_dt2: f64) -> (f64, f64) {
 /// This is a natural relative tolerance in $t$-space because $dt/t \approx du$ for small steps.
 /// A step $\Delta u$ in $u$-space corresponds to $\Delta t \approx t \cdot \Delta u$ in $t$-space,
 /// so the same tolerance achieves ~0.1% relative precision regardless of $t$.
-pub(crate) fn newton_log_inner(
+pub(super) fn newton_log_inner(
   branch_length: f64,
   metrics: &OptimizationMetrics,
   contributions: &[OptimizationContribution],

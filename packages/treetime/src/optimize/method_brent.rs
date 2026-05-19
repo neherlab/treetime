@@ -7,7 +7,7 @@ use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 
 /// Maximum iterations for Brent's method.
-pub(crate) const BRENT_MAX_ITER: u64 = 50;
+const BRENT_MAX_ITER: u64 = 50;
 
 /// Brent bracket endpoints in $t$-space shared by all three parameterizations.
 ///
@@ -15,7 +15,7 @@ pub(crate) const BRENT_MAX_ITER: u64 = 50;
 /// $\ln(0)$ in the log-space cost function when the caller passes
 /// `min_branch_length = 0` (no-indel case). The upper bound matches the grid
 /// search range.
-pub(crate) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
+pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
   let lower = min_branch_length.max(1e-12);
   let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
   (lower, upper)
@@ -38,7 +38,7 @@ pub(crate) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_muta
 /// **Convergence tolerance:** BrentOpt uses machine epsilon scaled by the
 /// bracket width. The tolerance is applied directly in $t$-space. The default
 /// `argmin::BrentOpt` tolerance achieves ~15 significant digits.
-pub(crate) fn brent_inner(
+pub(super) fn brent_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indel_count: usize,
@@ -82,7 +82,7 @@ pub(crate) fn brent_inner(
 /// At $s = 0.1$ ($t = 0.01$), machine-epsilon precision in $s$ yields ~0.2x
 /// that precision in $t$. This is the same tightening-near-zero property as
 /// `newton_sqrt_inner`.
-pub(crate) fn brent_sqrt_inner(
+pub(super) fn brent_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indel_count: usize,
@@ -128,7 +128,7 @@ pub(crate) fn brent_sqrt_inner(
 /// Machine-epsilon precision in $u$ achieves the same relative precision in $t$
 /// regardless of the absolute value of $t$. Same relative-tolerance property as
 /// `newton_log_inner`.
-pub(crate) fn brent_log_inner(
+pub(super) fn brent_log_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indel_count: usize,
