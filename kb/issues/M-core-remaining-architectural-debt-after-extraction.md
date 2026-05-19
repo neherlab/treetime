@@ -44,7 +44,7 @@ Most are internal helpers (`newton_tolerance_*`, `chain_rule_*`, `brent_bracket`
 
 ## Dead code and cosmetic
 
-- `PartitionMarginal` in `partition/traits.rs:115:` is a dead marker trait. Empty impl on both partition types, used only as supertrait bound on `PartitionMarginalOps`. Safe to remove.
+- ~~`PartitionMarginal` dead marker trait~~ Resolved
 - `clock/reroot.rs` re-exports `EdgeMergeInfo`, `EdgeSplitInfo`, `RerootChanges`, `RerootResult` from `treetime_graph::reroot`. Creates dual import paths. No production caller uses the re-export. Remove.
 - `hacks/` module contains one 14-line function (`fix_branch_length`). Module name normalizes technical debt. Relocate to `seq/` or inline at 3 call sites.
 - `discrete_states.rs` in `partition/` used exclusively by mugration. Move to `commands/mugration/` or future `mugration/` domain module.
