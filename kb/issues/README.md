@@ -117,6 +117,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree       | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                             |
 | Negligible | Timetree       | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                   |
 | Medium     | Timetree       | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                       |
+| Medium     | Timetree       | [Timetree parallel traversals use unwrap instead of error capture](M-timetree-parallel-traversal-unwrap-panic.md)                                   |
 | Medium     | Timetree       | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                         |
 | Medium     | Timetree       | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)                            |
 | Medium     | Timetree       | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                         |
