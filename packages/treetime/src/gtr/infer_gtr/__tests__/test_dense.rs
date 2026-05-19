@@ -16,7 +16,8 @@ mod tests {
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use treetime_utils::{
-    pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded, pretty_assert_array_positive,
+    pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
+    pretty_assert_array_positive,
   };
 
   use ndarray::{Array1, Array2, array};
