@@ -32,11 +32,11 @@ Extracted to top-level `timetree/` domain module.
 
 Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete.rs`, and `partition/discrete.rs` are deleted.
 
-## Visibility and coupling issues
+## ~~Visibility and coupling issues~~ Resolved
 
-### 28 pub(crate) items in optimize/
+### ~~28 pub(crate) items in optimize/~~ Resolved
 
-Most are internal helpers (`newton_tolerance_*`, `chain_rule_*`, `brent_bracket`, etc.) that no code outside `optimize/` calls. True API functions (`run_optimize_mixed`, `evaluate_with_indels_log_lh_only`) used by timetree need `pub` for future crate split.
+Internal helpers narrowed to `pub(super)` or private. 7 submodules narrowed from `pub` to `pub(super)`. API functions already `pub`. No `pub(crate)` remains in `optimize/`.
 
 ### ~~clap derives in domain types~~ Resolved
 
