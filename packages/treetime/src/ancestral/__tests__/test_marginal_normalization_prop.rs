@@ -5,6 +5,7 @@ mod tests {
   use crate::partition::sparse::SparseSeqDistribution;
   use ndarray::Array2;
   use proptest::prelude::*;
+  use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg};
 
   /// Assert that every row of a dense profile matrix is a valid probability distribution.
   ///
@@ -16,16 +17,14 @@ mod tests {
   ///
   /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_dense_rows_normalized(dis: &Array2<f64>) -> Result<(), TestCaseError> {
+    prop_assert_array_finite!(dis);
+    prop_assert_array_nonneg!(dis, epsilon = 1e-14);
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
       if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
         return Err(TestCaseError::fail(format!(
           "row {row_idx}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));
-      }
-      for (col_idx, &val) in row.iter().enumerate() {
-        prop_assert!(val.is_finite(), "row {row_idx}, col {col_idx} non-finite: {val}");
-        prop_assert!(val >= -1e-14, "row {row_idx}, col {col_idx} negative: {val}");
       }
     }
     Ok(())
@@ -53,28 +52,24 @@ mod tests {
     );
 
     for (pos, var_pos) in &profile.variable {
+      prop_assert_array_finite!(var_pos.dis);
+      prop_assert_array_nonneg!(var_pos.dis, epsilon = 1e-14);
       let sum: f64 = var_pos.dis.sum();
       if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
         return Err(TestCaseError::fail(format!(
           "variable position {pos}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));
       }
-      for (idx, &val) in var_pos.dis.iter().enumerate() {
-        prop_assert!(val.is_finite(), "variable pos {pos}, idx {idx} non-finite: {val}");
-        prop_assert!(val >= -1e-14, "variable pos {pos}, idx {idx} negative: {val}");
-      }
     }
 
     for (char_key, fixed_dis) in &profile.fixed {
+      prop_assert_array_finite!(fixed_dis);
+      prop_assert_array_nonneg!(fixed_dis, epsilon = 1e-14);
       let sum: f64 = fixed_dis.sum();
       if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
         return Err(TestCaseError::fail(format!(
           "fixed distribution for {char_key:?}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));
-      }
-      for (idx, &val) in fixed_dis.iter().enumerate() {
-        prop_assert!(val.is_finite(), "fixed {char_key:?}, idx {idx} non-finite: {val}");
-        prop_assert!(val >= -1e-14, "fixed {char_key:?}, idx {idx} negative: {val}");
       }
     }
     Ok(())

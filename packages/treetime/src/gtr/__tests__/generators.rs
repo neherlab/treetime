@@ -118,87 +118,38 @@ pub mod tests {
       //! failures in downstream GTR tests.
 
       use super::*;
-      use approx::assert_abs_diff_eq;
+      use ndarray::{Array1, Axis};
+      use treetime_utils::{
+        prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq, prop_assert_array_diag_abs,
+        prop_assert_array_offdiag_positive, prop_assert_array_positive,
+      };
 
       proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         #[test]
         fn test_prop_generators_arb_pi_nuc_sums_to_one(pi in arb_pi_nuc()) {
-          prop_assert!(
-            (pi.sum() - 1.0).abs() < 1e-14,
-            "pi sum = {}, expected 1.0",
-            pi.sum()
-          );
-          for &p in &pi {
-            prop_assert!(p > 0.0, "pi values must be positive, got {p}");
-          }
+          prop_assert_abs_diff_eq!(pi.sum(), 1.0, epsilon = 1e-14);
+          prop_assert_array_positive!(pi);
         }
 
         #[test]
         fn test_prop_generators_arb_pi_aa_sums_to_one(pi in arb_pi_aa()) {
-          prop_assert!(
-            (pi.sum() - 1.0).abs() < 1e-14,
-            "pi sum = {}, expected 1.0",
-            pi.sum()
-          );
-          for &p in &pi {
-            prop_assert!(p > 0.0, "pi values must be positive, got {p}");
-          }
+          prop_assert_abs_diff_eq!(pi.sum(), 1.0, epsilon = 1e-14);
+          prop_assert_array_positive!(pi);
         }
 
         #[test]
         fn test_prop_generators_arb_w_nuc_symmetric_and_valid(w in arb_w_nuc()) {
-          // Check symmetry
-          for i in 0..4 {
-            for j in 0..4 {
-              prop_assert!(
-                (w[[i, j]] - w[[j, i]]).abs() < 1e-14,
-                "W not symmetric at [{i}, {j}]: {} vs {}",
-                w[[i, j]],
-                w[[j, i]]
-              );
-            }
-          }
-          // Check diagonal is zero
-          for i in 0..4 {
-            prop_assert!(
-              w[[i, i]].abs() < 1e-14,
-              "W diagonal should be zero at [{i}, {i}]: {}",
-              w[[i, i]]
-            );
-          }
-          // Check off-diagonal is positive
-          for i in 0..4 {
-            for j in 0..4 {
-              if i != j {
-                prop_assert!(w[[i, j]] > 0.0, "W off-diagonal should be positive at [{i}, {j}]: {}", w[[i, j]]);
-              }
-            }
-          }
+          prop_assert_array_abs_diff_eq!(w, w.t().to_owned(), epsilon = 1e-14);
+          prop_assert_array_diag_abs!(w, epsilon = 1e-14);
+          prop_assert_array_offdiag_positive!(w);
         }
 
         #[test]
         fn test_prop_generators_arb_w_aa_symmetric_and_valid(w in arb_w_aa()) {
-          // Check symmetry
-          for i in 0..20 {
-            for j in 0..20 {
-              prop_assert!(
-                (w[[i, j]] - w[[j, i]]).abs() < 1e-14,
-                "W not symmetric at [{i}, {j}]: {} vs {}",
-                w[[i, j]],
-                w[[j, i]]
-              );
-            }
-          }
-          // Check diagonal is zero
-          for i in 0..20 {
-            prop_assert!(
-              w[[i, i]].abs() < 1e-14,
-              "W diagonal should be zero at [{i}, {i}]: {}",
-              w[[i, i]]
-            );
-          }
+          prop_assert_array_abs_diff_eq!(w, w.t().to_owned(), epsilon = 1e-14);
+          prop_assert_array_diag_abs!(w, epsilon = 1e-14);
         }
 
         #[test]
@@ -210,31 +161,15 @@ pub mod tests {
         #[test]
         fn test_prop_generators_arb_profile_nuc_valid(profile in arb_profile_nuc(5)) {
           prop_assert_eq!(profile.shape(), &[5, 4]);
-          for i in 0..5 {
-            let row_sum: f64 = profile.row(i).sum();
-            prop_assert!(
-              (row_sum - 1.0).abs() < 1e-14,
-              "row {i} sum = {row_sum}, expected 1.0"
-            );
-            for &p in profile.row(i) {
-              prop_assert!(p > 0.0, "profile values must be positive, got {p}");
-            }
-          }
+          let row_sums = profile.sum_axis(Axis(1));
+          prop_assert_array_abs_diff_eq!(row_sums, Array1::ones(5), epsilon = 1e-14);
+          prop_assert_array_positive!(profile);
         }
 
         #[test]
         fn test_prop_generators_arb_gtr_nuc_valid(gtr in arb_gtr_nuc()) {
-          // Verify pi sums to 1
-          assert_abs_diff_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
-
-          // Verify W is symmetric
-          for i in 0..4 {
-            for j in 0..4 {
-              assert_abs_diff_eq!(gtr.W[[i, j]], gtr.W[[j, i]], epsilon = 1e-14);
-            }
-          }
-
-          // Verify mu is positive
+          prop_assert_abs_diff_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
+          prop_assert_array_abs_diff_eq!(gtr.W, gtr.W.t().to_owned(), epsilon = 1e-14);
           prop_assert!(gtr.mu > 0.0, "mu must be positive: {}", gtr.mu);
         }
       }

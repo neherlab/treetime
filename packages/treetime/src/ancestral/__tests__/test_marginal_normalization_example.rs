@@ -7,6 +7,7 @@ mod tests {
   use eyre::Report;
   use treetime_io::fasta::FastaRecord;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   /// Build a fixed 4-taxon test input for marginal normalization verification.
   ///
@@ -98,26 +99,22 @@ ACGTACGC
       if node_data.profile.dis.is_empty() {
         continue;
       }
-      for row in node_data.profile.dis.rows() {
-        let sum: f64 = row.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in row {
-          assert!(value.is_finite(), "Non-finite value in dense node profile: {value}");
-          assert!(value >= -1e-14, "Negative value in dense node profile: {value}");
-        }
+      let dis = &node_data.profile.dis;
+      pretty_assert_array_finite!(dis);
+      pretty_assert_array_nonneg!(dis, epsilon = 1e-14);
+      for row in dis.rows() {
+        assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
     for edge_data in partition.data.edges.values() {
       if edge_data.msg_to_child.dis.is_empty() {
         continue;
       }
-      for row in edge_data.msg_to_child.dis.rows() {
-        let sum: f64 = row.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in row {
-          assert!(value.is_finite(), "Non-finite value in dense edge message: {value}");
-          assert!(value >= -1e-14, "Negative value in dense edge message: {value}");
-        }
+      let dis = &edge_data.msg_to_child.dis;
+      pretty_assert_array_finite!(dis);
+      pretty_assert_array_nonneg!(dis, epsilon = 1e-14);
+      for row in dis.rows() {
+        assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
     Ok(())
@@ -160,23 +157,14 @@ ACGTACGC
         profile.log_lh
       );
       for var_pos in profile.variable.values() {
-        let sum: f64 = var_pos.dis.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in &var_pos.dis {
-          assert!(
-            value.is_finite(),
-            "Non-finite value in sparse variable profile: {value}"
-          );
-          assert!(value >= -1e-14, "Negative value in sparse variable profile: {value}");
-        }
+        pretty_assert_array_finite!(var_pos.dis);
+        pretty_assert_array_nonneg!(var_pos.dis, epsilon = 1e-14);
+        assert_abs_diff_eq!(1.0, var_pos.dis.sum(), epsilon = 1e-8);
       }
       for fixed_dis in profile.fixed.values() {
-        let sum: f64 = fixed_dis.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in fixed_dis {
-          assert!(value.is_finite(), "Non-finite value in sparse fixed profile: {value}");
-          assert!(value >= -1e-14, "Negative value in sparse fixed profile: {value}");
-        }
+        pretty_assert_array_finite!(fixed_dis);
+        pretty_assert_array_nonneg!(fixed_dis, epsilon = 1e-14);
+        assert_abs_diff_eq!(1.0, fixed_dis.sum(), epsilon = 1e-8);
       }
     }
     for edge_data in partition.edges.values() {
@@ -187,29 +175,14 @@ ACGTACGC
         profile.log_lh
       );
       for var_pos in profile.variable.values() {
-        let sum: f64 = var_pos.dis.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in &var_pos.dis {
-          assert!(
-            value.is_finite(),
-            "Non-finite value in sparse edge variable profile: {value}"
-          );
-          assert!(
-            value >= -1e-14,
-            "Negative value in sparse edge variable profile: {value}"
-          );
-        }
+        pretty_assert_array_finite!(var_pos.dis);
+        pretty_assert_array_nonneg!(var_pos.dis, epsilon = 1e-14);
+        assert_abs_diff_eq!(1.0, var_pos.dis.sum(), epsilon = 1e-8);
       }
       for fixed_dis in profile.fixed.values() {
-        let sum: f64 = fixed_dis.sum();
-        assert_abs_diff_eq!(1.0, sum, epsilon = 1e-8);
-        for &value in fixed_dis {
-          assert!(
-            value.is_finite(),
-            "Non-finite value in sparse edge fixed profile: {value}"
-          );
-          assert!(value >= -1e-14, "Negative value in sparse edge fixed profile: {value}");
-        }
+        pretty_assert_array_finite!(fixed_dis);
+        pretty_assert_array_nonneg!(fixed_dis, epsilon = 1e-14);
+        assert_abs_diff_eq!(1.0, fixed_dis.sum(), epsilon = 1e-8);
       }
     }
     Ok(())

@@ -67,6 +67,7 @@ zstd = { workspace = true }
 [dev-dependencies]
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }

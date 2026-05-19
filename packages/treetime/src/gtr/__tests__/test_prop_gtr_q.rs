@@ -12,7 +12,10 @@ mod tests {
   use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_detailed_balance};
   use crate::gtr::gtr::{GTR, GTRParams};
   use proptest::prelude::*;
-  use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq};
+  use treetime_utils::{
+    prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq, prop_assert_array_diag_nonpositive,
+    prop_assert_array_offdiag_nonneg, prop_assert_array_positive,
+  };
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -36,17 +39,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_offdiag_nonnegative(gtr in arb_gtr_nuc()) {
       let q = gtr.Q();
-      for i in 0..4 {
-        for j in 0..4 {
-          if i != j {
-            prop_assert!(
-              q[[i, j]] >= 0.0,
-              "Q[{i},{j}] = {} is negative",
-              q[[i, j]]
-            );
-          }
-        }
-      }
+      prop_assert_array_offdiag_nonneg!(q);
     }
 
     /// Diagonal elements Q[j,j] represent the total rate of leaving state j.
@@ -56,13 +49,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_diag_nonpositive(gtr in arb_gtr_nuc()) {
       let q = gtr.Q();
-      for j in 0..4 {
-        prop_assert!(
-          q[[j, j]] <= 0.0,
-          "Q[{j},{j}] = {} is positive",
-          q[[j, j]]
-        );
-      }
+      prop_assert_array_diag_nonpositive!(q);
     }
 
     /// A Markov chain is time-reversible if and only if detailed balance holds:
@@ -110,12 +97,7 @@ mod tests {
     /// Formula: pi[i] > 0 for all i
     #[test]
     fn test_prop_gtr_q_pi_positive(gtr in arb_gtr_nuc()) {
-      for (i, &p) in gtr.pi.iter().enumerate() {
-        prop_assert!(
-          p > 0.0,
-          "pi[{i}] = {p} is not positive"
-        );
-      }
+      prop_assert_array_positive!(gtr.pi);
     }
 
     /// The overall rate mu scales time uniformly. A model with rate mu evolved

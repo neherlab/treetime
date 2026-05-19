@@ -3,8 +3,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
   use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
-  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_coefficients_computed_via_eigenvector_decomposition() {
@@ -30,14 +30,11 @@ mod tests {
       gtr,
     };
 
-    // Verify coefficients match
-    for i in 0..4 {
-      pretty_assert_ulps_eq!(
-        contribution.site_contributions[0].coefficients[i],
-        expected_coefficients[i],
-        max_ulps = 10
-      );
-    }
+    pretty_assert_ulps_eq!(
+      contribution.site_contributions[0].coefficients.clone(),
+      expected_coefficients,
+      max_ulps = 10
+    );
   }
 
   #[test]

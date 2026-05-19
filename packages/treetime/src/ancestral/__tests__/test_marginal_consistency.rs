@@ -200,18 +200,8 @@ mod tests {
       let sparse_node = &sparse.nodes[&node_key];
 
       for (&pos, var_pos) in &sparse_node.profile.variable {
-        let dense_row = dense_node.profile.dis.row(pos);
-        let sparse_dis = &var_pos.dis;
-
-        assert_eq!(
-          dense_row.len(),
-          sparse_dis.len(),
-          "Profile dimensions mismatch at position {pos}"
-        );
-
-        for (idx, (&dense_val, &sparse_val)) in dense_row.iter().zip(sparse_dis.iter()).enumerate() {
-          pretty_assert_ulps_eq!(dense_val, sparse_val, epsilon = 1e-6);
-        }
+        let dense_row = dense_node.profile.dis.row(pos).to_owned();
+        pretty_assert_ulps_eq!(dense_row, var_pos.dis.clone(), epsilon = 1e-6);
       }
     }
 

@@ -1,47 +1,29 @@
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, Axis};
 use proptest::test_runner::TestCaseError;
+use treetime_utils::prop_assert_array_abs_diff_eq;
 
 /// Assert each column of `matrix` sums to `expected` within `epsilon`.
 pub fn prop_assert_columns_sum_to(matrix: &Array2<f64>, expected: f64, epsilon: f64) -> Result<(), TestCaseError> {
-  for (j, col) in matrix.columns().into_iter().enumerate() {
-    let sum = col.sum();
-    if !approx::abs_diff_eq!(sum, expected, epsilon = epsilon) {
-      return Err(TestCaseError::fail(format!(
-        "column {j}: sum = {sum}, expected {expected} (epsilon = {epsilon})"
-      )));
-    }
-  }
+  let col_sums = matrix.sum_axis(Axis(0));
+  let expected_arr = Array1::from_elem(matrix.ncols(), expected);
+  prop_assert_array_abs_diff_eq!(col_sums, expected_arr, epsilon = epsilon);
   Ok(())
 }
 
 /// Assert each row of `matrix` sums to `expected` within `epsilon`.
 pub fn prop_assert_rows_sum_to(matrix: &Array2<f64>, expected: f64, epsilon: f64) -> Result<(), TestCaseError> {
-  for (i, row) in matrix.rows().into_iter().enumerate() {
-    let sum = row.sum();
-    if !approx::abs_diff_eq!(sum, expected, epsilon = epsilon) {
-      return Err(TestCaseError::fail(format!(
-        "row {i}: sum = {sum}, expected {expected} (epsilon = {epsilon})"
-      )));
-    }
-  }
+  let row_sums = matrix.sum_axis(Axis(1));
+  let expected_arr = Array1::from_elem(matrix.nrows(), expected);
+  prop_assert_array_abs_diff_eq!(row_sums, expected_arr, epsilon = epsilon);
   Ok(())
 }
 
 /// Assert detailed balance: pi[j] * Q[i,j] = pi[i] * Q[j,i] for all i != j.
+///
+/// Equivalent to checking that the flux matrix F[i,j] = pi[j] * Q[i,j] is symmetric.
 pub fn prop_assert_detailed_balance(q: &Array2<f64>, pi: &Array1<f64>, epsilon: f64) -> Result<(), TestCaseError> {
-  let n = q.nrows();
-  for i in 0..n {
-    for j in 0..n {
-      if i != j {
-        let flux_ji = pi[j] * q[[i, j]];
-        let flux_ij = pi[i] * q[[j, i]];
-        if !approx::abs_diff_eq!(flux_ji, flux_ij, epsilon = epsilon) {
-          return Err(TestCaseError::fail(format!(
-            "detailed balance violated: pi[{j}]*Q[{i},{j}] = {flux_ji}, pi[{i}]*Q[{j},{i}] = {flux_ij} (epsilon = {epsilon})"
-          )));
-        }
-      }
-    }
-  }
+  let flux = q * &pi.view().insert_axis(Axis(0));
+  let flux_t = flux.t().to_owned();
+  prop_assert_array_abs_diff_eq!(flux, flux_t, epsilon = epsilon);
   Ok(())
 }

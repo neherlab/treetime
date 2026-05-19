@@ -2,8 +2,8 @@
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::optimize_dense::get_coefficients;
-  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
@@ -61,13 +61,10 @@ mod tests {
       &gtr,
     );
 
-    // First row should match single contribution
-    for i in 0..4 {
-      pretty_assert_ulps_eq!(
-        single_contribution.coefficients[[0, i]],
-        multi_contribution.coefficients[[0, i]],
-        max_ulps = 10
-      );
-    }
+    pretty_assert_ulps_eq!(
+      single_contribution.coefficients.row(0).to_owned(),
+      multi_contribution.coefficients.row(0).to_owned(),
+      max_ulps = 10
+    );
   }
 }

@@ -5,7 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::{HKY85Params, K80Params, hky85, k80};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use ndarray::{Array2, array};
+  use ndarray::{Array2, Axis, array};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   // Extreme Parameter Tests
 
@@ -81,17 +82,10 @@ mod tests {
       "HKY85 skewed pi: matrix entry exceeds 1"
     );
 
-    // Check detailed balance (key mathematical property)
+    // Detailed balance: flux matrix F[i,j] = pi[j] * Q[i,j] must be symmetric
     let q = gtr.Q();
-    for i in 0..4 {
-      for j in 0..4 {
-        if i != j {
-          let flux_ji = gtr.pi[j] * q[[i, j]];
-          let flux_ij = gtr.pi[i] * q[[j, i]];
-          assert_abs_diff_eq!(flux_ji, flux_ij, epsilon = 1e-10);
-        }
-      }
-    }
+    let flux = &q * &gtr.pi.view().insert_axis(Axis(0));
+    pretty_assert_abs_diff_eq!(flux, flux.t().to_owned(), epsilon = 1e-10);
 
     Ok(())
   }
@@ -177,20 +171,8 @@ mod tests {
     let t = 1.0;
     let p = gtr.expQt(t);
 
-    // With small mu, P should be close to identity
-    for i in 0..4 {
-      for j in 0..4 {
-        let expected = if i == j { 1.0 } else { 0.0 };
-
-        // mu*t = 0.001, so off-diagonal ~ 0.001, diagonal ~ 0.999
-        assert!(
-          (p[[i, j]] - expected).abs() < 0.01,
-          "P[{i},{j}] = {} far from {}",
-          p[[i, j]],
-          expected
-        );
-      }
-    }
+    // mu*t = 0.001: off-diagonal ~ 0.001, diagonal ~ 0.999
+    pretty_assert_abs_diff_eq!(p, Array2::eye(4), epsilon = 1e-2);
 
     Ok(())
   }

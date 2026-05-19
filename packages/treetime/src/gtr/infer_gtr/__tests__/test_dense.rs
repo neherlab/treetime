@@ -15,6 +15,9 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
+  use treetime_utils::{
+    pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded, pretty_assert_array_positive,
+  };
 
   use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
@@ -76,20 +79,10 @@ mod tests {
 
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
-    // Off-diagonal elements should be negligible (< 0.1 per site pair)
-    // With fractional counts, there's small probability mass on off-diagonal
-    // states even when sequences are identical
-    for i in 0..4 {
-      for j in 0..4 {
-        if i != j {
-          assert!(
-            counts.nij[[i, j]] < 0.1,
-            "Off-diagonal nij[{i},{j}] = {} should be negligible",
-            counts.nij[[i, j]]
-          );
-        }
-      }
-    }
+    // With fractional counts, identical sequences still have small probability
+    // mass on off-diagonal states from the joint distribution
+    pretty_assert_array_nonneg!(counts.nij);
+    pretty_assert_array_offdiag_upper_bounded!(counts.nij, bound = 0.1);
 
     // Root composition: 1 of each nucleotide (ACGT)
     assert_eq!(array![1.0, 1.0, 1.0, 1.0], counts.root_state);
@@ -262,21 +255,9 @@ mod tests {
     let counts = get_mutation_counts_dense(&graph, &partition)?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
-    // W should be symmetric
-    for i in 0..4 {
-      for j in 0..4 {
-        pretty_assert_ulps_eq!(result.W[[i, j]], result.W[[j, i]], epsilon = 1e-9);
-      }
-    }
-
-    // pi should sum to 1
-    let pi_sum: f64 = result.pi.iter().sum();
-    pretty_assert_ulps_eq!(1.0, pi_sum, epsilon = 1e-9);
-
-    // All pi values should be positive
-    for &p in &result.pi {
-      assert!(p > 0.0, "pi values should be positive, got {p}");
-    }
+    pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);
+    pretty_assert_ulps_eq!(1.0, result.pi.sum(), epsilon = 1e-9);
+    pretty_assert_array_positive!(result.pi);
 
     // mu should be positive
     assert!(result.mu > 0.0, "mu should be positive, got {}", result.mu);

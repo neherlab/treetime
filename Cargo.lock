@@ -3815,6 +3815,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "pretty_dtoa",
+ "proptest",
  "rand",
  "rand_isaac",
  "rayon",

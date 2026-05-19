@@ -5,6 +5,7 @@ mod tests {
   use crate::policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_scaled_distribution_from_plain_round_trip() {
@@ -14,9 +15,7 @@ mod tests {
     let recovered = scaled.to_plain();
 
     if let (Distribution::Function(orig), Distribution::Function(rec)) = (&original, &recovered) {
-      for i in 0..3 {
-        assert_ulps_eq!(orig.y()[i], rec.y()[i], max_ulps = 4);
-      }
+      pretty_assert_ulps_eq!(orig.y().to_owned(), rec.y().to_owned(), max_ulps = 4);
     } else {
       panic!("Expected Function distributions");
     }

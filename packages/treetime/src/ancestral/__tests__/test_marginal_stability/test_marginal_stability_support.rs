@@ -12,6 +12,7 @@ pub mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
@@ -27,17 +28,10 @@ pub mod tests {
       "Profile log_lh is not finite: {}",
       profile.log_lh
     );
-
-    for (pos, row) in profile.dis.outer_iter().enumerate() {
-      let sum: f64 = row.sum();
-      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
-      for (idx, &val) in row.iter().enumerate() {
-        assert!(
-          val.is_finite(),
-          "Position {pos}, index {idx} has non-finite value: {val}"
-        );
-        assert!(val >= -1e-15, "Position {pos}, index {idx} has negative value: {val}");
-      }
+    pretty_assert_array_finite!(profile.dis);
+    pretty_assert_array_nonneg!(profile.dis, epsilon = 1e-15);
+    for row in profile.dis.outer_iter() {
+      pretty_assert_ulps_eq!(row.sum(), 1.0, max_ulps = max_ulps);
     }
   }
 
@@ -49,34 +43,16 @@ pub mod tests {
       profile.log_lh
     );
 
-    for (pos, var_pos) in &profile.variable {
-      let sum: f64 = var_pos.dis.sum();
-      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
-      for (idx, &val) in var_pos.dis.iter().enumerate() {
-        assert!(
-          val.is_finite(),
-          "Variable position {pos}, index {idx} has non-finite value: {val}"
-        );
-        assert!(
-          val >= -1e-15,
-          "Variable position {pos}, index {idx} has negative value: {val}"
-        );
-      }
+    for var_pos in profile.variable.values() {
+      pretty_assert_array_finite!(var_pos.dis);
+      pretty_assert_array_nonneg!(var_pos.dis, epsilon = 1e-15);
+      pretty_assert_ulps_eq!(var_pos.dis.sum(), 1.0, max_ulps = max_ulps);
     }
 
-    for (char_key, fixed_dis) in &profile.fixed {
-      let sum: f64 = fixed_dis.sum();
-      pretty_assert_ulps_eq!(sum, 1.0, max_ulps = max_ulps);
-      for (idx, &val) in fixed_dis.iter().enumerate() {
-        assert!(
-          val.is_finite(),
-          "Fixed distribution for char {char_key:?}, index {idx} has non-finite value: {val}"
-        );
-        assert!(
-          val >= -1e-15,
-          "Fixed distribution for char {char_key:?}, index {idx} has negative value: {val}"
-        );
-      }
+    for fixed_dis in profile.fixed.values() {
+      pretty_assert_array_finite!(fixed_dis);
+      pretty_assert_array_nonneg!(fixed_dis, epsilon = 1e-15);
+      pretty_assert_ulps_eq!(fixed_dis.sum(), 1.0, max_ulps = max_ulps);
     }
   }
 

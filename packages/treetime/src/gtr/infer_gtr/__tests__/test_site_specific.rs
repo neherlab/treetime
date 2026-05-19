@@ -7,6 +7,7 @@ mod tests {
   };
   use approx::assert_abs_diff_eq;
   use ndarray::prelude::*;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_array_nonneg};
 
   // TODO(investigate): circular inference validation
   //
@@ -77,11 +78,9 @@ mod tests {
     // Check per-site pi recovery. With total_time=10000 and pc=1, pseudocount
     // distortion is ~0.01%, so 1e-3 tolerance is appropriate.
     for a in 0..2 {
-      let inferred_pi = result.pi.column(a);
-      let original_pi = gtr.pi.column(a);
-      for i in 0..4 {
-        assert_abs_diff_eq!(inferred_pi[i], original_pi[i], epsilon = 1e-3);
-      }
+      let inferred_pi = result.pi.column(a).to_owned();
+      let original_pi = gtr.pi.column(a).to_owned();
+      pretty_assert_abs_diff_eq!(inferred_pi, original_pi, epsilon = 1e-3);
     }
 
     // Check W recovery: relative rates should be approximately correct.
@@ -129,25 +128,8 @@ mod tests {
 
     // Verify the inferred model produces valid transition matrices
     let p = inferred.expQt(0.5).unwrap();
-    for a in 0..3 {
-      let p_a = p.slice(s![.., .., a]);
-
-      // Column-stochastic
-      for j in 0..4 {
-        let col_sum: f64 = p_a.column(j).sum();
-        assert_abs_diff_eq!(col_sum, 1.0, epsilon = 1e-8);
-      }
-
-      // Non-negative
-      for i in 0..4 {
-        for j in 0..4 {
-          assert!(
-            p_a[[i, j]] >= -1e-14,
-            "P[{i},{j},site={a}] = {} is negative",
-            p_a[[i, j]]
-          );
-        }
-      }
-    }
+    pretty_assert_array_nonneg!(p, epsilon = 1e-14);
+    let col_sums = p.sum_axis(Axis(0));
+    pretty_assert_abs_diff_eq!(col_sums, Array2::ones((4, 3)), epsilon = 1e-8);
   }
 }

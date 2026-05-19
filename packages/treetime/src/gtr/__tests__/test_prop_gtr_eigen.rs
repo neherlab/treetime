@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::__tests__::generators::tests::generators::arb_gtr_nuc;
   use ndarray::Array2;
   use proptest::prelude::*;
-  use treetime_utils::prop_assert_array_abs_diff_eq;
+  use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_upper_bounded};
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -17,12 +17,7 @@ mod tests {
     /// Formula: Re(eigvals[i]) <= 0 for all i
     #[test]
     fn test_prop_gtr_eigen_eigvals_nonpositive(gtr in arb_gtr_nuc()) {
-      for (i, &eigval) in gtr.eigvals.iter().enumerate() {
-        prop_assert!(
-          eigval <= 1e-10,  // Allow small numerical error
-          "Eigenvalue {i} = {eigval} is positive"
-        );
-      }
+      prop_assert_array_upper_bounded!(gtr.eigvals, bound = 0.0, epsilon = 1e-10);
     }
 
     /// Exactly one eigenvalue equals zero, corresponding to the stationary

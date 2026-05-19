@@ -171,6 +171,91 @@ pub fn is_neg_inf(actual: f64) -> bool {
 }
 
 #[macro_export]
+macro_rules! pretty_assert_array_finite {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      assert!(
+        val.is_finite(),
+        "pretty_assert_array_finite!({}): element {idx:?} = {val}",
+        stringify!($arr)
+      );
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! pretty_assert_array_nonneg {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      assert!(
+        *val >= 0.0,
+        "pretty_assert_array_nonneg!({}): element {idx:?} = {val} < 0",
+        stringify!($arr)
+      );
+    }
+  }};
+  ($arr:expr, epsilon = $eps:expr $(,)?) => {{
+    let arr = &$arr;
+    let eps = $eps;
+    for (idx, val) in arr.indexed_iter() {
+      assert!(
+        *val >= -eps,
+        "pretty_assert_array_nonneg!({}): element {idx:?} = {val} < -{eps}",
+        stringify!($arr)
+      );
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! pretty_assert_array_positive {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      assert!(
+        *val > 0.0,
+        "pretty_assert_array_positive!({}): element {idx:?} = {val} <= 0",
+        stringify!($arr)
+      );
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! pretty_assert_array_diag_abs {
+  ($arr:expr, epsilon = $eps:expr $(,)?) => {{
+    let arr = &$arr;
+    let eps = $eps;
+    for (i, val) in arr.diag().iter().enumerate() {
+      assert!(
+        val.abs() < eps,
+        "pretty_assert_array_diag_abs!({}): diag[{i}] = {val}, |{val}| >= {eps}",
+        stringify!($arr)
+      );
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! pretty_assert_array_offdiag_upper_bounded {
+  ($arr:expr, bound = $bound:expr $(,)?) => {{
+    let arr = &$arr;
+    let bound = $bound;
+    for ((i, j), val) in arr.indexed_iter() {
+      if i != j {
+        assert!(
+          *val <= bound,
+          "pretty_assert_array_offdiag_upper_bounded!({}): [{i},{j}] = {val} > {bound}",
+          stringify!($arr)
+        );
+      }
+    }
+  }};
+}
+
+#[macro_export]
 macro_rules! pretty_assert_array_eq {
   ($lhs:expr, $rhs:expr $(,)?) => {{
     let lhs = &$lhs;

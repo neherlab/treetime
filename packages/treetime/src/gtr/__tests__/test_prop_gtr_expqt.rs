@@ -9,7 +9,7 @@ mod tests {
   use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_rows_sum_to};
   use ndarray::Array2;
   use proptest::prelude::*;
-  use treetime_utils::prop_assert_array_abs_diff_eq;
+  use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_nonneg, prop_assert_array_upper_bounded};
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
@@ -40,15 +40,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_expqt_nonnegative(gtr in arb_gtr_nuc(), t in arb_branch_len()) {
       let p = gtr.expQt(t);
-      for i in 0..4 {
-        for j in 0..4 {
-          prop_assert!(
-            p[[i, j]] >= -1e-14,  // Allow tiny negative due to clamping
-            "P(t={t})[{i},{j}] = {} is negative",
-            p[[i, j]]
-          );
-        }
-      }
+      prop_assert_array_nonneg!(p, epsilon = 1e-14);
     }
 
     /// Transition probabilities cannot exceed 1:
@@ -60,15 +52,7 @@ mod tests {
     #[test]
     fn test_prop_gtr_expqt_bounded(gtr in arb_gtr_nuc(), t in arb_branch_len()) {
       let p = gtr.expQt(t);
-      for i in 0..4 {
-        for j in 0..4 {
-          prop_assert!(
-            p[[i, j]] <= 1.0 + 1e-14,  // Allow tiny overshoot
-            "P(t={t})[{i},{j}] = {} exceeds 1.0",
-            p[[i, j]]
-          );
-        }
-      }
+      prop_assert_array_upper_bounded!(p, bound = 1.0, epsilon = 1e-14);
     }
 
     /// At t = 0, no evolution has occurred, so the transition matrix is identity:

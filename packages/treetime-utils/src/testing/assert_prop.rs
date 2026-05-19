@@ -158,6 +158,141 @@ macro_rules! prop_assert_map_ulps_eq {
 }
 
 #[macro_export]
+macro_rules! prop_assert_array_finite {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      if !val.is_finite() {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_finite!({}): element {idx:?} = {val}",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_nonneg {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      if *val < 0.0 {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_nonneg!({}): element {idx:?} = {val} < 0",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+  ($arr:expr, epsilon = $eps:expr $(,)?) => {{
+    let arr = &$arr;
+    let eps = $eps;
+    for (idx, val) in arr.indexed_iter() {
+      if *val < -eps {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_nonneg!({}): element {idx:?} = {val} < -{eps}",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_positive {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (idx, val) in arr.indexed_iter() {
+      if *val <= 0.0 {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_positive!({}): element {idx:?} = {val} <= 0",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_upper_bounded {
+  ($arr:expr, bound = $bound:expr, epsilon = $eps:expr $(,)?) => {{
+    let arr = &$arr;
+    let bound = $bound;
+    let eps = $eps;
+    for (idx, val) in arr.indexed_iter() {
+      if *val > bound + eps {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_upper_bounded!({}): element {idx:?} = {val} > {bound} + {eps}",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_diag_abs {
+  ($arr:expr, epsilon = $eps:expr $(,)?) => {{
+    let arr = &$arr;
+    let eps = $eps;
+    for (i, val) in arr.diag().iter().enumerate() {
+      if val.abs() >= eps {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_diag_abs!({}): diag[{i}] = {val}, |{val}| >= {eps}",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_offdiag_nonneg {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for ((i, j), val) in arr.indexed_iter() {
+      if i != j && *val < 0.0 {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_offdiag_nonneg!({}): [{i},{j}] = {val} < 0",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_offdiag_positive {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for ((i, j), val) in arr.indexed_iter() {
+      if i != j && *val <= 0.0 {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_offdiag_positive!({}): [{i},{j}] = {val} <= 0",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
+macro_rules! prop_assert_array_diag_nonpositive {
+  ($arr:expr $(,)?) => {{
+    let arr = &$arr;
+    for (i, val) in arr.diag().iter().enumerate() {
+      if *val > 0.0 {
+        return Err(proptest::test_runner::TestCaseError::fail(format!(
+          "prop_assert_array_diag_nonpositive!({}): diag[{i}] = {val} > 0",
+          stringify!($arr),
+        )));
+      }
+    }
+  }};
+}
+
+#[macro_export]
 macro_rules! prop_assert_map_relative_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     let lhs = &$lhs;

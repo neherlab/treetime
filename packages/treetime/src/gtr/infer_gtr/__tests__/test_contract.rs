@@ -17,7 +17,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::PartitionFitch;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
 
@@ -25,6 +24,9 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
+  use treetime_utils::{
+    pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
+  };
 
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -176,13 +178,7 @@ mod tests {
     let counts2 = get_mutation_counts_fitch(&graph2, &fitch2)?;
 
     let ratio = bl2 / bl1;
-    for k in 0..4 {
-      pretty_assert_ulps_eq!(
-        counts2.Ti[k],
-        counts1.Ti[k] * ratio,
-        epsilon = 1e-7
-      );
-    }
+    pretty_assert_ulps_eq!(counts2.Ti, &counts1.Ti * ratio, epsilon = 1e-7);
 
     Ok(())
   }
@@ -222,15 +218,9 @@ mod tests {
     let counts1 = get_mutation_counts_dense(&graph1, &partition1)?;
     let counts2 = get_mutation_counts_dense(&graph2, &partition2)?;
 
+    // Measured max diff: 8.94e-8 (case small_vs_large, Ti[0])
     let ratio = bl2 / bl1;
-    for k in 0..4 {
-      // Measured max diff: 8.94e-8 (case small_vs_large, Ti[0])
-      pretty_assert_ulps_eq!(
-        counts2.Ti[k],
-        counts1.Ti[k] * ratio,
-        epsilon = 1e-7
-      );
-    }
+    pretty_assert_ulps_eq!(counts2.Ti, &counts1.Ti * ratio, epsilon = 1e-7);
 
     Ok(())
   }
@@ -275,19 +265,11 @@ mod tests {
       "Dense-sparse nij total absolute difference should be small, got {nij_diff}"
     );
 
-    // Ti: same direction, proportional magnitudes
+    // Ti: same direction, proportional magnitudes.
     // Measured max rel_diff: 4.36e-3 (Ti[0], state A absorbs the single mutation)
-    for k in 0..4 {
-      let d = dense.Ti[k];
-      let s = sparse.Ti[k];
-      assert!(d > 0.0, "Dense Ti[{k}] should be positive, got {d}");
-      assert!(s > 0.0, "Sparse Ti[{k}] should be positive, got {s}");
-      let rel_diff = (d - s).abs() / s.max(1e-10);
-      assert!(
-        rel_diff < 1e-2,
-        "Dense-sparse Ti[{k}] relative difference too large: dense={d}, sparse={s}, rel_diff={rel_diff}"
-      );
-    }
+    pretty_assert_array_positive!(dense.Ti);
+    pretty_assert_array_positive!(sparse.Ti);
+    approx::assert_relative_eq!(dense.Ti, sparse.Ti, max_relative = 1e-2);
 
     // root_state: both should agree on total and dominant state
     let dense_total = dense.root_state.sum();
@@ -633,10 +615,8 @@ mod tests {
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
-    for k in 0..4 {
-      assert_eq!(0.0, dense.nij[[k, k]]);
-      assert_eq!(0.0, sparse.nij[[k, k]]);
-    }
+    pretty_assert_array_diag_abs!(dense.nij, epsilon = 1e-15);
+    pretty_assert_array_diag_abs!(sparse.nij, epsilon = 1e-15);
 
     Ok(())
   }
@@ -666,12 +646,8 @@ mod tests {
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
-    for ((i, j), &v) in dense.nij.indexed_iter() {
-      assert!(v >= 0.0, "Dense nij[{i},{j}] should be non-negative, got {v}");
-    }
-    for ((i, j), &v) in sparse.nij.indexed_iter() {
-      assert!(v >= 0.0, "Sparse nij[{i},{j}] should be non-negative, got {v}");
-    }
+    pretty_assert_array_nonneg!(dense.nij);
+    pretty_assert_array_nonneg!(sparse.nij);
 
     Ok(())
   }
@@ -701,12 +677,8 @@ mod tests {
     let dense = get_mutation_counts_dense(&graph_d, &partition_d)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
-    for (k, &v) in dense.Ti.iter().enumerate() {
-      assert!(v >= 0.0, "Dense Ti[{k}] should be non-negative, got {v}");
-    }
-    for (k, &v) in sparse.Ti.iter().enumerate() {
-      assert!(v >= 0.0, "Sparse Ti[{k}] should be non-negative, got {v}");
-    }
+    pretty_assert_array_nonneg!(dense.Ti);
+    pretty_assert_array_nonneg!(sparse.Ti);
 
     Ok(())
   }

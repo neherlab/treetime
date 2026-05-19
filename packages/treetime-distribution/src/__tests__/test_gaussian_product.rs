@@ -9,6 +9,7 @@ mod tests {
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
   use treetime_analytical::{GaussianParams, gaussian_product_params};
+  use treetime_utils::pretty_assert_ulps_eq;
 
   const GAUSSIAN_GRID_HALF_WIDTH_SIGMAS: f64 = 5.0;
 
@@ -43,9 +44,7 @@ mod tests {
     let recovered = scaled.to_plain();
 
     if let Distribution::Function(f) = recovered {
-      for i in 0..5 {
-        assert_ulps_eq!(f.y()[i], y[i], max_ulps = 4);
-      }
+      pretty_assert_ulps_eq!(f.y().to_owned(), y, max_ulps = 4);
     } else {
       panic!("Expected Function variant");
     }
