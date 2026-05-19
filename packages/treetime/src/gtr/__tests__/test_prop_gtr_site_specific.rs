@@ -4,6 +4,11 @@ mod tests {
   use crate::gtr::gtr_site_specific::{GTRSiteSpecific, GTRSiteSpecificParams};
   use ndarray::prelude::*;
   use proptest::prelude::*;
+  use treetime_utils::array::batched::{matmul_3d, matvec_3d};
+  use treetime_utils::{
+    pretty_assert_abs_diff_eq, prop_assert_array_abs_diff_eq, prop_assert_array_finite, prop_assert_array_nonneg,
+    prop_assert_array_positive, prop_assert_array_upper_bounded,
+  };
 
   mod generators {
     use crate::gtr::__tests__::generators::tests::generators::{arb_pi_nuc, arb_w_nuc};
@@ -73,36 +78,16 @@ mod tests {
     ) {
       let p = gtr.expQt(t).unwrap();
       let (_n, _n2, seq_len) = p.dim();
-      for a in 0..seq_len {
-        let p_a = p.slice(s![.., .., a]);
-        for j in 0..4 {
-          let col_sum: f64 = p_a.column(j).sum();
-          prop_assert!(
-            (col_sum - 1.0).abs() < 1e-10,
-            "P_a(t={t})[site={a}] column {j} sum = {col_sum}, expected 1.0"
-          );
-        }
-      }
+      let col_sums = p.sum_axis(Axis(0));
+      prop_assert_array_abs_diff_eq!(col_sums, Array2::ones((4, seq_len)), epsilon = 1e-10);
     }
 
     /// P_a(0) = I for all sites.
     #[test]
     fn test_prop_gtr_site_specific_expqt_identity_at_zero(gtr in generators::arb_gtr_site_specific(5)) {
       let p = gtr.expQt(0.0).unwrap();
-      let identity = Array2::<f64>::eye(4);
-      for a in 0..5 {
-        let p_a = p.slice(s![.., .., a]);
-        for i in 0..4 {
-          for j in 0..4 {
-            prop_assert!(
-              (p_a[[i, j]] - identity[[i, j]]).abs() < 1e-10,
-              "P(0)[{i},{j},site={a}] = {}, expected {}",
-              p_a[[i, j]],
-              identity[[i, j]]
-            );
-          }
-        }
-      }
+      let identity_3d = Array3::from_shape_fn((4, 4, 5), |(i, j, _)| if i == j { 1.0 } else { 0.0 });
+      prop_assert_array_abs_diff_eq!(p, identity_3d, epsilon = 1e-10);
     }
 
     /// All entries of P_a(t) must be non-negative (transition probabilities).
@@ -112,17 +97,7 @@ mod tests {
       t in crate::gtr::__tests__::generators::tests::generators::arb_branch_len(),
     ) {
       let p = gtr.expQt(t).unwrap();
-      for a in 0..5 {
-        for i in 0..4 {
-          for j in 0..4 {
-            prop_assert!(
-              p[[i, j, a]] >= -1e-14,
-              "P(t={t})[{i},{j},site={a}] = {} is negative",
-              p[[i, j, a]]
-            );
-          }
-        }
-      }
+      prop_assert_array_nonneg!(p, epsilon = 1e-14);
     }
 
     /// Semigroup: P_a(s+t) = P_a(s) * P_a(t) for all sites.
@@ -136,42 +111,16 @@ mod tests {
       let p_t = gtr.expQt(t).unwrap();
       let p_st = gtr.expQt(s + t).unwrap();
 
-      for a in 0..3 {
-        let ps_a: Array2<f64> = p_s.slice(s![.., .., a]).to_owned();
-        let pt_a: Array2<f64> = p_t.slice(s![.., .., a]).to_owned();
-        let pst_a = p_st.slice(s![.., .., a]);
-        let product = ps_a.dot(&pt_a);
-        for i in 0..4 {
-          for j in 0..4 {
-            prop_assert!(
-              (product[[i, j]] - pst_a[[i, j]]).abs() < 1e-8,
-              "Semigroup violation at [{i},{j},site={a}]: P(s)*P(t) = {}, P(s+t) = {}",
-              product[[i, j]],
-              pst_a[[i, j]]
-            );
-          }
-        }
-      }
+      let product = matmul_3d(&p_s, &p_t);
+      prop_assert_array_abs_diff_eq!(product, p_st, epsilon = 1e-8);
     }
 
     /// As t -> infinity, P_a(t)[i,j] -> pi_a[i] for all j (convergence to equilibrium).
     #[test]
     fn test_prop_gtr_site_specific_expqt_convergence(gtr in generators::arb_gtr_site_specific(3)) {
       let p = gtr.expQt(1000.0).unwrap();
-      for a in 0..3 {
-        let p_a = p.slice(s![.., .., a]);
-        let pi_a = gtr.pi.column(a);
-        for j in 0..4 {
-          for i in 0..4 {
-            prop_assert!(
-              (p_a[[i, j]] - pi_a[i]).abs() < 1e-6,
-              "Convergence: P(1000)[{i},{j},site={a}] = {}, pi[{i}] = {}",
-              p_a[[i, j]],
-              pi_a[i]
-            );
-          }
-        }
-      }
+      let expected = Array3::from_shape_fn((4, 4, 3), |(i, _j, a)| gtr.pi[[i, a]]);
+      prop_assert_array_abs_diff_eq!(p, expected, epsilon = 1e-6);
     }
 
     /// propagate_profile produces valid output (non-negative, finite).
@@ -184,13 +133,8 @@ mod tests {
       let result = gtr.propagate_profile(&profile, t, false).unwrap();
 
       prop_assert_eq!(result.shape(), &[5, 4]);
-      for a in 0..5 {
-        for i in 0..4 {
-          let v = result[[a, i]];
-          prop_assert!(v.is_finite(), "propagate_profile[{a},{i}] is not finite: {v}");
-          prop_assert!(v >= -1e-14, "propagate_profile[{a},{i}] is negative: {v}");
-        }
-      }
+      prop_assert_array_finite!(result);
+      prop_assert_array_nonneg!(result, epsilon = 1e-14);
     }
 
     /// evolve produces valid output (non-negative, finite).
@@ -203,13 +147,8 @@ mod tests {
       let result = gtr.evolve(&profile, t, false).unwrap();
 
       prop_assert_eq!(result.shape(), &[5, 4]);
-      for a in 0..5 {
-        for i in 0..4 {
-          let v = result[[a, i]];
-          prop_assert!(v.is_finite(), "evolve[{a},{i}] is not finite: {v}");
-          prop_assert!(v >= -1e-14, "evolve[{a},{i}] is negative: {v}");
-        }
-      }
+      prop_assert_array_finite!(result);
+      prop_assert_array_nonneg!(result, epsilon = 1e-14);
     }
 
     /// Equilibrium is a fixed point of evolve: evolving pi forward returns pi.
@@ -221,22 +160,9 @@ mod tests {
       gtr in generators::arb_gtr_site_specific(3),
       t in 0.01_f64..10.0,
     ) {
-      let mut profile = Array2::zeros((3, 4));
-      for a in 0..3 {
-        profile.row_mut(a).assign(&gtr.pi.column(a));
-      }
-
+      let profile = gtr.pi.t().to_owned();
       let evolved = gtr.evolve(&profile, t, false).unwrap();
-      for a in 0..3 {
-        for i in 0..4 {
-          prop_assert!(
-            (evolved[[a, i]] - profile[[a, i]]).abs() < 1e-8,
-            "Equilibrium not fixed at [{a},{i}]: evolved = {}, expected = {}",
-            evolved[[a, i]],
-            profile[[a, i]]
-          );
-        }
-      }
+      prop_assert_array_abs_diff_eq!(evolved, profile, epsilon = 1e-8);
     }
 
     /// Interpolation matches direct computation within 1e-2.
@@ -253,19 +179,7 @@ mod tests {
     ) {
       let p_interp = gtr.expQt(t).unwrap();
       let p_direct = gtr.expQt_raw(t);
-
-      for a in 0..3 {
-        for i in 0..4 {
-          for j in 0..4 {
-            prop_assert!(
-              (p_interp[[i, j, a]] - p_direct[[i, j, a]]).abs() < 1e-2,
-              "Interpolation error at [{i},{j},site={a}], t={t}: interp = {}, direct = {}",
-              p_interp[[i, j, a]],
-              p_direct[[i, j, a]]
-            );
-          }
-        }
-      }
+      prop_assert_array_abs_diff_eq!(p_interp, p_direct, epsilon = 1e-2);
     }
 
     /// average_rate is positive for all sites.
@@ -273,9 +187,7 @@ mod tests {
     fn test_prop_gtr_site_specific_average_rate_positive(gtr in generators::arb_gtr_site_specific(5)) {
       let rates = gtr.average_rate();
       prop_assert_eq!(rates.len(), 5);
-      for a in 0..5 {
-        prop_assert!(rates[a] > 0.0, "average_rate[{a}] = {} is not positive", rates[a]);
-      }
+      prop_assert_array_positive!(rates);
     }
 
     /// All entries of P_a(t) are bounded by 1 (transition probabilities).
@@ -285,17 +197,7 @@ mod tests {
       t in crate::gtr::__tests__::generators::tests::generators::arb_branch_len(),
     ) {
       let p = gtr.expQt(t).unwrap();
-      for a in 0..5 {
-        for i in 0..4 {
-          for j in 0..4 {
-            prop_assert!(
-              p[[i, j, a]] <= 1.0 + 1e-14,
-              "P(t={t})[{i},{j},site={a}] = {} exceeds 1.0",
-              p[[i, j, a]]
-            );
-          }
-        }
-      }
+      prop_assert_array_upper_bounded!(p, bound = 1.0, epsilon = 1e-14);
     }
 
     /// Stationary distribution is right eigenvector: P_a(t) @ pi_a = pi_a.
@@ -305,19 +207,8 @@ mod tests {
       t in crate::gtr::__tests__::generators::tests::generators::arb_branch_len(),
     ) {
       let p = gtr.expQt(t).unwrap();
-      for a in 0..3 {
-        let p_a: Array2<f64> = p.slice(s![.., .., a]).to_owned();
-        let pi_a = gtr.pi.column(a).to_owned();
-        let pi_evolved = p_a.dot(&pi_a);
-        for i in 0..4 {
-          prop_assert!(
-            (pi_evolved[i] - pi_a[i]).abs() < 1e-10,
-            "Stationary not preserved at [{i},site={a}]: P@pi = {}, pi = {}",
-            pi_evolved[i],
-            pi_a[i]
-          );
-        }
-      }
+      let pi_evolved = matvec_3d(&p, &gtr.pi);
+      prop_assert_array_abs_diff_eq!(pi_evolved, gtr.pi, epsilon = 1e-10);
     }
 
     /// evolve = profile @ P^T, propagate = profile @ P (per site).
@@ -337,45 +228,23 @@ mod tests {
       let propagated = gtr.propagate_profile(&profile, t, false).unwrap();
       let evolved = gtr.evolve(&profile, t, false).unwrap();
 
-      for a in 0..3 {
-        let qt_a = qt.slice(s![.., .., a]);
-        let expected_prop = profile.row(a).dot(&qt_a);
-        let expected_evol = profile.row(a).dot(&qt_a.t());
-        for i in 0..4 {
-          prop_assert!(
-            (propagated[[a, i]] - expected_prop[i]).abs() < 1e-10,
-            "propagate mismatch at [{a},{i}]"
-          );
-          prop_assert!(
-            (evolved[[a, i]] - expected_evol[i]).abs() < 1e-10,
-            "evolve mismatch at [{a},{i}]"
-          );
-        }
-      }
+      let expected_prop = helpers::profile_times_transition(&profile, &qt);
+      let expected_evol = helpers::profile_times_transition_t(&profile, &qt);
+      prop_assert_array_abs_diff_eq!(propagated, expected_prop, epsilon = 1e-10);
+      prop_assert_array_abs_diff_eq!(evolved, expected_evol, epsilon = 1e-10);
     }
 
-    /// No NaN in expQt across random models and branch lengths.
+    /// No NaN or Inf in expQt across random models and branch lengths.
+    ///
+    /// NaN from 0/0 in normalization, sqrt(negative), or inf-inf in eigendecomposition.
+    /// Inf from overflow in exp(large) or division by near-zero in V^{-1}.
     #[test]
-    fn test_prop_gtr_site_specific_no_nan(
+    fn test_prop_gtr_site_specific_finite(
       gtr in generators::arb_gtr_site_specific(3),
       t in crate::gtr::__tests__::generators::tests::generators::arb_branch_len(),
     ) {
       let p = gtr.expQt(t).unwrap();
-      for ((i, j, a), &v) in p.indexed_iter() {
-        prop_assert!(!v.is_nan(), "P(t={t})[{i},{j},site={a}] is NaN");
-      }
-    }
-
-    /// No Inf in expQt across random models and branch lengths.
-    #[test]
-    fn test_prop_gtr_site_specific_no_inf(
-      gtr in generators::arb_gtr_site_specific(3),
-      t in crate::gtr::__tests__::generators::tests::generators::arb_branch_len(),
-    ) {
-      let p = gtr.expQt(t).unwrap();
-      for ((i, j, a), &v) in p.indexed_iter() {
-        prop_assert!(!v.is_infinite(), "P(t={t})[{i},{j},site={a}] is Inf");
-      }
+      prop_assert_array_finite!(p);
     }
 
     /// evolve preserves row sums (probability conservation per site).
@@ -386,13 +255,8 @@ mod tests {
     ) {
       let profile = Array2::from_elem((5, 4), 0.25);
       let evolved = gtr.evolve(&profile, t, false).unwrap();
-      for a in 0..5 {
-        let row_sum: f64 = evolved.row(a).sum();
-        prop_assert!(
-          (row_sum - 1.0).abs() < 1e-10,
-          "evolve row {a} sum = {row_sum}, expected 1.0"
-        );
-      }
+      let row_sums = evolved.sum_axis(Axis(1));
+      prop_assert_array_abs_diff_eq!(row_sums, Array1::ones(5), epsilon = 1e-10);
     }
 
     /// Approximate mode: column stochastic.
@@ -402,16 +266,8 @@ mod tests {
       t in 0.01_f64..2.0,
     ) {
       let p = gtr.expQt(t).unwrap();
-      for a in 0..3 {
-        let p_a = p.slice(s![.., .., a]);
-        for j in 0..4 {
-          let col_sum: f64 = p_a.column(j).sum();
-          prop_assert!(
-            (col_sum - 1.0).abs() < 1e-8,
-            "Approx P_a(t={t})[site={a}] column {j} sum = {col_sum}, expected 1.0"
-          );
-        }
-      }
+      let col_sums = p.sum_axis(Axis(0));
+      prop_assert_array_abs_diff_eq!(col_sums, Array2::ones((4, 3)), epsilon = 1e-8);
     }
 
     /// Approximate mode: non-negative.
@@ -421,9 +277,7 @@ mod tests {
       t in 0.01_f64..2.0,
     ) {
       let p = gtr.expQt(t).unwrap();
-      for ((i, j, a), &v) in p.indexed_iter() {
-        prop_assert!(v >= -1e-10, "Approx P(t={t})[{i},{j},site={a}] = {v} is negative");
-      }
+      prop_assert_array_nonneg!(p, epsilon = 1e-10);
     }
 
     /// Approximate mode: equilibrium preserved.
@@ -432,21 +286,9 @@ mod tests {
       gtr in generators::arb_gtr_site_specific_approx(3),
       t in 0.01_f64..2.0,
     ) {
-      let mut profile = Array2::zeros((3, 4));
-      for a in 0..3 {
-        profile.row_mut(a).assign(&gtr.pi.column(a));
-      }
+      let profile = gtr.pi.t().to_owned();
       let evolved = gtr.evolve(&profile, t, false).unwrap();
-      for a in 0..3 {
-        for i in 0..4 {
-          prop_assert!(
-            (evolved[[a, i]] - profile[[a, i]]).abs() < 1e-2,
-            "Approx equilibrium not preserved at [{a},{i}]: {}, expected {}",
-            evolved[[a, i]],
-            profile[[a, i]]
-          );
-        }
-      }
+      prop_assert_array_abs_diff_eq!(evolved, profile, epsilon = 1e-2);
     }
   }
 
@@ -551,24 +393,38 @@ mod tests {
     let p_standard = standard.expQt(t);
     let p_ss = site_specific.expQt(t).unwrap();
 
-    for a in 0..seq_len {
-      let p_a = p_ss.slice(s![.., .., a]);
-      for i in 0..4 {
-        for j in 0..4 {
-          assert!(
-            (p_a[[i, j]] - p_standard[[i, j]]).abs() < 1e-10,
-            "Site {a}: P_ss[{i},{j}] = {}, P_std[{i},{j}] = {}, diff = {}",
-            p_a[[i, j]],
-            p_standard[[i, j]],
-            (p_a[[i, j]] - p_standard[[i, j]]).abs()
-          );
-        }
-      }
-    }
+    let expected_3d = Array3::from_shape_fn((4, 4, seq_len), |(i, j, _)| p_standard[[i, j]]);
+    pretty_assert_abs_diff_eq!(p_ss, expected_3d, epsilon = 1e-10);
   }
 
   mod helpers {
     use super::*;
+
+    /// Per-site `profile @ P`: `result[a,j] = sum_i profile[a,i] * P[i,j,a]`.
+    ///
+    /// Profile shape `(sites, states)`, transition tensor shape `(states, states, sites)`.
+    pub fn profile_times_transition(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
+      let n_sites = profile.nrows();
+      let mut result = Array2::zeros(profile.raw_dim());
+      for a in 0..n_sites {
+        result.row_mut(a).assign(&profile.row(a).dot(&p.slice(s![.., .., a])));
+      }
+      result
+    }
+
+    /// Per-site `profile @ P^T`: `result[a,i] = sum_j profile[a,j] * P[i,j,a]`.
+    ///
+    /// Profile shape `(sites, states)`, transition tensor shape `(states, states, sites)`.
+    pub fn profile_times_transition_t(profile: &Array2<f64>, p: &Array3<f64>) -> Array2<f64> {
+      let n_sites = profile.nrows();
+      let mut result = Array2::zeros(profile.raw_dim());
+      for a in 0..n_sites {
+        result
+          .row_mut(a)
+          .assign(&profile.row(a).dot(&p.slice(s![.., .., a]).t()));
+      }
+      result
+    }
 
     /// Construct a simple 2-site model where site 0 has uniform pi and site 1 has skewed pi.
     pub fn two_site_model() -> GTRSiteSpecific {
