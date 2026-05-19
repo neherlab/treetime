@@ -1,6 +1,7 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::clock::reroot::{RerootParams, RerootResult, reroot_in_place};
+use crate::clock::reroot::{RerootParams, reroot_in_place};
+use treetime_graph::reroot::RerootResult;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;

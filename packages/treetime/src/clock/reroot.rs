@@ -13,7 +13,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
 
-pub use topology_reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges, RerootResult};
+use topology_reroot::{EdgeSplitInfo, RerootResult};
 
 /// Controls reroot behavior for graph topology changes.
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
