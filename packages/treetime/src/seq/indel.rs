@@ -1,7 +1,6 @@
-use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::Seq;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
@@ -23,9 +22,9 @@ impl InDel {
     let seq = seq.into();
     assert!(range.0 <= range.1);
     assert_eq!(seq.len(), range.1 - range.0);
-    if seq.iter().any(|&c| c == AsciiChar::try_new(b'-').unwrap()) {
-      debug!("InDel sequence contains gap characters: range={range:?}, del={deletion:?}, seq={:?}", seq.as_str());
-    }
+    // if seq.iter().any(|&c| c == AsciiChar::try_new(b'-').unwrap()) {
+    //   debug!("InDel sequence contains gap characters: range={range:?}, del={deletion:?}, seq={:?}", seq.as_str());
+    // }
     Self { range, seq, deletion }
   }
 
