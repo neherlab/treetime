@@ -32,9 +32,57 @@ declare -A ALIASES=(
   ["L"]="list"
 )
 
+function is_known_command() {
+  local token="${1:-}"
+  [[ -n "${token}" ]] || return 1
+  [[ -n "${ALIASES[$token]:-}" ]] && return 0
+  for full in "${ALIASES[@]}"; do
+    [[ "${full}" == "${token}" ]] && return 0
+  done
+  return 1
+}
+
+function show_usage() {
+  local commands_list
+  commands_list="$(for alias in "${!ALIASES[@]}"; do printf ' - %s (%s)\n' "${ALIASES[$alias]}" "${alias}"; done | sort)"
+  printf "Usage: %s <command> [args...]\n\nMultiple commands run in sequence:\n  %s l t          # lint, then test\n  %s lf f t       # lint-fix, format, test\n\nAvailable commands:\n%s\n" "${0##*/}" "${0##*/}" "${0##*/}" "${commands_list}" >&2
+}
+
 function main() {
   declare -x RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 
+  if [[ $# -eq 0 ]]; then
+    show_usage
+    exit 1
+  fi
+
+  if ! is_known_command "${1}"; then
+    printf "Error: Unknown command '%s'\n\n" "${1}" >&2
+    show_usage
+    exit 1
+  fi
+
+  # Split args into command groups at each recognized command/alias boundary.
+  # Each known command starts a new group; non-command tokens are args to the preceding group.
+  local -a cmd_groups=()
+  local current=""
+  for arg in "$@"; do
+    if is_known_command "${arg}"; then
+      [[ -n "${current}" ]] && cmd_groups+=("${current}")
+      current="${arg}"
+    else
+      current+=$'\x1f'"${arg}"
+    fi
+  done
+  [[ -n "${current}" ]] && cmd_groups+=("${current}")
+
+  for group in "${cmd_groups[@]}"; do
+    IFS=$'\x1f' read -r -a parts <<< "${group}"
+    run_one "${parts[@]}"
+  done
+}
+
+function run_one() {
   local cmd="${1:-}"
   shift || true
 
@@ -57,12 +105,6 @@ function main() {
   local build_rustflags="-C linker-features=-lld ${RUSTFLAGS:-}"
 
   case "${cmd}" in
-  "")
-    local commands_list
-    commands_list="$(for alias in "${!ALIASES[@]}"; do printf ' - %s (%s)\n' "${ALIASES[$alias]}" "${alias}"; done | sort)"
-    printf "Usage: %s <command> [args...]\n\nAvailable commands:\n%s\n" "${0##*/}" "${commands_list}" >&2
-    exit 1
-    ;;
   "build")
     declare -x RUSTFLAGS="${build_rustflags}"
     nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
@@ -187,7 +229,7 @@ function main() {
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
     ;;
   "quality")
-    "${BASH_SOURCE[0]}" lint-fix "$@" && "${BASH_SOURCE[0]}" format "$@" && "${BASH_SOURCE[0]}" test-all "$@"
+    run_one lint-fix "$@" && run_one format "$@" && run_one test-all "$@"
     ;;
   "why")
     nicely cargo -q tree -i -p ${ci_flag} "$@"
@@ -226,9 +268,8 @@ for kind, name in sorted(targets):
       "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
     ;;
   *)
-    local commands_list
-    commands_list="$(for alias in "${!ALIASES[@]}"; do printf ' - %s (%s)\n' "${ALIASES[$alias]}" "${alias}"; done | sort)"
-    printf "Error: Unknown command '%s'\n\nAvailable commands:\n%s\n" "${cmd}" "${commands_list}" >&2
+    printf "Error: Unknown command '%s'\n\n" "${cmd}" >&2
+    show_usage
     exit 1
     ;;
   esac
