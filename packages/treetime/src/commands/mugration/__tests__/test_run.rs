@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::mugration::input::MugrationInput;
-  use crate::commands::mugration::run::{
+  use crate::mugration::input::MugrationInput;
+  use crate::mugration::mugration::{
     apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, execute_mugration, validate_weight_coverage,
   };
   use crate::partition::discrete_states::DiscreteStates;

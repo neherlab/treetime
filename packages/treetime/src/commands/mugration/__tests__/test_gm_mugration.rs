@@ -128,9 +128,9 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::mugration::input::MugrationInput;
-    use crate::commands::mugration::output::MugrationResult;
-    use crate::commands::mugration::run::execute_mugration;
+    use crate::mugration::input::MugrationInput;
+    use crate::mugration::mugration::execute_mugration;
+    use crate::mugration::result::MugrationResult;
     use eyre::Report;
     use indexmap::IndexMap;
     use serde::Deserialize;

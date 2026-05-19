@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::comment_provider::PartitionCommentProvider;
-  use crate::commands::mugration::input::MugrationInput;
-  use crate::commands::mugration::run::execute_mugration;
+  use crate::mugration::input::MugrationInput;
+  use crate::mugration::mugration::execute_mugration;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;

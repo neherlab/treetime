@@ -8,6 +8,7 @@ pub mod constants;
 pub mod gtr;
 pub mod hacks;
 pub mod io;
+pub mod mugration;
 pub mod optimize;
 pub mod partition;
 pub mod payload;
