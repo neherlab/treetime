@@ -112,8 +112,6 @@ pub trait PartitionBranchOps: Send + Sync {
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report>;
 }
 
-pub trait PartitionMarginal {}
-
 pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync
 where
   N: GraphNode + Named,
@@ -126,7 +124,7 @@ where
   fn get_sequence_length(&self) -> usize;
 }
 
-pub trait PartitionMarginalOps<N, E>: PartitionMarginalPasses<N, E> + PartitionMarginal
+pub trait PartitionMarginalOps<N, E>: PartitionMarginalPasses<N, E>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,

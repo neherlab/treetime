@@ -8,7 +8,7 @@ use crate::partition::marginal_core::{
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps,
   PartitionMarginalPasses, PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
@@ -76,8 +76,6 @@ impl HasLogLh for PartitionMarginalDense {
     self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
   }
 }
-
-impl PartitionMarginal for PartitionMarginalDense {}
 
 impl PartitionRerootOps for PartitionMarginalDense {}
 

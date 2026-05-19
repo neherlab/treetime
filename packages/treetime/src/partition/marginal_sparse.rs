@@ -4,7 +4,7 @@ use crate::partition::marginal_passes;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginal, PartitionMarginalOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps,
   PartitionMarginalPasses, PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::seq::mutation::Sub;
@@ -92,8 +92,6 @@ impl HasLogLh for PartitionMarginalSparse {
     self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
   }
 }
-
-impl PartitionMarginal for PartitionMarginalSparse {}
 
 impl PartitionRerootOps for PartitionMarginalSparse {
   fn apply_reroot(&mut self, changes: &RerootChanges) -> Result<(), Report> {
