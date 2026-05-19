@@ -7,6 +7,7 @@
 //! - Root state correctness for known ancestral sequences
 
 #[cfg(test)]
+#[allow(clippy::float_cmp, reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment")]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
@@ -18,6 +19,7 @@ mod tests {
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
+  use pretty_assertions::assert_eq;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -133,8 +135,8 @@ mod tests {
     let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // Sparse gives exact integer counts: one A->C substitution
-    pretty_assert_ulps_eq!(1.0, counts.nij[[IDX_C, IDX_A]], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(0.0, counts.nij[[IDX_A, IDX_C]], epsilon = 1e-9);
+    assert_eq!(1.0, counts.nij[[IDX_C, IDX_A]]);
+    assert_eq!(0.0, counts.nij[[IDX_A, IDX_C]]);
 
     Ok(())
   }
@@ -290,7 +292,7 @@ mod tests {
     // root_state: both should agree on total and dominant state
     let dense_total = dense.root_state.sum();
     let sparse_total = sparse.root_state.sum();
-    pretty_assert_ulps_eq!(dense_total, sparse_total, epsilon = 1e-9);
+    assert_eq!(dense_total, sparse_total);
 
     let dense_argmax = dense
       .root_state
@@ -346,7 +348,7 @@ mod tests {
       counts.root_state[IDX_A]
     );
     // Total should equal alignment length
-    pretty_assert_ulps_eq!(8.0, counts.root_state.sum(), epsilon = 1e-9);
+    assert_eq!(8.0, counts.root_state.sum());
 
     Ok(())
   }
@@ -376,10 +378,10 @@ mod tests {
 
     // Sparse root_state comes from Fitch composition counts.
     // All 8 positions should be A at root (3/4 leaves have A at pos 0).
-    pretty_assert_ulps_eq!(8.0, counts.root_state[IDX_A], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(0.0, counts.root_state[IDX_C], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(0.0, counts.root_state[IDX_G], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(0.0, counts.root_state[IDX_T], epsilon = 1e-9);
+    assert_eq!(8.0, counts.root_state[IDX_A]);
+    assert_eq!(0.0, counts.root_state[IDX_C]);
+    assert_eq!(0.0, counts.root_state[IDX_G]);
+    assert_eq!(0.0, counts.root_state[IDX_T]);
 
     Ok(())
   }
@@ -436,8 +438,8 @@ mod tests {
 
     // C->A and T->C reverses are zero (no such mutations in input).
     // A->G and G->A are mutual reverses: both nij[G,A] and nij[A,G] are non-zero.
-    pretty_assert_ulps_eq!(0.0, counts.nij[[IDX_A, IDX_C]], epsilon = 1e-9); // nij[A, C] = 0
-    pretty_assert_ulps_eq!(0.0, counts.nij[[IDX_C, IDX_T]], epsilon = 1e-9); // nij[C, T] = 0
+    assert_eq!(0.0, counts.nij[[IDX_A, IDX_C]]);
+    assert_eq!(0.0, counts.nij[[IDX_C, IDX_T]]);
 
     Ok(())
   }
@@ -516,9 +518,9 @@ mod tests {
     let counts = get_mutation_counts_fitch(&graph, &fitch)?;
 
     // All Ti values should be equal (uniform composition, no mutations)
-    pretty_assert_ulps_eq!(counts.Ti[IDX_A], counts.Ti[IDX_C], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(counts.Ti[IDX_C], counts.Ti[IDX_G], epsilon = 1e-9);
-    pretty_assert_ulps_eq!(counts.Ti[IDX_G], counts.Ti[IDX_T], epsilon = 1e-9);
+    assert_eq!(counts.Ti[IDX_A], counts.Ti[IDX_C]);
+    assert_eq!(counts.Ti[IDX_C], counts.Ti[IDX_G]);
+    assert_eq!(counts.Ti[IDX_G], counts.Ti[IDX_T]);
 
     Ok(())
   }
@@ -598,7 +600,7 @@ mod tests {
     let counts = get_mutation_counts_dense(&graph, &partition)?;
 
     // root_state sums to alignment length (one count per position)
-    pretty_assert_ulps_eq!(14.0, counts.root_state.sum(), epsilon = 1e-9);
+    assert_eq!(14.0, counts.root_state.sum());
 
     Ok(())
   }
@@ -632,8 +634,8 @@ mod tests {
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
 
     for k in 0..4 {
-      pretty_assert_ulps_eq!(0.0, dense.nij[[k, k]], epsilon = 1e-15);
-      pretty_assert_ulps_eq!(0.0, sparse.nij[[k, k]], epsilon = 1e-15);
+      assert_eq!(0.0, dense.nij[[k, k]]);
+      assert_eq!(0.0, sparse.nij[[k, k]]);
     }
 
     Ok(())

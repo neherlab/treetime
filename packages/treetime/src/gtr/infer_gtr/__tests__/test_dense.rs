@@ -9,12 +9,12 @@ mod tests {
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::pretty_assert_abs_diff_eq;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
+  use pretty_assertions::assert_eq;
 
   use ndarray::{Array1, Array2, array};
   use parking_lot::RwLock;
@@ -92,7 +92,7 @@ mod tests {
     }
 
     // Root composition: 1 of each nucleotide (ACGT)
-    pretty_assert_ulps_eq!(array![1.0, 1.0, 1.0, 1.0], counts.root_state, epsilon = 1e-9);
+    assert_eq!(array![1.0, 1.0, 1.0, 1.0], counts.root_state);
 
     Ok(())
   }
@@ -227,13 +227,13 @@ mod tests {
     accumulate_mutation_counts(&mut_stack, 0.0, &mut nij, &mut ti);
 
     // Ti == 0: no evolutionary time at zero branch length
-    let expected_ti = Array1::zeros(n_states);
-    pretty_assert_abs_diff_eq!(expected_ti, ti, epsilon = 1e-15);
+    let expected_ti: Array1<f64> = Array1::zeros(n_states);
+    assert_eq!(expected_ti, ti);
 
     // nij == I: identity expQt means child = parent at every site, so each of the 4
     // sites contributes P(child=k, parent=k) = 1.0 on the diagonal, zero off-diagonal
-    let expected_nij = Array2::eye(n_states);
-    pretty_assert_abs_diff_eq!(expected_nij, nij, epsilon = 1e-15);
+    let expected_nij: Array2<f64> = Array2::eye(n_states);
+    assert_eq!(expected_nij, nij);
 
     Ok(())
   }

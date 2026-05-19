@@ -12,6 +12,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -41,12 +42,11 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch)?;
-    pretty_assert_ulps_eq!(
+    assert_eq!(
       counts_actual.nij,
-      array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]],
-      epsilon = 1e-9
+      array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]]
     );
-    pretty_assert_ulps_eq!(counts_actual.root_state, array![4.0, 3.0, 3.0, 4.0], epsilon = 1e-9);
+    assert_eq!(counts_actual.root_state, array![4.0, 3.0, 3.0, 4.0]);
     pretty_assert_ulps_eq!(
       counts_actual.Ti,
       array![
