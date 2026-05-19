@@ -128,8 +128,6 @@ pub fn resolve_indels_backward(
     }
   }
 
-  // debug!("resolve_indels_backward: consensus_gaps={consensus_gaps:?}, n_children={n_children}");
-  // debug!("resolve_indels_backward: variable_indel={variable_indel:?}, resolved_gaps={resolved_gaps:?}");
   IndelsBackward {
     variable_indel,
     resolved_gaps,
@@ -142,7 +140,7 @@ pub fn resolve_indels_backward(
 /// Also detects consensus gap differences between node and parent (non-variable
 /// deletions/insertions).
 ///
-/// Returns the list of resolved InDel entries for the edge.
+/// Returns the list of resolved InDel entries for the edge and the final gap set of the node.
 ///
 /// Dense partitions do not need `InDel::seq` content for inserted sequences
 /// because the full sequence is available from the dense reconstruction.
@@ -208,18 +206,5 @@ pub fn resolve_indels_forward(
     // !in_parent && !in_node: no gap on either side, nothing to do.
   }
 
-  let indels: Vec<InDel> = deletions.into_iter().chain(insertions).collect();
-
-  let mut sorted = indels.iter().map(|i| i.range).collect::<Vec<_>>();
-  sorted.sort_unstable();
-  for w in sorted.windows(2) {
-    assert!(
-      w[1].0 >= w[0].1,
-      "resolve_indels_forward: overlapping indel ranges: {:?} and {:?}",
-      w[0],
-      w[1]
-    );
-  }
-
-  (indels, new_node_gaps)
+  (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }

@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use log::debug;
 use crate::representation::payload::sparse::{Deletion, SparseEdgePartition, SparseSeqInfo};
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
@@ -121,14 +120,13 @@ pub fn resolve_root_forward(
     sequence[*pos] = chosen;
     chosen_state.insert(*pos, chosen);
   }
-  debug!("resolve_root_forward: gaps before variable_indel={gaps:?}");
+
   // process indels as majority rule at the root
   for (r, indel) in variable_indel {
     if indel.deleted > indel.present {
       gaps.push(*r);
     }
   }
-  debug!("resolve_root_forward: gaps after variable_indel={gaps:?}");
 }
 
 /// Forward pass: resolve non-root variable positions, detecting substitutions.
@@ -210,7 +208,7 @@ pub fn finalize_sequence_forward(
     // composition is already adjusted
     sequence[r.0..r.1].fill(alphabet.unknown());
   }
-  // debug!("finalize_sequence_forward: seq={sequence:?}");
+
   if is_root {
     // if the node is the root, the composition is calculated from the full sequence
     *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
