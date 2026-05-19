@@ -5,6 +5,7 @@ use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
 use treetime_graph::node::{Named, Outlier};
+use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
 pub struct OutlierRecord {
@@ -59,7 +60,7 @@ pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd:
   for r in &outliers {
     warn!(
       "{:>20} {:>12.2} {:>14.2} {:>10.2}",
-      truncate_name(&r.name, 20),
+      truncate_right_with_ellipsis(&r.name, 20),
       r.given_date,
       r.apparent_date,
       r.residual
@@ -92,13 +93,4 @@ pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
 
     node.payload.bad_branch = all_children_bad;
   });
-}
-
-fn truncate_name(name: &str, max_len: usize) -> String {
-  if name.chars().count() <= max_len {
-    name.to_owned()
-  } else {
-    let truncated: String = name.chars().take(max_len.saturating_sub(3)).collect();
-    format!("{truncated}...")
-  }
 }
