@@ -375,7 +375,7 @@ where
         node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
       }
 
-      // Resolve indels using parent context. Use a scratch copy of gaps so that
+      // Resolve indels using parent context.
       let (parent_key, edge_key) =
         get_exactly_one(&node.parent_keys).expect("Non-root dense node must have exactly one parent");
       let parent_gaps = self.nodes[parent_key].seq.gaps.clone();
@@ -384,18 +384,15 @@ where
       let node_data = self.nodes.get_mut(&node.key).unwrap();
       let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
 
-      let node_non_char = node_data.seq.non_char.clone();
       let (indels, new_gaps) = resolve_indels_forward(
         &variable_indel,
         &node_data.seq.gaps,
-        &node_non_char,
+        &node_data.seq.non_char,
         &parent_gaps,
         &parent_sequence,
         &node_data.seq.sequence,
       );
       node_data.seq.gaps = new_gaps;
-
-      let node_data = self.nodes.get_mut(&node.key).unwrap();
       node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
       for gap in &node_data.seq.gaps {
         node_data.seq.sequence[gap.0..gap.1].fill(self.alphabet.gap());
