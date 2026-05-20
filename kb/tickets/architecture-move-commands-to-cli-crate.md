@@ -2,9 +2,7 @@
 
 ## Description
 
-After domain logic extraction (ancestral, clock, optimize, coalescent, timetree inference, mugration) and clap removal from domain types, the `commands/` module in the `treetime` library contains only thin CLI orchestration: argument structs (`args.rs`), command runners (`run.rs`), and output formatting (`output/`). Move this entire module to `treetime-cli`.
-
-This is the final step that makes the `treetime` library crate a pure domain library with no CLI concepts.
+After domain logic extraction (ancestral, clock, optimize, coalescent, timetree inference, mugration), the `commands/` module in the `treetime` library contains only thin CLI orchestration: argument structs (`args.rs`), command runners (`run.rs`), and output formatting (`output/`). Move this entire module to `treetime-cli`.
 
 ## What to move
 
@@ -30,7 +28,6 @@ Nothing from `commands/`. The library crate exposes domain modules only:
 
 All of these must be completed first:
 
-- `architecture-remove-clap-from-domain-types.md`
 - `architecture-extract-timetree-inference-from-commands.md`
 - ~~`architecture-extract-mugration-domain-logic.md`~~ (resolved)
 - `architecture-break-representation-gtr-cycle.md`
@@ -39,7 +36,6 @@ All of these must be completed first:
 ## Validation
 
 - `treetime` library crate has no `commands/` module
-- `treetime` library crate has no `clap` dependency
 - `treetime-cli` builds and passes all existing tests
 - No circular dependencies between `treetime` and `treetime-cli`
 

@@ -35,14 +35,13 @@ Initial implementation:
 
 - Cargo.toml with workspace inheritance
 - `src/lib.rs` with a single command handler calling `treetime::commands::ancestral`
-- Proof that the library API is consumable without clap
 - No frontend UI (placeholder HTML only)
 
 Full desktop UI implementation is out of scope for this ticket.
 
 ## Prerequisites
 
-- clap removed from `treetime` library crate (ticket: `architecture-remove-clap-from-domain-types.md`)
+- `commands/` module moved to `treetime-cli` (ticket: `architecture-move-commands-to-cli-crate.md`)
 
 ## Related issues
 

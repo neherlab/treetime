@@ -38,9 +38,9 @@ Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discre
 
 Internal helpers narrowed to `pub(super)` or private. 7 submodules narrowed from `pub` to `pub(super)`. API functions already `pub`. No `pub(crate)` remains in `optimize/`.
 
-### ~~clap derives in domain types~~ Resolved
+### ~~clap derives in domain types~~ Closed
 
-`clap` is now an optional dependency behind a `clap` feature flag. Domain types use `#[cfg_attr(feature = "clap", ...)]` for CLI derives. The `commands/` module is gated behind the same feature.
+Decision: keep `clap` as a direct dependency. Domain types derive `clap::ValueEnum`/`clap::Args` directly.
 
 ## Dead code and cosmetic
 

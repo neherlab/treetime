@@ -10,9 +10,9 @@ An AI refactoring agent moved the entire timetree implementation from the librar
 
 ## Scope
 
-### ~~clap contamination in library domain types~~ (resolved)
+### ~~clap contamination in library domain types~~ Closed
 
-Resolved: `clap` is now an optional dependency behind a `clap` feature flag. Domain types use `#[cfg_attr(feature = "clap", ...)]` for CLI derives. The `commands/` module is gated behind the same feature. Library consumers no longer pull in `clap`.
+Decision: keep `clap` as a direct dependency of the `treetime` library crate. Domain types derive `clap::ValueEnum`/`clap::Args` directly. Non-CLI clients accept the transitive dependency.
 
 ### Domain logic in commands/
 
@@ -32,9 +32,6 @@ These crates create structural backpressure: if the library must remain consumab
 
 ## Impact
 
-- Blocks Python bindings (PyO3 cannot depend on a library that requires `clap`)
-- Blocks desktop app (Electron/Tauri cannot call into CLI-contaminated library)
-- Blocks web assembly target (clap is not wasm-compatible)
 - Encourages AI agents and contributors to treat `treetime-cli` as the primary crate, moving domain logic out of the library
 
 ## Related issues

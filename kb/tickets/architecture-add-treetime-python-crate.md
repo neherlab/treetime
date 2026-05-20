@@ -55,7 +55,7 @@ Initial implementation should expose a minimal API surface covering one command 
 
 ## Prerequisites
 
-- clap removed from `treetime` library crate (ticket: `architecture-remove-clap-from-domain-types.md`)
+- `commands/` module moved to `treetime-cli` (ticket: `architecture-move-commands-to-cli-crate.md`)
 - timetree domain logic extracted from `commands/` (ticket: `architecture-extract-timetree-inference-from-commands.md`)
 
 ## Related issues

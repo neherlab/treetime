@@ -16,9 +16,7 @@ These are domain concepts (how to treat branch lengths, how to root the tree, wh
 - `RerootMode` to `clock/find_best_root/params.rs` (alongside `BranchPointOptimizationParams`)
 - `MethodAncestral` to `ancestral/` (new file or existing params module)
 
-Strip `clap::ValueEnum` derives. Replace with `strum::EnumString` + `strum::Display` for string parsing. CLI args files use clap's `value_parser` or wrapper types.
-
-Delete `commands/shared/args.rs` and `commands/shared/mod.rs` after all enums moved.
+Keep `clap::ValueEnum` derives on the moved types. Delete `commands/shared/args.rs` and `commands/shared/mod.rs` after all enums moved.
 
 ## Validation
 

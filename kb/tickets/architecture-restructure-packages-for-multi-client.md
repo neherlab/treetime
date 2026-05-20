@@ -10,11 +10,9 @@ This is an umbrella ticket coordinating prerequisite work items. Each item has i
 
 The work items have a dependency chain. Execute in this order:
 
-### 1. Remove clap from library domain types
+### ~~1. Remove clap from library domain types~~ Cancelled
 
-Ticket: `architecture-remove-clap-from-domain-types.md`
-
-Remove `clap` from `treetime` crate's `[dependencies]`. Move CLI-specific derives to wrapper types in `treetime-cli` or `commands/*/args.rs`. Domain types use `strum` for string parsing.
+Decision: keep `clap` as a direct dependency of the `treetime` library crate.
 
 ### 2. Extract remaining domain logic from commands/
 
@@ -24,10 +22,9 @@ Three extraction tickets, independent of each other:
 - `architecture-extract-mugration-domain-logic.md` - move mugration business logic to `src/mugration/`
 - `architecture-extract-prune-domain-logic.md` - move pruning algorithms to `src/prune/`
 
-### 3. Move shared domain enums and remove clap from domain
+### 3. Move shared domain enums
 
-- `architecture-move-shared-domain-enums-from-commands.md` - move `BranchLengthMode`, `RerootMode`, `MethodAncestral` to domain modules
-- `architecture-remove-clap-from-domain-types.md` - strip clap from 6 domain files, use strum
+- `architecture-move-shared-domain-enums-from-commands.md` - move `BranchLengthMode`, `RerootMode`, `MethodAncestral` to domain modules (keep clap derives)
 
 ### 4. Move commands/ shell to CLI crate
 
@@ -81,7 +78,6 @@ treetime-desktop (client)
 
 ## Validation
 
-- `treetime` crate compiles without `clap` dependency
 - `treetime` crate has no `commands/` module
 - `treetime-cli` builds and passes all existing tests
 - `treetime-python` builds a wheel and runs a smoke test
@@ -97,7 +93,6 @@ Coordinates:
 - [architecture-extract-mugration-domain-logic.md](architecture-extract-mugration-domain-logic.md)
 - [architecture-extract-prune-domain-logic.md](architecture-extract-prune-domain-logic.md)
 - [architecture-move-shared-domain-enums-from-commands.md](architecture-move-shared-domain-enums-from-commands.md)
-- [architecture-remove-clap-from-domain-types.md](architecture-remove-clap-from-domain-types.md)
 - [architecture-move-commands-to-cli-crate.md](architecture-move-commands-to-cli-crate.md)
 - [architecture-add-treetime-python-crate.md](architecture-add-treetime-python-crate.md)
 - [architecture-add-treetime-desktop-crate.md](architecture-add-treetime-desktop-crate.md)
