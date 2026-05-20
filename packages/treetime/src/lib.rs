@@ -11,6 +11,7 @@ pub mod mugration;
 pub mod optimize;
 pub mod partition;
 pub mod payload;
+pub mod prune;
 pub mod seq;
 pub mod timetree;
 
