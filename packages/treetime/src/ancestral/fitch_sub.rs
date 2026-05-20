@@ -113,7 +113,6 @@ pub fn resolve_root_forward(
   variable: &BTreeMap<usize, StateSet>,
   variable_indel: &BTreeMap<(usize, usize), Deletion>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
-  alphabet: &Alphabet,
 ) {
   for (pos, states) in variable {
     let chosen = states.get_one();

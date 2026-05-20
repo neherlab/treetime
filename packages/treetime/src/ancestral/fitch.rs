@@ -196,7 +196,6 @@ where
         &seq.fitch.variable,
         &seq.fitch.variable_indel,
         &mut seq.fitch.chosen_state,
-        alphabet,
       );
     } else {
       let (parent_key, edge_key) =

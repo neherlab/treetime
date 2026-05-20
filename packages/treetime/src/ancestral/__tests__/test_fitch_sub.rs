@@ -222,7 +222,7 @@ mod tests {
     let variable_indel = BTreeMap::new();
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state, &*NUC_ALPHABET);
+    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
 
     assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'), "get_one picks alphabetically first");
     assert_eq!(chosen_state[&0], AsciiChar::from_byte_unchecked(b'A'));
@@ -236,7 +236,7 @@ mod tests {
     let variable_indel = btreemap! { (1usize, 3usize) => Deletion { deleted: 3, present: 1 } };
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state, &*NUC_ALPHABET);
+    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
 
     assert_eq!(gaps, vec![(1, 3)], "Majority deleted -> gap added");
   }
@@ -249,7 +249,7 @@ mod tests {
     let variable_indel = btreemap! { (1usize, 3usize) => Deletion { deleted: 1, present: 3 } };
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state, &*NUC_ALPHABET);
+    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
 
     assert!(gaps.is_empty(), "Minority deleted -> no gap");
   }
