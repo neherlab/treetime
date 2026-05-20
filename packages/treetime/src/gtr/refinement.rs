@@ -1,23 +1,25 @@
 use crate::ancestral::gtr_inference_dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
-use crate::ancestral::marginal::{marginal_backward_mut, update_marginal_mut};
+use crate::ancestral::marginal::{marginal_backward, update_marginal};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{
   InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl, is_profile_informative,
 };
-use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
-use crate::partition::traits::HasLogLh;
+use crate::partition::marginal_core::MarginalPartition;
+use crate::partition::traits::PartitionMarginalPasses;
 use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::{Array1, Array2};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_utils::array::ndarray::argmax_first;
 
-pub fn refine_gtr_iterative<N, E>(
+pub fn refine_gtr_iterative<N, E, P>(
   graph: &Graph<N, E, ()>,
-  partition: &mut PartitionMarginalDiscrete,
+  partition: &Arc<RwLock<P>>,
   iterations: usize,
   fixed_pi: Option<&Array1<f64>>,
   pc: f64,
@@ -26,8 +28,9 @@ pub fn refine_gtr_iterative<N, E>(
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
+  P: MarginalPartition<N, E> + PartitionMarginalPasses<N, E>,
 {
-  let n_states = partition.n_states();
+  let n_states = partition.read_arc().marginal_data().gtr.pi.len();
   let options = InferGtrOptions {
     fixed_pi: fixed_pi.cloned(),
     pc,
@@ -36,77 +39,78 @@ where
 
   let counts = count_transitions(graph, partition)?;
   let result = infer_gtr_impl(&counts, &options)?;
-  partition.data.gtr = build_gtr_from_inference(n_states, &result)?;
+  partition.write_arc().marginal_data_mut().gtr = build_gtr_from_inference(n_states, &result)?;
   debug!(
-    "Mugration GTR refinement: initial inference, mu = {:.6}",
-    partition.data.gtr.mu
+    "GTR refinement: initial inference, mu = {:.6}",
+    partition.read_arc().marginal_data().gtr.mu
   );
 
   optimize_gtr_rate(graph, partition)?;
   debug!(
-    "Mugration GTR refinement: initial rate optimization, mu = {:.6}",
-    partition.data.gtr.mu
+    "GTR refinement: initial rate optimization, mu = {:.6}",
+    partition.read_arc().marginal_data().gtr.mu
   );
 
   for i in 0..iterations {
     let counts = count_transitions(graph, partition)?;
     let result = infer_gtr_impl(&counts, &options)?;
-    partition.data.gtr = build_gtr_from_inference(n_states, &result)?;
+    partition.write_arc().marginal_data_mut().gtr = build_gtr_from_inference(n_states, &result)?;
 
     optimize_gtr_rate(graph, partition)?;
     debug!(
-      "Mugration GTR refinement: iteration {i}, mu = {:.6}",
-      partition.data.gtr.mu
+      "GTR refinement: iteration {i}, mu = {:.6}",
+      partition.read_arc().marginal_data().gtr.mu
     );
   }
 
   if let Some(correction) = sampling_bias_correction {
-    partition.data.gtr.mu *= correction;
+    partition.write_arc().marginal_data_mut().gtr.mu *= correction;
     info!(
-      "Mugration: applied sampling bias correction {correction:.4}, mu = {:.6}",
-      partition.data.gtr.mu
+      "Applied sampling bias correction {correction:.4}, mu = {:.6}",
+      partition.read_arc().marginal_data().gtr.mu
     );
   }
 
-  let log_lh = update_marginal_mut(graph, partition)?;
+  let partitions = std::slice::from_ref(partition);
+  let log_lh = update_marginal(graph, partitions)?;
 
+  let guard = partition.read_arc();
+  let data = guard.marginal_data();
   info!(
-    "Mugration GTR refinement: final log likelihood = {log_lh:.4}, mu = {:.6}, pi = {:?}",
-    partition.data.gtr.mu, partition.data.gtr.pi
+    "GTR refinement: final log likelihood = {log_lh:.4}, mu = {:.6}, pi = {:?}",
+    data.gtr.mu, data.gtr.pi
   );
 
   Ok(log_lh)
 }
 
-fn count_transitions<N, E>(
-  graph: &Graph<N, E, ()>,
-  partition: &PartitionMarginalDiscrete,
-) -> Result<MutationCounts, Report>
+fn count_transitions<N, E, P>(graph: &Graph<N, E, ()>, partition: &Arc<RwLock<P>>) -> Result<MutationCounts, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
+  P: MarginalPartition<N, E>,
 {
-  let n_states = partition.n_states();
+  let guard = partition.read_arc();
+  let data = guard.marginal_data();
+  let n_states = data.gtr.pi.len();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
-    let branch_length = partition
-      .data
-      .effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
+    let branch_length = data.effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
     let edge_key = edge_arc.key();
 
-    let edge_data = &partition.data.edges[&edge_key];
+    let edge_data = &data.edges[&edge_key];
 
-    let exp_qt = partition.data.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
+    let exp_qt = data.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
     let mut_stack = get_branch_mutation_matrix(&edge_data.msg_to_child.dis, &edge_data.msg_to_parent.dis, &exp_qt);
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }
 
   let root = graph.get_exactly_one_root()?;
   let root_key = root.read_arc().key();
-  let root_profile = partition.data.nodes[&root_key].profile.dis.row(0);
+  let root_profile = data.nodes[&root_key].profile.dis.row(0);
   let mut root_state = Array1::zeros(n_states);
   if is_profile_informative(root_profile, n_states) {
     if let Some(root_idx) = argmax_first(&root_profile) {
@@ -128,49 +132,60 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
   })
 }
 
-fn optimize_gtr_rate<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionMarginalDiscrete) -> Result<(), Report>
+fn optimize_gtr_rate<N, E, P>(graph: &Graph<N, E, ()>, partition: &Arc<RwLock<P>>) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
+  P: MarginalPartition<N, E> + PartitionMarginalPasses<N, E>,
 {
-  let old_mu = partition.data.gtr.mu;
+  let old_mu = partition.read_arc().marginal_data().gtr.mu;
   let sqrt_old_mu = old_mu.sqrt();
   let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
   let lo = 0.01 * sqrt_old_mu;
   let hi = 100.0 * sqrt_old_mu;
 
-  let run_backward = |partition: &mut PartitionMarginalDiscrete, sqrt_mu: f64| -> f64 {
-    partition.data.gtr.mu = sqrt_mu * sqrt_mu;
-    for node_data in partition.data.nodes.values_mut() {
-      node_data.profile.log_lh = 0.0;
+  let partitions = std::slice::from_ref(partition);
+
+  let run_backward = |sqrt_mu: f64| -> f64 {
+    {
+      let mut guard = partition.write_arc();
+      let data = guard.marginal_data_mut();
+      data.gtr.mu = sqrt_mu * sqrt_mu;
+      for node_data in data.nodes.values_mut() {
+        node_data.profile.log_lh = 0.0;
+      }
     }
-    match marginal_backward_mut(graph, partition) {
-      Ok(()) => -partition.get_log_lh(root_key),
+    match marginal_backward(graph, partitions) {
+      Ok(()) => -partition.read_arc().get_log_lh(root_key),
       Err(e) => {
-        warn!("Mugration: backward pass failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+        warn!(
+          "GTR rate optimization: backward pass failed at mu={:.6}: {e}",
+          sqrt_mu * sqrt_mu
+        );
         f64::INFINITY
       },
     }
   };
 
-  let cost_lo = run_backward(partition, lo);
-  let cost_mid = run_backward(partition, sqrt_old_mu);
-  let cost_hi = run_backward(partition, hi);
+  let cost_lo = run_backward(lo);
+  let cost_mid = run_backward(sqrt_old_mu);
+  let cost_hi = run_backward(hi);
 
   if cost_mid < cost_lo && cost_mid < cost_hi {
     let optimal_sqrt_mu = {
-      let mut cost_fn = |sqrt_mu: f64| -> f64 { run_backward(partition, sqrt_mu) };
+      let mut cost_fn = |sqrt_mu: f64| -> f64 { run_backward(sqrt_mu) };
       brent_minimize_bracketed(&mut cost_fn, lo, sqrt_old_mu, hi, cost_mid, 1e-8, 100)
     };
-    run_backward(partition, optimal_sqrt_mu);
+    run_backward(optimal_sqrt_mu);
     debug!(
-      "Mugration: optimized rate mu = {:.6} (from {:.6})",
-      partition.data.gtr.mu, old_mu
+      "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
+      partition.read_arc().marginal_data().gtr.mu,
+      old_mu
     );
   } else {
-    partition.data.gtr.mu = old_mu;
-    debug!("Mugration: rate optimization skipped (no bracket), keeping mu = {old_mu:.6}");
+    partition.write_arc().marginal_data_mut().gtr.mu = old_mu;
+    debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
   }
 
   Ok(())

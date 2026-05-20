@@ -3,41 +3,9 @@ use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use treetime_graph::node::Named;
-use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
-
-/// GTR model summary for mugration output.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MugrationGtrOutput {
-  /// Attribute being reconstructed.
-  pub attribute: String,
-  /// Number of discrete states.
-  pub n_states: usize,
-  /// State names in order.
-  pub states: Vec<String>,
-  /// Equilibrium frequencies.
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
-  pub pi: Array1<f64>,
-  /// Substitution rate.
-  pub mu: f64,
-}
-
-impl MugrationGtrOutput {
-  pub fn new(partition: &PartitionMarginalDiscrete, attribute: &str) -> Self {
-    Self {
-      attribute: attribute.to_owned(),
-      n_states: partition.n_states(),
-      states: partition.states.iter().map(|s| s.to_owned()).collect(),
-      pi: partition.data.gtr.pi.clone(),
-      mu: partition.data.gtr.mu,
-    }
-  }
-}
-
-/// Confidence profile for a single node.
 #[derive(Clone, Debug)]
 pub struct ConfidenceRow {
   /// Node name.
@@ -136,34 +104,22 @@ impl MugrationTraitsOutput {
   }
 }
 
-/// Result of mugration execution.
-///
-/// Contains all structured results needed by output builders and tests.
 #[derive(Debug)]
 pub struct MugrationResult {
-  /// GTR model summary.
-  pub gtr: MugrationGtrOutput,
-  /// Reconstructed trait assignments.
   pub traits: MugrationTraitsOutput,
-  /// Confidence profiles for all nodes.
   pub confidence: MugrationConfidenceOutput,
-  /// Total log likelihood.
   pub log_lh: f64,
-  /// The graph with ancestral state data (for tree rendering).
   pub graph: GraphAncestral,
-  /// The partition with discrete reconstruction (for tree rendering).
   pub partition: PartitionMarginalDiscrete,
 }
 
 impl MugrationResult {
   pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: f64) -> Self {
-    let gtr = MugrationGtrOutput::new(&partition, attribute);
     let assignments = extract_trait_assignments(&graph, &partition);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);
 
     Self {
-      gtr,
       traits,
       confidence,
       log_lh,
@@ -172,7 +128,6 @@ impl MugrationResult {
     }
   }
 
-  /// Get trait assignments as a map (for backward compatibility with tests).
   pub fn trait_assignments(&self) -> &IndexMap<String, String> {
     &self.traits.assignments
   }

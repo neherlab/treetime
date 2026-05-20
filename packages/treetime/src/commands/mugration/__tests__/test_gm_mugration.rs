@@ -32,11 +32,11 @@ mod tests {
     let actual = run_gm_mugration_case(input)?;
 
     let expected_states = expected.states.clone();
-    let actual_states = actual.gtr.states.clone();
+    let actual_states: Vec<String> = actual.partition.states.iter().map(|s| s.to_owned()).collect();
     assert_eq!(expected_states, actual_states);
 
     let expected_n_states = expected.states.len();
-    let actual_n_states = actual.gtr.n_states;
+    let actual_n_states = actual.partition.n_states();
     assert_eq!(expected_n_states, actual_n_states);
 
     let expected_trait_assignments = expected.trait_assignments.clone();

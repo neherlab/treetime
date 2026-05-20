@@ -74,66 +74,7 @@ where
   })
 }
 
-pub fn update_marginal_mut<N, E, P>(graph: &Graph<N, E, ()>, partition: &mut P) -> Result<f64, Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E>,
-{
-  marginal_backward_mut(graph, partition)?;
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
-  let log_lh = partition.get_log_lh(root_key);
-  trace!("Marginal log likelihood (substitution): {log_lh}");
-  marginal_forward_mut(graph, partition)?;
-  Ok(log_lh)
-}
-
-pub fn marginal_backward_mut<N, E, P>(graph: &Graph<N, E, ()>, partition: &mut P) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E>,
-{
-  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
-  let partition = Arc::new(Mutex::new(partition));
-  graph.par_iter_breadth_first_backward(|node| {
-    let mut partition = partition.lock();
-    if let Err(e) = partition.process_node_backward(&node) {
-      let mut guard = error.lock();
-      if guard.is_none() {
-        *guard = Some(e);
-      }
-      return GraphTraversalContinuation::Stop;
-    }
-    GraphTraversalContinuation::Continue
-  });
-  extract_parallel_error(error)
-}
-
-fn marginal_forward_mut<N, E, P>(graph: &Graph<N, E, ()>, partition: &mut P) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E>,
-{
-  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
-  let partition = Arc::new(Mutex::new(partition));
-  graph.par_iter_breadth_first_forward(|node| {
-    let mut partition = partition.lock();
-    if let Err(e) = partition.process_node_forward(graph, &node) {
-      let mut guard = error.lock();
-      if guard.is_none() {
-        *guard = Some(e);
-      }
-      return GraphTraversalContinuation::Stop;
-    }
-    GraphTraversalContinuation::Continue
-  });
-  extract_parallel_error(error)
-}
-
-fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+pub fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,

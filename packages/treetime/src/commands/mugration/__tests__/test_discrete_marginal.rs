@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal_mut;
+  use crate::ancestral::marginal::update_marginal;
   use crate::o;
   use crate::partition::traits::PartitionMarginalPasses;
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
+  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::sync::Arc;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
@@ -113,7 +115,8 @@ mod tests {
 
     partition.attach_traits(&graph, &traits)?;
 
-    let actual_log_lh = update_marginal_mut(&graph, &mut partition)?;
+    let partition = Arc::new(RwLock::new(partition));
+    let actual_log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?;
 
     assert!(actual_log_lh.is_finite());
     assert!(
@@ -121,6 +124,7 @@ mod tests {
       "Log-likelihood must be non-positive: {actual_log_lh}"
     );
 
+    let partition = partition.read_arc();
     let inner_profile = helpers::get_node_profile(&graph, &partition, "inner");
     helpers::assert_profile_normalized(&inner_profile);
 

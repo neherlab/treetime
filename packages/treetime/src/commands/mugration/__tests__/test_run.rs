@@ -173,15 +173,18 @@ mod tests {
 
     let result = execute_mugration(input)?;
 
-    assert_eq!(o!("country"), result.gtr.attribute);
-    assert_eq!(2, result.gtr.n_states);
-    assert_eq!(vec_of_owned!["germany", "usa"], result.gtr.states);
-    assert_eq!(2, result.gtr.pi.len());
-    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-10);
+    assert_eq!(o!("country"), result.traits.attribute);
+    assert_eq!(2, result.partition.n_states());
+    assert_eq!(
+      vec_of_owned!["germany", "usa"],
+      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+    );
+    assert_eq!(2, result.partition.data.gtr.pi.len());
+    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
     assert!(
-      result.gtr.mu > 0.1 && result.gtr.mu < 100.0,
+      result.partition.data.gtr.mu > 0.1 && result.partition.data.gtr.mu < 100.0,
       "mu should be in reasonable range for 2-state model: {}",
-      result.gtr.mu
+      result.partition.data.gtr.mu
     );
 
     assert_eq!(3, result.traits.assignments.len());
@@ -226,14 +229,17 @@ mod tests {
 
     let result = execute_mugration(input)?;
 
-    assert_eq!(3, result.gtr.n_states);
-    assert_eq!(vec_of_owned!["france", "germany", "usa"], result.gtr.states);
-    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
+    assert_eq!(3, result.partition.n_states());
+    assert_eq!(
+      vec_of_owned!["france", "germany", "usa"],
+      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+    );
+    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, result.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, result.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, result.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-12); // usa
 
     Ok(())
   }
@@ -265,14 +271,17 @@ mod tests {
 
     let result = execute_mugration(input)?;
 
-    assert_eq!(3, result.gtr.n_states);
-    assert_eq!(vec_of_owned!["france", "germany", "usa"], result.gtr.states);
-    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-12);
+    assert_eq!(3, result.partition.n_states());
+    assert_eq!(
+      vec_of_owned!["france", "germany", "usa"],
+      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+    );
+    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, result.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, result.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, result.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-12); // usa
 
     Ok(())
   }
@@ -308,10 +317,10 @@ mod tests {
     // With iterative GTR and fixed_pi from weights, final pi reflects weight proportions:
     // weights = {usa: 3, germany: 1, france: 1}, normalized = [0.2, 0.2, 0.6]
     // Pseudo-counts affect the initial model but fixed_pi keeps weight proportions in refinement.
-    assert_abs_diff_eq!(1.0, result.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, result.gtr.pi[0], epsilon = 1e-10); // france
-    assert_abs_diff_eq!(0.2, result.gtr.pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(0.6, result.gtr.pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
+    assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
+    assert_abs_diff_eq!(0.6, result.partition.data.gtr.pi[2], epsilon = 1e-10); // usa
 
     Ok(())
   }
@@ -335,7 +344,7 @@ mod tests {
       sampling_bias_correction: None,
     };
     let base_result = execute_mugration(base_input)?;
-    let base_mu = base_result.gtr.mu;
+    let base_mu = base_result.partition.data.gtr.mu;
 
     let corrected_input = MugrationInput {
       graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
@@ -351,7 +360,7 @@ mod tests {
     let corrected_result = execute_mugration(corrected_input)?;
 
     // sampling_bias_correction multiplies mu after iterative refinement
-    assert_abs_diff_eq!(corrected_result.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
+    assert_abs_diff_eq!(corrected_result.partition.data.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
   }
@@ -417,26 +426,28 @@ mod tests {
     })?;
 
     // Iterative refinement must change the model: mu and/or pi should differ
-    let mu_changed = (result_no_iter.gtr.mu - result_with_iter.gtr.mu).abs() > 1e-6;
+    let mu_changed = (result_no_iter.partition.data.gtr.mu - result_with_iter.partition.data.gtr.mu).abs() > 1e-6;
     let pi_changed = result_no_iter
+      .partition
+      .data
       .gtr
       .pi
       .iter()
-      .zip(result_with_iter.gtr.pi.iter())
+      .zip(result_with_iter.partition.data.gtr.pi.iter())
       .any(|(a, b)| (a - b).abs() > 1e-6);
     assert!(
       mu_changed || pi_changed,
       "iterative refinement must change the model: mu_0={}, mu_5={}, pi_0={:?}, pi_5={:?}",
-      result_no_iter.gtr.mu,
-      result_with_iter.gtr.mu,
-      result_no_iter.gtr.pi,
-      result_with_iter.gtr.pi
+      result_no_iter.partition.data.gtr.mu,
+      result_with_iter.partition.data.gtr.mu,
+      result_no_iter.partition.data.gtr.pi,
+      result_with_iter.partition.data.gtr.pi
     );
 
     // Both models must have valid parameters
-    assert!(result_with_iter.gtr.mu > 0.0);
-    assert_abs_diff_eq!(result_with_iter.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(result_with_iter.gtr.pi.iter().all(|&p| p > 0.0));
+    assert!(result_with_iter.partition.data.gtr.mu > 0.0);
+    assert_abs_diff_eq!(result_with_iter.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(result_with_iter.partition.data.gtr.pi.iter().all(|&p| p > 0.0));
 
     Ok(())
   }
@@ -466,7 +477,7 @@ mod tests {
     })?;
 
     // pi for usa (index 1, alphabetically: germany=0, usa=1) should be > 0.5
-    let pi_usa = result.gtr.pi[1];
+    let pi_usa = result.partition.data.gtr.pi[1];
     assert!(
       pi_usa > 0.5,
       "pi[usa] should reflect 3/4 observed frequency, got {pi_usa:.4}"
@@ -492,8 +503,8 @@ mod tests {
     // With 0 iterations and no weights, initial model has uniform pi
     // The infer+optimize cycle still runs once (initial inference), but with
     // iterations=0 the loop body doesn't execute.
-    assert_abs_diff_eq!(result.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(result.gtr.mu > 0.0);
+    assert_abs_diff_eq!(result.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(result.partition.data.gtr.mu > 0.0);
 
     Ok(())
   }

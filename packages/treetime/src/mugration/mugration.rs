@@ -1,8 +1,8 @@
-use crate::ancestral::marginal::update_marginal_mut;
+use crate::ancestral::marginal::update_marginal;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
-use crate::make_error;
+use crate::{make_error, make_internal_report};
 use crate::mugration::input::MugrationInput;
 use crate::mugration::result::MugrationResult;
 use crate::partition::discrete_states::DiscreteStates;
@@ -12,8 +12,10 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use log::{info, warn};
 use ndarray::Array1;
+use parking_lot::RwLock;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct WeightCoverageResult {
@@ -147,17 +149,23 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
   let mut partition = PartitionMarginalDiscrete::new(gtr, discrete_states, MIN_BRANCH_LENGTH_FRACTION);
   partition.attach_traits(&graph, &traits)?;
 
-  let log_lh = update_marginal_mut(&graph, &mut partition)?;
+  let partition = Arc::new(RwLock::new(partition));
+
+  let log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?;
   info!("Mugration: initial log likelihood = {log_lh:.4}");
 
   let log_lh = refine_gtr_iterative(
     &graph,
-    &mut partition,
+    &partition,
     iterations,
     fixed_pi.as_ref(),
     pc.unwrap_or(1.0),
     sampling_bias_correction,
   )?;
+
+  let partition = Arc::try_unwrap(partition)
+    .map_err(|_| make_internal_report!("partition Arc has unexpected additional owners"))?
+    .into_inner();
 
   Ok(MugrationResult::new(graph, partition, &attribute, log_lh))
 }

@@ -27,19 +27,19 @@ pub enum GtrModelType {
 /// GTR model output for JSON serialization.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GtrOutput {
-  /// How the model was obtained: named, inferred, or custom
   pub model_type: GtrModelType,
-  /// Specific model name
   pub model_name: GtrModelName,
-  /// Substitution rate
   pub mu: f64,
-  /// Equilibrium frequencies
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   pub pi: Array1<f64>,
-  /// Symmetrized rate matrix
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   #[serde(rename = "W")]
   pub w: Array2<f64>,
+  pub n_states: usize,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub attribute: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub states: Option<Vec<String>>,
 }
 
 impl GtrOutput {
@@ -54,7 +54,17 @@ impl GtrOutput {
       mu: gtr.mu,
       pi: gtr.pi.clone(),
       w: gtr.W.clone(),
+      n_states: gtr.pi.len(),
+      attribute: None,
+      states: None,
     }
+  }
+
+  #[must_use]
+  pub fn with_discrete_states(mut self, attribute: &str, states: impl Iterator<Item = impl AsRef<str>>) -> Self {
+    self.attribute = Some(attribute.to_owned());
+    self.states = Some(states.map(|s| s.as_ref().to_owned()).collect());
+    self
   }
 }
 
