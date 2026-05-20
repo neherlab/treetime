@@ -1,15 +1,17 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::marginal_core::{
-  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
+  MarginalData, MarginalPartition, count_transitions_from_marginal_data, marginal_process_node_backward,
+  marginal_process_node_forward,
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
-  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,
 };
 use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::seq::mutation::Sub;
@@ -75,9 +77,25 @@ impl HasLogLh for PartitionMarginalDense {
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
     self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
   }
+
+  fn reset_node_log_likelihoods(&mut self) {
+    for node_data in self.data.nodes.values_mut() {
+      node_data.profile.log_lh = 0.0;
+    }
+  }
 }
 
 impl PartitionRerootOps for PartitionMarginalDense {}
+
+impl<N, E> TransitionCounting<N, E> for PartitionMarginalDense
+where
+  N: GraphNode,
+  E: EdgeOptimizeOps,
+{
+  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
+    count_transitions_from_marginal_data(&self.data, graph)
+  }
+}
 
 impl PartitionBranchOps for PartitionMarginalDense {
   fn sequence_length(&self) -> usize {

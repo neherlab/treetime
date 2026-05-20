@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::partition::optimization_contribution::OptimizationContribution;
@@ -199,8 +200,22 @@ pub trait PartitionCompressed: Sync + Send {
 }
 
 pub trait HasLogLh {
-  /// Get the log likelihood contribution for a given node
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64;
+
+  fn reset_node_log_likelihoods(&mut self);
+}
+
+/// Compute posterior-weighted transition counts from marginal profiles.
+///
+/// Each marginal partition type implements this over its native data layout:
+/// dense and discrete iterate `Array2<f64>` matrices, sparse iterates
+/// per-variable-site profiles and aggregates fixed-site contributions.
+pub trait TransitionCounting<N, E>: HasGtr + Send + Sync
+where
+  N: GraphNode,
+  E: EdgeOptimizeOps,
+{
+  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report>;
 }
 
 /// Operations that `optimize` needs from a sequence partition.

@@ -1,11 +1,13 @@
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_core::{
-  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
+  MarginalData, MarginalPartition, count_transitions_from_marginal_data, marginal_process_node_backward,
+  marginal_process_node_forward,
 };
-use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses};
+use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -117,6 +119,22 @@ impl HasGtr for PartitionMarginalDiscrete {
 impl HasLogLh for PartitionMarginalDiscrete {
   fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
     self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  }
+
+  fn reset_node_log_likelihoods(&mut self) {
+    for node_data in self.data.nodes.values_mut() {
+      node_data.profile.log_lh = 0.0;
+    }
+  }
+}
+
+impl<N, E> TransitionCounting<N, E> for PartitionMarginalDiscrete
+where
+  N: GraphNode,
+  E: EdgeOptimizeOps,
+{
+  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
+    count_transitions_from_marginal_data(&self.data, graph)
   }
 }
 

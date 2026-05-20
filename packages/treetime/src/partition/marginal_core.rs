@@ -1,13 +1,17 @@
+use crate::ancestral::gtr_inference_dense::{accumulate_mutation_counts, get_branch_mutation_matrix};
+use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use eyre::Report;
 use itertools::izip;
 use ndarray::prelude::*;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
 
@@ -187,6 +191,48 @@ pub fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
     }
   }
   log_lh
+}
+
+/// Count posterior-weighted transitions from `MarginalData`.
+///
+/// Shared by dense and discrete partitions (both store full profile matrices).
+pub fn count_transitions_from_marginal_data<N, E>(
+  data: &MarginalData,
+  graph: &Graph<N, E, ()>,
+) -> Result<MutationCounts, Report>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+{
+  let n_states = data.gtr.pi.len();
+  let mut nij = Array2::zeros((n_states, n_states));
+  let mut Ti = Array1::zeros(n_states);
+
+  for edge in graph.get_edges() {
+    let edge_arc = edge.read_arc();
+    let branch_length = data.effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
+    let edge_key = edge_arc.key();
+
+    let edge_data = &data.edges[&edge_key];
+
+    let exp_qt = data.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
+    let mut_stack = get_branch_mutation_matrix(&edge_data.msg_to_child.dis, &edge_data.msg_to_parent.dis, &exp_qt);
+    accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
+  }
+
+  let root = graph.get_exactly_one_root()?;
+  let root_key = root.read_arc().key();
+  let root_profile = data.nodes[&root_key].profile.dis.row(0);
+  let mut root_state = Array1::zeros(n_states);
+  if is_profile_informative(root_profile, n_states) {
+    if let Some(root_idx) = argmax_first(&root_profile) {
+      root_state[root_idx] = 1.0;
+    }
+  }
+
+  nij.diag_mut().fill(0.0);
+
+  Ok(MutationCounts { nij, Ti, root_state })
 }
 
 pub fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
