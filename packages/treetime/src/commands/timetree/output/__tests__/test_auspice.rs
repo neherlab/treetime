@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::output::auspice::write_auspice_json;
-  use crate::commands::timetree::output::confidence::NodeConfidenceInterval;
   use crate::partition::timetree::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
+  use crate::timetree::confidence::NodeConfidenceInterval;
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
 

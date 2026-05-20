@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::output::confidence::combine_confidence;
+  use crate::timetree::confidence::combine_confidence;
   use approx::assert_relative_eq;
 
   #[test]

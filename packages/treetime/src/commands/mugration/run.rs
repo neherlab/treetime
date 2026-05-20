@@ -1,11 +1,11 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::comment_provider::PartitionCommentProvider;
+use crate::make_report;
 use crate::mugration::input::MugrationInput;
 use crate::mugration::mugration::execute_mugration;
 use crate::mugration::result::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::payload::ancestral::GraphAncestral;
-use crate::make_report;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;

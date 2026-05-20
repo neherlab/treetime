@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
-  use crate::commands::timetree::output::confidence::{
-    date_uncertainty_due_to_rate, determine_rate_std, quantile_to_zscore,
-  };
+  use crate::timetree::confidence::{date_uncertainty_due_to_rate, determine_rate_std, quantile_to_zscore};
   use approx::assert_relative_eq;
   use ndarray::array;
   use rstest::rstest;

@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::output::confidence::extract_confidence_intervals;
   use crate::partition::timetree::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
+  use crate::timetree::confidence::extract_confidence_intervals;
   use approx::assert_relative_eq;
   use helpers::{make_node, make_node_with_rate_dates};
   use ndarray::Array1;

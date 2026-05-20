@@ -1,5 +1,5 @@
-use crate::commands::timetree::output::confidence::NodeConfidenceInterval;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
+use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::{Report, WrapErr};
 use log::info;
 use serde_json::Value;

@@ -12,10 +12,7 @@ use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::output::auspice::write_auspice_json;
-use crate::commands::timetree::output::confidence::{
-  NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
-  write_confidence_intervals,
-};
+use crate::commands::timetree::output::confidence::write_confidence_intervals;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
@@ -26,6 +23,9 @@ use crate::payload::ancestral::annotate_branch_mutations;
 use crate::payload::timetree::EdgeTimetree;
 use crate::payload::timetree::NodeTimetree;
 use crate::seq::alignment::get_common_length;
+use crate::timetree::confidence::{
+  NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
+};
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;

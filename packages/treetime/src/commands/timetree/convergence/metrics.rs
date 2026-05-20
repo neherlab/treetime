@@ -1,14 +1,14 @@
-use crate::commands::timetree::convergence::likelihood::{
-  compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
-};
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::timetree::EdgeTimetree;
 use crate::payload::timetree::NodeTimetree;
+use crate::timetree::convergence::likelihood::{
+  compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
+};
+use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use eyre::Report;
 use log::info;
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -112,34 +112,6 @@ impl TimetreeOptimizer {
 
 pub struct IterationContext {
   pub i: usize,
-}
-
-/// Tracks convergence metrics across timetree optimization iterations.
-///
-/// Records likelihood components and change counts to monitor convergence:
-/// - Sequence changes (n_diff) should approach zero
-/// - Polytomies resolved (n_resolved) should stabilize
-/// - Likelihoods should increase or stabilize
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ConvergenceMetrics {
-  /// Number of ancestral sequence changes in this iteration
-  pub n_diff: usize,
-  /// Number of polytomies resolved in this iteration
-  pub n_resolved: usize,
-  /// Sequence likelihood (probability of observing sequences given tree and substitution model)
-  pub lh_seq: Option<f64>,
-  /// Positional likelihood (probability of node positions on time axis)
-  pub lh_pos: Option<f64>,
-  /// Coalescent likelihood (population genetic prior on node times)
-  pub lh_coal: Option<f64>,
-  /// Total likelihood (sum of available components; absent components are excluded)
-  pub lh_total: Option<f64>,
-}
-
-impl ConvergenceMetrics {
-  fn has_converged(&self) -> bool {
-    self.n_diff == 0 && self.n_resolved == 0
-  }
 }
 
 struct TreetimeOptimizerTraceCsvWriter {

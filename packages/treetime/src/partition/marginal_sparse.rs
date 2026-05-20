@@ -4,8 +4,8 @@ use crate::partition::marginal_passes;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps,
-  PartitionMarginalPasses, PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};

@@ -8,8 +8,8 @@ use crate::partition::marginal_core::{
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps,
-  PartitionMarginalPasses, PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
+  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps,
 };
 use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
 use crate::seq::mutation::Sub;

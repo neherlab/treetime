@@ -7,7 +7,10 @@
 //! - Root state correctness for known ancestral sequences
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment")]
+#[allow(
+  clippy::float_cmp,
+  reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment"
+)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
