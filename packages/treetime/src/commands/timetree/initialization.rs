@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::clock::date_constraints::load_date_constraints;
-use crate::commands::shared::args::BranchLengthMode;
+use crate::optimize::params::BranchLengthMode;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;

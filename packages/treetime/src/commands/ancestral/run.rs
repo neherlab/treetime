@@ -3,7 +3,7 @@ use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
-use crate::commands::shared::args::MethodAncestral;
+use crate::ancestral::params::MethodAncestral;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;
 use crate::partition::algo::infer_dense::infer_dense;

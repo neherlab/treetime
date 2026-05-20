@@ -2,6 +2,14 @@ use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
+#[value(rename_all = "kebab-case")]
+pub enum BranchLengthMode {
+  Input,
+  #[default]
+  Marginal,
+}
+
 /// Per-edge branch length optimization method.
 ///
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch

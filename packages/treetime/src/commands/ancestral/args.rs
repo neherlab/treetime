@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::AlphabetName;
-use crate::commands::shared::args::MethodAncestral;
+use crate::ancestral::params::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueHint};

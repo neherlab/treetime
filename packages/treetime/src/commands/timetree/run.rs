@@ -7,7 +7,7 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::commands::shared::args::BranchLengthMode;
+use crate::optimize::params::BranchLengthMode;
 use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
