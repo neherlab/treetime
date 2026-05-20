@@ -34,6 +34,23 @@ where
   Ok(())
 }
 
+pub fn nex_write_file_with<N, E, D>(
+  filepath: impl AsRef<Path>,
+  graph: &Graph<N, E, D>,
+  options: &NexWriteOptions,
+  providers: &CommentProviders,
+) -> Result<(), Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
+  let mut f = create_file_or_stdout(filepath)?;
+  nex_write_with(&mut f, graph, options, providers)?;
+  writeln!(f)?;
+  Ok(())
+}
+
 pub fn nex_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NexWriteOptions) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,

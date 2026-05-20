@@ -127,6 +127,23 @@ where
   Ok(())
 }
 
+pub fn nwk_write_file_with<N, E, D>(
+  filepath: impl AsRef<Path>,
+  graph: &Graph<N, E, D>,
+  options: &NwkWriteOptions,
+  providers: &CommentProviders,
+) -> Result<(), Report>
+where
+  N: GraphNode + NodeToNwk,
+  E: GraphEdge + EdgeToNwk,
+  D: Sync + Send + Default,
+{
+  let mut f = create_file_or_stdout(filepath)?;
+  nwk_write_with(&mut f, graph, options, providers)?;
+  writeln!(f)?;
+  Ok(())
+}
+
 pub fn nwk_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NwkWriteOptions) -> Result<String, Report>
 where
   N: GraphNode + NodeToNwk,
@@ -211,14 +228,15 @@ where
         write!(writer, ")")?;
       }
 
-      let (name, comments) = {
+      let (node_key, name, mut comments) = {
         let node = node.read_arc();
         let node_key = node.key();
         let node_payload = node.payload().read_arc();
-        let mut comments = node_payload.nwk_comments();
-        comments.extend(providers.merged_comments(node_key));
-        (node_payload.nwk_name().map(|n| n.as_ref().to_owned()), comments)
+        let comments = node_payload.nwk_comments();
+        let name = node_payload.nwk_name().map(|n| n.as_ref().to_owned());
+        (node_key, name, comments)
       };
+      comments.extend(providers.merged_comments(node_key)?);
 
       let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
 
@@ -275,7 +293,7 @@ pub trait NodeToNwk {
 
 /// Return extra node comments for a graph node during Newick or Nexus serialization.
 pub trait NodeCommentProvider {
-  fn node_comments(&self, key: GraphNodeKey) -> BTreeMap<String, String>;
+  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
 }
 
 /// Compose multiple node comment providers.
@@ -297,12 +315,12 @@ impl<'a> CommentProviders<'a> {
     self
   }
 
-  pub fn merged_comments(&self, key: GraphNodeKey) -> BTreeMap<String, String> {
+  pub fn merged_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
     let mut comments = BTreeMap::new();
     for provider in &self.providers {
-      comments.extend(provider.node_comments(key));
+      comments.extend(provider.node_comments(key)?);
     }
-    comments
+    Ok(comments)
   }
 }
 

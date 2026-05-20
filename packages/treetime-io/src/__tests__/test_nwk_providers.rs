@@ -222,8 +222,8 @@ mod tests {
     }
 
     impl NodeCommentProvider for MockCommentProvider {
-      fn node_comments(&self, key: GraphNodeKey) -> BTreeMap<String, String> {
-        self.comments.get(&key).cloned().unwrap_or_default()
+      fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
+        Ok(self.comments.get(&key).cloned().unwrap_or_default())
       }
     }
 
