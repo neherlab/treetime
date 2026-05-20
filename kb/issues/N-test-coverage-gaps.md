@@ -78,6 +78,7 @@ Systematic test coverage gaps across major subsystems: timetree inference, clock
 - `fn GTR::new()` invalid-input handling: no tests assert error returns vs panic
 - Nucleotide constructors: no tests rejecting non-nucleotide alphabets
 - `fn write_gtr_json()`: tests only check filename and existence, not JSON payload content
+- `fn GtrOutput::with_discrete_states()`: no test verifies serialized JSON shape when `attribute`/`states` fields are present. The `skip_serializing_if` annotation means absent fields are silently dropped when `None`, but no test proves they appear when `Some`.
 - `fn jtt92`: no direct regression coverage for 20-state empirical model
 
 ### Foundation
