@@ -1,6 +1,6 @@
 # Dense-sparse log-likelihood divergence
 
-Dense and sparse marginal reconstruction produce different log-likelihoods for ~2.5% of random gap-free GTR configurations. The property test [`test_prop_marginal_dense_sparse_gap_free_consistency`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L11) (`#test_prop_marginal_dense_sparse_gap_free_consistency`) detects two distinct populations. Under investigation.
+Dense and sparse marginal reconstruction produce different log-likelihoods for ~2.5% of random gap-free GTR configurations. The property test [`test_prop_marginal_dense_sparse_gap_free_consistency`](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L11) (`#test_prop_marginal_dense_sparse_gap_free_consistency`) detects two distinct populations. Under investigation.
 
 - Population 1 (~97.5%): agrees to 0-3 ULPs (floating-point rounding)
 - Population 2 (~2.5%): relative differences up to 7.6e-6 (billions of ULPs)
@@ -25,4 +25,4 @@ The bimodal distribution (clean separation between populations 1 and 2) suggests
 
 ## Excluded cause
 
-Partial-IUPAC sparse reference-state fallback is covered separately by [`test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs#L317) and the `flu/h3n2/500` site-451 regression. The remaining issue in this file is not the fixed ambiguous-`R` exact-state bug.
+Partial-IUPAC sparse reference-state fallback is covered separately by [`test_marginal_dense_sparse_ambiguous_r_reference_state_consistency`](../../packages/treetime/src/ancestral/__tests__/test_marginal_consistency.rs#L317) and the `flu/h3n2/500` site-451 regression. The remaining issue in this file is not the fixed ambiguous-`R` exact-state bug.

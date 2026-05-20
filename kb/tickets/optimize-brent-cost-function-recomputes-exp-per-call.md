@@ -2,7 +2,7 @@
 
 When multiple `OptimizationContribution` entries share the same GTR eigvals at the same branch length, the `exp_ev` vector is redundantly computed per contribution.
 
-v1: [`packages/treetime/src/commands/optimize/method_brent.rs`](../../packages/treetime/src/commands/optimize/method_brent.rs)
+v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs)
 
 ## Related issues
 

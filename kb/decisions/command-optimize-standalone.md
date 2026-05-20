@@ -40,9 +40,9 @@ The command runs an iterative cycle of marginal ancestral reconstruction and per
    - Optimize each branch length independently using Newton-Raphson with grid search fallback (documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md)).
 5. Write `annotated_tree.nwk` and `annotated_tree.nexus` to the output directory.
 
-The per-branch optimization uses the GTR eigensystem decomposition to precompute branch-length-independent coefficients `k_c = (msg_child . V)_c * (msg_parent . V_inv^T)_c` for each alignment position. These coefficients allow computing log-likelihood, first derivative, and second derivative from the same cached exponentials. Dense partitions contribute per-position coefficients; sparse partitions group invariant positions by state pair with multiplicity counts ([packages/treetime/src/commands/optimize/optimize_sparse.rs#L36-L119](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L36-L119)).
+The per-branch optimization uses the GTR eigensystem decomposition to precompute branch-length-independent coefficients `k_c = (msg_child . V)_c * (msg_parent . V_inv^T)_c` for each alignment position. These coefficients allow computing log-likelihood, first derivative, and second derivative from the same cached exponentials. Dense partitions contribute per-position coefficients; sparse partitions group invariant positions by state pair with multiplicity counts ([packages/treetime/src/partition/optimize_sparse.rs#L36-L119](../../packages/treetime/src/partition/optimize_sparse.rs#L36-L119)).
 
-The same optimization machinery is reused by the timetree command to compute branch length likelihood distributions on a grid ([packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L31-L63](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L31-L63)).
+The same optimization machinery is reused by the timetree command to compute branch length likelihood distributions on a grid ([packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63)).
 
 ## Scientific background
 

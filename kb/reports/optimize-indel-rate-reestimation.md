@@ -2,7 +2,7 @@
 
 ## The proposal
 
-Hoist `estimate_indel_rate()` [packages/treetime/src/commands/optimize/optimize_indel.rs#L55](../../packages/treetime/src/commands/optimize/optimize_indel.rs#L55) out of the optimize loop, computing it once before iteration begins. The reasoning: the GTR substitution rate `gtr.mu` is estimated once and held fixed, so the indel rate should follow the same pattern.
+Hoist `estimate_indel_rate()` [packages/treetime/src/optimize/indel.rs#L55](../../packages/treetime/src/optimize/indel.rs#L55) out of the optimize loop, computing it once before iteration begins. The reasoning: the GTR substitution rate `gtr.mu` is estimated once and held fixed, so the indel rate should follow the same pattern.
 
 ## Why re-estimating is the right call
 

@@ -6,7 +6,7 @@
 
 ## Details
 
-`packages/treetime/src/commands/timetree/optimization/polytomy.rs:456-478:`
+`packages/treetime/src/timetree/optimization/polytomy.rs:456-478:`
 
 After resolving a polytomy (splitting a multifurcation into binary nodes), the function resets the message-passing fields but leaves relaxed-clock and time-tree specific fields at their values from the previous iteration:
 

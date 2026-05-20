@@ -10,9 +10,9 @@ The `force_positive_rate: false` path in the pre-filter step does not meaningful
 
 ## v1 Location
 
-`packages/treetime/src/commands/clock/clock_set.rs:118-125` (`chisq()`)
+`packages/treetime/src/payload/clock_set.rs:118-125` (`chisq()`)
 
-`packages/treetime/src/commands/clock/find_best_root/find_best_root.rs:137-139` (`has_positive_clock_rate` checks `det > 0.0` without minimum)
+`packages/treetime/src/clock/find_best_root/find_best_root.rs:137-139` (`has_positive_clock_rate` checks `det > 0.0` without minimum)
 
 ## Related issues
 

@@ -85,7 +85,7 @@ The algorithm greedily picks the best pair above the **resolution threshold** (d
 
 v0 code: `_poly()` at [`packages/legacy/treetime/treetime/treetime.py#L713-L870`](../../../packages/legacy/treetime/treetime/treetime.py#L713-L870).
 
-v1 code: `resolve_polytomies()` at [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../../packages/treetime/src/commands/timetree/optimization/polytomy.rs).
+v1 code: `resolve_polytomies()` at [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../../packages/treetime/src/timetree/optimization/polytomy.rs).
 
 ## Strategy 3: Stochastic coalescent resolution
 
@@ -134,7 +134,7 @@ The algorithm builds a mutation index mapping each (partition, mutation) to its 
 
 v0: no formal implementation. The design document describes "ad-hoc scripts" in nextstrain pipelines. See the [nextstrain ad-hoc scripts](#the-nextstrain-ad-hoc-scripts) section below for the script locations.
 
-v1 code: `merge_shared_mutation_branches()` in [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs). Available as `--merge-shared-mutations` on the `prune` command and in the `optimize` topology-cleanup loop.
+v1 code: `merge_shared_mutation_branches()` in [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs). Available as `--merge-shared-mutations` on the `prune` command and in the `optimize` topology-cleanup loop.
 
 ## Comparison
 

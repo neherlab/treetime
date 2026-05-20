@@ -2,7 +2,7 @@
 
 ## Problem
 
-`grid_search_branch_lengths` at [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) computes the grid upper bound as `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)` with `GRID_SEARCH_MIN_UPPER = 0.5`. The floor ensures the grid covers the biologically plausible range even when the current branch length estimate is zero or very small. The upper bound grows proportionally with the input, so for inputs above $0.5 / 1.5 \approx 0.33$ the proportional term dominates.
+`grid_search_branch_lengths` at [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) computes the grid upper bound as `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)` with `GRID_SEARCH_MIN_UPPER = 0.5`. The floor ensures the grid covers the biologically plausible range even when the current branch length estimate is zero or very small. The upper bound grows proportionally with the input, so for inputs above $0.5 / 1.5 \approx 0.33$ the proportional term dominates.
 
 For a non-unimodal surface whose global maximum lies far beyond $1.5 \cdot \text{input}$ (e.g. a saturated substitution regime with true $t \gg 0.5$), the grid scan cannot reach it. `reconcile_zero_boundary` would then either return zero (if zero beats every visible grid point) or return the best visible positive mode, both of which are wrong in the saturated regime.
 
@@ -20,4 +20,4 @@ On synthetic fixtures designed to stress the optimizer, and on multi-modal surfa
 
 ## Cross-references
 
-- [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) (`grid_search_branch_lengths`, `GRID_SEARCH_MIN_UPPER`)
+- [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`grid_search_branch_lengths`, `GRID_SEARCH_MIN_UPPER`)

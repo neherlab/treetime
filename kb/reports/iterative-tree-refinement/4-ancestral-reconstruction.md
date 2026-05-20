@@ -57,7 +57,7 @@ Fitch reconstruction is used for:
 - Initial ancestral assignment: seeding the ML optimization with a parsimony-based starting point.
 - Mutation mapping: determining which branches carry substitutions, used by `--prune-empty` and `--merge-shared-mutations`.
 
-v1 code: [`packages/treetime/src/commands/ancestral/fitch.rs`](../../../packages/treetime/src/commands/ancestral/fitch.rs). The `compress_sequences()` function runs Fitch reconstruction and stores variable-site data in the sparse partition structure.
+v1 code: [`packages/treetime/src/ancestral/fitch.rs`](../../../packages/treetime/src/ancestral/fitch.rs). The `compress_sequences()` function runs Fitch reconstruction and stores variable-site data in the sparse partition structure.
 
 v0 code: [`packages/legacy/treetime/treetime/treeanc.py#L575-L686`](../../../packages/legacy/treetime/treetime/treeanc.py#L575-L686). The `_fitch_anc()` method.
 
@@ -109,7 +109,7 @@ v1 code:
 
 - Backward pass: `process_node_backward()` in [`packages/treetime/src/partition/marginal_passes.rs`](../../../packages/treetime/src/partition/marginal_passes.rs)
 - Forward pass: `process_node_forward()` in the same file
-- Marginal orchestration: `update_marginal()` in [`packages/treetime/src/commands/ancestral/marginal.rs`](../../../packages/treetime/src/commands/ancestral/marginal.rs)
+- Marginal orchestration: `update_marginal()` in [`packages/treetime/src/ancestral/marginal.rs`](../../../packages/treetime/src/ancestral/marginal.rs)
 - Dense edge substitutions: `edge_subs()` on `PartitionMarginalDense` compares MAP states at parent and child node posteriors
 - Sparse edge substitutions: `edge_subs()` on `PartitionMarginalSparse` returns marginal-reconstructed substitutions
 

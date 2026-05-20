@@ -1,6 +1,6 @@
 # Guard negative branch lengths in evaluate_site_contributions
 
-`evaluate_site_contributions` at [packages/treetime/src/commands/optimize/optimize_eval.rs#L42](../../packages/treetime/src/commands/optimize/optimize_eval.rs#L42) computes `(eigvals * branch_length).mapv(f64::exp)`. For negative `branch_length` with negative eigenvalues, this computes `exp(positive * |t|)`, which grows exponentially and produces physically meaningless but finite likelihood values. The subsequent `.ln()` produces a finite log-likelihood that the optimizer treats as valid.
+`evaluate_site_contributions` at [packages/treetime/src/optimize/eval.rs#L42](../../packages/treetime/src/optimize/eval.rs#L42) computes `(eigvals * branch_length).mapv(f64::exp)`. For negative `branch_length` with negative eigenvalues, this computes `exp(positive * |t|)`, which grows exponentially and produces physically meaningless but finite likelihood values. The subsequent `.ln()` produces a finite log-likelihood that the optimizer treats as valid.
 
 The `debug_assert!(site_lh.is_finite())` guard fires only in debug builds and does not catch all cases (the exponential overflow must exceed `f64::MAX` to produce `inf`).
 
@@ -10,7 +10,7 @@ Timetree output with negative branch lengths (e.g., `bl = -1.89e-4`) silently fl
 
 ## Affected code
 
-- Evaluation: [packages/treetime/src/commands/optimize/optimize_eval.rs#L42](../../packages/treetime/src/commands/optimize/optimize_eval.rs#L42)
+- Evaluation: [packages/treetime/src/optimize/eval.rs#L42](../../packages/treetime/src/optimize/eval.rs#L42)
 - Related validation deficiency: [M-optimize-negative-branch-length-validation.md](../issues/M-optimize-negative-branch-length-validation.md)
 
 ## Fix

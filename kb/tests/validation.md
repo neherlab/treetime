@@ -64,10 +64,10 @@ Additional timetree-only: `mpox/clade-ii/20`
 
 **Impl:**
 
-- [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs)
-- [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs)
-- [`packages/treetime/src/commands/timetree/inference/forward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs)
-- [`packages/treetime/src/commands/timetree/utils.rs`](../../packages/treetime/src/commands/timetree/utils.rs)
+- [`packages/treetime/src/timetree/inference/runner.rs`](../../packages/treetime/src/timetree/inference/runner.rs)
+- [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs)
+- [`packages/treetime/src/timetree/inference/forward_pass.rs`](../../packages/treetime/src/timetree/inference/forward_pass.rs)
+- [`packages/treetime/src/timetree/utils.rs`](../../packages/treetime/src/timetree/utils.rs)
 
 Golden-master comparison of v1 timetree inference against v0 Python outputs. Runs full timetree pipeline on `flu/h3n2/20` dataset and compares node dates, branch lengths, clock rate, and coalescent contributions.
 

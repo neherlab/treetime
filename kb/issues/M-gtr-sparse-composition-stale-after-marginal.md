@@ -10,7 +10,7 @@ Practical magnitude is small: only variable sites differ between Fitch and margi
 
 ## Root cause
 
-`SparseSeqInfo.composition` is set during Fitch compression ([packages/treetime/src/commands/ancestral/fitch.rs](../../packages/treetime/src/commands/ancestral/fitch.rs)) and never updated. `reconstruct_node_sequence()` rewrites `seq.sequence` but not `seq.composition` ([packages/treetime/src/partition/marginal_sparse.rs](../../packages/treetime/src/partition/marginal_sparse.rs)).
+`SparseSeqInfo.composition` is set during Fitch compression ([packages/treetime/src/ancestral/fitch.rs](../../packages/treetime/src/ancestral/fitch.rs)) and never updated. `reconstruct_node_sequence()` rewrites `seq.sequence` but not `seq.composition` ([packages/treetime/src/partition/marginal_sparse.rs](../../packages/treetime/src/partition/marginal_sparse.rs)).
 
 ## Fix
 
@@ -25,7 +25,7 @@ v0 overwrites `node.cseq` (compressed sequence) after each marginal pass. The `m
 Fixing this issue requires updating tests that encode the stale behavior:
 
 - `gtr/infer_gtr/__tests__/test_contract.rs`: `test_root_state_sparse()` asserts Fitch-consensus counts after `update_marginal`
-- `gtr/infer_gtr/__tests__/test_sparse.rs`: `test_get_mutation_counts_sparse()` hard-codes `root_state` without deriving from reconstructed MAP root sequence
+- `gtr/infer_gtr/__tests__/test_fitch.rs`: `test_get_mutation_counts_sparse()` hard-codes `root_state` without deriving from reconstructed MAP root sequence
 
 Both tests will fail when composition is refreshed and must be rewritten to assert post-marginal state.
 

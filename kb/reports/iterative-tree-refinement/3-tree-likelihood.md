@@ -81,7 +81,7 @@ v1 code:
 
 - Backward pass: `process_node_backward()` in [`packages/treetime/src/partition/marginal_passes.rs`](../../../packages/treetime/src/partition/marginal_passes.rs)
 - Forward pass: `process_node_forward()` in the same file
-- The `update_marginal()` function in [`packages/treetime/src/commands/ancestral/marginal.rs`](../../../packages/treetime/src/commands/ancestral/marginal.rs) orchestrates both passes
+- The `update_marginal()` function in [`packages/treetime/src/ancestral/marginal.rs`](../../../packages/treetime/src/ancestral/marginal.rs) orchestrates both passes
 
 v0 code:
 

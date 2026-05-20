@@ -16,13 +16,13 @@ This means the forward pass accumulates probability-space products (risk of unde
 
 ### gather_clock_regression_results mutates graph via interior mutability
 
-`packages/treetime/src/commands/clock/rtt.rs:42:`
+`packages/treetime/src/clock/rtt.rs:42:`
 
 Mutates node `div` (divergence) through a read-path graph traversal. The function signature suggests a read-only operation (gathering results) but has write side effects. This makes the function non-idempotent and its ordering relative to other graph operations significant.
 
 ### fix_branch_length clamp inside GTR inference
 
-`packages/treetime/src/gtr/infer_gtr/dense.rs:192:`
+`packages/treetime/src/gtr/infer_gtr/common.rs:192:`
 
 Applies the marginal-pass branch-length floor during mutation counting for GTR inference. This means GTR parameter estimation sees clamped branch lengths rather than raw values, biasing the rate matrix toward shorter-branch statistics.
 

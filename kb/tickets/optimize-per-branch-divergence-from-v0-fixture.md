@@ -2,11 +2,11 @@
 
 ## Problem
 
-The optimize golden-master fixture `packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_outputs.json` records a per-branch `final_branch_lengths` map captured from v0 on the same tree, alignment, GTR model, and damping schedule. The summed branch length matches v0 within 5% (asserted by `test_gm_optimize`), but a per-branch comparison after skipping branches v0 collapsed to near-zero (`expected_bl < 1e-5`) exceeds 10% relative tolerance on individual non-zero branches. Example on `flu_h3n2_20_jc69_damped`: v1 reports `0.00488` on a branch where v0 reports `0.00071` (a factor of 7 disagreement on a branch larger than the `prune_short_branches` threshold).
+The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json` records a per-branch `final_branch_lengths` map captured from v0 on the same tree, alignment, GTR model, and damping schedule. The summed branch length matches v0 within 5% (asserted by `test_gm_optimize`), but a per-branch comparison after skipping branches v0 collapsed to near-zero (`expected_bl < 1e-5`) exceeds 10% relative tolerance on individual non-zero branches. Example on `flu_h3n2_20_jc69_damped`: v1 reports `0.00488` on a branch where v0 reports `0.00071` (a factor of 7 disagreement on a branch larger than the `prune_short_branches` threshold).
 
 ## Evidence
 
-`packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs` `test_gm_optimize_per_branch` is `#[ignore]`'d with this issue path in the ignore reason. Removing the ignore reproduces the divergence on every non-skipped fixture case.
+`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs` `test_gm_optimize_per_branch` is `#[ignore]`'d with this issue path in the ignore reason. Removing the ignore reproduces the divergence on every non-skipped fixture case.
 
 ## Likely contributors
 
@@ -38,7 +38,7 @@ Option 1 is the most aligned with the porting goal. Option 2 is the fastest path
 
 - [command-prune-standalone.md](../decisions/command-prune-standalone.md) (v1 prune as
   a standalone command, not in the optimize loop)
-- [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs) (shared `collapse_edge()`)
+- [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs) (shared `collapse_edge()`)
 - `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`
   and `prune_and_merge_in_loop`
 - `packages/legacy/treetime/treetime/treeanc.py` `prune_short_branches` (line 1475)

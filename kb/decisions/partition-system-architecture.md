@@ -163,7 +163,7 @@ Sparse payloads in `packages/treetime/src/partition/sparse.rs`:
 
 ### Trait-based behavior
 
-Behavior is defined through traits in `packages/treetime/src/partition/traits.rs` and `packages/treetime/src/commands/timetree/partition_ops.rs`, not inheritance:
+Behavior is defined through traits in `packages/treetime/src/partition/traits.rs` and `packages/treetime/src/partition/timetree.rs`, not inheritance:
 
 `PartitionMarginalOps<N, E>` (`traits.rs:18-40:1:`) defines:
 

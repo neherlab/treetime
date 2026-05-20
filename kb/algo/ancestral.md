@@ -6,7 +6,7 @@
 
 Maximum parsimony (<a id="cite-1"></a>[Fitch 1971](https://doi.org/10.2307/2412116) [[1](#ref-1)]) reconstructs ancestral character states by minimizing the total number of state changes on the tree. The method makes no assumptions about branch lengths or substitution rates, treating all state transitions as equally costly. It remains widely used for seeding ML optimization with initial ancestral assignments due to its speed, and for compression of sequence data to variable-position-only representations.
 
-v1: [`packages/treetime/src/commands/ancestral/fitch.rs#L85-L513`](../../packages/treetime/src/commands/ancestral/fitch.rs#L85-L513).
+v1: [`packages/treetime/src/ancestral/fitch.rs#L85-L513`](../../packages/treetime/src/ancestral/fitch.rs#L85-L513).
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L575-L686`](../../packages/legacy/treetime/treetime/treeanc.py#L575-L686).
 
 ### Algorithm
@@ -152,8 +152,8 @@ Both implementations produce the same mutation set for the same reconstruction. 
 
 | File                                                                                                                                             | Algorithms                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| [`packages/treetime/src/commands/ancestral/fitch.rs`](../../packages/treetime/src/commands/ancestral/fitch.rs)                                   | Fitch parsimony (backward, forward, cleanup)                                     |
-| [`packages/treetime/src/commands/ancestral/marginal.rs`](../../packages/treetime/src/commands/ancestral/marginal.rs)                             | Marginal ML orchestration                                                        |
+| [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)                                   | Fitch parsimony (backward, forward, cleanup)                                     |
+| [`packages/treetime/src/ancestral/marginal.rs`](../../packages/treetime/src/ancestral/marginal.rs)                             | Marginal ML orchestration                                                        |
 | [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs)                                       | Ancestral command entry point, method dispatch                                   |
 | [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
 | [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |

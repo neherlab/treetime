@@ -1,6 +1,6 @@
 # Clock command collapses date intervals to their mean
 
-`assign_dates` at [packages/treetime/src/commands/clock/assign_dates.rs#L19-L23](../../packages/treetime/src/commands/clock/assign_dates.rs#L19-L23) collapses every `DateOrRange` to its scalar mean via `DateOrRange::mean` and stores only an `f64` in the node payload's `time` field. Date intervals (e.g., "2020.0-2020.5") lose their range information and are treated identically to point dates.
+`assign_dates` at [packages/treetime/src/clock/assign_dates.rs#L19-L23](../../packages/treetime/src/clock/assign_dates.rs#L19-L23) collapses every `DateOrRange` to its scalar mean via `DateOrRange::mean` and stores only an `f64` in the node payload's `time` field. Date intervals (e.g., "2020.0-2020.5") lose their range information and are treated identically to point dates.
 
 ## Impact
 
@@ -12,8 +12,8 @@ v0 `clock_filter_methods.py` uses `np.mean(node.raw_date_constraint)` in the sam
 
 ## Affected code
 
-- Date collapse: [packages/treetime/src/commands/clock/assign_dates.rs#L19-L23](../../packages/treetime/src/commands/clock/assign_dates.rs#L19-L23)
-- Downstream consumer: [packages/treetime/src/commands/clock/clock_regression.rs#L54-L67](../../packages/treetime/src/commands/clock/clock_regression.rs#L54-L67)
+- Date collapse: [packages/treetime/src/clock/assign_dates.rs#L19-L23](../../packages/treetime/src/clock/assign_dates.rs#L19-L23)
+- Downstream consumer: [packages/treetime/src/clock/clock_regression.rs#L54-L67](../../packages/treetime/src/clock/clock_regression.rs#L54-L67)
 
 ## Fix
 

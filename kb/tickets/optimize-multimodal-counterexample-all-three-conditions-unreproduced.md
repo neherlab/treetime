@@ -8,7 +8,7 @@
 2. The inner solver returns exactly $0$ (observed for `newton_sqrt_inner` from $t_0 = 0.6$ on the Dinh and Matsen 2017 K80 $\kappa = 3$ counterexample), AND
 3. A better positive mode exists elsewhere on the admissible interval.
 
-The Dinh-Matsen K80 counterexample at [packages/treetime/src/commands/optimize/**tests**/test_dispatch_zero_boundary.rs#L452-L500](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs#L452-L500) satisfies (2) and (3) but not (1): on that surface $\ell'(0) > 0$, so the function is INCREASING at the boundary rather than exhibiting zero as a local maximum. The observed sqrt-space clamp at $t_0 = 0.6$ is caused by chain rule sign flip, not by zero being a local max.
+The Dinh-Matsen K80 counterexample at [packages/treetime/src/optimize/**tests**/test_dispatch_zero_boundary.rs#L452-L500](../../packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs#L452-L500) satisfies (2) and (3) but not (1): on that surface $\ell'(0) > 0$, so the function is INCREASING at the boundary rather than exhibiting zero as a local maximum. The observed sqrt-space clamp at $t_0 = 0.6$ is caused by chain rule sign flip, not by zero being a local max.
 
 No surface in the v1 codebase satisfies all three conditions simultaneously. Constructing one from a real GTR model (K80, HKY85, TN93, general GTR) on a real alignment has not been exhibited. A synthetic contribution with hand-crafted coefficients could in principle be constructed, but the construction itself is open research.
 
@@ -21,7 +21,7 @@ Without a real counterexample, the gate's empirical justification rests on the o
 ## Proposed action
 
 1. Attempt to construct a real-data counterexample where all three conditions hold simultaneously. Candidates: K80 with high $\kappa$, HKY85 with skewed frequencies, TN93 with distinct transition/transversion rates, on alignments with specific mutation patterns.
-2. If a real counterexample is identified, add a regression test to [`test_dispatch_zero_boundary.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs) that exercises the full `run_optimize_mixed` flow on it and asserts `reconcile_zero_boundary` returns the correct positive mode.
+2. If a real counterexample is identified, add a regression test to [`test_dispatch_zero_boundary.rs`](../../packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs) that exercises the full `run_optimize_mixed` flow on it and asserts `reconcile_zero_boundary` returns the correct positive mode.
 3. If no real counterexample is found after exhaustive search, document the result and upgrade the gate's justification from empirical to theoretical.
 
 ## v0 comparison
@@ -30,8 +30,8 @@ v0 uses `scipy.optimize.minimize_scalar(method='brent')` in $\sqrt{t}$ space and
 
 ## Cross-references
 
-- Helper: [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) (`reconcile_zero_boundary`)
-- Counterexample fixture: [packages/treetime/src/commands/optimize/**tests**/test_dispatch_zero_boundary.rs](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs) (`make_dinh_matsen_k80_contribution`)
+- Helper: [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`)
+- Counterexample fixture: [packages/treetime/src/optimize/**tests**/test_dispatch_zero_boundary.rs](../../packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs) (`make_dinh_matsen_k80_contribution`)
 - Scientific basis: Dinh and Matsen 2017, "The Shape of the One-Dimensional Phylogenetic Likelihood Function", <https://doi.org/10.1214/16-aap1240>
 
 ## Related issues

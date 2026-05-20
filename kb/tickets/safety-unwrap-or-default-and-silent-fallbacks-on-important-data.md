@@ -8,18 +8,18 @@ Multiple locations suppress errors by substituting default values for semantical
 
 ### unwrap_or_default() on semantically important data (8 instances)
 
-- `commands/clock/clock_filter.rs:41:` branch length defaults to 0.0
-- `commands/clock/reroot.rs:178:` branch length defaults to 0.0
-- `commands/clock/rtt.rs:36:` branch length defaults to 0.0
+- `clock/clock_filter.rs:41:` branch length defaults to 0.0
+- `clock/reroot.rs:178:` branch length defaults to 0.0
+- `clock/rtt.rs:36:` branch length defaults to 0.0
 - `seq/div.rs:26:` parent divergence defaults to 0.0
 - `seq/div.rs:28:` branch length defaults to 0.0
 - `partition/marginal_discrete.rs:60:` node name defaults to empty string
-- `partition/algo/topology_cleanup/merge_shared_mutations.rs:211-212:` indels default to empty
-- `commands/timetree/optimization/relaxed_clock.rs:87:` coefficients default to zero
+- `optimize/topology/merge_shared_mutations.rs:211-212:` indels default to empty
+- `timetree/optimization/relaxed_clock.rs:87:` coefficients default to zero
 
 ### branch_length().unwrap_or(one_mutation) silent fallback
 
-`packages/treetime/src/commands/timetree/inference/runner.rs:106:`
+`packages/treetime/src/timetree/inference/runner.rs:106:`
 
 Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallback when building Poisson branch-length distributions. A missing branch length could indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
 
@@ -31,7 +31,7 @@ Uses `saturating_add_signed` which silently clamps to 0 on underflow. A negative
 
 ### extract_node_times silently drops unnamed/timeless nodes
 
-`packages/treetime/src/commands/timetree/utils.rs:63:`
+`packages/treetime/src/timetree/utils.rs:63:`
 
 Iterates all graph nodes and collects (name, time) pairs via `filter_map`. Nodes without a name or without a time are silently excluded from the convergence tracking map, making them invisible to the convergence diff count.
 

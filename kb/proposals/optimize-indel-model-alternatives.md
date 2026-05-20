@@ -8,7 +8,7 @@ Evaluate whether the current Poisson indel count model should be extended with l
 
 v1 uses a Poisson count model where each indel event contributes equally to the branch length log-likelihood regardless of indel length. This prevents zero-length assignment on branches with only indel evidence. See [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md) and [indel models report](../reports/indel-models/README.md) for the full catalog of indel models and the rationale for the current choice.
 
-The model is implemented in [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs).
+The model is implemented in [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
 ## Limitation
 

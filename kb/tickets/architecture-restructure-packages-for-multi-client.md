@@ -18,13 +18,13 @@ Decision: keep `clap` as a direct dependency of the `treetime` library crate.
 
 Three extraction tickets, independent of each other:
 
-- `architecture-extract-timetree-convergence-confidence.md` - move convergence metrics/likelihood and confidence/rate-susceptibility to `src/timetree/`
-- `architecture-extract-mugration-domain-logic.md` - move mugration business logic to `src/mugration/`
-- ~~`architecture-extract-prune-domain-logic.md` - move pruning algorithms to `src/prune/`~~ **Done**
+- ~~`architecture-extract-timetree-convergence-confidence.md`~~ (resolved: convergence and confidence extracted to `src/timetree/`)
+- ~~`architecture-extract-mugration-domain-logic.md`~~ (resolved: mugration domain logic extracted to `src/mugration/`)
+- ~~`architecture-extract-prune-domain-logic.md`~~ (resolved: pruning algorithms extracted to `src/prune/`)
 
-### 3. Move shared domain enums
+### ~~3. Move shared domain enums~~ Done
 
-- `architecture-move-shared-domain-enums-from-commands.md` - move `BranchLengthMode`, `RerootMode`, `MethodAncestral` to domain modules (keep clap derives)
+- ~~`architecture-move-shared-domain-enums-from-commands.md`~~ (resolved: `BranchLengthMode`, `RerootMode`, `MethodAncestral` moved to domain modules)
 
 ### 4. Move commands/ shell to CLI crate
 
@@ -51,7 +51,7 @@ treetime (library)
   +-- gtr/
   +-- mugration/
   +-- optimize/
-  +-- representation/
+  +-- partition/
   +-- seq/
   +-- timetree/
 
@@ -63,7 +63,6 @@ treetime-cli (client)
   |   +-- mugration/
   |   +-- optimize/
   |   +-- prune/
-  |   +-- shared/
   |   +-- timetree/
   +-- bin/
 
@@ -89,10 +88,10 @@ Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi
 
 Coordinates:
 
-- [architecture-extract-timetree-convergence-confidence.md](architecture-extract-timetree-convergence-confidence.md)
-- [architecture-extract-mugration-domain-logic.md](architecture-extract-mugration-domain-logic.md)
-- ~~architecture-extract-prune-domain-logic.md~~ **Done**
-- [architecture-move-shared-domain-enums-from-commands.md](architecture-move-shared-domain-enums-from-commands.md)
+- ~~architecture-extract-timetree-convergence-confidence.md~~ (resolved)
+- ~~architecture-extract-mugration-domain-logic.md~~ (resolved)
+- ~~architecture-extract-prune-domain-logic.md~~ (resolved)
+- ~~architecture-move-shared-domain-enums-from-commands.md~~ (resolved)
 - [architecture-move-commands-to-cli-crate.md](architecture-move-commands-to-cli-crate.md)
 - [architecture-add-treetime-python-crate.md](architecture-add-treetime-python-crate.md)
 - [architecture-add-treetime-desktop-crate.md](architecture-add-treetime-desktop-crate.md)

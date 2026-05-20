@@ -17,9 +17,9 @@
 
 ## Clock Regression
 
-**Test:** [`packages/treetime/src/commands/clock/__tests__/test_clock_regression.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_regression.rs)
+**Test:** [`packages/treetime/src/clock/__tests__/test_clock_regression.rs`](../../packages/treetime/src/clock/__tests__/test_clock_regression.rs)
 
-**Impl:** [`packages/treetime/src/commands/clock/clock_regression.rs`](../../packages/treetime/src/commands/clock/clock_regression.rs)
+**Impl:** [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)
 
 | Test                    | Purpose                                             |
 | ----------------------- | --------------------------------------------------- |
@@ -29,9 +29,9 @@
 
 ## Date Constraints
 
-**Test:** [`packages/treetime/src/commands/clock/__tests__/test_date_constraints.rs`](../../packages/treetime/src/commands/clock/__tests__/test_date_constraints.rs)
+**Test:** [`packages/treetime/src/clock/__tests__/test_date_constraints.rs`](../../packages/treetime/src/clock/__tests__/test_date_constraints.rs)
 
-**Impl:** [`packages/treetime/src/commands/clock/date_constraints.rs`](../../packages/treetime/src/commands/clock/date_constraints.rs)
+**Impl:** [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs)
 
 | Test                                                       | Purpose                               |
 | ---------------------------------------------------------- | ------------------------------------- |
@@ -54,9 +54,9 @@
 
 ## Rerooting
 
-**Test:** [`packages/treetime/src/commands/clock/__tests__/test_reroot.rs`](../../packages/treetime/src/commands/clock/__tests__/test_reroot.rs)
+**Test:** [`packages/treetime/src/clock/__tests__/test_reroot.rs`](../../packages/treetime/src/clock/__tests__/test_reroot.rs)
 
-**Impl:** [`packages/treetime/src/commands/clock/reroot.rs`](../../packages/treetime/src/commands/clock/reroot.rs)
+**Impl:** [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)
 
 | Test                                                                     | Purpose                              |
 | ------------------------------------------------------------------------ | ------------------------------------ |
@@ -69,13 +69,13 @@
 
 ## Find Best Root
 
-**Test:** [`packages/treetime/src/commands/clock/find_best_root/__tests__/test_find_best_root.rs`](../../packages/treetime/src/commands/clock/find_best_root/__tests__/test_find_best_root.rs)
+**Test:** [`packages/treetime/src/clock/find_best_root/__tests__/test_find_best_root.rs`](../../packages/treetime/src/clock/find_best_root/__tests__/test_find_best_root.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/clock/find_best_root/find_best_root.rs`](../../packages/treetime/src/commands/clock/find_best_root/find_best_root.rs)
-- [`packages/treetime/src/commands/clock/find_best_root/find_best_split.rs`](../../packages/treetime/src/commands/clock/find_best_root/find_best_split.rs)
-- [`packages/treetime/src/commands/clock/find_best_root/params.rs`](../../packages/treetime/src/commands/clock/find_best_root/params.rs)
+- [`packages/treetime/src/clock/find_best_root/find_best_root.rs`](../../packages/treetime/src/clock/find_best_root/find_best_root.rs)
+- [`packages/treetime/src/clock/find_best_root/find_best_split.rs`](../../packages/treetime/src/clock/find_best_root/find_best_split.rs)
+- [`packages/treetime/src/clock/find_best_root/params.rs`](../../packages/treetime/src/clock/find_best_root/params.rs)
 
 | Test                                                             | Purpose                                                |
 | ---------------------------------------------------------------- | ------------------------------------------------------ |
@@ -93,9 +93,9 @@
 
 ## Clock Filter
 
-**Test:** [`packages/treetime/src/commands/clock/__tests__/test_clock_filter.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_filter.rs)
+**Test:** [`packages/treetime/src/clock/__tests__/test_clock_filter.rs`](../../packages/treetime/src/clock/__tests__/test_clock_filter.rs)
 
-**Impl:** [`packages/treetime/src/commands/clock/clock_filter.rs`](../../packages/treetime/src/commands/clock/clock_filter.rs)
+**Impl:** [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)
 
 | Test                                                       | Purpose                                                          |
 | ---------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -106,15 +106,15 @@
 
 ## Dengue/100 Pipeline
 
-**Test:** [`packages/treetime/src/commands/clock/__tests__/test_clock_dengue100.rs`](../../packages/treetime/src/commands/clock/__tests__/test_clock_dengue100.rs)
+**Test:** [`packages/treetime/src/clock/__tests__/test_clock_dengue100.rs`](../../packages/treetime/src/clock/__tests__/test_clock_dengue100.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/clock/assign_dates.rs`](../../packages/treetime/src/commands/clock/assign_dates.rs)
-- [`packages/treetime/src/commands/clock/clock_filter.rs`](../../packages/treetime/src/commands/clock/clock_filter.rs)
-- [`packages/treetime/src/commands/clock/clock_model.rs`](../../packages/treetime/src/commands/clock/clock_model.rs)
-- [`packages/treetime/src/commands/clock/clock_regression.rs`](../../packages/treetime/src/commands/clock/clock_regression.rs)
-- [`packages/treetime/src/commands/clock/reroot.rs`](../../packages/treetime/src/commands/clock/reroot.rs)
+- [`packages/treetime/src/clock/assign_dates.rs`](../../packages/treetime/src/clock/assign_dates.rs)
+- [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)
+- [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)
+- [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)
+- [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)
 
 | Test                                                  | Purpose                                                                        |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------ |

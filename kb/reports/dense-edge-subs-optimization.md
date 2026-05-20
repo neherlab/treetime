@@ -123,7 +123,7 @@ For mpox/clade-ii/100 (197 nodes, 197k positions each), this removes ~39M redund
 
 ### 5.3 Fused `edge_subs` + `edge_effective_length`
 
-Structural observation, not profiled. `initial_guess_mixed()` (`optimize_unified.rs:748`) calls both `edge_subs()` and `edge_effective_length()` per edge. Both look up the same `non_char` ranges; `edge_effective_length` also clones and unions them via `range_union`. A fused function could compute both sub count and effective length in a single pass. Only applies to the `optimize` command path, not ancestral-only.
+Structural observation, not profiled. `initial_guess_mixed()` (`dispatch.rs:748`) calls both `edge_subs()` and `edge_effective_length()` per edge. Both look up the same `non_char` ranges; `edge_effective_length` also clones and unions them via `range_union`. A fused function could compute both sub count and effective length in a single pass. Only applies to the `optimize` command path, not ancestral-only.
 
 ### 5.4 Column compression for dense mode
 

@@ -6,7 +6,7 @@ The current input model reads tree topology from Newick and sequences from FASTA
 
 ### Duplicate leaf names
 
-When a tree contains multiple nodes with the same name (e.g., two leaves named `"USA"`), the attachment logic at [packages/treetime/src/commands/ancestral/fitch.rs#L53-L57](../../packages/treetime/src/commands/ancestral/fitch.rs#L53-L57) uses `.find()` which returns the first match. The second node silently receives the same sequence or fails.
+When a tree contains multiple nodes with the same name (e.g., two leaves named `"USA"`), the attachment logic at [packages/treetime/src/ancestral/fitch.rs#L53-L57](../../packages/treetime/src/ancestral/fitch.rs#L53-L57) uses `.find()` which returns the first match. The second node silently receives the same sequence or fails.
 
 ### Duplicate FASTA names
 
@@ -27,7 +27,7 @@ Names that differ only in whitespace or encoding are treated as distinct:
 
 ### Case sensitivity
 
-The comparison at [packages/treetime/src/commands/ancestral/fitch.rs#L55](../../packages/treetime/src/commands/ancestral/fitch.rs#L55) is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
+The comparison at [packages/treetime/src/ancestral/fitch.rs#L55](../../packages/treetime/src/ancestral/fitch.rs#L55) is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
 
 ## Current behavior
 

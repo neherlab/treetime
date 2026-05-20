@@ -1,12 +1,10 @@
 # Iterative outer GTR refinement for ancestral reconstruction
 
-Generalize iterative GTR refinement from mugration-only to all marginal partitions. The current mugration-only restriction is an unintentional v0 divergence (two code paths, two authors, never unified) that v1 copied as if it were deliberate design.
+This document proposes an optional extension to the ancestral command: when running marginal ancestral reconstruction with `--model infer`, alternate between ancestral-state reconstruction and GTR re-estimation for several outer iterations instead of performing only one conditional model fit.
 
-The proposal is **accepted**. The v0 divergence has been identified as accidental, and the v1 refinement code (`refine_gtr_iterative`, `count_transitions`, `optimize_gtr_rate` in `gtr/refinement.rs`) already operates on `MarginalData` fields shared by all marginal partition types. The only barrier is hardcoded `PartitionMarginalDiscrete` in function signatures.
+The proposal is **not accepted** and **not implemented**. It records the scientific case, the relevant current code, and the main tradeoffs.
 
-## Origin of the divergence
-
-In v0, `reconstruct_discrete_traits()` and `infer_ancestral_sequences()` were written as separate code paths by different authors. Mugration got iterative refinement because single-site GTR estimation is underconstrained. Ancestral never got it - not because it was rejected, but because the code paths never converged. v1 faithfully reproduced this accident.
+It also records the current accepted behavior that motivated the proposal: both v0 and v1 ancestral command paths use one-shot conditional GTR inference, while v0 mugration uses a true outer refinement loop.
 
 ## Current behavior
 
@@ -117,12 +115,12 @@ The proposal is still scientifically plausible, but the expected payoff is conce
 ### v1 model inference core
 
 - [`packages/treetime/src/gtr/infer_gtr/common.rs#L97-L157`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L97-L157): iterative update of `W`, `pi`, and `mu` for fixed counts
-- [`packages/treetime/src/gtr/infer_gtr/dense.rs#L15-L23`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L15-L23): dense inference entry point
-- [`packages/treetime/src/gtr/infer_gtr/sparse.rs#L10-L18`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L10-L18): sparse inference entry point
+- [`packages/treetime/src/gtr/infer_gtr/common.rs#L15-L23`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L15-L23): dense inference entry point
+- [`packages/treetime/src/gtr/infer_gtr/common.rs#L10-L18`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L10-L18): sparse inference entry point
 
 ### v1 marginal passes
 
-- [`packages/treetime/src/commands/ancestral/marginal.rs#L17-L49`](../../packages/treetime/src/commands/ancestral/marginal.rs#L17-L49): `initialize_marginal()` and `update_marginal()`
+- [`packages/treetime/src/ancestral/marginal.rs#L17-L49`](../../packages/treetime/src/ancestral/marginal.rs#L17-L49): `initialize_marginal()` and `update_marginal()`
 - [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 - [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)
 
@@ -206,29 +204,31 @@ If posterior profiles are overconfident, repeated re-estimation can reinforce ea
 
 ### v0 parity
 
-The v0 ancestral CLI also stops after one conditional fit. But this is not evidence that one-shot was a deliberate design choice for ancestral - it is evidence that the v0 authors never propagated mugration's refinement loop back to ancestral. The v0 codebase has two disconnected GTR lifecycle implementations that were never unified.
+This proposal would not necessarily make v1 more like the v0 ancestral CLI, because the v0 ancestral CLI also stops after one conditional fit. It is therefore best framed as a **candidate intentional extension**, not as a parity task.
 
-## Implementation path
+## Current conclusion motivating the proposal
 
-The existing `gtr/refinement.rs` functions (`refine_gtr_iterative`, `count_transitions`, `optimize_gtr_rate`) already operate on `MarginalData` fields shared by all marginal partitions. Generalization requires:
+The codebase currently supports the following scientifically meaningful distinction:
 
-1. Replace `&mut PartitionMarginalDiscrete` with a trait bound: `&mut P: MarginalPartition<N, E> + HasGtr`
-2. Replace `partition.n_states()` with `partition.gtr().n_states` or equivalent
-3. Replace `partition.data` access with trait methods (`marginal_data()`, `marginal_data_mut()`)
+- v0 ancestral: one-shot conditional GTR inference
+- v1 ancestral: one-shot conditional GTR inference
+- v0 mugration: iterative outer GTR refinement
 
-No algorithmic changes needed. The Brent rate optimization, transition counting, and GTR inference all work on the same `MarginalData` regardless of partition type.
+This proposal exists because mugration demonstrates that outer refinement is scientifically plausible in the project domain, while ancestral currently uses the simpler one-shot workflow.
 
-## Validation plan
+## Validation plan if accepted
 
-1. Generalized refinement produces identical results for discrete partitions (regression gate).
-2. Ancestral with iterative refinement shows monotonic or non-decreasing log likelihood across outer iterations.
-3. Inferred `pi`, `W`, and `mu` stabilize within a small number of iterations on representative datasets.
-4. Runtime acceptable on large datasets.
-5. Feature exposed behind a CLI flag (`--gtr-iterations N`, default 0 for ancestral, 5 for mugration to preserve current behavior).
+1. Add example-based tests showing monotonic or non-decreasing sequence log likelihood across outer iterations, within numerical tolerance.
+2. Compare one-shot and iterative outputs on datasets with strong compositional skew.
+3. Check whether inferred `pi`, `W`, and `mu` stabilize within a small number of iterations.
+4. Confirm that runtime remains acceptable on representative large datasets.
+5. Decide whether the feature is always-on or exposed behind a dedicated CLI flag.
 
 ## Recommendation
 
-Accepted. Generalize the refinement functions to trait-based signatures as part of making mugration a thin wrapper around shared ancestral infrastructure. The v0 divergence was accidental, and the code is already structured to support this with minimal changes.
+This proposal is scientifically plausible and internally consistent with TreeTime's existing GTR machinery. It is worth considering as an intentional extension for `ancestral --model infer`, but it should be treated as an optimization-quality improvement rather than a parity requirement.
+
+The main reason to accept it is improved joint consistency between latent ancestral profiles and inferred substitution parameters. The main reason to reject it is that the expected practical benefit for long, informative alignments may be too small to justify the extra complexity.
 
 ## References
 

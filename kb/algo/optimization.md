@@ -12,7 +12,7 @@ Per-edge branch length optimization using Newton's method with analytical first 
 
 All variants fall back to a 100-point log-spaced grid search when the second derivative is non-negative.
 
-v1: [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs).
+v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces) selectable via `--opt-method`; `brent-sqrt` is the default and matches v0 on the success path. The Newton variants compute analytical derivatives from eigenvalue-space coefficient caching. The Hessian (posterior variance of eigenvalues) uses the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$ to avoid catastrophic cancellation in the two-moment form. See [feature inventory](../features/README.md#7-branch-length-optimization) for parity details and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
@@ -28,7 +28,7 @@ Per-edge branch length optimization using Brent's derivative-free method (<a id=
 - sqrt(t)-space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. **Default method, matches v0 exactly.** Smooths the objective near $t = 0$, giving parabolic interpolation a better fit. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero.
 - ln(t)-space (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Smoothest objective surface of all parameterizations. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$).
 
-v1: [`packages/treetime/src/commands/optimize/method_brent.rs`](../../packages/treetime/src/commands/optimize/method_brent.rs).
+v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs).
 
 v0: `optimal_t_compressed()` at [`packages/legacy/treetime/treetime/gtr.py#L816-L920`](../../packages/legacy/treetime/treetime/gtr.py#L816-L920). Uses `scipy.optimize.minimize_scalar(method='brent')` in sqrt(t) space with bracket `[-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]`.
 
@@ -42,8 +42,8 @@ See also <a id="cite-4"></a>[Press et al. 2007](https://doi.org/10.1017/CBO97805
 
 Precomputes eigenvector coefficients for each edge, enabling efficient per-branch log-likelihood and derivative evaluation without repeated matrix exponential computation. For a GTR model with rate matrix Q = V _ diag(lambda) _ V^-1, the transition probabilities at branch length t factor as `P(t) = V * diag(exp(lambda_i * t)) * V^-1`. The key insight is that profile-eigenvector dot products (`msg.dot(V)` and `msg.dot(V_inv.T)`) are branch-length-independent and can be cached once per edge.
 
-v1 dense: [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs).
-v1 sparse: [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs).
+v1 dense: [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs).
+v1 sparse: [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs).
 
 The sparse path weights each site contribution by its multiplicity (number of identical columns in the alignment sharing that substitution pattern), reducing computation for conserved sequences.
 
@@ -55,7 +55,7 @@ The eigendecomposition approach follows <a id="cite-5"></a>[Felsenstein 1981](ht
 
 Adds a Poisson indel log-likelihood term to branch length optimization. Here $k$ is the observed indel count on one edge, $t$ is that edge's branch length, $\mu$ is the global indel rate, and $e$ indexes tree edges for the tree-level estimator. The per-edge log-likelihood is $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. The rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from the tree once per optimize pass and reused both for the tree-level objective (`total_indel_log_lh()`) and for per-edge updates (`run_optimize_mixed_with_indel_rate()`).
 
-v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs).
+v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
 v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
 
@@ -117,7 +117,7 @@ IQ-TREE's per-round monotonicity check described in <a id="cite-9"></a>[Minh et 
 
 Canonical edge-collapse operation for zero-length or near-zero-length internal edges. Reparents children to the grandparent, updates branch lengths (summing parent and child), and cleans up stale partition entries for both sparse (sub composition) and dense representations. Shared across the optimize and prune commands.
 
-v1: `collapse_edge()` in [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs).
+v1: `collapse_edge()` in [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs).
 
 v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
@@ -138,7 +138,7 @@ v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
 
 Determines if zero is the optimal branch length by evaluating the sign of `d/dt log L(0)`. For independent sites with eigendecomposition-based likelihood `L_i(t) = sum_c k_{ic} exp(lambda_c t)`, the per-site derivative at zero is `(sum_c k_{ic} lambda_c) / (sum_c k_{ic})`. If the total derivative (summed over sites) is negative, the likelihood decreases as `t` increases from zero, making zero a local maximum.
 
-v1: [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs) `is_zero_branch_optimal()`.
+v1: [`packages/treetime/src/optimize/zero_boundary.rs`](../../packages/treetime/src/optimize/zero_boundary.rs) `is_zero_branch_optimal()`.
 
 v0 does not have an equivalent analytical check. v0 uses `prune_short_branches()` with a compound threshold-and-probability criterion instead.
 
@@ -160,7 +160,7 @@ v1: Not implemented in the optimize loop. The prune command has `--prune-short` 
 
 Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node whose branch length is the Jukes-Cantor 1969 correction of the pooled p-distance `#shared_mutations / alignment_length` (see [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs)). Shared mutations move to the new parent edge; remaining unique mutations stay on child edges. See [the corresponding intentional change](../decisions/prune-merge-jukes-cantor-branch-length.md) for the rationale for correcting the raw ratio specified in `../_raw/optimize.md`.
 
-v1: [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
+v1: [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
 
 v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrain pathogen pipelines.
 
@@ -170,7 +170,7 @@ v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrai
 
 For each polytomy, computes pairwise likelihood gain from merging children under a new intermediate node. Uses Brent optimization over the time domain with `zero_branch_slope = mu * L` penalty for the new zero-mutation branch. Greedily picks the best pair above `resolution_threshold` (0.05). O(n^2) per polytomy.
 
-v1: [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs) `resolve_polytomies()`.
+v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs) `resolve_polytomies()`.
 
 v0: `_poly()` at [`packages/legacy/treetime/treetime/treetime.py#L713-L870`](../../packages/legacy/treetime/treetime/treetime.py#L713-L870). v0 distinguishes "stretched" (`mutation_length < clock_length`) from "compressed" children and by default only resolves stretched ones.
 
@@ -206,9 +206,9 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 
 | File                                                                                                                               | Algorithms                                                                             |
 | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`packages/treetime/src/commands/optimize/`](../../packages/treetime/src/commands/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
-| [`packages/treetime/src/commands/prune/`](../../packages/treetime/src/commands/prune/)                                             | Shared-mutation merging                                                                |
-| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/)             | Greedy temporal polytomy resolution                                                    |
-| [`packages/treetime/src/partition/algo/topology_cleanup/`](../../packages/treetime/src/partition/algo/topology_cleanup/) | Edge collapse (shared)                                                                 |
+| [`packages/treetime/src/optimize/`](../../packages/treetime/src/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
+| [`packages/treetime/src/prune/`](../../packages/treetime/src/prune/)                                             | Shared-mutation merging                                                                |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)             | Greedy temporal polytomy resolution                                                    |
+| [`packages/treetime/src/optimize/topology/`](../../packages/treetime/src/optimize/topology/) | Edge collapse (shared)                                                                 |
 | [`packages/treetime/src/partition/`](../../packages/treetime/src/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
 | [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                 | Interpolation (uniform, non-uniform)                                                   |

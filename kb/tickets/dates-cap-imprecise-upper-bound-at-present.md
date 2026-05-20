@@ -6,8 +6,8 @@ A date like `2026-XX-XX` produces range `[2026-01-01, 2026-12-31]` in v1. If par
 
 ## Affected commands
 
-- `clock` - [`assign_dates()`](../../packages/treetime/src/commands/clock/assign_dates.rs#L9) (`#assign_dates`) uses `DateOrRange::mean()` for regression. A future upper bound shifts the midpoint forward.
-- `timetree` - [`load_date_constraints()`](../../packages/treetime/src/commands/clock/date_constraints.rs#L23) (`#load_date_constraints`) converts range to `Distribution::range()`. A future upper bound widens the uniform prior, allowing the optimizer to place the node in the future.
+- `clock` - [`assign_dates()`](../../packages/treetime/src/clock/assign_dates.rs#L9) (`#assign_dates`) uses `DateOrRange::mean()` for regression. A future upper bound shifts the midpoint forward.
+- `timetree` - [`load_date_constraints()`](../../packages/treetime/src/clock/date_constraints.rs#L23) (`#load_date_constraints`) converts range to `Distribution::range()`. A future upper bound widens the uniform prior, allowing the optimizer to place the node in the future.
 
 ## Science background
 

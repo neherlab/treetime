@@ -8,7 +8,7 @@ v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/t
 
 ### `ln(0.0)` produces `-Inf` in cost function
 
-`MergeCostFunction::cost()` computes `.unwrap_or(1e-10).ln()` on `Distribution::eval()` results. The `unwrap_or` guard catches `Err` but not `Ok(0.0)`. `Distribution::Function` variants can return `Ok(0.0)` when boundary values underflow to zero during `exp()` normalization in `compute_branch_length_distribution()`. The proper fix is clamping `normalized_prob` at the source in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L53`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L53), not a consumer-side clamp.
+`MergeCostFunction::cost()` computes `.unwrap_or(1e-10).ln()` on `Distribution::eval()` results. The `unwrap_or` guard catches `Err` but not `Ok(0.0)`. `Distribution::Function` variants can return `Ok(0.0)` when boundary values underflow to zero during `exp()` normalization in `compute_branch_length_distribution()`. The proper fix is clamping `normalized_prob` at the source in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L53`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L53), not a consumer-side clamp.
 
 v0 avoids this by working in neg-log space with `fill_value=BIG_NUMBER`.
 

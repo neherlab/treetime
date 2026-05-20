@@ -222,7 +222,7 @@ The graph provides primitive topology operations in [packages/treetime-graph/src
 
 The `find_paths` module in [packages/treetime-graph/src/find_paths.rs](../../packages/treetime-graph/src/find_paths.rs) provides DAG-aware path queries: `find_paths()` returns all edges on all paths between two nodes, and `exists_forward_path_between()` / `exists_backward_path_between()` check path existence via BFS with early termination. These operate on general directed graphs without assuming tree topology, making them building blocks for network algorithms such as finding displayed trees or identifying reticulation cycles.
 
-The `invert_edge()` (`#invert_edge`) free function in [packages/treetime-graph/src/edge.rs#L102-L133](../../packages/treetime-graph/src/edge.rs#L102-L133) reverses an edge's direction by swapping source/target and updating both nodes' inbound/outbound lists. This is used during rerooting: `apply_reroot()` (`#apply_reroot`) in [packages/treetime/src/commands/clock/reroot.rs#L196-L228](../../packages/treetime/src/commands/clock/reroot.rs#L196-L228) finds the path from the new root to the old root and inverts every edge along that path.
+The `invert_edge()` (`#invert_edge`) free function in [packages/treetime-graph/src/edge.rs#L102-L133](../../packages/treetime-graph/src/edge.rs#L102-L133) reverses an edge's direction by swapping source/target and updating both nodes' inbound/outbound lists. This is used during rerooting: `apply_reroot()` (`#apply_reroot`) in [packages/treetime/src/clock/reroot.rs#L196-L228](../../packages/treetime/src/clock/reroot.rs#L196-L228) finds the path from the new root to the old root and inverts every edge along that path.
 
 ### Tree enforcement
 
@@ -237,7 +237,7 @@ Tree semantics are enforced at runtime by methods that return errors or panic wh
 
 All sequential traversal methods call `get_exactly_one_root().unwrap()` and panic on multi-root graphs. All algorithm code in v1 currently calls one of these enforcement methods, making v1 strictly tree-only at the algorithm level.
 
-The test `test_collapse_edge_multiple_inbound_edges` in [packages/treetime/src/graph/\_\_tests\_\_/graph.rs#L303-L351](../../packages/treetime/src/graph/__tests__/graph.rs#L303-L351) explicitly constructs a graph where one node has two parents and verifies that `collapse_edge()` handles it correctly. This confirms the storage and mutation layer supports network topology even though algorithms do not use it.
+The test `test_collapse_edge_multiple_inbound_edges` in [packages/treetime/src/graph/\_\_tests\_\_/test_graph.rs#L303-L351](../../packages/treetime/src/graph/__tests__/test_graph.rs#L303-L351) explicitly constructs a graph where one node has two parents and verifies that `collapse_edge()` handles it correctly. This confirms the storage and mutation layer supports network topology even though algorithms do not use it.
 
 ## Rationale
 

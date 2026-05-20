@@ -99,7 +99,7 @@ v0: [`packages/legacy/treetime/treetime/gtr.py#L491-L599`](../../packages/legacy
 
 Counts mutations from Fitch reconstruction: integer substitution counts for `nij`, branch-length-weighted composition for `Ti`, root composition from consensus sequence. Fast because Fitch reconstruction gives hard assignments (no probabilistic profiles to integrate over). Used by both dense and sparse initial GTR inference via `PartitionFitch::infer_gtr`.
 
-`infer_gtr_fitch()` (`#infer_gtr_fitch`) at [`packages/treetime/src/gtr/infer_gtr/fitch.rs`](../../packages/treetime/src/gtr/infer_gtr/fitch.rs).
+`infer_gtr_fitch()` (`#infer_gtr_fitch`) at [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs).
 
 ### Dense GTR Inference
 
@@ -107,9 +107,9 @@ Counts mutations from fractional expected counts derived from branch joint distr
 
 Key functions:
 
-- `get_branch_mutation_matrix()` (`#get_branch_mutation_matrix`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L51-L82`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L51-L82): computes posterior `P(child=i, parent=j | site)` from edge messages and transition matrix.
-- `accumulate_mutation_counts()` (`#accumulate_mutation_counts`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L92-L130`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L92-L130): sums `nij` and `Ti` from branch joint distributions.
-- `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at [`packages/treetime/src/gtr/infer_gtr/dense.rs#L138-L210`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L138-L210): iterates edges to build `MutationCounts` with `SUPERTINY_NUMBER` floor on expQt and branch length clamping.
+- `get_branch_mutation_matrix()` (`#get_branch_mutation_matrix`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L51-L82`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L51-L82): computes posterior `P(child=i, parent=j | site)` from edge messages and transition matrix.
+- `accumulate_mutation_counts()` (`#accumulate_mutation_counts`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L92-L130`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L92-L130): sums `nij` and `Ti` from branch joint distributions.
+- `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at [`packages/treetime/src/gtr/infer_gtr/common.rs#L138-L210`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L138-L210): iterates edges to build `MutationCounts` with `SUPERTINY_NUMBER` floor on expQt and branch length clamping.
 
 ---
 
@@ -168,6 +168,6 @@ See [unimplemented](unimplemented.md) for full details:
 | [`packages/treetime/src/gtr/gtr_site_specific.rs`](../../packages/treetime/src/gtr/gtr_site_specific.rs)             | Site-specific GTR, per-site eigendecomposition, interpolation         |
 | [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                 | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON              |
 | [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)               | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`               |
-| [`packages/treetime/src/gtr/infer_gtr/fitch.rs`](../../packages/treetime/src/gtr/infer_gtr/fitch.rs)                 | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
-| [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)                 | Dense GTR inference from branch joint distributions                   |
+| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)                 | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
+| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)                 | Dense GTR inference from branch joint distributions                   |
 | [`packages/treetime/src/gtr/infer_gtr/site_specific.rs`](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs) | Site-specific GTR inference from per-site mutation counts             |

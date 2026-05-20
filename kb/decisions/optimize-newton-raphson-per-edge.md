@@ -16,7 +16,7 @@ v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marg
 
 ## What v1 does
 
-v1 `run_optimize_mixed()` ([packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)) offers six per-edge optimization methods selectable via `--opt-method`:
+v1 `run_optimize_mixed()` ([packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)) offers six per-edge optimization methods selectable via `--opt-method`:
 
 ### Brent methods (derivative-free)
 

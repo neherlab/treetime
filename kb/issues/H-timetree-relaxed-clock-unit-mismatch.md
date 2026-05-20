@@ -6,7 +6,7 @@ The relaxed clock penalty function mixes time units (years) with evolutionary di
 
 ## Details
 
-`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs:50:`
+`packages/treetime/src/timetree/optimization/relaxed_clock.rs:50:`
 
 ```rust
 let act_len = parent_edge.time_length().unwrap_or(opt_len)

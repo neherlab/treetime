@@ -41,7 +41,7 @@ Newton-Raphson converges quadratically near the optimum (each iteration doubles 
 
 **When Newton fails:** If the second derivative `f''(t) >= 0`, the surface is not concave and Newton would move toward a minimum. v1 falls back to a **grid search**: evaluate the likelihood on 100 logarithmically spaced branch lengths (`geomspace`) from `0.1 / L` to `1.5 * current_bl + 1/L`, and pick the maximum.
 
-v1 code: `run_optimize_mixed()` in [`packages/treetime/src/commands/optimize/optimize_unified.rs#L533`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L533). Up to 10 inner iterations per edge.
+v1 code: `run_optimize_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L533`](../../../packages/treetime/src/optimize/dispatch.rs#L533). Up to 10 inner iterations per edge.
 
 ## Brent's method (v0)
 
@@ -83,7 +83,7 @@ initial_bl = #subs / effective_length
 
 The substitution count comes from `edge_subs()` -- MAP state comparison for dense partitions, marginal-reconstructed states for sparse partitions. Gap positions are excluded from both numerator and denominator.
 
-v1 code: `initial_guess_mixed()` in [`packages/treetime/src/commands/optimize/optimize_unified.rs#L729`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L729).
+v1 code: `initial_guess_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L729`](../../../packages/treetime/src/optimize/dispatch.rs#L729).
 
 ## Tool comparison
 

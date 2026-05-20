@@ -6,7 +6,7 @@ The timetree inference runner recomputes `estimate_indel_rate()` on every call t
 
 ## Details
 
-`packages/treetime/src/commands/timetree/inference/runner.rs:95:`
+`packages/treetime/src/timetree/inference/runner.rs:95:`
 
 Each refinement iteration calls `run_timetree` which calls `estimate_indel_rate(graph, partitions)`. Since branch lengths change between iterations (that is the purpose of refinement), the indel rate estimate changes too, creating a feedback loop: branch length changes shift the indel rate, which shifts the Poisson indel likelihood contribution, which shifts branch length targets.
 

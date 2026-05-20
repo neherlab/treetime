@@ -79,7 +79,7 @@ Three cases arise when composing substitutions at the same position:
 
 Set-union produces correct results only for convergent mutations at the same position. For chains and cancellations, it produces incorrect mutation counts and incorrect ancestral state assignments.
 
-v1 implements composition via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs). Both the prune and optimize commands delegate to this shared function so sparse edge collapse stays composition-correct across the codebase.
+v1 implements composition via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/optimize/topology/collapse.rs`](../../../packages/treetime/src/optimize/topology/collapse.rs). Both the prune and optimize commands delegate to this shared function so sparse edge collapse stays composition-correct across the codebase.
 
 ## The model hierarchy
 
@@ -163,7 +163,7 @@ L''_i(t) = sum_c k_{ic} * lambda_c^2 * exp(lambda_c * t)
 
 This makes Newton-Raphson optimization efficient: function value and derivatives computed from the same precomputed coefficients, O(s) per site (s = number of states, 4 for nucleotides).
 
-v1 code: eigendecomposition-based evaluation in [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs) (dense) and [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs) (sparse).
+v1 code: eigendecomposition-based evaluation in [`packages/treetime/src/optimize/dense_eval.rs`](../../../packages/treetime/src/optimize/dense_eval.rs) (dense) and [`packages/treetime/src/optimize/sparse_eval.rs`](../../../packages/treetime/src/optimize/sparse_eval.rs) (sparse).
 
 ### Eigenvalues and model properties
 

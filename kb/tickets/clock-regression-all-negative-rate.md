@@ -18,7 +18,7 @@ v0's pre-filter reroot at `packages/legacy/treetime/treetime/treetime.py:486-489
 
 ## v1 Location
 
-`packages/treetime/src/commands/clock/find_best_root/find_best_root.rs`: all 198 nodes rejected for negative rate on dengue/100 pre-filter.
+`packages/treetime/src/clock/find_best_root/find_best_root.rs`: all 198 nodes rejected for negative rate on dengue/100 pre-filter.
 
 ## Related issues
 

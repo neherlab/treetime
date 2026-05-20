@@ -7,7 +7,7 @@
 ## Affected paths
 
 - `packages/treetime/src/commands/timetree/refinement.rs`: `capture_ancestral_states` at lines 51 and 92
-- `packages/treetime/src/commands/timetree/convergence/sequence_changes.rs`: `capture_ancestral_states` reads `extract_ancestral_sequence` per internal node
+- `packages/treetime/src/timetree/convergence/sequence_changes.rs`: `capture_ancestral_states` reads `extract_ancestral_sequence` per internal node
 - `packages/treetime/src/partition/marginal_sparse.rs`: `extract_ancestral_sequence` returns empty when `seq.sequence` is cleared by `finalize_fitch`
 
 ## Context

@@ -18,7 +18,7 @@ The unrestricted shortcut could collapse a branch to zero even when a positive b
 
 - `GTR.unimodal_branch_likelihood` field at [packages/treetime/src/gtr/gtr.rs#L198-L209](../../packages/treetime/src/gtr/gtr.rs#L198-L209): tracks whether the model's $L(t)$ is proven unimodal
 - Set `true` for JC69 at [packages/treetime/src/gtr/get_gtr.rs#L189-L190](../../packages/treetime/src/gtr/get_gtr.rs#L189-L190) and F81 at [packages/treetime/src/gtr/get_gtr.rs#L251-L252](../../packages/treetime/src/gtr/get_gtr.rs#L251-L252)
-- `is_zero_branch_optimal()` at [packages/treetime/src/commands/optimize/optimize_unified.rs#L203-L210](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L203-L210): checks all contributions have unimodal models before applying derivative shortcut
+- `is_zero_branch_optimal()` at [packages/treetime/src/optimize/zero_boundary.rs#L203-L210](../../packages/treetime/src/optimize/zero_boundary.rs#L203-L210): checks all contributions have unimodal models before applying derivative shortcut
 
 ## Impact
 

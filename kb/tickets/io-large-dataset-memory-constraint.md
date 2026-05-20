@@ -26,7 +26,7 @@ The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences ar
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. Length validation: `get_common_length()` at [packages/treetime/src/commands/ancestral/fitch.rs#L520](../../packages/treetime/src/commands/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
+1. Length validation: `get_common_length()` at [packages/treetime/src/ancestral/fitch.rs#L520](../../packages/treetime/src/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
 
 2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 
@@ -74,7 +74,7 @@ Adds external dependency and I/O overhead.
 
 - Source: [N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md) -- delete after full resolution
 - [M-io-sequence-attachment-quadratic](../issues/M-io-sequence-attachment-quadratic.md) -- attachment performance
-- [io-multi-segment-genome-input](io-multi-segment-genome-input.md) -- related input architecture
+- [io-wire-multi-segment-genome-input](io-wire-multi-segment-genome-input.md) -- related input architecture
 
 ## Related documentation
 

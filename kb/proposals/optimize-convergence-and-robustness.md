@@ -36,15 +36,15 @@ The sparse E-step ([packages/treetime/src/partition/marginal_passes.rs](../../pa
 
 The variable set is rebuilt from scratch each iteration and can grow or shrink.
 
-The sparse M-step evaluator ([packages/treetime/src/commands/optimize/optimize_sparse.rs](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)) computes eigendecomposition coefficients `parent.dot(V) * child.dot(V_inv.T)` from individual posteriors for variable positions and from bucketed canonical profiles for fixed positions. The coefficient computation uses soft distributions (not hard MAP states), but the variable/fixed classification boundary produces a discontinuity: the same position yields different coefficients depending on which path evaluates it.
+The sparse M-step evaluator ([packages/treetime/src/partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs)) computes eigendecomposition coefficients `parent.dot(V) * child.dot(V_inv.T)` from individual posteriors for variable positions and from bucketed canonical profiles for fixed positions. The coefficient computation uses soft distributions (not hard MAP states), but the variable/fixed classification boundary produces a discontinuity: the same position yields different coefficients depending on which path evaluates it.
 
 ### Dense representation
 
-The dense E-step ([packages/treetime/src/partition/marginal_dense.rs](../../packages/treetime/src/partition/marginal_dense.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/commands/optimize/optimize_dense.rs](../../packages/treetime/src/commands/optimize/optimize_dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
+The dense E-step ([packages/treetime/src/partition/marginal_dense.rs](../../packages/treetime/src/partition/marginal_dense.rs)) stores full `Array2<f64>` probability matrices. The dense evaluator ([packages/treetime/src/partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs)) computes coefficients from these matrices with multiplicity 1 per position. No variable/fixed classification. True soft-EM.
 
 ### Indel contribution
 
-[packages/treetime/src/commands/optimize/optimize_indel.rs](../../packages/treetime/src/commands/optimize/optimize_indel.rs)
+[packages/treetime/src/optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)
 
 Per-edge Poisson term $\ell_{\text{indel}}(t) = k \ln(\mu t) - \mu t - \ln(k!)$ where $t$ is branch length, $k$ is the observed indel count on the edge, and $\mu$ is the global indel rate. The global rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is recomputed each iteration, where the sums run over all edges $e$. v1-only feature (v0 ignores indels). See [optimize-indel-contribution-to-likelihood](../decisions/optimize-indel-contribution-to-likelihood.md).
 
@@ -56,15 +56,15 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 
 | ID  | Feature                                               | Reference                                                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [commands/optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                                                     |
-| I2  | Six per-edge methods (`--opt-method`)                 | [commands/optimize/method_newton.rs](../../packages/treetime/src/commands/optimize/method_newton.rs), [commands/optimize/method_brent.rs](../../packages/treetime/src/commands/optimize/method_brent.rs)         |
-| I3  | Grid search fallback (100-point, non-concave regions) | [commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs)                                                                                                       |
-| I4  | `--model` wired to GTR dispatch                       | [commands/optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                                                 |
-| I5  | Gap-aware initial guess (`edge_effective_length`)     | [commands/optimize/partition_ops.rs](../../packages/treetime/src/commands/optimize/partition_ops.rs)                                                                                                             |
-| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [commands/optimize/optimize_unified.rs#L328](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L328)                                                                  |
-| I7  | Eigenvalue-space coefficient caching                  | [commands/optimize/optimize_sparse.rs](../../packages/treetime/src/commands/optimize/optimize_sparse.rs), [commands/optimize/optimize_dense.rs](../../packages/treetime/src/commands/optimize/optimize_dense.rs) |
-| I8  | Poisson indel contribution                            | [commands/optimize/optimize_indel.rs](../../packages/treetime/src/commands/optimize/optimize_indel.rs)                                                                                                           |
-| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [commands/optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                                                  |
+| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                                                     |
+| I2  | Six per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)         |
+| I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                       |
+| I4  | `--model` wired to GTR dispatch                       | [optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                                                 |
+| I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                                                             |
+| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L328](../../packages/treetime/src/optimize/zero_boundary.rs#L328)                                                                  |
+| I7  | Eigenvalue-space coefficient caching                  | [partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs), [partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs) |
+| I8  | Poisson indel contribution                            | [optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)                                                                                                           |
+| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                                                  |
 
 ## Proposed improvements
 

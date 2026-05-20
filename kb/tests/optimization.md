@@ -40,16 +40,16 @@
 
 ## Coefficient Extraction - Dense
 
-**Directory:** [`test_coefficient_extraction_dense/`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/)
+**Directory:** [`test_coefficient_extraction_dense/`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/)
 
 ### Basic Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_basic.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_basic.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_basic.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_basic.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs)
 
 | Test                                              | Purpose                          |
 | ------------------------------------------------- | -------------------------------- |
@@ -61,9 +61,9 @@
 
 ### GTR Model Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_gtr.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_gtr.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_gtr.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_gtr.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
+**Impl:** [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
 
 | Test                                              | Purpose                          |
 | ------------------------------------------------- | -------------------------------- |
@@ -72,9 +72,9 @@
 
 ### Partition Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_partition.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_partition.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_partition.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_partition.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
+**Impl:** [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
 
 | Test                              | Purpose                           |
 | --------------------------------- | --------------------------------- |
@@ -82,9 +82,9 @@
 
 ### Position Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_positions.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_positions.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_positions.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_positions.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
+**Impl:** [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
 
 | Test                                       | Purpose                          |
 | ------------------------------------------ | -------------------------------- |
@@ -93,12 +93,12 @@
 
 ### Properties Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_properties.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_properties.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_properties.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_properties.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs)
 
 | Test                                                          | Purpose                            |
 | ------------------------------------------------------------- | ---------------------------------- |
@@ -108,14 +108,14 @@
 
 ### Property Invariants
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_prop_invariants.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                                               | Purpose                                                                            | Notes                 |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | --------------------- |
@@ -131,7 +131,7 @@
 
 ### Support
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_support.rs)
 
 Helper file. Provides `make_dense_seq_dis()`. No tests.
 
@@ -139,14 +139,14 @@ Helper file. Provides `make_dense_seq_dis()`. No tests.
 
 ## Coefficient Extraction - Dense Invariants
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_invariants.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_invariants.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_invariants.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_dense/test_coefficient_extraction_dense_invariants.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 Parameterized invariant tests using rstest.
 
@@ -161,13 +161,13 @@ Parameterized invariant tests using rstest.
 
 ## Coefficient Extraction - Sparse
 
-**Directory:** [`test_coefficient_extraction_sparse/`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/)
+**Directory:** [`test_coefficient_extraction_sparse/`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/)
 
 ### Site Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_site.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_site.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_site.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_site.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
+**Impl:** [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
 
 | Test                                                          | Purpose                         |
 | ------------------------------------------------------------- | ------------------------------- |
@@ -176,12 +176,12 @@ Parameterized invariant tests using rstest.
 
 ### Coefficients Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_coefficients.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_coefficients.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_coefficients.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_coefficients.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                                       | Purpose                      |
 | ---------------------------------------------------------- | ---------------------------- |
@@ -191,14 +191,14 @@ Parameterized invariant tests using rstest.
 
 ### Derivatives Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_derivatives.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_derivatives.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_derivatives.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_derivatives.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                                                 | Purpose                                         |
 | -------------------------------------------------------------------- | ----------------------------------------------- |
@@ -210,12 +210,12 @@ Parameterized invariant tests using rstest.
 
 ### Eigenvalues Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_eigenvalues.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_eigenvalues.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_eigenvalues.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_eigenvalues.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                               | Purpose                          |
 | -------------------------------------------------- | -------------------------------- |
@@ -224,12 +224,12 @@ Parameterized invariant tests using rstest.
 
 ### Evaluate Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_evaluate.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_evaluate.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_evaluate.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_evaluate.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                               | Purpose                     |
 | -------------------------------------------------- | --------------------------- |
@@ -240,12 +240,12 @@ Parameterized invariant tests using rstest.
 
 ### Mixed Sites Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_mixed_sites.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_mixed_sites.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_mixed_sites.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_mixed_sites.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse_eval.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse_eval.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs)
 
 | Test                                               | Purpose                        |
 | -------------------------------------------------- | ------------------------------ |
@@ -254,9 +254,9 @@ Parameterized invariant tests using rstest.
 
 ### Partition Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_partition.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_partition.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_partition.rs`](../../packages/treetime/src/optimize/__tests__/test_coefficient_extraction_sparse/test_coefficient_extraction_sparse_partition.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
+**Impl:** [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
 
 | Test                                                        | Purpose                       |
 | ----------------------------------------------------------- | ----------------------------- |
@@ -269,13 +269,13 @@ Parameterized invariant tests using rstest.
 
 ## Newton-Raphson Convergence
 
-**Directory:** [`test_newton_convergence/`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/)
+**Directory:** [`test_newton_convergence/`](../../packages/treetime/src/optimize/__tests__/test_newton_convergence/)
 
 ### Iteration Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_iteration.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_iteration.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_iteration.rs`](../../packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_iteration.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                            | Purpose                   |
 | ----------------------------------------------- | ------------------------- |
@@ -284,12 +284,12 @@ Parameterized invariant tests using rstest.
 
 ### Tolerance Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_tolerance.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_tolerance.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_tolerance.rs`](../../packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_tolerance.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
+- [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs)
 
 | Test                                                     | Purpose                                    |
 | -------------------------------------------------------- | ------------------------------------------ |
@@ -302,9 +302,9 @@ Parameterized invariant tests using rstest.
 
 ### Evaluate Mixed Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_evaluate_mixed.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_evaluate_mixed.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_evaluate_mixed.rs`](../../packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_evaluate_mixed.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/likelihood.rs`](../../packages/treetime/src/optimize/likelihood.rs)
 
 | Test                                          | Purpose                       |
 | --------------------------------------------- | ----------------------------- |
@@ -314,7 +314,7 @@ Parameterized invariant tests using rstest.
 
 ### Support
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_newton_convergence/test_newton_convergence_support.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_support.rs`](../../packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_support.rs)
 
 Helper file. Provides `make_dense_contribution()`. No tests.
 
@@ -322,13 +322,13 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 
 ## Grid Search
 
-**Directory:** [`test_grid_search/`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/)
+**Directory:** [`test_grid_search/`](../../packages/treetime/src/optimize/__tests__/test_grid_search/)
 
 ### Basic Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_basic.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_basic.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_basic.rs`](../../packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_basic.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                        | Purpose                     |
 | ------------------------------------------- | --------------------------- |
@@ -339,9 +339,9 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 
 ### Edge Cases Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_edge_cases.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_edge_cases.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_edge_cases.rs`](../../packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_edge_cases.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                | Purpose                      |
 | --------------------------------------------------- | ---------------------------- |
@@ -350,9 +350,9 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 
 ### Partitions Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_partitions.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_partitions.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_partitions.rs`](../../packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_partitions.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                    | Purpose                         |
 | --------------------------------------- | ------------------------------- |
@@ -361,9 +361,9 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 
 ### Coverage Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_coverage.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_coverage.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_coverage.rs`](../../packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_coverage.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                                  | Purpose                                                  |
 | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -376,7 +376,7 @@ Helper file. Provides `make_dense_contribution()`. No tests.
 
 ### Support
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_grid_search/test_grid_search_support.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_support.rs`](../../packages/treetime/src/optimize/__tests__/test_grid_search/test_grid_search_support.rs)
 
 Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
@@ -386,13 +386,13 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 > **Note**: All tests in this directory are parameterized across 6 `BranchOptMethod` variants: Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog.
 
-**Directory:** [`test_dense_sparse_equivalence/`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/)
+**Directory:** [`test_dense_sparse_equivalence/`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/)
 
 ### Initial Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_initial.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_initial.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_initial.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_initial.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                          | Purpose                      |
 | ------------------------------------------------------------- | ---------------------------- |
@@ -401,9 +401,9 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 ### Convergence Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_convergence.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_convergence.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_convergence.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_convergence.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                 | Purpose               |
 | ------------------------------------ | --------------------- |
@@ -412,9 +412,9 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 ### Bounds Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                             | Purpose                    |
 | ---------------------------------------------------------------- | -------------------------- |
@@ -423,9 +423,9 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 ### Validity Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_validity.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_validity.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_validity.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_validity.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                              | Purpose                       |
 | ------------------------------------------------- | ----------------------------- |
@@ -434,7 +434,7 @@ Helper file. Provides `make_dense_contribution()` and `grid_search()`. No tests.
 
 ### Support
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_support.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_support.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_support.rs)
 
 Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_lengths()`, `gap_free_alignment()`. No tests.
 
@@ -444,13 +444,13 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 > **Note**: All tests in this directory are parameterized across 6 `BranchOptMethod` variants: Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog.
 
-**Directory:** [`test_convergence/`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/)
+**Directory:** [`test_convergence/`](../../packages/treetime/src/optimize/__tests__/test_convergence/)
 
 ### Iterations Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_iterations.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_iterations.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_iterations.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_iterations.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                 | Purpose                                                   | Notes                         |
 | ---------------------------------------------------- | --------------------------------------------------------- | ----------------------------- |
@@ -460,9 +460,9 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 ### Edge Cases Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_edge_cases.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_edge_cases.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_edge_cases.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_edge_cases.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                            | Purpose                      |
 | ----------------------------------------------- | ---------------------------- |
@@ -472,9 +472,9 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 ### Idempotence Tests
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_idempotence.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_idempotence.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_idempotence.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_idempotence.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                    | Purpose                        |
 | ------------------------------------------------------- | ------------------------------ |
@@ -483,7 +483,7 @@ Helper file. Provides `setup_dense_only()`, `setup_sparse_only()`, `get_branch_l
 
 ### Support
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_support.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence/test_convergence_support.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_support.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence/test_convergence_support.rs)
 
 Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total_lh()`. No tests.
 
@@ -493,7 +493,7 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 > **Note**: `test_damped_optimization_converges` and `test_damped_optimization_does_not_regress` are parameterized across 6 `BranchOptMethod` variants.
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_damping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_damping.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_damping.rs`](../../packages/treetime/src/optimize/__tests__/test_damping.rs)
 
 **Impl:** [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
@@ -511,11 +511,11 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 ## v0 Parity and Damped vs Undamped (Golden Master)
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_gm_optimize.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                  | Purpose                                                        | Notes                                          |
@@ -525,15 +525,15 @@ Helper file. Provides `simple_alignment()`, `setup_partitions()`, `compute_total
 
 Fixtures in `__fixtures__/`:
 
-- [`gm_optimize_inputs.json`](../../packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_inputs.json) - shared test parameters
-- [`gm_optimize_outputs.json`](../../packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_outputs.json) - v0 reference captured by `gm_optimize_capture`
+- [`gm_optimize_inputs.json`](../../packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_inputs.json) - shared test parameters
+- [`gm_optimize_outputs.json`](../../packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json) - v0 reference captured by `gm_optimize_capture`
 - `gm_optimize_capture` - Python capture script for v0 TreeAnc.optimize_tree_marginal
 
 ---
 
 ## Indel Objective and Zero-BL Handling
 
-**File:** [`test_optimize_indel.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_indel.rs)
+**File:** [`test_optimize_indel.rs`](../../packages/treetime/src/optimize/__tests__/test_optimize_indel.rs)
 
 Focused regression coverage for the Poisson indel term, zero-branch-length bootstrapping, and indel-aware optimization behavior.
 
@@ -553,7 +553,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Run Optimize Loop Contract
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_run_optimize_loop.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_run_optimize_loop.rs`](../../packages/treetime/src/optimize/__tests__/test_run_optimize_loop.rs)
 
 **Impl:** [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
@@ -570,7 +570,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Convergence Conditions
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence_conditions.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_conditions.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence_conditions.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence_conditions.rs)
 
 **Impl:** [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
@@ -589,11 +589,11 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Convergence on Real Datasets
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_convergence_sc2.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_convergence_sc2.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_convergence_sc2.rs`](../../packages/treetime/src/optimize/__tests__/test_convergence_sc2.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                                | Purpose                                              |
@@ -605,9 +605,9 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Optimization Metrics
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_optimization_metrics.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimization_metrics.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_optimization_metrics.rs`](../../packages/treetime/src/optimize/__tests__/test_optimization_metrics.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                 | Purpose                       |
 | ---------------------------------------------------- | ----------------------------- |
@@ -623,13 +623,13 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Zero Branch Optimal
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_is_zero_branch_optimal.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_is_zero_branch_optimal.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_is_zero_branch_optimal.rs`](../../packages/treetime/src/optimize/__tests__/test_is_zero_branch_optimal.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_sparse.rs`](../../packages/treetime/src/commands/optimize/optimize_sparse.rs)
+- [`packages/treetime/src/optimize/zero_boundary.rs`](../../packages/treetime/src/optimize/zero_boundary.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/partition/optimize_sparse.rs`](../../packages/treetime/src/partition/optimize_sparse.rs)
 
 | Test                                                                    | Purpose                          |
 | ----------------------------------------------------------------------- | -------------------------------- |
@@ -651,11 +651,11 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Initial Guess Mode
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_mode.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_mode.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_mode.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 - [`packages/treetime/src/commands/optimize/args.rs`](../../packages/treetime/src/commands/optimize/args.rs)
 
@@ -682,9 +682,9 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Initial Guess Indel Zero-BL
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_initial_guess_indel_zero_bl.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_indel_zero_bl.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_indel_zero_bl.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_indel_zero_bl.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                                       | Purpose                                            |
 | ---------------------------------------------------------- | -------------------------------------------------- |
@@ -695,9 +695,9 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Initial Guess GTR Messages
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gtr_messages.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_gtr_messages.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_gtr_messages.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                             | Purpose                                                       |
 | ------------------------------------------------ | ------------------------------------------------------------- |
@@ -708,12 +708,12 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Initial Guess Formula
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_formula.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_formula.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_formula.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/partition_ops.rs`](../../packages/treetime/src/commands/optimize/partition_ops.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
+- [`packages/treetime/src/partition/optimization_contribution.rs`](../../packages/treetime/src/partition/optimization_contribution.rs)
 
 | Test                                                                                 | Purpose                                                                                  |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
@@ -726,9 +726,9 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Initial Guess Gaps
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gaps.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_initial_guess_gaps.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_gaps.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_gaps.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+**Impl:** [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 
 | Test                                           | Purpose                                                                     |
 | ---------------------------------------------- | --------------------------------------------------------------------------- |
@@ -744,7 +744,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Dense Edge Subs
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dense_edge_subs.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dense_edge_subs.rs`](../../packages/treetime/src/optimize/__tests__/test_dense_edge_subs.rs)
 
 **Impl:** [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
 
@@ -760,11 +760,11 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ## Eval Zero-Branch Mismatch
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_eval_zero_branch_mismatch.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_eval_zero_branch_mismatch.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_eval_zero_branch_mismatch.rs`](../../packages/treetime/src/optimize/__tests__/test_eval_zero_branch_mismatch.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                    | Purpose                                                                                 |
@@ -777,11 +777,11 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 > **Note**: `test_optimize_loop_with_topology_cleanup_sparse`, `test_optimize_loop_no_collapse_when_branches_nonzero`, and `test_optimize_loop_with_topology_cleanup_dense` are parameterized across 6 `BranchOptMethod` variants.
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_topology_cleanup.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_topology_cleanup.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_topology_cleanup.rs`](../../packages/treetime/src/optimize/__tests__/test_topology_cleanup.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                                               | Purpose                                                    |
@@ -805,9 +805,9 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 
 ## Indel Contribution (Inline)
 
-**Test:** [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs) (inline `#[cfg(test)]`)
+**Test:** [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs) (inline `#[cfg(test)]`)
 
-**Impl:** [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs)
+**Impl:** [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs)
 
 | Test                                                        | Purpose                                                           |
 | ----------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -824,13 +824,13 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 
 ## Indel Contribution (Integration)
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_optimize_indel.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_indel.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_optimize_indel.rs`](../../packages/treetime/src/optimize/__tests__/test_optimize_indel.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs)
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
+- [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                                                  | Purpose                                                                        |
@@ -860,15 +860,15 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 
 ## Optimization Method
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_optimize_method.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_optimize_method.rs`](../../packages/treetime/src/optimize/__tests__/test_optimize_method.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs)
-- [`packages/treetime/src/commands/optimize/method_brent.rs`](../../packages/treetime/src/commands/optimize/method_brent.rs)
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../packages/treetime/src/commands/optimize/optimize_indel.rs)
+- [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs)
+- [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs)
 
 Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, NewtonLog, Brent, BrentSqrt, BrentLog) against 5 verification criteria:
 
@@ -932,14 +932,14 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ## Dispatch Zero Boundary
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_dispatch_zero_boundary.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs`](../../packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
-- [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs)
-- [`packages/treetime/src/commands/optimize/optimize_dense.rs`](../../packages/treetime/src/commands/optimize/optimize_dense.rs)
-- [`packages/treetime/src/commands/optimize/partition_ops.rs`](../../packages/treetime/src/commands/optimize/partition_ops.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
+- [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs)
+- [`packages/treetime/src/partition/optimize_dense.rs`](../../packages/treetime/src/partition/optimize_dense.rs)
+- [`packages/treetime/src/partition/optimization_contribution.rs`](../../packages/treetime/src/partition/optimization_contribution.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 ### End-to-end dispatch
@@ -978,9 +978,9 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ## Optimization Method Step Clamping
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_optimize_method_step_clamping.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_method_step_clamping.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_optimize_method_step_clamping.rs`](../../packages/treetime/src/optimize/__tests__/test_optimize_method_step_clamping.rs)
 
-**Impl:** [`packages/treetime/src/commands/optimize/method_newton.rs`](../../packages/treetime/src/commands/optimize/method_newton.rs)
+**Impl:** [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs)
 
 | Test                                                                                | Purpose                                                 |
 | ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
@@ -999,7 +999,7 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ## CLI Args
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_args.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_args.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_args.rs`](../../packages/treetime/src/optimize/__tests__/test_args.rs)
 
 **Impl:** [`packages/treetime/src/commands/optimize/args.rs`](../../packages/treetime/src/commands/optimize/args.rs)
 
@@ -1013,11 +1013,11 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 
 ## Zero Sequence Length
 
-**Test:** [`packages/treetime/src/commands/optimize/__tests__/test_optimize_zero_sequence_length.rs`](../../packages/treetime/src/commands/optimize/__tests__/test_optimize_zero_sequence_length.rs)
+**Test:** [`packages/treetime/src/optimize/__tests__/test_optimize_zero_sequence_length.rs`](../../packages/treetime/src/optimize/__tests__/test_optimize_zero_sequence_length.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../packages/treetime/src/commands/optimize/optimize_unified.rs)
+- [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs)
 - [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
 | Test                                                     | Purpose                                                      |

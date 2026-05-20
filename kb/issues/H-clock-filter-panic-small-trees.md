@@ -1,10 +1,10 @@
 # Clock filter panics on trees with fewer than four dated leaves
 
-`clock_filter_inplace` at [packages/treetime/src/commands/clock/clock_filter.rs#L67-L70](../../packages/treetime/src/commands/clock/clock_filter.rs#L67-L70) computes interquartile range indices as `iq75 = (3 * n) / 4` and `iq25 = n / 4`, then unconditionally indexes into `leaf_clock_deviations[iq75]` and `leaf_clock_deviations[iq25]`. When `n == 0` (no dated leaves), the empty-slice index panics immediately. When `n < 4`, `iq75` equals the array length for some values of `n`, causing an index-out-of-bounds panic.
+`clock_filter_inplace` at [packages/treetime/src/clock/clock_filter.rs#L67-L70](../../packages/treetime/src/clock/clock_filter.rs#L67-L70) computes interquartile range indices as `iq75 = (3 * n) / 4` and `iq25 = n / 4`, then unconditionally indexes into `leaf_clock_deviations[iq75]` and `leaf_clock_deviations[iq25]`. When `n == 0` (no dated leaves), the empty-slice index panics immediately. When `n < 4`, `iq75` equals the array length for some values of `n`, causing an index-out-of-bounds panic.
 
 ## Affected code
 
-- Index computation: [packages/treetime/src/commands/clock/clock_filter.rs#L67-L70](../../packages/treetime/src/commands/clock/clock_filter.rs#L67-L70)
+- Index computation: [packages/treetime/src/clock/clock_filter.rs#L67-L70](../../packages/treetime/src/clock/clock_filter.rs#L67-L70)
 - Called from: [packages/treetime/src/commands/clock/run.rs#L131-L152](../../packages/treetime/src/commands/clock/run.rs#L131-L152) via `estimate_clock_model_with_prefilter`
 
 ## Trigger conditions

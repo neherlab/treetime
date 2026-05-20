@@ -2,7 +2,7 @@
 
 `SUPERTINY_NUMBER` (1e-24) added to `expQt` result distorts column-stochastic normalization. The additive constant prevents exact zeros but shifts column sums away from 1.0.
 
-v1: [`packages/treetime/src/gtr/infer_gtr/dense.rs#L199`](../../packages/treetime/src/gtr/infer_gtr/dense.rs#L199)
+v1: [`packages/treetime/src/gtr/infer_gtr/common.rs#L199`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L199)
 
 ## Impact
 

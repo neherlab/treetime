@@ -6,11 +6,11 @@
 
 Two-pass message passing for time inference on the phylogenetic tree (<a id="cite-1"></a>[Pearl 1988](https://doi.org/10.1016/B978-0-08-051489-5.50001-5) [[1](#ref-1)]). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.
 
-v1: [`packages/treetime/src/commands/timetree/inference/backward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs), [`packages/treetime/src/commands/timetree/inference/forward_pass.rs`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs).
+v1: [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs), [`packages/treetime/src/timetree/inference/forward_pass.rs`](../../packages/treetime/src/timetree/inference/forward_pass.rs).
 v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/legacy/treetime/treetime/node_interpolator.py).
 
-- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time
-- `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/commands/timetree/inference/forward_pass.rs#L11-L22](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs#L11-L22): preserves internal node times when forward pass yields `None`
+- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time
+- `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22](../../packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22): preserves internal node times when forward pass yields `None`
 
 ---
 
@@ -29,9 +29,9 @@ The pre-step reuses `run_optimize_mixed()` from the optimize command infrastruct
 
 Computes per-edge time distributions from partition contributions, clock rate, and gamma rate multiplier. This is a TreeTime-specific transformation that converts the branch-length likelihood (from sequence data) into a time-domain distribution suitable for belief propagation.
 
-v1: [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs).
+v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs).
 
-- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `run_optimize_mixed()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
+- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `run_optimize_mixed()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
 ---
 
@@ -115,13 +115,13 @@ TreeTime implements an autocorrelated model where descendant branch rates correl
 
 When coupling > 0, closely related branches have similar rates (autocorrelated clock, matching the biological expectation that rate-influencing traits evolve gradually). When coupling = 0, the model degenerates to an uncorrelated clock where each branch rate is independent (<a id="cite-11"></a>[Drummond et al. 2006](https://doi.org/10.1371/journal.pbio.0040088) [[11](#ref-11)]). <a id="cite-12"></a>[Lepage et al. 2007](https://doi.org/10.1093/molbev/msm193) [[12](#ref-12)] compared relaxed clock models and found that autocorrelated models perform better when rate variation is driven by lineage-specific traits, while uncorrelated models handle episodic rate changes better.
 
-v1: [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs).
+v1: [`packages/treetime/src/timetree/optimization/relaxed_clock.rs`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs).
 v0: `TreeTime.relaxed_clock()` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py).
 CLI: `--relax <SLACK> <COUPLING>` (defaults 1.0, 1.0).
 
 ### Algorithm
 
-`apply_relaxed_clock()` (`#apply_relaxed_clock`) [packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L25-L125](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L25-L125) runs two passes:
+`apply_relaxed_clock()` (`#apply_relaxed_clock`) [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L25-L125](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L25-L125) runs two passes:
 
 - Postorder pass (lines 36-81): computes quadratic penalty coefficients k1, k2 per node. The penalty function is `stiffness * (gamma * actual_len - optimal_len)^2 + slack * (gamma - 1)^2`, with a coupling term `coupling * (gamma - gamma_child)^2`.
 - Preorder pass (lines 86-114): computes optimal gamma per branch. Root: `gamma = max(0.1, -0.5 * k1 / k2)`. Non-root: `gamma = max(0.1, (coupling * parent_gamma - 0.5 * k1) / (coupling + k2))`.
@@ -144,7 +144,7 @@ A polytomy (multifurcation) is a node with more than two children, arising from 
 
 v1 implements greedy deterministic resolution. v0 also supports stochastic coalescent-based resolution (not yet ported, see [unimplemented](unimplemented.md#stochastic-polytomy-resolution)).
 
-v1: [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs).
+v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs).
 
 ### Greedy algorithm
 
@@ -152,10 +152,10 @@ The algorithm iterates over all nodes with >2 children. For each polytomy, it co
 
 This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree ([[3](#ref-3)], Section 2.6).
 
-- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
-- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
-- `merge_children()` (`#merge_children`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L432-L454](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L432-L454): clears cached distributions on internal nodes; leaf date constraints and `bad_branch` flags are preserved.
+- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
+- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
+- `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
+- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs#L432-L454](../../packages/treetime/src/timetree/optimization/polytomy.rs#L432-L454): clears cached distributions on internal nodes; leaf date constraints and `bad_branch` flags are preserved.
 
 After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
 
@@ -169,9 +169,9 @@ The zero-branch penalty for newly created internal branches differs from v0: v1 
 
 IQD-based outlier detection that marks leaves with anomalous root-to-tip divergence as bad branches.
 
-v1: [`packages/treetime/src/commands/timetree/optimization/clock_filter.rs`](../../packages/treetime/src/commands/timetree/optimization/clock_filter.rs).
+v1: [`packages/treetime/src/timetree/optimization/clock_filter.rs`](../../packages/treetime/src/timetree/optimization/clock_filter.rs).
 
-- `apply_outlier_bad_branches()` (`#apply_outlier_bad_branches`) [packages/treetime/src/commands/timetree/optimization/clock_filter.rs#L75-L95](../../packages/treetime/src/commands/timetree/optimization/clock_filter.rs#L75-L95): sets `bad_branch=true` on outlier leaves, then postorder propagation marks internal nodes bad only when all children are bad
+- `apply_outlier_bad_branches()` (`#apply_outlier_bad_branches`) [packages/treetime/src/timetree/optimization/clock_filter.rs#L75-L95](../../packages/treetime/src/timetree/optimization/clock_filter.rs#L75-L95): sets `bad_branch=true` on outlier leaves, then postorder propagation marks internal nodes bad only when all children are bad
 
 ---
 
@@ -179,17 +179,17 @@ v1: [`packages/treetime/src/commands/timetree/optimization/clock_filter.rs`](../
 
 Tracks optimization loop convergence via sequence change counts and likelihood components. TreeTime-specific metrics.
 
-v1: [`packages/treetime/src/commands/timetree/convergence/`](../../packages/treetime/src/commands/timetree/convergence/) (3 files).
+v1: [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/) (3 files).
 
-- `TimetreeOptimizer` (`#TimetreeOptimizer`) [packages/treetime/src/commands/timetree/convergence/metrics.rs#L16-L108](../../packages/treetime/src/commands/timetree/convergence/metrics.rs#L16-L108): iteration controller that records `ConvergenceMetrics` per round and stops when converged or max iterations reached. Convergence criterion: `n_diff == 0 && n_resolved == 0`. Supports CSV tracelog output. Convergence can be suppressed (for skyline mode where constant Tc is used during iterations).
-- `count_sequence_changes()` (`#count_sequence_changes`) [packages/treetime/src/commands/timetree/convergence/sequence_changes.rs#L19-L47](../../packages/treetime/src/commands/timetree/convergence/sequence_changes.rs#L19-L47): compares ancestral state snapshots position-by-position across all internal nodes and partitions
-- `capture_ancestral_states()` (`#capture_ancestral_states`) [packages/treetime/src/commands/timetree/convergence/sequence_changes.rs#L50-L70](../../packages/treetime/src/commands/timetree/convergence/sequence_changes.rs#L50-L70): snapshots reconstructed sequences for all internal nodes. Captured before polytomy resolution to avoid inflating n_diff with newly created nodes.
+- `TimetreeOptimizer` (`#TimetreeOptimizer`) [packages/treetime/src/timetree/convergence/metrics.rs#L16-L108](../../packages/treetime/src/timetree/convergence/metrics.rs#L16-L108): iteration controller that records `ConvergenceMetrics` per round and stops when converged or max iterations reached. Convergence criterion: `n_diff == 0 && n_resolved == 0`. Supports CSV tracelog output. Convergence can be suppressed (for skyline mode where constant Tc is used during iterations).
+- `count_sequence_changes()` (`#count_sequence_changes`) [packages/treetime/src/timetree/convergence/sequence_changes.rs#L19-L47](../../packages/treetime/src/timetree/convergence/sequence_changes.rs#L19-L47): compares ancestral state snapshots position-by-position across all internal nodes and partitions
+- `capture_ancestral_states()` (`#capture_ancestral_states`) [packages/treetime/src/timetree/convergence/sequence_changes.rs#L50-L70](../../packages/treetime/src/timetree/convergence/sequence_changes.rs#L50-L70): snapshots reconstructed sequences for all internal nodes. Captured before polytomy resolution to avoid inflating n_diff with newly created nodes.
 
 ### Likelihood components
 
-- `compute_sequence_likelihood()` (`#compute_sequence_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
-- `compute_positional_likelihood()` (`#compute_positional_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
-- `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/commands/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
+- `compute_sequence_likelihood()` (`#compute_sequence_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
+- `compute_positional_likelihood()` (`#compute_positional_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
+- `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
 - `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/coalescent/total_lh.rs](../../packages/treetime/src/coalescent/total_lh.rs): thin wrapper over shared `edge_data` module. Collects tree events, lineage counts, integral merger rate, and per-edge data, then calls `sum_coalescent_cost()`.
 - `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): collects per-edge TBP time, branch length, and multiplicity from graph traversal. Shared by `total_lh` and `optimize_tc`.
 - `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): per-edge cost = I(t_merger) - I(t_node) - log(λ(t_merger)) \* (m-1)/m. Uses `eval_left()` for pre-event lineage count at merger times. Accepts any Distribution for Tc.
@@ -213,7 +213,7 @@ Node date uncertainty has two independent sources ([[3](#ref-3)], Section 2.2):
 1. Mutation stochasticity. The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. Clock rate uncertainty. The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
 
-v1: [`packages/treetime/src/commands/timetree/output/confidence.rs`](../../packages/treetime/src/commands/timetree/output/confidence.rs).
+v1: [`packages/treetime/src/timetree/confidence.rs`](../../packages/treetime/src/timetree/confidence.rs).
 v0: `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`), `combine_confidence()` (`#combine_confidence`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
 
 Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `fraction=0.9` in v0's `get_max_posterior_region`. The derived quantile bounds are `(0.05, 0.95)` (5% in each tail). The two sources use different statistical operations to produce "90% CI":
@@ -282,9 +282,9 @@ v0: `combine_confidence()` (`clock_tree.py:1090-1101`). Same formula.
 
 Single timetree inference pass: branch distributions, coalescent contributions, backward pass, forward pass. This is the inner loop called by the estimation pipeline and by rate susceptibility analysis.
 
-v1: [`packages/treetime/src/commands/timetree/inference/runner.rs`](../../packages/treetime/src/commands/timetree/inference/runner.rs).
+v1: [`packages/treetime/src/timetree/inference/runner.rs`](../../packages/treetime/src/timetree/inference/runner.rs).
 
-- `run_timetree()` (`#run_timetree`) [packages/treetime/src/commands/timetree/inference/runner.rs#L23-L74](../../packages/treetime/src/commands/timetree/inference/runner.rs#L23-L74): computes branch distributions (from partitions or input lengths), optional coalescent contributions, then backward+forward propagation. Validates clock rate is positive.
+- `run_timetree()` (`#run_timetree`) [packages/treetime/src/timetree/inference/runner.rs#L23-L74](../../packages/treetime/src/timetree/inference/runner.rs#L23-L74): computes branch distributions (from partitions or input lengths), optional coalescent contributions, then backward+forward propagation. Validates clock rate is positive.
 
 ---
 
@@ -302,9 +302,9 @@ v1: [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/s
 
 Clock-based rerooting with partition state update. Searches for the root position that maximizes temporal signal (positive clock rate, minimal regression residuals).
 
-v1: [`packages/treetime/src/commands/timetree/optimization/reroot.rs`](../../packages/treetime/src/commands/timetree/optimization/reroot.rs).
+v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/treetime/src/timetree/optimization/reroot.rs).
 
-- `reroot_tree()` (`#reroot_tree`) [packages/treetime/src/commands/timetree/optimization/reroot.rs#L20-L93](../../packages/treetime/src/commands/timetree/optimization/reroot.rs#L20-L93): performs clock regression with rerooting, applies topology changes to partitions (edge split, edge merge, inverted edges), recomputes marginal messages
+- `reroot_tree()` (`#reroot_tree`) [packages/treetime/src/timetree/optimization/reroot.rs#L20-L93](../../packages/treetime/src/timetree/optimization/reroot.rs#L20-L93): performs clock regression with rerooting, applies topology changes to partitions (edge split, edge merge, inverted edges), recomputes marginal messages
 
 ---
 
@@ -330,10 +330,10 @@ v1: [`packages/treetime/src/commands/timetree/optimization/reroot.rs`](../../pac
 
 | File                                                                                                                   | Algorithms                                                            |
 | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`packages/treetime/src/commands/timetree/inference/`](../../packages/treetime/src/commands/timetree/inference/)       | Belief propagation, branch distributions, timetree runner             |
+| [`packages/treetime/src/timetree/inference/`](../../packages/treetime/src/timetree/inference/)       | Belief propagation, branch distributions, timetree runner             |
 | [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)     | Kingman coalescent, skyline, Tc optimization                          |
-| [`packages/treetime/src/commands/timetree/optimization/`](../../packages/treetime/src/commands/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
-| [`packages/treetime/src/commands/timetree/convergence/`](../../packages/treetime/src/commands/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
+| [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
 | [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/)             | Confidence intervals, date output, plots                              |
 | [`packages/treetime/src/commands/timetree/refinement.rs`](../../packages/treetime/src/commands/timetree/refinement.rs) | EM-like iterative refinement                                          |
 | [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)               | End-to-end estimation pipeline                                        |

@@ -64,7 +64,7 @@ Key parameters:
 
 v1 uses greedy pairwise merging with Brent optimization:
 
-- [`packages/treetime/src/commands/timetree/optimization/polytomy.rs`](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs)
+- [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs)
 - Deterministic output
 - No stochastic sampling
 - No topology uncertainty quantification

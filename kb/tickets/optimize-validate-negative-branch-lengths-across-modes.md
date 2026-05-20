@@ -12,15 +12,15 @@ Timetree inference (including TreeTime's own marginal timetree pipeline) can pro
 | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | [packages/treetime/src/commands/optimize/run.rs#L710-L738](../../packages/treetime/src/commands/optimize/run.rs#L710-L738)                           | Mode dispatch -- selects what to do before optimization                    |
 | [packages/treetime/src/commands/optimize/run.rs#L650-L665](../../packages/treetime/src/commands/optimize/run.rs#L650-L665)                           | `is_branch_length_missing` and `any_edge_missing_branch_length` predicates |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L583-L597) | Per-edge bootstrap inside `run_optimize_mixed`                             |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L696-L704) | Skip condition inside `initial_guess_mixed`                                |
-| [packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31](../../packages/treetime/src/commands/optimize/optimize_indel.rs#L29-L31)         | `debug_assert!(t > 0.0)` in `poisson_indel_log_lh`                         |
+| [packages/treetime/src/optimize/dispatch.rs#L583-L597](../../packages/treetime/src/optimize/dispatch.rs#L583-L597) | Per-edge bootstrap inside `run_optimize_mixed`                             |
+| [packages/treetime/src/optimize/dispatch.rs#L696-L704](../../packages/treetime/src/optimize/dispatch.rs#L696-L704) | Skip condition inside `initial_guess_mixed`                                |
+| [packages/treetime/src/optimize/indel.rs#L29-L31](../../packages/treetime/src/optimize/indel.rs#L29-L31)         | `debug_assert!(t > 0.0)` in `poisson_indel_log_lh`                         |
 
 ## Behaviour per mode
 
 ### `--branch-length-initial-guess=auto` (default)
 
-`initial_guess_mixed` is called with `overwrite_valid = false`. The skip condition at [optimize_unified.rs#L702](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L702) is:
+`initial_guess_mixed` is called with `overwrite_valid = false`. The skip condition at [dispatch.rs#L702](../../packages/treetime/src/optimize/dispatch.rs#L702) is:
 
 ```rust
 if bl.is_finite() && (bl > 0.0 || indel_count == 0) {
@@ -46,7 +46,7 @@ fn is_branch_length_missing(bl: Option<f64>) -> bool {
 
 This accepts any finite value, including negatives. The error message in `Never` mode says "fails if any edge has a missing or invalid branch length" (from the `--help` text), but **negative values are not considered invalid** by this predicate.
 
-Negative branch lengths pass silently into `run_optimize_mixed`. The per-edge bootstrap at [optimize_unified.rs#L583](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L583) handles `branch_length == 0.0` only, not `< 0.0`:
+Negative branch lengths pass silently into `run_optimize_mixed`. The per-edge bootstrap at [dispatch.rs#L583](../../packages/treetime/src/optimize/dispatch.rs#L583) handles `branch_length == 0.0` only, not `< 0.0`:
 
 ```rust
 if branch_length == 0.0 && indel_count > 0 { ... }

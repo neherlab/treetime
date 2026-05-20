@@ -20,7 +20,7 @@ Assert finite/positive only, no numerical verification against known values.
 
 ### Polytomy topology tests use point distributions
 
-`packages/treetime/src/commands/timetree/optimization/__tests__/test_polytomy.rs:46:`
+`packages/treetime/src/timetree/optimization/__tests__/test_polytomy.rs:46:`
 
 Branch-length distributions are point masses making the cost function trivial: any merge time not exactly at the point yields `ln(1e-10)` from the `unwrap_or` fallback.
 

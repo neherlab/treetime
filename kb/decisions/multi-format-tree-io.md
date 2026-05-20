@@ -136,7 +136,7 @@ The MAT format is compact and fast for its intended use case (mutation-annotated
 
 ### v1 implementation
 
-The `usher-mat-utils` crate ([packages/usher-mat-utils/src/lib.rs](../../packages/usher-mat-utils/src/lib.rs)) handles protobuf encoding and decoding via the `prost` crate. Three protobuf schemas are compiled: `parsimony.proto`, `mutation_detailed.proto`, and `taxodium.proto`.
+The `usher-mat-utils` crate ([packages/treetime/src/lib.rs](../../packages/treetime/src/lib.rs)) handles protobuf encoding and decoding via the `prost` crate. Three protobuf schemas are compiled: `parsimony.proto`, `mutation_detailed.proto`, and `taxodium.proto`.
 
 The `treetime-io` crate ([packages/treetime-io/src/usher_mat.rs](../../packages/treetime-io/src/usher_mat.rs)) provides graph integration through `UsherRead` and `UsherWrite` traits. The `usher_to_graph()` function parses the embedded Newick string and attaches per-node mutations from the protobuf data. The `usher_from_graph()` function serializes the graph back to the `UsherTree` protobuf structure.
 

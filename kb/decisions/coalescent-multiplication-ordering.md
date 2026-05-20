@@ -6,7 +6,7 @@ This document describes differences in how v0 and v1 combine child time distribu
 
 **v0 location**: `_ml_t_marginal()` in `packages/legacy/treetime/treetime/clock_tree.py:684-785`.
 
-**v1 location**: `propagate_distributions_backward_single_node()` in `packages/treetime/src/commands/timetree/inference/backward_pass.rs:34-86`.
+**v1 location**: `propagate_distributions_backward_single_node()` in `packages/treetime/src/timetree/inference/backward_pass.rs:34-86`.
 
 **Affected datasets**: All datasets with `coalescent_tc` enabled.
 

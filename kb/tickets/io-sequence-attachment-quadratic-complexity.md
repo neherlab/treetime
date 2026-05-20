@@ -4,7 +4,7 @@ The sequence attachment loop performs a linear search through all sequences for 
 
 ## Root cause
 
-The attachment logic at [packages/treetime/src/commands/ancestral/fitch.rs#L45-L71](../../packages/treetime/src/commands/ancestral/fitch.rs#L45-L71) iterates over leaves and searches sequences:
+The attachment logic at [packages/treetime/src/ancestral/fitch.rs#L45-L71](../../packages/treetime/src/ancestral/fitch.rs#L45-L71) iterates over leaves and searches sequences:
 
 ```rust
 for leaf in graph.get_leaves() {           // O(n) leaves

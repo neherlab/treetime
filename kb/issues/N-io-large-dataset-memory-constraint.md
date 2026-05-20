@@ -26,7 +26,7 @@ The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences ar
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. Length validation: `get_common_length()` at [packages/treetime/src/commands/ancestral/fitch.rs#L520](../../packages/treetime/src/commands/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
+1. Length validation: `get_common_length()` at [packages/treetime/src/ancestral/fitch.rs#L520](../../packages/treetime/src/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
 
 2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 

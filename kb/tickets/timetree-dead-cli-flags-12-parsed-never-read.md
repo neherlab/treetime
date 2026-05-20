@@ -25,7 +25,7 @@ Flags that are already wired and not part of this issue:
 - `--tip-slack` used in covariation variance computation
 - `--time-marginal=always` already triggers confidence-interval extraction, so it is intentionally excluded from the dead-flag list
 
-`--reroot` is accepted but `reroot_tree()` at [`packages/treetime/src/commands/timetree/optimization/reroot.rs#L30`](../../packages/treetime/src/commands/timetree/optimization/reroot.rs#L30) always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`, `--reroot=min-dev` modes are never dispatched.
+`--reroot` is accepted but `reroot_tree()` at [`packages/treetime/src/timetree/optimization/reroot.rs#L30`](../../packages/treetime/src/timetree/optimization/reroot.rs#L30) always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`, `--reroot=min-dev` modes are never dispatched.
 
 ## Related issues
 

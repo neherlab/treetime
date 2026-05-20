@@ -16,7 +16,7 @@ Decision: keep `clap` as a direct dependency of the `treetime` library crate. Do
 
 ### Domain logic in commands/
 
-`commands/timetree/` (~10k lines) and `commands/mugration/` (~2.2k lines) contain domain algorithms that should be top-level modules. Tracked in detail by:
+`commands/timetree/` (~10k lines) and `mugration/` (~2.2k lines) contain domain algorithms that should be top-level modules. Tracked in detail by:
 
 - `H-core-command-module-shared-ops-entanglement.md` (remaining items)
 - `M-core-remaining-architectural-debt-after-extraction.md` (timetree, mugration, representation)

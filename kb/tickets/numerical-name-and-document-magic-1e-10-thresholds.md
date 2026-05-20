@@ -6,13 +6,13 @@ Two locations use hardcoded `1e-10` thresholds without named constants, document
 
 ### create_poisson_branch_distributions hardcoded threshold
 
-v1: [`packages/treetime/src/commands/timetree/utils.rs#L100`](../../packages/treetime/src/commands/timetree/utils.rs#L100)
+v1: [`packages/treetime/src/timetree/utils.rs#L100`](../../packages/treetime/src/timetree/utils.rs#L100)
 
 Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishandles `branch_length==0` (produces degenerate grid).
 
 ### 1e-10 magic denominator in relaxed_clock.rs
 
-v1: [`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L70`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L70), [`relaxed_clock.rs#L91`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L91), [`relaxed_clock.rs#L106`](../../packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs#L106)
+v1: [`packages/treetime/src/timetree/optimization/relaxed_clock.rs#L70`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L70), [`relaxed_clock.rs#L91`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L91), [`relaxed_clock.rs#L106`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L106)
 
 Three locations use `1e-10` as a denominator floor. No named constant. Related to the unit mismatch in `H-timetree-relaxed-clock-unit-mismatch.md`.
 

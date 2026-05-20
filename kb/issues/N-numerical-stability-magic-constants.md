@@ -8,13 +8,13 @@ Six locations use hardcoded numeric thresholds without named constants, document
 
 ### create_poisson_branch_distributions hardcoded threshold
 
-`packages/treetime/src/commands/timetree/utils.rs:100:`
+`packages/treetime/src/timetree/utils.rs:100:`
 
 Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishandles `branch_length==0` (produces degenerate grid).
 
 ### 1e-10 magic denominator in relaxed_clock.rs
 
-`packages/treetime/src/commands/timetree/optimization/relaxed_clock.rs:70,91,106:`
+`packages/treetime/src/timetree/optimization/relaxed_clock.rs:70,91,106:`
 
 Three locations use `1e-10` as a denominator floor. No named constant. Related to the unit mismatch in `H-timetree-relaxed-clock-unit-mismatch.md`.
 
@@ -26,7 +26,7 @@ Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating info
 
 ### SUPERTINY_NUMBER distorts column-stochastic normalization
 
-`packages/treetime/src/gtr/infer_gtr/dense.rs:199:`
+`packages/treetime/src/gtr/infer_gtr/common.rs:199:`
 
 `SUPERTINY_NUMBER` (1e-24) added to `expQt` result distorts column-stochastic normalization. The additive constant prevents exact zeros but shifts column sums away from 1.0.
 
@@ -38,7 +38,7 @@ Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating info
 
 ### debug_assert!(gamma > 0.0) not a production guard
 
-`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs:61:`
+`packages/treetime/src/timetree/inference/branch_length_likelihood.rs:61:`
 
 The assertion is stripped in release builds. When gamma <= 0 reaches this code path in production, the computation produces inf/NaN silently.
 

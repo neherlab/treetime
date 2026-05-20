@@ -2,7 +2,7 @@
 
 `debug_assert!(gamma > 0.0)` is stripped in release builds. When gamma <= 0 reaches this code path in production, the computation produces inf/NaN silently.
 
-v1: [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L61`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs#L61)
+v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L61`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L61)
 
 ## Impact
 

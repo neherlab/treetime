@@ -26,12 +26,12 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 - Zero-optimal edge identification: [`packages/treetime/src/commands/optimize/run.rs#L563-L598`](../../packages/treetime/src/commands/optimize/run.rs#L563-L598) (`find_zero_optimal_internal_edges`)
 - Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L599-L642`](../../packages/treetime/src/commands/optimize/run.rs#L599-L642) (`prune_and_merge_in_loop`)
-- Edge collapse: [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs)
-- Shared mutation merge: [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
+- Edge collapse: [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
+- Shared mutation merge: [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
 - Fitch/ML accessors: [`packages/treetime/src/partition/sparse.rs#L112-L163`](../../packages/treetime/src/partition/sparse.rs#L112-L163) (`SparseEdgePartition`)
 
 ## Related issues
 
 - Source: [N-optimize-topology-cleanup-fitch-vs-ml-subs.md](../issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md) -- delete after full resolution
-- [Move merge_shared_mutation_branches to shared topology_cleanup module](../issues/N-topology-cleanup-move-merge-shared-mutations.md)
+- ~~Move merge_shared_mutation_branches to shared topology_cleanup module~~ (resolved: now in `packages/treetime/src/optimize/topology/`)
 - [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](../issues/M-gtr-sparse-composition-stale-after-marginal.md)

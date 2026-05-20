@@ -6,9 +6,9 @@ The dense marginal pipeline runs correctly on ebola_20. The mismatch is in the g
 
 ## Location
 
-Commented-out test case in [test_gm_runner_marginal_dense.rs#L32](../../packages/treetime/src/commands/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L32).
+Commented-out test case in [test_gm_runner_marginal_dense.rs#L32](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L32).
 
-Golden master data in [gm_runner_outputs.json](../../packages/treetime/src/commands/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json).
+Golden master data in [gm_runner_outputs.json](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json).
 
 ## Resolution options
 

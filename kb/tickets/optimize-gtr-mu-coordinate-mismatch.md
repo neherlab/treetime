@@ -14,10 +14,10 @@ This issue co-occurs with [M-optimize-negative-branch-length-validation.md](../i
 | [packages/treetime/src/gtr/gtr.rs#L319](../../packages/treetime/src/gtr/gtr.rs#L319)                                                           | `expQt_with_rate(t, rate)` -- same convention with per-site rate                                 |
 | [packages/treetime/src/gtr/gtr.rs#L350](../../packages/treetime/src/gtr/gtr.rs#L350)                                                           | `evolve()` -- propagates profiles forward in time via `expQt`                                    |
 | [packages/treetime/src/gtr/gtr.rs#L399](../../packages/treetime/src/gtr/gtr.rs#L399)                                                           | `propagate_profile()` -- propagates likelihoods upward via `expQt`                               |
-| [packages/treetime/src/commands/optimize/optimize_eval.rs#L29](../../packages/treetime/src/commands/optimize/optimize_eval.rs#L29)             | `evaluate_site_contributions` -- computes `exp(eigvals * t)` without mu                          |
-| [packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21](../../packages/treetime/src/commands/optimize/optimize_dense_eval.rs#L21) | Dispatches `evaluate_site_contributions` with `gtr.eigvals` and raw `branch_length`              |
+| [packages/treetime/src/optimize/eval.rs#L29](../../packages/treetime/src/optimize/eval.rs#L29)             | `evaluate_site_contributions` -- computes `exp(eigvals * t)` without mu                          |
+| [packages/treetime/src/optimize/dense_eval.rs#L21](../../packages/treetime/src/optimize/dense_eval.rs#L21) | Dispatches `evaluate_site_contributions` with `gtr.eigvals` and raw `branch_length`              |
 | [packages/treetime/src/commands/optimize/run.rs#L314-L359](../../packages/treetime/src/commands/optimize/run.rs#L314-L359)                     | Main optimization loop -- calls `update_marginal` then `run_optimize_mixed` in sequence          |
-| [packages/treetime/src/commands/optimize/optimize_unified.rs#L720](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L720)     | `initial_guess_mixed` -- sets BL = `subs_count / effective_length`, implicitly assuming `mu = 1` |
+| [packages/treetime/src/optimize/dispatch.rs#L720](../../packages/treetime/src/optimize/dispatch.rs#L720)     | `initial_guess_mixed` -- sets BL = `subs_count / effective_length`, implicitly assuming `mu = 1` |
 
 ## Background: two incompatible conventions for `t`
 

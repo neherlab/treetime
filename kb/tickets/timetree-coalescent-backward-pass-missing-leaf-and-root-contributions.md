@@ -24,7 +24,7 @@ v0 applies leaf contributions in two code paths during the backward pass:
 
 ### v1 current state
 
-`compute_node_contributions()` in [contributions.rs](../../packages/treetime/src/coalescent/contributions.rs) computes leaf and internal contributions correctly (validated by golden master tests). The backward pass at [backward_pass.rs](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs) skips leaf nodes at line 45 (`result = None` for leaves) and does not add root correction.
+`compute_node_contributions()` in [contributions.rs](../../packages/treetime/src/coalescent/contributions.rs) computes leaf and internal contributions correctly (validated by golden master tests). The backward pass at [backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs) skips leaf nodes at line 45 (`result = None` for leaves) and does not add root correction.
 
 ## Mathematical background
 

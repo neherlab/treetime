@@ -15,18 +15,18 @@ Point distribution multiplication fails when time coordinates differ by more tha
 ### Code path
 
 1. `create_branch_distributions_input_mode()` at
-   [`runner.rs#L143-L166`](../../packages/treetime/src/commands/timetree/inference/runner.rs#L143) creates `Distribution::point(time_duration, 1.0)` for each edge.
+   [`runner.rs#L143-L166`](../../packages/treetime/src/timetree/inference/runner.rs#L143) creates `Distribution::point(time_duration, 1.0)` for each edge.
 
 2. Leaf time distributions are Point distributions at collection dates.
 
 3. Backward pass at
-   [`backward_pass.rs#L62-L77`](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs#L62):
+   [`backward_pass.rs#L62-L77`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L62):
    - Convolves child Point with negated branch Point, yielding parent Point
    - Multiplies child messages via `distribution_multiplication()`
    - Point x Point works when `|t_a - t_b| <= 1e-9`
 
 4. Forward pass at
-   [`forward_pass.rs#L69-L82`](../../packages/treetime/src/commands/timetree/inference/forward_pass.rs#L69):
+   [`forward_pass.rs#L69-L82`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L69):
    - `dist_from_parent = convolution(parent_time_dist, branch_dist)` - Point
    - `combined = multiplication(dist_from_parent, subtree_dist)` - Point x Point
    - When these Points have slightly different `t` values (floating-point
@@ -139,7 +139,7 @@ else:
     Gaussian approximation with saturation correction
 ```
 
-v1 Poisson already implemented: [`utils.rs#L77-L118`](../../packages/treetime/src/commands/timetree/utils.rs#L77) `create_poisson_branch_distributions()` - reuse or inline.
+v1 Poisson already implemented: [`utils.rs#L77-L118`](../../packages/treetime/src/timetree/utils.rs#L77) `create_poisson_branch_distributions()` - reuse or inline.
 
 v0 reference implementations:
 

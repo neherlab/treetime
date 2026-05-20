@@ -4,7 +4,7 @@ When a configured coalescent model's likelihood evaluation fails, the error is d
 
 ## Current behavior
 
-At `packages/treetime/src/commands/timetree/convergence/likelihood.rs`, all three likelihood components use the same pattern:
+At `packages/treetime/src/timetree/convergence/likelihood.rs`, all three likelihood components use the same pattern:
 
 ```rust
 match compute_coalescent_total_lh(graph, tc) {
@@ -16,7 +16,7 @@ match compute_coalescent_total_lh(graph, tc) {
 }
 ```
 
-At `packages/treetime/src/commands/timetree/convergence/metrics.rs`:
+At `packages/treetime/src/timetree/convergence/metrics.rs`:
 
 ```rust
 let lh_total = [lh_seq, lh_pos, lh_coal].into_iter().flatten().reduce(|acc, v| acc + v);

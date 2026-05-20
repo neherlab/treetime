@@ -70,7 +70,7 @@ Both types are reconstructed per node per traversal step by calling `graph.paren
 
 The parallel BFS engine [packages/treetime-graph/src/breadth_first.rs#L139](../../packages/treetime-graph/src/breadth_first.rs#L139) processes frontiers via `rayon::into_par_iter()`. The explorer callback receives a `&SafeNodeRefMut<N>` (write guard on the node). The actual `GraphNodeForward`/`GraphNodeBackward` construction happens inside the callback wrapper at [packages/treetime-graph/src/graph_traverse.rs#L225-L253](../../packages/treetime-graph/src/graph_traverse.rs#L225-L253), acquiring additional locks on parents, children, and edges.
 
-Partition locks are acquired inside the callback body. For example, `fn marginal_backward` [packages/treetime/src/commands/ancestral/marginal.rs#L85](../../packages/treetime/src/commands/ancestral/marginal.rs#L85) runs parallel BFS where each node callback acquires `partition.write_arc()` for every partition:
+Partition locks are acquired inside the callback body. For example, `fn marginal_backward` [packages/treetime/src/ancestral/marginal.rs#L85](../../packages/treetime/src/ancestral/marginal.rs#L85) runs parallel BFS where each node callback acquires `partition.write_arc()` for every partition:
 
 ```rust
 graph.par_iter_breadth_first_backward(|node| {
@@ -84,7 +84,7 @@ graph.par_iter_breadth_first_backward(|node| {
 
 ### Topology mutations
 
-Reroot (`fn split_edge` [packages/treetime/src/partition/algo/topology_cleanup/reroot.rs#L68](../../packages/treetime/src/partition/algo/topology_cleanup/reroot.rs#L68), `fn apply_reroot_topology` [packages/treetime/src/partition/algo/topology_cleanup/reroot.rs#L112](../../packages/treetime/src/partition/algo/topology_cleanup/reroot.rs#L112), `fn invert_edge` [packages/treetime-graph/src/edge.rs#L102](../../packages/treetime-graph/src/edge.rs#L102)), polytomy resolution (`fn resolve_polytomies_with_options` [packages/treetime/src/commands/timetree/optimization/polytomy.rs#L51](../../packages/treetime/src/commands/timetree/optimization/polytomy.rs#L51)), and edge collapse (`fn collapse_edge` [packages/treetime/src/partition/algo/topology_cleanup/collapse.rs#L34](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs#L34)) mutate graph topology mid-pipeline via `graph.add_node()`, `graph.remove_edge()`, `graph.add_edge()`, `graph.collapse_edge()`. After topology changes, `fn reconcile_topology` patches partition maps with default entries for new nodes/edges.
+Reroot (`fn split_edge` [packages/treetime/src/timetree/optimization/reroot.rs#L68](../../packages/treetime/src/timetree/optimization/reroot.rs#L68), `fn apply_reroot_topology` [packages/treetime/src/timetree/optimization/reroot.rs#L112](../../packages/treetime/src/timetree/optimization/reroot.rs#L112), `fn invert_edge` [packages/treetime-graph/src/edge.rs#L102](../../packages/treetime-graph/src/edge.rs#L102)), polytomy resolution (`fn resolve_polytomies_with_options` [packages/treetime/src/timetree/optimization/polytomy.rs#L51](../../packages/treetime/src/timetree/optimization/polytomy.rs#L51)), and edge collapse (`fn collapse_edge` [packages/treetime/src/optimize/topology/collapse.rs#L34](../../packages/treetime/src/optimize/topology/collapse.rs#L34)) mutate graph topology mid-pipeline via `graph.add_node()`, `graph.remove_edge()`, `graph.add_edge()`, `graph.collapse_edge()`. After topology changes, `fn reconcile_topology` patches partition maps with default entries for new nodes/edges.
 
 ### EM loop data flow
 
@@ -187,7 +187,7 @@ Epoch-based is the natural fit: topology changes are infrequent (once per EM ite
 
 The codebase already uses the transform pattern in limited scope:
 
-- `Arc<Distribution>` values on `struct EdgeTimetree` are computed fresh each pass and stored as immutable shared references. `fn propagate_distributions_backward` [packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17](../../packages/treetime/src/commands/timetree/inference/backward_pass.rs#L17) computes a new `Distribution`, wraps it in `Arc`, and stores it via `set_time_distribution()`. The distribution itself is never mutated after creation.
+- `Arc<Distribution>` values on `struct EdgeTimetree` are computed fresh each pass and stored as immutable shared references. `fn propagate_distributions_backward` [packages/treetime/src/timetree/inference/backward_pass.rs#L17](../../packages/treetime/src/timetree/inference/backward_pass.rs#L17) computes a new `Distribution`, wraps it in `Arc`, and stores it via `set_time_distribution()`. The distribution itself is never mutated after creation.
 - `trait PartitionMarginalOps` [packages/treetime/src/partition/traits.rs#L102](../../packages/treetime/src/partition/traits.rs#L102) separates the graph (`&Graph`) from the partition (`&mut self`), so partition mutations do not require graph mutation. This is a step toward separating input (graph) from output (partition).
 - `trait BranchTopology` [packages/treetime/src/partition/traits.rs#L26](../../packages/treetime/src/partition/traits.rs#L26) provides a read-only topology abstraction, decoupling partition operations from the concrete graph type.
 

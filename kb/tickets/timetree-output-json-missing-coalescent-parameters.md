@@ -4,7 +4,7 @@
 
 ## Root cause
 
-`write_clock_model()` at [`clock_output.rs`](../../packages/treetime/src/commands/clock/clock_output.rs) serializes only the `ClockModel` fields. Coalescent Tc and skyline results are local variables in `run_timetree_estimation()` and are never passed to the output writer.
+`write_clock_model()` at [`clock_output.rs`](../../packages/treetime/src/clock/clock_output.rs) serializes only the `ClockModel` fields. Coalescent Tc and skyline results are local variables in `run_timetree_estimation()` and are never passed to the output writer.
 
 v0 records the optimized Tc in `molecular_clock.txt` and the coal_LH in `trace_run.log`.
 

@@ -109,7 +109,7 @@ Pipeline:
 5. Create `PartitionDiscrete::new(0, gtr, discrete_states)`. Set `min_branch_length = 0.001`.
 6. `attach_traits()` -- map leaf names to one-hot or uniform profiles, validate all leaves have traits and vice versa
 7. `run_discrete_marginal()` -- backward + forward on `PartitionDiscrete`
-8. `refine_gtr_iterative()` at [packages/treetime/src/commands/mugration/gtr_refinement.rs#L28](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L28):
+8. `refine_gtr_iterative()` at [packages/treetime/src/gtr/refinement.rs#L28](../../../packages/treetime/src/gtr/refinement.rs#L28):
    - Count transitions from marginal profiles via `count_transitions_discrete()`, then `infer_gtr_impl()`
    - `optimize_gtr_rate()` via custom Brent minimization
    - Repeat for `iterations` rounds (default 5)
@@ -142,26 +142,26 @@ Pipeline:
 - `nwk_read_file()` -- tree input
 - `GTR` struct and `GTR::new()` constructor ([packages/treetime/src/gtr/gtr.rs](../../../packages/treetime/src/gtr/gtr.rs))
 - `infer_gtr_impl()` from `gtr/infer_gtr/common` -- core GTR inference algorithm, called by ancestral (via `infer_gtr_dense` / `infer_gtr_sparse`) and by mugration (via `gtr_refinement.rs`)
-- `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/commands/mugration/gtr_refinement.rs#L98](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs#L98))
-- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` via `normalize_from_log_1d()` ([packages/treetime/src/partition/discrete.rs#L83](../../../packages/treetime/src/partition/discrete.rs#L83))
+- `get_branch_mutation_matrix()` and `accumulate_mutation_counts()` from `gtr/infer_gtr/dense` -- reused by mugration's `count_transitions_discrete()` ([packages/treetime/src/gtr/refinement.rs#L98](../../../packages/treetime/src/gtr/refinement.rs#L98))
+- `softmax_with_log_norm()` from `partition/marginal_helpers` -- used by `PartitionDiscrete::process_node_backward()` via `normalize_from_log_1d()` ([packages/treetime/src/partition/discrete_states.rs#L83](../../../packages/treetime/src/partition/discrete_states.rs#L83))
 
 ### Ancestral only
 
 - `PartitionFitch`, `PartitionMarginalDense`, `PartitionMarginalSparse` partition types
-- Fitch parsimony algorithm ([packages/treetime/src/commands/ancestral/fitch.rs](../../../packages/treetime/src/commands/ancestral/fitch.rs))
-- Generic marginal backward/forward via `PartitionMarginalOps` trait ([packages/treetime/src/commands/ancestral/marginal.rs](../../../packages/treetime/src/commands/ancestral/marginal.rs))
+- Fitch parsimony algorithm ([packages/treetime/src/ancestral/fitch.rs](../../../packages/treetime/src/ancestral/fitch.rs))
+- Generic marginal backward/forward via `PartitionMarginalOps` trait ([packages/treetime/src/ancestral/marginal.rs](../../../packages/treetime/src/ancestral/marginal.rs))
 - `annotate_branch_mutations()` for mutation annotation on graph nodes
 - `Alphabet`, `Seq`, `StateSet`, `BitSet128` sequence primitives
 
 ### Mugration only
 
-- `PartitionDiscrete` with self-contained `process_node_backward()` / `process_node_forward()` ([packages/treetime/src/partition/discrete.rs](../../../packages/treetime/src/partition/discrete.rs))
+- `PartitionDiscrete` with self-contained `process_node_backward()` / `process_node_forward()` ([packages/treetime/src/partition/discrete_states.rs](../../../packages/treetime/src/partition/discrete_states.rs))
 - `DiscreteStates` instead of `Alphabet` ([packages/treetime/src/partition/discrete_states.rs](../../../packages/treetime/src/partition/discrete_states.rs))
-- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/partition/discrete.rs](../../../packages/treetime/src/partition/discrete.rs))
-- Iterative GTR refinement with custom Brent optimizer ([packages/treetime/src/commands/mugration/gtr_refinement.rs](../../../packages/treetime/src/commands/mugration/gtr_refinement.rs))
+- `DiscreteNodeData` / `DiscreteEdgeData` payload types ([packages/treetime/src/partition/discrete_states.rs](../../../packages/treetime/src/partition/discrete_states.rs))
+- Iterative GTR refinement with custom Brent optimizer ([packages/treetime/src/gtr/refinement.rs](../../../packages/treetime/src/gtr/refinement.rs))
 - Sampling bias correction
 - Weight-based pi computation with pseudo-count smoothing
-- `PartitionCommentProvider` for Nexus trait annotation ([packages/treetime/src/commands/mugration/comment_provider.rs](../../../packages/treetime/src/commands/mugration/comment_provider.rs))
+- `PartitionCommentProvider` for Nexus trait annotation ([packages/treetime/src/commands/mugration/run.rs](../../../packages/treetime/src/commands/mugration/run.rs))
 - Structured I/O types: `MugrationInput`, `MugrationResult`, `MugrationGtrOutput`, `MugrationTraitsOutput`, `MugrationConfidenceOutput`
 
 ## GTR model lifecycle
@@ -220,13 +220,13 @@ Both commands implement the same Felsenstein pruning algorithm (backward: leaves
 
 - Profiles are 2D arrays: `(n_positions, n_states)`
 - Backward/forward dispatch through `PartitionMarginalOps` trait, implemented by both `PartitionMarginalDense` and `PartitionMarginalSparse`
-- Generic functions `marginal_backward()` / `marginal_forward()` in [packages/treetime/src/commands/ancestral/marginal.rs](../../../packages/treetime/src/commands/ancestral/marginal.rs) iterate over partitions behind `Arc<RwLock<P>>`
+- Generic functions `marginal_backward()` / `marginal_forward()` in [packages/treetime/src/ancestral/marginal.rs](../../../packages/treetime/src/ancestral/marginal.rs) iterate over partitions behind `Arc<RwLock<P>>`
 - Transition matrix $e^{Qt}$ applied per-position
 
 ### mugration (direct on `PartitionDiscrete`)
 
 - Profiles are 1D arrays: `(n_states,)`
-- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/partition/discrete.rs#L60-L214](../../../packages/treetime/src/partition/discrete.rs#L60-L214))
+- Backward/forward implemented directly as methods on `PartitionDiscrete` ([packages/treetime/src/partition/discrete_states.rs#L60-L214](../../../packages/treetime/src/partition/discrete_states.rs#L60-L214))
 - Does not implement `PartitionMarginalOps`
 - Traversal uses `Arc<Mutex<&mut Partition>>` instead of `Arc<RwLock<Partition>>`
 - Single transition matrix $e^{Qt}$ per edge (one "position")

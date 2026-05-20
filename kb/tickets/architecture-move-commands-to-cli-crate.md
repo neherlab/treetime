@@ -11,18 +11,17 @@ All of `packages/treetime/src/commands/` to `packages/treetime-cli/src/commands/
 - `ancestral/` - args.rs, run.rs
 - `clock/` - args.rs, run.rs
 - `homoplasy/` - args.rs, run.rs
-- `mugration/` - args.rs, run.rs, comment_provider.rs
+- `mugration/` - args.rs, run.rs
 - `optimize/` - args.rs, run.rs
 - `prune/` - args.rs, run.rs
-- `timetree/` - args.rs, run.rs, output/, convergence/
-- `shared/` - args.rs (shared CLI argument types)
+- `timetree/` - args.rs, run.rs, output/, initialization.rs, refinement.rs
 - `mod.rs`
 
 ## What stays in treetime library
 
 Nothing from `commands/`. The library crate exposes domain modules only:
 
-- `alphabet/`, `ancestral/`, `clock/`, `coalescent/`, `constants/`, `gtr/`, `mugration/`, `optimize/`, `representation/`, `seq/`, `timetree/`
+- `alphabet/`, `ancestral/`, `clock/`, `coalescent/`, `constants/`, `gtr/`, `mugration/`, `optimize/`, `partition/`, `payload/`, `prune/`, `seq/`, `timetree/`
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
 # Sparse root invariance violation
 
-Felsenstein's pulley principle states that log-likelihood is invariant to root placement for reversible GTR models. [`test_prop_marginal_dense_log_lh_root_invariance`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs) (`#test_prop_marginal_dense_log_lh_root_invariance`) confirms this for dense marginal reconstruction to 1e-6 (limited by `exp(Q*(t1+t2))` vs `exp(Q*t1)*exp(Q*t2)` matrix exponential path difference from edge collapse during rerooting). The sparse counterpart [`test_prop_marginal_sparse_log_lh_root_invariance`](../../packages/treetime/src/commands/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L44) (`#test_prop_marginal_sparse_log_lh_root_invariance`) is currently failing: sparse marginal reconstruction violates invariance by ~0.09 on the proptest minimal failing input (caterpillar tree with short branches, 4 taxa, 10 positions).
+Felsenstein's pulley principle states that log-likelihood is invariant to root placement for reversible GTR models. [`test_prop_marginal_dense_log_lh_root_invariance`](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs) (`#test_prop_marginal_dense_log_lh_root_invariance`) confirms this for dense marginal reconstruction to 1e-6 (limited by `exp(Q*(t1+t2))` vs `exp(Q*t1)*exp(Q*t2)` matrix exponential path difference from edge collapse during rerooting). The sparse counterpart [`test_prop_marginal_sparse_log_lh_root_invariance`](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L44) (`#test_prop_marginal_sparse_log_lh_root_invariance`) is currently failing: sparse marginal reconstruction violates invariance by ~0.09 on the proptest minimal failing input (caterpillar tree with short branches, 4 taxa, 10 positions).
 
 ## Cause
 
@@ -15,7 +15,7 @@ The root parsimony SCORE is invariant (same number of mutations regardless of ro
 
 ## Failing input
 
-Proptest minimal reproducer (committed in [`proptest-regressions/commands/ancestral/__tests__/test_marginal_root_invariance_prop.txt`](../../packages/treetime/proptest-regressions/commands/ancestral/__tests__/test_marginal_root_invariance_prop.txt)):
+Proptest minimal reproducer (from [`test_marginal_root_invariance_prop.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs)):
 
 - Tree: `(T2:0.001,(T0:0.001,(T1:0.086,T3:0.036):0.001):0.001)root:0.001;`
   (caterpillar, most branches near-zero)

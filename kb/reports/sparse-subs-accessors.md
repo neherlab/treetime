@@ -34,8 +34,8 @@ After inverting fitch subs on edges along the old-root-to-new-root path, ML subs
 
 Count discrete substitutions per edge across all partitions to estimate initial branch lengths before the optimization loop. Called from `optimize` and `timetree` commands.
 
-- `initial_guess_mixed()` [commands/optimize/optimize_unified.rs#L729](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L729)
-- `partition.edge_subs()` [commands/optimize/optimize_unified.rs#L774](../../packages/treetime/src/commands/optimize/optimize_unified.rs#L774)
+- `initial_guess_mixed()` [optimize/dispatch.rs#L729](../../packages/treetime/src/optimize/dispatch.rs#L729)
+- `partition.edge_subs()` [optimize/dispatch.rs#L774](../../packages/treetime/src/optimize/dispatch.rs#L774)
 - `edge.ml_subs()` [partition/marginal_sparse.rs#L269](../../packages/treetime/src/partition/marginal_sparse.rs#L269)
 
 ### Collect ML subs for branch mutation annotation
@@ -52,15 +52,15 @@ Collect all ML subs across partitions for each edge and write them as comma-sepa
 
 During the forward (tip-to-root) Fitch parsimony pass, substitutions are resolved by comparing child and parent Fitch sets at each variable position. Resolved subs are appended to the edge.
 
-- `run_fitch_forward()` [commands/ancestral/fitch.rs#L292](../../packages/treetime/src/commands/ancestral/fitch.rs#L292)
-- `edge.extend_fitch_subs(subs)` [commands/ancestral/fitch.rs#L453](../../packages/treetime/src/commands/ancestral/fitch.rs#L453)
+- `run_fitch_forward()` [ancestral/fitch.rs#L292](../../packages/treetime/src/ancestral/fitch.rs#L292)
+- `edge.extend_fitch_subs(subs)` [ancestral/fitch.rs#L453](../../packages/treetime/src/ancestral/fitch.rs#L453)
 
 ### Apply fitch subs to reconstruct child sequence for output
 
 After Fitch reconstruction, apply fitch subs to the parent sequence to produce the child node's reconstructed sequence for output.
 
-- `run_fitch_reconstruction()` [commands/ancestral/fitch.rs#L561](../../packages/treetime/src/commands/ancestral/fitch.rs#L561)
-- `edge_part.fitch_subs()` [commands/ancestral/fitch.rs#L580](../../packages/treetime/src/commands/ancestral/fitch.rs#L580)
+- `run_fitch_reconstruction()` [ancestral/fitch.rs#L561](../../packages/treetime/src/ancestral/fitch.rs#L561)
+- `edge_part.fitch_subs()` [ancestral/fitch.rs#L580](../../packages/treetime/src/ancestral/fitch.rs#L580)
 
 ### Seed candidate positions for ML sub computation
 
@@ -136,60 +136,60 @@ Reconstruct a node's full sequence by applying fitch subs and indels to the pare
 
 Count total mutations across all partitions for an edge. Used to determine whether a leaf or internal node has enough signal to keep or should be pruned.
 
-- `parse_node_names()` [commands/prune/run.rs#L99](../../packages/treetime/src/commands/prune/run.rs#L99)
-- `edge.fitch_subs().len()` [commands/prune/run.rs#L146](../../packages/treetime/src/commands/prune/run.rs#L146)
+- `parse_node_names()` [prune/run.rs#L99](../../packages/treetime/src/commands/prune/run.rs#L99)
+- `edge.fitch_subs().len()` [prune/run.rs#L146](../../packages/treetime/src/commands/prune/run.rs#L146)
 
 ### Find shared subs between sibling edges
 
 Read fitch subs from both sibling edges and compute their intersection. Shared substitutions will be lifted to the parent edge when siblings are merged.
 
-- `compute_shared_subs_across_partitions()` [topology_cleanup/merge_shared_mutations.rs#L140](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L140)
-- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L150](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L150)
-- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L151](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L151)
+- `compute_shared_subs_across_partitions()` [topology_cleanup/merge_shared_mutations.rs#L140](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L140)
+- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L150](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L150)
+- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L151](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L151)
 
 ### Compute private mutations per sibling
 
 Read fitch subs from both sibling edges to compute remaining (non-shared) substitutions. Each child keeps only its private mutations after shared ones move to the parent.
 
-- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L183)
-- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L209](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L209)
-- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L210](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L210)
+- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L183)
+- `e.fitch_subs()` pair A [topology_cleanup/merge_shared_mutations.rs#L209](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L209)
+- `e.fitch_subs()` pair B [topology_cleanup/merge_shared_mutations.rs#L210](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L210)
 
 ### Redistribute shared and private subs after sibling merge
 
 After splitting shared vs private mutations, write the shared set onto the new parent edge and the private remainders onto each child edge. Completes the sibling merge operation.
 
-- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L183)
-- `parent_edge.set_fitch_subs()` shared subs [topology_cleanup/merge_shared_mutations.rs#L303](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L303)
-- `edge_a.set_fitch_subs()` remaining A [topology_cleanup/merge_shared_mutations.rs#L307](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L307)
-- `edge_b.set_fitch_subs()` remaining B [topology_cleanup/merge_shared_mutations.rs#L311](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs#L311)
+- `merge_sibling_pair()` [topology_cleanup/merge_shared_mutations.rs#L183](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L183)
+- `parent_edge.set_fitch_subs()` shared subs [topology_cleanup/merge_shared_mutations.rs#L303](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L303)
+- `edge_a.set_fitch_subs()` remaining A [topology_cleanup/merge_shared_mutations.rs#L307](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L307)
+- `edge_b.set_fitch_subs()` remaining B [topology_cleanup/merge_shared_mutations.rs#L311](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L311)
 
 ### Compose subs when collapsing zero-length edge
 
 When a zero-length internal edge is collapsed, its substitutions are composed with the child edge's substitutions and stored on the surviving child edge.
 
-- `collapse_edge()` [partition/algo/topology_cleanup/collapse.rs#L33](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs#L33)
-- `removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())` [partition/algo/topology_cleanup/collapse.rs#L60](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs#L60)
-- `child_edge.set_fitch_subs(merged_subs)` [partition/algo/topology_cleanup/collapse.rs#L61](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs#L61)
+- `collapse_edge()` [optimize/topology/collapse.rs#L33](../../packages/treetime/src/optimize/topology/collapse.rs#L33)
+- `removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())` [optimize/topology/collapse.rs#L60](../../packages/treetime/src/optimize/topology/collapse.rs#L60)
+- `child_edge.set_fitch_subs(merged_subs)` [optimize/topology/collapse.rs#L61](../../packages/treetime/src/optimize/topology/collapse.rs#L61)
 
 ### Detect mutation-free edges for collapse candidates
 
 Identify mutation-free internal edges as candidates for zero-length collapse. An edge with no fitch subs and no indels across all partitions is considered zero-length.
 
-- `compute_iteration_likelihood()` [commands/optimize/run.rs#L389](../../packages/treetime/src/commands/optimize/run.rs#L389)
-- `e.fitch_subs().is_empty()` [commands/optimize/run.rs#L583](../../packages/treetime/src/commands/optimize/run.rs#L583)
+- `compute_iteration_likelihood()` [optimize/run.rs#L389](../../packages/treetime/src/commands/optimize/run.rs#L389)
+- `e.fitch_subs().is_empty()` [optimize/run.rs#L583](../../packages/treetime/src/commands/optimize/run.rs#L583)
 
 ### Build likelihood coefficients from variable positions
 
 Collect variable positions from fitch subs (alongside marginal messages) to build the set of positions needing per-edge likelihood coefficients. For each position, look up the fitch sub to determine the parent-to-child state transition for the likelihood computation.
 
-- `get_coefficients()` [commands/optimize/optimize_sparse.rs#L45](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L45)
-- `edge.fitch_subs().iter().map(Sub::pos)` [commands/optimize/optimize_sparse.rs#L58](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L58)
-- `edge.fitch_subs().iter().find()` [commands/optimize/optimize_sparse.rs#L66](../../packages/treetime/src/commands/optimize/optimize_sparse.rs#L66)
+- `get_coefficients()` [partition/optimize_sparse.rs#L45](../../packages/treetime/src/partition/optimize_sparse.rs#L45)
+- `edge.fitch_subs().iter().map(Sub::pos)` [partition/optimize_sparse.rs#L58](../../packages/treetime/src/partition/optimize_sparse.rs#L58)
+- `edge.fitch_subs().iter().find()` [partition/optimize_sparse.rs#L66](../../packages/treetime/src/partition/optimize_sparse.rs#L66)
 
 ### Count mutation pairs for GTR model inference
 
 Count substitution pairs (ref, qry) across all edges to build the mutation count matrix for GTR model inference. Runs before marginal inference, so only fitch subs are available.
 
-- `get_mutation_counts_sparse()` [gtr/infer_gtr/sparse.rs#L35](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L35)
-- `e.fitch_subs()` [gtr/infer_gtr/sparse.rs#L75](../../packages/treetime/src/gtr/infer_gtr/sparse.rs#L75)
+- `get_mutation_counts_sparse()` [gtr/infer_gtr/common.rs#L35](../../packages/treetime/src/gtr/infer_gtr/common.rs#L35)
+- `e.fitch_subs()` [gtr/infer_gtr/common.rs#L75](../../packages/treetime/src/gtr/infer_gtr/common.rs#L75)

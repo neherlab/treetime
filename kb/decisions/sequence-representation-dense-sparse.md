@@ -42,7 +42,7 @@ The `Composition` struct (`packages/treetime/src/seq/composition.rs:9-12`) track
 
 ### Compression pipeline
 
-The sparse path runs `compress_sequences()` (`packages/treetime/src/commands/ancestral/fitch.rs:520-546`) before marginal reconstruction. This performs Fitch parsimony (backward and forward passes) to identify variable positions. A position is variable if parsimony cannot unambiguously assign a single state. The result populates `SparseSeqInfo.fitch.variable` with a `BTreeMap<usize, StateSet>` containing only positions that vary across the tree.
+The sparse path runs `compress_sequences()` (`packages/treetime/src/ancestral/fitch.rs:520-546`) before marginal reconstruction. This performs Fitch parsimony (backward and forward passes) to identify variable positions. A position is variable if parsimony cannot unambiguously assign a single state. The result populates `SparseSeqInfo.fitch.variable` with a `BTreeMap<usize, StateSet>` containing only positions that vary across the tree.
 
 Marginal belief propagation (`packages/treetime/src/partition/marginal_passes.rs:16-128`) operates on this compressed representation. The backward pass combines child messages, tracking only variable positions explicitly. Fixed positions contribute through the per-character shared vectors weighted by counts. The forward pass propagates parent information to children, again operating only on variable positions.
 
@@ -67,7 +67,7 @@ The sparse representation also reduces computation: belief propagation operation
 
 ## Correctness verification
 
-Sparse and dense paths produce identical results. The test suite verifies this in `test_marginal_dense_sparse_log_lh_consistency_gap_free` and `test_marginal_sparse_varpos_matches_dense_profile_gap_free` (`packages/treetime/src/commands/ancestral/__tests__/test_marginal_consistency.rs`). These tests run both paths on the same tree and alignment, asserting that total log-likelihoods match and that variable position probability vectors agree.
+Sparse and dense paths produce identical results. The test suite verifies this in `test_marginal_dense_sparse_log_lh_consistency_gap_free` and `test_marginal_sparse_varpos_matches_dense_profile_gap_free` (`packages/treetime/src/ancestral/__tests__/test_marginal_consistency.rs`). These tests run both paths on the same tree and alignment, asserting that total log-likelihoods match and that variable position probability vectors agree.
 
 ## Dense mode selection
 

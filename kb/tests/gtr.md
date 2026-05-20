@@ -260,7 +260,7 @@ Validates that proptest generators produce valid outputs.
 
 **Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs)
 
-**Impl:** [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
+**Impl:** [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                                | Datasets                                                                                                   |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -278,7 +278,7 @@ Validates that proptest generators produce valid outputs.
 
 **Impl:**
 
-- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 - [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                                 | Purpose                                     |
@@ -293,11 +293,11 @@ Validates that proptest generators produce valid outputs.
 
 ## GTR Inference Tests - Sparse
 
-**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_sparse.rs)
+**Test:** [`packages/treetime/src/gtr/infer_gtr/__tests__/test_fitch.rs`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_fitch.rs)
 
 **Impl:**
 
-- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 - [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                              | Purpose                                      |
@@ -313,8 +313,8 @@ Validates that proptest generators produce valid outputs.
 
 **Impl:**
 
-- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
-- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 Verifies mutation count invariants across dense and sparse paths.
 
@@ -344,8 +344,8 @@ Verifies mutation count invariants across dense and sparse paths.
 
 **Impl:**
 
-- [`packages/treetime/src/gtr/infer_gtr/dense.rs`](../../packages/treetime/src/gtr/infer_gtr/dense.rs)
-- [`packages/treetime/src/gtr/infer_gtr/sparse.rs`](../../packages/treetime/src/gtr/infer_gtr/sparse.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
+- [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)
 
 | Test                                  | Datasets                                                                        |
 | ------------------------------------- | ------------------------------------------------------------------------------- |
@@ -508,7 +508,7 @@ Verifies mutation count invariants across dense and sparse paths.
 
 ## Site-Rate Variation Property Tests
 
-**Test:** [`packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs`](../../packages/treetime/src/gtr/__tests__/test_prop_gtr_site_rates.rs)
+**Test:** [`packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/`](../../packages/treetime/src/gtr/__tests__/test_gtr_hierarchy/)
 
 **Impl:** [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)
 

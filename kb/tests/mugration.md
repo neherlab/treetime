@@ -23,8 +23,8 @@
 **Impl:**
 
 - [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
-- [`packages/treetime/src/commands/mugration/input.rs`](../../packages/treetime/src/commands/mugration/input.rs)
-- [`packages/treetime/src/commands/mugration/output.rs`](../../packages/treetime/src/commands/mugration/output.rs)
+- [`packages/treetime/src/mugration/input.rs`](../../packages/treetime/src/mugration/input.rs)
+- [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
 
 | Test                                      | Datasets                                   | Notes                                                                            |
 | ----------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------- |
@@ -96,7 +96,7 @@
 
 **Test:** [`packages/treetime/src/commands/mugration/__tests__/test_comment_output.rs`](../../packages/treetime/src/commands/mugration/__tests__/test_comment_output.rs)
 
-**Impl:** [`packages/treetime/src/commands/mugration/comment_provider.rs`](../../packages/treetime/src/commands/mugration/comment_provider.rs)
+**Impl:** [`packages/treetime/src/commands/mugration/run.rs`](../../packages/treetime/src/commands/mugration/run.rs)
 
 | Test                                               | Purpose                                         |
 | -------------------------------------------------- | ----------------------------------------------- |

@@ -217,7 +217,7 @@ Used to determine appropriate grid resolution for FFT convolution and adaptive g
 Constructs per-branch time prior distributions from branch lengths using Poisson or Gaussian approximation, depending on the branch length regime. This is the `branch_length_mode=input` path, which avoids sequence-based optimization and instead derives time distributions directly from the tree's input branch lengths.
 
 v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
-v1: partially in [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching.
+v1: partially in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching.
 
 ### Algorithm
 
@@ -345,7 +345,7 @@ v1: `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`]
 
 Build per-edge time prior distributions from branch lengths or marginal reconstruction messages. The function signature and types exist; the implementation body is a stub.
 
-v1: `todo!()` at [`packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39`](../../packages/treetime/src/commands/timetree/inference/branch_distributions.rs#L39).
+v1: `todo!()` at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L39`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L39).
 
 ---
 

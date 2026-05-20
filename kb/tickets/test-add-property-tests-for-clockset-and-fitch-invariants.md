@@ -2,7 +2,7 @@
 
 ## No property tests for ClockSet algebraic identities
 
-`packages/treetime/src/commands/clock/clock_set.rs:53-172:`
+`packages/treetime/src/payload/clock_set.rs:53-172:`
 
 `+`, `-`, `+=`, `-=`, `fn propagate_averages` lack property test coverage for algebraic identities (associativity, commutativity, identity element).
 

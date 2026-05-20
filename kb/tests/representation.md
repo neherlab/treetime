@@ -18,7 +18,7 @@
 | [Payload: discrete data - Removed](#payload-discrete-data)            | -                    |
 | [Payload: timetree annotation](#payload-timetree-annotation)          | Unit                 |
 
-Support files (helpers only, no tests): [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs) contains inline helpers `c()`, `sub()`, `populate_test_nodes()`, `make_sparse_partition()`.
+Support files (helpers only, no tests): [`packages/treetime/src/optimize/topology/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/optimize/topology/__tests__/test_collapse_edge.rs) contains inline helpers `c()`, `sub()`, `populate_test_nodes()`, `make_sparse_partition()`.
 
 ---
 
@@ -124,9 +124,9 @@ The old `PartitionDiscrete` and its 1D normalize tests were deleted. Discrete tr
 
 ## Topology Cleanup / Edge Collapse
 
-**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_collapse_edge.rs)
+**Test:** [`packages/treetime/src/optimize/topology/__tests__/test_collapse_edge.rs`](../../packages/treetime/src/optimize/topology/__tests__/test_collapse_edge.rs)
 
-**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs)
+**Impl:** [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
 
 | Test                                                      | Purpose                                                             |
 | --------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -145,9 +145,9 @@ Also cross-referenced from [Branch Optimization Tests](optimization.md#topology-
 
 ## Topology Cleanup / Reroot
 
-**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_reroot.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_reroot.rs)
+**Test:** [`packages/treetime/src/optimize/topology/__tests__/test_reroot.rs`](../../packages/treetime/src/optimize/topology/__tests__/test_reroot.rs)
 
-**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/reroot.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/reroot.rs)
+**Impl:** [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/treetime/src/timetree/optimization/reroot.rs)
 
 | Test                                                          | Purpose                                                               |
 | ------------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -202,7 +202,7 @@ Deleted. `DiscreteNodeData` and `DiscreteEdgeData` replaced by `DenseNodePartiti
 
 ## Files Without Tests
 
-Production source files in `representation/` with no inline or dedicated tests:
+Production source files in `partition/` with no inline or dedicated tests:
 
 | File                           | Content                          |
 | ------------------------------ | -------------------------------- |
@@ -213,8 +213,8 @@ Production source files in `representation/` with no inline or dedicated tests:
 | `partition/marginal_sparse.rs` | Sparse marginal partition        |
 | `partition/timetree.rs`        | Timetree partition               |
 | `partition/traits.rs`          | Partition trait definitions      |
-| `payload/dense.rs`             | Dense payload structs            |
-| `payload/sparse.rs`            | Sparse payload structs           |
+| `partition/dense.rs`           | Dense partition structs          |
+| `partition/sparse.rs`          | Sparse partition structs         |
 | `algo/infer_dense.rs`          | Dense inference algorithm        |
 
 These are exercised indirectly through command-level tests (ancestral, optimize, timetree) but have no direct unit tests.
@@ -228,4 +228,4 @@ Specific functions and code paths identified as needing direct test coverage:
 | `combine_messages()`                | `partition/marginal_helpers.rs`                               | Core sparse marginal algorithm with no direct tests. Only indirect coverage via command integration tests.                      |
 | `reconcile_topology()`              | `partition/marginal_sparse.rs`, `partition/marginal_dense.rs` | Adds/removes partition entries after graph topology edits with no tests asserting correctness.                                  |
 | `propagate_raw_per_site()` tests    | `partition/marginal_helpers.rs`                               | Tests use circular oracle (same `expQt_with_rate()` as SUT). Need hand-computed expected values.                                |
-| `collapse_edge()` composition tests | `algo/topology_cleanup/__tests__/test_collapse_edge.rs`       | Assert substitution count, not exact content. Composition semantics verified separately in `test_partition_marginal_sparse.rs`. |
+| `collapse_edge()` composition tests | `optimize/topology/__tests__/test_collapse_edge.rs`           | Assert substitution count, not exact content. Composition semantics verified separately in `test_partition_marginal_sparse.rs`. |

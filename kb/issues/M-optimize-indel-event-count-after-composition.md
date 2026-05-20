@@ -4,7 +4,7 @@ After `compose_indels()` merges adjacent or overlapping deletions on a collapsed
 
 ## Impact
 
-`estimate_indel_rate()` and `total_indel_log_lh()` in `packages/treetime/src/commands/optimize/optimize_indel.rs` use `edge_indel_count()` as the Poisson event count `k`. When composition merges two adjacent deletions into one annotation, `k` decreases from 2 to 1 on that edge. This may bias the global indel rate estimate downward.
+`estimate_indel_rate()` and `total_indel_log_lh()` in `packages/treetime/src/optimize/indel.rs` use `edge_indel_count()` as the Poisson event count `k`. When composition merges two adjacent deletions into one annotation, `k` decreases from 2 to 1 on that edge. This may bias the global indel rate estimate downward.
 
 ## Context
 
@@ -13,8 +13,8 @@ The old concatenation approach preserved the raw event count but double-counted 
 ## Affected code
 
 - `fn edge_indel_count()` at `packages/treetime/src/partition/marginal_sparse.rs` returns `indels.len()`
-- `fn estimate_indel_rate()` at `packages/treetime/src/commands/optimize/optimize_indel.rs` sums `edge_indel_count()` across all edges
-- `fn total_indel_log_lh()` at `packages/treetime/src/commands/optimize/optimize_indel.rs` uses `edge_indel_count()` per edge
+- `fn estimate_indel_rate()` at `packages/treetime/src/optimize/indel.rs` sums `edge_indel_count()` across all edges
+- `fn total_indel_log_lh()` at `packages/treetime/src/optimize/indel.rs` uses `edge_indel_count()` per edge
 
 ## Frequency
 

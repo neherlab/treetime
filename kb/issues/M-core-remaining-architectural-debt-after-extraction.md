@@ -1,6 +1,6 @@
 # Remaining architectural debt after domain module extraction
 
-After extracting `ancestral/`, `optimize/`, `clock/` from `commands/`, and breaking the `representation/ <-> optimize/` cycle, several structural issues remain. Identified by 6 independent peer reviews (3 Claude, 3 Codex).
+After extracting `ancestral/`, `optimize/`, `clock/` from `commands/`, and breaking the `partition/ <-> optimize/` cycle, several structural issues remain. Identified by 6 independent peer reviews (3 Claude, 3 Codex).
 
 ## ~~Dependency cycles~~ Resolved
 
@@ -16,7 +16,7 @@ GTR mutation counting (`infer_gtr_fitch`, `get_mutation_counts_fitch`) moved fro
 
 ### ~~clock/ -> commands/~~ Resolved
 
-`From<BranchSplitArgs>` moved to `commands/clock/run.rs` as `branch_split_to_params` in prior work.
+`From<BranchSplitArgs>` moved to `clock/run.rs` as `branch_split_to_params` in prior work.
 
 ## ~~representation/ renamed to partition/, restructured~~ Resolved
 
@@ -28,9 +28,9 @@ Module renamed from `representation/` to `partition/`, inner `partition/` subdir
 
 Extracted to top-level `timetree/` domain module.
 
-### commands/mugration/ (resolved)
+### mugration/ (resolved)
 
-Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete.rs`, and `partition/discrete.rs` are deleted.
+Domain algorithms extracted: GTR refinement moved to `gtr/refinement.rs`, discrete marginal reconstruction converged into shared `partition/marginal_core.rs` + `partition/marginal_discrete.rs`. The old `discrete_marginal.rs`, `gtr_refinement.rs`, `partition/discrete_states.rs`, and `partition/discrete_states.rs` are deleted.
 
 ## ~~Visibility and coupling issues~~ Resolved
 
@@ -46,4 +46,4 @@ Decision: keep `clap` as a direct dependency. Domain types derive `clap::ValueEn
 
 - ~~`PartitionMarginal` dead marker trait~~ Resolved
 - `hacks/` module contains one 14-line function (`fix_branch_length`). Module name normalizes technical debt. Relocate to `seq/` or inline at 3 call sites.
-- `discrete_states.rs` in `partition/` used exclusively by mugration. Move to `commands/mugration/` or future `mugration/` domain module.
+- `discrete_states.rs` in `partition/` used exclusively by mugration. Move to `mugration/` or future `mugration/` domain module.

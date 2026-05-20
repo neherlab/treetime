@@ -40,7 +40,7 @@ initial_bl = #subs / effective_length
 
 For sparse partitions, substitutions come from Fitch-reconstructed states. For dense partitions, substitutions come from MAP states (argmax of node posteriors). Gap positions are excluded from both numerator and denominator, giving correctly scaled rates for gappy alignments.
 
-v1 code: `initial_guess_mixed()` in [`packages/treetime/src/commands/optimize/optimize_unified.rs#L729`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L729).
+v1 code: `initial_guess_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L729`](../../../packages/treetime/src/optimize/dispatch.rs#L729).
 
 ## The GTR model interaction
 

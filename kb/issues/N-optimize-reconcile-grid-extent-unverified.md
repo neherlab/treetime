@@ -2,7 +2,7 @@
 
 ## Problem
 
-`reconcile_zero_boundary` at [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) takes a `branch_length_for_extent` parameter separate from `candidate`. The separation exists because `candidate` may be clamped to $0$ or to a tiny floor like $10^{-12}$ after the inner solver runs, and the grid extent must remain tied to a meaningful scale. The dispatcher in `run_optimize_mixed` passes the edge's INPUT branch length (the value before optimization) as the extent.
+`reconcile_zero_boundary` at [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) takes a `branch_length_for_extent` parameter separate from `candidate`. The separation exists because `candidate` may be clamped to $0$ or to a tiny floor like $10^{-12}$ after the inner solver runs, and the grid extent must remain tied to a meaningful scale. The dispatcher in `run_optimize_mixed` passes the edge's INPUT branch length (the value before optimization) as the extent.
 
 This choice is correct in the common case: the input branch length is the optimizer's best prior estimate of the true scale. The corner case where the input is uninformative or wildly misleading is not covered:
 
@@ -22,4 +22,4 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 
 ## Cross-references
 
-- [packages/treetime/src/commands/optimize/optimize_unified.rs](../../packages/treetime/src/commands/optimize/optimize_unified.rs) (`reconcile_zero_boundary`, `grid_search_branch_lengths`)
+- [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`, `grid_search_branch_lengths`)

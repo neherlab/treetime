@@ -54,7 +54,7 @@ The Poisson log-likelihood $\ell(t)$ is strictly concave in $t$ for $k > 0$ (the
 
 ### Implementation
 
-v1: [`packages/treetime/src/commands/optimize/optimize_indel.rs`](../../../packages/treetime/src/commands/optimize/optimize_indel.rs) (Poisson log-likelihood and rate estimation), [`packages/treetime/src/commands/optimize/optimize_unified.rs`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs) (Newton integration), [`packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs`](../../../packages/treetime/src/commands/timetree/inference/branch_length_likelihood.rs) (timetree branch-length distribution grid).
+v1: [`packages/treetime/src/optimize/indel.rs`](../../../packages/treetime/src/optimize/indel.rs) (Poisson log-likelihood and rate estimation), [`packages/treetime/src/optimize/dispatch.rs`](../../../packages/treetime/src/optimize/dispatch.rs) (Newton integration), [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) (timetree branch-length distribution grid).
 
 ### Related known issues
 

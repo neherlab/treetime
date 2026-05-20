@@ -790,7 +790,7 @@ Unit and parameterized tests for all BitSet128 operations.
 
 ### Commands: Prune
 
-**Test:** [`packages/treetime/src/commands/prune/__tests__/test_run.rs`](../../packages/treetime/src/commands/prune/__tests__/test_run.rs)
+**Test:** [`packages/treetime/src/prune/__tests__/test_prune.rs`](../../packages/treetime/src/prune/__tests__/test_prune.rs)
 
 **Impl:** [`packages/treetime/src/commands/prune/run.rs`](../../packages/treetime/src/commands/prune/run.rs)
 
@@ -839,9 +839,9 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_collapse_edge_compose_cancellation`                                    | Cancellation (A->G + G->A = none) through edge collapse      |
 | `test_collapse_edge_compose_multiple_partitions`                             | Composition applied independently per partition              |
 
-**Test:** [`packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/__tests__/test_merge_shared_mutations.rs)
+**Test:** [`packages/treetime/src/optimize/topology/__tests__/test_merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/__tests__/test_merge_shared_mutations.rs)
 
-**Impl:** [`packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs`](../../packages/treetime/src/partition/algo/topology_cleanup/merge_shared_mutations.rs)
+**Impl:** [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs)
 
 | Test                                                      | Purpose                                               |
 | --------------------------------------------------------- | ----------------------------------------------------- |

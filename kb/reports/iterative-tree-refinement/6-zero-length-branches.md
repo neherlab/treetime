@@ -93,7 +93,7 @@ This is the correct criterion for local optimality at the boundary. For models w
 
 Zero-optimal edges are identified after the M-step but before damping, then collapsed via `prune_and_merge_in_loop()` after damping is applied. This ensures the optimizer's actual decision (zero) is not obscured by damping blending it with the old branch length. The collapse also merges shared mutations in resulting polytomies (sparse partitions only). See [Chapter 9](9-iteration-loop.md) Loop 4 for the full iteration sequence.
 
-v1 code: [`packages/treetime/src/commands/optimize/optimize_unified.rs#L328`](../../../packages/treetime/src/commands/optimize/optimize_unified.rs#L328)
+v1 code: [`packages/treetime/src/optimize/dispatch.rs#L328`](../../../packages/treetime/src/optimize/dispatch.rs#L328)
 
 ### Comparison
 
@@ -116,7 +116,7 @@ A->G on edge1, G->A on edge2  =>  no change (cancellation)
 
 Set-union would produce `{A->G, G->T}` (two entries at one position) or `{A->G, G->A}` (false double mutation). Both are incorrect.
 
-v1 composes substitutions correctly via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/partition/algo/topology_cleanup/collapse.rs`](../../../packages/treetime/src/partition/algo/topology_cleanup/collapse.rs). Both the prune and optimize commands delegate to this shared function.
+v1 composes substitutions correctly via `compose_substitutions()` in [`packages/treetime/src/seq/mutation.rs`](../../../packages/treetime/src/seq/mutation.rs), called from the shared `collapse_edge()` in [`packages/treetime/src/optimize/topology/collapse.rs`](../../../packages/treetime/src/optimize/topology/collapse.rs). Both the prune and optimize commands delegate to this shared function.
 
 ## References
 

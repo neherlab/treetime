@@ -14,7 +14,7 @@ The `Q` matrix and `expQt` use different stochastic conventions in different con
 
 ### NEWTON_REL_TOL=0.001 looser than typical
 
-`packages/treetime/src/commands/optimize/method_newton.rs:10:`
+`packages/treetime/src/optimize/method_newton.rs:10:`
 
 Relative tolerance of 0.001 for Newton's method convergence. Documented and tested. Looser than the typical 1e-6 to 1e-8 for Newton's method. The choice is deliberate: branch length optimization does not require machine-precision convergence, and the looser tolerance reduces iteration count.
 
