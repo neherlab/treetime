@@ -1,7 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput};
 use crate::make_report;
-use crate::mugration::input::MugrationInput;
 use crate::mugration::mugration::execute_mugration;
 use crate::partition::marginal_discrete::DiscreteCommentProvider;
 use crate::partition::traits::HasGtr;
@@ -16,57 +15,47 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-pub fn parse_mugration_input(args: &TreetimeMugrationArgs) -> Result<MugrationInput, Report> {
-  let TreetimeMugrationArgs {
-    tree,
-    attribute,
-    states,
-    weights,
-    name_column,
-    pc,
-    missing_data,
-    missing_weights_threshold,
-    ..
-  } = args;
-
-  let tree_path = tree.as_ref().ok_or_else(|| make_report!("Tree file is required"))?;
-  let graph: GraphAncestral = nwk_read_file(tree_path)?;
-
-  let (attr_values, _attr_name) =
-    read_discrete_attrs::<String>(states, name_column, &Some(attribute.clone()), |s| Ok(s.to_owned()))?;
-  let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
-
-  let weights_map = if let Some(weights_filepath) = weights {
-    let (map, _) = read_discrete_attrs::<f64>(
-      weights_filepath,
-      &Some(attribute.clone()),
-      &Some("weight".to_owned()),
-      |s| Ok(s.parse::<f64>()?),
-    )?;
-    Some(map.into_iter().collect())
-  } else {
-    None
-  };
-
-  Ok(MugrationInput {
-    graph,
-    traits,
-    attribute: attribute.clone(),
-    weights: weights_map,
-    missing_data: missing_data.clone(),
-    pc: *pc,
-    missing_weights_threshold: *missing_weights_threshold,
-    iterations: args.iterations,
-    sampling_bias_correction: args.sampling_bias_correction,
-  })
-}
-
 pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
   let outdir = &mugration_args.outdir;
   fs::create_dir_all(outdir)?;
 
-  let input = parse_mugration_input(mugration_args)?;
-  let result = execute_mugration(input)?;
+  let tree_path = mugration_args
+    .tree
+    .as_ref()
+    .ok_or_else(|| make_report!("Tree file is required"))?;
+  let graph: GraphAncestral = nwk_read_file(tree_path)?;
+
+  let (attr_values, _attr_name) = read_discrete_attrs::<String>(
+    &mugration_args.states,
+    &mugration_args.name_column,
+    &Some(mugration_args.attribute.clone()),
+    |s| Ok(s.to_owned()),
+  )?;
+  let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
+
+  let weights = if let Some(weights_filepath) = &mugration_args.weights {
+    let (map, _) = read_discrete_attrs::<f64>(
+      weights_filepath,
+      &Some(mugration_args.attribute.clone()),
+      &Some("weight".to_owned()),
+      |s| Ok(s.parse::<f64>()?),
+    )?;
+    Some(map.into_iter().collect::<BTreeMap<String, f64>>())
+  } else {
+    None
+  };
+
+  let result = execute_mugration(
+    graph,
+    &traits,
+    &mugration_args.attribute,
+    weights.as_ref(),
+    &mugration_args.missing_data,
+    mugration_args.pc,
+    mugration_args.missing_weights_threshold,
+    mugration_args.iterations,
+    mugration_args.sampling_bias_correction,
+  )?;
 
   let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
   let providers = CommentProviders::new().with(&provider);

@@ -128,7 +128,6 @@ mod tests {
   }
 
   mod helpers {
-    use crate::mugration::input::MugrationInput;
     use crate::mugration::mugration::execute_mugration;
     use crate::mugration::result::MugrationResult;
     use eyre::Report;
@@ -218,20 +217,17 @@ mod tests {
         None => None,
       };
 
-      // Build MugrationInput and execute
-      let input = MugrationInput {
+      execute_mugration(
         graph,
-        traits,
-        attribute: fixture.attribute.clone(),
-        weights,
-        missing_data: fixture.parameters.missing_data.clone(),
-        pc: fixture.parameters.pc,
-        missing_weights_threshold: 0.5,
-        iterations: fixture.parameters.iterations,
-        sampling_bias_correction: fixture.parameters.sampling_bias_correction,
-      };
-
-      execute_mugration(input)
+        &traits,
+        &fixture.attribute,
+        weights.as_ref(),
+        &fixture.parameters.missing_data,
+        fixture.parameters.pc,
+        0.5,
+        fixture.parameters.iterations,
+        fixture.parameters.sampling_bias_correction,
+      )
     }
   }
 }

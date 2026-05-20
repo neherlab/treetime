@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::mugration::input::MugrationInput;
   use crate::mugration::mugration::{
     apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, execute_mugration, validate_weight_coverage,
   };
@@ -159,19 +158,7 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-
-    let result = execute_mugration(input)?;
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None)?;
 
     assert_eq!(o!("country"), result.traits.attribute);
     assert_eq!(2, result.partition.n_states());
@@ -215,19 +202,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: Some(weights),
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-
-    let result = execute_mugration(input)?;
+    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", None, 0.5, 5, None)?;
 
     assert_eq!(3, result.partition.n_states());
     assert_eq!(
@@ -257,19 +232,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: Some(weights),
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-
-    let result = execute_mugration(input)?;
+    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", None, 0.5, 5, None)?;
 
     assert_eq!(3, result.partition.n_states());
     assert_eq!(
@@ -300,23 +263,8 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: Some(weights),
-      missing_data: o!("?"),
-      pc: Some(1.0),
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
+    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", Some(1.0), 0.5, 5, None)?;
 
-    let result = execute_mugration(input)?;
-
-    // With iterative GTR and fixed_pi from weights, final pi reflects weight proportions:
-    // weights = {usa: 3, germany: 1, france: 1}, normalized = [0.2, 0.2, 0.6]
-    // Pseudo-counts affect the initial model but fixed_pi keeps weight proportions in refinement.
     assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
     assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
     assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
@@ -332,34 +280,31 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let base_input = MugrationInput {
-      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
-      traits: traits.clone(),
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-    let base_result = execute_mugration(base_input)?;
+    let base_result = execute_mugration(
+      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+    )?;
     let base_mu = base_result.partition.data.gtr.mu;
 
-    let corrected_input = MugrationInput {
-      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: Some(2.0),
-    };
-    let corrected_result = execute_mugration(corrected_input)?;
+    let corrected_result = execute_mugration(
+      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      Some(2.0),
+    )?;
 
-    // sampling_bias_correction multiplies mu after iterative refinement
     assert_abs_diff_eq!(corrected_result.partition.data.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
@@ -373,19 +318,7 @@ mod tests {
       o!("B") => o!("usa"),
     };
 
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-
-    let result = execute_mugration(input);
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None);
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     assert!(err_msg.contains("only 1 discrete attributes"));
@@ -401,31 +334,12 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let result_no_iter = execute_mugration(MugrationInput {
-      graph: nwk_read_str(tree)?,
-      traits: traits.clone(),
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 0,
-      sampling_bias_correction: None,
-    })?;
+    let result_no_iter =
+      execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 0, None)?;
 
-    let result_with_iter = execute_mugration(MugrationInput {
-      graph: nwk_read_str(tree)?,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    })?;
+    let result_with_iter =
+      execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
 
-    // Iterative refinement must change the model: mu and/or pi should differ
     let mu_changed = (result_no_iter.partition.data.gtr.mu - result_with_iter.partition.data.gtr.mu).abs() > 1e-6;
     let pi_changed = result_no_iter
       .partition
@@ -444,7 +358,6 @@ mod tests {
       result_with_iter.partition.data.gtr.pi
     );
 
-    // Both models must have valid parameters
     assert!(result_with_iter.partition.data.gtr.mu > 0.0);
     assert_abs_diff_eq!(result_with_iter.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
     assert!(result_with_iter.partition.data.gtr.pi.iter().all(|&p| p > 0.0));
@@ -454,8 +367,6 @@ mod tests {
 
   #[test]
   fn test_iterative_refinement_pi_reflects_data() -> Result<(), Report> {
-    // 4 tips: 3 usa, 1 germany. Without fixed_pi, iterative refinement
-    // should shift pi toward observed frequencies (higher weight for usa).
     let tree = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root;";
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -464,19 +375,8 @@ mod tests {
       o!("D") => o!("germany"),
     };
 
-    let result = execute_mugration(MugrationInput {
-      graph: nwk_read_str(tree)?,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    })?;
+    let result = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
 
-    // pi for usa (index 1, alphabetically: germany=0, usa=1) should be > 0.5
     let pi_usa = result.partition.data.gtr.pi[1];
     assert!(
       pi_usa > 0.5,
@@ -488,21 +388,9 @@ mod tests {
 
   #[test]
   fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
-    let result = execute_mugration(MugrationInput {
-      graph: nwk_read_str("(A:0.1,B:0.2)root;")?,
-      traits: btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") },
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 0,
-      sampling_bias_correction: None,
-    })?;
+    let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
+    let result = execute_mugration(nwk_read_str("(A:0.1,B:0.2)root;")?, &traits, "country", None, "?", None, 0.5, 0, None)?;
 
-    // With 0 iterations and no weights, initial model has uniform pi
-    // The infer+optimize cycle still runs once (initial inference), but with
-    // iterations=0 the loop body doesn't execute.
     assert_abs_diff_eq!(result.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
     assert!(result.partition.data.gtr.mu > 0.0);
 

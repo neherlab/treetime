@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::mugration::input::MugrationInput;
   use crate::mugration::mugration::execute_mugration;
   use crate::partition::marginal_discrete::DiscreteCommentProvider;
   use eyre::Report;
@@ -18,18 +17,7 @@ mod tests {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
-    let input = MugrationInput {
-      graph,
-      traits,
-      attribute: o!("country"),
-      weights: None,
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-    };
-    let result = execute_mugration(input)?;
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None)?;
     let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 

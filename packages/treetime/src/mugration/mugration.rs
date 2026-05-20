@@ -3,10 +3,10 @@ use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::{make_error, make_internal_report};
-use crate::mugration::input::MugrationInput;
 use crate::mugration::result::MugrationResult;
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -77,29 +77,27 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
   }
 }
 
-pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Report> {
-  let MugrationInput {
-    graph,
-    traits,
-    attribute,
-    weights,
-    missing_data,
-    pc,
-    missing_weights_threshold,
-    iterations,
-    sampling_bias_correction,
-  } = input;
-
+pub fn execute_mugration(
+  graph: GraphAncestral,
+  traits: &BTreeMap<String, String>,
+  attribute: &str,
+  weights: Option<&BTreeMap<String, f64>>,
+  missing_data: &str,
+  pc: Option<f64>,
+  missing_weights_threshold: f64,
+  iterations: usize,
+  sampling_bias_correction: Option<f64>,
+) -> Result<MugrationResult, Report> {
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
 
-  let model_values: IndexSet<String> = match &weights {
+  let model_values: IndexSet<String> = match weights {
     Some(weights_map) => {
       let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
 
       let coverage = validate_weight_coverage(
         &observed_values,
         &weights_keys,
-        &missing_data,
+        missing_data,
         missing_weights_threshold,
       )?;
 
@@ -116,7 +114,7 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     None => observed_values,
   };
 
-  let discrete_states = DiscreteStates::from_values(model_values.iter().map(String::as_str), &missing_data);
+  let discrete_states = DiscreteStates::from_values(model_values.iter().map(String::as_str), missing_data);
   let n_states = discrete_states.len();
 
   if n_states < 2 {
@@ -130,12 +128,12 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     discrete_states.iter().join(", ")
   );
 
-  let pi = match &weights {
+  let pi = match weights {
     Some(weights_map) => compute_pi_from_weights(&discrete_states, weights_map),
     None => compute_pi_uniform(n_states),
   };
 
-  let fixed_pi = weights.as_ref().map(|_| pi.clone());
+  let fixed_pi = weights.map(|_| pi.clone());
 
   let pi = apply_pseudo_counts(pi, pc);
 
@@ -147,7 +145,7 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
   })?;
 
   let mut partition = PartitionMarginalDiscrete::new(gtr, discrete_states, MIN_BRANCH_LENGTH_FRACTION);
-  partition.attach_traits(&graph, &traits)?;
+  partition.attach_traits(&graph, traits)?;
 
   let partition = Arc::new(RwLock::new(partition));
 
@@ -163,9 +161,9 @@ pub fn execute_mugration(input: MugrationInput) -> Result<MugrationResult, Repor
     sampling_bias_correction,
   )?;
 
-  let partition = Arc::try_unwrap(partition)
-    .map_err(|_| make_internal_report!("partition Arc has unexpected additional owners"))?
+  let partition = Arc::into_inner(partition)
+    .ok_or_else(|| make_internal_report!("partition Arc has unexpected additional owners"))?
     .into_inner();
 
-  Ok(MugrationResult::new(graph, partition, &attribute, log_lh))
+  Ok(MugrationResult::new(graph, partition, attribute, log_lh))
 }
