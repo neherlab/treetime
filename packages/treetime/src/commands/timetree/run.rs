@@ -16,8 +16,7 @@ use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::BranchLengthMode;
 use crate::optimize::params::BranchOptMethod;
 use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::ancestral::annotate_branch_mutations;
+use crate::partition::traits::{MutationCommentProvider, PartitionTimetreeAll};
 use crate::payload::timetree::EdgeTimetree;
 use crate::payload::timetree::NodeTimetree;
 use crate::seq::alignment::get_common_length;
@@ -37,7 +36,8 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::graph::write_graph_files;
+use treetime_io::graph::write_graph_files_with;
+use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
 /// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
@@ -505,18 +505,15 @@ fn write_outputs(
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
 ) -> Result<(), Report> {
-  // Populate the `mutations` comment on every branch from the current partition
-  // state before tree serialization. v0 emits `[&mutations="..."]` on every
-  // node in the Nexus tree (CLI_io.py:167-199); v1 now matches that via the
-  // `NodeAncestral.mutations` field which `NodeTimetree.nwk_comments()`
-  // inherits from its base payload. Partitions must have completed marginal
-  // reconstruction before this call so that `edge_subs()` reads the final
-  // state rather than stale Fitch parsimony data.
   if !partitions.is_empty() {
-    annotate_branch_mutations(graph, partitions).wrap_err("Failed to annotate branch mutations for tree output")?;
-  }
-
-  write_graph_files(&args.outdir, "timetree", graph).wrap_err("Failed to write tree output")?;
+    let guard = partitions[0].read_arc();
+    let provider = MutationCommentProvider::new(&*guard, graph);
+    let providers = CommentProviders::new().with(&provider);
+    write_graph_files_with(&args.outdir, "timetree", graph, &providers).wrap_err("Failed to write tree output")?;
+  } else {
+    write_graph_files_with(&args.outdir, "timetree", graph, &CommentProviders::new())
+      .wrap_err("Failed to write tree output")?;
+  };
 
   write_clock_model(clock_model, &args.outdir.join("timetree"))?;
 

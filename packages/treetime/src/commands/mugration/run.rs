@@ -1,18 +1,17 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
-use crate::commands::mugration::comment_provider::PartitionCommentProvider;
+use crate::gtr::get_gtr::{GtrModelName, GtrOutput};
 use crate::make_report;
 use crate::mugration::input::MugrationInput;
 use crate::mugration::mugration::execute_mugration;
-use crate::mugration::result::{MugrationGtrOutput, MugrationResult, MugrationTraitsOutput};
-use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+use crate::partition::marginal_discrete::DiscreteCommentProvider;
+use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
-use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
+use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -69,38 +68,20 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   let input = parse_mugration_input(mugration_args)?;
   let result = execute_mugration(input)?;
 
-  write_annotated_tree(&result.graph, &result.partition, &result.traits, outdir)?;
-  write_gtr_json_file(&result.gtr, outdir)?;
+  let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
+  let providers = CommentProviders::new().with(&provider);
+  write_graph_files_with(outdir, "annotated_tree", &result.graph, &providers)?;
+
+  let gtr_output = GtrOutput::new(result.partition.gtr(), GtrModelName::Infer)
+    .with_discrete_states(&result.traits.attribute, result.partition.states.iter());
+  json_write_file(outdir.join("gtr.json"), &gtr_output, JsonPretty(true))?;
+
+  fs::write(outdir.join("traits.csv"), result.traits.render_csv())?;
 
   if let Some(confidence_path) = &mugration_args.confidence {
-    write_confidence_csv(&result, confidence_path)?;
+    fs::write(confidence_path, result.confidence.render_csv())?;
   }
 
   info!("Mugration: wrote output to {}", outdir.display());
-  Ok(())
-}
-
-fn write_annotated_tree(
-  graph: &GraphAncestral,
-  partition: &PartitionMarginalDiscrete,
-  traits: &MugrationTraitsOutput,
-  outdir: &Path,
-) -> Result<(), Report> {
-  let provider = PartitionCommentProvider::new(partition, &traits.attribute);
-  let providers = CommentProviders::new().with(&provider);
-  let nexus = nex_write_str_with(graph, &NexWriteOptions::default(), &providers)?;
-  fs::write(outdir.join("annotated_tree.nexus"), format!("{nexus}\n"))?;
-
-  fs::write(outdir.join("traits.csv"), traits.render_csv())?;
-
-  Ok(())
-}
-
-fn write_gtr_json_file(gtr: &MugrationGtrOutput, outdir: &Path) -> Result<(), Report> {
-  json_write_file(outdir.join("gtr.json"), gtr, JsonPretty(true))
-}
-
-fn write_confidence_csv(result: &MugrationResult, output_path: &Path) -> Result<(), Report> {
-  fs::write(output_path, result.confidence.render_csv())?;
   Ok(())
 }

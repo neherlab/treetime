@@ -9,18 +9,18 @@ use crate::make_error;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::traits::PartitionBranchOps;
-use crate::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
+use crate::partition::traits::MutationCommentProvider;
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
-use itertools::Itertools;
 use log::info;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use treetime_io::graph::write_graph_files;
+use treetime_io::graph::write_graph_files_with;
+use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
@@ -103,6 +103,8 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           output_fasta.write(name, desc, seq)
         })?;
       }
+
+      write_graph_files_with(outdir, "annotated_tree", &graph, &CommentProviders::new())?;
     },
     MethodAncestral::Marginal => {
       if !dense {
@@ -123,11 +125,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           output_fasta.write(name, desc, seq)
         })?;
 
-        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
-          .into_iter()
-          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-          .collect_vec();
-        annotate_branch_mutations(&graph, &branch_ops)?;
+        let partition_guard = partitions[0].read_arc();
+        let provider = MutationCommentProvider::new(&*partition_guard, &graph);
+        let providers = CommentProviders::new().with(&provider);
+        write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
       } else if *model_name == GtrModelName::Infer {
         let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
         let gtr = infer_gtr_fitch(&fitch, &graph)?;
@@ -145,11 +146,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           output_fasta.write(name, desc, seq)
         })?;
 
-        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
-          .into_iter()
-          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-          .collect_vec();
-        annotate_branch_mutations(&graph, &branch_ops)?;
+        let partition_guard = partitions[0].read_arc();
+        let provider = MutationCommentProvider::new(&*partition_guard, &graph);
+        let providers = CommentProviders::new().with(&provider);
+        write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
       } else {
         let length = get_common_length(&aln)?;
         let gtr = get_gtr_by_name(*model_name)?;
@@ -167,11 +167,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           output_fasta.write(name, desc, seq)
         })?;
 
-        let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = partitions
-          .into_iter()
-          .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-          .collect_vec();
-        annotate_branch_mutations(&graph, &branch_ops)?;
+        let partition_guard = partitions[0].read_arc();
+        let provider = MutationCommentProvider::new(&*partition_guard, &graph);
+        let providers = CommentProviders::new().with(&provider);
+        write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
       }
     },
     MethodAncestral::Joint => {
@@ -180,8 +179,6 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       );
     },
   }
-
-  write_graph_files(outdir, "annotated_tree", &graph)?;
 
   Ok(())
 }

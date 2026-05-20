@@ -6,6 +6,8 @@ use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::Itertools;
+use maplit::btreemap;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -15,6 +17,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::NodeCommentProvider;
 use treetime_primitives::Seq;
 
 pub trait HasGtr {
@@ -110,6 +113,33 @@ pub trait PartitionBranchOps: Send + Sync {
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report>;
+}
+
+pub struct MutationCommentProvider<'a> {
+  partition: &'a dyn PartitionBranchOps,
+  graph: &'a dyn BranchTopology,
+}
+
+impl<'a> MutationCommentProvider<'a> {
+  pub fn new(partition: &'a dyn PartitionBranchOps, graph: &'a dyn BranchTopology) -> Self {
+    Self { partition, graph }
+  }
+}
+
+impl NodeCommentProvider for MutationCommentProvider<'_> {
+  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
+    let Some((_parent_key, edge_key)) = self.graph.node_parent(key)? else {
+      return Ok(BTreeMap::new());
+    };
+    let mut subs = self.partition.edge_subs(self.graph, edge_key)?;
+    if subs.is_empty() {
+      return Ok(BTreeMap::new());
+    }
+    subs.sort_by_key(|s| s.pos());
+    Ok(btreemap! {
+      "mutations".to_owned() => subs.iter().join(","),
+    })
+  }
 }
 
 pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync

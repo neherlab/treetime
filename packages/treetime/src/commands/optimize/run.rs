@@ -9,15 +9,15 @@ use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::traits::PartitionBranchOps;
-use crate::payload::ancestral::{GraphAncestral, annotate_branch_mutations};
+use crate::partition::traits::MutationCommentProvider;
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
-use itertools::Itertools;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::graph::write_graph_files;
+use treetime_io::graph::write_graph_files_with;
+use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::make_error;
 
@@ -123,22 +123,17 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
   update_marginal(&graph, &sparse_partitions)?;
   update_marginal(&graph, &dense_partitions)?;
 
-  // Annotate mutations from whichever partition type is active
-  let branch_ops: Vec<Arc<RwLock<dyn PartitionBranchOps>>> = if dense {
-    dense_partitions
-      .iter()
-      .cloned()
-      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-      .collect_vec()
+  if dense {
+    let guard = dense_partitions[0].read_arc();
+    let provider = MutationCommentProvider::new(&*guard, &graph);
+    let providers = CommentProviders::new().with(&provider);
+    write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
   } else {
-    sparse_partitions
-      .iter()
-      .cloned()
-      .map(|p| -> Arc<RwLock<dyn PartitionBranchOps>> { p })
-      .collect_vec()
-  };
-  annotate_branch_mutations(&graph, &branch_ops)?;
+    let guard = sparse_partitions[0].read_arc();
+    let provider = MutationCommentProvider::new(&*guard, &graph);
+    let providers = CommentProviders::new().with(&provider);
+    write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
+  }
 
-  write_graph_files(outdir, "annotated_tree", &graph)?;
   Ok(())
 }

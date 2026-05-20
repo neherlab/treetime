@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::mugration::comment_provider::PartitionCommentProvider;
   use crate::mugration::input::MugrationInput;
   use crate::mugration::mugration::execute_mugration;
+  use crate::partition::marginal_discrete::DiscreteCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -30,7 +30,7 @@ mod tests {
       sampling_bias_correction: None,
     };
     let result = execute_mugration(input)?;
-    let provider = PartitionCommentProvider::new(&result.partition, &result.traits.attribute);
+    let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 
     let actual = nex_write_str_with(&result.graph, &NexWriteOptions::default(), &providers)?;
