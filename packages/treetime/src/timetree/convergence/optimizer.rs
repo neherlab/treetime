@@ -9,37 +9,34 @@ use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use eyre::Report;
 use log::info;
 use parking_lot::RwLock;
-use std::path::{Path, PathBuf};
+use std::io::Write;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_io::csv::CsvStructFileWriter;
+use treetime_io::csv::CsvStructWriter;
 
 pub struct TimetreeOptimizer {
   trace: Vec<ConvergenceMetrics>,
-  tracelog_writer: Option<TreetimeOptimizerTraceCsvWriter>,
+  tracelog_writer: Option<CsvStructWriter<Box<dyn Write + Send>>>,
   max_iterations: usize,
   suppress_convergence: bool,
   i: usize,
 }
 
 impl TimetreeOptimizer {
-  pub fn new(
-    max_iter: usize,
-    suppress_convergence: bool,
-    tracelog_path: Option<impl Into<PathBuf>>,
-  ) -> Result<Self, Report> {
-    let tracelog_writer = tracelog_path
-      .map(Into::into)
-      .map(TreetimeOptimizerTraceCsvWriter::new)
-      .transpose()?;
-
-    Ok(Self {
+  pub fn new(max_iter: usize, suppress_convergence: bool) -> Self {
+    Self {
       trace: vec![],
-      tracelog_writer,
+      tracelog_writer: None,
       max_iterations: max_iter,
       suppress_convergence,
       i: 0,
-    })
+    }
+  }
+
+  pub fn with_tracelog(mut self, writer: impl Write + Send + 'static) -> Result<Self, Report> {
+    let boxed: Box<dyn Write + Send> = Box::new(writer);
+    self.tracelog_writer = Some(CsvStructWriter::new(boxed, b',')?);
+    Ok(self)
   }
 
   pub fn next_iter(&mut self) -> Option<IterationContext> {
@@ -112,20 +109,4 @@ impl TimetreeOptimizer {
 
 pub struct IterationContext {
   pub i: usize,
-}
-
-struct TreetimeOptimizerTraceCsvWriter {
-  writer: CsvStructFileWriter,
-}
-
-impl TreetimeOptimizerTraceCsvWriter {
-  fn new(path: impl AsRef<Path>) -> Result<Self, Report> {
-    let writer = CsvStructFileWriter::new(path, b',')?;
-    Ok(Self { writer })
-  }
-
-  fn write(&mut self, metrics: &ConvergenceMetrics) -> Result<(), Report> {
-    self.writer.write(metrics)?;
-    Ok(())
-  }
 }

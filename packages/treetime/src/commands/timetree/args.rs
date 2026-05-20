@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::ancestral::params::MethodAncestral;
 use crate::clock::find_best_root::params::RerootMode;
-use crate::optimize::params::BranchLengthMode;
 use crate::gtr::get_gtr::GtrModelName;
+use crate::optimize::params::BranchLengthMode;
 use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};

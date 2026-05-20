@@ -7,15 +7,13 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::optimize::params::BranchLengthMode;
 use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
-use crate::commands::timetree::convergence::metrics::{IterationContext, TimetreeOptimizer};
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::output::auspice::write_auspice_json;
-use crate::commands::timetree::output::confidence::write_confidence_intervals;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+use crate::optimize::params::BranchLengthMode;
 use crate::optimize::params::BranchOptMethod;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
@@ -25,7 +23,9 @@ use crate::payload::timetree::NodeTimetree;
 use crate::seq::alignment::get_common_length;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
+  write_confidence_intervals_file,
 };
+use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer};
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
@@ -38,6 +38,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::graph::write_graph_files;
+use treetime_utils::io::file::create_file_or_stdout;
 
 /// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
@@ -242,7 +243,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   }
 
   info!("### TreeTime: Optimisation rounds");
-  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline, args.tracelog.clone())?;
+  let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline);
+  if let Some(path) = &args.tracelog {
+    let file = create_file_or_stdout(path)?;
+    optimizer = optimizer.with_tracelog(file)?;
+  }
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     // Re-optimize constant Tc each iteration. Skip i < 2 because v1 runs a pre-loop
     // Tc optimization, making the first in-loop re-optimization redundant.
@@ -379,7 +384,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
     if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
       let intervals = extract_confidence_intervals(&graph);
       let ci_path = args.outdir.join("confidence_intervals.tsv");
-      write_confidence_intervals(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
+      write_confidence_intervals_file(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
       info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
       Some(intervals)
     } else {

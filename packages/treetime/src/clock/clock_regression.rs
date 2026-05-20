@@ -4,7 +4,6 @@ use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use clap::Args;
-use treetime_graph::reroot::RerootResult;
 use eyre::Report;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -14,6 +13,7 @@ use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_graph::reroot::RerootResult;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Args, SmartDefault)]

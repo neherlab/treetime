@@ -1,9 +1,9 @@
-use crate::clock::clock_regression::ClockParams;
-use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::ancestral::params::MethodAncestral;
+use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::params::RerootMode;
-use crate::optimize::params::BranchLengthMode;
+use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::gtr::get_gtr::GtrModelName;
+use crate::optimize::params::BranchLengthMode;
 use clap::{Args, Parser, ValueHint};
 use serde::Serialize;
 use smart_default::SmartDefault;
