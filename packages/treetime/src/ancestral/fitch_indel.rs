@@ -30,8 +30,6 @@ fn interval_in_vi(vi: &BTreeMap<(usize, usize), Deletion>, lo: usize, hi: usize)
 pub struct NodeRanges {
   /// Positions where all children lack data (gap or unknown).
   pub non_char: Vec<(usize, usize)>,
-  /// Positions in non_char where at least one child has a gap (gap beats unknown).
-  pub consensus_gaps: Vec<(usize, usize)>,
   /// Positions in non_char where no child has a gap.
   pub unknown: Vec<(usize, usize)>,
 }
@@ -45,7 +43,7 @@ pub fn compute_node_ranges(
   let gap_union = range_union_iter(child_gaps.iter().copied()).collect_vec();
   let consensus_gaps = range_intersection(&[non_char.clone(), gap_union]);
   let unknown = range_difference(&non_char, &consensus_gaps);
-  NodeRanges { non_char, consensus_gaps, unknown }
+  NodeRanges { non_char, unknown }
 }
 
 pub struct IndelsBackward {
