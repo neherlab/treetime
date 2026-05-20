@@ -69,7 +69,7 @@ pub fn resolve_indels_backward(
   if n_children == 1 {
     return IndelsBackward {
       variable_indel: child_variable_indels[0].clone(),
-      resolved_gaps: vec![],
+      resolved_gaps: child_gaps[0].clone(),
     };
   }
 
@@ -106,7 +106,8 @@ pub fn resolve_indels_backward(
     }
 
     // No gap evidence at this interval, but at least one child as sequence --> no gap at parent.
-    if n_gapped == 0 && (n_variable + n_unknown < n_children) {
+    // OR All children unknown --> no-gap evidence.
+    if (n_gapped == 0 && (n_variable + n_unknown < n_children)) || n_unknown == n_children {
       continue;
     }
 
@@ -121,7 +122,7 @@ pub fn resolve_indels_backward(
       } else {
         resolved_gaps.push((lo, hi));
       }
-    } else { // if n_gapped==0, there n_variable + n_unknown == n_children --> can't resolve, keep variable.
+    } else { // if n_gapped==0, then n_variable + n_unknown == n_children and n_variable>0 --> can't resolve, keep variable.
              // If n_gapped>0, then n_no_seq + n_variable < n_children --> there are children with and without sequence --> variable
       let del = Deletion { deleted: n_no_seq, present: n_children - n_no_seq };
       variable_indel.insert((lo, hi), del);
