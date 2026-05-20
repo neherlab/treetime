@@ -104,6 +104,14 @@ pub struct TreetimeAncestralArgs {
   #[clap(long, short = 'O')]
   pub outdir: PathBuf,
 
+  /// Number of outer GTR refinement iterations.
+  ///
+  /// Re-estimates the rate matrix from marginal posterior profiles after each
+  /// reconstruction pass. Only effective with `--model infer`. Default 0 preserves
+  /// the current single-pass behavior. Mugration uses 5 by default.
+  #[clap(long, default_value_t = 0)]
+  pub gtr_iterations: usize,
+
   /// Use site-specific GTR model with per-site equilibrium frequencies.
   ///
   /// Requires `--model infer` and `--dense true`. Incompatible with sequence compression
