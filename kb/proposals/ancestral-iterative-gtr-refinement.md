@@ -2,9 +2,7 @@
 
 This document proposes an optional extension to the ancestral command: when running marginal ancestral reconstruction with `--model infer`, alternate between ancestral-state reconstruction and GTR re-estimation for several outer iterations instead of performing only one conditional model fit.
 
-The proposal is **not accepted** and **not implemented**. It records the scientific case, the relevant current code, and the main tradeoffs.
-
-It also records the current accepted behavior that motivated the proposal: both v0 and v1 ancestral command paths use one-shot conditional GTR inference, while v0 mugration uses a true outer refinement loop.
+The proposal is **accepted** and **implemented**. The `--gtr-iterations` flag (default 0) on the ancestral command enables iterative GTR refinement for marginal reconstruction with `--model infer`. The `TransitionCounting` trait generalizes transition counting across all marginal partition types (dense, discrete, sparse), and `refine_gtr_iterative` accepts any partition implementing that trait.
 
 ## Current behavior
 
