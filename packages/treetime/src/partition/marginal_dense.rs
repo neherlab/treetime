@@ -13,7 +13,7 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,
 };
-use crate::seq::indel::{resolve_indels_backward, resolve_indels_forward};
+use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -28,7 +28,6 @@ use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
-use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug)]
@@ -201,43 +200,39 @@ where
   }
 
   fn backward_internal_pre(&mut self, node: &GraphNodeBackward<N, E, ()>) {
-    let child_gaps: Vec<Vec<(usize, usize)>> = node
+    let child_non_chars: Vec<&Vec<(usize, usize)>> = node
       .child_keys
       .iter()
-      .map(|(child_key, _)| self.data.nodes[child_key].seq.gaps.clone())
+      .map(|(child_key, _)| &self.data.nodes[child_key].seq.non_char)
       .collect_vec();
-    let mut gaps = range_intersection(&child_gaps);
+    let child_gaps: Vec<&Vec<(usize, usize)>> = node
+      .child_keys
+      .iter()
+      .map(|(child_key, _)| &self.data.nodes[child_key].seq.gaps)
+      .collect_vec();
 
-    let unknown = range_intersection_iter(
-      node
-        .child_keys
-        .iter()
-        .map(|(child_key, _)| &self.data.nodes[child_key].seq.unknown),
-    )
-    .collect_vec();
-    let non_char = range_intersection_iter(
-      node
-        .child_keys
-        .iter()
-        .map(|(child_key, _)| &self.data.nodes[child_key].seq.non_char),
-    )
-    .collect_vec();
+    let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
+    let non_char = ranges.non_char;
+    let unknown = ranges.unknown;
 
+    let child_unknown: Vec<&Vec<(usize, usize)>> = node
+      .child_keys
+      .iter()
+      .map(|(child_key, _)| &self.data.nodes[child_key].seq.unknown)
+      .collect_vec();
     let child_variable_indels: Vec<&BTreeMap<(usize, usize), _>> = node
       .child_keys
       .iter()
       .map(|(child_key, _)| &self.data.nodes[child_key].seq.variable_indel)
       .collect_vec();
 
-    let indels_bw = resolve_indels_backward(&child_gaps, &child_variable_indels, self.length);
-    gaps.extend(indels_bw.resolved_gaps);
-    let variable_indel = indels_bw.variable_indel;
+    let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, self.length);
 
     let seq = DenseSeqInfo {
-      gaps,
+      gaps: indels_bw.resolved_gaps,
       unknown,
       non_char,
-      variable_indel,
+      variable_indel: indels_bw.variable_indel,
       ..DenseSeqInfo::default()
     };
 
@@ -275,18 +270,16 @@ where
 
       let node_data = self.data.nodes.get_mut(&node.key).unwrap();
       let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
-      let node_gaps = &mut node_data.seq.gaps;
-      let node_sequence = &node_data.seq.sequence;
 
-      let indels = resolve_indels_forward(
+      let (indels, new_gaps) = resolve_indels_forward(
         &variable_indel,
-        node_gaps,
+        &node_data.seq.gaps,
+        &node_data.seq.non_char,
         &parent_gaps,
         &parent_sequence,
-        node_sequence,
+        &node_data.seq.sequence,
       );
-
-      let node_data = self.data.nodes.get_mut(&node.key).unwrap();
+      node_data.seq.gaps = new_gaps;
       node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
       for gap in &node_data.seq.gaps {
         node_data.seq.sequence[gap.0..gap.1].fill(self.alphabet.gap());

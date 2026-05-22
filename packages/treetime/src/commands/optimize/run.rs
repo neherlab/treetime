@@ -12,6 +12,7 @@ use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
+use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -41,7 +42,9 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     branch_length_initial_guess,
     opt_method,
     no_indels,
+    ..
   } = args;
+  let gap_fill = args.effective_gap_fill();
 
   if !(0.0..1.0).contains(damping) {
     return make_error!("--damping must be in [0.0, 1.0), got {damping}");
@@ -49,7 +52,10 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
 
   let dense = dense.unwrap_or_else(infer_dense);
   let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
-  let aln = read_many_fasta(input_fastas, &alphabet)?;
+  let mut aln = read_many_fasta(input_fastas, &alphabet)?;
+  for record in &mut aln {
+    apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
+  }
   let mut graph: GraphAncestral = nwk_read_file(tree)?;
 
   let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if !dense {

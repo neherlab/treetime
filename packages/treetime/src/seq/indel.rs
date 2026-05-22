@@ -1,10 +1,11 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 use treetime_primitives::Seq;
-use treetime_utils::interval::range_complement::range_complement;
 use treetime_utils::interval::range_difference::range_difference;
-use treetime_utils::interval::range_intersection::range_intersection;
+use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
+use treetime_utils::interval::range_union::range_union_iter;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
@@ -221,51 +222,104 @@ pub struct IndelsBackward {
   pub resolved_gaps: Vec<(usize, usize)>,
 }
 
-/// Resolve indels during the backward pass: identify positions where children
-/// disagree on gap presence.
-///
-/// Returns variable indels (unresolved disagreements) and resolved gaps (ranges
-/// where all children agree on gap).
+pub struct NodeRanges {
+  pub non_char: Vec<(usize, usize)>,
+  pub unknown: Vec<(usize, usize)>,
+}
+
+fn collect_breakpoints(ranges: impl Iterator<Item = (usize, usize)>) -> Vec<usize> {
+  let mut bp: Vec<usize> = ranges.flat_map(|(lo, hi)| <[usize; 2]>::from((lo, hi))).collect();
+  bp.sort_unstable();
+  bp.dedup();
+  bp
+}
+
+fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
+  ranges.iter().any(|&(a, b)| a <= lo && hi <= b)
+}
+
+fn interval_in_vi(vi: &BTreeMap<(usize, usize), Deletion>, lo: usize, hi: usize) -> bool {
+  vi.keys().any(|&(a, b)| a <= lo && hi <= b)
+}
+
+pub fn compute_node_ranges(
+  child_non_chars: &[&Vec<(usize, usize)>],
+  child_gaps: &[&Vec<(usize, usize)>],
+) -> NodeRanges {
+  let non_char = range_intersection_iter(child_non_chars.iter().copied()).collect_vec();
+  let gap_union = range_union_iter(child_gaps.iter().copied()).collect_vec();
+  let consensus_gaps = range_intersection(&[non_char.clone(), gap_union]);
+  let unknown = range_difference(&non_char, &consensus_gaps);
+  NodeRanges { non_char, unknown }
+}
+
 pub fn resolve_indels_backward(
-  child_gaps: &[Vec<(usize, usize)>],
+  child_gaps: &[&Vec<(usize, usize)>],
+  child_unknown: &[&Vec<(usize, usize)>],
   child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
   length: usize,
 ) -> IndelsBackward {
   let n_children = child_gaps.len();
-  let consensus_gaps = range_intersection(child_gaps);
-  let non_gap = range_complement(&[(0, length)], &[consensus_gaps]);
 
-  let mut variable_indel = BTreeMap::new();
-
-  for child_gap in child_gaps {
-    for r in range_intersection(&[non_gap.clone(), child_gap.clone()]) {
-      let indel = variable_indel.entry(r).or_insert_with(|| Deletion {
-        deleted: 0,
-        present: n_children,
-      });
-      indel.deleted += 1;
-      indel.present -= 1;
-    }
+  if n_children == 1 {
+    return IndelsBackward {
+      variable_indel: child_variable_indels[0].clone(),
+      resolved_gaps: child_gaps[0].clone(),
+    };
   }
 
-  for child_vi in child_variable_indels {
-    for r in child_vi.keys() {
-      if let Some(indel) = variable_indel.get_mut(r) {
-        indel.deleted += 1;
-        indel.present -= 1;
+  let breakpoints = collect_breakpoints(
+    std::iter::once((0, length))
+      .chain(child_gaps.iter().flat_map(|g| g.iter().copied()))
+      .chain(child_unknown.iter().flat_map(|u| u.iter().copied()))
+      .chain(child_variable_indels.iter().flat_map(|vi| vi.keys().copied())),
+  );
+
+  let mut variable_indel: BTreeMap<(usize, usize), Deletion> = BTreeMap::new();
+  let mut resolved_gaps: Vec<(usize, usize)> = Vec::new();
+
+  for (lo, hi) in breakpoints.iter().copied().tuple_windows() {
+
+    // Classify each child's state at [lo, hi).
+    // Priority: gapped > variable_indel > unknown > char.
+    let mut n_gapped: usize = 0;
+    let mut n_variable: usize = 0;
+    let mut n_unknown: usize = 0;
+    for i in 0..n_children {
+      if interval_in(child_gaps[i], lo, hi) {
+        n_gapped += 1;
+      } else if interval_in_vi(child_variable_indels[i], lo, hi) {
+        n_variable += 1;
+      } else if interval_in(child_unknown[i], lo, hi) {
+        n_unknown += 1;
       }
     }
-  }
 
-  let mut resolved_gaps = Vec::new();
-  variable_indel.retain(|r, indel| {
-    if indel.deleted == n_children {
-      resolved_gaps.push(*r);
-      false
-    } else {
-      true
+    // No gap evidence, or all children unknown: skip.
+    if (n_gapped == 0 && (n_variable + n_unknown < n_children)) || n_unknown == n_children {
+      continue;
     }
-  });
+
+    let n_no_seq = n_gapped + n_unknown;
+    if n_gapped > 0 && (n_no_seq + n_variable == n_children) {
+      // All children compatible with gap and at least one has explicit gap: resolved.
+      if let Some(last) = resolved_gaps.last_mut() {
+        if last.1 == lo {
+          last.1 = hi;
+        } else {
+          resolved_gaps.push((lo, hi));
+        }
+      } else {
+        resolved_gaps.push((lo, hi));
+      }
+    } else {
+      let del = Deletion {
+        deleted: n_no_seq,
+        present: n_children - n_no_seq,
+      };
+      variable_indel.insert((lo, hi), del);
+    }
+  }
 
   IndelsBackward {
     variable_indel,
@@ -273,55 +327,64 @@ pub fn resolve_indels_backward(
   }
 }
 
-/// Resolve variable indels during the forward pass using parent context.
-///
-/// For each variable indel range, uses parent gap state to break ties.
-/// Also detects consensus gap differences between node and parent (non-variable
-/// deletions/insertions).
-///
-/// Returns the list of resolved InDel entries for the edge.
-///
-/// Dense partitions do not need `InDel::seq` content for inserted sequences
-/// because the full sequence is available from the dense reconstruction.
-/// We populate it for consistency with sparse indels.
 pub fn resolve_indels_forward(
   variable_indel: &BTreeMap<(usize, usize), Deletion>,
-  node_gaps: &mut Vec<(usize, usize)>,
+  node_gaps: &[(usize, usize)],
+  node_non_char: &[(usize, usize)],
   parent_gaps: &[(usize, usize)],
   parent_sequence: &Seq,
   node_sequence: &Seq,
-) -> Vec<InDel> {
-  let mut indels = Vec::new();
+) -> (Vec<InDel>, Vec<(usize, usize)>) {
+  let breakpoints = collect_breakpoints(
+    parent_gaps
+      .iter()
+      .copied()
+      .chain(node_gaps.iter().copied())
+      .chain(node_non_char.iter().copied())
+      .chain(variable_indel.keys().copied()),
+  );
 
-  for (r, indel) in variable_indel {
-    let gap_in_parent = if parent_gaps.contains(r) { 1 } else { 0 };
-    if indel.deleted + gap_in_parent > indel.present {
-      node_gaps.push(*r);
-      if gap_in_parent == 0 {
-        let indel = InDel::del(*r, &parent_sequence[r.0..r.1]);
-        indels.push(indel);
+  let mut new_node_gaps: Vec<(usize, usize)> = Vec::new();
+  let mut deletions: Vec<InDel> = Vec::new();
+  let mut insertions: Vec<InDel> = Vec::new();
+
+  for (lo, hi) in breakpoints.iter().copied().tuple_windows() {
+    let in_parent = interval_in(parent_gaps, lo, hi);
+    let in_node = interval_in(node_gaps, lo, hi);
+    let in_non_char = interval_in(node_non_char, lo, hi);
+    let in_vi = interval_in_vi(variable_indel, lo, hi);
+
+    if in_node && !in_parent {
+      // Node has gap, parent doesn't: deletion on this edge.
+      if let Some(last) = deletions.last_mut().filter(|d| d.range.1 == lo) {
+        last.range.1 = hi;
+        last.seq.extend(parent_sequence[lo..hi].iter().copied());
+      } else {
+        deletions.push(InDel::del((lo, hi), &parent_sequence[lo..hi]));
       }
-    } else if gap_in_parent > 0 {
-      let indel = InDel::ins(*r, &node_sequence[r.0..r.1]);
-      indels.push(indel);
+      if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
+        last.1 = hi;
+      } else {
+        new_node_gaps.push((lo, hi));
+      }
+    } else if in_parent && !in_node && !in_non_char && !in_vi {
+      // Parent has gap, node has sequence: insertion on this edge.
+      if let Some(last) = insertions.last_mut().filter(|i| i.range.1 == lo) {
+        last.range.1 = hi;
+        last.seq.extend(node_sequence[lo..hi].iter().copied());
+      } else {
+        insertions.push(InDel::ins((lo, hi), &node_sequence[lo..hi]));
+      }
+    } else if in_parent {
+      // Parent has gap; node is gapped, non_char, or variable: inherit parent gap.
+      if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
+        last.1 = hi;
+      } else {
+        new_node_gaps.push((lo, hi));
+      }
     }
   }
 
-  for r in range_difference(node_gaps, parent_gaps) {
-    if variable_indel.contains_key(&r) {
-      continue;
-    }
-    let indel = InDel::del(r, &node_sequence[r.0..r.1]);
-    indels.push(indel);
-  }
-
-  for r in range_difference(parent_gaps, node_gaps) {
-    if variable_indel.contains_key(&r) {
-      continue;
-    }
-    let indel = InDel::ins(r, &node_sequence[r.0..r.1]);
-    indels.push(indel);
-  }
-
-  indels
+  (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }
+

@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
+use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
   resolve_root_forward, resolve_variable_positions_backward,
@@ -26,7 +26,6 @@ use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
-use treetime_utils::interval::range_intersection::range_intersection_iter;
 use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub fn create_fitch_partition<N, E>(
@@ -134,35 +133,29 @@ where
       .map(|(child, edge)| (&partition.node(child).seq, partition.edge(edge)))
       .collect_vec();
 
-    // determine parts of the sequence that are unknown, gaps in all children
-    let mut gaps = range_intersection_iter(children.iter().map(|(c, _)| &c.gaps)).collect_vec();
-    let unknown = range_intersection_iter(children.iter().map(|(c, _)| &c.unknown)).collect_vec();
-    // non_char are ranges that are either unknown or gaps in all children (can differ from the union of gaps and unknown)
-    let non_char = range_intersection_iter(children.iter().map(|(c, _)| &c.non_char)).collect_vec();
+    let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
+    let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
+
+    let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
+    let non_char = ranges.non_char;
+    let unknown = ranges.unknown;
 
     let mut sequence = seq![FILL_CHAR; partition.length()];
     for r in &non_char {
       sequence[r.0..r.1].fill(NON_CHAR);
     }
 
-    // Process all positions where the children are variable.
-    // Need to account for parts of the sequence transmitted along edges.
     let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
-    // Process all positions where the children are fixed or completely unknown in some children.
     resolve_fixed_positions_backward(&children, partition.alphabet(), &mut sequence, &mut variable);
 
-    // Resolve variable indels from child gap disagreements
-    let child_gaps_vec: Vec<Vec<(usize, usize)>> = children.iter().map(|(c, _)| c.gaps.clone()).collect_vec();
+    let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
     let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
-    let indels_bw = resolve_indels_backward(&child_gaps_vec, &child_variable_indels, partition.length());
+    let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, partition.length());
 
     let new_node_data = SparseNodePartition {
       seq: SparseSeqInfo {
-        gaps: {
-          gaps.extend(indels_bw.resolved_gaps);
-          gaps
-        },
+        gaps: indels_bw.resolved_gaps,
         unknown,
         non_char,
         fitch: FitchSeqDistribution {
@@ -252,14 +245,15 @@ where
         alphabet,
       )?;
 
-      // Resolve variable indels using parent gap context
-      let indels = resolve_indels_forward(
+      let (indels, new_gaps) = resolve_indels_forward(
         &seq.fitch.variable_indel,
-        &mut seq.gaps,
+        &seq.gaps,
+        &seq.non_char,
         &parent.gaps,
         &parent.sequence,
         &seq.sequence,
       );
+      seq.gaps = new_gaps;
       for indel in &indels {
         seq.composition.add_indel(indel);
       }

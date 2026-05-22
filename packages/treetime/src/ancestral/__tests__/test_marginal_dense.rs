@@ -152,7 +152,7 @@ mod tests {
       >root
       TCGGCGCTGTATTG--
       >AB
-      ACATCGCTGTA-TG--
+      ACATCGCTGTA--G--
       >CD
       TCGGCGGTGTATTG--
     "#},
