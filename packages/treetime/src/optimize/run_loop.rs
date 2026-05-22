@@ -181,10 +181,12 @@ pub struct OptimizeLoopResult {
   /// Total log-likelihood recorded at the start of each iteration, before that iteration's
   /// branch-length update. Length equals the number of iterations actually executed
   /// (including the final iteration that triggered the convergence break, if any).
+  #[allow(dead_code, reason = "read only in test code")]
   pub lh_history: Vec<f64>,
 
   /// Iteration index (0-based) and reason the loop stopped early.
   /// `None` if the loop exhausted `max_iter` without meeting any stopping criterion.
+  #[allow(dead_code, reason = "read only in test code")]
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 

@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::GraphTimetree;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use eyre::Report;
   use pretty_assertions::assert_eq;

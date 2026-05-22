@@ -513,7 +513,7 @@ fn write_outputs(
   } else {
     write_graph_files_with(&args.outdir, "timetree", graph, &CommentProviders::new())
       .wrap_err("Failed to write tree output")?;
-  };
+  }
 
   write_clock_model(clock_model, &args.outdir.join("timetree"))?;
 
