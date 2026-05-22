@@ -279,7 +279,6 @@ pub fn resolve_indels_backward(
   let mut resolved_gaps: Vec<(usize, usize)> = Vec::new();
 
   for (lo, hi) in breakpoints.iter().copied().tuple_windows() {
-
     // Classify each child's state at [lo, hi).
     // Priority: gapped > variable_indel > unknown > char.
     let mut n_gapped: usize = 0;
@@ -387,4 +386,3 @@ pub fn resolve_indels_forward(
 
   (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }
-

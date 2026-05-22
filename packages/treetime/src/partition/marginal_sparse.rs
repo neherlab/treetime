@@ -176,7 +176,16 @@ fn accumulate_sparse_transitions(
       continue;
     }
     let child_fixed = msg_to_child.fixed.get(ch).unwrap_or(parent_fixed);
-    accumulate_site_transition_weighted(parent_fixed, child_fixed, exp_qt, branch_length, n_states, nij, Ti, count);
+    accumulate_site_transition_weighted(
+      parent_fixed,
+      child_fixed,
+      exp_qt,
+      branch_length,
+      n_states,
+      nij,
+      Ti,
+      count,
+    );
   }
 }
 

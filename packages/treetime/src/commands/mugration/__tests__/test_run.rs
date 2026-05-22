@@ -334,11 +334,9 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let result_no_iter =
-      execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 0, None)?;
+    let result_no_iter = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 0, None)?;
 
-    let result_with_iter =
-      execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
+    let result_with_iter = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
 
     let mu_changed = (result_no_iter.partition.data.gtr.mu - result_with_iter.partition.data.gtr.mu).abs() > 1e-6;
     let pi_changed = result_no_iter
@@ -389,7 +387,17 @@ mod tests {
   #[test]
   fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
     let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
-    let result = execute_mugration(nwk_read_str("(A:0.1,B:0.2)root;")?, &traits, "country", None, "?", None, 0.5, 0, None)?;
+    let result = execute_mugration(
+      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      0,
+      None,
+    )?;
 
     assert_abs_diff_eq!(result.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
     assert!(result.partition.data.gtr.mu > 0.0);

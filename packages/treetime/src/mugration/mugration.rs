@@ -2,11 +2,11 @@ use crate::ancestral::marginal::update_marginal;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
-use crate::{make_error, make_internal_report};
 use crate::mugration::result::MugrationResult;
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::payload::ancestral::GraphAncestral;
+use crate::{make_error, make_internal_report};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -94,12 +94,8 @@ pub fn execute_mugration(
     Some(weights_map) => {
       let weights_keys: IndexSet<String> = weights_map.keys().sorted().cloned().collect();
 
-      let coverage = validate_weight_coverage(
-        &observed_values,
-        &weights_keys,
-        missing_data,
-        missing_weights_threshold,
-      )?;
+      let coverage =
+        validate_weight_coverage(&observed_values, &weights_keys, missing_data, missing_weights_threshold)?;
 
       if !coverage.missing_values.is_empty() {
         warn!(

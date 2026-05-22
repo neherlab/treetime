@@ -18,7 +18,10 @@ mod tests {
     let empty1 = BTreeMap::new();
     let child_vis = [&empty0, &empty1];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(result.variable_indel.is_empty(), "No disagreement when all children have same gaps");
+    assert!(
+      result.variable_indel.is_empty(),
+      "No disagreement when all children have same gaps"
+    );
     assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }
 
@@ -45,7 +48,10 @@ mod tests {
     let empty2 = BTreeMap::new();
     let child_vis = [&empty0, &empty1, &empty2];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
-    assert!(result.variable_indel.is_empty(), "All children agree on gap, no variable indels");
+    assert!(
+      result.variable_indel.is_empty(),
+      "All children agree on gap, no variable indels"
+    );
     assert_eq!(result.resolved_gaps, vec![(2, 4)]);
   }
 

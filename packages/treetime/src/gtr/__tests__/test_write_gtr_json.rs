@@ -51,7 +51,10 @@ mod tests {
     let json = json_write_str(&output, JsonPretty(false))?;
     let parsed: serde_json::Value = serde_json::from_str(&json)?;
 
-    assert!(parsed.get("attribute").is_none(), "attribute should be absent when None");
+    assert!(
+      parsed.get("attribute").is_none(),
+      "attribute should be absent when None"
+    );
     assert!(parsed.get("states").is_none(), "states should be absent when None");
     assert_eq!(parsed["n_states"], 4);
     assert_eq!(parsed["model_name"], "JC69");
@@ -63,16 +66,13 @@ mod tests {
   #[test]
   fn test_gtr_output_with_discrete_states_includes_fields() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let output = GtrOutput::new(&gtr, GtrModelName::Infer)
-      .with_discrete_states("country", ["france", "germany", "usa"].iter());
+    let output =
+      GtrOutput::new(&gtr, GtrModelName::Infer).with_discrete_states("country", ["france", "germany", "usa"].iter());
     let json = json_write_str(&output, JsonPretty(false))?;
     let parsed: serde_json::Value = serde_json::from_str(&json)?;
 
     assert_eq!(parsed["attribute"], "country");
-    assert_eq!(
-      parsed["states"],
-      serde_json::json!(["france", "germany", "usa"])
-    );
+    assert_eq!(parsed["states"], serde_json::json!(["france", "germany", "usa"]));
     assert_eq!(parsed["n_states"], 4);
     assert_eq!(parsed["model_type"], "inferred");
 
@@ -82,16 +82,12 @@ mod tests {
   #[test]
   fn test_gtr_output_with_discrete_states_roundtrip() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let original = GtrOutput::new(&gtr, GtrModelName::Infer)
-      .with_discrete_states("region", ["asia", "europe"].iter());
+    let original = GtrOutput::new(&gtr, GtrModelName::Infer).with_discrete_states("region", ["asia", "europe"].iter());
     let json = json_write_str(&original, JsonPretty(true))?;
     let restored: GtrOutput = serde_json::from_str(&json)?;
 
     assert_eq!(restored.attribute, Some("region".to_owned()));
-    assert_eq!(
-      restored.states,
-      Some(vec!["asia".to_owned(), "europe".to_owned()])
-    );
+    assert_eq!(restored.states, Some(vec!["asia".to_owned(), "europe".to_owned()]));
     assert_eq!(restored.model_type, original.model_type);
     assert_eq!(restored.model_name, original.model_name);
     assert_eq!(restored.n_states, original.n_states);
