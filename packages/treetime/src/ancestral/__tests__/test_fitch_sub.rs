@@ -26,7 +26,7 @@ mod tests {
       sequence: seq,
       fitch: FitchSeqDistribution {
         variable: btreemap! {},
-        variable_indel: Default::default(),
+        variable_indel: BTreeSet::new(),
         composition: Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap()),
         chosen_state: btreemap! {},
       },

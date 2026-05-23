@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
+use std::collections::BTreeSet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
@@ -169,7 +170,7 @@ where
       },
       profile: SparseSeqDistribution {
         variable: btreemap! {},
-        variable_indel: Default::default(),
+        variable_indel: BTreeSet::new(),
         fixed: btreemap! {},
         fixed_counts: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
         log_lh: 0.0,
