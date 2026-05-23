@@ -112,7 +112,7 @@ pub fn resolve_fixed_positions_backward(
 /// without per-child counts we cannot determine majority-rule direction.
 pub fn resolve_root_forward(
   sequence: &mut Seq,
-  gaps: &mut Vec<(usize, usize)>,
+  gaps: &mut [(usize, usize)],
   variable: &BTreeMap<usize, StateSet>,
   _variable_indel: &BTreeSet<(usize, usize)>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
