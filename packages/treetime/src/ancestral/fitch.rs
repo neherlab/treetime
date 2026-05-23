@@ -169,7 +169,7 @@ where
       },
       profile: SparseSeqDistribution {
         variable: btreemap! {},
-        variable_indel: btreemap! {},
+        variable_indel: Default::default(),
         fixed: btreemap! {},
         fixed_counts: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
         log_lh: 0.0,

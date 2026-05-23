@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::fitch_indel::{resolve_indels_backward, resolve_indels_forward};
-  use crate::seq::indel::Deletion;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use std::collections::BTreeSet;
   use treetime_primitives::Seq;
 
   fn refs<T>(v: &[T]) -> Vec<&T> {
@@ -14,8 +13,8 @@ mod tests {
   fn test_fitch_indel_backward_no_disagreement() {
     let child_gaps = [vec![(2, 4)], vec![(2, 4)]];
     let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeMap::new();
-    let empty1 = BTreeMap::new();
+    let empty0 = BTreeSet::new();
+    let empty1 = BTreeSet::new();
     let child_vis = [&empty0, &empty1];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert!(
@@ -29,23 +28,21 @@ mod tests {
   fn test_fitch_indel_backward_one_child_has_gap() {
     let child_gaps = [vec![(2, 4)], vec![]];
     let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeMap::new();
-    let empty1 = BTreeMap::new();
+    let empty0 = BTreeSet::new();
+    let empty1 = BTreeSet::new();
     let child_vis = [&empty0, &empty1];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert_eq!(result.variable_indel.len(), 1);
-    let del = &result.variable_indel[&(2, 4)];
-    assert_eq!(del.deleted, 1);
-    assert_eq!(del.present, 1);
+    assert!(result.variable_indel.contains(&(2, 4)));
   }
 
   #[test]
   fn test_fitch_indel_backward_all_children_deleted() {
     let child_gaps = [vec![(2, 4)], vec![(2, 4)], vec![(2, 4)]];
     let child_unknown = [vec![], vec![], vec![]];
-    let empty0 = BTreeMap::new();
-    let empty1 = BTreeMap::new();
-    let empty2 = BTreeMap::new();
+    let empty0 = BTreeSet::new();
+    let empty1 = BTreeSet::new();
+    let empty2 = BTreeSet::new();
     let child_vis = [&empty0, &empty1, &empty2];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert!(
@@ -59,9 +56,8 @@ mod tests {
   fn test_fitch_indel_backward_propagates_child_variable_indels() {
     let child_gaps = [vec![(2, 4)], vec![]];
     let child_unknown = [vec![], vec![]];
-    let empty0 = BTreeMap::new();
-    let mut child1_vi = BTreeMap::new();
-    child1_vi.insert((2, 4), Deletion { deleted: 1, present: 1 });
+    let empty0 = BTreeSet::new();
+    let child1_vi = BTreeSet::from([(2_usize, 4_usize)]);
     let child_vis = [&empty0, &child1_vi];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
 
@@ -74,8 +70,8 @@ mod tests {
   fn test_fitch_indel_backward_all_unknown_not_deletion_evidence() {
     let child_gaps = [vec![], vec![]];
     let child_unknown = [vec![(2, 4)], vec![(2, 4)]];
-    let empty0 = BTreeMap::new();
-    let empty1 = BTreeMap::new();
+    let empty0 = BTreeSet::new();
+    let empty1 = BTreeSet::new();
     let child_vis = [&empty0, &empty1];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert!(result.variable_indel.is_empty());
@@ -83,13 +79,11 @@ mod tests {
   }
 
   #[test]
-  fn test_fitch_indel_backward_propagates_variable_indel_counts() {
+  fn test_fitch_indel_backward_propagates_child_variable_indel_set() {
     let child_gaps = [vec![], vec![]];
     let child_unknown = [vec![], vec![]];
-    let mut vi0 = BTreeMap::new();
-    vi0.insert((2, 4), Deletion { deleted: 3, present: 1 });
-    let mut vi1 = BTreeMap::new();
-    vi1.insert((2, 4), Deletion { deleted: 3, present: 1 });
+    let vi0 = BTreeSet::from([(2_usize, 4_usize)]);
+    let vi1 = BTreeSet::from([(2_usize, 4_usize)]);
     let child_vis = [&vi0, &vi1];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert_eq!(result.variable_indel.len(), 1);
@@ -100,7 +94,7 @@ mod tests {
   fn test_fitch_indel_backward_single_child_preserves_gaps() {
     let child_gaps = [vec![(2, 4)]];
     let child_unknown = [vec![]];
-    let empty0 = BTreeMap::new();
+    let empty0 = BTreeSet::new();
     let child_vis = [&empty0];
     let result = resolve_indels_backward(&refs(&child_gaps), &refs(&child_unknown), &child_vis, 10);
     assert!(result.variable_indel.is_empty());
@@ -109,8 +103,7 @@ mod tests {
 
   #[test]
   fn test_fitch_indel_forward_variable_parent_has_sequence() {
-    let mut variable_indel = BTreeMap::new();
-    variable_indel.insert((2, 5), Deletion { deleted: 2, present: 1 });
+    let variable_indel = BTreeSet::from([(2_usize, 5_usize)]);
 
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
@@ -123,8 +116,7 @@ mod tests {
 
   #[test]
   fn test_fitch_indel_forward_variable_parent_has_gap() {
-    let mut variable_indel = BTreeMap::new();
-    variable_indel.insert((2, 5), Deletion { deleted: 1, present: 2 });
+    let variable_indel = BTreeSet::from([(2_usize, 5_usize)]);
 
     let parent_gaps = [(2, 5)];
     let parent_seq = Seq::try_from_str("AC---CGTAC").unwrap();
@@ -138,7 +130,7 @@ mod tests {
 
   #[test]
   fn test_fitch_indel_forward_consensus_deletion() {
-    let variable_indel = BTreeMap::new();
+    let variable_indel = BTreeSet::new();
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("AC---CGTAC").unwrap();
     let node_gaps = [(2, 5)];
@@ -154,7 +146,7 @@ mod tests {
 
   #[test]
   fn test_fitch_indel_forward_consensus_insertion() {
-    let variable_indel = BTreeMap::new();
+    let variable_indel = BTreeSet::new();
     let parent_gaps = [(2, 5)];
     let parent_seq = Seq::try_from_str("AC---CGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
@@ -170,7 +162,7 @@ mod tests {
 
   #[test]
   fn test_fitch_indel_forward_no_indels() {
-    let variable_indel = BTreeMap::new();
+    let variable_indel = BTreeSet::new();
     let parent_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
     let node_seq = Seq::try_from_str("ACGTACGTAC").unwrap();
 

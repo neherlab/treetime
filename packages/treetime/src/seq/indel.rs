@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt;
 use treetime_primitives::Seq;
 use treetime_utils::interval::range_difference::range_difference;
@@ -211,14 +211,8 @@ pub fn sort_indels(indels: &mut [InDel]) {
   indels.sort_by_key(|i| i.range);
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Deletion {
-  pub deleted: usize,
-  pub present: usize,
-}
-
 pub struct IndelsBackward {
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+  pub variable_indel: BTreeSet<(usize, usize)>,
   pub resolved_gaps: Vec<(usize, usize)>,
 }
 
@@ -238,8 +232,8 @@ fn interval_in(ranges: &[(usize, usize)], lo: usize, hi: usize) -> bool {
   ranges.iter().any(|&(a, b)| a <= lo && hi <= b)
 }
 
-fn interval_in_vi(vi: &BTreeMap<(usize, usize), Deletion>, lo: usize, hi: usize) -> bool {
-  vi.keys().any(|&(a, b)| a <= lo && hi <= b)
+fn interval_in_vi(vi: &BTreeSet<(usize, usize)>, lo: usize, hi: usize) -> bool {
+  vi.iter().any(|&(a, b)| a <= lo && hi <= b)
 }
 
 pub fn compute_node_ranges(
@@ -256,7 +250,7 @@ pub fn compute_node_ranges(
 pub fn resolve_indels_backward(
   child_gaps: &[&Vec<(usize, usize)>],
   child_unknown: &[&Vec<(usize, usize)>],
-  child_variable_indels: &[&BTreeMap<(usize, usize), Deletion>],
+  child_variable_indels: &[&BTreeSet<(usize, usize)>],
   length: usize,
 ) -> IndelsBackward {
   let n_children = child_gaps.len();
@@ -272,10 +266,10 @@ pub fn resolve_indels_backward(
     std::iter::once((0, length))
       .chain(child_gaps.iter().flat_map(|g| g.iter().copied()))
       .chain(child_unknown.iter().flat_map(|u| u.iter().copied()))
-      .chain(child_variable_indels.iter().flat_map(|vi| vi.keys().copied())),
+      .chain(child_variable_indels.iter().flat_map(|vi| vi.iter().copied())),
   );
 
-  let mut variable_indel: BTreeMap<(usize, usize), Deletion> = BTreeMap::new();
+  let mut variable_indel: BTreeSet<(usize, usize)> = BTreeSet::new();
   let mut resolved_gaps: Vec<(usize, usize)> = Vec::new();
 
   for (lo, hi) in breakpoints.iter().copied().tuple_windows() {
@@ -312,11 +306,7 @@ pub fn resolve_indels_backward(
         resolved_gaps.push((lo, hi));
       }
     } else {
-      let del = Deletion {
-        deleted: n_no_seq,
-        present: n_children - n_no_seq,
-      };
-      variable_indel.insert((lo, hi), del);
+      variable_indel.insert((lo, hi));
     }
   }
 
@@ -327,7 +317,7 @@ pub fn resolve_indels_backward(
 }
 
 pub fn resolve_indels_forward(
-  variable_indel: &BTreeMap<(usize, usize), Deletion>,
+  variable_indel: &BTreeSet<(usize, usize)>,
   node_gaps: &[(usize, usize)],
   node_non_char: &[(usize, usize)],
   parent_gaps: &[(usize, usize)],
@@ -340,7 +330,7 @@ pub fn resolve_indels_forward(
       .copied()
       .chain(node_gaps.iter().copied())
       .chain(node_non_char.iter().copied())
-      .chain(variable_indel.keys().copied()),
+      .chain(variable_indel.iter().copied()),
   );
 
   let mut new_node_gaps: Vec<(usize, usize)> = Vec::new();

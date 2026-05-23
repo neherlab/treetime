@@ -5,7 +5,7 @@ use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::zip;
 use treetime_primitives::AsciiChar;
 use treetime_utils::array::ndarray::is_max_above;
@@ -24,7 +24,7 @@ pub fn combine_messages(
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
     variable: btreemap! {},
-    variable_indel: btreemap! {},
+    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: composition.clone(),
     log_lh: messages.iter().map(|m| m.log_lh).sum(),
@@ -94,7 +94,7 @@ pub fn propagate_raw(
 ) -> SparseSeqDistribution {
   let mut message = SparseSeqDistribution {
     variable: btreemap! {},
-    variable_indel: btreemap! {},
+    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: seq_dis.log_lh,
@@ -154,7 +154,7 @@ pub fn propagate_raw_per_site(
 
   let mut message = SparseSeqDistribution {
     variable: btreemap! {},
-    variable_indel: btreemap! {},
+    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: seq_dis.log_lh,
@@ -225,7 +225,7 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable,
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: 0.0,
@@ -281,7 +281,7 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable,
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: 0.0,

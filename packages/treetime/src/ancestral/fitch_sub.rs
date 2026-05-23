@@ -1,11 +1,10 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
 use crate::partition::sparse::{SparseEdgePartition, SparseSeqInfo};
 use crate::seq::composition::Composition;
-use crate::seq::indel::Deletion;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, StateSet, StateSetStatus, stateset};
 use treetime_utils::interval::range::range_contains;
 
@@ -107,24 +106,21 @@ pub fn resolve_fixed_positions_backward(
   }
 }
 
-/// Forward pass: resolve variable states and indels at the root by majority rule.
+/// Forward pass: resolve variable states at the root.
+///
+/// Variable indels are left unresolved (defaulting to present / no-gap) because
+/// without per-child counts we cannot determine majority-rule direction.
 pub fn resolve_root_forward(
   sequence: &mut Seq,
   gaps: &mut Vec<(usize, usize)>,
   variable: &BTreeMap<usize, StateSet>,
-  variable_indel: &BTreeMap<(usize, usize), Deletion>,
+  _variable_indel: &BTreeSet<(usize, usize)>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
 ) {
   for (pos, states) in variable {
     let chosen = states.get_one();
     sequence[*pos] = chosen;
     chosen_state.insert(*pos, chosen);
-  }
-  // process indels as majority rule at the root
-  for (r, indel) in variable_indel {
-    if indel.deleted > indel.present {
-      gaps.push(*r);
-    }
   }
 }
 

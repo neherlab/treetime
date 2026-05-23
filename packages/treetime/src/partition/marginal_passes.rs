@@ -7,7 +7,7 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use ndarray::Array1;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -160,7 +160,7 @@ where
     SparseSeqDistribution {
       fixed_counts: node_data.seq.composition.clone(),
       variable,
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       fixed,
       log_lh: 0.0,
     }
@@ -350,7 +350,7 @@ where
     let seq_info = &partition.nodes[&node.key];
     let mut seq_dis = SparseSeqDistribution {
       variable: btreemap! {},
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: seq_info.seq.composition.clone(),
       log_lh: seq_info.profile.log_lh - child_edge_data.msg_from_child.log_lh,

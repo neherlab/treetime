@@ -7,11 +7,10 @@ mod tests {
   };
   use crate::partition::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
   use crate::seq::composition::Composition;
-  use crate::seq::indel::Deletion;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::sync::LazyLock;
   use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, seq, stateset};
 
@@ -27,7 +26,7 @@ mod tests {
       sequence: seq,
       fitch: FitchSeqDistribution {
         variable: btreemap! {},
-        variable_indel: btreemap! {},
+        variable_indel: Default::default(),
         composition: Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap()),
         chosen_state: btreemap! {},
       },
@@ -220,7 +219,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
     let mut gaps = vec![];
     let variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
-    let variable_indel = BTreeMap::new();
+    let variable_indel = BTreeSet::new();
     let mut chosen_state = BTreeMap::new();
 
     resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
@@ -234,29 +233,18 @@ mod tests {
   }
 
   #[test]
-  fn test_fitch_sub_root_forward_majority_gap() {
+  fn test_fitch_sub_root_forward_variable_indel_not_resolved() {
+    // Variable indels at the root are left unresolved (defaulting to present/no-gap)
+    // because we no longer track per-child counts.
     let mut sequence = Seq::try_from_str("ACGT").unwrap();
     let mut gaps = vec![];
     let variable = BTreeMap::new();
-    let variable_indel = btreemap! { (1_usize, 3_usize) => Deletion { deleted: 3, present: 1 } };
+    let variable_indel = BTreeSet::from([(1_usize, 3_usize)]);
     let mut chosen_state = BTreeMap::new();
 
     resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
 
-    assert_eq!(gaps, vec![(1, 3)], "Majority deleted -> gap added");
-  }
-
-  #[test]
-  fn test_fitch_sub_root_forward_minority_gap_not_added() {
-    let mut sequence = Seq::try_from_str("ACGT").unwrap();
-    let mut gaps = vec![];
-    let variable = BTreeMap::new();
-    let variable_indel = btreemap! { (1_usize, 3_usize) => Deletion { deleted: 1, present: 3 } };
-    let mut chosen_state = BTreeMap::new();
-
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
-
-    assert!(gaps.is_empty(), "Minority deleted -> no gap");
+    assert!(gaps.is_empty(), "Variable indels are not resolved at the root");
   }
 
   // --- resolve_nonroot_substitutions_forward ---

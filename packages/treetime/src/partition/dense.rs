@@ -1,11 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::indel::Deletion;
 use crate::seq::indel::InDel;
 use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use treetime_primitives::Seq;
 use treetime_utils::interval::range_union::range_union;
 
@@ -14,7 +13,7 @@ pub struct DenseSeqInfo {
   pub gaps: Vec<(usize, usize)>,
   pub unknown: Vec<(usize, usize)>,
   pub non_char: Vec<(usize, usize)>,
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+  pub variable_indel: BTreeSet<(usize, usize)>,
   pub sequence: Seq,
 }
 
@@ -35,7 +34,7 @@ impl DenseNodePartition {
         gaps,
         unknown,
         non_char,
-        variable_indel: BTreeMap::new(),
+        variable_indel: BTreeSet::new(),
         sequence: seq.to_owned(),
       },
       profile: DenseSeqDistribution::default(),

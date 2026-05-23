@@ -18,7 +18,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use maplit::btreemap;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -220,7 +220,7 @@ where
       .iter()
       .map(|(child_key, _)| &self.data.nodes[child_key].seq.unknown)
       .collect_vec();
-    let child_variable_indels: Vec<&BTreeMap<(usize, usize), _>> = node
+    let child_variable_indels: Vec<&_> = node
       .child_keys
       .iter()
       .map(|(child_key, _)| &self.data.nodes[child_key].seq.variable_indel)
@@ -248,11 +248,6 @@ where
   fn forward_post(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
     if node.is_root {
       let node_data = self.data.nodes.get_mut(&node.key).unwrap();
-      for (r, indel) in &node_data.seq.variable_indel {
-        if indel.deleted > indel.present {
-          node_data.seq.gaps.push(*r);
-        }
-      }
       node_data.seq.variable_indel.clear();
       let seq = assign_sequence(node_data, &self.alphabet);
       node_data.seq.sequence = seq;

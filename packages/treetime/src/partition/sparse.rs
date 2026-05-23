@@ -1,13 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::seq::composition::Composition;
 use crate::seq::find_char_ranges::find_letter_ranges;
-use crate::seq::indel::{Deletion, InDel, compose_indels, sort_indels};
+use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
@@ -31,7 +31,7 @@ impl SparseNodePartition {
         sequence: seq![],
         fitch: FitchSeqDistribution {
           variable: btreemap! {},
-          variable_indel: btreemap! {},
+          variable_indel: BTreeSet::new(),
           composition: Composition::new(alphabet.chars(), alphabet.gap()),
           chosen_state: btreemap! {},
         },
@@ -50,7 +50,7 @@ impl SparseNodePartition {
 
     let seq_dis = FitchSeqDistribution {
       variable,
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
       chosen_state: btreemap! {},
     };
@@ -70,7 +70,7 @@ impl SparseNodePartition {
       },
       profile: SparseSeqDistribution {
         variable: btreemap! {},
-        variable_indel: btreemap! {},
+        variable_indel: BTreeSet::new(),
         fixed: btreemap! {},
         fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
         log_lh: 0.0,
@@ -168,7 +168,7 @@ pub struct SparseSeqDistribution {
   /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, VarPos>,
 
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+  pub variable_indel: BTreeSet<(usize, usize)>,
 
   /// probability vector for the state of fixed positions based on information from children
   pub fixed: BTreeMap<AsciiChar, Array1<f64>>,
@@ -183,7 +183,7 @@ impl Default for SparseSeqDistribution {
   fn default() -> Self {
     Self {
       variable: btreemap! {},
-      variable_indel: btreemap! {},
+      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: 0.0,
@@ -196,7 +196,7 @@ pub struct FitchSeqDistribution {
   /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, StateSet>,
 
-  pub variable_indel: BTreeMap<(usize, usize), Deletion>,
+  pub variable_indel: BTreeSet<(usize, usize)>,
 
   pub composition: Composition,
 
