@@ -1,6 +1,6 @@
 use crate::progress::{self, NapiProgressSink};
 use app_api::datasets::discover_datasets;
-use app_api::progress::CancelledError;
+use app_api::progress::{CancelledError, NoopProgress};
 use app_api::version::version_info;
 use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
@@ -22,6 +22,13 @@ pub fn datasets() -> String {
   let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".to_owned());
   let datasets = discover_datasets(Path::new(&data_dir));
   serde_json::to_string(&datasets).expect("datasets serialization failed")
+}
+
+#[napi]
+pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
+  let args: TreetimeAncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let result = app_api::commands::ancestral(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+  serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
 }
 
 #[napi]
@@ -79,12 +86,38 @@ macro_rules! define_task {
   };
 }
 
-define_task!(
-  AncestralTask,
-  TreetimeAncestralArgs,
-  app_api::commands::ancestral,
-  ancestral
-);
+// Temporary: test with NoopProgress to isolate ThreadsafeFunction segfault
+pub struct AncestralTaskNoop {
+  args: TreetimeAncestralArgs,
+}
+
+impl Task for AncestralTaskNoop {
+  type Output = String;
+  type JsValue = String;
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    let result = app_api::commands::ancestral(&self.args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
+    serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
+  }
+
+  fn resolve(&mut self, _env: napi::Env, output: String) -> napi::Result<String> {
+    Ok(output)
+  }
+}
+
+#[napi(
+  ts_args_type = "argsJson: string, onEvent: (err: Error | null, eventJson: string) => void",
+  ts_return_type = "Promise<string>"
+)]
+#[allow(clippy::needless_pass_by_value)]
+pub fn ancestral(
+  args_json: String,
+  _on_event: Arc<ThreadsafeFunction<String, ()>>,
+) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTaskNoop>> {
+  let args: TreetimeAncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTaskNoop { args }))
+}
+
 define_task!(ClockTask, TreetimeClockArgs, app_api::commands::clock, clock);
 define_task!(
   TimetreeTask,

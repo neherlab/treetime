@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "description": "TreeTime desktop application - Electron shell",
-  "main": "dist/main.js",
+  "main": "dist-electron/main.js",
   "scripts": {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     "build": "tsc",
@@ -18,6 +19,11 @@
 >>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
     "build": "tsc && vite build",
     "dev": "tsc && node scripts/dev.mjs",
+=======
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+>>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
     "lint": "oxlint src/ renderer/",
     "lint:fix": "oxlint --fix src/ renderer/",
 <<<<<<< HEAD
@@ -48,7 +54,9 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "electron": "42.2.0",
+    "electron-builder": "26.8.1",
     "typescript": "6.0.3",
+<<<<<<< HEAD
     "vite": "8.0.14"
 >>>>>>> 52d55fb2 (chore: replace prettier with oxfmt, add root oxlint/oxfmt configs)
 =======
@@ -61,5 +69,29 @@
     "typescript": "6.0.3",
     "vite": "8.0.14"
 >>>>>>> 87acd57e (fix(ts): fix package configs, vite proxy, electron devDeps)
+=======
+    "vite": "8.0.14",
+    "vite-plugin-electron": "0.29.1"
+  },
+  "build": {
+    "appId": "org.neherlab.treetime",
+    "productName": "TreeTime",
+    "directories": {
+      "output": "../../.build/desktop/release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*"
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "win": {
+      "target": ["nsis"]
+    }
+>>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
   }
 }

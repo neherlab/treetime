@@ -73,6 +73,7 @@ async function invokeCommand<T>(endpoint: string, args: unknown, options?: Comma
     const result = await ipcRenderer.invoke(`treetime:${endpoint}`, JSON.stringify(args));
     return typeof result === "string" ? (JSON.parse(result) as T) : (result as T);
   } catch (err: unknown) {
+    console.error("[TreeTime IPC]", endpoint, err);
     if (err instanceof Error && err.message.includes("cancelled")) {
       throw new CancelledError();
     }
