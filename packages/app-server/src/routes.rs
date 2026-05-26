@@ -5,7 +5,7 @@ use crate::args::{
   ServerAncestralArgs, ServerClockArgs, ServerMugrationArgs, ServerOptimizeArgs, ServerPruneArgs, ServerTimetreeArgs,
 };
 use crate::error::AppError;
-use crate::sse::{parse_args, sse_response};
+use crate::sse::handle_command;
 use app_api::version::version_info;
 <<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
@@ -95,6 +95,7 @@ async fn handle_version() -> Result<Json<Value>, AppError> {
   Ok(Json(value))
 }
 
+<<<<<<< HEAD
 macro_rules! define_handler {
   ($handler_name:ident, $server_args:ty, $real_args:ty, $api_fn:path, $extract:expr) => {
     #[allow(clippy::needless_pass_by_value)]
@@ -205,49 +206,29 @@ define_handler!(
     })
   }
 );
+=======
+async fn handle_ancestral(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerAncestralArgs, _, _>(body, app_api::commands::ancestral)
+}
 
-define_handler!(
-  handle_clock,
-  ServerClockArgs,
-  app_api::TreetimeClockArgs,
-  app_api::commands::clock,
-  |result: app_api::ClockResult| {
-    serde_json::json!({
-      "clock_model": {
-        "slope": result.clock_model.clock_rate(),
-        "intercept": result.clock_model.intercept(),
-      },
-    })
-  }
-);
+async fn handle_clock(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerClockArgs, _, _>(body, app_api::commands::clock)
+}
+>>>>>>> 4d100e30 (refactor(app-server): derive Serialize on result types, eliminate handler macro)
 
-define_handler!(
-  handle_timetree,
-  ServerTimetreeArgs,
-  app_api::TreetimeTimetreeArgs,
-  app_api::commands::timetree,
-  |result: app_api::TimetreeResult| {
-    serde_json::json!({
-      "clock_model": {
-        "slope": result.clock_model.clock_rate(),
-        "intercept": result.clock_model.intercept(),
-      },
-    })
-  }
-);
+async fn handle_timetree(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerTimetreeArgs, _, _>(body, app_api::commands::timetree)
+}
 
-define_handler!(
-  handle_mugration,
-  ServerMugrationArgs,
-  app_api::TreetimeMugrationArgs,
-  app_api::commands::mugration,
-  |result: app_api::MugrationResult| {
-    serde_json::json!({
-      "log_lh": result.log_lh,
-    })
-  }
-);
+async fn handle_mugration(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerMugrationArgs, _, _>(body, app_api::commands::mugration)
+}
 
+async fn handle_optimize(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerOptimizeArgs, _, _>(body, app_api::commands::optimize)
+}
+
+<<<<<<< HEAD
 define_handler!(
   handle_optimize,
   ServerOptimizeArgs,
@@ -264,3 +245,8 @@ define_handler!(
   |_result: app_api::PruneResult| { serde_json::json!({}) }
 );
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
+=======
+async fn handle_prune(Json(body): Json<Value>) -> Response {
+  handle_command::<ServerPruneArgs, _, _>(body, app_api::commands::prune)
+}
+>>>>>>> 4d100e30 (refactor(app-server): derive Serialize on result types, eliminate handler macro)

@@ -104,12 +104,16 @@ impl MugrationTraitsOutput {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct MugrationResult {
+  #[serde(skip)]
   pub traits: MugrationTraitsOutput,
+  #[serde(skip)]
   pub confidence: MugrationConfidenceOutput,
   pub log_lh: f64,
+  #[serde(skip)]
   pub graph: GraphAncestral,
+  #[serde(skip)]
   pub partition: PartitionMarginalDiscrete,
 }
 

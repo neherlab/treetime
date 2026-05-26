@@ -3,6 +3,7 @@ use app_api::progress::ProgressSink;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use eyre::Report;
+use serde::Serialize;
 use serde_json::Value;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
@@ -10,7 +11,7 @@ use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use treetime::progress::{LogLevel, ProgressEvent};
 
-pub struct ChannelProgress {
+struct ChannelProgress {
   tx: mpsc::UnboundedSender<ProgressEvent>,
 }
 
@@ -33,7 +34,7 @@ impl ProgressSink for ChannelProgress {
 }
 
 #[allow(tail_expr_drop_order)]
-pub fn sse_response<F>(run_fn: F) -> Response
+fn sse_response<F>(run_fn: F) -> Response
 where
   F: FnOnce(&dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
 {
@@ -71,7 +72,19 @@ where
   Sse::new(stream).into_response()
 }
 
-#[allow(clippy::result_large_err)]
-pub fn parse_args<A: serde::de::DeserializeOwned>(body: Value) -> Result<A, Response> {
-  serde_json::from_value(body).map_err(|err| AppError::from(err).into_response())
+pub fn handle_command<S, R, T>(body: Value, command: fn(&R, &dyn ProgressSink) -> Result<T, Report>) -> Response
+where
+  S: serde::de::DeserializeOwned + Into<R> + Send + 'static,
+  R: Send + 'static,
+  T: Serialize + Send + 'static,
+{
+  let args: S = match serde_json::from_value(body) {
+    Ok(args) => args,
+    Err(err) => return AppError::from(err).into_response(),
+  };
+  let real_args: R = args.into();
+  sse_response(move |progress| {
+    let result = command(&real_args, progress)?;
+    serde_json::to_value(result).map_err(Report::from)
+  })
 }

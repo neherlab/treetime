@@ -16,7 +16,9 @@ use treetime_io::dates_csv::read_dates;
 use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 
+#[derive(Debug, serde::Serialize)]
 pub struct ClockResult {
+  #[serde(skip)]
   pub graph: GraphClock,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
