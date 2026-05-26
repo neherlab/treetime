@@ -18,10 +18,15 @@ export type {
   ErrorResponse,
   HomoplasyResult,
 <<<<<<< HEAD
+<<<<<<< HEAD
   LogEvent,
   LogLevel,
 =======
 >>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
+=======
+  LogEvent,
+  LogLevel,
+>>>>>>> 32dd8b71 (feat(web): forward server log events to browser console)
   MugrationResult,
   OptimizeResult,
   ProgressEvent,

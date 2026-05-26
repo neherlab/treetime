@@ -20,6 +20,13 @@ export interface ProgressEvent {
   message: string;
 }
 
+export type LogLevel = "Trace" | "Debug" | "Info" | "Warn" | "Error";
+
+export interface LogEvent {
+  level: LogLevel;
+  message: string;
+}
+
 export interface ErrorResponse {
   code: string;
   message: string;

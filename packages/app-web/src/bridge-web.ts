@@ -4,6 +4,7 @@
 import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-contracts";
 =======
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+<<<<<<< HEAD
 import { CancelledError } from "@neherlab/app-contracts";
 import type {
   CommandOptions,
@@ -25,6 +26,9 @@ import type { ErrorResponse, TreeTimeBridge, VersionInfo } from "@neherlab/app-c
 =======
 import type { TreeTimeBridge, DatasetInfo, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
 >>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
+=======
+import type { TreeTimeBridge, DatasetInfo, LogEvent, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> 32dd8b71 (feat(web): forward server log events to browser console)
 
 const API_BASE = "/api";
 
@@ -56,6 +60,19 @@ async function postSse<T>(command: string, args: unknown, onProgress?: (event: P
     onmessage(msg) {
       if (msg.event === "progress") {
         onProgress?.(JSON.parse(msg.data) as ProgressEvent);
+      } else if (msg.event === "log") {
+        const log = JSON.parse(msg.data) as LogEvent;
+        switch (log.level) {
+          case "Error":
+            console.error(`[TreeTime] ${log.message}`);
+            break;
+          case "Warn":
+            console.warn(`[TreeTime] ${log.message}`);
+            break;
+          default:
+            console.log(`[TreeTime] [${log.level}] ${log.message}`);
+            break;
+        }
       } else if (msg.event === "result") {
         result = JSON.parse(msg.data) as T;
       }
