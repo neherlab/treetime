@@ -6,6 +6,7 @@ use eyre::Report;
 use serde::Serialize;
 use serde_json::Value;
 use std::convert::Infallible;
+use std::path::Path;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -98,12 +99,25 @@ where
   Sse::new(stream).into_response()
 }
 
-pub fn handle_command<S, R, T>(body: Value, command: fn(&R, &dyn ProgressSink) -> Result<T, Report>) -> Response
+pub fn handle_command<S, R, T>(
+  mut body: Value,
+  out_dir: &Path,
+  command: fn(&R, &dyn ProgressSink) -> Result<T, Report>,
+) -> Response
 where
   S: serde::de::DeserializeOwned + Into<R> + Send + 'static,
   R: Send + 'static,
   T: Serialize + Send + 'static,
 {
+  if let Some(obj) = body.as_object_mut() {
+    let client_outdir = obj
+      .get("outdir")
+      .and_then(Value::as_str)
+      .unwrap_or_default()
+      .to_owned();
+    let resolved = out_dir.join(client_outdir);
+    obj.insert("outdir".to_owned(), Value::String(resolved.to_string_lossy().into_owned()));
+  }
   let args: S = match serde_json::from_value(body) {
     Ok(args) => args,
     Err(err) => return AppError::from(err).into_response(),

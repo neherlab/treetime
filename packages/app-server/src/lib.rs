@@ -2,13 +2,15 @@ pub mod args;
 pub mod error;
 pub mod routes;
 pub mod sse;
+pub mod state;
 
+use crate::state::ServerConfig;
 use axum::Router;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
-pub fn create_router() -> Router {
-  let api = Router::new().nest("/api", routes::api_routes());
+pub fn create_router(config: ServerConfig) -> Router {
+  let api = Router::new().nest("/api", routes::api_routes(config));
 
   match std::env::var("STATIC_DIR") {
     Ok(static_dir) => {

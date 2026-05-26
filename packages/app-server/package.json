@@ -8,10 +8,15 @@
     "build:release": "../../dev/dev br treetime-server",
     "dev": "cd ../.. && bacon --headless server",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server"
 =======
     "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server",
     "server:run": "printf 'Compiling server...\\n' >&2 && exec ../../dev/dev r treetime-server"
 >>>>>>> 41dc56b8 (fix(dev): fix signal propagation in nicely for server restarts)
+=======
+    "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server -- --data-dir=data --out-dir=tmp/web",
+    "server:run": "printf 'Compiling server...\\n' >&2 && exec ../../dev/dev r treetime-server -- --data-dir=data --out-dir=tmp/web"
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
   }
 }

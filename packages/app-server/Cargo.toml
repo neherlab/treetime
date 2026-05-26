@@ -17,8 +17,14 @@ treetime-utils = { workspace = true }
 
 async-stream = { workspace = true }
 axum = { workspace = true }
+clap = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
+<<<<<<< HEAD
+=======
+log = { workspace = true }
+rayon = { workspace = true }
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
@@ -26,7 +32,6 @@ tower-http = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
-rayon = { workspace = true }
 rstest = { workspace = true }
 
 [lints]

@@ -6,8 +6,10 @@ use crate::args::{
 };
 use crate::error::AppError;
 use crate::sse::handle_command;
+use crate::state::ServerConfig;
 use app_api::datasets::discover_datasets;
 use app_api::version::version_info;
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
 use axum::http::StatusCode;
@@ -42,13 +44,21 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use treetime::progress::ProgressEvent;
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
 =======
+=======
+use axum::extract::State;
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::Value;
+<<<<<<< HEAD
 >>>>>>> 759dbc26 (refactor(app-server): extract error, consolidate SSE transport into modules)
+=======
+use std::sync::Arc;
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
 
-pub fn api_routes() -> Router {
+pub fn api_routes(config: ServerConfig) -> Router {
+  let state = Arc::new(config);
   Router::new()
     .route("/ancestral", post(handle_ancestral))
     .route("/clock", post(handle_clock))
@@ -56,6 +66,7 @@ pub fn api_routes() -> Router {
     .route("/mugration", post(handle_mugration))
     .route("/optimize", post(handle_optimize))
     .route("/prune", post(handle_prune))
+    .with_state(state)
 }
 
 <<<<<<< HEAD
@@ -96,6 +107,7 @@ async fn handle_version() -> Result<Json<Value>, AppError> {
   Ok(Json(value))
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 macro_rules! define_handler {
   ($handler_name:ident, $server_args:ty, $real_args:ty, $api_fn:path, $extract:expr) => {
@@ -210,25 +222,36 @@ define_handler!(
 =======
 async fn handle_ancestral(Json(body): Json<Value>) -> Response {
   handle_command::<ServerAncestralArgs, _, _>(body, app_api::commands::ancestral)
+=======
+async fn handle_datasets(State(config): State<Arc<ServerConfig>>) -> Result<Json<Value>, AppError> {
+  let datasets = discover_datasets(&config.data_dir);
+  let value = serde_json::to_value(datasets)?;
+  Ok(Json(value))
 }
 
-async fn handle_clock(Json(body): Json<Value>) -> Response {
-  handle_command::<ServerClockArgs, _, _>(body, app_api::commands::clock)
+async fn handle_ancestral(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerAncestralArgs, _, _>(body, &config.out_dir, app_api::commands::ancestral)
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
+}
+
+async fn handle_clock(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerClockArgs, _, _>(body, &config.out_dir, app_api::commands::clock)
 }
 >>>>>>> 4d100e30 (refactor(app-server): derive Serialize on result types, eliminate handler macro)
 
-async fn handle_timetree(Json(body): Json<Value>) -> Response {
-  handle_command::<ServerTimetreeArgs, _, _>(body, app_api::commands::timetree)
+async fn handle_timetree(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerTimetreeArgs, _, _>(body, &config.out_dir, app_api::commands::timetree)
 }
 
-async fn handle_mugration(Json(body): Json<Value>) -> Response {
-  handle_command::<ServerMugrationArgs, _, _>(body, app_api::commands::mugration)
+async fn handle_mugration(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerMugrationArgs, _, _>(body, &config.out_dir, app_api::commands::mugration)
 }
 
-async fn handle_optimize(Json(body): Json<Value>) -> Response {
-  handle_command::<ServerOptimizeArgs, _, _>(body, app_api::commands::optimize)
+async fn handle_optimize(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerOptimizeArgs, _, _>(body, &config.out_dir, app_api::commands::optimize)
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 define_handler!(
   handle_optimize,
@@ -249,5 +272,9 @@ define_handler!(
 =======
 async fn handle_prune(Json(body): Json<Value>) -> Response {
   handle_command::<ServerPruneArgs, _, _>(body, app_api::commands::prune)
+=======
+async fn handle_prune(State(config): State<Arc<ServerConfig>>, Json(body): Json<Value>) -> Response {
+  handle_command::<ServerPruneArgs, _, _>(body, &config.out_dir, app_api::commands::prune)
+>>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
 }
 >>>>>>> 4d100e30 (refactor(app-server): derive Serialize on result types, eliminate handler macro)
