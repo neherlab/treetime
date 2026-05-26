@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Download } from "lucide-react";
 import { clsx } from "clsx";
+import { useTheme } from "next-themes";
 import { useAppStore } from "../store/app-store";
 import type { CommandName } from "../types";
 
@@ -372,8 +373,30 @@ const GTR_FREQUENCIES = [
   { nuc: "T", freq: 0.245 },
 ];
 
+const FREQ_COLORS = {
+  light: ["oklch(0.82 0.08 250)", "oklch(0.82 0.08 160)", "oklch(0.82 0.08 80)", "oklch(0.82 0.08 20)"],
+  dark: ["oklch(0.50 0.08 250)", "oklch(0.50 0.08 160)", "oklch(0.50 0.08 80)", "oklch(0.50 0.08 20)"],
+};
+
+function rateHeatmapColor(value: number, maxValue: number, isDark: boolean): string {
+  const t = Math.min(value / maxValue, 1);
+  const lightness = isDark ? 0.3 + 0.15 * (1 - t) : 0.92 - 0.15 * t;
+  const chroma = 0.04 + 0.08 * t;
+  const hue = 250 - 210 * t;
+  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} ${hue.toFixed(0)})`;
+}
+
 function MockModelPanel({ command }: { command: CommandName }) {
   const showGtr = command !== "clock";
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  const maxRate = useMemo(
+    () => Math.max(...GTR_RATE_MATRIX.flatMap((row, i) => row.filter((_, j) => i !== j))),
+    [],
+  );
+
+  const freqColors = isDark ? FREQ_COLORS.dark : FREQ_COLORS.light;
 
   return (
     <div className="space-y-4">
@@ -382,12 +405,12 @@ function MockModelPanel({ command }: { command: CommandName }) {
           <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">GTR Model: Inferred</h4>
           <div className="mb-3">
             <div className="mb-1 text-xs text-gray-500">Rate matrix</div>
-            <table className="font-mono text-xs">
+            <table className="border-separate border-spacing-0.5 font-mono text-xs">
               <thead>
                 <tr>
                   <th className="w-8" />
                   {NUC_LABELS.map((n) => (
-                    <th key={n} className="w-16 px-2 text-center text-gray-500">
+                    <th key={n} className="w-14 text-center text-gray-500">
                       {n}
                     </th>
                   ))}
@@ -396,12 +419,25 @@ function MockModelPanel({ command }: { command: CommandName }) {
               <tbody>
                 {NUC_LABELS.map((row, i) => (
                   <tr key={row}>
-                    <td className="pr-2 text-gray-500">{row}</td>
-                    {GTR_RATE_MATRIX[i].map((val, colIdx) => (
-                      <td key={NUC_LABELS[colIdx]} className="px-2 text-center text-gray-700 dark:text-gray-300">
-                        {i === colIdx ? "-" : val.toFixed(2)}
-                      </td>
-                    ))}
+                    <td className="pr-1 text-right text-gray-500">{row}</td>
+                    {GTR_RATE_MATRIX[i].map((val, j) => {
+                      const isDiag = i === j;
+                      return (
+                        <td
+                          key={NUC_LABELS[j]}
+                          className="rounded px-2 py-1 text-center"
+                          style={
+                            isDiag
+                              ? undefined
+                              : { backgroundColor: rateHeatmapColor(val, maxRate, isDark) }
+                          }
+                        >
+                          <span className={isDiag ? "text-gray-300 dark:text-gray-600" : "text-gray-800 dark:text-gray-100"}>
+                            {isDiag ? "-" : val.toFixed(2)}
+                          </span>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -409,16 +445,22 @@ function MockModelPanel({ command }: { command: CommandName }) {
           </div>
           <div>
             <div className="mb-1 text-xs text-gray-500">Equilibrium frequencies</div>
-            <div className="flex gap-4 font-mono text-xs text-gray-700 dark:text-gray-300">
-              {GTR_FREQUENCIES.map(({ nuc, freq }) => (
-                <div key={nuc} className="flex items-center gap-1.5">
-                  <span className="text-gray-500">{nuc}:</span>
-                  <div className="h-3 w-16 rounded-sm bg-gray-200 dark:bg-gray-700">
-                    <div className="h-full rounded-sm bg-[var(--color-accent)]" style={{ width: `${freq * 100}%` }} />
+            <div className="flex items-center gap-2 font-mono text-xs text-gray-700 dark:text-gray-300">
+              <div className="flex h-5 flex-1 overflow-hidden rounded">
+                {GTR_FREQUENCIES.map(({ nuc, freq }, idx) => (
+                  <div
+                    key={nuc}
+                    className="flex items-center justify-center text-[10px] font-medium"
+                    style={{
+                      width: `${freq * 100}%`,
+                      backgroundColor: freqColors[idx],
+                      color: isDark ? "oklch(0.9 0 0)" : "oklch(0.25 0 0)",
+                    }}
+                  >
+                    {nuc} {(freq * 100).toFixed(0)}%
                   </div>
-                  <span>{freq.toFixed(2)}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
