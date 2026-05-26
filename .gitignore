@@ -8,5 +8,9 @@
 /.vscode*
 /data_dev
 /tmp*
+bun.lock
+dist
+dist-electron
 node_modules
 target
+*.node

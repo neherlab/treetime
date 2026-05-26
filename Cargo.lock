@@ -3672,6 +3672,7 @@ dependencies = [
  "serde_json",
  "smart-default",
  "statrs",
+ "strum 0.27.2",
  "strum_macros 0.27.2",
  "tempfile",
  "tikv-jemallocator",

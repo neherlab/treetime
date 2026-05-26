@@ -1,12 +1,13 @@
 use crate::cli::jobs::Jobs;
 use crate::cli::verbosity::Verbosity;
-use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use eyre::Report;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::io;
+use std::path::PathBuf;
 use std::sync::LazyLock;
 use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 use treetime::commands::clock::args::TreetimeClockArgs;
@@ -15,6 +16,7 @@ use treetime::commands::mugration::args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+use treetime::schema::TreetimeSchemaFormat;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;
@@ -83,9 +85,23 @@ pub enum TreetimeCommands {
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
 
+  /// Write JSON Schema definitions for TreeTime data types
+  Schema(TreetimeSchemaArgs),
+
   /// Print system information for debugging
   #[clap(hide = true)]
   Debug,
+}
+
+#[derive(Parser, Debug, Serialize)]
+pub struct TreetimeSchemaArgs {
+  /// Which schema to generate
+  #[clap(long = "for", value_enum, default_value_t = TreetimeSchemaFormat::default())]
+  pub for_format: TreetimeSchemaFormat,
+
+  /// Output file or directory (use "-" for stdout). Directory required when --for=all
+  #[clap(short = 'o', long, value_hint = ValueHint::AnyPath)]
+  pub output: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug, Serialize)]

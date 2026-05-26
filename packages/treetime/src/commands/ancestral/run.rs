@@ -109,11 +109,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
 
       write_graph_files_with(outdir, "annotated_tree", &graph, &CommentProviders::new())?;
 
-      return Ok(AncestralResult {
+      Ok(AncestralResult {
         graph,
         gtr: None,
         model_name: *model_name,
-      });
+      })
     },
     MethodAncestral::Marginal => {
       if !dense {
@@ -146,11 +146,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
-        return Ok(AncestralResult {
+        Ok(AncestralResult {
           graph,
           gtr: Some(gtr),
           model_name: *model_name,
-        });
+        })
       } else if *model_name == GtrModelName::Infer {
         let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
         let gtr = infer_gtr_fitch(&fitch, &graph)?;
@@ -179,11 +179,11 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
-        return Ok(AncestralResult {
+        Ok(AncestralResult {
           graph,
           gtr: Some(gtr),
           model_name: *model_name,
-        });
+        })
       } else {
         let length = get_common_length(&aln)?;
         let gtr = get_gtr_by_name(*model_name)?;
@@ -208,19 +208,17 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
-        return Ok(AncestralResult {
+        Ok(AncestralResult {
           graph,
           gtr: Some(gtr),
           model_name: *model_name,
-        });
+        })
       }
     },
     MethodAncestral::Joint => {
-      return make_error!(
+      make_error!(
         "Joint ancestral reconstruction is not yet implemented. Use --method-anc=marginal or --method-anc=parsimony"
-      );
+      )
     },
   }
-
-  unreachable!()
 }

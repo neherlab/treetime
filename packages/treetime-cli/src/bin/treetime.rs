@@ -8,10 +8,11 @@ use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
+use treetime::schema::generate_schema;
 use treetime_cli::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
-use treetime_cli::cli::treetime_cli::{TreetimeCommands, generate_shell_completions, treetime_parse_cli_args};
+use treetime_cli::cli::treetime_cli::{TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args};
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
 use treetime_utils::io::console::is_tty;
@@ -77,6 +78,9 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
+    },
+    TreetimeCommands::Schema(TreetimeSchemaArgs { for_format, output }) => {
+      generate_schema(&for_format, output.as_ref())?;
     },
     TreetimeCommands::Arg(arg_args) => {},
     TreetimeCommands::Debug => {
