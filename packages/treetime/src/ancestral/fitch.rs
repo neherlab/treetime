@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use std::collections::BTreeSet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
   finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
@@ -18,6 +17,7 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
@@ -217,9 +217,7 @@ where
       let seq = &mut node_data.seq;
       resolve_root_forward(
         &mut seq.sequence,
-        &mut seq.gaps,
         &seq.fitch.variable,
-        &seq.fitch.variable_indel,
         &mut seq.fitch.chosen_state,
       );
     } else {

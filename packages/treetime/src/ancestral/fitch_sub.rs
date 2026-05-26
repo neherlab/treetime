@@ -4,7 +4,7 @@ use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, StateSet, StateSetStatus, stateset};
 use treetime_utils::interval::range::range_contains;
 
@@ -106,15 +106,13 @@ pub fn resolve_fixed_positions_backward(
   }
 }
 
-/// Forward pass: resolve variable states at the root.
+/// Forward pass: resolve variable substitution states at the root.
 ///
-/// Variable indels are left unresolved (defaulting to present / no-gap) because
-/// without per-child counts we cannot determine majority-rule direction.
+/// Variable indels at the root default to present (no gap). Direction is
+/// resolved in the forward pass on children via parent state.
 pub fn resolve_root_forward(
   sequence: &mut Seq,
-  gaps: &mut [(usize, usize)],
   variable: &BTreeMap<usize, StateSet>,
-  _variable_indel: &BTreeSet<(usize, usize)>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
 ) {
   for (pos, states) in variable {

@@ -217,12 +217,10 @@ mod tests {
   #[test]
   fn test_fitch_sub_root_forward_resolves_variable() {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
-    let mut gaps = vec![];
     let variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
-    let variable_indel = BTreeSet::new();
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
+    resolve_root_forward(&mut sequence, &variable, &mut chosen_state);
 
     assert_eq!(
       sequence[0],
@@ -234,17 +232,16 @@ mod tests {
 
   #[test]
   fn test_fitch_sub_root_forward_variable_indel_not_resolved() {
-    // Variable indels at the root are left unresolved (defaulting to present/no-gap)
-    // because we no longer track per-child counts.
+    // Variable indels at the root default to present (no gap).
+    // Direction is resolved in the forward pass on children via parent state.
     let mut sequence = Seq::try_from_str("ACGT").unwrap();
-    let mut gaps = vec![];
     let variable = BTreeMap::new();
-    let variable_indel = BTreeSet::from([(1_usize, 3_usize)]);
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &mut gaps, &variable, &variable_indel, &mut chosen_state);
+    resolve_root_forward(&mut sequence, &variable, &mut chosen_state);
 
-    assert!(gaps.is_empty(), "Variable indels are not resolved at the root");
+    assert!(chosen_state.is_empty(), "No variable substitutions to resolve");
+    assert_eq!(sequence, Seq::try_from_str("ACGT").unwrap(), "Sequence unchanged");
   }
 
   // --- resolve_nonroot_substitutions_forward ---
