@@ -20,9 +20,13 @@ use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
-pub fn run_prune(args: &TreetimePruneArgs) -> Result<PruneResult, Report> {
+pub fn run_prune(
+  args: &TreetimePruneArgs,
+  progress: &dyn crate::progress::ProgressSink,
+) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
+  progress.report("Reading input", 0.0, "");
   let TreetimePruneArgs {
     input_fastas,
     tree,
@@ -61,6 +65,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<PruneResult, Report> {
     *prune_nodes_list_file_delimiter,
   )?;
 
+  progress.report("Pruning", 0.4, "");
   prune_nodes(&mut graph, &partitions, *prune_short, *prune_empty, &node_names)?;
 
   if *merge_shared_mutations {
@@ -68,8 +73,10 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<PruneResult, Report> {
     graph.build()?;
   }
 
+  progress.report("Writing output", 0.8, "");
   write_graph_files(outdir, "pruned_tree", &graph)?;
 
+  progress.report("Done", 1.0, "");
   Ok(PruneResult { graph })
 }
 

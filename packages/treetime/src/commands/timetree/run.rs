@@ -44,7 +44,10 @@ use treetime_utils::io::file::create_file_or_stdout;
 /// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
-pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeResult, Report> {
+pub fn run_timetree_estimation(
+  args: &TreetimeTimetreeArgs,
+  progress: &dyn crate::progress::ProgressSink,
+) -> Result<TimetreeResult, Report> {
   info!("# TreeTime Timetree Estimation");
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
@@ -59,6 +62,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
   //   - --confidence without prerequisites: warn and disable confidence
   let time_marginal = compute_effective_time_marginal(args);
 
+  progress.report("Loading input", 0.0, "");
   info!("## Loading input data");
   let InputData {
     mut graph,
@@ -89,6 +93,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
   let covariation_clock_params = build_covariation_clock_params(args, aln.as_deref())?;
   let branch_params = BranchPointOptimizationParams::default();
 
+  progress.report("Clock regression", 0.1, "");
   // Initial regression: always non-covariation (matching v0 treetime.py:488-491)
   let reroot_params = RerootParams {
     force_positive_rate: !args.allow_negative_rate,
@@ -167,6 +172,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
     }
   }
 
+  progress.report("Initial timetree inference", 0.2, "");
   info!("### TreeTime: initial round");
   info!("### Initializing node times from date constraints");
   initialize_clock_totals_from_time_distributions(&graph)?;
@@ -243,13 +249,21 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
+  progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline);
   if let Some(path) = &args.tracelog {
     let file = create_file_or_stdout(path)?;
     optimizer = optimizer.with_tracelog(file)?;
   }
+  let max_iter = args.max_iter;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
+    let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
+    progress.report(
+      "Optimization",
+      iter_fraction,
+      &format!("iteration {}/{max_iter}", i + 1),
+    );
     // Re-optimize constant Tc each iteration. Skip i < 2 because v1 runs a pre-loop
     // Tc optimization, making the first in-loop re-optimization redundant.
     // In skyline mode, constant Tc is used during loop iterations; the full skyline
@@ -322,6 +336,7 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
     }
   }
 
+  progress.report("Postprocessing", 0.85, "");
   info!("### TreeTime: postprocessing");
 
   // Rate susceptibility analysis: re-run timetree at rate +/- rate_std.
@@ -392,9 +407,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeRe
       None
     };
 
+  progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
   write_outputs(args, &graph, &partitions, &clock_model, confidence_intervals.as_deref())?;
 
+  progress.report("Done", 1.0, "");
   Ok(TimetreeResult {
     graph,
     clock_model,

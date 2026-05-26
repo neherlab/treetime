@@ -29,7 +29,10 @@ pub struct TreetimeOptimizeParams {
   pub fixed_pi: bool,
 }
 
-pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Report> {
+pub fn run_optimize(
+  args: &TreetimeOptimizeArgs,
+  progress: &dyn crate::progress::ProgressSink,
+) -> Result<OptimizeResult, Report> {
   let TreetimeOptimizeArgs {
     input_fastas,
     tree,
@@ -51,6 +54,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Repor
     return make_error!("--damping must be in [0.0, 1.0), got {damping}");
   }
 
+  progress.report("Reading input", 0.0, "");
   let dense = dense.unwrap_or_else(infer_dense);
   let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
   let mut aln = read_many_fasta(input_fastas, &alphabet)?;
@@ -113,6 +117,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Repor
 
   apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess, *no_indels)?;
 
+  progress.report("Optimizing branch lengths", 0.3, "");
   run_optimize_loop(
     &mut graph,
     &sparse_partitions,
@@ -125,6 +130,7 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Repor
     *no_indels,
   )?;
 
+  progress.report("Writing output", 0.9, "");
   // Re-run marginal to populate subs_ml after the loop (the last iteration
   // may have changed topology, clearing ML subs on affected edges).
   update_marginal(&graph, &sparse_partitions)?;
@@ -142,5 +148,6 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Repor
     write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
   }
 
+  progress.report("Done", 1.0, "");
   Ok(OptimizeResult { graph })
 }

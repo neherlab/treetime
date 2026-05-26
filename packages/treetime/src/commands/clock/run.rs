@@ -32,7 +32,10 @@ fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationPara
   }
 }
 
-pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> {
+pub fn run_clock(
+  clock_args: &TreetimeClockArgs,
+  progress: &dyn crate::progress::ProgressSink,
+) -> Result<ClockResult, Report> {
   let TreetimeClockArgs {
     aln,
     tree,
@@ -58,6 +61,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> 
     clock_regression,
   } = clock_args;
 
+  progress.report("Reading input", 0.0, "");
   let mut graph: GraphClock = if let Some(tree) = tree {
     nwk_read_file(tree)
   } else {
@@ -69,6 +73,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> 
     assign_dates(&graph, &dates)?;
   }
 
+  progress.report("Clock regression", 0.3, "");
   let (clock_model, new_outliers) = if *covariation {
     let seq_len = sequence_length
       .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?
@@ -104,6 +109,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> 
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
+  progress.report("Writing output", 0.8, "");
   write_graph_files(outdir, "rerooted", &graph)?;
 
   write_clock_model(&clock_model, &outdir.join("clock_model"))?;
@@ -112,6 +118,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> 
 
   write_clock_regression_result_csv(&regression_results, outdir.join("clock.csv"), b',')?;
 
+  progress.report("Done", 1.0, "");
   Ok(ClockResult {
     graph,
     clock_model,

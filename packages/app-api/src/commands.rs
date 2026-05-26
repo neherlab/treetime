@@ -11,26 +11,26 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 
-pub fn ancestral(args: &TreetimeAncestralArgs, _progress: &dyn ProgressSink) -> Result<AncestralResult, Report> {
-  run_ancestral_reconstruction(args)
+pub fn ancestral(args: &TreetimeAncestralArgs, progress: &dyn ProgressSink) -> Result<AncestralResult, Report> {
+  run_ancestral_reconstruction(args, progress)
 }
 
-pub fn clock(args: &TreetimeClockArgs, _progress: &dyn ProgressSink) -> Result<ClockResult, Report> {
-  run_clock(args)
+pub fn clock(args: &TreetimeClockArgs, progress: &dyn ProgressSink) -> Result<ClockResult, Report> {
+  run_clock(args, progress)
 }
 
-pub fn timetree(args: &TreetimeTimetreeArgs, _progress: &dyn ProgressSink) -> Result<TimetreeResult, Report> {
-  run_timetree_estimation(args)
+pub fn timetree(args: &TreetimeTimetreeArgs, progress: &dyn ProgressSink) -> Result<TimetreeResult, Report> {
+  run_timetree_estimation(args, progress)
 }
 
-pub fn mugration(args: &TreetimeMugrationArgs, _progress: &dyn ProgressSink) -> Result<MugrationResult, Report> {
-  run_mugration(args)
+pub fn mugration(args: &TreetimeMugrationArgs, progress: &dyn ProgressSink) -> Result<MugrationResult, Report> {
+  run_mugration(args, progress)
 }
 
-pub fn optimize(args: &TreetimeOptimizeArgs, _progress: &dyn ProgressSink) -> Result<OptimizeResult, Report> {
-  run_optimize(args)
+pub fn optimize(args: &TreetimeOptimizeArgs, progress: &dyn ProgressSink) -> Result<OptimizeResult, Report> {
+  run_optimize(args, progress)
 }
 
-pub fn prune(args: &TreetimePruneArgs, _progress: &dyn ProgressSink) -> Result<PruneResult, Report> {
-  run_prune(args)
+pub fn prune(args: &TreetimePruneArgs, progress: &dyn ProgressSink) -> Result<PruneResult, Report> {
+  run_prune(args, progress)
 }

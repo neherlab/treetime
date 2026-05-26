@@ -13,6 +13,7 @@ use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::traits::{HasGtr, MutationCommentProvider};
 use crate::payload::ancestral::GraphAncestral;
+use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
@@ -32,7 +33,10 @@ pub struct TreetimeAncestralParams {
   pub fixed_pi: bool,
 }
 
-pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> Result<AncestralResult, Report> {
+pub fn run_ancestral_reconstruction(
+  ancestral_args: &TreetimeAncestralArgs,
+  progress: &dyn ProgressSink,
+) -> Result<AncestralResult, Report> {
   let TreetimeAncestralArgs {
     input_fastas,
     tree,
@@ -82,13 +86,17 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
+  progress.report("Reading input", 0.0, "");
+
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);
 
+  progress.report("Parsing tree", 0.1, "");
   let graph: GraphAncestral = nwk_read_file(tree)?;
 
   match method_anc {
     MethodAncestral::Parsimony => {
+      progress.report("Fitch parsimony", 0.3, "");
       let partitions_parsimony = vec![Arc::new(RwLock::new(PartitionFitch {
         index: 0,
         alphabet,
@@ -107,8 +115,10 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         })?;
       }
 
+      progress.report("Writing output", 0.9, "");
       write_graph_files_with(outdir, "annotated_tree", &graph, &CommentProviders::new())?;
 
+      progress.report("Done", 1.0, "");
       Ok(AncestralResult {
         graph,
         gtr: None,
@@ -116,6 +126,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
       })
     },
     MethodAncestral::Marginal => {
+      progress.report("Inferring GTR model", 0.2, "");
       if !dense {
         let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
         let gtr = match *model_name {
@@ -126,18 +137,21 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let partition = fitch.into_marginal_sparse(gtr, &graph)?;
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.report("Marginal reconstruction", 0.4, "");
         update_marginal(&graph, &partitions)?;
 
         if *gtr_iterations > 0 && *model_name == GtrModelName::Infer {
           refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
         }
 
+        progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
           output_fasta.write(name, desc, seq)
         })?;
 
+        progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();
         write_gtr_json(&gtr, *model_name, outdir, None)?;
 
@@ -146,6 +160,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
+        progress.report("Done", 1.0, "");
         Ok(AncestralResult {
           graph,
           gtr: Some(gtr),
@@ -158,6 +173,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let partition = fitch.into_marginal_dense(gtr);
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.report("Marginal reconstruction", 0.4, "");
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
 
@@ -165,12 +181,14 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
           refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
         }
 
+        progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
           output_fasta.write(name, desc, seq)
         })?;
 
+        progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();
         write_gtr_json(&gtr, *model_name, outdir, None)?;
 
@@ -179,6 +197,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
+        progress.report("Done", 1.0, "");
         Ok(AncestralResult {
           graph,
           gtr: Some(gtr),
@@ -192,15 +211,18 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.report("Marginal reconstruction", 0.4, "");
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
 
+        progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
           let desc = &node.desc;
           output_fasta.write(name, desc, seq)
         })?;
 
+        progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();
 
         let partition_guard = partitions[0].read_arc();
@@ -208,6 +230,7 @@ pub fn run_ancestral_reconstruction(ancestral_args: &TreetimeAncestralArgs) -> R
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
 
+        progress.report("Done", 1.0, "");
         Ok(AncestralResult {
           graph,
           gtr: Some(gtr),

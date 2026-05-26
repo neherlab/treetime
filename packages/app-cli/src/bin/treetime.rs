@@ -21,6 +21,7 @@ use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
+use treetime::progress::NoopProgress;
 use treetime::schema::generate_schema;
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
@@ -51,19 +52,19 @@ fn main() -> Result<(), Report> {
 
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
-      run_timetree_estimation(&timetree_args)?;
+      run_timetree_estimation(&timetree_args, &NoopProgress)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
-      run_optimize(&optimize_args)?;
+      run_optimize(&optimize_args, &NoopProgress)?;
     },
     TreetimeCommands::Prune(prune_args) => {
-      run_prune(&prune_args)?;
+      run_prune(&prune_args, &NoopProgress)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
-      run_ancestral_reconstruction(&ancestral_args)?;
+      run_ancestral_reconstruction(&ancestral_args, &NoopProgress)?;
     },
     TreetimeCommands::Clock(clock_args) => {
-      let result = run_clock(&clock_args)?;
+      let result = run_clock(&clock_args, &NoopProgress)?;
       let outdir = &clock_args.outdir;
       write_clock_regression_chart_svg(
         &result.regression_results,
@@ -83,7 +84,7 @@ fn main() -> Result<(), Report> {
       run_homoplasy(homoplasy_args)?;
     },
     TreetimeCommands::Mugration(mugration_args) => {
-      run_mugration(&mugration_args)?;
+      run_mugration(&mugration_args, &NoopProgress)?;
     },
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;

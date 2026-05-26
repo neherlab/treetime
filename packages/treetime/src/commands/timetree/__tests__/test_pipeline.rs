@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
+  use crate::progress::NoopProgress;
   use eyre::Report;
   use std::fs::read_to_string;
   use std::path::PathBuf;
@@ -23,7 +24,7 @@ mod tests {
       ..TreetimeTimetreeArgs::default()
     };
 
-    run_timetree_estimation(&args)?;
+    run_timetree_estimation(&args, &NoopProgress)?;
 
     // Verify tracelog was written and contains data
     let csv_content = read_to_string(&tracelog_path)?;

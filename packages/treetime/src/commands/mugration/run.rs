@@ -16,10 +16,14 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<MugrationResult, Report> {
+pub fn run_mugration(
+  mugration_args: &TreetimeMugrationArgs,
+  progress: &dyn crate::progress::ProgressSink,
+) -> Result<MugrationResult, Report> {
   let outdir = &mugration_args.outdir;
   fs::create_dir_all(outdir)?;
 
+  progress.report("Reading input", 0.0, "");
   let tree_path = mugration_args
     .tree
     .as_ref()
@@ -46,6 +50,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<Mugration
     None
   };
 
+  progress.report("Mugration inference", 0.3, "");
   let result = execute_mugration(
     graph,
     &traits,
@@ -58,6 +63,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<Mugration
     mugration_args.sampling_bias_correction,
   )?;
 
+  progress.report("Writing output", 0.8, "");
   let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
   let providers = CommentProviders::new().with(&provider);
   write_graph_files_with(outdir, "annotated_tree", &result.graph, &providers)?;
@@ -72,6 +78,7 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<Mugration
     fs::write(confidence_path, result.confidence.render_csv())?;
   }
 
+  progress.report("Done", 1.0, "");
   info!("Mugration: wrote output to {}", outdir.display());
   Ok(result)
 }
