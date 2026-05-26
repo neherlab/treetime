@@ -48,9 +48,6 @@ interface AppState {
   showResults: boolean;
   setShowResults: (show: boolean) => void;
 
-  darkMode: boolean;
-  toggleDarkMode: () => void;
-
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 }
@@ -136,14 +133,6 @@ export const useAppStore = create<AppState>((set) => ({
 
   showResults: false,
   setShowResults: (show) => set({ showResults: show }),
-
-  darkMode: false,
-  toggleDarkMode: () =>
-    set((state) => {
-      const next = !state.darkMode;
-      document.documentElement.classList.toggle("dark", next);
-      return { darkMode: next };
-    }),
 
   sidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

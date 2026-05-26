@@ -76,6 +76,11 @@ RUN /install-nodejs
 COPY --link "dev/docker/files/install-electron-deps" "/"
 RUN /install-electron-deps
 
+ENV GTK_THEME="Adwaita:dark"
+
+RUN set -euxo pipefail >/dev/null \
+&& mkdir -p "/etc/gtk-3.0" \
+&& printf '[Settings]\ngtk-application-prefer-dark-theme=1\n' > "/etc/gtk-3.0/settings.ini"
 
 ENV HOST_PREFIX="/usr"
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"

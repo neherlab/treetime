@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
 import * as path from "path";
 
 if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
@@ -17,7 +17,16 @@ if (projectRoot) {
   process.chdir(projectRoot);
 }
 
+<<<<<<< HEAD
 >>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
+=======
+function registerThemeHandler() {
+  ipcMain.on("treetime:theme", (_event, theme: string) => {
+    nativeTheme.themeSource = theme as "system" | "light" | "dark";
+  });
+}
+
+>>>>>>> 0571c0c9 (feat(ui): add automatic OS theme detection with next-themes)
 function registerIpcHandlers() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const addon = require("@neherlab/app-napi");
@@ -81,6 +90,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerThemeHandler();
   registerIpcHandlers();
   createWindow();
 });

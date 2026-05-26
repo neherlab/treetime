@@ -141,3 +141,6 @@ function createDesktopTransport(): BridgeTransport {
 >>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
 
 contextBridge.exposeInMainWorld("treetime", createBridge(createDesktopTransport()));
+contextBridge.exposeInMainWorld("electronTheme", {
+  setTheme: (theme: string) => ipcRenderer.send("treetime:theme", theme),
+});

@@ -5,6 +5,7 @@ export { BridgeProvider, useBridge } from "./BridgeContext";
 =======
 export { BridgeProvider } from "./BridgeProvider";
 export { QueryProvider } from "./QueryProvider";
+export { ThemeProvider } from "./ThemeProvider";
 export { useBridge } from "./BridgeContext";
 <<<<<<< HEAD
 <<<<<<< HEAD
