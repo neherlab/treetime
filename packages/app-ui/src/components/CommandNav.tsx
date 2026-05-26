@@ -21,7 +21,7 @@ export function CommandNav() {
   return (
     <nav
       className={clsx(
-        "flex shrink-0 flex-col gap-1 border-r border-gray-200 bg-gray-50 py-3 dark:border-gray-700 dark:bg-gray-900/50",
+        "flex shrink-0 flex-col gap-1 overflow-y-auto border-r border-gray-200 bg-gray-50 py-3 dark:border-gray-700 dark:bg-gray-900/50",
         collapsed ? "w-14 px-2" : "w-48 px-3",
       )}
     >

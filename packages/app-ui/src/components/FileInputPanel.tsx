@@ -1,13 +1,11 @@
+import { RotateCcw } from "lucide-react";
+import { useCallback } from "react";
 import { FileSlot } from "./FileSlot";
 import { useAppStore } from "../store/app-store";
 import type { CommandName, FileSlotKind } from "../types";
-import { FILE_SLOTS } from "../types";
+import { FILE_SLOTS, EXAMPLE_DATASETS } from "../types";
 
 const COMMAND_FILE_REQUIREMENTS: Record<CommandName, { required: FileSlotKind[]; optional: FileSlotKind[] }> = {
-  timetree: {
-    required: ["tree", "alignment", "dates"],
-    optional: ["vcfReference"],
-  },
   ancestral: {
     required: ["tree", "alignment"],
     optional: ["vcfReference"],
@@ -28,15 +26,64 @@ const COMMAND_FILE_REQUIREMENTS: Record<CommandName, { required: FileSlotKind[];
     required: ["tree"],
     optional: ["alignment"],
   },
+  timetree: {
+    required: ["tree", "alignment", "dates"],
+    optional: ["vcfReference"],
+  },
 };
 
 export function FileInputPanel() {
   const activeCommand = useAppStore((s) => s.activeCommand);
+  const selectedDataset = useAppStore((s) => s.selectedDataset);
+  const setSelectedDataset = useAppStore((s) => s.setSelectedDataset);
+  const setFile = useAppStore((s) => s.setFile);
+  const resetForm = useAppStore((s) => s.resetForm);
   const reqs = COMMAND_FILE_REQUIREMENTS[activeCommand];
+
+  const handleDatasetChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const dataset = e.target.value;
+      setSelectedDataset(dataset);
+      if (dataset) {
+        setFile("tree", { name: `${dataset}/tree.nwk`, size: 0 });
+        setFile("alignment", { name: `${dataset}/aln.fasta.xz`, size: 0 });
+        setFile("dates", { name: `${dataset}/metadata.tsv`, size: 0 });
+        setFile("states", { name: `${dataset}/metadata.tsv`, size: 0 });
+      }
+    },
+    [setSelectedDataset, setFile],
+  );
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Input files</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Input files</h3>
+        <button
+          type="button"
+          onClick={resetForm}
+          className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        >
+          <RotateCcw size={12} />
+          Reset
+        </button>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Example dataset</label>
+        <select
+          value={selectedDataset}
+          onChange={handleDatasetChange}
+          className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+        >
+          <option value="">Select a dataset...</option>
+          {EXAMPLE_DATASETS.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {FILE_SLOTS.map((slot) => {
           const required = reqs.required.includes(slot.kind);

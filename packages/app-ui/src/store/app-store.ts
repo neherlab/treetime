@@ -14,6 +14,7 @@ interface AppState {
   setActiveCommand: (command: CommandName) => void;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   selectedDataset: string;
   setSelectedDataset: (dataset: string) => void;
 
@@ -29,8 +30,14 @@ interface AppState {
   setAbortController: (controller: AbortController | undefined) => void;
   cancelRun: () => void;
 =======
+=======
+  selectedDataset: string;
+  setSelectedDataset: (dataset: string) => void;
+
+>>>>>>> bd236f2c (feat(app-ui): add dataset dropdown, reset button, reorder commands)
   files: Partial<Record<FileSlotKind, LoadedFile>>;
   setFile: (kind: FileSlotKind, file: LoadedFile | undefined) => void;
+  resetForm: () => void;
 
   runStatus: RunStatus;
   progress: ProgressInfo | undefined;
@@ -50,6 +57,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
 <<<<<<< HEAD
+<<<<<<< HEAD
   activeCommand: "ancestral",
   setActiveCommand: (command) =>
     set((state) => {
@@ -67,15 +75,22 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedDataset: (dataset) => set({ selectedDataset: dataset }),
 =======
   activeCommand: "timetree",
+=======
+  activeCommand: "ancestral",
+>>>>>>> bd236f2c (feat(app-ui): add dataset dropdown, reset button, reorder commands)
   setActiveCommand: (command) =>
     set({ activeCommand: command, showResults: false, runStatus: "idle", progress: undefined }),
 >>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
+
+  selectedDataset: "",
+  setSelectedDataset: (dataset) => set({ selectedDataset: dataset }),
 
   files: {},
   setFile: (kind, file) =>
     set((state) => ({
       files: { ...state.files, [kind]: file },
     })),
+<<<<<<< HEAD
 <<<<<<< HEAD
   resetForm: () =>
     set((state) => {
@@ -102,6 +117,16 @@ export const useAppStore = create<AppState>((set) => ({
       return { runStatus: "idle", progress: undefined, abortController: undefined };
     }),
 =======
+=======
+  resetForm: () =>
+    set({
+      files: {},
+      selectedDataset: "",
+      runStatus: "idle",
+      progress: undefined,
+      showResults: false,
+    }),
+>>>>>>> bd236f2c (feat(app-ui): add dataset dropdown, reset button, reorder commands)
 
   runStatus: "idle",
   progress: undefined,
