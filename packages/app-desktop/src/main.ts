@@ -7,9 +7,17 @@ if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
+=======
+const projectRoot = process.env.TREETIME_PROJECT_ROOT;
+if (projectRoot) {
+  process.chdir(projectRoot);
+}
+
+>>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
 function registerIpcHandlers() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const addon = require("@neherlab/app-napi");
@@ -23,12 +31,27 @@ function registerIpcHandlers() {
     return addon.datasets();
   });
 
+<<<<<<< HEAD
 =======
 >>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
+=======
+  ipcMain.on("treetime:cancel", () => {
+    addon.cancel();
+  });
+
+>>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
   const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
   for (const cmd of commands) {
-    ipcMain.handle(`treetime:${cmd}`, (_event: Electron.IpcMainInvokeEvent, argsJson: string) => {
-      return addon[cmd](argsJson);
+    ipcMain.handle(`treetime:${cmd}`, (event: Electron.IpcMainInvokeEvent, argsJson: string) => {
+      return addon[cmd](argsJson, (err: Error | null, eventJson: string) => {
+        if (err || event.sender.isDestroyed()) return;
+        try {
+          const parsed = JSON.parse(eventJson) as { type: string; data: unknown };
+          event.sender.send(`treetime:${parsed.type}`, parsed.data);
+        } catch {
+          // Window closed during computation
+        }
+      });
     });
   }
 }
