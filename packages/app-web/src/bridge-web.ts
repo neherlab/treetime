@@ -5,6 +5,7 @@ import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-c
 =======
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { CancelledError } from "@neherlab/app-contracts";
 import type {
   CommandOptions,
@@ -13,6 +14,16 @@ import type {
   LogEvent,
   ProgressEvent,
   VersionInfo,
+=======
+import {
+  CancelledError,
+  createBridge,
+  type BridgeTransport,
+  type CommandOptions,
+  type LogEvent,
+  type ProgressEvent,
+  type TreeTimeBridge,
+>>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
 } from "@neherlab/app-contracts";
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
 =======
@@ -166,8 +177,9 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
 >>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 }
 
-export function createWebBridge(): TreeTimeBridge {
+function createWebTransport(): BridgeTransport {
   return {
+<<<<<<< HEAD
     version: () => getJson<VersionInfo>("version"),
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -198,5 +210,13 @@ export function createWebBridge(): TreeTimeBridge {
     optimize: (args, onProgress) => postSse("optimize", args, onProgress),
     prune: (args, onProgress) => postSse("prune", args, onProgress),
 >>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
+=======
+    query: <T>(endpoint: string) => getJson<T>(endpoint),
+    command: <T>(endpoint: string, args: unknown, options?: CommandOptions) => postSse<T>(endpoint, args, options),
+>>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
   };
+}
+
+export function createWebBridge(): TreeTimeBridge {
+  return createBridge(createWebTransport());
 }

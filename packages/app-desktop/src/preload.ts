@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer } from "electron";
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
 
 const bridge: TreeTimeBridge = {
@@ -31,15 +32,17 @@ import type {
   VersionInfo,
 } from "@neherlab/app-contracts";
 >>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
+=======
+import type { BridgeTransport, CommandOptions, LogEvent, ProgressEvent } from "@neherlab/app-contracts";
+import { CancelledError, createBridge } from "@neherlab/app-contracts";
+>>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
 
-class CancelledError extends Error {
-  constructor() {
-    super("Operation cancelled");
-    this.name = "CancelledError";
-  }
+async function invokeQuery<T>(endpoint: string): Promise<T> {
+  const json = await ipcRenderer.invoke(`treetime:${endpoint}`);
+  return typeof json === "string" ? (JSON.parse(json) as T) : (json as T);
 }
 
-async function invokeCommand<T>(channel: string, args: unknown, options?: CommandOptions): Promise<T> {
+async function invokeCommand<T>(endpoint: string, args: unknown, options?: CommandOptions): Promise<T> {
   const progressHandler = (_event: Electron.IpcRendererEvent, data: ProgressEvent) => {
     options?.onProgress?.(data);
   };
@@ -67,7 +70,7 @@ async function invokeCommand<T>(channel: string, args: unknown, options?: Comman
   options?.signal?.addEventListener("abort", abortHandler);
 
   try {
-    const result = await ipcRenderer.invoke(channel, JSON.stringify(args));
+    const result = await ipcRenderer.invoke(`treetime:${endpoint}`, JSON.stringify(args));
     return typeof result === "string" ? (JSON.parse(result) as T) : (result as T);
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes("cancelled")) {
@@ -81,6 +84,7 @@ async function invokeCommand<T>(channel: string, args: unknown, options?: Comman
   }
 }
 
+<<<<<<< HEAD
 const bridge: TreeTimeBridge = {
   version: async (): Promise<VersionInfo> => {
     const json = await ipcRenderer.invoke("treetime:version");
@@ -125,5 +129,14 @@ const bridge: TreeTimeBridge = {
   prune: (args, options) => invokeCommand("treetime:prune", args, options),
 >>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
 };
+=======
+function createDesktopTransport(): BridgeTransport {
+  return {
+    query: <T>(endpoint: string) => invokeQuery<T>(endpoint),
+    command: <T>(endpoint: string, args: unknown, options?: CommandOptions) =>
+      invokeCommand<T>(endpoint, args, options),
+  };
+}
+>>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
 
-contextBridge.exposeInMainWorld("treetime", bridge);
+contextBridge.exposeInMainWorld("treetime", createBridge(createDesktopTransport()));
