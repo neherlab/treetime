@@ -1,3 +1,32 @@
+// Generated from openapi.yaml - do not edit
+
+export interface VersionInfo {
+  version: string;
+}
+
+export interface DatasetInfo {
+  name: string;
+  files: string[];
+}
+
+export interface ProgressEvent {
+  stage: string;
+  fraction: number;
+  message: string;
+}
+
+export type LogLevel = "Trace" | "Debug" | "Info" | "Warn" | "Error";
+
+export interface LogEvent {
+  level: LogLevel;
+  message: string;
+}
+
+export interface ErrorResponse {
+  code: string;
+  message: string;
+}
+
 export interface AncestralArgs {
   tree: string;
   outdir: string;
@@ -18,6 +47,10 @@ export interface AncestralArgs {
   gtr_iterations?: number;
   site_specific_gtr?: boolean;
   seed?: number;
+}
+
+export interface AncestralResult {
+  model_name: string;
 }
 
 export interface ClockArgs {
@@ -43,6 +76,11 @@ export interface ClockArgs {
   seed?: number;
 }
 
+export interface ClockResult {
+  clock_model: Record<string, unknown>;
+  regression_results: Record<string, unknown>[];
+}
+
 export interface TimetreeArgs {
   outdir: string;
   tree?: string;
@@ -53,6 +91,10 @@ export interface TimetreeArgs {
   clock_rate?: number;
   max_iter?: number;
   seed?: number;
+}
+
+export interface TimetreeResult {
+  clock_model: Record<string, unknown>;
 }
 
 export interface MugrationArgs {
@@ -70,6 +112,10 @@ export interface MugrationArgs {
   sampling_bias_correction?: number;
 }
 
+export interface MugrationResult {
+  log_lh: number;
+}
+
 export interface OptimizeArgs {
   tree: string;
   outdir: string;
@@ -85,6 +131,9 @@ export interface OptimizeArgs {
   no_indels?: boolean;
 }
 
+export interface OptimizeResult {
+}
+
 export interface PruneArgs {
   tree: string;
   outdir: string;
@@ -97,4 +146,7 @@ export interface PruneArgs {
   prune_nodes_list_delimiter?: string;
   prune_nodes_list_file?: string;
   prune_nodes_list_file_delimiter?: string;
+}
+
+export interface PruneResult {
 }

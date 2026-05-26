@@ -1,0 +1,446 @@
+openapi: 3.1.0
+info:
+  title: TreeTime API
+  version: 0.0.1
+  description: TreeTime phylogenetic analysis API
+
+paths:
+  /version:
+    get:
+      operationId: version
+      x-bridge-type: query
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionInfo"
+
+  /datasets:
+    get:
+      operationId: datasets
+      x-bridge-type: query
+      responses:
+        "200":
+          description: Available datasets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DatasetInfo"
+
+  /ancestral:
+    post:
+      operationId: ancestral
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AncestralArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/AncestralResult"
+
+  /clock:
+    post:
+      operationId: clock
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClockArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ClockResult"
+
+  /timetree:
+    post:
+      operationId: timetree
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimetreeArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/TimetreeResult"
+
+  /mugration:
+    post:
+      operationId: mugration
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MugrationArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/MugrationResult"
+
+  /optimize:
+    post:
+      operationId: optimize
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OptimizeArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/OptimizeResult"
+
+  /prune:
+    post:
+      operationId: prune
+      x-bridge-type: command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PruneArgs"
+      responses:
+        "200":
+          description: SSE stream with progress events and final result
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/PruneResult"
+
+components:
+  schemas:
+    VersionInfo:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+
+    DatasetInfo:
+      type: object
+      required: [name, files]
+      properties:
+        name:
+          type: string
+        files:
+          type: array
+          items:
+            type: string
+
+    ProgressEvent:
+      type: object
+      required: [stage, fraction, message]
+      properties:
+        stage:
+          type: string
+        fraction:
+          type: number
+        message:
+          type: string
+
+    LogLevel:
+      type: string
+      enum: [Trace, Debug, Info, Warn, Error]
+
+    LogEvent:
+      type: object
+      required: [level, message]
+      properties:
+        level:
+          $ref: "#/components/schemas/LogLevel"
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    AncestralArgs:
+      type: object
+      required: [tree, outdir]
+      properties:
+        tree:
+          type: string
+        outdir:
+          type: string
+        input_fastas:
+          type: array
+          items:
+            type: string
+        aln:
+          type: string
+        vcf_reference:
+          type: string
+        alphabet:
+          type: string
+        model_name:
+          type: string
+        gtr_params:
+          type: array
+          items:
+            type: string
+        method_anc:
+          type: string
+        dense:
+          type: boolean
+        aa:
+          type: boolean
+        gap_fill:
+          type: string
+        keep_overhangs:
+          type: boolean
+        zero_based:
+          type: boolean
+        reconstruct_tip_states:
+          type: boolean
+        report_ambiguous:
+          type: boolean
+        gtr_iterations:
+          type: integer
+        site_specific_gtr:
+          type: boolean
+        seed:
+          type: integer
+
+    AncestralResult:
+      type: object
+      required: [model_name]
+      properties:
+        model_name:
+          type: string
+
+    ClockArgs:
+      type: object
+      required: [dates, outdir]
+      properties:
+        dates:
+          type: string
+        outdir:
+          type: string
+        aln:
+          type: array
+          items:
+            type: string
+        tree:
+          type: string
+        vcf_reference:
+          type: string
+        name_column:
+          type: string
+        date_column:
+          type: string
+        sequence_length:
+          type: integer
+        gtr:
+          type: string
+        gtr_params:
+          type: array
+          items:
+            type: string
+        branch_length_mode:
+          type: string
+        method_anc:
+          type: string
+        clock_filter:
+          type: number
+        reroot:
+          type: string
+        keep_root:
+          type: boolean
+        prune_short:
+          type: boolean
+        tip_slack:
+          type: number
+        covariation:
+          type: boolean
+        allow_negative_rate:
+          type: boolean
+        seed:
+          type: integer
+
+    ClockResult:
+      type: object
+      required: [clock_model, regression_results]
+      properties:
+        clock_model:
+          type: object
+          additionalProperties: true
+        regression_results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    TimetreeArgs:
+      type: object
+      required: [outdir]
+      properties:
+        outdir:
+          type: string
+        tree:
+          type: string
+        dates:
+          type: string
+        input_fastas:
+          type: array
+          items:
+            type: string
+        aln:
+          type: string
+        vcf_reference:
+          type: string
+        clock_rate:
+          type: number
+        max_iter:
+          type: integer
+        seed:
+          type: integer
+
+    TimetreeResult:
+      type: object
+      required: [clock_model]
+      properties:
+        clock_model:
+          type: object
+          additionalProperties: true
+
+    MugrationArgs:
+      type: object
+      required: [attribute, states, outdir]
+      properties:
+        attribute:
+          type: string
+        states:
+          type: string
+        outdir:
+          type: string
+        tree:
+          type: string
+        weights:
+          type: string
+        name_column:
+          type: string
+        confidence:
+          type: string
+        pc:
+          type: number
+        missing_data:
+          type: string
+        missing_weights_threshold:
+          type: number
+        iterations:
+          type: integer
+        sampling_bias_correction:
+          type: number
+
+    MugrationResult:
+      type: object
+      required: [log_lh]
+      properties:
+        log_lh:
+          type: number
+
+    OptimizeArgs:
+      type: object
+      required: [tree, outdir]
+      properties:
+        tree:
+          type: string
+        outdir:
+          type: string
+        input_fastas:
+          type: array
+          items:
+            type: string
+        alphabet:
+          type: string
+        model_name:
+          type: string
+        dense:
+          type: boolean
+        max_iter:
+          type: integer
+        dp:
+          type: number
+        damping:
+          type: number
+        branch_length_initial_guess:
+          type: string
+        opt_method:
+          type: string
+        no_indels:
+          type: boolean
+
+    OptimizeResult:
+      type: object
+      properties: {}
+
+    PruneArgs:
+      type: object
+      required: [tree, outdir]
+      properties:
+        tree:
+          type: string
+        outdir:
+          type: string
+        input_fastas:
+          type: array
+          items:
+            type: string
+        alphabet:
+          type: string
+        prune_short:
+          type: number
+        prune_empty:
+          type: boolean
+        merge_shared_mutations:
+          type: boolean
+        prune_nodes_list:
+          type: string
+        prune_nodes_list_delimiter:
+          type: string
+        prune_nodes_list_file:
+          type: string
+        prune_nodes_list_file_delimiter:
+          type: string
+
+    PruneResult:
+      type: object
+      properties: {}
