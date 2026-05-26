@@ -17,6 +17,7 @@ use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 
 pub struct ClockResult {
+  pub graph: GraphClock,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
 }
@@ -110,6 +111,7 @@ pub fn run_clock(clock_args: &TreetimeClockArgs) -> Result<ClockResult, Report> 
   write_clock_regression_result_csv(&regression_results, outdir.join("clock.csv"), b',')?;
 
   Ok(ClockResult {
+    graph,
     clock_model,
     regression_results,
   })
