@@ -4,12 +4,12 @@ use crate::clock::find_best_root::params::RerootMode;
 use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
-#[cfg(feature = "clap")]
-use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]

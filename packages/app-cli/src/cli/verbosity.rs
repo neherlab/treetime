@@ -4,6 +4,7 @@ use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{ArgAction, Args};
 use log::LevelFilter;
 use serde::Serialize;
+use treetime::progress::LogLevel;
 
 #[derive(Args, Debug, Clone)]
 pub struct Verbosity {
@@ -32,6 +33,11 @@ pub struct Verbosity {
   #[clap(conflicts_with = "verbose", conflicts_with = "verbosity")]
   #[clap(display_order = 98)]
   pub quiet: u8,
+
+  /// Disable progress bar display
+  #[clap(long, global = true)]
+  #[clap(display_order = 99)]
+  pub no_progress: bool,
 }
 
 impl Serialize for Verbosity {
@@ -46,13 +52,23 @@ impl Serialize for Verbosity {
 impl Verbosity {
   pub const fn get_filter_level(&self) -> LevelFilter {
     if self.silent {
-      // --verbosity=<level> and --silent take priority over -v and -q
       LevelFilter::Off
     } else {
       let ilevel = level_to_int(self.verbosity);
       let ilevel = ilevel.saturating_add(self.verbose);
       let ilevel = ilevel.saturating_sub(self.quiet);
       level_from_int(ilevel)
+    }
+  }
+
+  pub fn get_log_level(&self) -> Option<LogLevel> {
+    match self.get_filter_level() {
+      LevelFilter::Off => None,
+      LevelFilter::Error => Some(LogLevel::Error),
+      LevelFilter::Warn => Some(LogLevel::Warn),
+      LevelFilter::Info => Some(LogLevel::Info),
+      LevelFilter::Debug => Some(LogLevel::Debug),
+      LevelFilter::Trace => Some(LogLevel::Trace),
     }
   }
 }

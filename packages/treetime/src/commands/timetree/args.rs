@@ -4,12 +4,12 @@ use crate::clock::find_best_root::params::RerootMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use crate::seq::gap_fill::GapFill;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
-#[cfg(feature = "clap")]
-use clap::ValueHint;
 
 #[cfg(feature = "clap")]
 fn parse_n_skyline(s: &str) -> Result<usize, String> {
@@ -150,7 +150,10 @@ pub struct TreetimeTimetreeArgs {
   /// Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify
   /// the number of grid points.
   #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")
+  )]
   pub coalescent_skyline: bool,
 
   /// Number of grid points in skyline coalescent model.

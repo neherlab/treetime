@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::AlphabetName;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
-#[cfg(feature = "clap")]
-use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]

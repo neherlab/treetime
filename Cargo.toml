@@ -69,7 +69,11 @@ approx = "=0.5.1"
 =======
 async-stream = "=0.3.6"
 axum = { version = "=0.8.9", features = ["json"] }
+<<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
+=======
+indicatif = "=0.18.4"
+>>>>>>> 04a8f9b2 (feat(app-cli): add indicatif progress bar for TTY, NoopProgress for pipes)
 argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 auto_ops = "=0.3.0"

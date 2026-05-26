@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 #[cfg(any(
   all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
   all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
@@ -7,10 +9,29 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+=======
+use app_cli::cli::progress::BarProgress;
+>>>>>>> 04a8f9b2 (feat(app-cli): add indicatif progress bar for TTY, NoopProgress for pipes)
 use app_cli::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
+<<<<<<< HEAD
 use app_cli::cli::treetime_cli::{TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args};
+=======
+use app_cli::cli::progress::{BarProgress, TextProgress};
+use app_cli::cli::rtt_chart::{
+  print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
+};
+use app_cli::cli::treetime_cli::{
+  TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
+};
+use app_cli::cli::verbosity::Verbosity;
+>>>>>>> d9cec2f3 (feat(cli): add --no-progress flag, BarProgress with suspend, TextProgress)
+=======
+use app_cli::cli::treetime_cli::{
+  TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
+};
+>>>>>>> f1127239 (refactor: format)
 use ctor::ctor;
 use eyre::Report;
 use log::info;
@@ -21,7 +42,10 @@ use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
-use treetime::progress::NoopProgress;
+<<<<<<< HEAD
+use treetime::progress::{NoopProgress, ProgressSink};
+=======
+>>>>>>> f1127239 (refactor: format)
 use treetime::schema::generate_schema;
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
@@ -31,6 +55,19 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 #[ctor]
 fn init() {
   global_init();
+}
+
+fn make_progress(verbosity: &Verbosity) -> Box<dyn ProgressSink> {
+  match verbosity.get_log_level() {
+    None => Box::new(NoopProgress),
+    Some(min_level) => {
+      if !verbosity.no_progress && is_tty() {
+        Box::new(BarProgress::new(min_level))
+      } else {
+        Box::new(TextProgress::new(min_level))
+      }
+    },
+  }
 }
 
 fn main() -> Result<(), Report> {
@@ -50,21 +87,23 @@ fn main() -> Result<(), Report> {
       .build_global()?;
   }
 
+  let progress = make_progress(&args.verbosity);
+
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
-      run_timetree_estimation(&timetree_args, &NoopProgress)?;
+      run_timetree_estimation(&timetree_args, &*progress)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
-      run_optimize(&optimize_args, &NoopProgress)?;
+      run_optimize(&optimize_args, &*progress)?;
     },
     TreetimeCommands::Prune(prune_args) => {
-      run_prune(&prune_args, &NoopProgress)?;
+      run_prune(&prune_args, &*progress)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
-      run_ancestral_reconstruction(&ancestral_args, &NoopProgress)?;
+      run_ancestral_reconstruction(&ancestral_args, &*progress)?;
     },
     TreetimeCommands::Clock(clock_args) => {
-      let result = run_clock(&clock_args, &NoopProgress)?;
+      let result = run_clock(&clock_args, &*progress)?;
       let outdir = &clock_args.outdir;
       write_clock_regression_chart_svg(
         &result.regression_results,
@@ -84,7 +123,7 @@ fn main() -> Result<(), Report> {
       run_homoplasy(homoplasy_args)?;
     },
     TreetimeCommands::Mugration(mugration_args) => {
-      run_mugration(&mugration_args, &NoopProgress)?;
+      run_mugration(&mugration_args, &*progress)?;
     },
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;

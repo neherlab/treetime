@@ -36,4 +36,8 @@ impl ProgressSink for StderrProgress {
   fn log(&self, level: LogLevel, message: &str) {
     eprintln!("[{level}] {message}");
   }
+
+  fn log_enabled(&self, _level: LogLevel) -> bool {
+    true
+  }
 }

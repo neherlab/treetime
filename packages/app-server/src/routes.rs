@@ -27,7 +27,11 @@ fn error_response(status: StatusCode, code: &str, message: String) -> (StatusCod
 }
 
 fn eyre_to_response(err: eyre::Report) -> (StatusCode, Json<Value>) {
-  error_response(StatusCode::INTERNAL_SERVER_ERROR, "computation_failure", format!("{err:?}"))
+  error_response(
+    StatusCode::INTERNAL_SERVER_ERROR,
+    "computation_failure",
+    format!("{err:?}"),
+  )
 }
 
 fn json_to_response(err: serde_json::Error) -> (StatusCode, Json<Value>) {
@@ -70,10 +74,20 @@ async fn handle_version() -> Json<Value> {
   Json(serde_json::to_value(version_info()).unwrap_or_default())
 =======
 async fn handle_version() -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+<<<<<<< HEAD
   serde_json::to_value(version_info())
     .map(Json)
     .map_err(|err| error_response(StatusCode::INTERNAL_SERVER_ERROR, "serialization_error", format!("{err}")))
 >>>>>>> b18af097 (fix(app-server): use structured error format and fix unwrap_or_default)
+=======
+  serde_json::to_value(version_info()).map(Json).map_err(|err| {
+    error_response(
+      StatusCode::INTERNAL_SERVER_ERROR,
+      "serialization_error",
+      format!("{err}"),
+    )
+  })
+>>>>>>> f1127239 (refactor: format)
 }
 
 pub fn api_routes() -> Router {

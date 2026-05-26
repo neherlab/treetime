@@ -2,12 +2,12 @@ use crate::alphabet::alphabet::AlphabetName;
 use crate::ancestral::params::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
-#[cfg(feature = "clap")]
-use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
