@@ -48,7 +48,12 @@ fn default_jobs() -> usize {
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
 <<<<<<< HEAD
+<<<<<<< HEAD
   let host = std::env::var("HOST").unwrap_or("127.0.0.1".to_owned());
+=======
+  setup_logger(LevelFilter::Warn);
+  let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
+>>>>>>> f5bb3671 (fix(server): default log level to warn (matching CLI default))
   let port: u16 = match std::env::var("PORT") {
     Ok(val) => val.parse().unwrap_or_else(|_| {
       eprintln!("Warning: invalid PORT value '{val}', using default 3100");
@@ -107,6 +112,7 @@ async fn main() -> eyre::Result<()> {
 async fn shutdown_signal() {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   tokio::signal::ctrl_c().await.ok();
 =======
   drop(tokio::signal::ctrl_c().await);
@@ -114,5 +120,14 @@ async fn shutdown_signal() {
 =======
   let _ = tokio::signal::ctrl_c().await;
 >>>>>>> 7c23b04d (fix(api,napi,server): clean up Cargo deps, fix error contract, fix code style)
+=======
+  let ctrl_c = tokio::signal::ctrl_c();
+  let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+    .expect("SIGTERM handler registration failed");
+  tokio::select! {
+    _ = ctrl_c => {},
+    _ = sigterm.recv() => {},
+  }
+>>>>>>> 2d60ad7b (feat(server): add SIGTERM handling for graceful shutdown on restart)
   eprintln!("TreeTime server shutting down");
 }

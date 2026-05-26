@@ -7,6 +7,7 @@ need_stdout = false
 [jobs.server]
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 command = ["cargo", "run", "--quiet", "--bin", "treetime-server", "--target-dir=.build/docker"]
 =======
 command = ["bash", "-c", "printf 'Compiling server...\\n' >&2 && exec dev/dev r treetime-server"]
@@ -14,7 +15,11 @@ command = ["bash", "-c", "printf 'Compiling server...\\n' >&2 && exec dev/dev r 
 =======
 command = ["bash", "-c", "printf 'Compiling server...\\n' >&2 && exec dev/dev r treetime-server -- --data-dir=data --out-dir=tmp/web"]
 >>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
+=======
+command = ["bun", "run", "--cwd", "packages/app-server", "server:run"]
+>>>>>>> 35797ac3 (feat(server): add compilation status message to dev server lifecycle)
 need_stdout = true
 allow_warnings = true
 background = false
 on_change_strategy = "kill_then_restart"
+kill = ["kill", "-s", "TERM"]
