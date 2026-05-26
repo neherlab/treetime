@@ -26,6 +26,7 @@ pub fn run_prune(
 ) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
+  progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let TreetimePruneArgs {
     input_fastas,
@@ -65,6 +66,7 @@ pub fn run_prune(
     *prune_nodes_list_file_delimiter,
   )?;
 
+  progress.check_cancelled()?;
   progress.report("Pruning", 0.4, "");
   prune_nodes(&mut graph, &partitions, *prune_short, *prune_empty, &node_names)?;
 

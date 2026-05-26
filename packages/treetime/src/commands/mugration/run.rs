@@ -23,6 +23,7 @@ pub fn run_mugration(
   let outdir = &mugration_args.outdir;
   fs::create_dir_all(outdir)?;
 
+  progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let tree_path = mugration_args
     .tree
@@ -50,6 +51,7 @@ pub fn run_mugration(
     None
   };
 
+  progress.check_cancelled()?;
   progress.report("Mugration inference", 0.3, "");
   let result = execute_mugration(
     graph,

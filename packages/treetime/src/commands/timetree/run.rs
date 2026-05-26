@@ -62,6 +62,7 @@ pub fn run_timetree_estimation(
   //   - --confidence without prerequisites: warn and disable confidence
   let time_marginal = compute_effective_time_marginal(args);
 
+  progress.check_cancelled()?;
   progress.report("Loading input", 0.0, "");
   info!("## Loading input data");
   let InputData {
@@ -93,6 +94,7 @@ pub fn run_timetree_estimation(
   let covariation_clock_params = build_covariation_clock_params(args, aln.as_deref())?;
   let branch_params = BranchPointOptimizationParams::default();
 
+  progress.check_cancelled()?;
   progress.report("Clock regression", 0.1, "");
   // Initial regression: always non-covariation (matching v0 treetime.py:488-491)
   let reroot_params = RerootParams {
@@ -172,6 +174,7 @@ pub fn run_timetree_estimation(
     }
   }
 
+  progress.check_cancelled()?;
   progress.report("Initial timetree inference", 0.2, "");
   info!("### TreeTime: initial round");
   info!("### Initializing node times from date constraints");
@@ -249,6 +252,7 @@ pub fn run_timetree_estimation(
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
+  progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
   let mut optimizer = TimetreeOptimizer::new(args.max_iter, args.coalescent_skyline);
@@ -258,6 +262,7 @@ pub fn run_timetree_estimation(
   }
   let max_iter = args.max_iter;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
+    progress.check_cancelled()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
     progress.report(
       "Optimization",
@@ -336,6 +341,7 @@ pub fn run_timetree_estimation(
     }
   }
 
+  progress.check_cancelled()?;
   progress.report("Postprocessing", 0.85, "");
   info!("### TreeTime: postprocessing");
 

@@ -61,6 +61,7 @@ pub fn run_clock(
     clock_regression,
   } = clock_args;
 
+  progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let mut graph: GraphClock = if let Some(tree) = tree {
     nwk_read_file(tree)
@@ -73,6 +74,7 @@ pub fn run_clock(
     assign_dates(&graph, &dates)?;
   }
 
+  progress.check_cancelled()?;
   progress.report("Clock regression", 0.3, "");
   let (clock_model, new_outliers) = if *covariation {
     let seq_len = sequence_length

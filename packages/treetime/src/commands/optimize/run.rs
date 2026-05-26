@@ -54,6 +54,7 @@ pub fn run_optimize(
     return make_error!("--damping must be in [0.0, 1.0), got {damping}");
   }
 
+  progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let dense = dense.unwrap_or_else(infer_dense);
   let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
@@ -117,6 +118,7 @@ pub fn run_optimize(
 
   apply_initial_guess_mode(&graph, &mixed_partitions, *branch_length_initial_guess, *no_indels)?;
 
+  progress.check_cancelled()?;
   progress.report("Optimizing branch lengths", 0.3, "");
   run_optimize_loop(
     &mut graph,

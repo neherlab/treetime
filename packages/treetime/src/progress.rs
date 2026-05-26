@@ -1,3 +1,4 @@
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -12,10 +13,33 @@ pub enum LogLevel {
   Error,
 }
 
+#[derive(Debug)]
+pub struct CancelledError;
+
+impl std::fmt::Display for CancelledError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str("Operation cancelled")
+  }
+}
+
+impl std::error::Error for CancelledError {}
+
 pub trait ProgressSink: Send + Sync {
   fn report(&self, stage: &str, fraction: f64, message: &str);
   fn log(&self, level: LogLevel, message: &str);
   fn log_enabled(&self, level: LogLevel) -> bool;
+
+  fn is_cancelled(&self) -> bool {
+    false
+  }
+
+  fn check_cancelled(&self) -> Result<(), Report> {
+    if self.is_cancelled() {
+      Err(Report::new(CancelledError))
+    } else {
+      Ok(())
+    }
+  }
 }
 
 pub struct NoopProgress;

@@ -86,16 +86,19 @@ pub fn run_ancestral_reconstruction(
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
+  progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
   let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
   let mut output_fasta = FastaWriter::new(output_fasta);
 
+  progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
   let graph: GraphAncestral = nwk_read_file(tree)?;
 
   match method_anc {
     MethodAncestral::Parsimony => {
+      progress.check_cancelled()?;
       progress.report("Fitch parsimony", 0.3, "");
       let partitions_parsimony = vec![Arc::new(RwLock::new(PartitionFitch {
         index: 0,
@@ -126,6 +129,7 @@ pub fn run_ancestral_reconstruction(
       })
     },
     MethodAncestral::Marginal => {
+      progress.check_cancelled()?;
       progress.report("Inferring GTR model", 0.2, "");
       if !dense {
         let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
@@ -137,6 +141,7 @@ pub fn run_ancestral_reconstruction(
         let partition = fitch.into_marginal_sparse(gtr, &graph)?;
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.check_cancelled()?;
         progress.report("Marginal reconstruction", 0.4, "");
         update_marginal(&graph, &partitions)?;
 
@@ -144,6 +149,7 @@ pub fn run_ancestral_reconstruction(
           refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
         }
 
+        progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
@@ -173,6 +179,7 @@ pub fn run_ancestral_reconstruction(
         let partition = fitch.into_marginal_dense(gtr);
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.check_cancelled()?;
         progress.report("Marginal reconstruction", 0.4, "");
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
@@ -181,6 +188,7 @@ pub fn run_ancestral_reconstruction(
           refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
         }
 
+        progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
@@ -211,10 +219,12 @@ pub fn run_ancestral_reconstruction(
         let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
         let partitions = vec![Arc::new(RwLock::new(partition))];
 
+        progress.check_cancelled()?;
         progress.report("Marginal reconstruction", 0.4, "");
         initialize_marginal(&graph, &partitions, &aln)?;
         update_marginal(&graph, &partitions)?;
 
+        progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
         ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
           let name = node.name.as_deref().unwrap_or("");
