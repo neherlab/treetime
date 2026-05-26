@@ -14,9 +14,7 @@ version.workspace = true
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-treetime = { workspace = true }
-treetime-io = { workspace = true }
-treetime-utils = { workspace = true }
+treetime-api = { workspace = true }
 
 eyre = { workspace = true }
 log = { workspace = true }
@@ -33,6 +31,7 @@ ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+treetime-utils = { workspace = true }
 
 [lints]
 workspace = true

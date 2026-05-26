@@ -131,6 +131,7 @@ tempfile = "=3.27.0"
 textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 tokio = { version = "=1.52.3", features = ["full"] }
+tokio = { version = "=1.52.3", features = ["full"] }
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
