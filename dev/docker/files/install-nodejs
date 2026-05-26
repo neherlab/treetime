@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+version="22.16.0"
+dest="/opt/node"
+
+mkdir -p "${dest}"
+curl -fsSL "https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz" \
+  | tar -xJ --strip-components=1 -C "${dest}"
+
+ln -sf "${dest}/bin/node" "/usr/local/bin/node"
+ln -sf "${dest}/bin/npm" "/usr/local/bin/npm"
+ln -sf "${dest}/bin/npx" "/usr/local/bin/npx"
+
+node --version
+npm --version

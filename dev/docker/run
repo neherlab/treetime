@@ -189,6 +189,18 @@ fi
 
 mkdir -p "${!volumes[@]}"
 
+x11_flags=()
+if [[ -n "${DISPLAY:-}" ]]; then
+  x11_flags=(
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:ro"
+    --volume="${XAUTHORITY:-$HOME/.Xauthority}:/tmp/.Xauthority:ro"
+    --env="DISPLAY=${DISPLAY}"
+    --env="XAUTHORITY=/tmp/.Xauthority"
+    --env="ELECTRON_DISABLE_SANDBOX=1"
+    --ipc=host
+  )
+fi
+
 # shellcheck disable=SC2046
 docker run --rm -i $(tty -s && echo "-t") \
   --init \
@@ -208,6 +220,7 @@ docker run --rm -i $(tty -s && echo "-t") \
   --env="TZ=Etc/UTC" \
   --env="LANG=C.UTF-8" \
   $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
+  "${x11_flags[@]}" \
   --ulimit="core=0" \
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \
   "${@:-bash}"
