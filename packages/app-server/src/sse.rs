@@ -3,7 +3,7 @@ use app_api::progress::ProgressSink;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use eyre::Report;
-use log::error;
+use log::{error, info};
 use serde::Serialize;
 use serde_json::Value;
 use std::convert::Infallible;
@@ -11,7 +11,7 @@ use std::path::Path;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use treetime::progress::{LogEvent, LogLevel, ProgressEvent};
+use treetime::progress::{CancelledError, LogEvent, LogLevel, ProgressEvent};
 
 enum SinkEvent {
   Progress(ProgressEvent),
@@ -46,6 +46,10 @@ impl ProgressSink for ChannelProgress {
 
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
+  }
+
+  fn is_cancelled(&self) -> bool {
+    self.tx.is_closed()
   }
 }
 
@@ -84,23 +88,37 @@ where
       }
     }
 
-    let result_value = match computation.await {
-      Ok(Ok(value)) => value,
+    match computation.await {
+      Ok(Ok(value)) => {
+        yield Ok::<_, Infallible>(
+          Event::default()
+            .event("result")
+            .json_data(value)
+            .expect("result serialization"),
+        );
+      },
+      Ok(Err(err)) if err.downcast_ref::<CancelledError>().is_some() => {
+        info!("Computation cancelled by client");
+      },
       Ok(Err(err)) => {
         error!("Computation failed: {err:?}");
-        serde_json::json!({ "error": format!("{err:#}") })
+        yield Ok::<_, Infallible>(
+          Event::default()
+            .event("result")
+            .json_data(serde_json::json!({ "error": format!("{err:#}") }))
+            .expect("result serialization"),
+        );
       },
       Err(err) => {
         error!("Computation panicked: {err}");
-        serde_json::json!({ "error": format!("{err}") })
+        yield Ok::<_, Infallible>(
+          Event::default()
+            .event("result")
+            .json_data(serde_json::json!({ "error": format!("{err}") }))
+            .expect("result serialization"),
+        );
       },
-    };
-    yield Ok::<_, Infallible>(
-      Event::default()
-        .event("result")
-        .json_data(result_value)
-        .expect("result serialization"),
-    );
+    }
   };
 
   Sse::new(stream).into_response()
