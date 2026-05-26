@@ -1,13 +1,6 @@
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use parking_lot::RwLock;
-pub use phyloxml::{
-  Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
-  PhyloxmlBranchColor, PhyloxmlClade, PhyloxmlCladeRelation, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlDistribution,
-  PhyloxmlDomainArchitecture, PhyloxmlEvents, PhyloxmlId, PhyloxmlMolSeq, PhyloxmlPhylogeny, PhyloxmlPoint,
-  PhyloxmlProperty, PhyloxmlProteinDomain, PhyloxmlReference, PhyloxmlSequence, PhyloxmlSequenceRelation,
-  PhyloxmlTaxonomy, PhyloxmlUri, Polygon,
-};
 use smart_default::SmartDefault;
 use std::collections::VecDeque;
 use std::io::{Cursor, Read, Write};
@@ -22,6 +15,13 @@ use treetime_utils::io::json::{
   JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
 use treetime_utils::{make_internal_error, make_internal_report};
+pub use util_phyloxml::{
+  Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
+  PhyloxmlBranchColor, PhyloxmlClade, PhyloxmlCladeRelation, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlDistribution,
+  PhyloxmlDomainArchitecture, PhyloxmlEvents, PhyloxmlId, PhyloxmlMolSeq, PhyloxmlPhylogeny, PhyloxmlPoint,
+  PhyloxmlProperty, PhyloxmlProteinDomain, PhyloxmlReference, PhyloxmlSequence, PhyloxmlSequenceRelation,
+  PhyloxmlTaxonomy, PhyloxmlUri, Polygon,
+};
 
 pub fn phyloxml_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -52,7 +52,7 @@ where
   D: PhyloxmlDataToGraphData + Sync + Send,
   (): PhyloxmlToGraph<N, E, D>,
 {
-  let pxml = phyloxml::phyloxml_read(reader).wrap_err("When reading PhyloXML")?;
+  let pxml = util_phyloxml::phyloxml_read(reader).wrap_err("When reading PhyloXML")?;
   phyloxml_to_graph(&pxml)
 }
 
@@ -125,7 +125,7 @@ where
   (): PhyloxmlFromGraph<N, E, D>,
 {
   let pxml = phyloxml_from_graph(graph)?;
-  phyloxml::phyloxml_write(writer, &pxml).wrap_err("When writing PhyloXML")
+  util_phyloxml::phyloxml_write(writer, &pxml).wrap_err("When writing PhyloXML")
 }
 
 pub fn phyloxml_json_write_file<N, E, D>(

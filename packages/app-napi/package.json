@@ -1,0 +1,22 @@
+{
+  "name": "@neherlab/app-napi",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime desktop application - Rust native addon for Electron",
+  "main": "index.js",
+  "napi": {
+    "binaryName": "app-napi",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin"
+    ]
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.2.0"
+  }
+}

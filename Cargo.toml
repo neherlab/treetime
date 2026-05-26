@@ -2,22 +2,22 @@
 resolver = '3'
 
 members = [
-  "packages/phyloxml",
+  "packages/app-api",
+  "packages/app-cli",
+  "packages/app-napi",
+  "packages/app-server",
   "packages/treetime",
   "packages/treetime-analytical",
-  "packages/treetime-api",
-  "packages/treetime-cli",
-  "packages/treetime-desktop",
-  "packages/treetime-server",
   "packages/treetime-distribution",
   "packages/treetime-graph",
-  "packages/treetime-primitives",
-  "packages/treetime-validation",
   "packages/treetime-grid",
   "packages/treetime-io",
   "packages/treetime-ops",
+  "packages/treetime-primitives",
   "packages/treetime-utils",
-  "packages/usher-mat-utils",
+  "packages/treetime-validation",
+  "packages/util-phyloxml",
+  "packages/util-usher-mat",
 ]
 
 exclude = []
@@ -131,7 +131,6 @@ tempfile = "=3.27.0"
 textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 tokio = { version = "=1.52.3", features = ["full"] }
-tokio = { version = "=1.52.3", features = ["full"] }
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 traversal = "=0.1.2"
@@ -139,9 +138,11 @@ proptest = "=1.6.0"
 quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 xml = "=1.0.0"
 
-phyloxml = { path = "packages/phyloxml" }
+app-api = { path = "packages/app-api" }
+app-cli = { path = "packages/app-cli" }
+app-napi = { path = "packages/app-napi" }
+app-server = { path = "packages/app-server" }
 treetime = { path = "packages/treetime" }
-treetime-api = { path = "packages/treetime-api" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }
@@ -150,7 +151,8 @@ treetime-io = { path = "packages/treetime-io" }
 treetime-ops = { path = "packages/treetime-ops" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-utils = { path = "packages/treetime-utils" }
-usher-mat-utils = { path = "packages/usher-mat-utils" }
+util-phyloxml = { path = "packages/util-phyloxml" }
+util-usher-mat = { path = "packages/util-usher-mat" }
 
 [workspace.metadata.cargo-shear]
 ignored = ["blas-src", "openblas-src", "argmin-math"]

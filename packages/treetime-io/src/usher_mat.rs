@@ -14,7 +14,7 @@ use treetime_utils::io::json::{
 };
 use treetime_utils::make_error;
 
-pub use usher_mat_utils::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
+pub use util_usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 
 pub fn usher_mat_pb_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -35,7 +35,7 @@ where
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
-  let tree = usher_mat_utils::usher_mat_pb_read_bytes(buf).wrap_err("When reading Usher MAT protobuf bytes")?;
+  let tree = util_usher_mat::usher_mat_pb_read_bytes(buf).wrap_err("When reading Usher MAT protobuf bytes")?;
   usher_to_graph::<C, _, _, _>(&tree)
 }
 
@@ -46,7 +46,7 @@ where
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
-  let tree = usher_mat_utils::usher_mat_pb_read(reader).wrap_err("When reading Usher MAT protobuf")?;
+  let tree = util_usher_mat::usher_mat_pb_read(reader).wrap_err("When reading Usher MAT protobuf")?;
   usher_to_graph::<C, _, _, _>(&tree)
 }
 
@@ -109,7 +109,7 @@ where
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
   let mut buf = Vec::new();
-  usher_mat_utils::usher_mat_pb_write_bytes(&mut buf, &tree).wrap_err("When writing Usher MAT protobuf bytes")
+  util_usher_mat::usher_mat_pb_write_bytes(&mut buf, &tree).wrap_err("When writing Usher MAT protobuf bytes")
 }
 
 pub fn usher_mat_pb_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -120,7 +120,7 @@ where
   C: UsherWrite<N, E, D>,
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
-  usher_mat_utils::usher_mat_pb_write(writer, &tree).wrap_err("When writing Usher MAT protobuf")
+  util_usher_mat::usher_mat_pb_write(writer, &tree).wrap_err("When writing Usher MAT protobuf")
 }
 
 pub fn usher_mat_json_write_file<C, N, E, D>(

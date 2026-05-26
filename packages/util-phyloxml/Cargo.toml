@@ -1,0 +1,20 @@
+[package]
+name = "util-phyloxml"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+quick-xml = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+xml = { workspace = true }
+
+[lints]
+workspace = true

@@ -15,11 +15,11 @@ ignored = ["approx"]
 
 [dependencies]
 # [internal]
-phyloxml = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
-usher-mat-utils = { workspace = true }
+util-phyloxml = { workspace = true }
+util-usher-mat = { workspace = true }
 
 # [external]
 bio = { workspace = true }
