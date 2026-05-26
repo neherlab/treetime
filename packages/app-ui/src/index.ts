@@ -1,5 +1,6 @@
 export { App } from "./App";
 <<<<<<< HEAD
+<<<<<<< HEAD
 export { BridgeProvider, useBridge } from "./BridgeContext";
 =======
 export { BridgeProvider } from "./BridgeProvider";
@@ -40,3 +41,7 @@ export type {
 >>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 =======
 >>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
+=======
+export { BridgeProvider } from "./BridgeProvider";
+export { useBridge } from "./BridgeContext";
+>>>>>>> 8ba85e1a (fix(web): split BridgeContext for React Fast Refresh compatibility)

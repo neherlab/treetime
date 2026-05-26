@@ -32,12 +32,19 @@ import type { TreeTimeBridge, DatasetInfo, LogEvent, ProgressEvent, VersionInfo 
 
 const API_BASE = "/api";
 
+const DEBUG_FETCH =
+  import.meta.env.TREETIME_DEBUG_FETCH === "true" ||
+  (import.meta.env.DEV && import.meta.env.TREETIME_DEBUG_FETCH !== "false");
+
 async function getJson<T>(path: string): Promise<T> {
+  if (DEBUG_FETCH) console.debug("[TreeTime] GET", path);
   const response = await fetch(`${API_BASE}/${path}`);
   if (!response.ok) {
     throw new Error(`GET ${path}: ${response.status} ${response.statusText}`);
   }
-  return (await response.json()) as T;
+  const data = (await response.json()) as T;
+  if (DEBUG_FETCH) console.debug("[TreeTime] GET", path, JSON.stringify(data));
+  return data;
 }
 
 <<<<<<< HEAD
@@ -95,6 +102,7 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
       body: JSON.stringify(args),
       signal: options?.signal,
       onmessage(msg) {
+        if (DEBUG_FETCH) console.debug("[TreeTime]", JSON.stringify(msg));
         if (msg.event === "progress") {
           options?.onProgress?.(JSON.parse(msg.data) as ProgressEvent);
         } else if (msg.event === "log") {
