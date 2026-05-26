@@ -4,9 +4,10 @@ use app_api::progress::NoopProgress;
 use crate::args::{
   ServerAncestralArgs, ServerClockArgs, ServerMugrationArgs, ServerOptimizeArgs, ServerPruneArgs, ServerTimetreeArgs,
 };
-use crate::progress::ChannelProgress;
-use app_api::progress::ProgressSink;
+use crate::error::AppError;
+use crate::sse::{parse_args, sse_response};
 use app_api::version::version_info;
+<<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
 use axum::http::StatusCode;
 use axum::routing::post;
@@ -39,6 +40,12 @@ use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use treetime::progress::ProgressEvent;
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
+=======
+use axum::response::Response;
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use serde_json::Value;
+>>>>>>> 759dbc26 (refactor(app-server): extract error, consolidate SSE transport into modules)
 
 pub fn api_routes() -> Router {
   Router::new()
@@ -50,6 +57,7 @@ pub fn api_routes() -> Router {
     .route("/prune", post(handle_prune))
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 macro_rules! define_handler {
   ($handler_name:ident, $args_type:ty, $api_fn:path) => {
@@ -80,53 +88,11 @@ impl<E: Into<Report>> From<E> for AppError {
   }
 }
 
+=======
+>>>>>>> 759dbc26 (refactor(app-server): extract error, consolidate SSE transport into modules)
 async fn handle_version() -> Result<Json<Value>, AppError> {
   let value = serde_json::to_value(version_info())?;
   Ok(Json(value))
-}
-
-#[allow(tail_expr_drop_order)]
-fn sse_response<F>(run_fn: F) -> Response
-where
-  F: FnOnce(&dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
-{
-  let (tx, rx) = mpsc::unbounded_channel::<ProgressEvent>();
-
-  let computation = tokio::task::spawn_blocking(move || {
-    let progress = ChannelProgress::new(tx);
-    run_fn(&progress)
-  });
-
-  let stream = async_stream::stream! {
-    let mut rx_stream = UnboundedReceiverStream::new(rx);
-    while let Some(event) = rx_stream.next().await {
-      yield Ok::<_, Infallible>(
-        Event::default()
-          .event("progress")
-          .json_data(event)
-          .expect("ProgressEvent serialization"),
-      );
-    }
-
-    let result_value = match computation.await {
-      Ok(Ok(value)) => value,
-      Ok(Err(err)) => serde_json::json!({ "error": format!("{err:?}") }),
-      Err(err) => serde_json::json!({ "error": format!("computation panicked: {err}") }),
-    };
-    yield Ok::<_, Infallible>(
-      Event::default()
-        .event("result")
-        .json_data(result_value)
-        .expect("result serialization"),
-    );
-  };
-
-  Sse::new(stream).into_response()
-}
-
-#[allow(clippy::result_large_err)]
-fn parse_args<A: DeserializeOwned>(body: Value) -> Result<A, Response> {
-  serde_json::from_value(body).map_err(|err| AppError::from(err).into_response())
 }
 
 macro_rules! define_handler {
