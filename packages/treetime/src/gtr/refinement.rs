@@ -18,6 +18,7 @@ pub fn refine_gtr_iterative<N, E, P>(
   fixed_pi: Option<&Array1<f64>>,
   pc: f64,
   sampling_bias_correction: Option<f64>,
+  optimize_rate: bool,
 ) -> Result<f64, Report>
 where
   N: GraphNode + Named,
@@ -39,18 +40,22 @@ where
     partition.read_arc().gtr().mu
   );
 
-  optimize_gtr_rate(graph, partition)?;
-  debug!(
-    "GTR refinement: initial rate optimization, mu = {:.6}",
-    partition.read_arc().gtr().mu
-  );
+  if optimize_rate {
+    optimize_gtr_rate(graph, partition)?;
+    debug!(
+      "GTR refinement: initial rate optimization, mu = {:.6}",
+      partition.read_arc().gtr().mu
+    );
+  }
 
   for i in 0..iterations {
     let counts = partition.read_arc().count_transitions(graph)?;
     let result = infer_gtr_impl(&counts, &options)?;
     *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 
-    optimize_gtr_rate(graph, partition)?;
+    if optimize_rate {
+      optimize_gtr_rate(graph, partition)?;
+    }
     debug!(
       "GTR refinement: iteration {i}, mu = {:.6}",
       partition.read_arc().gtr().mu

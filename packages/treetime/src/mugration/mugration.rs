@@ -155,6 +155,7 @@ pub fn execute_mugration(
     fixed_pi.as_ref(),
     pc.unwrap_or(1.0),
     sampling_bias_correction,
+    true,
   )?;
 
   let partition = Arc::into_inner(partition)

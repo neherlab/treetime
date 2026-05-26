@@ -146,7 +146,7 @@ pub fn run_ancestral_reconstruction(
         update_marginal(&graph, &partitions)?;
 
         if *gtr_iterations > 0 && *model_name == GtrModelName::Infer {
-          refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
+          refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None, false)?;
         }
 
         progress.check_cancelled()?;
@@ -185,7 +185,7 @@ pub fn run_ancestral_reconstruction(
         update_marginal(&graph, &partitions)?;
 
         if *gtr_iterations > 0 {
-          refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None)?;
+          refine_gtr_iterative(&graph, &partitions[0], *gtr_iterations, None, 1.0, None, false)?;
         }
 
         progress.check_cancelled()?;
