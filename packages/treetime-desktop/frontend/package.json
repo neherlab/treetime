@@ -1,0 +1,9 @@
+{
+  "name": "@neherlab/treetime-desktop-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime desktop frontend - Electron + React + TypeScript",
+  "dependencies": {
+    "treetime-desktop": "file:.."
+  }
+}

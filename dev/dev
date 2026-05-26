@@ -30,6 +30,9 @@ declare -A ALIASES=(
   ["cl"]="coverage-lcov"
   ["w"]="why"
   ["L"]="list"
+  ["db"]="desktop-build"
+  ["df"]="desktop-frontend"
+  ["ds"]="desktop-start"
 )
 
 function is_known_command() {
@@ -266,6 +269,27 @@ for kind, name in sorted(targets):
     cargo_args+=("$@")
     cargo -q nextest list ${ci_flag} --workspace --cargo-quiet --target-dir="${test_target_dir}" "${cargo_args[@]}" |
       "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
+    ;;
+  "desktop-build")
+    local desktop_dir
+    desktop_dir="$(project_root)/packages/treetime-desktop"
+    pushd "${desktop_dir}" >/dev/null
+    npx napi build --platform "$@"
+    popd >/dev/null
+    ;;
+  "desktop-frontend")
+    local frontend_dir
+    frontend_dir="$(project_root)/packages/treetime-desktop/frontend"
+    pushd "${frontend_dir}" >/dev/null
+    npm install "$@"
+    popd >/dev/null
+    ;;
+  "desktop-start")
+    local frontend_dir
+    frontend_dir="$(project_root)/packages/treetime-desktop/frontend"
+    pushd "${frontend_dir}" >/dev/null
+    npm start "$@"
+    popd >/dev/null
     ;;
   *)
     printf "Error: Unknown command '%s'\n\n" "${cmd}" >&2

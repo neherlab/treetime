@@ -7,6 +7,7 @@ members = [
   "packages/treetime-analytical",
   "packages/treetime-api",
   "packages/treetime-cli",
+  "packages/treetime-desktop",
   "packages/treetime-server",
   "packages/treetime-distribution",
   "packages/treetime-graph",
@@ -96,6 +97,9 @@ itertools = "=0.14.0"
 lazy_static = "=1.5.0"
 log = "=0.4.28"
 maplit = { version = "=1.0.2", features = [] }
+napi = { version = "=3.9.0", features = ["serde-json"] }
+napi-build = "=2.3.2"
+napi-derive = "=3.5.6"
 ndarray-conv = { version = "=0.5.0", features = [] }
 num = "=0.4.3"
 num-traits = "=0.2.19"
