@@ -215,11 +215,7 @@ where
 
     if node.is_root {
       let seq = &mut node_data.seq;
-      resolve_root_forward(
-        &mut seq.sequence,
-        &seq.fitch.variable,
-        &mut seq.fitch.chosen_state,
-      );
+      resolve_root_forward(&mut seq.sequence, &seq.fitch.variable, &mut seq.fitch.chosen_state);
     } else {
       let (parent_key, edge_key) =
         get_exactly_one(&node.parent_keys).wrap_err("Multiple parent nodes are not yet supported")?;
