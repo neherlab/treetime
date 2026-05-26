@@ -1,9 +1,9 @@
-use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum BranchLengthMode {
   Input,
   #[default]
@@ -15,8 +15,9 @@ pub enum BranchLengthMode {
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, SmartDefault, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum BranchOptMethod {
   /// Brent's method in $t$ space (derivative-free, bracket-based).
   ///
@@ -71,8 +72,9 @@ pub enum BranchOptMethod {
 /// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
 /// TreeTime run), preserving those values lets Newton converge from a
 /// better starting position.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Default, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum InitialGuessMode {
   /// Estimate only edges with missing or invalid branch lengths, preserve
   /// valid input values. No-op when all edges have finite branch lengths.

@@ -4,13 +4,15 @@ use crate::clock::find_best_root::params::RerootMode;
 use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
-use clap::{Args, Parser, ValueHint};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 
-#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -21,43 +23,43 @@ pub struct TreetimeClockArgs {
   /// If no input files provided, the plain fasta input is read from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[clap(long)]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub aln: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[clap(long, short = 't')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: Option<PathBuf>,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
-  #[clap(long, short = 'r')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub vcf_reference: Option<PathBuf>,
 
   /// CSV file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)
-  #[clap(long, short = 'd')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 'd'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub dates: PathBuf,
 
   /// Label of the column to be used as taxon name
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub name_column: Option<String>,
 
   /// Label of the column to be used as sampling date
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub date_column: Option<String>,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub sequence_length: Option<usize>,
 
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default())]
+  #[cfg_attr(feature = "clap", clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default()))]
   pub gtr: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
@@ -65,19 +67,19 @@ pub struct TreetimeClockArgs {
   /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
   ///
   /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub gtr_params: Vec<String>,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthMode::default()))]
   pub branch_length_mode: BranchLengthMode,
 
   /// Method used for reconstructing ancestral sequences
-  #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
   pub method_anc: MethodAncestral,
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
-  #[clap(long, default_value = "3.0")]
+  #[cfg_attr(feature = "clap", clap(long, default_value = "3.0"))]
   #[default = 3.0]
   pub clock_filter: f64,
 
@@ -88,72 +90,74 @@ pub struct TreetimeClockArgs {
   /// can specify a node name or a list of node names to be used as outgroup or use 'oldest' to
   /// reroot to the oldest node. By default, TreeTime will reroot using 'least-squares'. Use --keep-
   /// root to keep the current root.
-  #[clap(long, value_enum, default_value_t = RerootMode::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = RerootMode::default()))]
   pub reroot: RerootMode,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the the residual of the regression of
   /// root-to-tip distance and sampling time
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub keep_root: bool,
 
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub prune_short: bool,
 
   /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
   /// clock
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub tip_slack: Option<f64>,
 
   /// Account for covariation when estimating rates or rerooting using root-to-tip regression
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub covariation: bool,
 
   /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub allow_negative_rate: bool,
 
   /// Directory to write the output to
-  #[clap(long, short = 'O')]
+  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
   pub outdir: PathBuf,
 
   /// Random seed
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub seed: Option<u64>,
 
   /// Branch split optimization parameters
-  #[clap(flatten, next_help_heading = "Branch split optimization")]
+  #[cfg_attr(feature = "clap", clap(flatten, next_help_heading = "Branch split optimization"))]
   pub branch_split: BranchSplitArgs,
 
   /// Clock regression model parameters
-  #[clap(flatten, next_help_heading = "Clock regression")]
+  #[cfg_attr(feature = "clap", clap(flatten, next_help_heading = "Clock regression"))]
   pub clock_regression: ClockRegressionArgs,
 }
 
 /// Branch split optimization parameters
-#[derive(Debug, Clone, Args, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
-  #[clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default())]
+  #[cfg_attr(feature = "clap", clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default()))]
   #[default(OptimizationMethod::default())]
   pub method: OptimizationMethod,
 
   /// Grid search parameters
-  #[clap(flatten)]
+  #[cfg_attr(feature = "clap", clap(flatten))]
   pub grid_params: GridSearchParams,
 
   /// Brent's method parameters
-  #[clap(flatten)]
+  #[cfg_attr(feature = "clap", clap(flatten))]
   pub brent_params: BrentParams,
 
   /// Golden section search parameters
-  #[clap(flatten)]
+  #[cfg_attr(feature = "clap", clap(flatten))]
   pub golden_params: GoldenSectionParams,
 }
 
 /// Clock regression model parameters
-#[derive(Debug, Clone, Args, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
-  #[clap(flatten)]
+  #[cfg_attr(feature = "clap", clap(flatten))]
   pub clock_params: ClockParams,
 }

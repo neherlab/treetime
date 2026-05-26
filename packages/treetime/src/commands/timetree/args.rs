@@ -4,12 +4,14 @@ use crate::clock::find_best_root::params::RerootMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use crate::seq::gap_fill::GapFill;
-use clap::{Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 
+#[cfg(feature = "clap")]
 fn parse_n_skyline(s: &str) -> Result<usize, String> {
   let n: usize = s.parse().map_err(|_err| format!("'{s}' is not a valid number"))?;
   if n < 2 {
@@ -18,8 +20,9 @@ fn parse_n_skyline(s: &str) -> Result<usize, String> {
   Ok(n)
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, ValueEnum, Serialize, Deserialize)]
-#[value(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum TimeMarginalMode {
   #[default]
   Never,
@@ -27,7 +30,8 @@ pub enum TimeMarginalMode {
   OnlyFinal,
 }
 
-#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -38,49 +42,49 @@ pub struct TreetimeTimetreeArgs {
   /// If no input files provided, the plain fasta input is read from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[clap(value_hint = ValueHint::FilePath)]
-  #[clap(display_order = 1)]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(display_order = 1))]
   pub input_fastas: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[clap(long, short = 't')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: Option<PathBuf>,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
-  #[clap(long, short = 'r')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub vcf_reference: Option<PathBuf>,
 
   /// CSV file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)
-  #[clap(long, short = 'd')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 'd'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub dates: Option<PathBuf>,
 
   /// Label of the column to be used as taxon name
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub name_column: Option<String>,
 
   /// Label of the column to be used as sampling date
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub date_column: Option<String>,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub sequence_length: Option<usize>,
 
   /// If specified, the rate of the molecular clock won't be optimized.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub clock_rate: Option<f64>,
 
   /// Standard deviation of the provided clock rate estimate
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub clock_std_dev: Option<f64>,
 
   /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[clap(long, value_enum, default_value_t = BranchLengthMode::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthMode::default()))]
   pub branch_length_mode: BranchLengthMode,
 
   /// Control when marginal time distributions are used for output.
@@ -91,7 +95,7 @@ pub struct TreetimeTimetreeArgs {
   /// - `never`: no confidence interval output (default)
   /// - `always`: write confidence intervals from distributions computed during optimization
   /// - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-  #[clap(long, value_enum, default_value_t = TimeMarginalMode::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalMode::default()))]
   pub time_marginal: TimeMarginalMode,
 
   /// Add rate-uncertainty to confidence intervals.
@@ -100,28 +104,28 @@ pub struct TreetimeTimetreeArgs {
   /// This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
   /// via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
   /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub confidence: bool,
 
   /// Don't resolve polytomies using temporal information.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub keep_polytomies: bool,
 
   /// Resolve polytomies using temporal information
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub resolve_polytomies: bool,
 
   /// use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
   /// 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
   /// strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
-  #[clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"])]
+  #[cfg_attr(feature = "clap", clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"]))]
   pub relax: Vec<f64>,
 
   /// maximal number of iterations the inference cycle is run. For polytomy resolution and
   /// coalescence models max_iter should be at least 2
   #[default = 2]
-  #[clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter))]
   pub max_iter: usize,
 
   /// Coalescent time scale in years.
@@ -129,7 +133,7 @@ pub struct TreetimeTimetreeArgs {
   /// Sensible values are on the order of the average hamming distance of contemporaneous sequences
   /// divided by the clock rate. For example, if average pairwise distance is 0.01 substitutions/site
   /// and clock rate is 0.001 subs/site/year, then Tc ~ 10 years.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub coalescent: Option<f64>,
 
   /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
@@ -137,15 +141,15 @@ pub struct TreetimeTimetreeArgs {
   /// When set, TreeTime will find the optimal Tc using Brent's method. This is equivalent
   /// to Python v0's `--coalescent=opt`. If --coalescent is also provided, that value is
   /// used as the initial guess; otherwise defaults to 1.0.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub coalescent_opt: bool,
 
   /// Use skyline coalescent model instead of constant Tc.
   ///
   /// Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify
   /// the number of grid points.
-  #[clap(long)]
-  #[clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")]
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt"))]
   pub coalescent_skyline: bool,
 
   /// Number of grid points in skyline coalescent model.
@@ -153,43 +157,43 @@ pub struct TreetimeTimetreeArgs {
   /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
   /// are used to model Tc(t) over time. Must be at least 2.
   #[default = 10]
-  #[clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline)]
-  #[clap(value_parser = parse_n_skyline)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline))]
+  #[cfg_attr(feature = "clap", clap(value_parser = parse_n_skyline))]
   pub n_skyline: usize,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent
   /// mergerrate or use inferred time before present (default).
-  #[clap(long, hide = true)]
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
   pub n_branches_posterior: Option<usize>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[clap(long, hide = true)]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub plot_tree: Option<PathBuf>,
 
   /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
   /// default=pdf)
-  #[clap(long, hide = true)]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub plot_rtt: Option<PathBuf>,
 
   /// add tip labels (default for small trees with <30 leaves)
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub tip_labels: bool,
 
   /// don't show tip labels (default for trees with >=30 leaves)
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub no_tip_labels: bool,
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
   /// regression'. Default=3.0, set to 0 to switch off.
-  #[clap(long, default_value = "3.0")]
+  #[cfg_attr(feature = "clap", clap(long, default_value = "3.0"))]
   pub clock_filter: f64,
 
   /// Number of IQD (interquartile distance) for clock filter outlier detection
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub n_iqd: Option<f64>,
 
   /// Reroot the tree using root-to-tip regression. Valid choices are 'min_dev', 'least-squares',
@@ -199,31 +203,31 @@ pub struct TreetimeTimetreeArgs {
   /// can specify a node name or a list of node names to be used as outgroup or use 'oldest' to
   /// reroot to the oldest node. By default, TreeTime will reroot using 'least-squares'. Use --keep-
   /// root to keep the current root.
-  #[clap(long, value_enum, default_value_t = RerootMode::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = RerootMode::default()))]
   pub reroot: RerootMode,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
   /// root-to-tip distance and sampling time
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub keep_root: bool,
 
   /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub allow_negative_rate: bool,
 
   /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
   /// clock
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub tip_slack: Option<f64>,
 
   /// Account for covariation when estimating rates or rerooting using root-to-tip regression
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub covariation: bool,
 
   /// GTR model to use
   ///
   /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default())]
+  #[cfg_attr(feature = "clap", clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default()))]
   pub gtr: GtrModelName,
 
   /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
@@ -231,23 +235,23 @@ pub struct TreetimeTimetreeArgs {
   /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
   ///
   /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub gtr_params: Vec<String>,
 
   /// Method used for reconstructing ancestral sequences
-  #[clap(long, value_enum, default_value_t = MethodAncestral::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
   pub method_anc: MethodAncestral,
 
   /// Alphabet to use for sequences
-  #[clap(long, value_enum, default_value_t = AlphabetName::default())]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AlphabetName::default()))]
   pub alphabet: AlphabetName,
 
   /// Use dense representation for sequences (store full probability distributions)
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub dense: Option<bool>,
 
   /// Use aminoacid alphabet
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub aa: bool,
 
   /// How to handle gap characters in input sequences
@@ -255,23 +259,23 @@ pub struct TreetimeTimetreeArgs {
   /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
   /// 'all': replace all gap characters with the ambiguous character.
   /// 'none': leave all gap characters unchanged.
-  #[clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs")]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs"))]
   pub gap_fill: GapFill,
 
   /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[clap(long, hide = true)]
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
   pub keep_overhangs: bool,
 
   /// Zero-based mutation indexing
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub zero_based: bool,
 
   /// Overwrite ambiguous states on tips with the most likely inferred state
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub reconstruct_tip_states: bool,
 
   /// Include transitions involving ambiguous states
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub report_ambiguous: bool,
 
   /// Disable indel (insertion/deletion) contributions to branch-length
@@ -281,20 +285,20 @@ pub struct TreetimeTimetreeArgs {
   /// and timetree branch distributions exclude the Poisson indel term.
   /// Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
   /// and enables v0 parity testing. Default: indels enabled.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
 
   /// Directory to write the output to
-  #[clap(long, short = 'O')]
+  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
   pub outdir: PathBuf,
 
   /// Write iteration statistics to tracelog CSV file for monitoring convergence
-  #[clap(long)]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tracelog: Option<PathBuf>,
 
   /// Random seed
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub seed: Option<u64>,
 }
 

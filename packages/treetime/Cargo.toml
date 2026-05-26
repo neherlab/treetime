@@ -25,7 +25,7 @@ argmin = { workspace = true }
 argmin-math = { workspace = true }
 auto_ops = { workspace = true }
 chrono = { workspace = true }
-clap = { workspace = true }
+clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
@@ -42,6 +42,7 @@ parking_lot = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 regex = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smart-default = { workspace = true }
@@ -80,6 +81,9 @@ proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
+
+[features]
+clap = ["dep:clap"]
 
 [lints]
 workspace = true

@@ -111,6 +111,7 @@ rayon = "=1.11.0"
 regex = { version = "=1.11.2", features = [] }
 rgb = "=0.8.52"
 rstest = "=0.26.1"
+schemars = { version = "=1.2.1", features = ["derive"] }
 serde = { version = "=1.0.225", features = ["derive", "rc"] }
 serde_json = { version = "=1.0.145", features = ["preserve_order", "indexmap", "unbounded_depth"] }
 serde_stacker = { version = "=0.1.14" }

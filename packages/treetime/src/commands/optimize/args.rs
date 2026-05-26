@@ -2,13 +2,15 @@ use crate::alphabet::alphabet::AlphabetName;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::seq::gap_fill::GapFill;
-use clap::{Parser, ValueHint};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 
-#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeOptimizeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -19,19 +21,19 @@ pub struct TreetimeOptimizeArgs {
   /// Use '-' to read uncompressed FASTA from standard input (stdin).
   ///
   /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH")]
+  #[cfg_attr(feature = "clap", clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH"))]
   pub input_fastas: Vec<PathBuf>,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
-  #[clap(long, short = 't')]
-  #[clap(value_hint = ValueHint::FilePath)]
+  #[cfg_attr(feature = "clap", clap(long, short = 't'))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: PathBuf,
 
   /// Alphabet
   ///
-  #[clap(long, short = 'a', value_enum)]
+  #[cfg_attr(feature = "clap", clap(long, short = 'a', value_enum))]
   pub alphabet: Option<AlphabetName>,
 
   /// GTR model to use
@@ -39,7 +41,7 @@ pub struct TreetimeOptimizeArgs {
   /// '--model infer' will infer a model from the data. Alternatively, specify the model
   /// type. If the specified model requires additional options, use '--gtr-params' to
   /// specify those.
-  #[clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer)]
+  #[cfg_attr(feature = "clap", clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer))]
   pub model_name: GtrModelName,
 
   /// Use dense representation of sequences on the tree
@@ -47,22 +49,22 @@ pub struct TreetimeOptimizeArgs {
   /// Dense mode stores full probability vectors at every alignment position for each
   /// node. Sparse mode stores only variable positions. Dense is more accurate when
   /// branches are long and many sites change, but uses more memory.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub dense: Option<bool>,
 
   /// Directory to write the output to
-  #[clap(long, short = 'O')]
+  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
   pub outdir: PathBuf,
 
   /// Maximum number of iterations
-  #[clap(long, default_value_t = 10)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 10))]
   #[default = 10]
   pub max_iter: usize,
 
   /// Likelihood convergence threshold. The loop stops when successive
   /// likelihoods differ by less than this value, or when a 2-cycle with
   /// amplitude below this value is detected.
-  #[clap(long, default_value_t = 0.1)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.1))]
   #[default = 0.1]
   pub dp: f64,
 
@@ -77,7 +79,7 @@ pub struct TreetimeOptimizeArgs {
   /// Higher values are more conservative (slower convergence, less oscillation).
   /// Set to 0.0 to disable damping (full update each iteration, no floor).
   /// Must be in [0.0, 1.0).
-  #[clap(long, default_value_t = 0.75)]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.75))]
   #[default = 0.75]
   pub damping: f64,
 
@@ -87,7 +89,7 @@ pub struct TreetimeOptimizeArgs {
   ///   preserve valid input values (default)
   /// - always: estimate all edges, overwriting input branch lengths
   /// - never: use input branch lengths as-is; fails if any are missing
-  #[clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto)]
+  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessMode::Auto))]
   pub branch_length_initial_guess: InitialGuessMode,
 
   /// Per-edge branch length optimization method.
@@ -99,7 +101,7 @@ pub struct TreetimeOptimizeArgs {
   /// - newton: Newton-Raphson in t space
   /// - newton-sqrt: Newton-Raphson in sqrt(t) space
   /// - newton-log: Newton-Raphson in ln(t) space
-  #[clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default())]
+  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethod::default()))]
   pub opt_method: BranchOptMethod,
 
   /// Disable indel (insertion/deletion) contributions to branch-length
@@ -108,15 +110,15 @@ pub struct TreetimeOptimizeArgs {
   /// When set, the optimizer uses substitution-only likelihood, matching
   /// standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
   /// enabling v0 parity testing. Default: indels enabled.
-  #[clap(long)]
+  #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
 
   /// Gap fill strategy for terminal and internal gaps
-  #[clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs")]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs"))]
   pub gap_fill: GapFill,
 
   /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[clap(long, hide = true)]
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
   pub keep_overhangs: bool,
 }
 
