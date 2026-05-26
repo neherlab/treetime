@@ -1,5 +1,4 @@
 pub mod cli;
-pub mod convert;
 
 #[cfg(test)]
 mod tests {
