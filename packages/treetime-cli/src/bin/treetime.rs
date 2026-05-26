@@ -1,3 +1,12 @@
+#[cfg(any(
+  all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "musl"),
+))]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 use ctor::ctor;
 use eyre::Report;
 use log::info;

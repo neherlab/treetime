@@ -10,23 +10,6 @@ pub mod iterator;
 pub mod sync;
 pub mod testing;
 
-#[cfg(any(
-  all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
-  all(target_arch = "aarch64", target_os = "linux", target_env = "musl"),
-  all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
-  all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
-))]
-use tikv_jemallocator::Jemalloc;
-
-#[cfg(any(
-  all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
-  all(target_arch = "aarch64", target_os = "linux", target_env = "musl"),
-  all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
-  all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
-))]
-#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
-
 #[cfg(test)]
 mod tests {
   use crate::init::global::global_init;

@@ -40,6 +40,18 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 textplots = { workspace = true }
 
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[target.'cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "musl"))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
