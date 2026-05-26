@@ -17,10 +17,8 @@ crate-type = ["cdylib", "lib"]
 app-api = { workspace = true }
 
 eyre = { workspace = true }
-log = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 
 [build-dependencies]

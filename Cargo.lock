@@ -115,8 +115,11 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "rstest",
+<<<<<<< HEAD
+=======
+ "strum_macros 0.27.2",
+>>>>>>> 7c23b04d (fix(api,napi,server): clean up Cargo deps, fix error contract, fix code style)
  "treetime",
- "treetime-io",
  "treetime-utils",
 ]
 
@@ -160,14 +163,12 @@ dependencies = [
  "app-api",
  "ctor 0.5.0",
  "eyre",
- "log",
  "napi",
  "napi-build",
  "napi-derive",
  "pretty_assertions",
  "rayon",
  "rstest",
- "serde",
  "serde_json",
  "treetime-utils",
 ]
@@ -180,7 +181,6 @@ dependencies = [
  "axum",
  "ctor 0.5.0",
  "eyre",
- "log",
  "pretty_assertions",
  "rayon",
  "rstest",

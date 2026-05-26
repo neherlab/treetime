@@ -1,7 +1,7 @@
 [package]
 name = "app-server"
 authors.workspace = true
-description = "HTTP API server for TreeTime web frontend"
+description.workspace = true
 documentation.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -17,7 +17,6 @@ treetime-utils = { workspace = true }
 axum = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
-log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

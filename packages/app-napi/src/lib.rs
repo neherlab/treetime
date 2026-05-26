@@ -1,4 +1,3 @@
-#[allow(clippy::needless_pass_by_value)]
 pub mod commands;
 
 #[cfg(test)]

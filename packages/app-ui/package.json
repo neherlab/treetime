@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "description": "Shared React components for TreeTime desktop and web apps",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

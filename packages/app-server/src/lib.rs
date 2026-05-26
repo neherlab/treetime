@@ -1,4 +1,3 @@
-#[allow(clippy::needless_pass_by_value)]
 pub mod routes;
 
 use axum::Router;

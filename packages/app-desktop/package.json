@@ -24,9 +24,13 @@
   },
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
-    "electron": "42.2.0"
+    "@neherlab/app-napi": "workspace:*",
+    "@neherlab/app-ui": "workspace:*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
+<<<<<<< HEAD
 <<<<<<< HEAD
     "oxlint": "1.66.0",
     "prettier": "3.8.3",
@@ -39,5 +43,15 @@
     "typescript": "6.0.3",
     "vite": "8.0.14"
 >>>>>>> 52d55fb2 (chore: replace prettier with oxfmt, add root oxlint/oxfmt configs)
+=======
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "electron": "42.2.0",
+    "oxlint": "1.66.0",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "vite": "8.0.14"
+>>>>>>> 87acd57e (fix(ts): fix package configs, vite proxy, electron devDeps)
   }
 }

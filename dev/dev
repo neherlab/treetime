@@ -140,8 +140,8 @@ function run_one() {
     ;;
   "run")
     local bin="${1:-}"
-    if [[ -z "$bin" ]]; then
-      echo "Error: Binary name required for run command"
+    if [[ -z "${bin}" ]]; then
+      printf "Error: Binary name required for run command\n" >&2
       exit 1
     fi
     shift
@@ -150,8 +150,8 @@ function run_one() {
     ;;
   "run-release")
     local bin="${1:-}"
-    if [[ -z "$bin" ]]; then
-      echo "Error: Binary name required for run-release command"
+    if [[ -z "${bin}" ]]; then
+      printf "Error: Binary name required for run-release command\n" >&2
       exit 1
     fi
     shift
@@ -161,7 +161,7 @@ function run_one() {
   "example")
     local example="${1:-}"
     if [[ -z "$example" ]]; then
-      echo "Error: Example name required"
+      printf "Error: Example name required\n" >&2
       exit 1
     fi
     shift
@@ -171,7 +171,7 @@ function run_one() {
   "example-release")
     local example="${1:-}"
     if [[ -z "$example" ]]; then
-      echo "Error: Example name required"
+      printf "Error: Example name required\n" >&2
       exit 1
     fi
     shift
@@ -243,7 +243,7 @@ function run_one() {
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
     ;;
   "quality")
-    run_one lint-fix "$@" && run_one format "$@" && run_one test-all "$@"
+    run_one lint-fix "$@" && run_one format && run_one test-all "$@"
     ;;
   "why")
     nicely cargo -q tree -i -p ${ci_flag} "$@"
@@ -284,12 +284,14 @@ for kind, name in sorted(targets):
   "js-install")
     pushd "$(project_root)" >/dev/null
     bun install "$@"
-    local electron_zip
-    electron_zip="$(find .cache/electron -name 'electron-*.zip' 2>/dev/null | head -1)"
-    if [[ -n "${electron_zip}" && ! -f "node_modules/electron/dist/electron" ]]; then
-      mkdir -p "node_modules/electron/dist"
-      unzip -qo "${electron_zip}" -d "node_modules/electron/dist"
-      printf "electron" > "node_modules/electron/path.txt"
+    if [[ ! -f "node_modules/electron/dist/electron" ]]; then
+      local electron_zip
+      electron_zip="$(find .cache/electron -maxdepth 1 -name 'electron-v*-linux-x64.zip' -print -quit 2>/dev/null)"
+      if [[ -n "${electron_zip}" ]]; then
+        mkdir -p "node_modules/electron/dist"
+        unzip -qo "${electron_zip}" -d "node_modules/electron/dist"
+        printf "dist" > "node_modules/electron/path.txt"
+      fi
     fi
     popd >/dev/null
     ;;
@@ -332,7 +334,7 @@ for kind, name in sorted(targets):
   "app-release")
     run_one js-install
     pushd "$(project_root)" >/dev/null
-    bun run build:web "$@"
+    bun run release:web "$@"
     popd >/dev/null
     ;;
   "app-release-watch")

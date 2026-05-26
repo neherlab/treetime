@@ -34,6 +34,7 @@ macro_rules! define_task {
     }
 
     #[napi]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn $napi_fn(args_json: String) -> napi::Result<napi::bindgen_prelude::AsyncTask<$task_name>> {
       let args: $args_type = serde_json::from_str(&args_json).map_err(json_to_napi)?;
       Ok(napi::bindgen_prelude::AsyncTask::new($task_name { args }))

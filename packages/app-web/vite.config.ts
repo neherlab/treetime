@@ -10,6 +10,8 @@ logger.info = (msg, options) => {
   originalInfo(msg, options);
 };
 
+const serverPort = process.env.PORT ?? "3100";
+
 export default defineConfig({
   plugins: [react()],
 <<<<<<< HEAD
