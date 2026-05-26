@@ -119,15 +119,34 @@ function MockTree() {
 }
 
 const MOCK_TREE_ASCII = `\
-         +-- A/Hong_Kong/2019
+         +-- A/Indiana/03/2012
     +----+
-    |    +-- A/Thailand/2019
+    |    |    +-- A/Peru/PER247/2011
+    |    +----+
+    |         |    +-- A/Minab/797/2011
+    |         +----+
+    |              |    +-- A/Oregon/15/2009
+    |              +----+
+    |              |    +-- A/Hong_Kong/H090/2009
+    |              |
+    |              +-- A/Boston/57/2008
+    |                  +-- A/DaNang/DN434/2008
+    |                      +-- A/Managua/25/2007
+    |                          +-- A/Mexico/InDRE940/2003
+    |                              +-- A/New_York/182/2000
+    |                              |   +-- A/Scotland/76/2003
+    |                              |   +-- A/Denmark/107/2003
+    |                              +-- A/Canterbury/58/2000
 ----+
-    |    +-- A/Singapore/2020
+    |    +-- A/Nebraska/15/2011
     +----+
-         |    +-- A/Japan/2020
-         +----+
-              +-- A/Taiwan/2020`;
+    |    +-- A/Maryland/21/2011
+    |
+    +-- A/Maryland/03/2013
+    +-- A/New_Hampshire/12/2012
+    |
+    +-- A/Hawaii/02/2013
+    +-- A/Boston/DOA2_107/2012`;
 
 function MockRegressionPlot() {
   const points = useMemo(() => MOCK_CLOCK_DATA, []);
@@ -154,9 +173,9 @@ function MockRegressionPlot() {
 
           <line
             x1="80"
-            y1="230"
-            x2="550"
-            y2="50"
+            y1="240"
+            x2="555"
+            y2="40"
             stroke="currentColor"
             className="text-[var(--color-accent)]"
             strokeWidth="1.5"
@@ -166,8 +185,8 @@ function MockRegressionPlot() {
           {points.map((p) => (
             <circle
               key={p.name}
-              cx={60 + (p.x - 2018) * 125}
-              cy={260 - p.y * 5000}
+              cx={60 + ((p.x - 1999) / 15) * 510}
+              cy={260 - (p.y / 0.05) * 240}
               r={p.outlier ? 5 : 3.5}
               className={p.outlier ? "fill-red-400" : "fill-[var(--color-accent)]"}
               opacity={0.7}
@@ -177,9 +196,9 @@ function MockRegressionPlot() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Clock rate" value="2.8e-3" unit="subs/site/year" />
-        <StatCard label="R-squared" value="0.94" />
-        <StatCard label="Intercept" value="-5.6" />
+        <StatCard label="Clock rate" value="3.3e-3" unit="subs/site/year" />
+        <StatCard label="R-squared" value="0.97" />
+        <StatCard label="Intercept" value="-6.57" />
       </div>
     </div>
   );
@@ -196,21 +215,25 @@ function StatCard({ label, value, unit }: { label: string; value: string; unit?:
 }
 
 const MOCK_CLOCK_DATA = [
-  { x: 2018.2, y: 0.005, name: "A/HK/2018", outlier: false },
-  { x: 2018.5, y: 0.008, name: "A/SG/2018", outlier: false },
-  { x: 2018.9, y: 0.012, name: "A/JP/2018", outlier: false },
-  { x: 2019.1, y: 0.015, name: "A/TW/2019", outlier: false },
-  { x: 2019.3, y: 0.018, name: "A/TH/2019", outlier: false },
-  { x: 2019.6, y: 0.02, name: "A/VN/2019", outlier: false },
-  { x: 2019.8, y: 0.035, name: "A/CN/2019", outlier: true },
-  { x: 2020.0, y: 0.025, name: "A/KR/2020", outlier: false },
-  { x: 2020.2, y: 0.028, name: "A/AU/2020", outlier: false },
-  { x: 2020.5, y: 0.03, name: "A/NZ/2020", outlier: false },
-  { x: 2020.8, y: 0.033, name: "A/US/2020", outlier: false },
-  { x: 2021.0, y: 0.036, name: "A/CA/2021", outlier: false },
-  { x: 2021.3, y: 0.038, name: "A/UK/2021", outlier: false },
-  { x: 2021.7, y: 0.042, name: "A/DE/2021", outlier: false },
-  { x: 2022.0, y: 0.045, name: "A/FR/2022", outlier: false },
+  { x: 2000.134, y: 0.0021, name: "A/New_York/182/2000", outlier: false },
+  { x: 2000.682, y: 0.0072, name: "A/Canterbury/58/2000", outlier: false },
+  { x: 2003.003, y: 0.0098, name: "A/Mexico/InDRE940/2003", outlier: false },
+  { x: 2003.003, y: 0.0253, name: "A/Denmark/107/2003", outlier: true },
+  { x: 2003.841, y: 0.0251, name: "A/Scotland/76/2003", outlier: true },
+  { x: 2007.487, y: 0.0193, name: "A/Managua/25/2007", outlier: false },
+  { x: 2008.151, y: 0.0206, name: "A/Boston/57/2008", outlier: false },
+  { x: 2008.865, y: 0.0249, name: "A/DaNang/DN434/2008", outlier: false },
+  { x: 2009.482, y: 0.027, name: "A/Oregon/15/2009", outlier: false },
+  { x: 2009.523, y: 0.0284, name: "A/Hong_Kong/H090/2009", outlier: false },
+  { x: 2011.652, y: 0.0338, name: "A/Peru/PER247/2011", outlier: false },
+  { x: 2011.956, y: 0.0371, name: "A/Nebraska/15/2011", outlier: false },
+  { x: 2011.98, y: 0.0362, name: "A/Minab/797/2011", outlier: false },
+  { x: 2011.986, y: 0.0378, name: "A/Maryland/21/2011", outlier: false },
+  { x: 2012.257, y: 0.0385, name: "A/Indiana/03/2012", outlier: false },
+  { x: 2012.838, y: 0.0399, name: "A/Boston/DOA2_107/2012", outlier: false },
+  { x: 2012.857, y: 0.0427, name: "A/New_Hampshire/12/2012", outlier: false },
+  { x: 2013.112, y: 0.0456, name: "A/Maryland/03/2013", outlier: false },
+  { x: 2013.405, y: 0.0441, name: "A/Hawaii/02/2013", outlier: false },
 ];
 
 function MockDataTable({ command, tab }: { command: CommandName; tab: string }) {
@@ -265,12 +288,20 @@ function getMockTableData(command: CommandName, tab: string): { columns: string[
     return {
       columns: ["Node", "Trait", "Confidence"],
       rows: [
-        ["A/HK/2018", "Asia", "0.95"],
-        ["A/SG/2018", "Asia", "0.92"],
-        ["A/US/2020", "North America", "0.98"],
-        ["A/UK/2021", "Europe", "0.88"],
-        ["internal_1", "Asia", "0.65"],
-        ["internal_2", "North America", "0.72"],
+        ["A/Hawaii/02/2013", "USA", "0.98"],
+        ["A/Boston/DOA2_107/2012", "USA", "0.97"],
+        ["A/Oregon/15/2009", "USA", "0.96"],
+        ["A/Hong_Kong/H090/2009", "Hong Kong", "0.94"],
+        ["A/Canterbury/58/2000", "New Zealand", "0.92"],
+        ["A/Managua/25/2007", "Nicaragua", "0.91"],
+        ["A/DaNang/DN434/2008", "Viet Nam", "0.89"],
+        ["A/Peru/PER247/2011", "Peru", "0.93"],
+        ["A/Minab/797/2011", "Iran", "0.88"],
+        ["A/Denmark/107/2003", "Denmark", "0.95"],
+        ["A/Scotland/76/2003", "United Kingdom", "0.90"],
+        ["NODE_0001", "USA", "0.72"],
+        ["NODE_0002", "USA", "0.65"],
+        ["NODE_0003", "Asia", "0.58"],
       ],
     };
   }
@@ -278,10 +309,12 @@ function getMockTableData(command: CommandName, tab: string): { columns: string[
     return {
       columns: ["Node", "Date", "Lower CI", "Upper CI"],
       rows: [
-        ["internal_1", "2018.8", "2018.2", "2019.3"],
-        ["internal_2", "2019.5", "2018.9", "2020.1"],
-        ["internal_3", "2020.2", "2019.7", "2020.8"],
-        ["root", "2017.5", "2016.8", "2018.1"],
+        ["NODE_0001", "2011.4", "2010.9", "2011.8"],
+        ["NODE_0002", "2009.1", "2008.3", "2009.7"],
+        ["NODE_0003", "2006.8", "2005.9", "2007.5"],
+        ["NODE_0004", "2003.2", "2002.1", "2004.0"],
+        ["NODE_0005", "2000.5", "1999.2", "2001.4"],
+        ["root", "1998.7", "1997.1", "1999.8"],
       ],
     };
   }
@@ -302,11 +335,41 @@ function MockFastaViewer() {
 }
 
 const MOCK_FASTA = [
-  { name: "A/Hong_Kong/2018", seq: "ATGAAAGCTATATTGCTTTGAGCCCCGCGTTTTTAGCAGCCATCAGAATGTCAGAATACACT..." },
-  { name: "A/Singapore/2018", seq: "ATGAAAGCTATATTGCTTTGAGCCCCGCGTTTTTAGCAGCCATCAGAATGTCAGAATACACT..." },
-  { name: "internal_1", seq: "ATGAAAGCTATATTGCTTTGAGCCCCGCGTTTTTAGCAGCCNTCAGAATGTCAGAATACACT..." },
-  { name: "internal_2", seq: "ATGAAAGCTATATTGCTTTGAGCCCCGCGTTNTTAGCAGCCATCAGAATGTCAGAATNCACT..." },
-  { name: "root", seq: "ATGAAAGCTATATTGCTTTGAGCCCCGCGTTNTTAGCAGCCNTCAGAATGTCAGAATNCACT..." },
+  {
+    name: "A/Hawaii/02/2013",
+    seq: "ATGAATCCAAATCAAAAGATAATAACAATTGGCTCTGTTTCTCTCACCATTTCCACAGTATGCTTCTTCATGCAAATTGC...",
+  },
+  {
+    name: "A/Indiana/03/2012",
+    seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGC...",
+  },
+  {
+    name: "A/Oregon/15/2009",
+    seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGC...",
+  },
+  {
+    name: "A/New_York/182/2000",
+    seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTGCCACAATATGCTTCCTTATGCAAATTGC...",
+  },
+  { name: "NODE_0001", seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGC..." },
+  { name: "NODE_0002", seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTBCCACAATATGCTTCYTCATGCAAATTGC..." },
+  { name: "root", seq: "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTBCCACAATATGCTTCYTCWTGCAAATTGC..." },
+];
+
+const NUC_LABELS = ["A", "C", "G", "T"];
+
+const GTR_RATE_MATRIX = [
+  [0, 0.94, 2.41, 0.52],
+  [0.94, 0, 0.48, 2.68],
+  [2.41, 0.48, 0, 0.87],
+  [0.52, 2.68, 0.87, 0],
+];
+
+const GTR_FREQUENCIES = [
+  { nuc: "A", freq: 0.334 },
+  { nuc: "C", freq: 0.198 },
+  { nuc: "G", freq: 0.223 },
+  { nuc: "T", freq: 0.245 },
 ];
 
 function MockModelPanel({ command }: { command: CommandName }) {
@@ -316,14 +379,14 @@ function MockModelPanel({ command }: { command: CommandName }) {
     <div className="space-y-4">
       {showGtr && (
         <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">GTR Model: JC69</h4>
+          <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">GTR Model: Inferred</h4>
           <div className="mb-3">
             <div className="mb-1 text-xs text-gray-500">Rate matrix</div>
             <table className="font-mono text-xs">
               <thead>
                 <tr>
                   <th className="w-8" />
-                  {["A", "C", "G", "T"].map((n) => (
+                  {NUC_LABELS.map((n) => (
                     <th key={n} className="w-16 px-2 text-center text-gray-500">
                       {n}
                     </th>
@@ -331,12 +394,12 @@ function MockModelPanel({ command }: { command: CommandName }) {
                 </tr>
               </thead>
               <tbody>
-                {["A", "C", "G", "T"].map((row, i) => (
+                {NUC_LABELS.map((row, i) => (
                   <tr key={row}>
                     <td className="pr-2 text-gray-500">{row}</td>
-                    {[0, 1, 2, 3].map((j) => (
-                      <td key={j} className="px-2 text-center text-gray-700 dark:text-gray-300">
-                        {i === j ? "-" : "1.00"}
+                    {GTR_RATE_MATRIX[i].map((val, colIdx) => (
+                      <td key={NUC_LABELS[colIdx]} className="px-2 text-center text-gray-700 dark:text-gray-300">
+                        {i === colIdx ? "-" : val.toFixed(2)}
                       </td>
                     ))}
                   </tr>
@@ -347,12 +410,7 @@ function MockModelPanel({ command }: { command: CommandName }) {
           <div>
             <div className="mb-1 text-xs text-gray-500">Equilibrium frequencies</div>
             <div className="flex gap-4 font-mono text-xs text-gray-700 dark:text-gray-300">
-              {[
-                { nuc: "A", freq: 0.25 },
-                { nuc: "C", freq: 0.25 },
-                { nuc: "G", freq: 0.25 },
-                { nuc: "T", freq: 0.25 },
-              ].map(({ nuc, freq }) => (
+              {GTR_FREQUENCIES.map(({ nuc, freq }) => (
                 <div key={nuc} className="flex items-center gap-1.5">
                   <span className="text-gray-500">{nuc}:</span>
                   <div className="h-3 w-16 rounded-sm bg-gray-200 dark:bg-gray-700">
@@ -370,10 +428,10 @@ function MockModelPanel({ command }: { command: CommandName }) {
         <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
           <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Clock Model</h4>
           <div className="space-y-1 text-xs">
-            <KV label="Clock rate" value="2.8e-3 subs/site/year" />
-            <KV label="Intercept" value="-5.621" />
-            <KV label="R-squared" value="0.942" />
-            <KV label="Chi-squared" value="12.4" />
+            <KV label="Clock rate" value="3.3e-3 subs/site/year" />
+            <KV label="Intercept" value="-6.57" />
+            <KV label="R-squared" value="0.970" />
+            <KV label="Chi-squared" value="8.7" />
           </div>
         </div>
       )}
@@ -395,12 +453,12 @@ function MockPruneSummary() {
     <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
       <h4 className="mb-3 text-xs font-semibold text-gray-500 dark:text-gray-400">Pruning Summary</h4>
       <div className="space-y-1 text-xs">
-        <KV label="Nodes removed" value="3" />
-        <KV label="Branches removed" value="3" />
-        <KV label="Nodes before" value="15" />
-        <KV label="Nodes after" value="12" />
-        <KV label="Leaves before" value="10" />
-        <KV label="Leaves after" value="8" />
+        <KV label="Nodes removed" value="4" />
+        <KV label="Branches removed" value="4" />
+        <KV label="Nodes before" value="37" />
+        <KV label="Nodes after" value="33" />
+        <KV label="Leaves before" value="19" />
+        <KV label="Leaves after" value="17" />
       </div>
     </div>
   );
