@@ -15,6 +15,7 @@ pub mod progress;
 pub mod prune;
 pub mod seq;
 pub mod timetree;
+pub mod version;
 
 #[cfg(test)]
 pub mod test_utils;
