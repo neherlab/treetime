@@ -47,3 +47,7 @@ cargo shear --version
 CARGO_EDIT_VERSION="0.13.7"
 cargo -q install --locked cargo-edit --version "${CARGO_EDIT_VERSION}"
 cargo upgrade --version
+
+BACON_VERSION="3.23.0"
+cargo -q install --locked bacon --version "${BACON_VERSION}"
+bacon --version

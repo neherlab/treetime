@@ -2,7 +2,6 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
   "globalPassThroughEnv": ["*"],
-  "globalDependencies": ["packages/*/src/**"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
