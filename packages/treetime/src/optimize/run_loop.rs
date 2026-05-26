@@ -176,6 +176,7 @@ pub enum ConvergenceReason {
 /// Diagnostics from [`run_optimize_loop`].
 ///
 /// Exposed primarily for tests; `run_optimize` discards it.
+#[allow(dead_code)]
 #[derive(Clone, Debug, Default)]
 pub struct OptimizeLoopResult {
   /// Total log-likelihood recorded at the start of each iteration, before that iteration's
