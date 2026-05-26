@@ -2,6 +2,7 @@ use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
+use crate::mugration::result::MugrationResult;
 use crate::partition::marginal_discrete::DiscreteCommentProvider;
 use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
@@ -15,7 +16,7 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Report> {
+pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<MugrationResult, Report> {
   let outdir = &mugration_args.outdir;
   fs::create_dir_all(outdir)?;
 
@@ -72,5 +73,5 @@ pub fn run_mugration(mugration_args: &TreetimeMugrationArgs) -> Result<(), Repor
   }
 
   info!("Mugration: wrote output to {}", outdir.display());
-  Ok(())
+  Ok(result)
 }

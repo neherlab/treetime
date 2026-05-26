@@ -9,6 +9,7 @@ use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
+use crate::commands::timetree::result::TimetreeResult;
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
@@ -43,7 +44,7 @@ use treetime_utils::io::file::create_file_or_stdout;
 /// v0 default damping for the timetree pre-step branch-length optimization (treeanc.py:1298).
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
-pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report> {
+pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<TimetreeResult, Report> {
   info!("# TreeTime Timetree Estimation");
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
@@ -394,7 +395,11 @@ pub fn run_timetree_estimation(args: &TreetimeTimetreeArgs) -> Result<(), Report
   info!("### TreeTime: writing outputs");
   write_outputs(args, &graph, &partitions, &clock_model, confidence_intervals.as_deref())?;
 
-  Ok(())
+  Ok(TimetreeResult {
+    graph,
+    clock_model,
+    confidence_intervals,
+  })
 }
 
 /// Compute effective time_marginal mode, promoting Never to OnlyFinal when

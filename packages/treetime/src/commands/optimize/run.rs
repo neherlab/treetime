@@ -3,6 +3,7 @@ use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::optimize::result::OptimizeResult;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates};
 use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
@@ -28,7 +29,7 @@ pub struct TreetimeOptimizeParams {
   pub fixed_pi: bool,
 }
 
-pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
+pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<OptimizeResult, Report> {
   let TreetimeOptimizeArgs {
     input_fastas,
     tree,
@@ -141,5 +142,5 @@ pub fn run_optimize(args: &TreetimeOptimizeArgs) -> Result<(), Report> {
     write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
   }
 
-  Ok(())
+  Ok(OptimizeResult { graph })
 }

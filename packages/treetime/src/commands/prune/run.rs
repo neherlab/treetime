@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::prune::result::PruneResult;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::make_error;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
@@ -19,7 +20,7 @@ use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
-pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
+pub fn run_prune(args: &TreetimePruneArgs) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
   let TreetimePruneArgs {
@@ -69,7 +70,7 @@ pub fn run_prune(args: &TreetimePruneArgs) -> Result<(), Report> {
 
   write_graph_files(outdir, "pruned_tree", &graph)?;
 
-  Ok(())
+  Ok(PruneResult { graph })
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
