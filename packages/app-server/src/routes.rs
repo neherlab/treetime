@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 use app_api::progress::NoopProgress;
+<<<<<<< HEAD
 =======
 use crate::args::{
   ServerAncestralArgs, ServerClockArgs, ServerMugrationArgs, ServerOptimizeArgs, ServerPruneArgs, ServerTimetreeArgs,
@@ -12,26 +13,29 @@ use app_api::version::version_info;
 <<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
+=======
+use app_api::version::version_info;
+>>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
 use axum::http::StatusCode;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 <<<<<<< HEAD
 use serde_json::Value;
 
-fn error_response(status: StatusCode, message: String) -> (StatusCode, Json<Value>) {
-  (status, Json(serde_json::json!({"status": "error", "error": message})))
+fn error_response(status: StatusCode, code: &str, message: String) -> (StatusCode, Json<Value>) {
+  (status, Json(serde_json::json!({"code": code, "message": message})))
 }
 
 fn eyre_to_response(err: eyre::Report) -> (StatusCode, Json<Value>) {
-  error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("{err:?}"))
+  error_response(StatusCode::INTERNAL_SERVER_ERROR, "computation_failure", format!("{err:?}"))
 }
 
 fn json_to_response(err: serde_json::Error) -> (StatusCode, Json<Value>) {
-  error_response(StatusCode::BAD_REQUEST, format!("{err}"))
+  error_response(StatusCode::BAD_REQUEST, "invalid_input", format!("{err}"))
 }
 
 fn join_to_response(err: tokio::task::JoinError) -> (StatusCode, Json<Value>) {
-  error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("{err}"))
+  error_response(StatusCode::INTERNAL_SERVER_ERROR, "internal_error", format!("{err}"))
 }
 =======
 use eyre::Report;
@@ -57,9 +61,25 @@ use serde_json::Value;
 use std::sync::Arc;
 >>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 pub fn api_routes(config: ServerConfig) -> Router {
   let state = Arc::new(config);
+=======
+async fn handle_version() -> Json<Value> {
+  Json(serde_json::to_value(version_info()).unwrap_or_default())
+=======
+async fn handle_version() -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+  serde_json::to_value(version_info())
+    .map(Json)
+    .map_err(|err| error_response(StatusCode::INTERNAL_SERVER_ERROR, "serialization_error", format!("{err}")))
+>>>>>>> b18af097 (fix(app-server): use structured error format and fix unwrap_or_default)
+}
+
+pub fn api_routes() -> Router {
+>>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
   Router::new()
+    .route("/version", get(handle_version))
     .route("/ancestral", post(handle_ancestral))
     .route("/clock", post(handle_clock))
     .route("/timetree", post(handle_timetree))

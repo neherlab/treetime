@@ -5,6 +5,25 @@ if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
+<<<<<<< HEAD
+=======
+function registerIpcHandlers() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const addon = require("@neherlab/app-napi");
+
+  ipcMain.handle("treetime:version", () => {
+    return addon.version();
+  });
+
+  const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
+  for (const cmd of commands) {
+    ipcMain.handle(`treetime:${cmd}`, (_event: Electron.IpcMainInvokeEvent, argsJson: string) => {
+      return addon[cmd](argsJson);
+    });
+  }
+}
+
+>>>>>>> 9f689333 (fix(app-desktop): add missing version IPC handler and QueryProvider)
 function createWindow() {
   const win = new BrowserWindow({
     width: 900,

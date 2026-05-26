@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod progress;
+pub mod version;
 
 pub use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 pub use treetime::commands::ancestral::result::AncestralResult;

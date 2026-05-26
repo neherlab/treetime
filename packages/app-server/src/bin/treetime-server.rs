@@ -49,11 +49,15 @@ fn default_jobs() -> usize {
 async fn main() -> eyre::Result<()> {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   let host = std::env::var("HOST").unwrap_or("127.0.0.1".to_owned());
 =======
   setup_logger(LevelFilter::Warn);
   let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
 >>>>>>> f5bb3671 (fix(server): default log level to warn (matching CLI default))
+=======
+  let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
+>>>>>>> b18af097 (fix(app-server): use structured error format and fix unwrap_or_default)
   let port: u16 = match std::env::var("PORT") {
     Ok(val) => val.parse().unwrap_or_else(|_| {
       eprintln!("Warning: invalid PORT value '{val}', using default 3100");

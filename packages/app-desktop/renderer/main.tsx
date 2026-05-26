@@ -1,9 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App, BridgeProvider, QueryProvider } from "@neherlab/app-ui";
-import { createWebBridge } from "./bridge-web";
+import type { TreeTimeBridge } from "@neherlab/app-contracts";
 
-const bridge = createWebBridge();
+declare global {
+  interface Window {
+    treetime: TreeTimeBridge;
+  }
+}
+
+const bridge = window.treetime;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

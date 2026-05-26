@@ -1,7 +1,9 @@
 import type { AncestralArgs, ClockArgs, MugrationArgs, OptimizeArgs, PruneArgs, TimetreeArgs } from "./args";
 import type { CommandResult, ProgressEvent } from "./results";
+import type { VersionInfo } from "./version";
 
 export interface TreeTimeBridge {
+  version(): Promise<VersionInfo>;
   ancestral(args: AncestralArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
   clock(args: ClockArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
   timetree(args: TimetreeArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;

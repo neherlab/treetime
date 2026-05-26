@@ -1,10 +1,16 @@
 use app_api::progress::NoopProgress;
+use app_api::version::version_info;
 use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
   TreetimeTimetreeArgs,
 };
 use napi::Task;
 use napi_derive::napi;
+
+#[napi]
+pub fn version() -> String {
+  serde_json::to_string(&version_info()).expect("version_info serialization failed")
+}
 
 fn eyre_to_napi(err: eyre::Report) -> napi::Error {
   napi::Error::new(napi::Status::GenericFailure, format!("{err:?}"))
