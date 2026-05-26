@@ -1,7 +1,7 @@
 use crate::gtr::gtr::avg_transition;
 use eyre::Report;
 use log::warn;
-use ndarray::{Array1, Array2, ArrayView1, Axis};
+use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::{is_max_above, outer};
@@ -170,4 +170,96 @@ pub fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
 pub fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
   let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
   is_max_above(&profile, uniform_threshold)
+}
+
+/// Compute branch joint distribution for GTR inference.
+///
+/// Given edge messages and transition matrix, computes the posterior probability
+/// P(child=i, parent=j | site a) for each site.
+///
+/// Arguments:
+/// - `msg_to_child`: Outgroup likelihood at child, indexed by parent state (L x n)
+/// - `msg_to_parent`: Subtree likelihood at child, indexed by child state (L x n)
+/// - `exp_qt`: Transition matrix P(child=i | parent=j) (n x n)
+///
+/// Returns: Array3 of shape (L, n, n) where result[a, i, j] = P(child=i, parent=j | site a)
+pub fn get_branch_mutation_matrix(
+  msg_to_child: &Array2<f64>,
+  msg_to_parent: &Array2<f64>,
+  exp_qt: &Array2<f64>,
+) -> Array3<f64> {
+  let (n_sites, n_states) = msg_to_parent.dim();
+  let mut result = Array3::zeros((n_sites, n_states, n_states));
+
+  for a in 0..n_sites {
+    let mut site_sum = 0.0;
+
+    // Compute unnormalized joint: pc[a,i] * exp_qt[i,j] * pp[a,j]
+    for i in 0..n_states {
+      for j in 0..n_states {
+        let val = msg_to_parent[[a, i]] * exp_qt[[i, j]] * msg_to_child[[a, j]];
+        result[[a, i, j]] = val;
+        site_sum += val;
+      }
+    }
+
+    // Normalize to get posterior probabilities
+    if site_sum > 0.0 {
+      for i in 0..n_states {
+        for j in 0..n_states {
+          result[[a, i, j]] /= site_sum;
+        }
+      }
+    }
+  }
+
+  result
+}
+
+/// Accumulate mutation counts and time-in-state from branch joint distribution.
+///
+/// Updates:
+/// - `nij`: adds expected substitution counts summed over sites
+/// - `Ti`: adds time spent in each state using midpoint approximation
+///
+/// The midpoint formula: Ti += 0.5 * branch_length * (P(parent=i) + P(child=i))
+/// where marginals are computed by summing mut_stack over child/parent states.
+pub fn accumulate_mutation_counts(
+  mut_stack: &Array3<f64>,
+  branch_length: f64,
+  nij: &mut Array2<f64>,
+  Ti: &mut Array1<f64>,
+) {
+  let (n_sites, n_states, _) = mut_stack.dim();
+
+  // nij += sum over sites: mut_stack.sum(axis=0)
+  for i in 0..n_states {
+    for j in 0..n_states {
+      let mut sum = 0.0;
+      for a in 0..n_sites {
+        sum += mut_stack[[a, i, j]];
+      }
+      nij[[i, j]] += sum;
+    }
+  }
+
+  // Compute marginals and accumulate Ti
+  // parent_marginal[a, j] = sum_i mut_stack[a, i, j] (sum over child states)
+  // child_marginal[a, i] = sum_j mut_stack[a, i, j] (sum over parent states)
+  // Ti[k] += 0.5 * branch_length * (sum_a parent_marginal[a,k] + sum_a child_marginal[a,k])
+  for k in 0..n_states {
+    let mut parent_sum = 0.0;
+    let mut child_sum = 0.0;
+    for a in 0..n_sites {
+      // parent_marginal: sum over child states i
+      for i in 0..n_states {
+        parent_sum += mut_stack[[a, i, k]];
+      }
+      // child_marginal: sum over parent states j
+      for j in 0..n_states {
+        child_sum += mut_stack[[a, k, j]];
+      }
+    }
+    Ti[k] += 0.5 * branch_length * (parent_sum + child_sum);
+  }
 }

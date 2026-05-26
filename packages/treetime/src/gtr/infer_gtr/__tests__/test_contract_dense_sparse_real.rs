@@ -34,11 +34,12 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, GTRParams};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
 
   use crate::payload::ancestral::GraphAncestral;
@@ -131,7 +132,15 @@ mod tests {
         get_common_length(&aln)?,
       )));
       initialize_marginal(&graph, from_ref(&partition), &aln)?;
-      infer_gtr_dense(&partition, &graph)?
+      let counts = partition.read_arc().count_transitions(&graph)?;
+      let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
+      let n_states = partition.read_arc().alphabet.n_canonical();
+      GTR::new(GTRParams {
+        n_states,
+        mu,
+        W: Some(W),
+        pi,
+      })?
     };
 
     let sparse = {

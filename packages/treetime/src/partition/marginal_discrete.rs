@@ -4,8 +4,7 @@ use crate::make_error;
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_core::{
-  MarginalData, MarginalPartition, count_transitions_from_marginal_data, marginal_process_node_backward,
-  marginal_process_node_forward,
+  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
 use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
@@ -134,7 +133,7 @@ where
   E: EdgeOptimizeOps,
 {
   fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
-    count_transitions_from_marginal_data(&self.data, graph)
+    self.data.count_transitions(graph)
   }
 }
 

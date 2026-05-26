@@ -7,11 +7,11 @@ mod tests {
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::gtr_inference_dense::infer_gtr_dense;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::InferGtrResult;
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::traits::TransitionCounting;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
@@ -44,7 +44,8 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, partition) = setup_dense_partition(&case.tree, &aln)?;
 
-    let actual = infer_gtr_dense(&partition, &graph)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
+    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
     pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-8);
@@ -67,7 +68,8 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, partition) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let actual = infer_gtr_dense(&partition, &graph)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
+    let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
     // (~200k positions) shows max diff ~2.3e-7. Tightest passing: 1e-6.

@@ -6,8 +6,7 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::marginal_core::{
-  MarginalData, MarginalPartition, count_transitions_from_marginal_data, marginal_process_node_backward,
-  marginal_process_node_forward,
+  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
 };
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::{
@@ -92,7 +91,7 @@ where
   E: EdgeOptimizeOps,
 {
   fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
-    count_transitions_from_marginal_data(&self.data, graph)
+    self.data.count_transitions(graph)
   }
 }
 

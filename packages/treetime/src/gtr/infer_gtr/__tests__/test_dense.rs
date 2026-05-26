@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::gtr_inference_dense::{
-    accumulate_mutation_counts, get_branch_mutation_matrix, get_mutation_counts_dense,
-  };
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{
+    InferGtrOptions, accumulate_mutation_counts, get_branch_mutation_matrix, infer_gtr_impl,
+  };
   use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::traits::TransitionCounting;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
@@ -78,7 +78,7 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = get_mutation_counts_dense(&graph, &partition)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
 
     // With fractional counts, identical sequences still have small probability
     // mass on off-diagonal states from the joint distribution
@@ -108,7 +108,7 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = get_mutation_counts_dense(&graph, &partition)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
 
     // The root should be reconstructed with some state at position 0.
     // With marginal reconstruction on a symmetric tree, the root gets
@@ -140,7 +140,7 @@ mod tests {
   /// Verifies that zero-input branch lengths (clamped internally) produce bounded results.
   ///
   /// For a zero-length branch, the mathematically correct result is expQt(0) = I, Ti = 0,
-  /// zero off-diagonal nij. But get_mutation_counts_dense applies fix_branch_length clamping
+  /// zero off-diagonal nij. But count_transitions applies fix_branch_length clamping
   /// for consistency with the marginal passes that computed the profiles it reads. Using
   /// expQt(0) when profiles were propagated through expQt(clamped_BL) would mix two different
   /// transition models on the same branch.
@@ -172,7 +172,7 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = get_mutation_counts_dense(&graph, &partition)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
     let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -253,7 +253,7 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, partition) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = get_mutation_counts_dense(&graph, &partition)?;
+    let counts = partition.read_arc().count_transitions(&graph)?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);
