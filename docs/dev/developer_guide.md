@@ -128,12 +128,14 @@ All commands are run via `./dev/docker/run ./dev/dev <shortcut>`. Multiple short
 
 ### Desktop and Web Apps
 
-| Shortcut | Command       | Description                                                                        |
-| -------- | ------------- | ---------------------------------------------------------------------------------- |
-| `ds`     | desktop-start | Start Electron desktop app (auto-installs deps, builds dependency chain via turbo) |
-| `db`     | desktop-build | Production build of desktop app                                                    |
-| `as`     | app-start     | Start web app dev server (Vite HMR, auto-installs deps)                            |
-| `ab`     | app-build     | Production build of web app                                                        |
+| Shortcut | Command           | Description                                                     |
+| -------- | ----------------- | --------------------------------------------------------------- |
+| `d`      | desktop-start     | Start Electron desktop app (Vite renderer + napi addon via IPC) |
+| `db`     | desktop-build     | Production build of desktop app                                 |
+| `a`      | app-start         | Start web app (Bacon server auto-restart + Vite HMR)            |
+| `ab`     | app-build         | Production build of web app                                     |
+| `ar`     | app-release       | Release build of web app                                        |
+| `arw`    | app-release-watch | Release build with watch mode                                   |
 
 ### JavaScript/TypeScript (bulk, all packages)
 
@@ -174,15 +176,15 @@ v="flu/h3n2/20"
 ### Desktop App
 
 ```bash
-# Start Electron app (builds napi addon, contracts, UI automatically)
-./dev/docker/run ./dev/dev ds
+# Start Electron app (builds contracts, UI, starts Vite renderer + napi IPC bridge)
+./dev/docker/run ./dev/dev d
 ```
 
 ### Web App
 
 ```bash
-# Start Vite dev server with hot reload
-./dev/docker/run ./dev/dev as
+# Start web dev (Bacon auto-restarts Rust server on source changes, Vite serves frontend with HMR)
+./dev/docker/run ./dev/dev a
 ```
 
 ## Testing

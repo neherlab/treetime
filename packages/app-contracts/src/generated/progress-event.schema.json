@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProgressEvent",
+  "type": "object",
+  "properties": {
+    "stage": {
+      "type": "string"
+    },
+    "fraction": {
+      "type": "number",
+      "format": "double"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["stage", "fraction", "message"]
+}

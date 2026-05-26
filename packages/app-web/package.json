@@ -5,7 +5,8 @@
   "description": "TreeTime web application - browser frontend",
   "scripts": {
     "build": "vite build",
-    "dev": "vite",
+    "dev": "nodemon -q --exec 'bun install && vite'",
+    "dev:nowatch": "vite",
     "release": "vite build --watch",
     "lint": "oxlint src/",
     "lint:fix": "oxlint --fix src/",
@@ -21,11 +22,23 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@types/react": "19.2.15",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
+    "nodemon": "3.1.9",
     "typescript": "6.0.3",
     "vite": "8.0.14",
     "vitest": "4.1.7"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "package.json",
+      "../app-contracts/package.json",
+      "../app-ui/package.json",
+      "../../package.json",
+      "../../bun.lock"
+    ],
+    "ext": "json,lock",
+    "delay": 300
   }
 }

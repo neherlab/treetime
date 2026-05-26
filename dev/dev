@@ -46,6 +46,16 @@ declare -A ALIASES=(
   ["ju"]="js-upgrade"
 )
 
+_CI_FLAG=""
+if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
+  _CI_FLAG="--locked"
+fi
+
+_BUILD_DIR="$(get_build_dir)"
+_TEST_DIR="$(get_test_dir)"
+_BUILD_RUSTFLAGS="-C linker-features=-lld ${RUSTFLAGS:-}"
+_TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+
 function is_known_command() {
   local token="${1:-}"
   [[ -n "${token}" ]] || return 1
@@ -62,6 +72,13 @@ function show_usage() {
   printf "Usage: %s <command> [args...]\n\nMultiple commands run in sequence:\n  %s l t          # lint, then test\n  %s lf f t       # lint-fix, format, test\n\nAvailable commands:\n%s\n" "${0##*/}" "${0##*/}" "${0##*/}" "${commands_list}" >&2
 }
 
+function bun_run() {
+  run_one js-install
+  pushd "$(project_root)" >/dev/null
+  bun run "$@"
+  popd >/dev/null
+}
+
 function main() {
   declare -x RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
 
@@ -76,8 +93,6 @@ function main() {
     exit 1
   fi
 
-  # Split args into command groups at each recognized command/alias boundary.
-  # Each known command starts a new group; non-command tokens are args to the preceding group.
   local -a cmd_groups=()
   local current=""
   for arg in "$@"; do
@@ -100,34 +115,19 @@ function run_one() {
   local cmd="${1:-}"
   shift || true
 
-  # Resolve alias
-  if [[ -n "${cmd}" && -n "${ALIASES[$cmd]:-}" ]]; then
-    cmd="${ALIASES[$cmd]}"
-  fi
+  [[ -n "${cmd}" && -n "${ALIASES[$cmd]:-}" ]] && cmd="${ALIASES[$cmd]}"
 
-  # Common setup
-  local target_dir
-  local test_target_dir
-  target_dir="$(get_build_dir)"
-  test_target_dir="$(get_test_dir)"
-  local ci_flag=""
-  if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-    ci_flag="--locked"
-  fi
-
-  local test_rustflags="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
-  local build_rustflags="-C linker-features=-lld ${RUSTFLAGS:-}"
-
+  # shfmt:off
   case "${cmd}" in
   "build")
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q build ${ci_flag} --target-dir="${target_dir}" "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q build ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
     ;;
   "build-release")
     local bin="${1:-}"
     shift || true
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q build --release ${ci_flag} --target-dir="${target_dir}" ${bin:+--bin="${bin}"} "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q build --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" ${bin:+--bin="${bin}"} "$@"
     if [ -n "${bin}" ]; then
       copy_bin_to_out "${bin}"
     fi
@@ -135,8 +135,8 @@ function run_one() {
   "build-profiling")
     local bin="${1:-}"
     shift || true
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q build --profile=profiling ${ci_flag} --target-dir="${target_dir}" ${bin:+--bin="${bin}"} "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q build --profile=profiling ${_CI_FLAG} --target-dir="${_BUILD_DIR}" ${bin:+--bin="${bin}"} "$@"
     ;;
   "run")
     local bin="${1:-}"
@@ -145,8 +145,8 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q run ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --bin "${bin}" "$@"
     ;;
   "run-release")
     local bin="${1:-}"
@@ -155,8 +155,8 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --bin "${bin}" "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q run --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --bin "${bin}" "$@"
     ;;
   "example")
     local example="${1:-}"
@@ -165,8 +165,8 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q run ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q run ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --example "${example}" "$@"
     ;;
   "example-release")
     local example="${1:-}"
@@ -175,54 +175,71 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${build_rustflags}"
-    nicely cargo -q run --release ${ci_flag} --target-dir="${target_dir}" --example "${example}" "$@"
+    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
+    nicely cargo -q run --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --example "${example}" "$@"
     ;;
   "test-all")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    nicely cargo -q nextest run ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    nicely cargo -q nextest run ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
   "test-unit")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    nicely cargo -q nextest run --lib ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    nicely cargo -q nextest run --lib ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
   "test-integration")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    nicely cargo -q nextest run --test='*' ${ci_flag} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${test_target_dir}" "$@" 2>&1 |
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    nicely cargo -q nextest run --test='*' ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
+  "test-list")
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    local pretty_args=()
+    local cargo_args=()
+    while (( $# > 0 )); do
+      case "${1}" in
+        --summary|--summary=*) pretty_args+=("${1}"); shift ;;
+        --filter=*) pretty_args+=("${1}"); shift ;;
+        --) shift; break ;;
+        -*) cargo_args+=("${1}"); shift ;;
+        *) pretty_args+=("${1}"); shift ;;
+      esac
+    done
+    cargo_args+=("$@")
+    cargo -q nextest list ${_CI_FLAG} --workspace --cargo-quiet --target-dir="${_TEST_DIR}" "${cargo_args[@]}" |
+      "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
+    ;;
   "coverage")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    declare -x CARGO_TARGET_DIR="${test_target_dir}"
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    declare -x CARGO_TARGET_DIR="${_TEST_DIR}"
     local cov_dir
     cov_dir="$(project_root)/tmp/coverage"
     mkdir -p "${cov_dir}"
-    nicely cargo llvm-cov nextest --html --output-dir "${cov_dir}" --ignore-run-fail ${ci_flag} --workspace --hide-progress-bar --color=always "$@"
+    nicely cargo llvm-cov nextest --html --output-dir "${cov_dir}" --ignore-run-fail ${_CI_FLAG} --workspace --hide-progress-bar --color=always "$@"
     printf "Coverage report: %s/index.html\n" "${cov_dir}"
     ;;
   "coverage-lcov")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    declare -x CARGO_TARGET_DIR="${test_target_dir}"
+    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
+    declare -x CARGO_TARGET_DIR="${_TEST_DIR}"
     local cov_dir
     cov_dir="$(project_root)/tmp/coverage"
     mkdir -p "${cov_dir}"
-    nicely cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail ${ci_flag} --workspace --hide-progress-bar --color=always "$@"
+    nicely cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail ${_CI_FLAG} --workspace --hide-progress-bar --color=always "$@"
     printf "LCOV: %s/lcov.info\n" "${cov_dir}"
     ;;
   "lint")
-    nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" "$@"
+    nicely cargo -q clippy -q --all-targets --all ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
     ;;
   "lint-fix")
     local vcs_flag="--allow-staged"
     if [[ -f "$(project_root)/.git" ]]; then
       vcs_flag="--allow-no-vcs"
     fi
-    nicely cargo -q clippy -q --all-targets --all --fix ${vcs_flag} ${ci_flag} --target-dir="${target_dir}" "$@"
+    nicely cargo -q clippy -q --all-targets --all --fix ${vcs_flag} ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
     ;;
   "lint-ci")
-    nicely cargo -q clippy -q --all-targets --all ${ci_flag} --target-dir="${target_dir}" -- -Dwarnings "$@"
+    nicely cargo -q clippy -q --all-targets --all ${_CI_FLAG} --target-dir="${_BUILD_DIR}" -- -Dwarnings "$@"
     ;;
   "lint-deps")
     nicely cargo shear "$@"
@@ -234,19 +251,19 @@ function run_one() {
     nicely cargo -q fmt --check "$@"
     ;;
   "bench-all")
-    nicely cargo -q bench --workspace --benches ${ci_flag} --target-dir="${target_dir}" "$@"
+    nicely cargo -q bench --workspace --benches ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
     ;;
   "bench-debug")
-    nicely cargo -q bench --workspace --benches --profile=profiling ${ci_flag} --target-dir="${target_dir}" "$@"
+    nicely cargo -q bench --workspace --benches --profile=profiling ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
     ;;
   "upgrade-deps")
-    nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${ci_flag} "$@"
+    nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${_CI_FLAG} "$@"
     ;;
   "quality")
     run_one lint-fix "$@" && run_one format && run_one test-all "$@"
     ;;
   "why")
-    nicely cargo -q tree -i -p ${ci_flag} "$@"
+    nicely cargo -q tree -i -p ${_CI_FLAG} "$@"
     ;;
   "list")
     local filter="${1:-bin,example,test,bench}"
@@ -264,23 +281,6 @@ for kind, name in sorted(targets):
     print(f'{kind:<8} {name}')
 "
     ;;
-  "test-list")
-    declare -x RUSTFLAGS="${test_rustflags}"
-    local pretty_args=()
-    local cargo_args=()
-    while (( $# > 0 )); do
-      case "${1}" in
-        --summary|--summary=*) pretty_args+=("${1}"); shift ;;
-        --filter=*) pretty_args+=("${1}"); shift ;;
-        --) shift; break ;;
-        -*) cargo_args+=("${1}"); shift ;;
-        *) pretty_args+=("${1}"); shift ;;
-      esac
-    done
-    cargo_args+=("$@")
-    cargo -q nextest list ${ci_flag} --workspace --cargo-quiet --target-dir="${test_target_dir}" "${cargo_args[@]}" |
-      "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
-    ;;
   "js-install")
     pushd "$(project_root)" >/dev/null
     bun install "$@"
@@ -295,6 +295,7 @@ for kind, name in sorted(targets):
     fi
     popd >/dev/null
     ;;
+<<<<<<< HEAD
   "desktop-start")
     run_one js-install
     pushd "$(project_root)" >/dev/null
@@ -379,6 +380,20 @@ for kind, name in sorted(targets):
     bun run test "$@"
     popd >/dev/null
     ;;
+=======
+  "desktop-start")  bun_run dev:desktop "$@" ;;
+  "desktop-build")  bun_run build:desktop "$@" ;;
+  "app-start")      bun_run dev:web "$@" ;;
+  "app-build")      bun_run build:web "$@" ;;
+  "app-release")    bun_run release:web "$@" ;;
+  "app-release-watch") bun_run release:web "$@" ;;
+  "js-lint")        bun_run lint "$@" ;;
+  "js-lint-fix")    bun_run lint:fix "$@" ;;
+  "js-format")      bun_run format "$@" ;;
+  "js-format-check") bun_run format:check "$@" ;;
+  "js-check")       bun_run typecheck "$@" ;;
+  "js-test")        bun_run test "$@" ;;
+>>>>>>> 8e98fadf (chore(dev): auto-reinstall JS deps on package.json change)
   "js-upgrade")
     pushd "$(project_root)" >/dev/null
     bun update --latest "$@"
@@ -390,6 +405,7 @@ for kind, name in sorted(targets):
     exit 1
     ;;
   esac
+  # shfmt:on
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
