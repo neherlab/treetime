@@ -1,5 +1,6 @@
+import type { DatasetInfo } from "@neherlab/app-contracts";
 import { RotateCcw } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { FileSlot } from "./FileSlot";
 import { useDatasets } from "../hooks";
 import { useAppStore } from "../store/app-store";
@@ -33,6 +34,36 @@ const COMMAND_FILE_REQUIREMENTS: Record<CommandName, { required: FileSlotKind[];
   },
 };
 
+const QUICK_DATASETS: ReadonlyArray<{ name: string; label: string }> = [
+  { name: "flu/h3n2/20", label: "flu20" },
+  { name: "flu/h3n2/200", label: "flu200" },
+  { name: "ebola/100", label: "ebola100" },
+  { name: "sc2/2844", label: "sc2" },
+];
+
+const DEFAULT_DATASET = "flu/h3n2/20";
+
+function applyDataset(
+  datasetName: string,
+  datasets: DatasetInfo[] | undefined,
+  setSelectedDataset: (d: string) => void,
+  setFile: (kind: FileSlotKind, file: { name: string; size: number } | undefined) => void,
+) {
+  setSelectedDataset(datasetName);
+  const info = datasets?.find((d) => d.name === datasetName);
+  const files = info?.files ?? [];
+  if (files.includes("tree.nwk")) {
+    setFile("tree", { name: `${datasetName}/tree.nwk`, size: 0 });
+  }
+  if (files.includes("aln.fasta.xz")) {
+    setFile("alignment", { name: `${datasetName}/aln.fasta.xz`, size: 0 });
+  }
+  if (files.includes("metadata.tsv")) {
+    setFile("dates", { name: `${datasetName}/metadata.tsv`, size: 0 });
+    setFile("states", { name: `${datasetName}/metadata.tsv`, size: 0 });
+  }
+}
+
 export function FileInputPanel() {
   const activeCommand = useAppStore((s) => s.activeCommand);
   const selectedDataset = useAppStore((s) => s.selectedDataset);
@@ -41,27 +72,30 @@ export function FileInputPanel() {
   const resetForm = useAppStore((s) => s.resetForm);
   const reqs = COMMAND_FILE_REQUIREMENTS[activeCommand];
   const { data: datasets } = useDatasets();
+  const preloaded = useRef(false);
+
+  useEffect(() => {
+    if (datasets && !preloaded.current) {
+      preloaded.current = true;
+      applyDataset(DEFAULT_DATASET, datasets, setSelectedDataset, setFile);
+    }
+  }, [datasets, setSelectedDataset, setFile]);
 
   const handleDatasetChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const dataset = e.target.value;
-      setSelectedDataset(dataset);
       if (dataset) {
-        const info = datasets?.find((d) => d.name === dataset);
-        const files = info?.files ?? [];
-        if (files.includes("tree.nwk")) {
-          setFile("tree", { name: `${dataset}/tree.nwk`, size: 0 });
-        }
-        if (files.includes("aln.fasta.xz")) {
-          setFile("alignment", { name: `${dataset}/aln.fasta.xz`, size: 0 });
-        }
-        if (files.includes("metadata.tsv")) {
-          setFile("dates", { name: `${dataset}/metadata.tsv`, size: 0 });
-          setFile("states", { name: `${dataset}/metadata.tsv`, size: 0 });
-        }
+        applyDataset(dataset, datasets, setSelectedDataset, setFile);
       }
     },
     [setSelectedDataset, setFile, datasets],
+  );
+
+  const handleQuickSelect = useCallback(
+    (datasetName: string) => {
+      applyDataset(datasetName, datasets, setSelectedDataset, setFile);
+    },
+    [datasets, setSelectedDataset, setFile],
   );
 
   return (
@@ -92,6 +126,22 @@ export function FileInputPanel() {
             </option>
           ))}
         </select>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {QUICK_DATASETS.map((qd) => (
+            <button
+              key={qd.name}
+              type="button"
+              onClick={() => handleQuickSelect(qd.name)}
+              className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
+                selectedDataset === qd.name
+                  ? "bg-[var(--color-accent)] text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              {qd.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
