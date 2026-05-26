@@ -8,6 +8,7 @@
 /.vscode*
 /data_dev
 /tmp*
+.turbo
 bun.lock
 dist
 dist-electron

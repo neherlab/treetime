@@ -5,16 +5,24 @@
   "description": "Shared React components for TreeTime desktop and web apps",
   "main": "src/index.ts",
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint --fix src/",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
-    "typescript": "^5.8.0"
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "oxlint": "1.66.0",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3"
   }
 }

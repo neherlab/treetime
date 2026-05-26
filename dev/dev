@@ -30,9 +30,18 @@ declare -A ALIASES=(
   ["cl"]="coverage-lcov"
   ["w"]="why"
   ["L"]="list"
+  ["d"]="desktop-start"
   ["db"]="desktop-build"
-  ["df"]="desktop-frontend"
-  ["ds"]="desktop-start"
+  ["a"]="app-start"
+  ["ab"]="app-build"
+  ["jl"]="js-lint"
+  ["jlf"]="js-lint-fix"
+  ["jf"]="js-format"
+  ["jfc"]="js-format-check"
+  ["jc"]="js-check"
+  ["jt"]="js-test"
+  ["ji"]="js-install"
+  ["ju"]="js-upgrade"
 )
 
 function is_known_command() {
@@ -270,28 +279,81 @@ for kind, name in sorted(targets):
     cargo -q nextest list ${ci_flag} --workspace --cargo-quiet --target-dir="${test_target_dir}" "${cargo_args[@]}" |
       "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
     ;;
-  "desktop-build")
-    local desktop_dir
-    desktop_dir="$(project_root)/packages/app-napi"
-    pushd "${desktop_dir}" >/dev/null
-    npm run build "$@"
-    popd >/dev/null
-    ;;
-  "desktop-frontend")
-    declare -x electron_config_cache="$(project_root)/.cache/electron"
-    declare -x npm_config_cache="$(project_root)/.cache/npm"
-    local frontend_dir
-    frontend_dir="$(project_root)/packages/app-desktop"
-    pushd "${frontend_dir}" >/dev/null
-    npm install "$@"
+  "js-install")
+    pushd "$(project_root)" >/dev/null
+    bun install "$@"
+    local electron_zip
+    electron_zip="$(find .cache/electron -name 'electron-*.zip' 2>/dev/null | head -1)"
+    if [[ -n "${electron_zip}" && ! -f "node_modules/electron/dist/electron" ]]; then
+      mkdir -p "node_modules/electron/dist"
+      unzip -qo "${electron_zip}" -d "node_modules/electron/dist"
+      printf "electron" > "node_modules/electron/path.txt"
+    fi
     popd >/dev/null
     ;;
   "desktop-start")
-    declare -x electron_config_cache="$(project_root)/.cache/electron"
-    local frontend_dir
-    frontend_dir="$(project_root)/packages/app-desktop"
-    pushd "${frontend_dir}" >/dev/null
-    npm start "$@"
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run dev:desktop "$@"
+    popd >/dev/null
+    ;;
+  "desktop-build")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run build:desktop "$@"
+    popd >/dev/null
+    ;;
+  "app-start")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run dev:web "$@"
+    popd >/dev/null
+    ;;
+  "app-build")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run build:web "$@"
+    popd >/dev/null
+    ;;
+  "js-lint")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run lint "$@"
+    popd >/dev/null
+    ;;
+  "js-lint-fix")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run lint:fix "$@"
+    popd >/dev/null
+    ;;
+  "js-format")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run format "$@"
+    popd >/dev/null
+    ;;
+  "js-format-check")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run format:check "$@"
+    popd >/dev/null
+    ;;
+  "js-check")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run typecheck "$@"
+    popd >/dev/null
+    ;;
+  "js-test")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run test "$@"
+    popd >/dev/null
+    ;;
+  "js-upgrade")
+    pushd "$(project_root)" >/dev/null
+    bun update --latest "$@"
     popd >/dev/null
     ;;
   *)

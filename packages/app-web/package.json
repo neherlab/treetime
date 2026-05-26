@@ -4,21 +4,29 @@
   "private": true,
   "description": "TreeTime web application - browser frontend",
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "dev": "vite",
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint --fix src/",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^4.5.0",
-    "typescript": "^5.8.0",
-    "vite": "^6.3.0"
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "oxlint": "1.66.0",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "vite": "8.0.14",
+    "vitest": "4.1.7"
   }
 }

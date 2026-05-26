@@ -6,16 +6,29 @@ This guide describes how to set up a development environment, build Treetime, co
 
 ## Setup Development Environment
 
+### Docker (recommended)
+
+The recommended way to develop Treetime is using the Docker-based dev environment. It provides a consistent setup with all Rust, Node.js, and build dependencies pre-installed.
+
+Requirements: bash, Docker
+
+```bash
+# First run builds the Docker image (takes a few minutes)
+./dev/docker/run ./dev/dev l
+
+# Rebuild the image after Dockerfile changes
+DOCKER_FORCE_REBUILD=1 ./dev/docker/run echo ok
+```
+
+All `./dev/dev` commands should be run inside the Docker container via `./dev/docker/run`.
+
+### Native (alternative)
+
 This guide assumes you are using Ubuntu 24.04, but the instructions will likely be similar for other Linux and Unix-like operating systems.
 
 Treetime is written in Rust, and the standard `rustup` & `cargo` workflow is used.
 
-## Install dependencies.
-
 ```bash
-# Install required dependencies
-# These commands are specific for Ubuntu Linux and may work on other Debian-based Linux distros.
-# Refer to your operating system's documentation to find out how to install these dependencies.
 sudo apt-get update
 sudo apt-get install \
   bash \
@@ -42,162 +55,192 @@ sudo apt-get install libfontconfig1-dev
 # Install Rustup, the Rust version manager (https://www.rust-lang.org/tools/install)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 
-# Add Rust tools to the $PATH. This line can be added to your .bashrc or .zshrc to adjust the $PATH automatically when a new terminal session is opened.
+# Add Rust tools to the $PATH
 export PATH="$PATH:$HOME/.cargo/bin"
 
 # Additional tools for testing and maintenance
 cargo -q install --locked cargo-nextest cargo-edit cargo-audit
-
 ```
 
 ## Obtain Source Code
 
 Treetime is an open-source project licensed under the MIT license, and its source code is available on GitHub.
 
-To obtain the source code, use `git` to clone the GitHub repository:
-
 ```bash
 git clone https://github.com/neherlab/treetime
 ```
 
-If you are a team member, use the SSH URL to push securely and without a password prompt (More details: https://docs.github.com/en/authentication/connecting-to-github-with-ssh):
+If you are a team member, use the SSH URL:
 
 ```bash
 git clone git@github.com:neherlab/treetime.git
 ```
 
-If you are not a team member but want to contribute, make a [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) and clone your forked repository instead. You can then submit changes to Treetime as a [Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request). Treetime maintainers will then review your changes and consider merging them into the main project.
+If you are not a team member but want to contribute, make a [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) and clone your forked repository instead. You can then submit changes as a [Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request).
+
+## Project Structure
+
+```
+packages/
+  app-api/           Rust service layer (progress, commands)
+  app-cli/           Rust CLI binary
+  app-contracts/     TypeScript bridge types
+  app-desktop/       Electron shell
+  app-napi/          Rust napi addon (native Node.js module)
+  app-server/        Rust HTTP API server
+  app-ui/            Shared React components
+  app-web/           Vite SPA (browser frontend)
+  legacy/            Python v0 reference implementation
+  treetime/          Core Rust library
+  treetime-*/        Core supporting crates
+  util-phyloxml/     PhyloXML format library
+  util-usher-mat/    UShER MAT format library
+```
+
+## Dev Shortcuts
+
+All commands are run via `./dev/docker/run ./dev/dev <shortcut>`. Multiple shortcuts can be chained: `./dev/dev l f t` runs lint, format, then test.
+
+### Rust
+
+| Shortcut   | Command          | Description                           |
+| ---------- | ---------------- | ------------------------------------- |
+| `b`        | build            | Debug build                           |
+| `br`       | build-release    | Release build                         |
+| `r <bin>`  | run              | Run binary in debug mode              |
+| `rr <bin>` | run-release      | Run binary in release mode            |
+| `l`        | lint             | Clippy (includes build)               |
+| `lf`       | lint-fix         | Clippy with auto-fix                  |
+| `lc`       | lint-ci          | Clippy with -Dwarnings                |
+| `lD`       | lint-deps        | Unused dependency check (cargo-shear) |
+| `f`        | format           | rustfmt                               |
+| `fc`       | format-check     | rustfmt check only                    |
+| `t`        | test-all         | All tests (nextest)                   |
+| `tu`       | test-unit        | Unit tests only                       |
+| `ti`       | test-integration | Integration tests only                |
+| `tl`       | test-list        | List all tests                        |
+| `q`        | quality          | lint-fix + format + test              |
+| `B`        | bench-all        | Run benchmarks                        |
+| `U`        | upgrade-deps     | Upgrade Cargo dependencies            |
+| `cov`      | coverage         | HTML coverage report                  |
+| `w`        | why              | Dependency tree                       |
+| `L`        | list             | List all binaries, examples, tests    |
+
+### Desktop and Web Apps
+
+| Shortcut | Command       | Description                                                                        |
+| -------- | ------------- | ---------------------------------------------------------------------------------- |
+| `ds`     | desktop-start | Start Electron desktop app (auto-installs deps, builds dependency chain via turbo) |
+| `db`     | desktop-build | Production build of desktop app                                                    |
+| `as`     | app-start     | Start web app dev server (Vite HMR, auto-installs deps)                            |
+| `ab`     | app-build     | Production build of web app                                                        |
+
+### JavaScript/TypeScript (bulk, all packages)
+
+| Shortcut | Command         | Description                                |
+| -------- | --------------- | ------------------------------------------ |
+| `ji`     | js-install      | Install all npm dependencies (bun install) |
+| `ju`     | js-upgrade      | Upgrade all npm dependencies to latest     |
+| `jl`     | js-lint         | Lint all TypeScript (oxlint)               |
+| `jlf`    | js-lint-fix     | Lint with auto-fix                         |
+| `jf`     | js-format       | Format all TypeScript (prettier)           |
+| `jfc`    | js-format-check | Format check only                          |
+| `jc`     | js-check        | Typecheck all TypeScript (tsc --noEmit)    |
+| `jt`     | js-test         | Run all TypeScript tests (vitest)          |
 
 ## Build and Run
 
-### Build and run the executables
-
-```bash
-# Go to the cloned directory
-cd treetime
-
-# (optional) checkout a branch (different from the default)
-git checkout <branch_name>
-
-# Build and run in debug mode (convenient for development, fast to build, slow to run, has more information in stack traces and when running under a debugger)
-cargo run --bin=treetime
-
-# Run with additional arguments passed to the executable
-cargo run --bin=treetime -- --help
-
-# Run Treetime in release mode (slow to build, fast to run, very little information in stack traces and during debugging)
-cargo run --release --bin=treetime
-
-# Alternatively, build and run separately. The compiled binaries will be in the `target/` directory by default.
-# Step 1: build
-cargo build --release --bin=treetime
-# Step 2: run
-./target/release/treetime
-
-# (optional) To enable PNG image output, enable the "png" cargo feature
-cargo run --features=png --bin=treetime
-```
-
-Quick examples of usage of different subcommands:
+### CLI
 
 ```bash
 v="flu/h3n2/20"
 
-# Run ancestral parsimony reconstruction on './data/flu/h3n2/20'
-cargo -q run --bin=treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral-parsimony/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+# Run in debug mode
+./dev/docker/run ./dev/dev r treetime -- ancestral --method-anc=parsimony --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
-# Run ancestral marginal sparse reconstruction on './data/flu/h3n2/20'
-cargo -q run --bin=treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral-marginal-sparse/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
+# Run in release mode
+./dev/docker/run ./dev/dev rr treetime -- ancestral --method-anc=marginal --model=jc69 --outdir="tmp/ancestral/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
 
-# Run ancestral marginal dense reconstruction on './data/flu/h3n2/20'
-cargo -q run --bin=treetime -- ancestral --method-anc=marginal --dense --model=jc69 --outdir="tmp/ancestral-marginal-dense/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz"
-
-# Run clock estimation on './data/flu/h3n2/20'
-cargo -q run --bin=treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
+# Clock estimation
+./dev/docker/run ./dev/dev r treetime -- clock --tree="data/$v/tree.nwk" --dates="data/$v/metadata.tsv" --outdir="tmp/clock/$v"
 ```
 
-> 💡 Set variable `v` (virus) to a different path in the `data/` directory to try the same commands with other example inputs. List names of all examples with:
+> 💡 Set variable `v` to a different path in the `data/` directory to try other example inputs. List all examples with:
 >
 > ```
 > find data -type f -name "tree.nwk" -exec dirname {} \; | sort -h
 > ```
->
-> Note that some inputs are very large and may take very long time to run, especially in debug mode.
+
+### Desktop App
+
+```bash
+# Start Electron app (builds napi addon, contracts, UI automatically)
+./dev/docker/run ./dev/dev ds
+```
+
+### Web App
+
+```bash
+# Start Vite dev server with hot reload
+./dev/docker/run ./dev/dev as
+```
 
 ## Testing
 
-### Unit tests
-
-Tests are run using [nextest](https://nexte.st/). This can be installed with:
-
 ```bash
-cargo install cargo-nextest
+# All Rust tests
+./dev/docker/run ./dev/dev t
+
+# Specific tests by regex
+./dev/docker/run ./dev/dev t gtr
+
+# All TypeScript tests
+./dev/docker/run ./dev/dev jt
+
+# Full quality check (Rust lint + format + test)
+./dev/docker/run ./dev/dev q
+
+# Smoke tests
+./dev/docker/run ./dev/dev br treetime && ./dev/docker/run ./dev/run-smoke-tests .out/treetime
 ```
 
-Then run the tests with:
+## Linting and Formatting
 
 ```bash
-cargo nextest run
+# Rust
+./dev/docker/run ./dev/dev l     # lint
+./dev/docker/run ./dev/dev lf    # lint with auto-fix
+./dev/docker/run ./dev/dev f     # format
+
+# TypeScript (all packages)
+./dev/docker/run ./dev/dev jl    # lint
+./dev/docker/run ./dev/dev jlf   # lint with auto-fix
+./dev/docker/run ./dev/dev jf    # format
 ```
 
-Add the `--no-fail-fast` flag to continue running tests even if there are failures.
+## Monorepo Tooling
 
-You can run a subset of tests by providing a regex matching the full test name. For example:
+The TypeScript packages use [bun](https://bun.sh/) as the package manager and [turbo](https://turborepo.dev/) as the monorepo task runner.
+
+Turbo handles the dependency chain automatically: starting the desktop app (`ds`) builds contracts and UI first. No manual `npm install` or intermediate build steps needed.
 
 ```bash
-cargo nextest run gtr
+# Install all JS dependencies
+./dev/docker/run ./dev/dev ji
+
+# Upgrade all JS dependencies to latest versions
+./dev/docker/run ./dev/dev ju
 ```
 
-See also: [nextest running tests](https://nexte.st/docs/running/)
+Configuration:
 
-### Smoke tests
+- `package.json` - bun workspace definition
+- `turbo.json` - task dependencies and caching
+- `bunfig.toml` - exact version pinning
 
-Smoke tests run different Treetime commands on many example inputs in bulk. This serves as a screening for bugs and other regressions. Note that the script does not rebuild Treetime - you need to (re-)build the executable yourself and then pass the path to it to the script:
-
-```bash
-cargo run --release --bin=treetime
-./dev/run-smoke-tests ./target/release/treetime
-```
-
-Refer to the comments in the script for details.
-
-## Linting (Static Analysis)
-
-Rust code is linted by running [Clippy](https://github.com/rust-lang/rust-clippy):
-
-```bash
-cargo clippy
-```
-
-Apply automatic fixes
-
-> ⚠️ Destructive operation! Save your code changes first!
-
-```bash
-cargo clippy --fix
-```
-
-Clippy is configured in `clippy.toml` and `.cargo/config.toml`.
-
-## Formatting (Code Style)
-
-Code formatting is handled by [rustfmt](https://rust-lang.github.io/rustfmt):
-
-> ⚠️ Destructive operation! Save your code changes first!
-
-```bash
-cargo fmt --all
-```
-
-Rustfmt is configured in `rustfmt.toml`.
-
-## Performance assessment
+## Performance Assessment
 
 ### Macro-benchmarks
-
-In order to measure running time of a CLI program end-to-end, you could use [`hyperfine`](https://github.com/sharkdp/hyperfine).
-
-Example:
 
 ```bash
 cargo -q build --release --bin=treetime
@@ -205,27 +248,16 @@ export v='mpox/clade-ii/500'
 hyperfine --warmup 1 --show-output "./target/release/treetime ancestral --method-anc=parsimony --outdir=tmp/$v --tree=data/$v/tree.nwk data/$v/aln.fasta.xz"
 ```
 
-Example output:
-
-```
-  Time (mean ± σ):     655.4 ms ±  25.7 ms    [User: 2258.9 ms, System: 210.1 ms]
-  Range (min … max):   635.3 ms … 717.6 ms    10 runs
-```
-
-> 💡 Make sure you are benchmarking optimized (release) build of a program.
-
-> 💡 To obtain representative and reproducible benchmarking results, make sure you are benchmarking on a "calm" system with minimum number of concurrent processes and with no shortage of memory and disk space etc.
+> 💡 Make sure you are benchmarking optimized (release) builds.
 
 ### Profiling
-
-Sampling (statistical) performance profiling can be performed using helper script `./dev/profile`:
-
-> Requires additional configuration! Read comments inside the script first!
 
 ```bash
 export v='mpox/clade-ii/500'
 ./dev/profile treetime ancestral --method-anc=parsimony --outdir="tmp/$v" --tree="data/$v/tree.nwk" "data/$v/aln.fasta.xz" -j1
 ```
+
+> Requires additional configuration! Read comments inside the script first.
 
 ## Maintenance
 
@@ -233,19 +265,19 @@ export v='mpox/clade-ii/500'
 
 The Rust version is defined in `rust-toolchain.toml`. When using `cargo`, the version defined in this file is installed automatically.
 
-### Upgrading Dependencies
-
-Dependencies for subprojects are defined in `packages/**/Cargo.toml` and in `Cargo.lock`. They are periodically upgraded by a dedicated maintainer, manually using `cargo-upgrade` from the [cargo-edit](https://github.com/killercup/cargo-edit) package.
+### Upgrading Rust Dependencies
 
 ```bash
-export CARGO_NET_GIT_FETCH_WITH_CLI=true
-export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-cargo fetch
-cargo upgrade
-cargo upgrade --pinned --incompatible --verbose
+./dev/docker/run ./dev/dev U
 ```
 
-Note that dependency upgrade can cause serious breakage - both compile-time and run-time. The upgraded dependencies, including sub-dependencies, need to be reviewed, unit tests, smoke tests and some manual sanity checks may need to be performed.
+Note that dependency upgrades can cause breakage. The upgraded dependencies need to be reviewed, and unit tests, smoke tests and manual sanity checks may need to be performed.
+
+### Upgrading JavaScript Dependencies
+
+```bash
+./dev/docker/run ./dev/dev ju
+```
 
 ### Versioning
 

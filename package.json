@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "packages/app-contracts",
+    "packages/app-desktop",
+    "packages/app-napi",
+    "packages/app-ui",
+    "packages/app-web"
+  ],
+  "scripts": {
+    "dev:desktop": "turbo dev --filter=@neherlab/app-desktop",
+    "dev:web": "turbo dev --filter=@neherlab/app-web",
+    "build": "turbo build",
+    "build:desktop": "turbo build --filter=@neherlab/app-desktop",
+    "build:web": "turbo build --filter=@neherlab/app-web",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "format": "turbo format",
+    "format:check": "turbo format:check",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "upgrade": "bun update --latest"
+  },
+  "devDependencies": {
+    "turbo": "2.9.14"
+  },
+  "trustedDependencies": [
+    "electron"
+  ]
+}

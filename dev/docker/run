@@ -204,9 +204,8 @@ fi
 # shellcheck disable=SC2046
 docker run --rm -i $(tty -s && echo "-t") \
   --init \
+  --network=host \
   --name="${docker_container_name}" \
-  --hostname="${docker_repo_name_safe}" \
-  --add-host="${docker_repo_name_safe}:127.0.1.1" \
   --user="$(id -u):$(id -g)" \
   --workdir="/workdir" \
   --volume="$(pwd):/workdir" \
@@ -219,6 +218,7 @@ docker run --rm -i $(tty -s && echo "-t") \
   --env="TERM=xterm-256color" \
   --env="TZ=Etc/UTC" \
   --env="LANG=C.UTF-8" \
+  --env="electron_config_cache=/workdir/.cache/electron" \
   $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
   "${x11_flags[@]}" \
   --ulimit="core=0" \
