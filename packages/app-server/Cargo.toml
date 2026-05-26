@@ -31,7 +31,9 @@ log = { workspace = true }
 >>>>>>> 71efa29b (fix(app-server): log errors to stderr instead of silently converting to JSON)
 serde = { workspace = true }
 serde_json = { workspace = true }
+smart-default = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = { workspace = true }
 tower-http = { workspace = true }
 
 [dev-dependencies]

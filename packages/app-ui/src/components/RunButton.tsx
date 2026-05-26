@@ -84,27 +84,48 @@ export function RunButton() {
     const onProgress = (event: { stage: string; fraction: number; message: string }) => {
       setProgress({ stage: event.stage, fraction: event.fraction, message: event.message });
     };
-    const stubArgs = { tree: "mock.nwk", outdir: "tmp", dates: "mock.csv", states: "mock.csv", attribute: "country" };
     try {
       switch (activeCommand) {
         case "timetree":
-          await bridge.timetree(stubArgs, onProgress);
+          await bridge.timetree(
+            { tree: "data/flu/h3n2/20/tree.nwk", dates: "data/flu/h3n2/20/metadata.tsv", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/timetree" },
+            onProgress,
+          );
           break;
         case "ancestral":
-          await bridge.ancestral(stubArgs, onProgress);
+          await bridge.ancestral(
+            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/ancestral" },
+            onProgress,
+          );
           break;
         case "clock":
-          await bridge.clock(stubArgs, onProgress);
+          await bridge.clock(
+            { tree: "data/flu/h3n2/20/tree.nwk", dates: "data/flu/h3n2/20/metadata.tsv", outdir: "tmp/web/clock" },
+            onProgress,
+          );
           break;
         case "mugration":
-          await bridge.mugration(stubArgs, onProgress);
+          await bridge.mugration(
+            { tree: "data/zika/20/tree.nwk", states: "data/zika/20/metadata.tsv", attribute: "country", outdir: "tmp/web/mugration" },
+            onProgress,
+          );
           break;
         case "optimize":
-          await bridge.optimize(stubArgs, onProgress);
+          await bridge.optimize(
+            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/optimize" },
+            onProgress,
+          );
           break;
         case "prune":
+<<<<<<< HEAD
           await bridge.prune(stubArgs, onProgress);
 >>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
+=======
+          await bridge.prune(
+            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/prune" },
+            onProgress,
+          );
+>>>>>>> 6c418682 (feat(app-ui): use real example dataset paths for server-side file I/O)
           break;
       }
       setRunStatus("completed");

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
 
 const bridge: TreeTimeBridge = {
@@ -11,15 +12,13 @@ const bridge: TreeTimeBridge = {
   prune: (args) => ipcRenderer.invoke("treetime:prune", JSON.stringify(args)),
 =======
 import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-contracts";
+=======
+import type { TreeTimeBridge, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
 
-async function invokeCommand(channel: string, args: unknown): Promise<CommandResult> {
-  try {
-    await ipcRenderer.invoke(channel, JSON.stringify(args));
-    return { status: "ok" };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { status: "error", error: message };
-  }
+async function invokeCommand<T>(channel: string, args: unknown): Promise<T> {
+  const result = await ipcRenderer.invoke(channel, JSON.stringify(args));
+  return typeof result === "string" ? (JSON.parse(result) as T) : (result as T);
 }
 
 const bridge: TreeTimeBridge = {

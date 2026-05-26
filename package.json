@@ -37,6 +37,7 @@
     "upgrade": "bun update --latest"
   },
   "devDependencies": {
+    "@microsoft/fetch-event-source": "2.0.1",
     "oxfmt": "0.51.0",
     "oxlint": "1.66.0",
     "turbo": "2.9.14"

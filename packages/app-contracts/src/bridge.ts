@@ -1,18 +1,28 @@
 import type { AncestralArgs, ClockArgs, MugrationArgs, OptimizeArgs, PruneArgs, TimetreeArgs } from "./args";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { CommandResult, ProgressEvent } from "./results";
 =======
 import type { DatasetInfo } from "./datasets";
 import type {
   AncestralResult,
   ClockResult,
+=======
+import type {
+  AncestralResult,
+  ClockResult,
+  HomoplasyResult,
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
   MugrationResult,
   OptimizeResult,
   ProgressEvent,
   PruneResult,
   TimetreeResult,
 } from "./results";
+<<<<<<< HEAD
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
+=======
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
 import type { VersionInfo } from "./version";
 
 export interface CommandOptions {
@@ -22,6 +32,7 @@ export interface CommandOptions {
 
 export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
+<<<<<<< HEAD
 <<<<<<< HEAD
   ancestral(args: AncestralArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
   clock(args: ClockArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
@@ -38,4 +49,12 @@ export interface TreeTimeBridge {
   optimize(args: OptimizeArgs, options?: CommandOptions): Promise<OptimizeResult>;
   prune(args: PruneArgs, options?: CommandOptions): Promise<PruneResult>;
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
+=======
+  ancestral(args: AncestralArgs, onProgress?: (event: ProgressEvent) => void): Promise<AncestralResult>;
+  clock(args: ClockArgs, onProgress?: (event: ProgressEvent) => void): Promise<ClockResult>;
+  timetree(args: TimetreeArgs, onProgress?: (event: ProgressEvent) => void): Promise<TimetreeResult>;
+  mugration(args: MugrationArgs, onProgress?: (event: ProgressEvent) => void): Promise<MugrationResult>;
+  optimize(args: OptimizeArgs, onProgress?: (event: ProgressEvent) => void): Promise<OptimizeResult>;
+  prune(args: PruneArgs, onProgress?: (event: ProgressEvent) => void): Promise<PruneResult>;
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
 }

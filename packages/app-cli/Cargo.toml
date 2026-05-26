@@ -57,6 +57,9 @@ tikv-jemallocator = { workspace = true }
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
+[build-dependencies]
+treetime = { workspace = true }
+
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }

@@ -14,5 +14,9 @@
       "type": "string"
     }
   },
-  "required": ["stage", "fraction", "message"]
+  "required": [
+    "stage",
+    "fraction",
+    "message"
+  ]
 }

@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App, BridgeProvider, QueryProvider } from "@neherlab/app-ui";
-import { createMockBridge } from "./bridge-mock";
+import { createWebBridge } from "./bridge-web";
 import "./index.css";
 
-const bridge = createMockBridge();
+const bridge = createWebBridge();
 
 const root = document.getElementById("root");
 if (root) {

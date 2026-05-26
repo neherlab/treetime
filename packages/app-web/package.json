@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "2.0.1",
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
     "@tailwindcss/vite": "4.3.0",

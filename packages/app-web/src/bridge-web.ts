@@ -1,4 +1,6 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-contracts";
 =======
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -12,6 +14,13 @@ import type {
   VersionInfo,
 } from "@neherlab/app-contracts";
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
+=======
+import { fetchEventSource } from "@microsoft/fetch-event-source";
+import type { TreeTimeBridge, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
+=======
+import type { ErrorResponse, TreeTimeBridge, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
 
 const API_BASE = "/api";
 
@@ -24,12 +33,35 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 async function postCommand(command: string, args: unknown): Promise<CommandResult> {
+=======
+async function postCommand<T>(command: string, args: unknown): Promise<T> {
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
   const response = await fetch(`${API_BASE}/${command}`, {
+=======
+async function postSse<T>(command: string, args: unknown, onProgress?: (event: ProgressEvent) => void): Promise<T> {
+  let result: T | undefined;
+
+  await fetchEventSource(`${API_BASE}/${command}`, {
+>>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
+    onmessage(msg) {
+      if (msg.event === "progress") {
+        onProgress?.(JSON.parse(msg.data) as ProgressEvent);
+      } else if (msg.event === "result") {
+        result = JSON.parse(msg.data) as T;
+      }
+    },
+    onerror(err) {
+      throw err;
+    },
+    openWhenHidden: true,
   });
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 async function postSse<T>(command: string, args: unknown, options?: CommandOptions): Promise<T> {
@@ -82,15 +114,29 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
   return response.json() as Promise<CommandResult>;
 =======
   if (!response.ok) {
-    return { status: "error", error: `${response.status} ${response.statusText}` };
+    const body = (await response.json()) as ErrorResponse;
+    throw new Error(`${body.code}: ${body.message}`);
   }
+<<<<<<< HEAD
   return (await response.json()) as CommandResult;
 >>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
+=======
+
+  if (result === undefined) {
+    throw new Error(`${command}: no result received`);
+  }
+
+  return result;
+>>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
+=======
+  return (await response.json()) as T;
+>>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
 }
 
 export function createWebBridge(): TreeTimeBridge {
   return {
     version: () => getJson<VersionInfo>("version"),
+<<<<<<< HEAD
 <<<<<<< HEAD
     ancestral: (args) => postCommand("ancestral", args),
     clock: (args) => postCommand("clock", args),
@@ -107,5 +153,13 @@ export function createWebBridge(): TreeTimeBridge {
     optimize: (args, options) => postSse("optimize", args, options),
     prune: (args, options) => postSse("prune", args, options),
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
+=======
+    ancestral: (args, onProgress) => postSse("ancestral", args, onProgress),
+    clock: (args, onProgress) => postSse("clock", args, onProgress),
+    timetree: (args, onProgress) => postSse("timetree", args, onProgress),
+    mugration: (args, onProgress) => postSse("mugration", args, onProgress),
+    optimize: (args, onProgress) => postSse("optimize", args, onProgress),
+    prune: (args, onProgress) => postSse("prune", args, onProgress),
+>>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
   };
 }
