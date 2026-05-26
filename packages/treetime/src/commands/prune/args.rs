@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimePruneArgs {
   /// Path to one or multiple FASTA files with aligned input sequences

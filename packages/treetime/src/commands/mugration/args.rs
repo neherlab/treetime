@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeMugrationArgs {
   /// Name of file containing the tree in newick, nexus, or phylip format.

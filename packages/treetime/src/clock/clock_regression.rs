@@ -16,6 +16,7 @@ use treetime_graph::reroot::RerootResult;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockParams {
   /// Variance scaling factor proportional to branch length

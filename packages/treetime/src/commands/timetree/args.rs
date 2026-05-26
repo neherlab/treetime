@@ -31,6 +31,7 @@ pub enum TimeMarginalMode {
 }
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences

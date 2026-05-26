@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use clap::ValueHint;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
@@ -133,6 +134,7 @@ pub struct TreetimeClockArgs {
 
 /// Branch split optimization parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
@@ -155,6 +157,7 @@ pub struct BranchSplitArgs {
 
 /// Clock regression model parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
