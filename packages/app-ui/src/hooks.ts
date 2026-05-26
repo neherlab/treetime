@@ -3,6 +3,7 @@ import type {
   AncestralResult,
   ClockArgs,
   ClockResult,
+  DatasetInfo,
   MugrationArgs,
   MugrationResult,
   OptimizeArgs,
@@ -21,6 +22,15 @@ export function useVersion() {
   return useQuery<VersionInfo>({
     queryKey: ["version"],
     queryFn: () => bridge.version(),
+    staleTime: Infinity,
+  });
+}
+
+export function useDatasets() {
+  const bridge = useBridge();
+  return useQuery<DatasetInfo[]>({
+    queryKey: ["datasets"],
+    queryFn: () => bridge.datasets(),
     staleTime: Infinity,
   });
 }

@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 import { useBridge } from "../BridgeContext";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { CommandOptions } from "@neherlab/app-contracts";
 import type { FileSlotKind } from "../types";
 import { COMMANDS } from "../types";
@@ -20,12 +21,27 @@ export function RunButton() {
   const activeCommand = useAppStore((s) => s.activeCommand);
   const files = useAppStore((s) => s.files);
 =======
+=======
+import type { FileSlotKind } from "../types";
+>>>>>>> 8d1c6d64 (feat(app-ui): replace hardcoded datasets with server-provided list)
 import { COMMANDS } from "../types";
+
+function buildDataPath(files: Partial<Record<FileSlotKind, { name: string }>>, slot: FileSlotKind): string {
+  const file = files[slot];
+  if (!file) {
+    throw new Error(`Missing required file: ${slot}`);
+  }
+  return `data/${file.name}`;
+}
 
 export function RunButton() {
   const bridge = useBridge();
   const activeCommand = useAppStore((s) => s.activeCommand);
+<<<<<<< HEAD
 >>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
+=======
+  const files = useAppStore((s) => s.files);
+>>>>>>> 8d1c6d64 (feat(app-ui): replace hardcoded datasets with server-provided list)
   const runStatus = useAppStore((s) => s.runStatus);
   const progress = useAppStore((s) => s.progress);
   const setRunStatus = useAppStore((s) => s.setRunStatus);
@@ -85,34 +101,40 @@ export function RunButton() {
       setProgress({ stage: event.stage, fraction: event.fraction, message: event.message });
     };
     try {
+      const tree = buildDataPath(files, "tree");
+      const outdir = `tmp/web/${activeCommand}`;
+      const alignment = files.alignment ? buildDataPath(files, "alignment") : undefined;
+      const dates = files.dates ? buildDataPath(files, "dates") : undefined;
+      const states = files.states ? buildDataPath(files, "states") : undefined;
+
       switch (activeCommand) {
         case "timetree":
           await bridge.timetree(
-            { tree: "data/flu/h3n2/20/tree.nwk", dates: "data/flu/h3n2/20/metadata.tsv", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/timetree" },
+            { tree, dates, input_fastas: alignment ? [alignment] : undefined, outdir },
             onProgress,
           );
           break;
         case "ancestral":
           await bridge.ancestral(
-            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/ancestral" },
+            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
             onProgress,
           );
           break;
         case "clock":
           await bridge.clock(
-            { tree: "data/flu/h3n2/20/tree.nwk", dates: "data/flu/h3n2/20/metadata.tsv", outdir: "tmp/web/clock" },
+            { tree, dates: dates ?? "", outdir },
             onProgress,
           );
           break;
         case "mugration":
           await bridge.mugration(
-            { tree: "data/zika/20/tree.nwk", states: "data/zika/20/metadata.tsv", attribute: "country", outdir: "tmp/web/mugration" },
+            { tree, states: states ?? "", attribute: "country", outdir },
             onProgress,
           );
           break;
         case "optimize":
           await bridge.optimize(
-            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/optimize" },
+            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
             onProgress,
           );
           break;
@@ -122,7 +144,7 @@ export function RunButton() {
 >>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 =======
           await bridge.prune(
-            { tree: "data/flu/h3n2/20/tree.nwk", input_fastas: ["data/flu/h3n2/20/aln.fasta.xz"], outdir: "tmp/web/prune" },
+            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
             onProgress,
           );
 >>>>>>> 6c418682 (feat(app-ui): use real example dataset paths for server-side file I/O)
@@ -142,7 +164,7 @@ export function RunButton() {
 =======
       setRunStatus("failed");
     }
-  }, [bridge, activeCommand, setRunStatus, setProgress, setShowResults]);
+  }, [bridge, activeCommand, files, setRunStatus, setProgress, setShowResults]);
 
   const handleCancel = useCallback(() => {
     setRunStatus("idle");

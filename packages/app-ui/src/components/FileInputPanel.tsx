@@ -1,9 +1,10 @@
 import { RotateCcw } from "lucide-react";
 import { useCallback } from "react";
 import { FileSlot } from "./FileSlot";
+import { useDatasets } from "../hooks";
 import { useAppStore } from "../store/app-store";
 import type { CommandName, FileSlotKind } from "../types";
-import { FILE_SLOTS, EXAMPLE_DATASETS } from "../types";
+import { FILE_SLOTS } from "../types";
 
 const COMMAND_FILE_REQUIREMENTS: Record<CommandName, { required: FileSlotKind[]; optional: FileSlotKind[] }> = {
   ancestral: {
@@ -39,19 +40,28 @@ export function FileInputPanel() {
   const setFile = useAppStore((s) => s.setFile);
   const resetForm = useAppStore((s) => s.resetForm);
   const reqs = COMMAND_FILE_REQUIREMENTS[activeCommand];
+  const { data: datasets } = useDatasets();
 
   const handleDatasetChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const dataset = e.target.value;
       setSelectedDataset(dataset);
       if (dataset) {
-        setFile("tree", { name: `${dataset}/tree.nwk`, size: 0 });
-        setFile("alignment", { name: `${dataset}/aln.fasta.xz`, size: 0 });
-        setFile("dates", { name: `${dataset}/metadata.tsv`, size: 0 });
-        setFile("states", { name: `${dataset}/metadata.tsv`, size: 0 });
+        const info = datasets?.find((d) => d.name === dataset);
+        const files = info?.files ?? [];
+        if (files.includes("tree.nwk")) {
+          setFile("tree", { name: `${dataset}/tree.nwk`, size: 0 });
+        }
+        if (files.includes("aln.fasta.xz")) {
+          setFile("alignment", { name: `${dataset}/aln.fasta.xz`, size: 0 });
+        }
+        if (files.includes("metadata.tsv")) {
+          setFile("dates", { name: `${dataset}/metadata.tsv`, size: 0 });
+          setFile("states", { name: `${dataset}/metadata.tsv`, size: 0 });
+        }
       }
     },
-    [setSelectedDataset, setFile],
+    [setSelectedDataset, setFile, datasets],
   );
 
   return (
@@ -76,9 +86,9 @@ export function FileInputPanel() {
           className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
         >
           <option value="">Select a dataset...</option>
-          {EXAMPLE_DATASETS.map((d) => (
-            <option key={d} value={d}>
-              {d}
+          {datasets?.map((d) => (
+            <option key={d.name} value={d.name}>
+              {d.name}
             </option>
           ))}
         </select>
