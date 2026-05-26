@@ -274,10 +274,12 @@ for kind, name in sorted(targets):
     local desktop_dir
     desktop_dir="$(project_root)/packages/treetime-desktop"
     pushd "${desktop_dir}" >/dev/null
-    npx napi build --platform "$@"
+    npm run build "$@"
     popd >/dev/null
     ;;
   "desktop-frontend")
+    declare -x electron_config_cache="$(project_root)/.cache/electron"
+    declare -x npm_config_cache="$(project_root)/.cache/npm"
     local frontend_dir
     frontend_dir="$(project_root)/packages/treetime-desktop/frontend"
     pushd "${frontend_dir}" >/dev/null
@@ -285,6 +287,7 @@ for kind, name in sorted(targets):
     popd >/dev/null
     ;;
   "desktop-start")
+    declare -x electron_config_cache="$(project_root)/.cache/electron"
     local frontend_dir
     frontend_dir="$(project_root)/packages/treetime-desktop/frontend"
     pushd "${frontend_dir}" >/dev/null

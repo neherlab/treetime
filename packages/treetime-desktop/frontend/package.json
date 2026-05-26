@@ -2,8 +2,17 @@
   "name": "@neherlab/treetime-desktop-frontend",
   "version": "0.0.1",
   "private": true,
-  "description": "TreeTime desktop frontend - Electron + React + TypeScript",
+  "description": "TreeTime desktop frontend - Electron + TypeScript",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && electron .",
+    "dev": "tsc && electron ."
+  },
   "dependencies": {
-    "treetime-desktop": "file:.."
+    "electron": "^35.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
   }
 }

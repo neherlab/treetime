@@ -73,6 +73,9 @@ RUN /install-sccache
 COPY --link "dev/docker/files/install-nodejs" "/"
 RUN /install-nodejs
 
+COPY --link "dev/docker/files/install-electron-deps" "/"
+RUN /install-electron-deps
+
 
 ENV HOST_PREFIX="/usr"
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${HOST_PREFIX}/lib/pkgconfig"
