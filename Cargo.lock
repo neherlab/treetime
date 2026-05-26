@@ -3675,7 +3675,6 @@ dependencies = [
  "strum 0.27.2",
  "strum_macros 0.27.2",
  "tempfile",
- "tikv-jemallocator",
  "treetime-distribution",
  "treetime-graph",
  "treetime-grid",
@@ -3695,6 +3694,20 @@ dependencies = [
  "serde",
  "statrs",
  "treetime-ops",
+ "treetime-utils",
+]
+
+[[package]]
+name = "treetime-api"
+version = "1.0.0"
+dependencies = [
+ "ctor",
+ "eyre",
+ "pretty_assertions",
+ "rayon",
+ "rstest",
+ "treetime",
+ "treetime-io",
  "treetime-utils",
 ]
 
@@ -3724,6 +3737,7 @@ dependencies = [
  "serde",
  "serde_json",
  "textplots",
+ "tikv-jemallocator",
  "treetime",
  "treetime-graph",
  "treetime-io",
@@ -3891,7 +3905,6 @@ dependencies = [
  "serde_yaml",
  "smart-default",
  "strum_macros 0.27.2",
- "tikv-jemallocator",
  "time",
  "xz2",
  "zstd",
