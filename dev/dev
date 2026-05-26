@@ -308,10 +308,19 @@ for kind, name in sorted(targets):
   "app-start")
     run_one js-install
     pushd "$(project_root)" >/dev/null
+<<<<<<< HEAD
     bun run dev:server &
+<<<<<<< HEAD
     local server_pid=$!
     bun run dev:web "$@"
     kill "${server_pid}" 2>/dev/null || true
+=======
+    bun run dev:web "$@"
+>>>>>>> 3eb7c125 (chore: unify dev tooling under turbo orchestration)
+=======
+    bun run dev:web "$@" &
+    wait
+>>>>>>> d2337589 (fix(dev): fix app-start process management and turbo watch exit)
     popd >/dev/null
     ;;
   "app-build")

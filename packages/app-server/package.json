@@ -6,7 +6,7 @@
   "scripts": {
     "build": "../../dev/dev b --bin=treetime-server",
     "build:release": "../../dev/dev br treetime-server",
-    "dev": "../../dev/dev r treetime-server",
+    "dev": "cd ../.. && bacon --headless server",
     "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server"
   }
 }

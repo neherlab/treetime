@@ -1,2 +1,5 @@
+telemetry = false
+logLevel = "warn"
+
 [install]
 exact = true

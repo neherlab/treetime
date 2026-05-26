@@ -218,6 +218,8 @@ docker run --rm -i $(tty -s && echo "-t") \
   --env="TERM=xterm-256color" \
   --env="TZ=Etc/UTC" \
   --env="LANG=C.UTF-8" \
+  --env="DO_NOT_TRACK=1" \
+  --env="TURBO_TELEMETRY_DISABLED=1" \
   --env="electron_config_cache=/workdir/.cache/electron" \
   $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
   "${x11_flags[@]}" \
