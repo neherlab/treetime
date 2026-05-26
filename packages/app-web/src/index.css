@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@source "../../app-ui/src";
+
+@theme {
+  --font-sans: "Inter", "system-ui", "Avenir", "Helvetica", "Arial", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+
+  --color-surface-0: oklch(1 0 0);
+  --color-surface-1: oklch(0.985 0 0);
+  --color-surface-2: oklch(0.97 0 0);
+  --color-surface-3: oklch(0.94 0 0);
+
+  --color-accent: oklch(0.55 0.15 250);
+  --color-accent-hover: oklch(0.48 0.15 250);
+  --color-accent-subtle: oklch(0.93 0.04 250);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-surface-0);
+    color: oklch(0.25 0 0);
+  }
+
+  .dark body {
+    background-color: oklch(0.17 0 0);
+    color: oklch(0.9 0 0);
+  }
+}

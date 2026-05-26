@@ -2,6 +2,7 @@ import { Play, Square, Loader2 } from "lucide-react";
 import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 import { useBridge } from "../BridgeContext";
+<<<<<<< HEAD
 import type { CommandOptions } from "@neherlab/app-contracts";
 import type { FileSlotKind } from "../types";
 import { COMMANDS } from "../types";
@@ -18,17 +19,28 @@ export function RunButton() {
   const bridge = useBridge();
   const activeCommand = useAppStore((s) => s.activeCommand);
   const files = useAppStore((s) => s.files);
+=======
+import { COMMANDS } from "../types";
+
+export function RunButton() {
+  const bridge = useBridge();
+  const activeCommand = useAppStore((s) => s.activeCommand);
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
   const runStatus = useAppStore((s) => s.runStatus);
   const progress = useAppStore((s) => s.progress);
   const setRunStatus = useAppStore((s) => s.setRunStatus);
   const setProgress = useAppStore((s) => s.setProgress);
   const setShowResults = useAppStore((s) => s.setShowResults);
+<<<<<<< HEAD
   const setAbortController = useAppStore((s) => s.setAbortController);
   const cancelRun = useAppStore((s) => s.cancelRun);
+=======
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 
   const commandLabel = COMMANDS.find((c) => c.name === activeCommand)?.label ?? activeCommand;
 
   const handleRun = useCallback(async () => {
+<<<<<<< HEAD
     const controller = new AbortController();
     setAbortController(controller);
     setRunStatus("running");
@@ -66,11 +78,39 @@ export function RunButton() {
           break;
         case "prune":
           await bridge.prune({ tree, input_fastas: alignment ? [alignment] : undefined, outdir }, options);
+=======
+    setRunStatus("running");
+    setProgress(undefined);
+    const onProgress = (event: { stage: string; fraction: number; message: string }) => {
+      setProgress({ stage: event.stage, fraction: event.fraction, message: event.message });
+    };
+    const stubArgs = { tree: "mock.nwk", outdir: "tmp", dates: "mock.csv", states: "mock.csv", attribute: "country" };
+    try {
+      switch (activeCommand) {
+        case "timetree":
+          await bridge.timetree(stubArgs, onProgress);
+          break;
+        case "ancestral":
+          await bridge.ancestral(stubArgs, onProgress);
+          break;
+        case "clock":
+          await bridge.clock(stubArgs, onProgress);
+          break;
+        case "mugration":
+          await bridge.mugration(stubArgs, onProgress);
+          break;
+        case "optimize":
+          await bridge.optimize(stubArgs, onProgress);
+          break;
+        case "prune":
+          await bridge.prune(stubArgs, onProgress);
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
           break;
       }
       setRunStatus("completed");
       setShowResults(true);
     } catch {
+<<<<<<< HEAD
       if (!controller.signal.aborted) {
         setRunStatus("failed");
       }
@@ -78,6 +118,16 @@ export function RunButton() {
       setAbortController(undefined);
     }
   }, [bridge, activeCommand, files, setRunStatus, setProgress, setShowResults, setAbortController]);
+=======
+      setRunStatus("failed");
+    }
+  }, [bridge, activeCommand, setRunStatus, setProgress, setShowResults]);
+
+  const handleCancel = useCallback(() => {
+    setRunStatus("idle");
+    setProgress(undefined);
+  }, [setRunStatus, setProgress]);
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 
   if (runStatus === "running") {
     return (
@@ -100,7 +150,11 @@ export function RunButton() {
           </span>
           <button
             type="button"
+<<<<<<< HEAD
             onClick={cancelRun}
+=======
+            onClick={handleCancel}
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
             className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             <Square size={12} />

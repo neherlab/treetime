@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { createLogger, defineConfig } from "vite";
 
@@ -13,9 +14,13 @@ logger.info = (msg, options) => {
 const serverPort = process.env.PORT ?? "3100";
 
 export default defineConfig({
+<<<<<<< HEAD
   plugins: [react()],
 <<<<<<< HEAD
 =======
+=======
+  plugins: [tailwindcss(), react()],
+>>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
   customLogger: logger,
   clearScreen: false,
 >>>>>>> 3eb7c125 (chore: unify dev tooling under turbo orchestration)

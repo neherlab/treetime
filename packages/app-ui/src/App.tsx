@@ -1,15 +1,15 @@
-import { useVersion } from "./hooks";
+import { Header } from "./components/Header";
+import { CommandNav } from "./components/CommandNav";
+import { Workspace } from "./components/Workspace";
 
 export function App() {
-  const { data: version, isLoading, error } = useVersion();
-
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
-      <h1>TreeTime</h1>
-      <p>Phylodynamic inference</p>
-      {isLoading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>Failed to connect to server: {error.message}</p>}
-      {version && <p>v{version.version}</p>}
+    <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <CommandNav />
+        <Workspace />
+      </div>
     </div>
   );
 }

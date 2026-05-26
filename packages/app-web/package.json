@@ -18,8 +18,10 @@
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
     "@neherlab/app-ui": "workspace:*",
+    "@tailwindcss/vite": "4.3.0",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "tailwindcss": "4.3.0"
   },
   "devDependencies": {
     "@types/react": "19.2.14",
