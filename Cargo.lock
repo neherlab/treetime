@@ -183,6 +183,7 @@ dependencies = [
  "clap",
  "ctor 0.5.0",
  "eyre",
+ "log",
  "pretty_assertions",
  "rayon",
  "rstest",

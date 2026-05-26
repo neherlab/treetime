@@ -3,6 +3,7 @@ use app_api::progress::ProgressSink;
 use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use eyre::Report;
+use log::error;
 use serde::Serialize;
 use serde_json::Value;
 use std::convert::Infallible;
@@ -85,8 +86,14 @@ where
 
     let result_value = match computation.await {
       Ok(Ok(value)) => value,
-      Ok(Err(err)) => serde_json::json!({ "error": format!("{err:?}") }),
-      Err(err) => serde_json::json!({ "error": format!("computation panicked: {err}") }),
+      Ok(Err(err)) => {
+        error!("Computation failed: {err:?}");
+        serde_json::json!({ "error": format!("{err:#}") })
+      },
+      Err(err) => {
+        error!("Computation panicked: {err}");
+        serde_json::json!({ "error": format!("{err}") })
+      },
     };
     yield Ok::<_, Infallible>(
       Event::default()

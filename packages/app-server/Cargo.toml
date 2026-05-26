@@ -21,10 +21,14 @@ clap = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 log = { workspace = true }
 rayon = { workspace = true }
 >>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
+=======
+log = { workspace = true }
+>>>>>>> 71efa29b (fix(app-server): log errors to stderr instead of silently converting to JSON)
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
