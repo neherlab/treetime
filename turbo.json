@@ -20,29 +20,23 @@
       "cache": false
     },
     "lint": {
-      "outputLogs": "errors-only",
       "cache": false
     },
     "lint:fix": {
-      "outputLogs": "errors-only",
       "cache": false
     },
     "format": {
-      "outputLogs": "errors-only",
       "cache": false
     },
     "format:check": {
-      "outputLogs": "errors-only",
       "cache": false
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputLogs": "errors-only",
       "cache": false
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputLogs": "errors-only",
       "cache": false
     },
     "upgrade": {

@@ -37,6 +37,8 @@
     "upgrade": "bun update --latest"
   },
   "devDependencies": {
+    "oxfmt": "0.51.0",
+    "oxlint": "1.66.0",
     "turbo": "2.9.14"
   },
   "trustedDependencies": [
