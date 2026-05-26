@@ -1,0 +1,10 @@
+{
+  "name": "@neherlab/app-server",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime HTTP API server",
+  "scripts": {
+    "build": "../../dev/dev b --bin=treetime-server",
+    "dev": "../../dev/dev r treetime-server"
+  }
+}

@@ -5,12 +5,13 @@
     "packages/app-contracts",
     "packages/app-desktop",
     "packages/app-napi",
+    "packages/app-server",
     "packages/app-ui",
     "packages/app-web"
   ],
   "scripts": {
     "dev:desktop": "turbo dev --filter=@neherlab/app-desktop",
-    "dev:web": "turbo dev --filter=@neherlab/app-web",
+    "dev:web": "turbo dev --filter=@neherlab/app-web --filter=@neherlab/app-server",
     "build": "turbo build",
     "build:desktop": "turbo build --filter=@neherlab/app-desktop",
     "build:web": "turbo build --filter=@neherlab/app-web",

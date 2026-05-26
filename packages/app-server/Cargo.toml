@@ -12,8 +12,10 @@ version.workspace = true
 
 [dependencies]
 app-api = { workspace = true }
+treetime-utils = { workspace = true }
 
 axum = { workspace = true }
+ctor = { workspace = true }
 eyre = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
@@ -22,11 +24,9 @@ tokio = { workspace = true }
 tower-http = { workspace = true }
 
 [dev-dependencies]
-ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
-treetime-utils = { workspace = true }
 
 [lints]
 workspace = true

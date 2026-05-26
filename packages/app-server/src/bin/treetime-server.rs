@@ -15,7 +15,23 @@ async fn main() -> eyre::Result<()> {
 
   let addr = format!("{host}:{port}");
   let listener = tokio::net::TcpListener::bind(&addr).await?;
+<<<<<<< HEAD
   info!("TreeTime server listening on http://{addr}");
   axum::serve(listener, create_router()).await?;
+=======
+  eprintln!("TreeTime server listening on http://{addr}");
+  axum::serve(listener, create_router())
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
+>>>>>>> a9124f4b (fix: add graceful shutdown to treetime-server on SIGINT)
   Ok(())
+}
+
+async fn shutdown_signal() {
+<<<<<<< HEAD
+  tokio::signal::ctrl_c().await.ok();
+=======
+  drop(tokio::signal::ctrl_c().await);
+>>>>>>> 5c566b97 (refactor: lint)
+  eprintln!("TreeTime server shutting down");
 }
