@@ -1,0 +1,27 @@
+[package]
+name = "treetime-api"
+authors.workspace = true
+description = "Service layer for TreeTime: progress reporting, parameter types, and command orchestration"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+treetime = { workspace = true }
+treetime-io = { workspace = true }
+
+eyre = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+rstest = { workspace = true }
+treetime-utils = { workspace = true }
+
+[lints]
+workspace = true

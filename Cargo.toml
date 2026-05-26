@@ -5,6 +5,7 @@ members = [
   "packages/phyloxml",
   "packages/treetime",
   "packages/treetime-analytical",
+  "packages/treetime-api",
   "packages/treetime-cli",
   "packages/treetime-distribution",
   "packages/treetime-graph",
