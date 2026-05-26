@@ -6,6 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
 <<<<<<< HEAD
+<<<<<<< HEAD
     "build": "tsc",
     "dev": "tsc && electron . --no-sandbox",
     "lint": "oxlint src/",
@@ -13,13 +14,20 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
 =======
+=======
+>>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
     "build": "tsc && vite build",
     "dev": "tsc && node scripts/dev.mjs",
     "lint": "oxlint src/ renderer/",
     "lint:fix": "oxlint --fix src/ renderer/",
+<<<<<<< HEAD
     "format": "oxfmt --write src/ renderer/",
     "format:check": "oxfmt --check src/ renderer/",
 >>>>>>> 52d55fb2 (chore: replace prettier with oxfmt, add root oxlint/oxfmt configs)
+=======
+    "format": "prettier --write src/ renderer/",
+    "format:check": "prettier --check src/ renderer/",
+>>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

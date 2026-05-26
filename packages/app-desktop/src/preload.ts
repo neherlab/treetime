@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
 
 const bridge: TreeTimeBridge = {
@@ -34,13 +35,31 @@ const bridge: TreeTimeBridge = {
     const json = await ipcRenderer.invoke("treetime:datasets");
     return JSON.parse(json) as DatasetInfo[];
   },
+=======
+import type { TreeTimeBridge, CommandResult } from "@neherlab/app-contracts";
+
+async function invokeCommand(channel: string, args: unknown): Promise<CommandResult> {
+  try {
+    await ipcRenderer.invoke(channel, JSON.stringify(args));
+    return { status: "ok" };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { status: "error", error: message };
+  }
+}
+
+const bridge: TreeTimeBridge = {
+>>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
   ancestral: (args) => invokeCommand("treetime:ancestral", args),
   clock: (args) => invokeCommand("treetime:clock", args),
   timetree: (args) => invokeCommand("treetime:timetree", args),
   mugration: (args) => invokeCommand("treetime:mugration", args),
   optimize: (args) => invokeCommand("treetime:optimize", args),
   prune: (args) => invokeCommand("treetime:prune", args),
+<<<<<<< HEAD
 >>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
+=======
+>>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 };
 
 contextBridge.exposeInMainWorld("treetime", bridge);

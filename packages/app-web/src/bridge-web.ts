@@ -135,6 +135,7 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
   }
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
 
+<<<<<<< HEAD
   if (!response.ok) {
     const text = await response.text();
     return { status: "error", error: text };
@@ -160,6 +161,9 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
 =======
   return (await response.json()) as T;
 >>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
+=======
+  return (await response.json()) as CommandResult;
+>>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 }
 
 export function createWebBridge(): TreeTimeBridge {
