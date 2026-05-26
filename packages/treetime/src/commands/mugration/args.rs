@@ -1,9 +1,10 @@
 use clap::{Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeMugrationArgs {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
@@ -41,14 +42,17 @@ pub struct TreetimeMugrationArgs {
 
   /// String indicating missing data
   #[clap(long, default_value = "?")]
+  #[default(_code = r#""?".to_owned()"#)]
   pub missing_data: String,
 
   /// Portion of attribute values that is allowed to not have weights in the weights file
   #[clap(long, default_value_t = 0.5)]
+  #[default = 0.5]
   pub missing_weights_threshold: f64,
 
   /// Number of iterations for GTR model refinement from data.
   #[clap(long, default_value_t = 5)]
+  #[default = 5]
   pub iterations: usize,
 
   /// Rough estimate of how many more events would have been observed if sequences represented an

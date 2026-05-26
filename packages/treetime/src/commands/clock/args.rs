@@ -5,12 +5,12 @@ use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, Gri
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use clap::{Args, Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeClockArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -78,6 +78,7 @@ pub struct TreetimeClockArgs {
 
   /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
   #[clap(long, default_value = "3.0")]
+  #[default = 3.0]
   pub clock_filter: f64,
 
   /// Reroot the tree using root-to-tip regression. Valid choices are 'min_dev', 'least-squares',
@@ -129,7 +130,7 @@ pub struct TreetimeClockArgs {
 }
 
 /// Branch split optimization parameters
-#[derive(Debug, Clone, Args, SmartDefault, Serialize)]
+#[derive(Debug, Clone, Args, SmartDefault, Serialize, Deserialize)]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
   #[clap(long = "branch-split-method", value_enum, default_value_t = OptimizationMethod::default())]
@@ -150,7 +151,7 @@ pub struct BranchSplitArgs {
 }
 
 /// Clock regression model parameters
-#[derive(Debug, Clone, Args, SmartDefault, Serialize)]
+#[derive(Debug, Clone, Args, SmartDefault, Serialize, Deserialize)]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[clap(flatten)]

@@ -1,10 +1,11 @@
 use crate::alphabet::alphabet::AlphabetName;
 use clap::{Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimePruneArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -71,6 +72,7 @@ pub struct TreetimePruneArgs {
   ///
   /// String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
   #[clap(long, default_value = ",", value_name = "DELIMITER")]
+  #[default = ',']
   pub prune_nodes_list_delimiter: char,
 
   /// File containing list of node names to prune
@@ -87,5 +89,6 @@ pub struct TreetimePruneArgs {
   ///
   /// Character or string used to separate node names in the list file.
   #[clap(long, default_value = "\n", value_name = "DELIMITER")]
+  #[default = '\n']
   pub prune_nodes_list_file_delimiter: char,
 }

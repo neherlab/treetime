@@ -1,10 +1,11 @@
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use clap::{Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeHomoplasyArgs {
   #[clap(flatten)]
   pub ancestral_args: TreetimeAncestralArgs,
@@ -28,5 +29,6 @@ pub struct TreetimeHomoplasyArgs {
 
   /// number of mutations/nodes that are printed to screen
   #[clap(long, short = 'n', default_value_t = 10)]
+  #[default = 10]
   pub num_mut: usize,
 }

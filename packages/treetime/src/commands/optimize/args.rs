@@ -3,11 +3,12 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeOptimizeArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
@@ -55,12 +56,14 @@ pub struct TreetimeOptimizeArgs {
 
   /// Maximum number of iterations
   #[clap(long, default_value_t = 10)]
+  #[default = 10]
   pub max_iter: usize,
 
   /// Likelihood convergence threshold. The loop stops when successive
   /// likelihoods differ by less than this value, or when a 2-cycle with
   /// amplitude below this value is detected.
   #[clap(long, default_value_t = 0.1)]
+  #[default = 0.1]
   pub dp: f64,
 
   /// Damping factor for outer-loop branch length updates.
@@ -75,6 +78,7 @@ pub struct TreetimeOptimizeArgs {
   /// Set to 0.0 to disable damping (full update each iteration, no floor).
   /// Must be in [0.0, 1.0).
   #[clap(long, default_value_t = 0.75)]
+  #[default = 0.75]
   pub damping: f64,
 
   /// Initial branch length estimate before Newton optimization.

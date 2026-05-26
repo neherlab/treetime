@@ -3,11 +3,12 @@ use crate::ancestral::params::MethodAncestral;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
 use clap::{Parser, ValueHint};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct TreetimeAncestralArgs {
   /// Path to one or multiple FASTA files with aligned input sequences
   ///
