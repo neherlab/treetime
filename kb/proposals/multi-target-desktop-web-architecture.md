@@ -64,17 +64,36 @@ The desktop dev script (`scripts/dev.mjs`) starts a Vite dev server for the rend
 
 ## Progress streaming (prepared, not yet wired)
 
-`app-api` defines `ProgressSink` trait with `NoopProgress` and `StderrProgress` implementations. Planned:
+`treetime` defines `ProgressSink` trait with `NoopProgress`. `app-api` has `StderrProgress`. Planned:
 
 - Desktop: napi ThreadsafeFunction callback -> IPC -> renderer
-- Server: WebSocket or SSE -> browser
+- Server: SSE -> browser
 - CLI: StderrProgress (exists but not used by CLI yet)
+
+## Completed work
+
+- `ProgressSink` trait moved from app-api to treetime core
+- clap feature-gated in treetime (optional dependency behind `clap` feature flag)
+- schemars dependency added, JSON Schema generation via `treetime schema write` CLI subcommand
+- build.rs auto-generates JSON Schema into app-contracts on treetime source changes
+- Result types defined for all 7 commands (run\_\* functions return structured data)
+- Per-command TypeScript result types in app-contracts (AncestralResult, ClockResult, etc.)
+- Per-command React hooks in app-ui (useAncestral, useClock, etc.)
+- Desktop: fixed missing version IPC handler and QueryProvider
+- Server: error response format changed to {code, message}
+- Convert binary removed from app-cli
+- Homoplasy stub returns HomoplasyResult type
 
 ## Open work
 
-- Wire progress streaming implementations (napi ThreadsafeFunction, SSE/WebSocket)
-- Extract I/O from algorithm library (run\_\* functions currently write to disk)
-- Add structured result types (return data instead of writing files)
-- Configure oxlint and prettier (packages installed, config files missing)
+- Wire progress streaming implementations (napi ThreadsafeFunction, SSE)
+- Extract I/O from run*\* into execute*\* functions (computation/I/O separation per command)
+- Define computation input structs (parsed data, no file paths)
+- Wire structured results through app-api, app-napi, app-server (currently discarded)
+- Wire CLI through app-api (currently bypasses it)
+- Set up TS codegen Turbo pipeline (json-schema-to-typescript + ts-to-zod)
+- Add Serialize/JsonSchema to complex types (GTR, graph payloads) for full schema generation
+- Desktop progress IPC, file dialog
+- Web SSE progress, file upload
+- Zustand state store in app-ui
 - Add vitest for frontend unit tests
-- TypeScript arg type codegen or validation against Rust structs

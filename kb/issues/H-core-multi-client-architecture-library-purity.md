@@ -23,12 +23,8 @@ Decision: keep `clap` as a direct dependency of the `treetime` library crate. Do
 
 ### Missing client crates
 
-No crates exist for non-CLI consumption:
-
-- `treetime-python`: PyO3 bindings + Python CLI wrapping Rust library
-- `treetime-desktop`: thin wrapper with minimal desktop frontend
-
-These crates create structural backpressure: if the library must remain consumable by multiple clients, domain logic cannot drift into any single client crate.
+- `treetime-python`: PyO3 bindings + Python CLI wrapping Rust library (not started)
+- ~~`treetime-desktop`: thin wrapper with minimal desktop frontend~~ (scaffolded: napi-rs async wrappers for all commands, Electron frontend placeholder)
 
 ## Impact
 

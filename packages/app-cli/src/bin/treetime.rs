@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 #[cfg(any(
   all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
   all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
@@ -9,15 +7,6 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-=======
-use app_cli::cli::progress::BarProgress;
->>>>>>> 04a8f9b2 (feat(app-cli): add indicatif progress bar for TTY, NoopProgress for pipes)
-use app_cli::cli::rtt_chart::{
-  print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
-};
-<<<<<<< HEAD
-use app_cli::cli::treetime_cli::{TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args};
-=======
 use app_cli::cli::progress::{BarProgress, TextProgress};
 use app_cli::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
@@ -26,12 +15,6 @@ use app_cli::cli::treetime_cli::{
   TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
 };
 use app_cli::cli::verbosity::Verbosity;
->>>>>>> d9cec2f3 (feat(cli): add --no-progress flag, BarProgress with suspend, TextProgress)
-=======
-use app_cli::cli::treetime_cli::{
-  TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
-};
->>>>>>> f1127239 (refactor: format)
 use ctor::ctor;
 use eyre::Report;
 use log::info;
@@ -42,10 +25,7 @@ use treetime::commands::mugration::run::run_mugration;
 use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
-<<<<<<< HEAD
 use treetime::progress::{NoopProgress, ProgressSink};
-=======
->>>>>>> f1127239 (refactor: format)
 use treetime::schema::generate_schema;
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;

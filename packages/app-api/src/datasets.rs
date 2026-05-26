@@ -15,18 +15,16 @@ pub fn discover_datasets(data_dir: &Path) -> Vec<DatasetInfo> {
 }
 
 fn collect_datasets(base: &Path, dir: &Path, out: &mut Vec<DatasetInfo>) {
-  let entries = match std::fs::read_dir(dir) {
-    Ok(entries) => entries,
-    Err(_) => return,
+  let Ok(entries) = std::fs::read_dir(dir) else {
+    return;
   };
 
   let mut files: Vec<String> = Vec::new();
   let mut subdirs: Vec<PathBuf> = Vec::new();
 
   for entry in entries.flatten() {
-    let ft = match entry.file_type() {
-      Ok(ft) => ft,
-      Err(_) => continue,
+    let Ok(ft) = entry.file_type() else {
+      continue;
     };
     let name = entry.file_name().to_string_lossy().into_owned();
     if ft.is_dir() {

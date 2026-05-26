@@ -1,7 +1,8 @@
 pub mod commands;
 pub mod datasets;
 pub mod progress;
-pub mod version;
+
+pub use treetime::version;
 
 pub use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 pub use treetime::commands::ancestral::result::AncestralResult;
@@ -13,12 +14,8 @@ pub use treetime::commands::optimize::result::OptimizeResult;
 pub use treetime::commands::prune::args::TreetimePruneArgs;
 pub use treetime::commands::prune::result::PruneResult;
 pub use treetime::commands::timetree::args::TreetimeTimetreeArgs;
-<<<<<<< HEAD
-pub use treetime::version;
-=======
 pub use treetime::commands::timetree::result::TimetreeResult;
 pub use treetime::mugration::result::MugrationResult;
->>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
 
 #[cfg(test)]
 mod tests {

@@ -135,13 +135,12 @@ where
   T: Serialize + Send + 'static,
 {
   if let Some(obj) = body.as_object_mut() {
-    let client_outdir = obj
-      .get("outdir")
-      .and_then(Value::as_str)
-      .unwrap_or_default()
-      .to_owned();
+    let client_outdir = obj.get("outdir").and_then(Value::as_str).unwrap_or_default().to_owned();
     let resolved = out_dir.join(client_outdir);
-    obj.insert("outdir".to_owned(), Value::String(resolved.to_string_lossy().into_owned()));
+    obj.insert(
+      "outdir".to_owned(),
+      Value::String(resolved.to_string_lossy().into_owned()),
+    );
   }
   let args: S = match serde_json::from_value(body) {
     Ok(args) => args,

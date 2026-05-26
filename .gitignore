@@ -8,10 +8,8 @@
 /.vscode*
 /data_dev
 /tmp*
-.turbo
 bun.lock
-dist
-dist-electron
 node_modules
 target
-*.node
+.turbo
+dist

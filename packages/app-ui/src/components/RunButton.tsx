@@ -2,8 +2,6 @@ import { Play, Square, Loader2 } from "lucide-react";
 import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 import { useBridge } from "../BridgeContext";
-<<<<<<< HEAD
-<<<<<<< HEAD
 import type { CommandOptions } from "@neherlab/app-contracts";
 import type { FileSlotKind } from "../types";
 import { COMMANDS } from "../types";
@@ -20,43 +18,17 @@ export function RunButton() {
   const bridge = useBridge();
   const activeCommand = useAppStore((s) => s.activeCommand);
   const files = useAppStore((s) => s.files);
-=======
-=======
-import type { FileSlotKind } from "../types";
->>>>>>> 8d1c6d64 (feat(app-ui): replace hardcoded datasets with server-provided list)
-import { COMMANDS } from "../types";
-
-function buildDataPath(files: Partial<Record<FileSlotKind, { name: string }>>, slot: FileSlotKind): string {
-  const file = files[slot];
-  if (!file) {
-    throw new Error(`Missing required file: ${slot}`);
-  }
-  return `data/${file.name}`;
-}
-
-export function RunButton() {
-  const bridge = useBridge();
-  const activeCommand = useAppStore((s) => s.activeCommand);
-<<<<<<< HEAD
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
-=======
-  const files = useAppStore((s) => s.files);
->>>>>>> 8d1c6d64 (feat(app-ui): replace hardcoded datasets with server-provided list)
   const runStatus = useAppStore((s) => s.runStatus);
   const progress = useAppStore((s) => s.progress);
   const setRunStatus = useAppStore((s) => s.setRunStatus);
   const setProgress = useAppStore((s) => s.setProgress);
   const setShowResults = useAppStore((s) => s.setShowResults);
-<<<<<<< HEAD
   const setAbortController = useAppStore((s) => s.setAbortController);
   const cancelRun = useAppStore((s) => s.cancelRun);
-=======
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 
   const commandLabel = COMMANDS.find((c) => c.name === activeCommand)?.label ?? activeCommand;
 
   const handleRun = useCallback(async () => {
-<<<<<<< HEAD
     const controller = new AbortController();
     setAbortController(controller);
     setRunStatus("running");
@@ -94,66 +66,11 @@ export function RunButton() {
           break;
         case "prune":
           await bridge.prune({ tree, input_fastas: alignment ? [alignment] : undefined, outdir }, options);
-=======
-    setRunStatus("running");
-    setProgress(undefined);
-    const onProgress = (event: { stage: string; fraction: number; message: string }) => {
-      setProgress({ stage: event.stage, fraction: event.fraction, message: event.message });
-    };
-    try {
-      const tree = buildDataPath(files, "tree");
-      const outdir = `tmp/web/${activeCommand}`;
-      const alignment = files.alignment ? buildDataPath(files, "alignment") : undefined;
-      const dates = files.dates ? buildDataPath(files, "dates") : undefined;
-      const states = files.states ? buildDataPath(files, "states") : undefined;
-
-      switch (activeCommand) {
-        case "timetree":
-          await bridge.timetree(
-            { tree, dates, input_fastas: alignment ? [alignment] : undefined, outdir },
-            onProgress,
-          );
-          break;
-        case "ancestral":
-          await bridge.ancestral(
-            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
-            onProgress,
-          );
-          break;
-        case "clock":
-          await bridge.clock(
-            { tree, dates: dates ?? "", outdir },
-            onProgress,
-          );
-          break;
-        case "mugration":
-          await bridge.mugration(
-            { tree, states: states ?? "", attribute: "country", outdir },
-            onProgress,
-          );
-          break;
-        case "optimize":
-          await bridge.optimize(
-            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
-            onProgress,
-          );
-          break;
-        case "prune":
-<<<<<<< HEAD
-          await bridge.prune(stubArgs, onProgress);
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
-=======
-          await bridge.prune(
-            { tree, input_fastas: alignment ? [alignment] : undefined, outdir },
-            onProgress,
-          );
->>>>>>> 6c418682 (feat(app-ui): use real example dataset paths for server-side file I/O)
           break;
       }
       setRunStatus("completed");
       setShowResults(true);
     } catch {
-<<<<<<< HEAD
       if (!controller.signal.aborted) {
         setRunStatus("failed");
       }
@@ -161,16 +78,6 @@ export function RunButton() {
       setAbortController(undefined);
     }
   }, [bridge, activeCommand, files, setRunStatus, setProgress, setShowResults, setAbortController]);
-=======
-      setRunStatus("failed");
-    }
-  }, [bridge, activeCommand, files, setRunStatus, setProgress, setShowResults]);
-
-  const handleCancel = useCallback(() => {
-    setRunStatus("idle");
-    setProgress(undefined);
-  }, [setRunStatus, setProgress]);
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
 
   if (runStatus === "running") {
     return (
@@ -193,11 +100,7 @@ export function RunButton() {
           </span>
           <button
             type="button"
-<<<<<<< HEAD
             onClick={cancelRun}
-=======
-            onClick={handleCancel}
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
             className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             <Square size={12} />

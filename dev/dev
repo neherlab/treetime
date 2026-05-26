@@ -295,92 +295,6 @@ for kind, name in sorted(targets):
     fi
     popd >/dev/null
     ;;
-<<<<<<< HEAD
-  "desktop-start")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run dev:desktop "$@"
-    popd >/dev/null
-    ;;
-  "desktop-build")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run build:desktop "$@"
-    popd >/dev/null
-    ;;
-  "app-start")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-<<<<<<< HEAD
-    bun run dev:server &
-<<<<<<< HEAD
-    local server_pid=$!
-    bun run dev:web "$@"
-    kill "${server_pid}" 2>/dev/null || true
-=======
-    bun run dev:web "$@"
->>>>>>> 3eb7c125 (chore: unify dev tooling under turbo orchestration)
-=======
-    bun run dev:web "$@" &
-    wait
->>>>>>> d2337589 (fix(dev): fix app-start process management and turbo watch exit)
-    popd >/dev/null
-    ;;
-  "app-build")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run build:web "$@"
-    popd >/dev/null
-    ;;
-  "app-release")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run release:web "$@"
-    popd >/dev/null
-    ;;
-  "app-release-watch")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run release:web "$@"
-    popd >/dev/null
-    ;;
-  "js-lint")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run lint "$@"
-    popd >/dev/null
-    ;;
-  "js-lint-fix")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run lint:fix "$@"
-    popd >/dev/null
-    ;;
-  "js-format")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run format "$@"
-    popd >/dev/null
-    ;;
-  "js-format-check")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run format:check "$@"
-    popd >/dev/null
-    ;;
-  "js-check")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run typecheck "$@"
-    popd >/dev/null
-    ;;
-  "js-test")
-    run_one js-install
-    pushd "$(project_root)" >/dev/null
-    bun run test "$@"
-    popd >/dev/null
-    ;;
-=======
   "desktop-start")  bun_run dev:desktop "$@" ;;
   "desktop-build")  bun_run build:desktop "$@" ;;
   "app-start")      bun_run dev:web "$@" ;;
@@ -393,7 +307,6 @@ for kind, name in sorted(targets):
   "js-format-check") bun_run format:check "$@" ;;
   "js-check")       bun_run typecheck "$@" ;;
   "js-test")        bun_run test "$@" ;;
->>>>>>> 8e98fadf (chore(dev): auto-reinstall JS deps on package.json change)
   "js-upgrade")
     pushd "$(project_root)" >/dev/null
     bun update --latest "$@"

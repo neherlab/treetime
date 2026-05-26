@@ -6,8 +6,8 @@ use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
   TreetimeTimetreeArgs,
 };
-use napi::threadsafe_function::ThreadsafeFunction;
 use napi::Task;
+use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::path::Path;
 use std::sync::Arc;
@@ -25,6 +25,7 @@ pub fn datasets() -> String {
 }
 
 #[napi]
+#[allow(clippy::needless_pass_by_value)]
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
   let args: TreetimeAncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
   let result = app_api::commands::ancestral(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;

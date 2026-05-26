@@ -5,33 +5,21 @@ if (process.env.ELECTRON_DISABLE_SANDBOX === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
-=======
 const projectRoot = process.env.TREETIME_PROJECT_ROOT;
 if (projectRoot) {
   process.chdir(projectRoot);
 }
 
-<<<<<<< HEAD
->>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
-=======
 function registerThemeHandler() {
   ipcMain.on("treetime:theme", (_event, theme: string) => {
     nativeTheme.themeSource = theme as "system" | "light" | "dark";
   });
 }
 
->>>>>>> 0571c0c9 (feat(ui): add automatic OS theme detection with next-themes)
 function registerIpcHandlers() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const addon = require("@neherlab/app-napi");
 
-<<<<<<< HEAD
   ipcMain.handle("treetime:version", () => {
     return addon.version();
   });
@@ -40,15 +28,10 @@ function registerIpcHandlers() {
     return addon.datasets();
   });
 
-<<<<<<< HEAD
-=======
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
-=======
   ipcMain.on("treetime:cancel", () => {
     addon.cancel();
   });
 
->>>>>>> d8153c8f (feat(desktop): Wire up progress events and cancellation in Electron IPC)
   const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
   for (const cmd of commands) {
     ipcMain.handle(`treetime:${cmd}`, (event: Electron.IpcMainInvokeEvent, argsJson: string) => {
@@ -66,10 +49,6 @@ function registerIpcHandlers() {
   }
 }
 
-<<<<<<< HEAD
->>>>>>> 9f689333 (fix(app-desktop): add missing version IPC handler and QueryProvider)
-=======
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,

@@ -11,23 +11,11 @@ logger.info = (msg, options) => {
   originalInfo(msg, options);
 };
 
-const serverPort = process.env.PORT ?? "3100";
-
 export default defineConfig({
-<<<<<<< HEAD
-<<<<<<< HEAD
-  plugins: [react()],
-<<<<<<< HEAD
-=======
-=======
-=======
   envPrefix: ["VITE_", "TREETIME_"],
->>>>>>> db835e9b (feat(app-web): add debug logging for fetch and SSE messages)
   plugins: [tailwindcss(), react()],
->>>>>>> 0d74b8c0 (feat(app-ui): add UI mockup with layout shell, input panel, and results placeholders)
   customLogger: logger,
   clearScreen: false,
->>>>>>> 3eb7c125 (chore: unify dev tooling under turbo orchestration)
   server: {
     strictPort: true,
     proxy: {

@@ -65,19 +65,12 @@ xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
 approx = "=0.5.1"
-<<<<<<< HEAD
-=======
 async-stream = "=0.3.6"
 axum = { version = "=0.8.9", features = ["json"] }
-<<<<<<< HEAD
->>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
-=======
 indicatif = "=0.18.4"
->>>>>>> 04a8f9b2 (feat(app-cli): add indicatif progress bar for TTY, NoopProgress for pipes)
 argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 auto_ops = "=0.3.0"
-axum = { version = "=0.8.9", features = ["json"] }
 bio = { version = "=2.3.0", features = ["phylogeny"] }
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "=0.4.42", default-features = false, features = ["clock", "alloc", "std", "serde"] }
@@ -139,22 +132,16 @@ strum_macros = "=0.27.2"
 tempfile = "=3.27.0"
 textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
+time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
 tokio = { version = "=1.52.3", features = ["full"] }
 tokio-stream = "=0.1.18"
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
-<<<<<<< HEAD
-time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
-=======
->>>>>>> ad44829e (feat: add prod build and watch shortcuts, turbo watch for auto-rebuild)
 traversal = "=0.1.2"
 proptest = "=1.6.0"
 quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }
 xml = "=1.0.0"
 
 app-api = { path = "packages/app-api" }
-app-cli = { path = "packages/app-cli" }
-app-napi = { path = "packages/app-napi" }
-app-server = { path = "packages/app-server" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
 treetime-distribution = { path = "packages/treetime-distribution" }

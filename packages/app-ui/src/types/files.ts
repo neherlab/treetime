@@ -20,4 +20,3 @@ export const FILE_SLOTS: ReadonlyArray<FileSlotConfig> = [
   { kind: "weights", label: "Weights", accept: ".csv,.tsv,.txt", description: "Equilibrium state weights" },
   { kind: "vcfReference", label: "VCF Reference", accept: ".fasta,.fa", description: "FASTA reference for VCF" },
 ];
-

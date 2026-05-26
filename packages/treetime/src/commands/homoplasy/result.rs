@@ -1,2 +1,2 @@
 #[derive(Debug)]
-pub struct HomoplasyResult {}
+pub struct HomoplasyResult;

@@ -1,20 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-contracts";
-=======
 import { fetchEventSource } from "@microsoft/fetch-event-source";
-<<<<<<< HEAD
-<<<<<<< HEAD
-import { CancelledError } from "@neherlab/app-contracts";
-import type {
-  CommandOptions,
-  TreeTimeBridge,
-  DatasetInfo,
-  LogEvent,
-  ProgressEvent,
-  VersionInfo,
-=======
 import {
   CancelledError,
   createBridge,
@@ -23,23 +7,7 @@ import {
   type LogEvent,
   type ProgressEvent,
   type TreeTimeBridge,
->>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
 } from "@neherlab/app-contracts";
->>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
-=======
-import { fetchEventSource } from "@microsoft/fetch-event-source";
-<<<<<<< HEAD
-import type { TreeTimeBridge, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
->>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
-=======
-import type { ErrorResponse, TreeTimeBridge, VersionInfo } from "@neherlab/app-contracts";
->>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
-=======
-import type { TreeTimeBridge, DatasetInfo, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
->>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
-=======
-import type { TreeTimeBridge, DatasetInfo, LogEvent, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
->>>>>>> 32dd8b71 (feat(web): forward server log events to browser console)
 
 const API_BASE = "/api";
 
@@ -58,51 +26,6 @@ async function getJson<T>(path: string): Promise<T> {
   return data;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-async function postCommand(command: string, args: unknown): Promise<CommandResult> {
-=======
-async function postCommand<T>(command: string, args: unknown): Promise<T> {
->>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
-  const response = await fetch(`${API_BASE}/${command}`, {
-=======
-async function postSse<T>(command: string, args: unknown, onProgress?: (event: ProgressEvent) => void): Promise<T> {
-  let result: T | undefined;
-
-  await fetchEventSource(`${API_BASE}/${command}`, {
->>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(args),
-    onmessage(msg) {
-      if (msg.event === "progress") {
-        onProgress?.(JSON.parse(msg.data) as ProgressEvent);
-      } else if (msg.event === "log") {
-        const log = JSON.parse(msg.data) as LogEvent;
-        switch (log.level) {
-          case "Error":
-            console.error(`[TreeTime] ${log.message}`);
-            break;
-          case "Warn":
-            console.warn(`[TreeTime] ${log.message}`);
-            break;
-          default:
-            console.log(`[TreeTime] [${log.level}] ${log.message}`);
-            break;
-        }
-      } else if (msg.event === "result") {
-        result = JSON.parse(msg.data) as T;
-      }
-    },
-    onerror(err) {
-      throw err;
-    },
-    openWhenHidden: true,
-  });
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 async function postSse<T>(command: string, args: unknown, options?: CommandOptions): Promise<T> {
   let result: T | undefined;
 
@@ -144,76 +67,18 @@ async function postSse<T>(command: string, args: unknown, options?: CommandOptio
     }
     throw err;
   }
->>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
-
-<<<<<<< HEAD
-  if (!response.ok) {
-    const text = await response.text();
-    return { status: "error", error: text };
-  }
-
-  return response.json() as Promise<CommandResult>;
-=======
-  if (!response.ok) {
-    const body = (await response.json()) as ErrorResponse;
-    throw new Error(`${body.code}: ${body.message}`);
-  }
-<<<<<<< HEAD
-  return (await response.json()) as CommandResult;
->>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
-=======
 
   if (result === undefined) {
     throw new Error(`${command}: no result received`);
   }
 
   return result;
->>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
-=======
-  return (await response.json()) as T;
->>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
-=======
-  return (await response.json()) as CommandResult;
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 }
 
 function createWebTransport(): BridgeTransport {
   return {
-<<<<<<< HEAD
-    version: () => getJson<VersionInfo>("version"),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    ancestral: (args) => postCommand("ancestral", args),
-    clock: (args) => postCommand("clock", args),
-    timetree: (args) => postCommand("timetree", args),
-    mugration: (args) => postCommand("mugration", args),
-    optimize: (args) => postCommand("optimize", args),
-    prune: (args) => postCommand("prune", args),
-=======
-    datasets: () => getJson<DatasetInfo[]>("datasets"),
-    ancestral: (args, options) => postSse("ancestral", args, options),
-    clock: (args, options) => postSse("clock", args, options),
-    timetree: (args, options) => postSse("timetree", args, options),
-    mugration: (args, options) => postSse("mugration", args, options),
-    optimize: (args, options) => postSse("optimize", args, options),
-    prune: (args, options) => postSse("prune", args, options),
->>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
-=======
-=======
-    datasets: () => getJson<DatasetInfo[]>("datasets"),
->>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
-    ancestral: (args, onProgress) => postSse("ancestral", args, onProgress),
-    clock: (args, onProgress) => postSse("clock", args, onProgress),
-    timetree: (args, onProgress) => postSse("timetree", args, onProgress),
-    mugration: (args, onProgress) => postSse("mugration", args, onProgress),
-    optimize: (args, onProgress) => postSse("optimize", args, onProgress),
-    prune: (args, onProgress) => postSse("prune", args, onProgress),
->>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
-=======
     query: <T>(endpoint: string) => getJson<T>(endpoint),
     command: <T>(endpoint: string, args: unknown, options?: CommandOptions) => postSse<T>(endpoint, args, options),
->>>>>>> 65049588 (refactor(bridge): use generated createBridge with transport abstraction)
   };
 }
 

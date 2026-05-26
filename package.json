@@ -12,18 +12,8 @@
   ],
   "scripts": {
     "dev:desktop": "turbo dev --filter=@neherlab/app-desktop",
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "dev:web": "turbo watch dev --filter=@neherlab/app-web",
-    "dev:server": "bacon server",
-=======
     "dev:web": "turbo dev --filter=@neherlab/app-web --filter=@neherlab/app-server",
     "dev:server": "turbo dev --filter=@neherlab/app-server",
->>>>>>> 3eb7c125 (chore: unify dev tooling under turbo orchestration)
-=======
-    "dev:web": "turbo dev --filter=@neherlab/app-web",
-    "dev:server": "bacon --headless server",
->>>>>>> d2337589 (fix(dev): fix app-start process management and turbo watch exit)
     "build": "turbo build",
     "build:desktop": "turbo build --filter=@neherlab/app-desktop",
     "build:web": "turbo build --filter=@neherlab/app-web --filter=@neherlab/app-server",

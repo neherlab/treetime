@@ -94,4 +94,4 @@ Coordinates:
 - ~~architecture-move-shared-domain-enums-from-commands.md~~ (resolved)
 - [architecture-move-commands-to-cli-crate.md](architecture-move-commands-to-cli-crate.md)
 - [architecture-add-treetime-python-crate.md](architecture-add-treetime-python-crate.md)
-- [architecture-add-treetime-desktop-crate.md](architecture-add-treetime-desktop-crate.md)
+- ~~architecture-add-treetime-desktop-crate.md~~ (resolved: scaffolded with napi-rs async wrappers)

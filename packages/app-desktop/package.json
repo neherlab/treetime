@@ -5,35 +5,13 @@
   "description": "TreeTime desktop application - Electron shell",
   "main": "dist-electron/main.js",
   "scripts": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "build": "tsc",
-    "dev": "tsc && electron . --no-sandbox",
-    "lint": "oxlint src/",
-    "lint:fix": "oxlint --fix src/",
-    "format": "prettier --write src/",
-    "format:check": "prettier --check src/",
-=======
-=======
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
-    "build": "tsc && vite build",
-    "dev": "tsc && node scripts/dev.mjs",
-=======
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
->>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
     "lint": "oxlint src/ renderer/",
     "lint:fix": "oxlint --fix src/ renderer/",
-<<<<<<< HEAD
     "format": "oxfmt --write src/ renderer/",
     "format:check": "oxfmt --check src/ renderer/",
->>>>>>> 52d55fb2 (chore: replace prettier with oxfmt, add root oxlint/oxfmt configs)
-=======
-    "format": "prettier --write src/ renderer/",
-    "format:check": "prettier --check src/ renderer/",
->>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -46,32 +24,12 @@
     "tailwindcss": "4.3.0"
   },
   "devDependencies": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "oxlint": "1.66.0",
-    "prettier": "3.8.3",
-    "typescript": "6.0.3"
-=======
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "electron": "42.2.0",
     "electron-builder": "26.8.1",
     "typescript": "6.0.3",
-<<<<<<< HEAD
-    "vite": "8.0.14"
->>>>>>> 52d55fb2 (chore: replace prettier with oxfmt, add root oxlint/oxfmt configs)
-=======
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.2",
-    "electron": "42.2.0",
-    "oxlint": "1.66.0",
-    "prettier": "3.8.3",
-    "typescript": "6.0.3",
-    "vite": "8.0.14"
->>>>>>> 87acd57e (fix(ts): fix package configs, vite proxy, electron devDeps)
-=======
     "vite": "8.0.14",
     "vite-plugin-electron": "0.29.1"
   },
@@ -94,6 +52,5 @@
     "win": {
       "target": ["nsis"]
     }
->>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
   }
 }

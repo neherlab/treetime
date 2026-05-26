@@ -1,13 +1,6 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
->>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
-=======
-import tailwindcss from "@tailwindcss/vite";
->>>>>>> 590c0e4a (feat(desktop): Add Tailwind CSS styling)
 import react from "@vitejs/plugin-react";
 import electron from "vite-plugin-electron/simple";
 import { defineConfig } from "vite";
@@ -24,10 +17,6 @@ process.env.TREETIME_PROJECT_ROOT ??= projectRoot;
 
 export default defineConfig({
   root: "renderer",
-<<<<<<< HEAD
-<<<<<<< HEAD
-  plugins: [react()],
-=======
   plugins: [
     electron({
       main: {
@@ -56,10 +45,6 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
->>>>>>> cfc09d41 (feat(desktop): replace manual build with vite-plugin-electron)
-=======
-  plugins: [tailwindcss(), react()],
->>>>>>> 590c0e4a (feat(desktop): Add Tailwind CSS styling)
   clearScreen: false,
   server: {
     port: 5174,
