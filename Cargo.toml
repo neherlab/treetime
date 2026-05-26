@@ -132,7 +132,10 @@ textplots = "=0.8.7"
 tikv-jemallocator = "=0.6.0"
 tokio = { version = "=1.52.3", features = ["full"] }
 tower-http = { version = "=0.6.11", features = ["cors", "fs"] }
+<<<<<<< HEAD
 time = { version = "=0.3.44", features = ["serde", "macros", "parsing"] }
+=======
+>>>>>>> ad44829e (feat: add prod build and watch shortcuts, turbo watch for auto-rebuild)
 traversal = "=0.1.2"
 proptest = "=1.6.0"
 quick-xml = { version = "=0.38.3", features = ["serde", "serialize"] }

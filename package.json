@@ -10,11 +10,12 @@
     "packages/app-web"
   ],
   "scripts": {
-    "dev:desktop": "turbo dev --filter=@neherlab/app-desktop",
-    "dev:web": "turbo dev --filter=@neherlab/app-web --filter=@neherlab/app-server",
+    "dev:desktop": "turbo watch dev --filter=@neherlab/app-desktop",
+    "dev:web": "turbo watch dev --filter=@neherlab/app-web --filter=@neherlab/app-server",
     "build": "turbo build",
     "build:desktop": "turbo build --filter=@neherlab/app-desktop",
-    "build:web": "turbo build --filter=@neherlab/app-web",
+    "build:web": "turbo build --filter=@neherlab/app-web --filter=@neherlab/app-server",
+    "release:web": "turbo watch release --filter=@neherlab/app-web --filter=@neherlab/app-server",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",

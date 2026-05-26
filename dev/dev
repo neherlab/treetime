@@ -34,6 +34,8 @@ declare -A ALIASES=(
   ["db"]="desktop-build"
   ["a"]="app-start"
   ["ab"]="app-build"
+  ["ar"]="app-release"
+  ["arw"]="app-release-watch"
   ["jl"]="js-lint"
   ["jlf"]="js-lint-fix"
   ["jf"]="js-format"
@@ -313,6 +315,18 @@ for kind, name in sorted(targets):
     run_one js-install
     pushd "$(project_root)" >/dev/null
     bun run build:web "$@"
+    popd >/dev/null
+    ;;
+  "app-release")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run build:web "$@"
+    popd >/dev/null
+    ;;
+  "app-release-watch")
+    run_one js-install
+    pushd "$(project_root)" >/dev/null
+    bun run release:web "$@"
     popd >/dev/null
     ;;
   "js-lint")

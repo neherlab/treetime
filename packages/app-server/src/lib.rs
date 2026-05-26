@@ -3,11 +3,19 @@ pub mod routes;
 
 use axum::Router;
 use tower_http::cors::CorsLayer;
+use tower_http::services::{ServeDir, ServeFile};
 
 pub fn create_router() -> Router {
-  Router::new()
-    .nest("/api", routes::api_routes())
-    .layer(CorsLayer::permissive())
+  let api = Router::new().nest("/api", routes::api_routes());
+
+  match std::env::var("STATIC_DIR") {
+    Ok(static_dir) => {
+      let index = format!("{static_dir}/index.html");
+      api.fallback_service(ServeDir::new(&static_dir).fallback(ServeFile::new(index)))
+    },
+    Err(_) => api,
+  }
+  .layer(CorsLayer::permissive())
 }
 
 #[cfg(test)]

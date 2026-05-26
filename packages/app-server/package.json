@@ -5,6 +5,8 @@
   "description": "TreeTime HTTP API server",
   "scripts": {
     "build": "../../dev/dev b --bin=treetime-server",
-    "dev": "../../dev/dev r treetime-server"
+    "build:release": "../../dev/dev br treetime-server",
+    "dev": "../../dev/dev r treetime-server",
+    "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server"
   }
 }
