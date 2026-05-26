@@ -9,28 +9,42 @@ use std::convert::Infallible;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use treetime::progress::{LogLevel, ProgressEvent};
+use treetime::progress::{LogEvent, LogLevel, ProgressEvent};
+
+enum SinkEvent {
+  Progress(ProgressEvent),
+  Log(LogEvent),
+}
 
 struct ChannelProgress {
-  tx: mpsc::UnboundedSender<ProgressEvent>,
+  tx: mpsc::UnboundedSender<SinkEvent>,
 }
 
 impl ChannelProgress {
-  fn new(tx: mpsc::UnboundedSender<ProgressEvent>) -> Self {
+  fn new(tx: mpsc::UnboundedSender<SinkEvent>) -> Self {
     Self { tx }
   }
 }
 
 impl ProgressSink for ChannelProgress {
   fn report(&self, stage: &str, fraction: f64, message: &str) {
-    drop(self.tx.send(ProgressEvent {
+    drop(self.tx.send(SinkEvent::Progress(ProgressEvent {
       stage: stage.to_owned(),
       fraction,
       message: message.to_owned(),
-    }));
+    })));
   }
 
-  fn log(&self, _level: LogLevel, _message: &str) {}
+  fn log(&self, level: LogLevel, message: &str) {
+    drop(self.tx.send(SinkEvent::Log(LogEvent {
+      level,
+      message: message.to_owned(),
+    })));
+  }
+
+  fn log_enabled(&self, _level: LogLevel) -> bool {
+    true
+  }
 }
 
 #[allow(tail_expr_drop_order)]
@@ -38,7 +52,7 @@ fn sse_response<F>(run_fn: F) -> Response
 where
   F: FnOnce(&dyn ProgressSink) -> Result<Value, Report> + Send + 'static,
 {
-  let (tx, rx) = mpsc::unbounded_channel::<ProgressEvent>();
+  let (tx, rx) = mpsc::unbounded_channel::<SinkEvent>();
 
   let computation = tokio::task::spawn_blocking(move || {
     let progress = ChannelProgress::new(tx);
@@ -48,12 +62,24 @@ where
   let stream = async_stream::stream! {
     let mut rx_stream = UnboundedReceiverStream::new(rx);
     while let Some(event) = rx_stream.next().await {
-      yield Ok::<_, Infallible>(
-        Event::default()
-          .event("progress")
-          .json_data(event)
-          .expect("ProgressEvent serialization"),
-      );
+      match event {
+        SinkEvent::Progress(p) => {
+          yield Ok::<_, Infallible>(
+            Event::default()
+              .event("progress")
+              .json_data(p)
+              .expect("ProgressEvent serialization"),
+          );
+        },
+        SinkEvent::Log(l) => {
+          yield Ok::<_, Infallible>(
+            Event::default()
+              .event("log")
+              .json_data(l)
+              .expect("LogEvent serialization"),
+          );
+        },
+      }
     }
 
     let result_value = match computation.await {

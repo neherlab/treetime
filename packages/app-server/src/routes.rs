@@ -6,6 +6,7 @@ use crate::args::{
 };
 use crate::error::AppError;
 use crate::sse::handle_command;
+use app_api::datasets::discover_datasets;
 use app_api::version::version_info;
 <<<<<<< HEAD
 >>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
