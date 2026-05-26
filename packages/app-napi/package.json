@@ -13,8 +13,8 @@
     ]
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform"
+    "build": "CARGO_TERM_QUIET=true napi build --platform --release --target-dir=../../.build/docker --no-js --no-dts-header",
+    "build:debug": "CARGO_TERM_QUIET=true napi build --platform --target-dir=../../.build/docker --no-js --no-dts-header"
   },
   "devDependencies": {
     "@napi-rs/cli": "3.6.2"

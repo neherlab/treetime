@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 pub use treetime::progress::{LogLevel, NoopProgress, ProgressSink};
 =======
 use strum_macros::Display;
@@ -25,6 +26,9 @@ impl ProgressSink for NoopProgress {
   fn log(&self, _level: LogLevel, _message: &str) {}
 }
 >>>>>>> 7c23b04d (fix(api,napi,server): clean up Cargo deps, fix error contract, fix code style)
+=======
+pub use treetime::progress::{CancelledError, LogEvent, LogLevel, NoopProgress, ProgressEvent, ProgressSink};
+>>>>>>> aad3402e (feat(app): Add progress reporting and cancellation support)
 
 pub struct StderrProgress;
 

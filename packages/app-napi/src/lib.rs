@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod progress;
 
 #[cfg(test)]
 mod tests {
