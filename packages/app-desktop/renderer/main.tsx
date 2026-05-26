@@ -6,6 +6,7 @@ import { App, BridgeProvider, QueryProvider } from "@neherlab/app-ui";
 import { App, BridgeProvider } from "@neherlab/app-ui";
 >>>>>>> e3aa033b (feat(desktop): wire IPC handlers, add React renderer with Vite)
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
+import "./index.css";
 
 declare global {
   interface Window {
