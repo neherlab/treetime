@@ -65,6 +65,11 @@ xz2 = { version = "=0.1.7", features = ["static"] }
 zstd = { version = "=0.13.3", features = ["zstdmt"] }
 
 approx = "=0.5.1"
+<<<<<<< HEAD
+=======
+async-stream = "=0.3.6"
+axum = { version = "=0.8.9", features = ["json"] }
+>>>>>>> f8a8231c (feat(app-server): wire real computation with channel-based SSE progress)
 argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 auto_ops = "=0.3.0"

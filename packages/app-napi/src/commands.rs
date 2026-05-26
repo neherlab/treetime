@@ -25,7 +25,7 @@ macro_rules! define_task {
       type JsValue = ();
 
       fn compute(&mut self) -> napi::Result<Self::Output> {
-        $api_fn(&self.args, &NoopProgress).map_err(eyre_to_napi)
+        $api_fn(&self.args, &NoopProgress).map(drop).map_err(eyre_to_napi)
       }
 
       fn resolve(&mut self, _env: napi::Env, _output: ()) -> napi::Result<()> {

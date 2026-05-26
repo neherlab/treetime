@@ -12,8 +12,10 @@ version.workspace = true
 
 [dependencies]
 app-api = { workspace = true }
+treetime = { workspace = true }
 treetime-utils = { workspace = true }
 
+async-stream = { workspace = true }
 axum = { workspace = true }
 ctor = { workspace = true }
 eyre = { workspace = true }
