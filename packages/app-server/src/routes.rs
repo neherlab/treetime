@@ -6,6 +6,7 @@ use app_api::progress::NoopProgress;
 use crate::args::{
   ServerAncestralArgs, ServerClockArgs, ServerMugrationArgs, ServerOptimizeArgs, ServerPruneArgs, ServerTimetreeArgs,
 };
+use app_api::datasets::discover_datasets;
 use crate::error::AppError;
 use crate::sse::handle_command;
 use crate::state::ServerConfig;
@@ -66,6 +67,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::Value;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 759dbc26 (refactor(app-server): extract error, consolidate SSE transport into modules)
 =======
 use std::sync::Arc;
@@ -104,11 +106,15 @@ use std::convert::Infallible;
 use std::time::Duration;
 use tokio_stream::StreamExt as _;
 >>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
+=======
+use std::path::Path;
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
 
 pub fn api_routes() -> Router {
 >>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
   Router::new()
     .route("/version", get(handle_version))
+    .route("/datasets", get(handle_datasets))
     .route("/ancestral", post(handle_ancestral))
     .route("/clock", post(handle_clock))
     .route("/timetree", post(handle_timetree))
@@ -145,6 +151,7 @@ async fn handle_version() -> Result<Json<Value>, AppError> {
   Ok(Json(value))
 }
 
+<<<<<<< HEAD
 #[derive(Serialize)]
 struct ProgressEvent {
   stage: String,
@@ -566,6 +573,15 @@ define_handler!(
   }
 );
 =======
+=======
+async fn handle_datasets() -> Result<Json<Value>, AppError> {
+  let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".to_owned());
+  let datasets = discover_datasets(Path::new(&data_dir));
+  let value = serde_json::to_value(datasets)?;
+  Ok(Json(value))
+}
+
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
 async fn handle_ancestral(Json(body): Json<Value>) -> Response {
   handle_command::<ServerAncestralArgs, _, _>(body, app_api::commands::ancestral)
 =======

@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod datasets;
 pub mod progress;
 pub mod version;
 

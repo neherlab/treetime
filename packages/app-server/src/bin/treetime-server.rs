@@ -3,6 +3,7 @@ use app_server::state::ServerConfig;
 use clap::Parser;
 use ctor::ctor;
 <<<<<<< HEAD
+<<<<<<< HEAD
 use log::info;
 use treetime_utils::init::global::global_init;
 =======
@@ -11,6 +12,10 @@ use std::path::PathBuf;
 use std::thread::available_parallelism;
 use treetime_utils::init::global::{global_init, setup_logger};
 >>>>>>> 6fc31936 (feat(server): add CLI args for jobs, data dir, and output dir)
+=======
+use log::LevelFilter;
+use treetime_utils::init::global::{global_init, setup_logger};
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
 
 #[ctor]
 fn init() {
@@ -50,9 +55,13 @@ async fn main() -> eyre::Result<()> {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   let host = std::env::var("HOST").unwrap_or("127.0.0.1".to_owned());
 =======
   setup_logger(LevelFilter::Warn);
+=======
+  setup_logger(LevelFilter::Info);
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
   let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
 >>>>>>> f5bb3671 (fix(server): default log level to warn (matching CLI default))
 =======

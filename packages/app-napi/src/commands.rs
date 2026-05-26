@@ -1,3 +1,4 @@
+use app_api::datasets::discover_datasets;
 use app_api::progress::NoopProgress;
 use app_api::version::version_info;
 use app_api::{
@@ -6,10 +7,18 @@ use app_api::{
 };
 use napi::Task;
 use napi_derive::napi;
+use std::path::Path;
 
 #[napi]
 pub fn version() -> String {
   serde_json::to_string(&version_info()).expect("version_info serialization failed")
+}
+
+#[napi]
+pub fn datasets() -> String {
+  let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "data".to_owned());
+  let datasets = discover_datasets(Path::new(&data_dir));
+  serde_json::to_string(&datasets).expect("datasets serialization failed")
 }
 
 fn eyre_to_napi(err: eyre::Report) -> napi::Error {

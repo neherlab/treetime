@@ -1,6 +1,7 @@
 import type { AncestralArgs, ClockArgs, MugrationArgs, OptimizeArgs, PruneArgs, TimetreeArgs } from "./args";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { CommandResult, ProgressEvent } from "./results";
 =======
 import type { DatasetInfo } from "./datasets";
@@ -8,6 +9,9 @@ import type {
   AncestralResult,
   ClockResult,
 =======
+=======
+import type { DatasetInfo } from "./datasets";
+>>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
 import type {
   AncestralResult,
   ClockResult,
@@ -34,6 +38,7 @@ export interface TreeTimeBridge {
   version(): Promise<VersionInfo>;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   ancestral(args: AncestralArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
   clock(args: ClockArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
   timetree(args: TimetreeArgs, onProgress?: (event: ProgressEvent) => void): Promise<CommandResult>;
@@ -50,6 +55,9 @@ export interface TreeTimeBridge {
   prune(args: PruneArgs, options?: CommandOptions): Promise<PruneResult>;
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
 =======
+=======
+  datasets(): Promise<DatasetInfo[]>;
+>>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
   ancestral(args: AncestralArgs, onProgress?: (event: ProgressEvent) => void): Promise<AncestralResult>;
   clock(args: ClockArgs, onProgress?: (event: ProgressEvent) => void): Promise<ClockResult>;
   timetree(args: TimetreeArgs, onProgress?: (event: ProgressEvent) => void): Promise<TimetreeResult>;

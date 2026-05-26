@@ -16,11 +16,15 @@ import type {
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
 =======
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+<<<<<<< HEAD
 import type { TreeTimeBridge, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
 >>>>>>> 3e5b08aa (feat(app): wire real web bridge with SSE progress transport)
 =======
 import type { ErrorResponse, TreeTimeBridge, VersionInfo } from "@neherlab/app-contracts";
 >>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
+=======
+import type { TreeTimeBridge, DatasetInfo, ProgressEvent, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
 
 const API_BASE = "/api";
 
@@ -138,6 +142,7 @@ export function createWebBridge(): TreeTimeBridge {
     version: () => getJson<VersionInfo>("version"),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     ancestral: (args) => postCommand("ancestral", args),
     clock: (args) => postCommand("clock", args),
     timetree: (args) => postCommand("timetree", args),
@@ -154,6 +159,9 @@ export function createWebBridge(): TreeTimeBridge {
     prune: (args, options) => postSse("prune", args, options),
 >>>>>>> ac719231 (feat(web): wire AbortController through bridge contract and UI)
 =======
+=======
+    datasets: () => getJson<DatasetInfo[]>("datasets"),
+>>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
     ancestral: (args, onProgress) => postSse("ancestral", args, onProgress),
     clock: (args, onProgress) => postSse("clock", args, onProgress),
     timetree: (args, onProgress) => postSse("timetree", args, onProgress),

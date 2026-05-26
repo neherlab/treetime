@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import type { TreeTimeBridge } from "@neherlab/app-contracts";
 
 const bridge: TreeTimeBridge = {
@@ -15,6 +16,9 @@ import type { TreeTimeBridge, CommandResult, VersionInfo } from "@neherlab/app-c
 =======
 import type { TreeTimeBridge, VersionInfo } from "@neherlab/app-contracts";
 >>>>>>> c2b9da5e (feat: add per-command result types and hooks across TypeScript layer)
+=======
+import type { TreeTimeBridge, DatasetInfo, VersionInfo } from "@neherlab/app-contracts";
+>>>>>>> b8625b9a (feat(app): wire datasets through bridge contract and implementations)
 
 async function invokeCommand<T>(channel: string, args: unknown): Promise<T> {
   const result = await ipcRenderer.invoke(channel, JSON.stringify(args));
@@ -25,6 +29,10 @@ const bridge: TreeTimeBridge = {
   version: async (): Promise<VersionInfo> => {
     const json = await ipcRenderer.invoke("treetime:version");
     return JSON.parse(json) as VersionInfo;
+  },
+  datasets: async (): Promise<DatasetInfo[]> => {
+    const json = await ipcRenderer.invoke("treetime:datasets");
+    return JSON.parse(json) as DatasetInfo[];
   },
   ancestral: (args) => invokeCommand("treetime:ancestral", args),
   clock: (args) => invokeCommand("treetime:clock", args),

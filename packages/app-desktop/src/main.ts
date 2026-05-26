@@ -15,6 +15,10 @@ function registerIpcHandlers() {
     return addon.version();
   });
 
+  ipcMain.handle("treetime:datasets", () => {
+    return addon.datasets();
+  });
+
   const commands = ["ancestral", "clock", "timetree", "mugration", "optimize", "prune"] as const;
   for (const cmd of commands) {
     ipcMain.handle(`treetime:${cmd}`, (_event: Electron.IpcMainInvokeEvent, argsJson: string) => {

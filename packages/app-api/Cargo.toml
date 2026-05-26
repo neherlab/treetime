@@ -16,12 +16,16 @@ treetime = { workspace = true }
 treetime-io = { workspace = true }
 
 eyre = { workspace = true }
+<<<<<<< HEAD
 =======
 
 eyre = { workspace = true }
 serde = { workspace = true }
 strum_macros = { workspace = true }
 >>>>>>> 7c23b04d (fix(api,napi,server): clean up Cargo deps, fix error contract, fix code style)
+=======
+serde = { workspace = true }
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
 
 [dev-dependencies]
 ctor = { workspace = true }

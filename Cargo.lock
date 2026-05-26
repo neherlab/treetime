@@ -117,12 +117,16 @@ dependencies = [
  "rstest",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 =======
  "serde",
 >>>>>>> 33bee034 (feat: add end-to-end version info across all layers)
  "strum_macros 0.27.2",
 >>>>>>> 7c23b04d (fix(api,napi,server): clean up Cargo deps, fix error contract, fix code style)
+=======
+ "serde",
+>>>>>>> 3b85da3a (feat(app): add dataset discovery endpoint)
  "treetime",
  "treetime-utils",
 ]
