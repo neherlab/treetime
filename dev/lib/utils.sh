@@ -44,26 +44,37 @@ function datetime_ms_safe() {
 }
 export -f datetime_ms_safe
 
+# Run a command, propagate signals to entire process tree.
+# setsid: own process group so group-kill reaches all descendants.
+# bg+wait: so bash can deliver trap handlers during long-running children.
+# Double-wait: retrieves real exit code after signal interruption.
+# See: https://veithen.io/2014/11/16/sigterm-propagation.html
+function run_with_signals() {
+  setsid "$@" &
+  local pid=$!
+  trap 'kill -TERM -${pid} 2>/dev/null' INT TERM
+  wait "${pid}"
+  trap - INT TERM
+  wait "${pid}"
+}
+export -f run_with_signals
+
 # Run a command with lower (nicer) CPU and IO priority, time it and print the outcome
 function nicely() {
   print_color 8 "+${*:-}"
-  if bash -c "
-      trap 'print_color 4 \"🟦 Cancelled\" && exit 0' INT;\
-      nice -14 ionice -c2 -n3 \
-      /usr/bin/time -qf 'Cmd : %C\nTime: %E\nMem : %M KB' \
-      ${*}"; then
-    (
-      { set +x; } 2>/dev/null
-      print_color 2 '🟩 Success'
-      exit 0
-    )
+  local cmd_exit_code=0
+  run_with_signals \
+    nice -14 ionice -c2 -n3 \
+    /usr/bin/time -qf 'Cmd : %C\nTime: %E\nMem : %M KB' \
+    "$@" || cmd_exit_code=$?
+  if [[ ${cmd_exit_code} -eq 0 ]]; then
+    print_color 2 '🟩 Success'
+  elif [[ ${cmd_exit_code} -gt 128 && ${cmd_exit_code} -le 159 ]]; then
+    # 128+N where N is a signal (1-31): killed by signal
+    print_color 4 "🟦 Cancelled"
   else
-    local cmd_exit_code=$?
-    (
-      { set +x; } 2>/dev/null
-      print_color 1 "🟥 Failure (code: ${cmd_exit_code})"
-      exit "${cmd_exit_code}"
-    )
+    print_color 1 "🟥 Failure (code: ${cmd_exit_code})"
+    return "${cmd_exit_code}"
   fi
 }
 export -f nicely

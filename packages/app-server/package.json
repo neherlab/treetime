@@ -7,6 +7,11 @@
     "build": "../../dev/dev b --bin=treetime-server",
     "build:release": "../../dev/dev br treetime-server",
     "dev": "cd ../.. && bacon --headless server",
+<<<<<<< HEAD
     "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server"
+=======
+    "release": "STATIC_DIR=../app-web/dist ../../dev/dev rr treetime-server",
+    "server:run": "printf 'Compiling server...\\n' >&2 && exec ../../dev/dev r treetime-server"
+>>>>>>> 41dc56b8 (fix(dev): fix signal propagation in nicely for server restarts)
   }
 }
