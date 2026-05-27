@@ -6,13 +6,13 @@ The `count_transitions` function drives GTR parameter estimation for mugration. 
 
 ## Details
 
-`fn count_transitions()` at [packages/treetime/src/gtr/refinement.rs#L78-L110](../../packages/treetime/src/gtr/refinement.rs#L78-L110) accumulates:
+`MarginalData::count_transitions()` at `packages/treetime/src/partition/marginal_core.rs` accumulates:
 
 - `nij`: expected transition count matrix from `get_branch_mutation_matrix` over all edges
 - `Ti`: dwell times per state
-- `root_state`: one-hot from root posterior argmax (filtered when near-uniform)
+- `root_state`: argmax of root posterior per row (filtered when near-uniform)
 
-The function is private to `gtr::refinement`. It calls `get_branch_mutation_matrix` and `accumulate_mutation_counts` from `ancestral/gtr_inference_dense.rs`, which have their own tests. But the composition (edge iteration, branch length clamping, root filtering, diagonal zeroing) is untested in isolation.
+The function is called via the `TransitionCounting` trait. Dense and discrete partitions delegate to `MarginalData::count_transitions`. The helper functions `get_branch_mutation_matrix` and `accumulate_mutation_counts` in `gtr/infer_gtr/common.rs` have their own tests. But the composition (edge iteration, branch length clamping, root filtering, diagonal zeroing) for discrete/mugration partitions is untested in isolation.
 
 ## Proposed test
 

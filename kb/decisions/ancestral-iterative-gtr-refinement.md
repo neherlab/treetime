@@ -1,8 +1,18 @@
 # Iterative outer GTR refinement for ancestral reconstruction
 
-This document proposes an optional extension to the ancestral command: when running marginal ancestral reconstruction with `--model infer`, alternate between ancestral-state reconstruction and GTR re-estimation for several outer iterations instead of performing only one conditional model fit.
+Optional extension to the ancestral command: when running marginal ancestral reconstruction with `--model infer`, alternate between ancestral-state reconstruction and GTR re-estimation for several outer iterations instead of performing only one conditional model fit.
 
-The proposal is **accepted** and **implemented**. The `--gtr-iterations` flag (default 0) on the ancestral command enables iterative GTR refinement for marginal reconstruction with `--model infer`. The `TransitionCounting` trait generalizes transition counting across all marginal partition types (dense, discrete, sparse), and `refine_gtr_iterative` accepts any partition implementing that trait.
+## Implementation status
+
+Accepted and implemented. The `--gtr-iterations N` flag (default 0) on the ancestral command enables iterative GTR refinement for marginal reconstruction with `--model infer`.
+
+Key implementation decisions:
+
+- The `TransitionCounting` trait in `partition/traits.rs` generalizes transition counting across all marginal partition types (dense, discrete, sparse), with each type implementing counting over its native data layout.
+- `MarginalData::count_transitions` provides the shared dense/discrete implementation. Sparse has its own implementation via private associated functions on `PartitionMarginalSparse`.
+- `refine_gtr_iterative` in `gtr/refinement.rs` accepts any partition implementing `TransitionCounting + PartitionMarginalPasses + HasGtr`.
+- Rate optimization (`optimize_gtr_rate`) is configurable via `optimize_rate: bool`: mugration passes `true`, ancestral passes `false`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_impl` already estimates mu from large counts.
+- `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_impl`.
 
 ## Current behavior
 
