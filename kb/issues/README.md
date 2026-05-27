@@ -58,6 +58,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
 | Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                                                   |
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                                                 |
+| Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                             |
+| Medium     | Dates        | [Date parsing discards original input string](M-dates-raw-string-not-preserved.md)                                                                  |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
