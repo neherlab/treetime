@@ -52,6 +52,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                  |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                          |
+| Medium     | Ancestral    | [Ancestral root sampling not implemented](M-ancestral-root-sampling-not-implemented.md)                                                             |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
@@ -82,6 +83,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                                       |
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                                |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                   |
+| Negligible | Ancestral    | [Ancestral command does not produce auspice JSON](N-ancestral-auspice-json-not-produced.md)                                                         |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                               |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                     |
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |

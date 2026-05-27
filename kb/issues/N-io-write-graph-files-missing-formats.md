@@ -22,3 +22,8 @@ Each missing format requires adapter traits that are not implemented on all grap
 - Auspice traits: `packages/treetime-io/src/auspice.rs`
 - UShER MAT traits: `packages/treetime-io/src/usher_mat.rs`
 - Converter format enum: `packages/treetime-cli/src/convert/args.rs` (`TreeFormat`)
+
+## Related
+
+- [N-timetree-auspice-json-incomplete.md](N-timetree-auspice-json-incomplete.md) - timetree auspice output gaps
+- [N-ancestral-auspice-json-not-produced.md](N-ancestral-auspice-json-not-produced.md) - ancestral auspice output missing entirely

@@ -43,3 +43,7 @@ Site-specific substitution models and automatic sequence partitioning for TreeTi
 ### [Substitution model serialization formats](substitution-model-serialization-formats.md)
 
 Survey of file formats for serializing substitution model parameters across phylogenetic software. Covers PAML triangular format (de facto amino acid standard), RAxML-NG model strings, 6-digit model codes (PhyML/IQ-TREE/HyPhy), MrBayes NEXUS blocks, BEAST2 XML, HyPhy NEXUS+HYPHY blocks, TreeTime v0 text format, and IQ-TREE `.sitefreq`. Includes source-verified format examples and a comparison table across 8 formats.
+
+### [Augur node data JSON format](augur-node-data-json.md)
+
+The intermediate node data JSON format produced by augur commands (`augur ancestral`, `augur refine`, `augur traits`). Field-by-field specification for all three command outputs with types, presence conditions, and downstream consumption by `augur export v2`. Covers mutation string format, annotations schema, field presence matrix, implementation mapping to treetime v1 data sources, and partition access constraints. Includes augur test fixture examples.

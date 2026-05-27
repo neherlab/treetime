@@ -23,3 +23,8 @@ v0 writes `genome_annotations.nuc` with `start`, `end`, `type`, and `strand` der
 ## Impact
 
 Auspice visualization works for time tree display and coloring. The entropy panel and mutation tooltips are unavailable. Branch confidence bars (distinct from date confidence) are absent.
+
+## Related
+
+- [N-ancestral-auspice-json-not-produced.md](N-ancestral-auspice-json-not-produced.md) - ancestral command lacks auspice output entirely
+- [../reports/augur-node-data-json.md](../reports/augur-node-data-json.md) - node data JSON shares the same data sources (partition mutations, annotations, alignment length)
