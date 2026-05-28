@@ -16,6 +16,7 @@ members = [
   "packages/treetime-primitives",
   "packages/treetime-utils",
   "packages/treetime-validation",
+  "packages/util-augur-node-data-json",
   "packages/util-phyloxml",
   "packages/util-usher-mat",
 ]
