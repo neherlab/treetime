@@ -4587,7 +4587,6 @@ version = "1.0.0"
 dependencies = [
  "ctor 0.5.0",
  "eyre",
- "indoc",
  "maplit",
  "pretty_assertions",
  "rayon",

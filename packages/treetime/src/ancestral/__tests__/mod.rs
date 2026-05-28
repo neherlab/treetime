@@ -6,6 +6,7 @@ mod test_fitch_indel;
 mod test_fitch_sub;
 mod test_marginal_analytical;
 mod test_marginal_branch_length;
+mod test_mask;
 mod test_marginal_consistency;
 mod test_marginal_dense;
 mod test_marginal_dense_sparse_example;
