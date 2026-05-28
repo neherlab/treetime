@@ -61,6 +61,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                             |
 | Medium     | Dates        | [Date parsing discards original input string](M-dates-raw-string-not-preserved.md)                                                                  |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
+| Medium     | Coalescent   | [Skyline build_tc_distribution reimplements PiecewiseLinearFn::eval](M-coalescent-skyline-reimplements-piecewise-linear-eval.md)                    |
+| Medium     | GTR          | [GTR rate optimization uses hand-rolled Brent instead of argmin wrapper](M-gtr-hand-rolled-brent-minimizer-duplication.md)                          |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
 | Medium     | I/O          | [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md)                                                           |
@@ -160,6 +162,18 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Test         | [Loose tolerances in test_gaussian_product.rs](N-test-gaussian-product-loose-tolerances.md)                                                         |
 | Negligible | GTR          | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 | Negligible | Timetree     | [Coalescent integration test uses grossly loose tolerance](N-timetree-coalescent-integration-grossly-loose-tolerance.md)                            |
+| Negligible | Ancestral    | [Ancestral parallel traversals repeat identical error-capture boilerplate](N-ancestral-parallel-traversal-error-boilerplate.md)                     |
+| Negligible | Ancestral    | [Dead production code in gtr_inference_dense.rs](N-ancestral-dead-code-infer-gtr-dense.md)                                                          |
+| Negligible | Coalescent   | [Coalescent event setup repeated at four sites](N-coalescent-event-setup-duplication.md)                                                            |
+| Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
+| Negligible | Core         | [Gap-fill argument logic duplicated across three commands](N-core-gap-fill-args-duplication.md)                                                     |
+| Negligible | Grid         | [Piecewise constant and linear function structs share identical skeleton](N-grid-piecewise-function-shared-skeleton.md)                             |
+| Negligible | Marginal     | [Inline 1D normalization duplicated in sparse marginal passes](N-marginal-inline-1d-normalization-duplication.md)                                   |
+| Negligible | Optimize     | [Argmin observer structs duplicated across three optimization sites](N-optimize-argmin-observer-boilerplate.md)                                     |
+| Negligible | Timetree     | [Clock rate non-positive guard duplicated at two sites](N-timetree-clock-rate-validation-duplication.md)                                            |
+| Negligible | Validation   | [Validation crate histogram and argmax quality issues](N-validation-error-histogram-and-argmax-quality.md)                                          |
+| Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
+| Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
 
 ## Cross-references
 
