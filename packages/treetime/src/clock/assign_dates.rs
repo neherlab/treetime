@@ -2,7 +2,7 @@ use crate::clock::clock_graph::GraphClock;
 use crate::make_error;
 use eyre::Report;
 use treetime_graph::node::Named;
-use treetime_io::dates_csv::{DateOrRange, DatesMap};
+use treetime_io::dates_csv::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
@@ -17,7 +17,7 @@ pub fn assign_dates(graph: &GraphClock, dates: &DatesMap) -> Result<(), Report> 
     let name = node.payload.name().map(|s| s.as_ref().to_owned());
     let time: Option<f64> = name
       .and_then(|name| dates.get(&name))
-      .and_then(|d| d.as_ref().map(DateOrRange::mean))
+      .and_then(|d| d.as_ref().map(|c| c.mean()))
       .filter(|&d| d.is_finite());
 
     node.payload.time = time;

@@ -30,7 +30,7 @@ Generic serialization helpers (JSON, YAML) live in `treetime-utils::io`.
 ## Key types
 
 - `FastaRecord` - sequence name, description, sequence data, index
-- `DateOrRange` - year fraction or year fraction range parsed from date metadata
+- `DateConstraint` - parsed date with original input string, distinguishing exact, uncertain, and range inputs
 - `CsvStructWriter` / `CsvStructFileWriter` - typed CSV writing via serde
 
 ## Tree I/O traits

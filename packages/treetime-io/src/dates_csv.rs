@@ -14,23 +14,73 @@ use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub enum DateOrRange {
-  YearFraction(f64),
-  YearFractionRange((f64, f64)),
+pub struct DateExact {
+  pub value: f64,
 }
 
-impl DateOrRange {
-  #[inline]
-  pub fn mean(&self) -> f64 {
-    match self {
-      DateOrRange::YearFraction(date) => *date,
-      DateOrRange::YearFractionRange((begin, end)) => (begin + end) / 2.0,
-    }
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DateRange {
+  pub start: f64,
+  pub end: f64,
+}
+
+impl DateRange {
+  pub fn width(&self) -> f64 {
+    self.end - self.start
+  }
+
+  pub fn contains(&self, value: f64) -> bool {
+    value >= self.start && value <= self.end
   }
 }
 
-pub type DatesMap = BTreeMap<String, Option<DateOrRange>>;
-pub type DateRecord = (String, Option<DateOrRange>);
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum DateValue {
+  Exact(DateExact),
+  Uncertain(DateRange),
+  Range(DateRange),
+}
+
+impl DateValue {
+  #[inline]
+  pub fn mean(&self) -> f64 {
+    match self {
+      DateValue::Exact(d) => d.value,
+      DateValue::Uncertain(r) | DateValue::Range(r) => f64::midpoint(r.start, r.end),
+    }
+  }
+
+  pub fn is_exact(&self) -> bool {
+    matches!(self, DateValue::Exact(_))
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DateConstraint {
+  pub raw: String,
+  pub value: DateValue,
+}
+
+impl DateConstraint {
+  pub fn exact(value: f64) -> Self {
+    Self {
+      raw: value.to_string(),
+      value: DateValue::Exact(DateExact { value }),
+    }
+  }
+
+  #[inline]
+  pub fn mean(&self) -> f64 {
+    self.value.mean()
+  }
+
+  pub fn is_exact(&self) -> bool {
+    self.value.is_exact()
+  }
+}
+
+pub type DatesMap = BTreeMap<String, Option<DateConstraint>>;
+pub type DateRecord = (String, Option<DateConstraint>);
 
 pub fn read_dates_from_reader(
   reader: impl Read,
@@ -109,37 +159,43 @@ pub fn convert_record(
   Ok((name, date))
 }
 
-pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateOrRange>, Report> {
+pub fn read_date(date_str: &str, options: &DateParserOptions) -> Result<Option<DateConstraint>, Report> {
   let trimmed = date_str.trim();
 
-  // Try parsing as year fraction first (e.g. "2020.5", "2003.84052019")
-  // Only accept values in reasonable year range (1000-3000) to avoid parsing compact dates like "20240723" as floats
   if let Ok(year_fraction) = trimmed.parse::<f64>()
     && year_fraction.is_finite()
     && (1000.0..=3000.0).contains(&year_fraction)
   {
-    return Ok(Some(DateOrRange::YearFraction(year_fraction)));
+    return Ok(Some(DateConstraint {
+      raw: trimmed.to_owned(),
+      value: DateValue::Exact(DateExact { value: year_fraction }),
+    }));
   }
 
-  // Try parsing as formatted date (e.g. "2020-07-15", "20200715", "2020/07/15")
   if let Ok(date) = parse_date(trimmed, options) {
-    return Ok(Some(DateOrRange::YearFraction(date_to_year_fraction(&date))));
+    return Ok(Some(DateConstraint {
+      raw: trimmed.to_owned(),
+      value: DateValue::Exact(DateExact {
+        value: date_to_year_fraction(&date),
+      }),
+    }));
   }
 
-  // Try parsing as uncertain date (e.g. "2020-XX-XX")
   if let Ok(date_range) = parse_date_uncertain(trimmed, options) {
-    return Ok(Some(DateOrRange::YearFractionRange(date_range_to_year_fraction_range(
-      &date_range,
-    ))));
+    let (start, end) = date_range_to_year_fraction_range(&date_range);
+    return Ok(Some(DateConstraint {
+      raw: trimmed.to_owned(),
+      value: DateValue::Uncertain(DateRange { start, end }),
+    }));
   }
 
-  // Try parsing as date range (e.g. "2020-01-01/2020-12-31")
   if let Ok(date_range) = parse_date_range(trimmed, options) {
-    return Ok(Some(DateOrRange::YearFractionRange(date_range_to_year_fraction_range(
-      &date_range,
-    ))));
+    let (start, end) = date_range_to_year_fraction_range(&date_range);
+    return Ok(Some(DateConstraint {
+      raw: trimmed.to_owned(),
+      value: DateValue::Range(DateRange { start, end }),
+    }));
   }
 
-  // Unable to parse
   Ok(None)
 }

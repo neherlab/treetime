@@ -9,12 +9,12 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_io::dates_csv::{DateOrRange, DatesMap};
+use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
-pub fn date_or_range_to_distribution(date_or_range: &DateOrRange) -> Distribution {
-  match date_or_range {
-    DateOrRange::YearFraction(t) => Distribution::point(*t, 1.0),
-    DateOrRange::YearFractionRange((start, end)) => Distribution::range((*start, *end), 1.0),
+pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution {
+  match &constraint.value {
+    DateValue::Exact(d) => Distribution::point(d.value, 1.0),
+    DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 1.0),
   }
 }
 
@@ -41,9 +41,9 @@ where
 
     if has_constraint {
       let name = name.unwrap();
-      let date_or_range = dates[name.as_str()].as_ref().unwrap();
+      let constraint = dates[name.as_str()].as_ref().unwrap();
 
-      let dist = Arc::new(date_or_range_to_distribution(date_or_range));
+      let dist = Arc::new(date_constraint_to_distribution(constraint));
 
       payload.set_time_distribution(Some(dist));
       payload.set_bad_branch(false);

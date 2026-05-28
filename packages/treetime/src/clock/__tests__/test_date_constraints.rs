@@ -5,6 +5,7 @@ mod tests {
   use crate::payload::traits::DateConstraintNode;
   use eyre::Report;
   use itertools::Itertools;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
@@ -13,7 +14,7 @@ mod tests {
   use treetime_graph::edge::GraphEdge;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, Named, TimeConstraint};
-  use treetime_io::dates_csv::DatesMap;
+  use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
   use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
 
@@ -82,16 +83,25 @@ mod tests {
       .collect_vec()
   }
 
+  fn exact(value: f64) -> Option<DateConstraint> {
+    Some(DateConstraint::exact(value))
+  }
+
+  fn range(start: f64, end: f64) -> Option<DateConstraint> {
+    Some(DateConstraint {
+      raw: format!("{start}/{end}"),
+      value: DateValue::Range(DateRange { start, end }),
+    })
+  }
+
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -111,14 +121,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_mixed_leaves() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
-    // D has no date
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -139,13 +146,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_range() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFractionRange": [2020.0, 2020.25]},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => range(2020.0, 2020.25),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -165,14 +170,12 @@ mod tests {
   #[test]
   fn test_load_date_constraints_internal_node() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75},
-        "AB": {"YearFraction": 2019.5}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+      o!("AB") => exact(2019.5),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -193,14 +196,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_bad_branch_propagation() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
-    // D has no date
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -223,14 +223,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_all_children_bad() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "C": {"YearFraction": 2020.0},
-        "D": {"YearFraction": 2020.5},
-        "E": {"YearFraction": 2020.75}
-      }"#,
-    )?;
-    // A and B have no dates
+    let dates: DatesMap = btreemap! {
+      o!("C") => exact(2020.0),
+      o!("D") => exact(2020.5),
+      o!("E") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -255,13 +252,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_boundary_exactly_three_leaves() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -273,14 +268,12 @@ mod tests {
   #[test]
   fn test_load_date_constraints_date_with_none_value() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": null,
-        "C": {"YearFraction": 2020.5},
-        "D": {"YearFraction": 2020.75}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => None,
+      o!("C") => exact(2020.5),
+      o!("D") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -302,15 +295,13 @@ mod tests {
   fn test_load_date_constraints_deep_tree_propagation() -> Result<(), Report> {
     let graph: TestGraph =
       nwk_read_str("((((((A:0.1,B:0.1)L1:0.1,C:0.1)L2:0.1,D:0.1)L3:0.1,E:0.1)L4:0.1,F:0.1)L5:0.1,G:0.1)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "C": {"YearFraction": 2020.0},
-        "D": {"YearFraction": 2020.25},
-        "E": {"YearFraction": 2020.5},
-        "F": {"YearFraction": 2020.75},
-        "G": {"YearFraction": 2021.0}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("C") => exact(2020.0),
+      o!("D") => exact(2020.25),
+      o!("E") => exact(2020.5),
+      o!("F") => exact(2020.75),
+      o!("G") => exact(2021.0),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -340,16 +331,14 @@ mod tests {
   fn test_load_date_constraints_wide_tree() -> Result<(), Report> {
     let graph: TestGraph =
       nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "C": {"YearFraction": 2020.2},
-        "E": {"YearFraction": 2020.4},
-        "G": {"YearFraction": 2020.6},
-        "I": {"YearFraction": 2020.8},
-        "K": {"YearFraction": 2021.0}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("C") => exact(2020.2),
+      o!("E") => exact(2020.4),
+      o!("G") => exact(2020.6),
+      o!("I") => exact(2020.8),
+      o!("K") => exact(2021.0),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -378,14 +367,12 @@ mod tests {
   #[test]
   fn test_load_date_constraints_mixed_ranges_and_points() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFractionRange": [2020.0, 2020.25]},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFractionRange": [2020.6, 2020.8]},
-        "D": {"YearFraction": 2021.0}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => range(2020.0, 2020.25),
+      o!("B") => exact(2020.5),
+      o!("C") => range(2020.6, 2020.8),
+      o!("D") => exact(2021.0),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -406,13 +393,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_idempotency() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
     let first_run = get_node_payloads(&graph);
@@ -427,14 +412,12 @@ mod tests {
   #[test]
   fn test_load_date_constraints_internal_node_with_range() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": 2020.0},
-        "B": {"YearFraction": 2020.5},
-        "C": {"YearFraction": 2020.75},
-        "AB": {"YearFractionRange": [2019.0, 2019.75]}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(2020.0),
+      o!("B") => exact(2020.5),
+      o!("C") => exact(2020.75),
+      o!("AB") => range(2019.0, 2019.75),
+    };
 
     load_date_constraints(&dates, &graph)?;
 
@@ -455,13 +438,11 @@ mod tests {
   #[test]
   fn test_load_date_constraints_negative_time() -> Result<(), Report> {
     let graph: TestGraph = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
-    let dates: DatesMap = json_read_str(
-      r#"{
-        "A": {"YearFraction": -500.0},
-        "B": {"YearFraction": -250.0},
-        "C": {"YearFraction": 0.0}
-      }"#,
-    )?;
+    let dates: DatesMap = btreemap! {
+      o!("A") => exact(-500.0),
+      o!("B") => exact(-250.0),
+      o!("C") => exact(0.0),
+    };
 
     load_date_constraints(&dates, &graph)?;
 

@@ -34,6 +34,10 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
 }
 
+pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
+  year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
+}
+
 #[cfg(test)]
 mod tests {
   #![allow(clippy::excessive_precision)]

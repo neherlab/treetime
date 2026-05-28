@@ -5,18 +5,18 @@ mod tests {
   use crate::partition::timetree::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;
-  use treetime_io::dates_csv::{DateOrRange, DatesMap};
+  use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
   fn test_optimize_skyline_returns_result() -> Result<(), Report> {
     const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
     let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "internal1".to_owned() => Some(DateOrRange::YearFraction(2005.0)),
-      "leaf1".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf2".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
     let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
@@ -41,11 +41,11 @@ mod tests {
   fn test_optimize_skyline_tc_distribution_evaluates() -> Result<(), Report> {
     const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
     let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "internal1".to_owned() => Some(DateOrRange::YearFraction(2005.0)),
-      "leaf1".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf2".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
     let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
@@ -76,11 +76,11 @@ mod tests {
   fn test_optimize_skyline_log_tc_in_reasonable_range() -> Result<(), Report> {
     const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
     let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "internal1".to_owned() => Some(DateOrRange::YearFraction(2005.0)),
-      "leaf1".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf2".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "leaf3".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
     let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
@@ -107,21 +107,21 @@ mod tests {
   fn test_optimize_skyline_larger_tree() -> Result<(), Report> {
     const TREE_NWK: &str = "(((a:1,b:1)ab:1,(c:1,d:1)cd:1)abcd:1,((e:1,f:1)ef:1,(g:1,h:1)gh:1)efgh:1)root:1;";
     let dates = btreemap! {
-      "root".to_owned() => Some(DateOrRange::YearFraction(2000.0)),
-      "abcd".to_owned() => Some(DateOrRange::YearFraction(2002.0)),
-      "efgh".to_owned() => Some(DateOrRange::YearFraction(2002.0)),
-      "ab".to_owned() => Some(DateOrRange::YearFraction(2004.0)),
-      "cd".to_owned() => Some(DateOrRange::YearFraction(2004.0)),
-      "ef".to_owned() => Some(DateOrRange::YearFraction(2004.0)),
-      "gh".to_owned() => Some(DateOrRange::YearFraction(2004.0)),
-      "a".to_owned() => Some(DateOrRange::YearFraction(2006.0)),
-      "b".to_owned() => Some(DateOrRange::YearFraction(2007.0)),
-      "c".to_owned() => Some(DateOrRange::YearFraction(2008.0)),
-      "d".to_owned() => Some(DateOrRange::YearFraction(2009.0)),
-      "e".to_owned() => Some(DateOrRange::YearFraction(2010.0)),
-      "f".to_owned() => Some(DateOrRange::YearFraction(2011.0)),
-      "g".to_owned() => Some(DateOrRange::YearFraction(2012.0)),
-      "h".to_owned() => Some(DateOrRange::YearFraction(2013.0)),
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "abcd".to_owned() => Some(DateConstraint::exact(2002.0)),
+      "efgh".to_owned() => Some(DateConstraint::exact(2002.0)),
+      "ab".to_owned() => Some(DateConstraint::exact(2004.0)),
+      "cd".to_owned() => Some(DateConstraint::exact(2004.0)),
+      "ef".to_owned() => Some(DateConstraint::exact(2004.0)),
+      "gh".to_owned() => Some(DateConstraint::exact(2004.0)),
+      "a".to_owned() => Some(DateConstraint::exact(2006.0)),
+      "b".to_owned() => Some(DateConstraint::exact(2007.0)),
+      "c".to_owned() => Some(DateConstraint::exact(2008.0)),
+      "d".to_owned() => Some(DateConstraint::exact(2009.0)),
+      "e".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "f".to_owned() => Some(DateConstraint::exact(2011.0)),
+      "g".to_owned() => Some(DateConstraint::exact(2012.0)),
+      "h".to_owned() => Some(DateConstraint::exact(2013.0)),
     };
 
     let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
