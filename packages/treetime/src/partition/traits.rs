@@ -52,6 +52,10 @@ pub trait BranchTopology: Send + Sync {
   /// or `None` when the node is the root. Errors when the node has more than
   /// one parent (the algorithm only supports trees).
   fn node_parent(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report>;
+
+  /// Return the key of the single root node. Errors when the graph has zero or
+  /// more than one root.
+  fn root_key(&self) -> Result<GraphNodeKey, Report>;
 }
 
 impl<N, E, D> BranchTopology for Graph<N, E, D>
@@ -83,6 +87,10 @@ where
       },
       n => make_internal_error!("Node {node_key} has {n} parents; only trees are supported"),
     }
+  }
+
+  fn root_key(&self) -> Result<GraphNodeKey, Report> {
+    Ok(self.get_exactly_one_root()?.read_arc().key())
   }
 }
 

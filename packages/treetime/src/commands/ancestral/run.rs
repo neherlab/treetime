@@ -2,8 +2,10 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences, create_fitch_partition};
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
+use crate::commands::ancestral::augur_node_data::write_augur_node_data_json;
 use crate::commands::ancestral::result::AncestralResult;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::gtr::refinement::refine_gtr_iterative;
@@ -96,6 +98,16 @@ pub fn run_ancestral_reconstruction(
   progress.report("Parsing tree", 0.1, "");
   let graph: GraphAncestral = nwk_read_file(tree)?;
 
+  // Per-position ambiguity mask and augur node data output path are shared by
+  // all reconstruction paths below. The mask is derived from the alignment, so
+  // it is computed once here while `aln` and `alphabet` are still available.
+  let alignment_length = get_common_length(&aln)?;
+  let mask = create_mask(&aln, alignment_length, &alphabet);
+  let augur_node_data_path = ancestral_args
+    .output_augur_node_data
+    .clone()
+    .unwrap_or_else(|| outdir.join("ancestral.augur-node-data.json"));
+
   match method_anc {
     MethodAncestral::Parsimony => {
       progress.check_cancelled()?;
@@ -119,6 +131,13 @@ pub fn run_ancestral_reconstruction(
       }
 
       progress.report("Writing output", 0.9, "");
+      write_augur_node_data_json(
+        &graph,
+        &*partitions_parsimony[0].read_arc(),
+        &mask,
+        &augur_node_data_path,
+      )?;
+      info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       write_graph_files_with(outdir, "annotated_tree", &graph, &CommentProviders::new())?;
 
       progress.report("Done", 1.0, "");
@@ -162,6 +181,8 @@ pub fn run_ancestral_reconstruction(
         write_gtr_json(&gtr, *model_name, outdir, None)?;
 
         let partition_guard = partitions[0].read_arc();
+        write_augur_node_data_json(&graph, &*partition_guard, &mask, &augur_node_data_path)?;
+        info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
         let provider = MutationCommentProvider::new(&*partition_guard, &graph);
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
@@ -201,6 +222,8 @@ pub fn run_ancestral_reconstruction(
         write_gtr_json(&gtr, *model_name, outdir, None)?;
 
         let partition_guard = partitions[0].read_arc();
+        write_augur_node_data_json(&graph, &*partition_guard, &mask, &augur_node_data_path)?;
+        info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
         let provider = MutationCommentProvider::new(&*partition_guard, &graph);
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
@@ -236,6 +259,8 @@ pub fn run_ancestral_reconstruction(
         let gtr = partitions[0].read_arc().gtr().clone();
 
         let partition_guard = partitions[0].read_arc();
+        write_augur_node_data_json(&graph, &*partition_guard, &mask, &augur_node_data_path)?;
+        info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
         let provider = MutationCommentProvider::new(&*partition_guard, &graph);
         let providers = CommentProviders::new().with(&provider);
         write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;

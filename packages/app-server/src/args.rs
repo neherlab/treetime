@@ -59,6 +59,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       zero_based: s.zero_based,
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
+      output_augur_node_data: None,
       outdir: PathBuf::from(s.outdir),
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
