@@ -20,11 +20,7 @@ mod tests {
   #[test]
   fn test_mask_no_ambiguity() {
     let alphabet = nuc_alphabet();
-    let aln = vec![
-      record("A", "ACGT"),
-      record("B", "ACGT"),
-      record("C", "TGCA"),
-    ];
+    let aln = vec![record("A", "ACGT"), record("B", "ACGT"), record("C", "TGCA")];
 
     let mask = create_mask(&aln, 4, &alphabet);
     assert_eq!(vec![false, false, false, false], mask);
@@ -34,10 +30,7 @@ mod tests {
   #[test]
   fn test_mask_all_ambiguous() {
     let alphabet = nuc_alphabet();
-    let aln = vec![
-      record("A", "NNNN"),
-      record("B", "NNNN"),
-    ];
+    let aln = vec![record("A", "NNNN"), record("B", "NNNN")];
 
     let mask = create_mask(&aln, 4, &alphabet);
     assert_eq!(vec![true, true, true, true], mask);
@@ -47,11 +40,7 @@ mod tests {
   #[test]
   fn test_mask_mixed() {
     let alphabet = nuc_alphabet();
-    let aln = vec![
-      record("A", "ANNG"),
-      record("B", "NNNA"),
-      record("C", "NNN-"),
-    ];
+    let aln = vec![record("A", "ANNG"), record("B", "NNNA"), record("C", "NNN-")];
 
     let mask = create_mask(&aln, 4, &alphabet);
     assert_eq!(vec![false, true, true, false], mask);
@@ -61,11 +50,7 @@ mod tests {
   #[test]
   fn test_mask_single_informative_tip_clears_position() {
     let alphabet = nuc_alphabet();
-    let aln = vec![
-      record("A", "NNNN"),
-      record("B", "NNNN"),
-      record("C", "ANGN"),
-    ];
+    let aln = vec![record("A", "NNNN"), record("B", "NNNN"), record("C", "ANGN")];
 
     let mask = create_mask(&aln, 4, &alphabet);
     assert_eq!(vec![false, true, false, true], mask);
@@ -74,10 +59,7 @@ mod tests {
   #[test]
   fn test_mask_gaps_treated_as_ambiguous() {
     let alphabet = nuc_alphabet();
-    let aln = vec![
-      record("A", "----"),
-      record("B", "----"),
-    ];
+    let aln = vec![record("A", "----"), record("B", "----")];
 
     let mask = create_mask(&aln, 4, &alphabet);
     assert_eq!(vec![true, true, true, true], mask);

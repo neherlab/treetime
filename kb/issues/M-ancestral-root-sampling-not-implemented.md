@@ -16,20 +16,19 @@ Augur always passes `sample_from_profile='root'` (`augur/ancestral.py:294`, `aug
 
 ## v1 status
 
-v1 uses `argmax_first()` everywhere (`packages/treetime/src/partition/marginal_sparse.rs`). Deterministic tie-breaking. No sampling infrastructure.
+Sampling infrastructure implemented:
 
-## Implementation scope
+- `SampleMode` enum (`Argmax`, `Root`, `All`) in `packages/treetime/src/ancestral/sample.rs`
+- `sample_from_profile()` using inverse CDF sampling
+- `reconstruct_map_seq_sampled()` in `marginal_sparse.rs` accepts optional RNG
+- `prof2seq_sampled()` in `marginal_dense.rs` accepts optional RNG
 
-Localized to `reconstruct_map_seq` in `marginal_sparse.rs` and the equivalent in `marginal_dense.rs`:
-
-1. Accept a `SampleMode` enum (`Argmax`, `SampleRoot`, `SampleAll`)
-2. For `SampleRoot`: at root node only, sample from profile CDF instead of `argmax_first`
-3. Thread an RNG (seeded from `--seed`) through reconstruction
-4. ~5 lines of sampling: cumsum profile row, generate uniform, find first index where cumsum >= random
+Remaining: wire `SampleMode` through `ancestral_reconstruction_marginal` and the CLI `--sample-from-profile` flag. Default to `SampleMode::Root` to match augur behavior.
 
 ## Locations
 
-- `packages/treetime/src/partition/marginal_sparse.rs` - `reconstruct_map_seq` (sparse path)
-- `packages/treetime/src/partition/marginal_dense.rs` - dense equivalent
-- `packages/treetime/src/ancestral/marginal.rs` - `ancestral_reconstruction_marginal` (caller)
+- `packages/treetime/src/ancestral/sample.rs` - `SampleMode`, `sample_from_profile()`
+- `packages/treetime/src/partition/marginal_sparse.rs` - `reconstruct_map_seq_sampled()`
+- `packages/treetime/src/partition/marginal_dense.rs` - `prof2seq_sampled()`
+- `packages/treetime/src/ancestral/marginal.rs` - `ancestral_reconstruction_marginal` (pending wiring)
 - v0: `packages/legacy/treetime/treetime/seq_utils.py` `prof2seq()`

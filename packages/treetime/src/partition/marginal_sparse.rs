@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::sample::resolve_profile;
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};
@@ -55,6 +56,18 @@ pub(crate) fn reconstruct_map_seq(
   node: &SparseNodePartition,
   alphabet: &Alphabet,
 ) -> Seq {
+  let mut rng = rand::thread_rng();
+  reconstruct_map_seq_sampled(base_seq, edge, node, alphabet, false, &mut rng)
+}
+
+pub(crate) fn reconstruct_map_seq_sampled(
+  base_seq: &Seq,
+  edge: Option<&SparseEdgePartition>,
+  node: &SparseNodePartition,
+  alphabet: &Alphabet,
+  sample: bool,
+  rng: &mut impl rand::Rng,
+) -> Seq {
   let mut seq = if let Some(edge) = edge {
     let mut seq = base_seq.clone();
     for m in edge.fitch_subs() {
@@ -77,7 +90,26 @@ pub(crate) fn reconstruct_map_seq(
   }
 
   for (pos, states) in &node.profile.variable {
-    seq[*pos] = alphabet.char(argmax_first(&states.dis.view()).unwrap_or(0));
+    seq[*pos] = alphabet.char(resolve_profile(states.dis.view(), sample, rng));
+  }
+
+  if sample {
+    let variable_positions = &node.profile.variable;
+    let fixes: Vec<(usize, usize)> = seq
+      .iter()
+      .enumerate()
+      .filter(|(pos, _)| !variable_positions.contains_key(pos))
+      .filter_map(|(pos, &ch)| {
+        node
+          .profile
+          .fixed
+          .get(&ch)
+          .map(|fp| (pos, resolve_profile(fp.view(), true, rng)))
+      })
+      .collect();
+    for (pos, idx) in fixes {
+      seq[pos] = alphabet.char(idx);
+    }
   }
 
   seq

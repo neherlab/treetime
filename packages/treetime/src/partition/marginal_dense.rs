@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
+use crate::ancestral::sample::resolve_profile;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
@@ -382,10 +383,19 @@ fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
 }
 
 fn prof2seq(profile: &DenseSeqDistribution, alphabet: &Alphabet) -> Seq {
+  let mut rng = rand::thread_rng();
+  prof2seq_sampled(profile, alphabet, false, &mut rng)
+}
+
+fn prof2seq_sampled(
+  profile: &DenseSeqDistribution,
+  alphabet: &Alphabet,
+  sample: bool,
+  rng: &mut impl rand::Rng,
+) -> Seq {
   let mut seq = seq! {};
   for row in profile.dis.rows() {
-    let argmax = argmax_first(&row).unwrap_or(0);
-    seq.push(alphabet.char(argmax));
+    seq.push(alphabet.char(resolve_profile(row, sample, rng)));
   }
   seq
 }

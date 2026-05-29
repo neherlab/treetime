@@ -5,6 +5,7 @@ pub(crate) mod gtr_inference;
 pub mod marginal;
 pub mod mask;
 pub mod params;
+pub mod sample;
 
 #[cfg(test)]
 mod __tests__;

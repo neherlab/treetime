@@ -168,7 +168,10 @@ mod tests {
     let json = json_write_str(&data, JsonPretty(false)).unwrap();
     let roundtrip: AugurNodeDataJsonAncestral = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(data.generated_by.unwrap().program, roundtrip.generated_by.unwrap().program);
+    assert_eq!(
+      data.generated_by.unwrap().program,
+      roundtrip.generated_by.unwrap().program
+    );
     assert_eq!(data.nodes["node1"].muts, roundtrip.nodes["node1"].muts);
   }
 
@@ -183,7 +186,10 @@ mod tests {
 
     let parsed: AugurNodeDataJsonAncestral = serde_json::from_str(json).unwrap();
     assert_eq!(parsed.nodes["n1"].other["extra_field"], serde_json::json!(42));
-    assert_eq!(parsed.metadata.other["future_top_level_key"], serde_json::json!("preserved"));
+    assert_eq!(
+      parsed.metadata.other["future_top_level_key"],
+      serde_json::json!("preserved")
+    );
   }
 
   #[test]
