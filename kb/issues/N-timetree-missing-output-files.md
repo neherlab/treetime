@@ -28,3 +28,4 @@ v1 produces fewer output files than v0. Several output types are not implemented
 - `timetree.json` - clock model in JSON format
 - `timetree.nwk` - tree in Newick format (v0 only writes Nexus)
 - `gtr.json` - GTR model in JSON format
+- `timetree.augur-node-data.json` - augur-compatible node data JSON (treetime equivalent of `augur refine` output): per-node dates, branch lengths, divergence metrics, confidence intervals, and the clock model. Carries the node date estimates that the unimplemented `dates.tsv` would provide (see [Node dates output unimplemented](N-timetree-node-dates-output-unimplemented.md))

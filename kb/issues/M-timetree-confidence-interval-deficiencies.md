@@ -24,6 +24,10 @@ Both upper and lower confidence bounds are computed as the absolute difference b
 
 After computing confidence bounds, the code clamps the point estimate to lie within `[lower, upper]`. This hides cases where the CI computation and the reported date are inconsistent (e.g., due to the symmetric approximation above or numerical issues in rate susceptibility). The inconsistency should be reported, not masked.
 
+### num_date_confidence composition diverges from augur's marginal HPD
+
+`num_date_confidence` in `timetree.augur-node-data.json` (and `auspice_tree.json` `num_date.confidence`) is the `[lower, upper]` 90% region produced by this module. Augur sets `num_date_confidence = list(tt.get_max_posterior_region(n, 0.9))`, the pure marginal-posterior HPD. v1 combines the marginal HPD with a rate-susceptibility contribution (quadrature) when `--confidence` runs with rate uncertainty, and forces symmetry via the `abs()` above. The field mapping is correct (a 90% region), but the bounds can differ numerically from augur. This is a consumed field (auspice colors and HPD bars use it), so closing this affects auspice output, not just the node data file.
+
 ## Impact
 
 - Confidence intervals are symmetric when they should be asymmetric for short branches

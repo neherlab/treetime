@@ -20,7 +20,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_io::dates_csv::read_dates;
+use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
 
@@ -28,6 +28,9 @@ pub struct InputData {
   pub graph: GraphTimetree,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
+  /// Parsed date constraints, retained for node data JSON output (`raw_date`,
+  /// `date_inferred`). `None` when no dates file was provided.
+  pub dates: Option<DatesMap>,
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
@@ -56,15 +59,23 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     None
   };
 
-  if let Some(dates_path) = &args.dates {
+  let dates = if let Some(dates_path) = &args.dates {
     let dates = read_dates(dates_path, &args.name_column, &args.date_column).wrap_err("When reading dates")?;
     load_date_constraints(&dates, &graph).wrap_err("Failed to load date constraints")?;
-  }
+    Some(dates)
+  } else {
+    None
+  };
 
   // Calculate divergence distances from root to all nodes
   initialize_node_divergences(&graph);
 
-  Ok(InputData { graph, alphabet, aln })
+  Ok(InputData {
+    graph,
+    alphabet,
+    aln,
+    dates,
+  })
 }
 
 pub fn initialize_partitions(

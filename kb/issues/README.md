@@ -118,6 +118,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                |
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                   |
 | Negligible | Timetree     | [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md)                           |
+| Negligible | Timetree     | [Node data JSON omits input-tree branch confidence](N-timetree-node-data-confidence-not-emitted.md)                                                 |
 | Negligible | Timetree     | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                                                 |
 | Negligible | Timetree     | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                             |
 | Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                   |

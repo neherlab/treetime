@@ -232,6 +232,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
       no_indels: s.no_indels,
+      output_augur_node_data: None,
       outdir: PathBuf::from(s.outdir),
       tracelog: s.tracelog.map(PathBuf::from),
       seed: s.seed,

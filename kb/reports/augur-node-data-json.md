@@ -285,7 +285,7 @@ attributes.append('num_date_confidence')
 
 #### `branch_length`
 
-Float. BioPython node attribute from TreeTime. Substitutions/site by default. With `--divergence-units=mutations`: integer mutation count (augur replaces the float with a count of non-ambiguous, non-masked mutations from `node.mutations`).
+Float. BioPython `node.branch_length` attribute as left by `TreeTime.run()`. In timetree mode this is NOT the divergence: `make_time_tree` overwrites `node.branch_length = node.clock_length` (`clock_tree.py:925`), so it carries the time-tree branch duration in years and is numerically identical to `clock_length`. `_run()` ends on `make_time_tree` and never calls `branch_length_to_years()`, so this is the final state augur reads. Under the default `--divergence-units=mutations-per-site` augur emits it unchanged; with `--divergence-units=mutations` augur overwrites it with the integer mutation count (`refine.py:432`).
 
 #### `confidence`
 
@@ -301,15 +301,15 @@ Consumed by `augur export v2` as `node_attrs.num_date.value`.
 
 #### `clock_length`
 
-Float. TreeTime node attribute. Expected branch length from clock model.
+Float. TreeTime `node.clock_length = node.up.time_before_present - node.time_before_present` (`clock_tree.py:924`): the time-tree branch duration in years, equal to `child.numdate - parent.numdate`. Numerically identical to `branch_length` in timetree mode (line 925 assigns one from the other).
 
-Not consumed by `augur export v2` as a trait (excluded by `node_data_prop_is_normal_trait()`). Used for divergence calculation (`mutation_length` preferred over `branch_length`).
+Not consumed by `augur export v2` at all (excluded by `node_data_prop_is_normal_trait()`, and never read elsewhere).
 
 #### `mutation_length`
 
-Float. TreeTime node attribute. Observed mutations normalized to substitutions/site. With `--divergence-units=mutations`: integer count.
+Float. TreeTime `node.mutation_length`: the ML-optimized branch length in substitutions/site. TreeTime sets it to the optimized branch length during branch-length optimization (`treeanc.py:1225`, `node.mutation_length = new_len`); it is NOT a raw observed-mutation count. With `--divergence-units=mutations` augur overwrites it with the integer mutation count (`refine.py:430`).
 
-Not consumed as trait. Used for cumulative `div` computation.
+Not consumed as a trait. Drives the cumulative `div` computation in `augur export v2` (`node_div()` prefers `mutation_length`), so it must be the divergence length, not a count or a time value.
 
 #### `raw_date` and `date`
 
@@ -603,24 +603,34 @@ Partition access: inference results (mutations, sequences) live in the partition
 
 ### For `timetree` command
 
-| Node data field       | v1 source                                    | Status                      |
-| --------------------- | -------------------------------------------- | --------------------------- |
-| `branch_length`       | `EdgeTimetree.base.branch_length`            | Available                   |
-| `confidence`          | Input tree bootstrap value                   | Available                   |
-| `numdate`             | `NodeTimetree.time`                          | Available                   |
-| `clock_length`        | Derivable from clock model                   | Available                   |
-| `mutation_length`     | From partition `edge_subs().len()` / seq_len | Available (needs partition) |
-| `raw_date`            | Original date string from metadata           | Missing (not preserved)     |
-| `date`                | Resolved date string                         | Missing (not preserved)     |
-| `date_inferred`       | Derivable from date constraint type          | Available                   |
-| `num_date_confidence` | `NodeConfidenceInterval.lower/upper`         | Available                   |
-| `clock.rate`          | `ClockModel.clock_rate()`                    | Available                   |
-| `clock.intercept`     | `ClockModel.intercept()`                     | Available                   |
-| `clock.rtt_Tmrca`     | `-intercept / clock_rate`                    | Available                   |
-| `clock.cov`           | `ClockModel.stats.cov`                       | Available                   |
-| `clock.rate_std`      | `sqrt(cov[0][0])`                            | Available                   |
+Field-to-source mapping (corrected against augur's emitted values; the units are the trap: `branch_length`/`clock_length` are time, `mutation_length` is divergence):
 
-Partition access: timetree's `write_outputs()` (`commands/timetree/run.rs:529`) already receives the partition as `&[Arc<RwLock<dyn PartitionTimetreeAll>>]` and uses it for `MutationCommentProvider`. Node data JSON writing goes alongside the existing `write_graph_files_with`, `write_clock_model`, and `write_auspice_json` calls. Dates and clock data come from `NodeTimetree` payloads and `ClockModel`. Original date strings (`raw_date`, `date`) are not preserved in v1 (tracked: [../issues/M-dates-raw-string-not-preserved.md](../issues/M-dates-raw-string-not-preserved.md)).
+| Node data field       | v1 source                                                    | Status                           |
+| --------------------- | ------------------------------------------------------------ | -------------------------------- |
+| `branch_length`       | `child.time - parent.time` (= `clock_length`, years)         | Available                        |
+| `confidence`          | Input tree branch support value                              | Missing (Newick reader gap)      |
+| `numdate`             | `NodeTimetree.time`                                          | Available                        |
+| `clock_length`        | `child.time - parent.time` (`NodeTimetree.time` difference)  | Available                        |
+| `mutation_length`     | `EdgeTimetree.base.branch_length` (ML divergence, subs/site) | Available                        |
+| `raw_date`            | `DateConstraint.raw` (tips, from preserved `DatesMap`)       | Available                        |
+| `date`                | `year_fraction_to_datestring(numdate)`                       | Available (<=1-day rounding gap) |
+| `date_inferred`       | `!DateConstraint::is_exact` (absent/range/uncertain = true)  | Available                        |
+| `num_date_confidence` | `NodeConfidenceInterval.lower/upper`                         | Available (CI composition gap)   |
+| `clock.rate`          | `ClockModel.clock_rate()`                                    | Available                        |
+| `clock.intercept`     | `ClockModel.intercept()`                                     | Available                        |
+| `clock.rtt_Tmrca`     | `-intercept / clock_rate`                                    | Available                        |
+| `clock.cov`           | `ClockModel.stats.cov`                                       | Available                        |
+| `clock.rate_std`      | `sqrt(cov[0][0])`                                            | Available                        |
+
+No partition access is needed: every per-node field comes from `NodeTimetree`/`EdgeTimetree` payloads, the `ClockModel`, the confidence intervals, and the parsed `DatesMap`. `mutation_length` is `EdgeTimetree.base.branch_length` (the optimized divergence) rather than a recomputed count, matching TreeTime's `node.mutation_length`. `branch_length` and `clock_length` are both `child.numdate - parent.numdate` (the node-time difference), matching `clock_tree.py:924-925` where augur reads `node.branch_length == node.clock_length`. Node data JSON writing goes alongside the existing `write_graph_files_with`, `write_clock_model`, and `write_auspice_json` calls in `write_outputs()`. The date constraints are retained from input parsing in `InputData` so `raw_date` and `date_inferred` can be emitted.
+
+Residual parity gaps to track, not to bury under a completion claim:
+
+- `confidence`: v1's Newick reader does not parse input-tree branch support values, so the field is always omitted (tracked: [../issues/N-timetree-node-data-confidence-not-emitted.md](../issues/N-timetree-node-data-confidence-not-emitted.md)). Matches augur only when the input tree carries no support.
+- `num_date_confidence`: the field mapping is correct (90% region), but v1's CI composition may differ numerically from augur's marginal HPD (tracked: [../issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)).
+- `date`: `year_fraction_to_datestring` can differ from augur's `datestring_from_numeric` by up to one day at floating-point day boundaries (augur adds a `1e-10` nudge before flooring days). The field is excluded by `export v2` and never reaches auspice, so the difference is immaterial downstream.
+- `--divergence-units=mutations` (integer-count mode) is not implemented in v1; the default `mutations-per-site` mode is what the writer targets.
+- Root node: augur emits placeholder `branch_length`/`clock_length`/`mutation_length` for the root (`one_mutation`, `0.001`); v1 omits them. `export v2` sets the root divergence to 0 and never consumes the root branch fields, so this is immaterial downstream but is a byte-level difference in the node data file.
 
 ### For `mugration` command
 

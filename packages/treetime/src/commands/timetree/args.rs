@@ -292,6 +292,16 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
 
+  /// Write augur-compatible node data JSON to this path
+  ///
+  /// Contains per-node dates, branch lengths, clock model parameters, confidence
+  /// intervals, and divergence metrics. The output is compatible with augur
+  /// export v2 --node-data for Nextstrain pipeline integration. Defaults to
+  /// `<outdir>/timetree.augur-node-data.json`.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub output_augur_node_data: Option<PathBuf>,
+
   /// Directory to write the output to
   #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
   pub outdir: PathBuf,

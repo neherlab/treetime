@@ -9,6 +9,7 @@ use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
+use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::result::TimetreeResult;
@@ -34,8 +35,10 @@ use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use parking_lot::RwLock;
+use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
@@ -69,6 +72,7 @@ pub fn run_timetree_estimation(
     mut graph,
     alphabet,
     aln,
+    dates,
   } = load_input_data(args)?;
   info!(
     "Input loaded: {} nodes, {} edges",
@@ -415,7 +419,14 @@ pub fn run_timetree_estimation(
 
   progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
-  write_outputs(args, &graph, &partitions, &clock_model, confidence_intervals.as_deref())?;
+  write_outputs(
+    args,
+    &graph,
+    &partitions,
+    &clock_model,
+    confidence_intervals.as_deref(),
+    dates.as_ref(),
+  )?;
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult {
@@ -532,6 +543,7 @@ fn write_outputs(
   partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
+  dates: Option<&DatesMap>,
 ) -> Result<(), Report> {
   if !partitions.is_empty() {
     let guard = partitions[0].read_arc();
@@ -546,6 +558,28 @@ fn write_outputs(
   write_clock_model(clock_model, &args.outdir.join("timetree"))?;
 
   write_auspice_json(graph, confidence_intervals, &args.outdir)?;
+
+  // Augur-compatible node data JSON (treetime equivalent of `augur refine`).
+  // Branch lengths and dates come from the graph payloads and clock model; the
+  // parsed date constraints supply raw_date and date_inferred.
+  let augur_node_data_path = args
+    .output_augur_node_data
+    .clone()
+    .unwrap_or_else(|| args.outdir.join("timetree.augur-node-data.json"));
+  let alignment = args.input_fastas.first().map(PathBuf::as_path);
+  write_augur_node_data_json(
+    graph,
+    clock_model,
+    confidence_intervals,
+    dates,
+    alignment,
+    args.tree.as_deref(),
+    &augur_node_data_path,
+  )?;
+  info!(
+    "Wrote augur node data JSON to {path}",
+    path = augur_node_data_path.display()
+  );
 
   if args.plot_rtt.is_some() {
     return make_error!("--plot-rtt is not yet implemented");
