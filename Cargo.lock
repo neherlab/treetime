@@ -4290,6 +4290,7 @@ dependencies = [
  "treetime-io",
  "treetime-primitives",
  "treetime-utils",
+ "util-augur-node-data-json",
 ]
 
 [[package]]

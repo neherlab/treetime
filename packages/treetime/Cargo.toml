@@ -18,6 +18,7 @@ treetime-grid = { workspace = true }
 treetime-io = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
+util-augur-node-data-json = { workspace = true }
 
 # [external]
 approx = { workspace = true }

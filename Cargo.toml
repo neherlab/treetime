@@ -152,6 +152,7 @@ treetime-io = { path = "packages/treetime-io" }
 treetime-ops = { path = "packages/treetime-ops" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-utils = { path = "packages/treetime-utils" }
+util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
 util-phyloxml = { path = "packages/util-phyloxml" }
 util-usher-mat = { path = "packages/util-usher-mat" }
 

@@ -1,3 +1,4 @@
+mod test_augur_node_data;
 mod test_comment_output;
 mod test_discrete_marginal;
 mod test_gm_mugration;

@@ -1,4 +1,5 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
+use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
@@ -79,6 +80,13 @@ pub fn run_mugration(
   if let Some(confidence_path) = &mugration_args.confidence {
     fs::write(confidence_path, result.confidence.render_csv())?;
   }
+
+  let augur_path = mugration_args
+    .output_augur_node_data
+    .clone()
+    .unwrap_or_else(|| outdir.join("mugration.augur-node-data.json"));
+  write_augur_node_data_json(&result, &augur_path)?;
+  info!("Wrote augur node data JSON to {}", augur_path.display());
 
   progress.report("Done", 1.0, "");
   info!("Mugration: wrote output to {}", outdir.display());

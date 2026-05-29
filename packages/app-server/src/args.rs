@@ -273,6 +273,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
       missing_weights_threshold: s.missing_weights_threshold,
       iterations: s.iterations,
       sampling_bias_correction: s.sampling_bias_correction,
+      output_augur_node_data: None,
       outdir: PathBuf::from(s.outdir),
     }
   }

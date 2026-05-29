@@ -63,6 +63,16 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub sampling_bias_correction: Option<f64>,
 
+  /// Write augur-compatible node data JSON to this path.
+  ///
+  /// Contains per-node discrete trait assignments, confidence profiles, entropy,
+  /// the inferred substitution model, and branch state-change labels. The output
+  /// is compatible with augur export v2 --node-data for Nextstrain pipeline
+  /// integration.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub output_augur_node_data: Option<PathBuf>,
+
   /// Directory to write the output to
   #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
   pub outdir: PathBuf,
