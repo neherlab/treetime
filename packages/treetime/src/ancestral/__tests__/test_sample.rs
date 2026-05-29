@@ -20,11 +20,11 @@ mod tests {
     let mut rng1 = StdRng::seed_from_u64(123);
     let mut rng2 = StdRng::seed_from_u64(123);
 
-    let results1: Vec<usize> = (0..100)
-      .map(|_| sample_from_profile(profile.view(), &mut rng1))
+    let results1: Vec<usize> = std::iter::repeat_with(|| sample_from_profile(profile.view(), &mut rng1))
+      .take(100)
       .collect();
-    let results2: Vec<usize> = (0..100)
-      .map(|_| sample_from_profile(profile.view(), &mut rng2))
+    let results2: Vec<usize> = std::iter::repeat_with(|| sample_from_profile(profile.view(), &mut rng2))
+      .take(100)
       .collect();
 
     assert_eq!(results1, results2);

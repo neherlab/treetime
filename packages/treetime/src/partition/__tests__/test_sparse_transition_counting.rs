@@ -108,7 +108,10 @@ mod tests {
     let counts = partition.read_arc().count_transitions(&graph)?;
 
     for i in 0..counts.nij.nrows() {
-      assert_eq!(0.0, counts.nij[[i, i]], "diagonal nij[{i},{i}] should be zero");
+      #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
+      {
+        assert_eq!(0.0, counts.nij[[i, i]], "diagonal nij[{i},{i}] should be zero");
+      }
     }
 
     Ok(())
