@@ -666,9 +666,9 @@ Tracked: [../issues/M-dates-raw-string-not-preserved.md](../issues/M-dates-raw-s
 
 ### Root profile sampling
 
-v1 uses `argmax_first()` for sequence assignment at all nodes. v0 supports stochastic sampling at the root (`sample_from_profile='root'`), which augur always passes. This affects root mutations at positions with flat posteriors. Orthogonal to joint reconstruction (not related to joint removal).
+Implemented. The `ancestral` command exposes `--sample-from-profile=<argmax|root|all>` (default `argmax`), threading the mode and a `--seed`-seeded RNG into marginal reconstruction. `root` matches augur's `sample_from_profile='root'` (sample the root posterior, argmax elsewhere), affecting root mutations and the reference sequence at flat-posterior positions. The default `argmax` keeps output deterministic and v0-identical; the augur-default `root` behavior is opt-in.
 
-Tracked: [../issues/M-ancestral-root-sampling-not-implemented.md](../issues/M-ancestral-root-sampling-not-implemented.md), [../tickets/ancestral-implement-root-profile-sampling.md](../tickets/ancestral-implement-root-profile-sampling.md).
+Decision: [../decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md).
 
 ### Mask computation
 

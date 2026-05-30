@@ -52,7 +52,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                  |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                          |
-| Medium     | Ancestral    | [Ancestral root sampling not implemented](M-ancestral-root-sampling-not-implemented.md)                                                             |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |

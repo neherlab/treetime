@@ -23,6 +23,7 @@
 | [Dense normalize-from-log](representation.md#normalize-from-log-dense-2d) | Unit (see [Representation](representation.md)) |
 | [Sparse composition](#substitution-composition-tests)                     | Unit                                           |
 | [Generator validation](#property-test-generator-validation)               | Property                                       |
+| [Posterior sampling](#posterior-sampling)                                 | Unit + Smoke                                   |
 
 Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__tests__/prop_marginal_support.rs`](../../packages/treetime/src/ancestral/__tests__/prop_marginal_support.rs), [`packages/treetime/src/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs), [`packages/treetime/src/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)
 
@@ -479,10 +480,32 @@ Moved to [Representation Tests: Normalize from Log (Dense 2D)](representation.md
 
 ---
 
+## Posterior Sampling
+
+`SampleMode` selection and seeded reconstruction. Default `Argmax` is deterministic; `Root`/`All` draw from the posterior under a seeded RNG.
+
+File: [`packages/treetime/src/ancestral/__tests__/test_sample.rs`](../../packages/treetime/src/ancestral/__tests__/test_sample.rs), [`packages/treetime/src/ancestral/__tests__/test_sample_reconstruction.rs`](../../packages/treetime/src/ancestral/__tests__/test_sample_reconstruction.rs), [`packages/treetime/src/commands/ancestral/__tests__/test_smoke_sample_from_profile.rs`](../../packages/treetime/src/commands/ancestral/__tests__/test_smoke_sample_from_profile.rs)
+
+| Test                                                            | Purpose                                                           |
+| --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `test_sample_mode_samples_node`                                 | Per-node sample decision across argmax/root/all and root/non-root |
+| `test_sample_deterministic_profile`                             | Inverse-CDF sampling picks the only nonzero state                 |
+| `test_sample_reproducible_with_seed`                            | Same seed reproduces the same draws                               |
+| `test_sample_respects_distribution`                             | Empirical frequencies follow the profile                          |
+| `test_resolve_profile_argmax_when_not_sampling`                 | `resolve_profile(sample=false)` is argmax                         |
+| `test_sample_reconstruction_argmax_ignores_seed`                | Argmax reconstruction is seed-independent                         |
+| `test_sample_reconstruction_all_seeded_reproducible`            | All-node sampling reproducible under a fixed seed                 |
+| `test_sample_reconstruction_root_seeded_reproducible`           | Root sampling reproducible under a fixed seed                     |
+| `test_sample_reconstruction_root_only_leaves_nonroot_unchanged` | Root sampling leaves non-root nodes identical to argmax           |
+| `test_smoke_ancestral_sample_from_profile_root_reproducible`    | End-to-end root sampling reproducible across runs (CLI path)      |
+| `test_smoke_ancestral_sample_from_profile_all`                  | End-to-end all-node sampling runs without error                   |
+
+---
+
 ## Support Files (No Tests)
 
-| File                                                                                                                                                                                                                                       | Purpose                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| File                                                                                                                                                                                                                     | Purpose                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | [`packages/treetime/src/ancestral/__tests__/prop_marginal_support.rs`](../../packages/treetime/src/ancestral/__tests__/prop_marginal_support.rs)                                                                         | `run_dense_marginal()`, `run_sparse_marginal()` for property tests                   |
 | [`packages/treetime/src/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_analytical/test_marginal_analytical_support.rs) | Analytical likelihood formulas and `run_dense_marginal_get_log_lh()`                 |
 | [`packages/treetime/src/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_stability/test_marginal_stability_support.rs)     | `assert_dense_profile_stable()`, `assert_sparse_profile_stable()`, partition runners |
