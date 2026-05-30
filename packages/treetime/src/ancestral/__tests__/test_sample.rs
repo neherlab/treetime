@@ -5,6 +5,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rand::SeedableRng;
   use rand::rngs::StdRng;
+  use rstest::rstest;
 
   #[test]
   fn test_sample_deterministic_profile() {
@@ -81,5 +82,18 @@ mod tests {
       }
     }
     assert!(saw_zero && saw_one, "expected both states sampled from 50/50 profile");
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::argmax_root(    SampleMode::Argmax, true,  false)]
+  #[case::argmax_nonroot( SampleMode::Argmax, false, false)]
+  #[case::root_root(      SampleMode::Root,   true,  true )]
+  #[case::root_nonroot(   SampleMode::Root,   false, false)]
+  #[case::all_root(       SampleMode::All,    true,  true )]
+  #[case::all_nonroot(    SampleMode::All,    false, true )]
+  #[trace]
+  fn test_sample_mode_samples_node(#[case] mode: SampleMode, #[case] is_root: bool, #[case] expected: bool) {
+    assert_eq!(expected, mode.samples_node(is_root));
   }
 }
