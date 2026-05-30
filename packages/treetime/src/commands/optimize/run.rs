@@ -23,12 +23,6 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, Default)]
-pub struct TreetimeOptimizeParams {
-  pub sample_from_profile: bool,
-  pub fixed_pi: bool,
-}
-
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
   progress: &dyn crate::progress::ProgressSink,
