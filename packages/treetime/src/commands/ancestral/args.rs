@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::AlphabetName;
 use crate::ancestral::params::MethodAncestral;
+use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::seq::gap_fill::GapFill;
 #[cfg(feature = "clap")]
@@ -136,6 +137,17 @@ pub struct TreetimeAncestralArgs {
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long))]
   pub seed: Option<u64>,
+
+  /// How to pick ancestral states from the marginal posterior profile.
+  ///
+  /// 'argmax': most likely state at every node (deterministic, default).
+  /// 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's
+  /// `sample_from_profile='root'`). Use `--seed` for reproducible draws.
+  /// 'all': sample from the posterior at every node.
+  ///
+  /// Only affects marginal reconstruction (`--method-anc=marginal`).
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleMode::default()))]
+  pub sample_from_profile: SampleMode,
 }
 
 impl TreetimeAncestralArgs {

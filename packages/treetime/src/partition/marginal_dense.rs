@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
-use crate::ancestral::sample::resolve_profile;
+use crate::ancestral::sample::{SampleMode, resolve_profile};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
@@ -349,13 +349,21 @@ where
 
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     if let Some(seq_info) = self.data.nodes.get(&node_key) {
+      // Convergence checks and other intermediate reads always use the deterministic most-likely
+      // state, independent of the user's output sampling mode.
       assign_sequence(seq_info, &self.alphabet)
     } else {
       seq! {}
     }
   }
 
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq> {
+  fn reconstruct_node_sequence(
+    &mut self,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    sample_mode: SampleMode,
+    rng: &mut dyn rand::RngCore,
+  ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
       return None;
     }
@@ -364,15 +372,27 @@ where
     let seq = if node.is_leaf {
       seq_info.seq.sequence.clone()
     } else {
-      assign_sequence(seq_info, &self.alphabet)
+      let sample = sample_mode.samples_node(node.is_root);
+      assign_sequence_sampled(seq_info, &self.alphabet, sample, rng)
     };
 
     Some(seq)
   }
 }
 
+/// Deterministic most-likely-state sequence assignment. Used by the forward pass and convergence
+/// reads, which must stay reproducible regardless of the user's output sampling mode.
 fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
-  let mut seq = prof2seq(&seq_info.profile, alphabet);
+  assign_sequence_sampled(seq_info, alphabet, false, &mut rand::thread_rng())
+}
+
+fn assign_sequence_sampled(
+  seq_info: &DenseNodePartition,
+  alphabet: &Alphabet,
+  sample: bool,
+  rng: &mut dyn rand::RngCore,
+) -> Seq {
+  let mut seq = prof2seq_sampled(&seq_info.profile, alphabet, sample, rng);
   for gap in &seq_info.seq.gaps {
     seq[gap.0..gap.1].fill(alphabet.gap());
   }
@@ -382,16 +402,11 @@ fn assign_sequence(seq_info: &DenseNodePartition, alphabet: &Alphabet) -> Seq {
   seq
 }
 
-fn prof2seq(profile: &DenseSeqDistribution, alphabet: &Alphabet) -> Seq {
-  let mut rng = rand::thread_rng();
-  prof2seq_sampled(profile, alphabet, false, &mut rng)
-}
-
 fn prof2seq_sampled(
   profile: &DenseSeqDistribution,
   alphabet: &Alphabet,
   sample: bool,
-  rng: &mut impl rand::Rng,
+  rng: &mut dyn rand::RngCore,
 ) -> Seq {
   let mut seq = seq! {};
   for row in profile.dis.rows() {

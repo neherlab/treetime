@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_internal_error;
@@ -172,7 +173,13 @@ where
 
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
 
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq>;
+  fn reconstruct_node_sequence(
+    &mut self,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    sample_mode: SampleMode,
+    rng: &mut dyn rand::RngCore,
+  ) -> Option<Seq>;
 }
 
 pub trait PartitionCompressed: Sync + Send {

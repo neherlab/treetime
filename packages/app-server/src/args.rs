@@ -3,6 +3,7 @@ use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
+use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMode;
 use treetime::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
@@ -64,6 +65,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
       seed: s.seed,
+      sample_from_profile: SampleMode::default(),
     }
   }
 }

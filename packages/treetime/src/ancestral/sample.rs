@@ -1,5 +1,5 @@
 use ndarray::ArrayView1;
-use rand::Rng;
+use rand::{Rng, RngCore};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::argmax_first;
@@ -14,7 +14,21 @@ pub enum SampleMode {
   All,
 }
 
-pub fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut impl Rng) -> usize {
+impl SampleMode {
+  /// Whether the given node samples its sequence from the posterior profile.
+  ///
+  /// `Argmax` never samples (deterministic most-likely state everywhere). `Root` samples only
+  /// at the root, matching augur's `sample_from_profile='root'`. `All` samples at every node.
+  pub fn samples_node(self, is_root: bool) -> bool {
+    match self {
+      SampleMode::Argmax => false,
+      SampleMode::Root => is_root,
+      SampleMode::All => true,
+    }
+  }
+}
+
+pub fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> usize {
   let cumsum: Vec<f64> = profile
     .iter()
     .scan(0.0, |acc, &x| {
@@ -32,7 +46,7 @@ pub fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut impl Rng) -> usiz
   cumsum.iter().position(|&c| c >= threshold).unwrap_or(0)
 }
 
-pub fn resolve_profile(profile: ArrayView1<f64>, sample: bool, rng: &mut impl Rng) -> usize {
+pub fn resolve_profile(profile: ArrayView1<f64>, sample: bool, rng: &mut dyn RngCore) -> usize {
   if sample {
     sample_from_profile(profile, rng)
   } else {

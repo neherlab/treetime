@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::sample::resolve_profile;
+use crate::ancestral::sample::{SampleMode, resolve_profile};
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};
@@ -66,7 +66,7 @@ pub(crate) fn reconstruct_map_seq_sampled(
   node: &SparseNodePartition,
   alphabet: &Alphabet,
   sample: bool,
-  rng: &mut impl rand::Rng,
+  rng: &mut dyn rand::RngCore,
 ) -> Seq {
   let mut seq = if let Some(edge) = edge {
     let mut seq = base_seq.clone();
@@ -528,7 +528,13 @@ where
     }
   }
 
-  fn reconstruct_node_sequence(&mut self, node: &GraphNodeForward<N, E, ()>, include_leaves: bool) -> Option<Seq> {
+  fn reconstruct_node_sequence(
+    &mut self,
+    node: &GraphNodeForward<N, E, ()>,
+    include_leaves: bool,
+    sample_mode: SampleMode,
+    rng: &mut dyn rand::RngCore,
+  ) -> Option<Seq> {
     if !include_leaves && node.is_leaf {
       return None;
     }
@@ -544,7 +550,8 @@ where
       (&parent_data.seq.sequence, Some(edge_data))
     };
 
-    let seq = reconstruct_map_seq(base_seq, edge, &node_data, &self.alphabet);
+    let sample = sample_mode.samples_node(node.is_root);
+    let seq = reconstruct_map_seq_sampled(base_seq, edge, &node_data, &self.alphabet, sample, rng);
     node_data.seq.sequence = seq.clone();
     self.nodes.insert(node.key, node_data);
 

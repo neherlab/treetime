@@ -4,6 +4,7 @@ use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
+use crate::ancestral::sample::SampleMode;
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json;
 use crate::commands::ancestral::result::AncestralResult;
@@ -28,12 +29,7 @@ use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
-
-#[derive(Clone, Debug, Default)]
-pub struct TreetimeAncestralParams {
-  pub sample_from_profile: bool,
-  pub fixed_pi: bool,
-}
+use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
@@ -57,6 +53,18 @@ pub fn run_ancestral_reconstruction(
     return make_error!(
       "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
        The mathematical core (GTRSiteSpecific) is implemented but partition system wiring is pending."
+    );
+  }
+
+  // Posterior sampling is only defined for marginal reconstruction. Reject the combination up front,
+  // before any input is read, rather than silently ignoring the flag for other methods.
+  if ancestral_args.sample_from_profile != SampleMode::Argmax && *method_anc != MethodAncestral::Marginal {
+    return make_error!(
+      "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
+       for marginal reconstruction; {:?} has no posterior profile to sample. Use --method-anc=marginal, \
+       or --sample-from-profile=argmax.",
+      ancestral_args.sample_from_profile,
+      method_anc
     );
   }
 
@@ -107,6 +115,12 @@ pub fn run_ancestral_reconstruction(
     .output_augur_node_data
     .clone()
     .unwrap_or_else(|| outdir.join("ancestral.augur-node-data.json"));
+
+  // Posterior-profile sampling for marginal reconstruction. `Argmax` (default) is deterministic and
+  // ignores the RNG; `Root`/`All` draw from the per-node posterior. The RNG is seeded from `--seed`
+  // for reproducibility, or from entropy when unset.
+  let sample_mode = ancestral_args.sample_from_profile;
+  let mut rng = get_random_number_generator(ancestral_args.seed);
 
   match method_anc {
     MethodAncestral::Parsimony => {
@@ -170,11 +184,18 @@ pub fn run_ancestral_reconstruction(
 
         progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
-        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-          let name = node.name.as_deref().unwrap_or("");
-          let desc = &node.desc;
-          output_fasta.write(name, desc, seq)
-        })?;
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          sample_mode,
+          &mut rng,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
 
         progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();
@@ -211,11 +232,18 @@ pub fn run_ancestral_reconstruction(
 
         progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
-        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-          let name = node.name.as_deref().unwrap_or("");
-          let desc = &node.desc;
-          output_fasta.write(name, desc, seq)
-        })?;
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          sample_mode,
+          &mut rng,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
 
         progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();
@@ -249,11 +277,18 @@ pub fn run_ancestral_reconstruction(
 
         progress.check_cancelled()?;
         progress.report("Reconstructing sequences", 0.6, "");
-        ancestral_reconstruction_marginal(&graph, *reconstruct_tip_states, &partitions, |node, seq| {
-          let name = node.name.as_deref().unwrap_or("");
-          let desc = &node.desc;
-          output_fasta.write(name, desc, seq)
-        })?;
+        ancestral_reconstruction_marginal(
+          &graph,
+          *reconstruct_tip_states,
+          &partitions,
+          sample_mode,
+          &mut rng,
+          |node, seq| {
+            let name = node.name.as_deref().unwrap_or("");
+            let desc = &node.desc;
+            output_fasta.write(name, desc, seq)
+          },
+        )?;
 
         progress.report("Writing output", 0.9, "");
         let gtr = partitions[0].read_arc().gtr().clone();

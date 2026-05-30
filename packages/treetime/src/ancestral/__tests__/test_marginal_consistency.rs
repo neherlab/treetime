@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+  use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal_dense::PartitionMarginalDense;
@@ -339,10 +340,17 @@ mod tests {
       > + crate::partition::traits::HasLogLh,
   {
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(graph, false, partitions, |node, seq| {
-      actual.insert(node.name.clone().expect("all test nodes are named"), seq.to_string());
-      Ok(())
-    })?;
+    ancestral_reconstruction_marginal(
+      graph,
+      false,
+      partitions,
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+      |node, seq| {
+        actual.insert(node.name.clone().expect("all test nodes are named"), seq.to_string());
+        Ok(())
+      },
+    )?;
     Ok(actual)
   }
 

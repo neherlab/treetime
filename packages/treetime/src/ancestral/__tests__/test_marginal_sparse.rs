@@ -4,6 +4,7 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
@@ -190,10 +191,17 @@ mod tests {
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(&graph, false, &partitions_marginal_sparse, |node, seq| {
-      actual.insert(node.name.clone(), seq.to_string());
-      Ok(())
-    })?;
+    ancestral_reconstruction_marginal(
+      &graph,
+      false,
+      &partitions_marginal_sparse,
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+      |node, seq| {
+        actual.insert(node.name.clone(), seq.to_string());
+        Ok(())
+      },
+    )?;
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -501,13 +509,20 @@ mod tests {
     // Reconstruct node sequences, then turn parent-child sequence differences
     // into the expected branch changes.
     let mut seqs_by_name = BTreeMap::new();
-    ancestral_reconstruction_marginal(&graph, true, &partitions, |node, seq| {
-      seqs_by_name.insert(
-        node.name.clone().expect("all test nodes should have names"),
-        seq.clone(),
-      );
-      Ok(())
-    })?;
+    ancestral_reconstruction_marginal(
+      &graph,
+      true,
+      &partitions,
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+      |node, seq| {
+        seqs_by_name.insert(
+          node.name.clone().expect("all test nodes should have names"),
+          seq.clone(),
+        );
+        Ok(())
+      },
+    )?;
 
     let partition = partitions[0].read_arc();
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &partition, &seqs_by_name)?;

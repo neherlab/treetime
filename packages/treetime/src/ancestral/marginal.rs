@@ -1,3 +1,4 @@
+use crate::ancestral::sample::SampleMode;
 use crate::partition::traits::graph_log_lh;
 use crate::partition::traits::{PartitionMarginalOps, PartitionMarginalPasses};
 use eyre::Report;
@@ -46,6 +47,8 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   include_leaves: bool,
   partitions: &[Arc<RwLock<P>>],
+  sample_mode: SampleMode,
+  rng: &mut dyn rand::RngCore,
   mut visitor: impl FnMut(&N, &Seq) -> Result<(), Report>,
 ) -> Result<(), Report>
 where
@@ -53,6 +56,8 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + ?Sized,
 {
+  // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a
+  // fixed seed: every node draws from the profile in a fixed traversal order.
   graph.try_iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
       return Ok(());
@@ -61,7 +66,7 @@ where
     let seq: Seq = if !partitions.is_empty() {
       let mut partition = partitions[0].write_arc();
       partition
-        .reconstruct_node_sequence(&node, include_leaves)
+        .reconstruct_node_sequence(&node, include_leaves, sample_mode, rng)
         .unwrap_or_else(|| {
           log::warn!("Missing reconstruction for node {:?}, using empty sequence", node.key);
           seq![]
