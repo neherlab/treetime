@@ -11,6 +11,10 @@ pub struct EdgeSplitInfo {
   pub old_edge_key: GraphEdgeKey,
   /// The new node created at the split point.
   pub new_node_key: GraphNodeKey,
+  /// The original source node (parent side of the split).
+  pub parent_node_key: GraphNodeKey,
+  /// The original target node (child side of the split).
+  pub child_node_key: GraphNodeKey,
   /// The edge from the original source to the new node.
   pub parent_side_edge_key: GraphEdgeKey,
   /// The edge from the new node to the original target.
@@ -101,6 +105,8 @@ where
   Ok(EdgeSplitInfo {
     old_edge_key: edge_key,
     new_node_key,
+    parent_node_key: source_key,
+    child_node_key: target_key,
     parent_side_edge_key,
     child_side_edge_key,
     split_position,

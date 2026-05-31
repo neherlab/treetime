@@ -168,7 +168,7 @@ where
     let mut variable_pos = btreemap! {};
     let mut child_states = vec![];
     let mut child_messages: Vec<SparseSeqDistribution> = vec![];
-    for (ci, (_child_key, edge_key)) in node.child_keys.iter().enumerate() {
+    for (ci, (child_key, edge_key)) in node.child_keys.iter().enumerate() {
       child_states.push(btreemap! {});
       let edge_data = &partition.edges[edge_key];
       for m in edge_data.fitch_subs() {
@@ -181,7 +181,6 @@ where
       }
       child_messages.push(edge_data.msg_from_child.clone());
     }
-
     // Fill in child states for variable positions without edge substitutions.
     let alphabet = &partition.alphabet;
     for (ci, (child_key, _)) in node.child_keys.iter().enumerate() {

@@ -10,6 +10,7 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,
 };
+use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -22,7 +23,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
@@ -414,6 +415,48 @@ impl PartitionRerootOps for PartitionMarginalSparse {
         }
       }
       self.root_sequence = new_root_seq;
+    }
+
+    // After all root_sequence updates, initialize the new split node's composition
+    // from root_sequence so that process_node_forward correctly seeds fixed_counts
+    // in msg_to_child (without this, fixed sites have zero multiplicity and the
+    // branch length distribution peaks at the grid boundary instead of a realistic value).
+    if let Some(info) = &changes.edge_split {
+      if let Some(node_data) = self.nodes.get_mut(&info.new_node_key) {
+        node_data.seq.composition = Composition::with_sequence(
+          self.root_sequence.iter().copied(),
+          self.alphabet.chars(),
+          self.alphabet.gap(),
+        );
+        node_data.seq.sequence = self.root_sequence.clone();
+      }
+    }
+
+    // Consistency check (debug builds only): applying child_side subs/indels to the
+    // root composition must reproduce the child node's composition.
+    // This verifies that root_sequence, the edge mutations, and the child composition
+    // are all mutually consistent after the reroot.
+    #[cfg(debug_assertions)]
+    if let Some(info) = &changes.edge_split {
+      if let (Some(root_node), Some(child_node)) = (
+        self.nodes.get(&info.new_node_key),
+        self.nodes.get(&info.child_node_key),
+      ) {
+        if let Some(child_edge) = self.edges.get(&info.child_side_edge_key) {
+          let mut derived = root_node.seq.composition.clone();
+          for sub in child_edge.fitch_subs() {
+            derived.add_sub(sub);
+          }
+          for indel in &child_edge.indels {
+            derived.add_indel(indel);
+          }
+          debug_assert_eq!(
+            derived,
+            child_node.seq.composition,
+            "Root composition + child_side subs/indels must equal child composition after reroot"
+          );
+        }
+      }
     }
 
     Ok(())
