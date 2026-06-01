@@ -162,7 +162,6 @@ where
         fitch: FitchSeqDistribution {
           variable,
           variable_indel: indels_bw.variable_indel,
-          composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
           chosen_state: btreemap! {},
         },
         sequence,
@@ -307,13 +306,6 @@ where
     // delete the variable position everywhere except of leaves
     if !node.is_leaf {
       seq.fitch.variable = btreemap! {};
-    }
-
-    seq.fitch.composition = seq.composition.clone();
-    for p in seq.fitch.variable.values() {
-      if let Some(state) = p.get_one_maybe() {
-        seq.fitch.composition.adjust_count(state, -1);
-      }
     }
 
     // Keep the exact reconstructed sequence on every node. Sparse marginal

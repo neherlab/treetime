@@ -362,9 +362,7 @@ fn merge_sibling_group(
     let mut partition = partition_arc.write_arc();
 
     let mut new_node = SparseNodePartition::empty(&partition.alphabet);
-    let parent_comp = partition.nodes[&parent_key].seq.composition.clone();
-    new_node.seq.composition = parent_comp.clone();
-    new_node.seq.fitch.composition = parent_comp;
+    new_node.seq.composition = partition.nodes[&parent_key].seq.composition.clone();
     partition.nodes.entry(new_node_key).or_insert(new_node);
 
     for &ek in &group.edges {

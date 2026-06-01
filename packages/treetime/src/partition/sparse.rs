@@ -32,7 +32,6 @@ impl SparseNodePartition {
         fitch: FitchSeqDistribution {
           variable: btreemap! {},
           variable_indel: BTreeSet::new(),
-          composition: Composition::new(alphabet.chars(), alphabet.gap()),
           chosen_state: btreemap! {},
         },
       },
@@ -51,7 +50,6 @@ impl SparseNodePartition {
     let seq_dis = FitchSeqDistribution {
       variable,
       variable_indel: BTreeSet::new(),
-      composition: Composition::new(alphabet.chars(), alphabet.gap()),
       chosen_state: btreemap! {},
     };
 
@@ -193,14 +191,10 @@ impl Default for SparseSeqDistribution {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchSeqDistribution {
-  /// probability vector for each variable position collecting information from children
   pub variable: BTreeMap<usize, StateSet>,
 
   pub variable_indel: BTreeSet<(usize, usize)>,
 
-  pub composition: Composition,
-
-  /// The character chosen for each variable site during the Fitch forward pass
   pub chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
