@@ -134,7 +134,7 @@ A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416	2011.65160849
 A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
 "#;
 
-    let actual = read_dates_from_str(content, b'\t', &Some(o!("name")), &Some(o!("date")))?;
+    let actual = read_dates_from_str(content, b'\t', &[], &Some(o!("name")), &Some(o!("date")))?;
 
     let expected = btreemap! {
       o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2013.40520192)),

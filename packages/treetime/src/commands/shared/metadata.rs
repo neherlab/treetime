@@ -1,15 +1,10 @@
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use treetime_utils::o;
+use treetime_io::csv::default_name_candidates;
 
 /// Default sampling-date string format (ISO 8601 calendar date), matching augur's `--date-format`.
 pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
-
-/// Default candidate columns for the taxon identifier.
-pub fn default_metadata_id_columns() -> Vec<String> {
-  vec![o!("strain"), o!("name"), o!("accession")]
-}
 
 /// Metadata identity and delimiter options shared by every command that reads a metadata table
 /// (`timetree`, `clock`, `mugration`).
@@ -25,7 +20,7 @@ pub struct MetadataIdArgs {
   /// Candidate column name(s) holding the taxon identifier that links metadata to tree tips
   ///
   /// The first listed column that is present in the header is used. Matching is case-insensitive.
-  #[default(_code = "default_metadata_id_columns()")]
+  #[default(_code = "default_name_candidates()")]
   #[cfg_attr(
     feature = "clap",
     clap(
@@ -33,7 +28,7 @@ pub struct MetadataIdArgs {
       visible_alias = "name-column",
       num_args = 1..,
       value_name = "COLUMN",
-      default_values_t = default_metadata_id_columns(),
+      default_values_t = default_name_candidates(),
     )
   )]
   pub metadata_id_columns: Vec<String>,

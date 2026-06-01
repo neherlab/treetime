@@ -25,6 +25,7 @@ mod tests {
     let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
+      &[],
       &Some(o!("genbank_accession")),
       &Some(o!("date")),
     )?;

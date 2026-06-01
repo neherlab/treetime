@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::csv::default_name_candidates;
   use crate::discrete_states_csv::*;
   use eyre::Report;
   use maplit::btreemap;
@@ -17,7 +18,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, delimiter, &None, &Some(o!("location")), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_str(content, delimiter, &default_name_candidates(), &None, &Some(o!("location")), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -42,7 +43,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, _) =
-      read_discrete_attrs_from_str(content, b'\t', &name_column, &Some(o!("location")), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_str(content, b'\t', &default_name_candidates(), &name_column, &Some(o!("location")), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -64,7 +65,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, b'\t', &None, &Some(o!(value_col_name)), |s| Ok(s.to_owned()))?;
+      read_discrete_attrs_from_str(content, b'\t', &default_name_candidates(), &None, &Some(o!(value_col_name)), |s| Ok(s.to_owned()))?;
 
     assert_eq!(attr_name, value_col_name);
     assert!(values.contains_key(&o!("A")));
@@ -77,7 +78,7 @@ mod tests {
     let content = "#name#\t#location#\nA\tusa\nB\teurope";
 
     let (values, attr_name) =
-      read_discrete_attrs_from_str(content, b'\t', &Some(o!("name")), &Some(o!("location")), |s| {
+      read_discrete_attrs_from_str(content, b'\t', &[], &Some(o!("name")), &Some(o!("location")), |s| {
         Ok(s.to_owned())
       })?;
 
@@ -96,8 +97,14 @@ mod tests {
   fn test_discrete_states_csv_custom_parser() -> Result<(), Report> {
     let content = "name\tweight\nA\t1.5\nB\t2.0\nC\t0.5";
 
-    let (values, attr_name) =
-      read_discrete_attrs_from_str(content, b'\t', &None, &Some(o!("weight")), |s| Ok(s.parse::<f64>()?))?;
+    let (values, attr_name) = read_discrete_attrs_from_str(
+      content,
+      b'\t',
+      &default_name_candidates(),
+      &None,
+      &Some(o!("weight")),
+      |s| Ok(s.parse::<f64>()?),
+    )?;
 
     let expected = btreemap! {
       o!("A") => 1.5,
@@ -115,7 +122,14 @@ mod tests {
   fn test_discrete_states_csv_whitespace_trimming() -> Result<(), Report> {
     let content = "name\tlocation\n  A  \t  usa  \n  B  \t  europe  ";
 
-    let (values, _) = read_discrete_attrs_from_str(content, b'\t', &None, &Some(o!("location")), |s| Ok(s.to_owned()))?;
+    let (values, _) = read_discrete_attrs_from_str(
+      content,
+      b'\t',
+      &default_name_candidates(),
+      &None,
+      &Some(o!("location")),
+      |s| Ok(s.to_owned()),
+    )?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),

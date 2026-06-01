@@ -56,8 +56,13 @@ pub fn run_clock(
   }?;
 
   {
-    let dates =
-      read_dates(&clock_args.metadata, &None, &clock_args.date_column.date_column).wrap_err("When reading dates")?;
+    let dates = read_dates(
+      &clock_args.metadata,
+      &clock_args.metadata_id.metadata_id_columns,
+      &None,
+      &clock_args.date_column.date_column,
+    )
+    .wrap_err("When reading dates")?;
     assign_dates(&graph, &dates)?;
   }
 

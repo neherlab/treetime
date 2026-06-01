@@ -270,7 +270,7 @@ fn load_graph(snapshot: &Snapshot) -> Result<GraphTimetree, Report> {
   let tree_path = fixtures_dir.join(&snapshot.inputs.tree_path);
   let metadata_path = fixtures_dir.join(&snapshot.inputs.metadata_path);
   let graph = nwk_read_file(&tree_path)?;
-  let dates = read_dates(&metadata_path, &Some(o!("name")), &Some(o!("date")))?;
+  let dates = read_dates(&metadata_path, &[], &Some(o!("name")), &Some(o!("date")))?;
   load_date_constraints(&dates, &graph)?;
   Ok(graph)
 }

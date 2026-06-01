@@ -245,7 +245,7 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
   println!("### {}/poisson (branch length input mode)", config.name);
 
   let graph: GraphTimetree = nwk_read_str(&config.rerooted_tree_nwk)?;
-  let dates = read_dates(&config.metadata_path, &config.name_column, &None)?;
+  let dates = read_dates(&config.metadata_path, &[], &config.name_column, &None)?;
   load_date_constraints(&dates, &graph)?;
 
   create_poisson_branch_distributions(&graph, config.clock_rate, config.sequence_length, args.branch_grid_size)?;
@@ -286,7 +286,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   println!("### {}/marginal_sparse", config.name);
 
   let mut graph: GraphTimetree = nwk_read_str(&config.rerooted_tree_nwk)?;
-  let dates = read_dates(&config.metadata_path, &config.name_column, &None)?;
+  let dates = read_dates(&config.metadata_path, &[], &config.name_column, &None)?;
   load_date_constraints(&dates, &graph)?;
 
   let alphabet = Alphabet::default();
@@ -338,7 +338,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   println!("### {}/marginal_dense", config.name);
 
   let mut graph: GraphTimetree = nwk_read_str(&config.rerooted_tree_nwk)?;
-  let dates = read_dates(&config.metadata_path, &config.name_column, &None)?;
+  let dates = read_dates(&config.metadata_path, &[], &config.name_column, &None)?;
   load_date_constraints(&dates, &graph)?;
 
   let alphabet = Alphabet::default();

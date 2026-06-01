@@ -85,6 +85,7 @@ pub type DateRecord = (String, Option<DateConstraint>);
 pub fn read_dates_from_reader(
   reader: impl Read,
   delimiter: u8,
+  name_candidates: &[String],
   name_column: &Option<String>,
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
@@ -101,7 +102,7 @@ pub fn read_dates_from_reader(
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
     .collect_vec();
 
-  let name_column_idx = get_col_name(&headers, &vec_of_owned!["name", "strain", "accession"], name_column)?;
+  let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
   let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
 
   reader
@@ -118,15 +119,17 @@ pub fn read_dates_from_reader(
 pub fn read_dates_from_str(
   content: &str,
   delimiter: u8,
+  name_candidates: &[String],
   name_column: &Option<String>,
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let reader = content.as_bytes();
-  read_dates_from_reader(reader, delimiter, name_column, date_column)
+  read_dates_from_reader(reader, delimiter, name_candidates, name_column, date_column)
 }
 
 pub fn read_dates(
   filepath: impl AsRef<Path>,
+  name_candidates: &[String],
   name_column: &Option<String>,
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
@@ -135,7 +138,7 @@ pub fn read_dates(
     open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
   let delimiter = guess_csv_delimiter(filepath)
     .wrap_err_with(|| format!("When guessing CSV delimiter for '{}'", filepath.display()))?;
-  read_dates_from_reader(file, delimiter, name_column, date_column)
+  read_dates_from_reader(file, delimiter, name_candidates, name_column, date_column)
     .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
 }
 

@@ -101,7 +101,12 @@ pub mod support {
   pub fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
     let input = &INPUTS[dataset];
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
-    read_dates(&metadata_path, &input.name_column, &None)
+    read_dates(
+      &metadata_path,
+      &treetime_io::csv::default_name_candidates(),
+      &input.name_column,
+      &None,
+    )
   }
 
   pub fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {

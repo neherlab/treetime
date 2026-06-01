@@ -122,6 +122,12 @@ pub fn csv_read_str<T: for<'de> Deserialize<'de>, S: AsRef<str>>(data: S) -> Res
     .collect::<Result<Vec<T>, Report>>()
 }
 
+/// Default candidate column names for the taxon identifier linking CSV rows to tree tips.
+/// Consumed by `get_col_name` auto-detection and by CLI `MetadataIdArgs` defaults.
+pub fn default_name_candidates() -> Vec<String> {
+  vec!["strain".to_owned(), "name".to_owned(), "accession".to_owned()]
+}
+
 pub fn get_col_name(
   headers: &[String],
   possible_names: &[String],
@@ -136,9 +142,15 @@ pub fn get_col_name(
       ),
     }
   } else {
-    headers
+    // Case-insensitive matching: lowercase both header and candidate before comparing.
+    // Priority follows the candidate list order (first candidate found wins).
+    let headers_lower: Vec<String> = headers.iter().map(|h| h.to_lowercase()).collect();
+    possible_names
       .iter()
-      .position(|header| possible_names.contains(header))
+      .find_map(|candidate| {
+        let candidate_lower = candidate.to_lowercase();
+        headers_lower.iter().position(|h| *h == candidate_lower)
+      })
       .ok_or_else(|| {
         make_report!(
           "Unable to find column:\n  Looking for: {}\n  Available columns are: {}",
