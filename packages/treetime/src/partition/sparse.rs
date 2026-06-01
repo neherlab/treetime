@@ -63,7 +63,7 @@ impl SparseNodePartition {
         unknown,
         gaps,
         non_char,
-        composition: Composition::with_sequence(seq.iter().copied(), alphabet.chars(), alphabet.gap()),
+        composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
         sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
         fitch: seq_dis,
       },

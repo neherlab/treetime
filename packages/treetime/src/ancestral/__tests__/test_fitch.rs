@@ -26,7 +26,7 @@ mod tests {
   use treetime_graph::reroot::{RerootChanges, apply_reroot_topology, remove_node_if_trivial, split_edge};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::AlphabetLike;
+  use treetime_primitives::AsciiChar;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::mutex::unwrap_arc_rwlock;
   use treetime_utils::vec_of_owned;
@@ -863,11 +863,18 @@ mod tests {
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
 
     // --- G1: new root node composition matches root_sequence ---
+    // ACATCCCTGTA--G--: A=3 C=4 G=2 T=3 -=4
     let root_node = &sparse.nodes[&new_root_key];
-    let expected_comp = Composition::with_sequence(
-      sparse.root_sequence.iter().copied(),
-      sparse.alphabet.chars(),
-      sparse.alphabet.gap(),
+    let c = AsciiChar::from_byte_unchecked;
+    #[rustfmt::skip]
+    let expected_comp = Composition::from_counts(
+      btreemap! {
+        c(b'-') => 4, c(b'A') => 3, c(b'B') => 0, c(b'C') => 4,
+        c(b'D') => 0, c(b'G') => 2, c(b'H') => 0, c(b'K') => 0,
+        c(b'M') => 0, c(b'N') => 0, c(b'R') => 0, c(b'S') => 0,
+        c(b'T') => 3, c(b'V') => 0, c(b'W') => 0, c(b'Y') => 0,
+      },
+      c(b'-'),
     );
     assert_eq!(
       expected_comp, root_node.seq.composition,

@@ -1,5 +1,6 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -37,25 +38,38 @@ impl Composition {
     &self.counts
   }
 
-  /// Initialize counters to the composition of a given sequence
-  pub fn with_sequence<SI, AI>(sequence: SI, alphabet_chars: AI, gap: AsciiChar) -> Self
-  where
-    SI: IntoIterator<Item = AsciiChar>,
-    AI: IntoIterator<Item = AsciiChar>,
-  {
+  pub fn with_seq(
+    sequence: impl AsRef<[AsciiChar]>,
+    alphabet_chars: impl IntoIterator<Item = AsciiChar>,
+    gap: AsciiChar,
+  ) -> Self {
     let mut this = Self::new(alphabet_chars, gap);
-    this.add_sequence(sequence);
+    this.add_seq(sequence);
     this
   }
 
-  /// Add composition of a given sequence to the counts
-  pub fn add_sequence<I>(&mut self, sequence: I)
-  where
-    I: IntoIterator<Item = AsciiChar>,
-  {
-    for (c, n) in sequence.into_iter().counts() {
+  pub fn with_seq_str(
+    sequence: &str,
+    alphabet_chars: impl IntoIterator<Item = AsciiChar>,
+    gap: AsciiChar,
+  ) -> Result<Self, Report> {
+    let seq = Self::str_to_chars(sequence)?;
+    Ok(Self::with_seq(seq, alphabet_chars, gap))
+  }
+
+  pub fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
+    for (&c, n) in sequence.as_ref().iter().counts() {
       *self.counts.entry(c).or_default() += n;
     }
+  }
+
+  pub fn add_seq_str(&mut self, sequence: &str) -> Result<(), Report> {
+    self.add_seq(Self::str_to_chars(sequence)?);
+    Ok(())
+  }
+
+  fn str_to_chars(s: &str) -> Result<Vec<AsciiChar>, Report> {
+    s.bytes().map(AsciiChar::try_new).collect::<Result<Vec<_>, _>>()
   }
 
   /// Reflect sequence mutation in the composition counts

@@ -30,19 +30,20 @@ mod tests {
   }
 
   #[test]
-  fn test_composition_with_sequence() {
-    let actual = Composition::with_sequence(chars("AAAGCTTACGGGGTCAAGTCC"), chars("ACGT-"), c(b'-'));
+  fn test_composition_with_seq() -> Result<(), Report> {
+    let actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
     let expected = Composition::from_counts(
       btreemap! { c(b'-') => 0, c(b'A') => 6, c(b'C') => 5, c(b'G') => 6, c(b'T') => 4},
       c(b'-'),
     );
     assert_eq!(expected, actual);
+    Ok(())
   }
 
   #[test]
-  fn test_composition_with_sequence_and_alphabet() {
+  fn test_composition_with_seq_and_alphabet() -> Result<(), Report> {
     let alpha_chars = Alphabet::new(AlphabetName::Nuc).unwrap().chars().collect_vec();
-    let actual = Composition::with_sequence(chars("ACATCGCCNNA--GAC"), alpha_chars, c(b'-'));
+    let actual = Composition::with_seq_str("ACATCGCCNNA--GAC", alpha_chars, c(b'-'))?;
     let expected = Composition::from_counts(
       btreemap! {
         c(b'-') => 2,
@@ -65,24 +66,13 @@ mod tests {
       c(b'-'),
     );
     assert_eq!(expected, actual);
+    Ok(())
   }
 
   #[test]
-  fn test_composition_add_sequence() {
+  fn test_composition_add_seq_str() -> Result<(), Report> {
     let mut actual = Composition::new(chars("ACGT-"), c(b'-'));
-    actual.add_sequence(chars("AAAGCTTACGGGGTCAAGTCC"));
-    let expected = Composition::from_counts(
-      btreemap! { c(b'-') => 0, c(b'A') => 6, c(b'C') => 5, c(b'G') => 6, c(b'T') => 4},
-      c(b'-'),
-    );
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_composition_add_sequence_with_refs() -> Result<(), Report> {
-    let mut actual = Composition::new(chars("ACGT-"), c(b'-'));
-    let sequence = Seq::try_from_str("AAAGCTTACGGGGTCAAGTCC")?;
-    actual.add_sequence(sequence);
+    actual.add_seq_str("AAAGCTTACGGGGTCAAGTCC")?;
     let expected = Composition::from_counts(
       btreemap! { c(b'-') => 0, c(b'A') => 6, c(b'C') => 5, c(b'G') => 6, c(b'T') => 4},
       c(b'-'),
@@ -92,8 +82,21 @@ mod tests {
   }
 
   #[test]
-  fn test_composition_add_mutation() {
-    let mut actual = Composition::with_sequence(chars("AAAGCTTACGGGGTCAAGTCC"), chars("ACGT-"), c(b'-'));
+  fn test_composition_add_seq_with_refs() -> Result<(), Report> {
+    let mut actual = Composition::new(chars("ACGT-"), c(b'-'));
+    let sequence = Seq::try_from_str("AAAGCTTACGGGGTCAAGTCC")?;
+    actual.add_seq(&sequence);
+    let expected = Composition::from_counts(
+      btreemap! { c(b'-') => 0, c(b'A') => 6, c(b'C') => 5, c(b'G') => 6, c(b'T') => 4},
+      c(b'-'),
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_composition_add_mutation() -> Result<(), Report> {
+    let mut actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
     let mutation = Sub::from_str("A123G").unwrap();
     actual.add_sub(&mutation);
     let expected = Composition::from_counts(
@@ -101,11 +104,12 @@ mod tests {
       c(b'-'),
     );
     assert_eq!(expected, actual);
+    Ok(())
   }
 
   #[test]
   fn test_composition_add_deletion() -> Result<(), Report> {
-    let mut actual = Composition::with_sequence(chars("AAAGCTTACGGGGTCAAGTCC"), chars("ACGT-"), c(b'-'));
+    let mut actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
     let indel = InDel::del((1, 5), Seq::try_from_str("AAGC")?);
     actual.add_indel(&indel);
     let expected = Composition::from_counts(
@@ -118,7 +122,7 @@ mod tests {
 
   #[test]
   fn test_composition_add_insertion() -> Result<(), Report> {
-    let mut actual = Composition::with_sequence(chars("AAAGCTTACGGGGTCAAGTCC"), chars("ACGT-"), c(b'-'));
+    let mut actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
     let indel = InDel::ins((3, 6), Seq::try_from_str("ATC")?);
     actual.add_indel(&indel);
     let expected = Composition::from_counts(

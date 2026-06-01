@@ -203,6 +203,6 @@ pub fn finalize_sequence_forward(
   }
   if is_root {
     // if the node is the root, the composition is calculated from the full sequence
-    *composition = Composition::with_sequence(sequence.iter().copied(), alphabet.chars(), alphabet.gap());
+    *composition = Composition::with_seq(sequence.as_slice(), alphabet.chars(), alphabet.gap());
   }
 }
