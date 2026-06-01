@@ -1,5 +1,11 @@
 # Partition creation is hardcoded per-command instead of configured
 
+## Status: partially resolved
+
+`partition/create.rs` provides `create_marginal_partition()` consolidating the 3-way branch (sparse, dense+infer, dense+named) without `write_gtr_json` during init. All pipeline functions use it. The full `PartitionSpec`/config layer for multi-partition support is not yet implemented.
+
+## Original description
+
 Four commands construct partitions inline with procedural code: `create_fitch_partition` -> GTR resolution -> `log_gtr` -> `into_marginal_sparse`/`into_marginal_dense`. Each command implements its own variant with different models, different dense/sparse decisions, different `write_gtr_json` placement, and different post-init handling. These are not duplicated identical partitions but independent partition setups that share no configuration layer.
 
 The multi-partition infrastructure (`Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>`) exists and works (mugration adds a discrete partition), but no command creates more than one sequence partition. No `PartitionConfig` or `PartitionSpec` type exists. Partition creation is entangled with command orchestration.
