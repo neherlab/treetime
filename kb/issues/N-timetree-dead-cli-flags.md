@@ -1,21 +1,22 @@
 # Dead CLI flags in timetree
 
-12 flags are parsed by clap but never read in the timetree pipeline:
+11 flags are parsed by clap but never read in the timetree pipeline:
 
-| Flag                       | Notes                                  |
-| -------------------------- | -------------------------------------- |
-| `--keep-polytomies`        | Never read                             |
-| `--tip-labels`             | Never read                             |
-| `--no-tip-labels`          | Never read                             |
-| `--n-iqd`                  | Never read                             |
-| `--vcf-reference`          | Never read                             |
-| `--aa`                     | Never read                             |
-| `--zero-based`             | Never read                             |
-| `--reconstruct-tip-states` | Never read                             |
-| `--report-ambiguous`       | Never read                             |
-| `--seed`                   | Never read                             |
-| `--gtr-params`             | Never read                             |
-| `--reroot`                 | Accepted but always uses least-squares |
+| Flag                       | Notes                                    |
+| -------------------------- | ---------------------------------------- |
+| `--keep-polytomies`        | Never read                               |
+| `--tip-labels`             | Never read                               |
+| `--no-tip-labels`          | Never read                               |
+| `--n-iqd`                  | Never read                               |
+| `--vcf-reference`          | Never read                               |
+| `--zero-based`             | Never read                               |
+| `--reconstruct-tip-states` | Never read                               |
+| `--report-ambiguous`       | Never read                               |
+| `--seed`                   | Never read                               |
+| `--model-params`           | Never read (renamed from `--gtr-params`) |
+| `--reroot`                 | Accepted but always uses least-squares   |
+
+Removed: `--aa` (redundant with `--alphabet`, dropped in CLI args unification).
 
 Flags that are already wired and not part of this issue:
 

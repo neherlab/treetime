@@ -26,20 +26,9 @@ Change the date column auto-detection to use case-insensitive substring matching
 
 Priority order when multiple columns contain `"date"`: leftmost column wins (v0 behavior, already the v1 iteration order).
 
-## D2. Name column: case-sensitive match
+## D2. Name column: case-sensitive match -- RESOLVED
 
-v1 `get_col_name()` at [line 141](../../packages/treetime-io/src/csv.rs#L141) uses `possible_names.contains(header)`, which is case-sensitive. v0 `parse_dates()` at [line 270](../../packages/legacy/treetime/treetime/utils.py#L270) lowercases the header before comparing: `col.lower()`. A header like `Name`, `STRAIN`, or `Accession` would auto-detect in v0 but fail in v1.
-
-### Affected commands
-
-- `clock` and `timetree` (via `read_dates()`)
-- `mugration` (via [`read_discrete_attrs()`](../../packages/treetime-io/src/discrete_states_csv.rs#L32))
-
-### Fix direction
-
-Lowercase both the header and the candidate names before comparison in `get_col_name()`. The headers are already preprocessed (trimmed, `#`-stripped) in both `dates_csv.rs` and `discrete_states_csv.rs`, so adding `.to_lowercase()` to the comparison is the natural extension.
-
-Note: v0's mugration path at [`wrappers.py:840-845`](../../packages/legacy/treetime/treetime/wrappers.py#L840) is case-sensitive (checks `"name"`, `"strain"`, `"accession"` against raw column names). v1 case-insensitive matching would be a superset of both v0 behaviors, which is acceptable.
+Fixed in CLI args unification branch: `get_col_name()` auto-detect branch now lowercases both headers and candidates before comparison. Candidate list sourced from `default_name_candidates()` in `treetime-io/src/csv.rs`, propagated through `MetadataIdArgs`.
 
 ## D3. Mugration positional fallback
 

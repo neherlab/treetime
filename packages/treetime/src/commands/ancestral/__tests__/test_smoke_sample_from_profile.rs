@@ -22,6 +22,8 @@ mod tests {
       .to_path_buf();
   }
 
+  /// Root sampling runs end-to-end through the ancestral command and is reproducible: two runs with
+  /// the same seed produce byte-identical reconstructed sequences.
   #[test]
   fn test_smoke_ancestral_sample_from_profile_root_reproducible() -> Result<(), Report> {
     let seqs_a = helpers::run_root_sampled("tmp/test-sample-root-a", 42)?;
@@ -42,6 +44,8 @@ mod tests {
     use crate::progress::NoopProgress;
     use eyre::Report;
 
+    /// Run the ancestral command with root sampling at the given seed, returning the reconstructed
+    /// `ancestral_sequences.fasta` contents for comparison across runs.
     pub fn run_root_sampled(out_subdir: &str, seed: u64) -> Result<String, Report> {
       let outdir = PROJECT_ROOT.join(out_subdir);
       std::fs::create_dir_all(&outdir)?;
@@ -66,6 +70,8 @@ mod tests {
     }
   }
 
+  /// Posterior sampling with a non-marginal method is rejected before any input is read. Nonexistent
+  /// input paths confirm the guard fails fast rather than via a file-read error.
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let args = TreetimeAncestralArgs {
@@ -90,6 +96,7 @@ mod tests {
     );
   }
 
+  /// Sampling every node runs end-to-end without error.
   #[test]
   fn test_smoke_ancestral_sample_from_profile_all() -> Result<(), Report> {
     let outdir = PROJECT_ROOT.join("tmp/test-sample-all");

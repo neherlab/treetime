@@ -68,6 +68,7 @@ pub fn run_ancestral_reconstruction(
 
   let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
 
+  // TODO: avoid reading all sequences into memory somehow?
   let mut aln = if input_fastas.is_empty() {
     info!("Reading input fasta from standard input");
     let mut reader = FastaReader::new(open_stdin()?, &alphabet);
