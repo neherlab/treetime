@@ -1,24 +1,20 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::create_fitch_partition;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::PruneResult;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, write_gtr_json};
 use crate::make_error;
-use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::payload::ancestral::GraphAncestral;
-use crate::prune::prune::prune_nodes;
+use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreeset;
-use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
-use std::sync::Arc;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::graph::write_graph_files;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
+
+use crate::payload::ancestral::GraphAncestral;
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
@@ -28,55 +24,49 @@ pub fn run_prune(
 
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
-  let input_fastas = &args.alignment.alignment;
-  let tree = &args.tree;
-  let outdir = &args.output.outdir;
-  let prune_short = &args.prune_short;
-  let prune_empty = &args.prune_empty;
-  let merge_shared_mutations = &args.merge_shared_mutations;
-  let prune_nodes_list = &args.prune_nodes_list;
-  let prune_nodes_list_delimiter = &args.prune_nodes_list_delimiter;
-  let prune_nodes_list_file = &args.prune_nodes_list_file;
-  let prune_nodes_list_file_delimiter = &args.prune_nodes_list_file_delimiter;
 
-  let mut graph: GraphAncestral = nwk_read_file(tree)?;
+  let graph: GraphAncestral = nwk_read_file(&args.tree)?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
-  let needs_sequences = *prune_empty || *merge_shared_mutations;
-  let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if needs_sequences {
-    let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
-    let aln = read_many_fasta(input_fastas, &alphabet)?;
-
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
-    let gtr = get_gtr_by_name(GtrModelName::JC69)?;
-    log_gtr(&gtr, GtrModelName::JC69);
-    write_gtr_json(&gtr, GtrModelName::JC69, outdir, None)?;
-    let partition = fitch.into_marginal_sparse(gtr, &graph)?;
-    vec![Arc::new(RwLock::new(partition))]
+  let sequences = if !args.alignment.alignment.is_empty() {
+    Some(read_many_fasta(&args.alignment.alignment, &alphabet)?)
   } else {
-    vec![]
+    None
   };
 
   let node_names = parse_node_names(
-    prune_nodes_list.as_ref(),
-    *prune_nodes_list_delimiter,
-    prune_nodes_list_file.as_ref(),
-    *prune_nodes_list_file_delimiter,
+    args.prune_nodes_list.as_ref(),
+    args.prune_nodes_list_delimiter,
+    args.prune_nodes_list_file.as_ref(),
+    args.prune_nodes_list_file_delimiter,
   )?;
+
+  let params = PruneParams {
+    prune_short: args.prune_short,
+    prune_empty: args.prune_empty,
+    merge_shared_mutations: args.merge_shared_mutations,
+    node_names,
+  };
+
+  let input = PruneInput {
+    graph,
+    alphabet,
+    sequences,
+  };
 
   progress.check_cancelled()?;
   progress.report("Pruning", 0.4, "");
-  prune_nodes(&mut graph, &partitions, *prune_short, *prune_empty, &node_names)?;
-
-  if *merge_shared_mutations {
-    merge_shared_mutation_branches(&mut graph, &partitions)?;
-    graph.build()?;
-  }
+  let output = pipeline::run(&params, input)?;
 
   progress.report("Writing output", 0.8, "");
-  write_graph_files(outdir, "pruned_tree", &graph)?;
+  let outdir = &args.output.outdir;
+  if let Some(gtr) = &output.gtr {
+    write_gtr_json(gtr, GtrModelName::JC69, outdir, None)?;
+  }
+  write_graph_files(outdir, "pruned_tree", &output.graph)?;
 
   progress.report("Done", 1.0, "");
-  Ok(PruneResult { graph })
+  Ok(PruneResult { graph: output.graph })
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
