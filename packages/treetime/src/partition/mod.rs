@@ -3,6 +3,7 @@ mod __tests__;
 
 pub mod algo;
 pub mod augur;
+pub mod create;
 pub mod dense;
 pub mod discrete_states;
 pub mod fitch;
