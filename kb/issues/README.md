@@ -74,7 +74,11 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Partition    | [`infer_dense()` stub always returns false](N-representation-infer-dense-stub.md)                                                                   |
 | Negligible | Partition    | [Dense and sparse partition types have structural and naming asymmetries](N-representation-dense-sparse-partition-asymmetry.md)                     |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
+| Medium     | Optimize     | [Sparse branch optimization reads stale Fitch-era states](M-optimize-sparse-stale-fitch-states.md)                                                  |
 | Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                            |
+| Medium     | Sparse       | [Sparse marginal fixed_counts zero-multiplicity produces NaN](M-sparse-marginal-zero-multiplicity-nan.md)                                           |
+| Medium     | Sparse       | [Sparse marginal msg_to_child includes near-deterministic variable sites](M-sparse-marginal-quantitative-site-filtering.md)                         |
+| Medium     | Sparse       | [Sparse node_reference_state ignores non-char positions](M-sparse-node-reference-state-non-char-precedence.md)                                      |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                        |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                                          |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                        |
@@ -90,6 +94,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                     |
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                 |
+| Negligible | I/O          | [Time-based branch lengths not written to Newick/Nexus output](N-io-time-based-branch-lengths-not-implemented.md)                                   |
 | Negligible | I/O          | [write_graph_files missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                     |
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
