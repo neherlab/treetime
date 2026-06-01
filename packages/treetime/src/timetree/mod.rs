@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod __tests__;
+
 pub mod confidence;
 pub mod convergence;
 pub mod inference;
