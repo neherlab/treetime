@@ -1,9 +1,12 @@
-use crate::alphabet::alphabet::AlphabetName;
 use crate::ancestral::params::MethodAncestral;
 use crate::clock::find_best_root::params::RerootMode;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
+use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::output::OutputArgs;
 use crate::optimize::params::BranchLengthMode;
-use crate::seq::gap_fill::GapFill;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -34,18 +37,8 @@ pub enum TimeMarginalMode {
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// If no input files provided, the plain fasta input is read from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[cfg_attr(feature = "clap", clap(display_order = 1))]
-  pub input_fastas: Vec<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
@@ -59,18 +52,16 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub vcf_reference: Option<PathBuf>,
 
-  /// CSV file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)
-  #[cfg_attr(feature = "clap", clap(long, short = 'd'))]
+  /// CSV/TSV file with metadata including sampling dates
+  #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub dates: Option<PathBuf>,
+  pub metadata: Option<PathBuf>,
 
-  /// Label of the column to be used as taxon name
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub name_column: Option<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub metadata_id: MetadataIdArgs,
 
-  /// Label of the column to be used as sampling date
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub date_column: Option<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub date_column_args: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
   #[cfg_attr(feature = "clap", clap(long))]
@@ -228,47 +219,22 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub covariation: bool,
 
-  /// GTR model to use
-  ///
-  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[cfg_attr(feature = "clap", clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default()))]
-  pub gtr: GtrModelName,
-
-  /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
-  ///
-  /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
-  ///
-  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub gtr_params: Vec<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
   pub method_anc: MethodAncestral,
 
-  /// Alphabet to use for sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AlphabetName::default()))]
-  pub alphabet: AlphabetName,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alphabet_args: AlphabetArgs,
 
   /// Use dense representation for sequences (store full probability distributions)
   #[cfg_attr(feature = "clap", clap(long))]
   pub dense: Option<bool>,
 
-  /// Use aminoacid alphabet
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub aa: bool,
-
-  /// How to handle gap characters in input sequences
-  ///
-  /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-  /// 'all': replace all gap characters with the ambiguous character.
-  /// 'none': leave all gap characters unchanged.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs"))]
-  pub gap_fill: GapFill,
-
-  /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
-  pub keep_overhangs: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
   #[cfg_attr(feature = "clap", clap(long))]
@@ -302,9 +268,8 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 
   /// Write iteration statistics to tracelog CSV file for monitoring convergence
   #[cfg_attr(feature = "clap", clap(long))]
@@ -314,14 +279,4 @@ pub struct TreetimeTimetreeArgs {
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long))]
   pub seed: Option<u64>,
-}
-
-impl TreetimeTimetreeArgs {
-  pub fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
 }

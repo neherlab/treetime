@@ -158,6 +158,9 @@ mod tests {
     use crate::commands::ancestral::args::TreetimeAncestralArgs;
     use crate::commands::ancestral::augur_node_data::write_augur_node_data_json;
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::model::ModelArgs;
+    use crate::commands::shared::output::OutputArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::PartitionFitch;
     use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -243,12 +246,19 @@ mod tests {
       std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n").unwrap();
 
       let args = TreetimeAncestralArgs {
-        input_fastas: vec![fasta_path],
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
         tree: tree_path,
         method_anc: method,
         dense,
-        model_name: model,
-        outdir: dir.path().to_path_buf(),
+        model_args: ModelArgs {
+          model,
+          ..ModelArgs::default()
+        },
+        output: OutputArgs {
+          outdir: dir.path().to_path_buf(),
+        },
         ..TreetimeAncestralArgs::default()
       };
 

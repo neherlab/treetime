@@ -28,25 +28,22 @@ pub fn run_prune(
 
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
-  let TreetimePruneArgs {
-    input_fastas,
-    tree,
-    alphabet,
-    outdir,
-    prune_short,
-    prune_empty,
-    merge_shared_mutations,
-    prune_nodes_list,
-    prune_nodes_list_delimiter,
-    prune_nodes_list_file,
-    prune_nodes_list_file_delimiter,
-  } = args;
+  let input_fastas = &args.alignment.alignment;
+  let tree = &args.tree;
+  let outdir = &args.output.outdir;
+  let prune_short = &args.prune_short;
+  let prune_empty = &args.prune_empty;
+  let merge_shared_mutations = &args.merge_shared_mutations;
+  let prune_nodes_list = &args.prune_nodes_list;
+  let prune_nodes_list_delimiter = &args.prune_nodes_list_delimiter;
+  let prune_nodes_list_file = &args.prune_nodes_list_file;
+  let prune_nodes_list_file_delimiter = &args.prune_nodes_list_file_delimiter;
 
   let mut graph: GraphAncestral = nwk_read_file(tree)?;
 
   let needs_sequences = *prune_empty || *merge_shared_mutations;
   let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if needs_sequences {
-    let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
+    let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
     let aln = read_many_fasta(input_fastas, &alphabet)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
@@ -83,13 +80,13 @@ pub fn run_prune(
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
-  if args.prune_empty && args.input_fastas.is_empty() {
+  if args.prune_empty && args.alignment.alignment.is_empty() {
     return make_error!(
       "The --prune-empty requires --aln. Without sequence data, it's not possible to determine which branches lack mutations."
     );
   }
 
-  if args.merge_shared_mutations && args.input_fastas.is_empty() {
+  if args.merge_shared_mutations && args.alignment.alignment.is_empty() {
     return make_error!(
       "The --merge-shared-mutations requires --aln. Without sequence data, it's not possible to determine which branches share mutations."
     );

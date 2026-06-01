@@ -40,12 +40,11 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     todo!("Tree inference from alignment not yet implemented")
   };
 
-  let alphabet = Alphabet::new(args.alphabet)?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
-  // Load alignment sequences (optional if using input branch lengths only)
-  let aln = if !args.input_fastas.is_empty() {
-    let mut records = read_many_fasta(&args.input_fastas, &alphabet)?;
-    let gap_fill_mode = args.effective_gap_fill();
+  let aln = if !args.alignment.alignment.is_empty() {
+    let mut records = read_many_fasta(&args.alignment.alignment, &alphabet)?;
+    let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
     for record in &mut records {
       apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
     }
@@ -59,8 +58,8 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     None
   };
 
-  let dates = if let Some(dates_path) = &args.dates {
-    let dates = read_dates(dates_path, &args.name_column, &args.date_column).wrap_err("When reading dates")?;
+  let dates = if let Some(dates_path) = &args.metadata {
+    let dates = read_dates(dates_path, &None, &args.date_column_args.date_column).wrap_err("When reading dates")?;
     load_date_constraints(&dates, &graph).wrap_err("Failed to load date constraints")?;
     Some(dates)
   } else {
@@ -85,7 +84,7 @@ pub fn initialize_partitions(
   aln: Option<&[FastaRecord]>,
 ) -> Result<PartitionTimetreeAllVec, Report> {
   let dense = args.dense.unwrap_or_else(infer_dense);
-  let model_name = args.gtr;
+  let model_name = args.model_args.model;
   let length = if let Some(aln_data) = aln {
     get_common_length(aln_data)?
   } else {
@@ -105,7 +104,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_sparse(gtr, graph)?;
 
-    write_gtr_json(&partition.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.gtr, model_name, &args.output.outdir, None)?;
 
     let sparse_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
@@ -117,7 +116,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 
-    write_gtr_json(&partition.data.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.data.gtr, model_name, &args.output.outdir, None)?;
 
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
@@ -128,7 +127,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
 
-    write_gtr_json(&partition.data.gtr, model_name, &args.outdir, None)?;
+    write_gtr_json(&partition.data.gtr, model_name, &args.output.outdir, None)?;
 
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));

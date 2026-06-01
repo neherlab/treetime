@@ -36,30 +36,16 @@ pub fn run_clock(
   clock_args: &TreetimeClockArgs,
   progress: &dyn crate::progress::ProgressSink,
 ) -> Result<ClockResult, Report> {
-  let TreetimeClockArgs {
-    aln,
-    tree,
-    vcf_reference,
-    dates,
-    name_column,
-    date_column,
-    sequence_length,
-    gtr,
-    gtr_params,
-    branch_length_mode,
-    method_anc,
-    clock_filter,
-    reroot,
-    keep_root,
-    prune_short,
-    tip_slack,
-    covariation,
-    allow_negative_rate,
-    outdir,
-    seed,
-    branch_split,
-    clock_regression,
-  } = clock_args;
+  let tree = &clock_args.tree;
+  let sequence_length = &clock_args.sequence_length;
+  let clock_filter = &clock_args.clock_filter;
+  let keep_root = &clock_args.keep_root;
+  let tip_slack = &clock_args.tip_slack;
+  let covariation = &clock_args.covariation;
+  let allow_negative_rate = &clock_args.allow_negative_rate;
+  let outdir = &clock_args.output.outdir;
+  let branch_split = &clock_args.branch_split;
+  let clock_regression = &clock_args.clock_regression;
 
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
@@ -70,7 +56,8 @@ pub fn run_clock(
   }?;
 
   {
-    let dates = read_dates(dates, name_column, date_column).wrap_err("When reading dates")?;
+    let dates =
+      read_dates(&clock_args.metadata, &None, &clock_args.date_column.date_column).wrap_err("When reading dates")?;
     assign_dates(&graph, &dates)?;
   }
 

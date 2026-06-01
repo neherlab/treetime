@@ -81,6 +81,8 @@ mod tests {
   fn test_augur_node_data_optimize_end_to_end() {
     use crate::commands::optimize::args::TreetimeOptimizeArgs;
     use crate::commands::optimize::run::run_optimize;
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::output::OutputArgs;
     use crate::progress::NoopProgress;
 
     let root = helpers::project_root();
@@ -88,10 +90,12 @@ mod tests {
     std::fs::create_dir_all(&outdir).unwrap();
 
     let args = TreetimeOptimizeArgs {
-      input_fastas: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      alignment: AlignmentArgs {
+        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
       tree: root.join("data/flu/h3n2/20/tree.nwk"),
       max_iter: 2,
-      outdir: outdir.clone(),
+      output: OutputArgs { outdir: outdir.clone() },
       ..TreetimeOptimizeArgs::default()
     };
 

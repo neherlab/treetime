@@ -1,8 +1,10 @@
-use crate::alphabet::alphabet::AlphabetName;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
-use crate::gtr::get_gtr::GtrModelName;
-use crate::seq::gap_fill::GapFill;
+use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::output::OutputArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -14,26 +16,8 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeAncestralArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// If no input files provided, the plain fasta input is read from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[cfg_attr(feature = "clap", clap(display_order = 1))]
-  pub input_fastas: Vec<PathBuf>,
-
-  /// REMOVED. Use positional arguments instead.
-  ///
-  /// Example: treetime ancestral seq1.fasta seq2.fasta
-  #[cfg_attr(feature = "clap", clap(long, visible_alias("aln")))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[cfg_attr(feature = "clap", clap(hide_long_help = true, hide_short_help = true))]
-  pub aln: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alignment: AlignmentArgs,
 
   /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
   #[cfg_attr(feature = "clap", clap(long, short = 'r'))]
@@ -47,24 +31,11 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: PathBuf,
 
-  /// Alphabet
-  ///
-  #[cfg_attr(feature = "clap", arg(long, short = 'a', value_enum))]
-  pub alphabet: Option<AlphabetName>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alphabet_args: AlphabetArgs,
 
-  /// GTR model to use
-  ///
-  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[cfg_attr(feature = "clap", clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer))]
-  pub model_name: GtrModelName,
-
-  /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
-  ///
-  /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
-  ///
-  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub gtr_params: Vec<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestral::default()))]
@@ -77,21 +48,8 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub dense: Option<bool>,
 
-  /// Use aminoacid alphabet
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub aa: bool,
-
-  /// How to handle gap characters in input sequences
-  ///
-  /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-  /// 'all': replace all gap characters with the ambiguous character.
-  /// 'none': leave all gap characters unchanged.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs"))]
-  pub gap_fill: GapFill,
-
-  /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
-  pub keep_overhangs: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
   #[cfg_attr(feature = "clap", clap(long))]
@@ -114,9 +72,8 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 
   /// Number of outer GTR refinement iterations.
   ///
@@ -148,14 +105,4 @@ pub struct TreetimeAncestralArgs {
   /// Only affects marginal reconstruction (`--method-anc=marginal`).
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleMode::default()))]
   pub sample_from_profile: SampleMode,
-}
-
-impl TreetimeAncestralArgs {
-  pub fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
 }

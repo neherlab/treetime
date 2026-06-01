@@ -35,19 +35,15 @@ pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
-  let TreetimeAncestralArgs {
-    input_fastas,
-    tree,
-    alphabet,
-    model_name,
-    reconstruct_tip_states,
-    method_anc,
-    dense,
-    gtr_iterations,
-    outdir,
-    site_specific_gtr,
-    ..
-  } = ancestral_args;
+  let input_fastas = &ancestral_args.alignment.alignment;
+  let tree = &ancestral_args.tree;
+  let model_name = &ancestral_args.model_args.model;
+  let reconstruct_tip_states = &ancestral_args.reconstruct_tip_states;
+  let method_anc = &ancestral_args.method_anc;
+  let dense = &ancestral_args.dense;
+  let gtr_iterations = &ancestral_args.gtr_iterations;
+  let outdir = &ancestral_args.output.outdir;
+  let site_specific_gtr = &ancestral_args.site_specific_gtr;
 
   if *site_specific_gtr {
     return make_error!(
@@ -56,8 +52,6 @@ pub fn run_ancestral_reconstruction(
     );
   }
 
-  // Posterior sampling is only defined for marginal reconstruction. Reject the combination up front,
-  // before any input is read, rather than silently ignoring the flag for other methods.
   if ancestral_args.sample_from_profile != SampleMode::Argmax && *method_anc != MethodAncestral::Marginal {
     return make_error!(
       "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
@@ -70,11 +64,10 @@ pub fn run_ancestral_reconstruction(
 
   let dense = dense.unwrap_or_else(infer_dense);
 
-  let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
+  let alphabet = Alphabet::new(ancestral_args.alphabet_args.alphabet.unwrap_or_default())?;
 
-  let gap_fill_mode = ancestral_args.effective_gap_fill();
+  let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
 
-  // TODO: avoid reading all sequences into memory somehow?
   let mut aln = if input_fastas.is_empty() {
     info!("Reading input fasta from standard input");
     let mut reader = FastaReader::new(open_stdin()?, &alphabet);

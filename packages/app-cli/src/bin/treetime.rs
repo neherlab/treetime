@@ -84,7 +84,7 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Clock(clock_args) => {
       let result = run_clock(&clock_args, &*progress)?;
-      let outdir = &clock_args.outdir;
+      let outdir = &clock_args.output.outdir;
       write_clock_regression_chart_svg(
         &result.regression_results,
         &result.clock_model,

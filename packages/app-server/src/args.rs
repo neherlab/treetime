@@ -44,24 +44,35 @@ pub struct ServerAncestralArgs {
 
 impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
   fn from(s: ServerAncestralArgs) -> Self {
+    use treetime::commands::shared::alignment::AlignmentArgs;
+    use treetime::commands::shared::alphabet::AlphabetArgs;
+    use treetime::commands::shared::gap_fill::GapFillArgs;
+    use treetime::commands::shared::model::ModelArgs;
+    use treetime::commands::shared::output::OutputArgs;
     Self {
-      input_fastas: s.input_fastas.into_iter().map(PathBuf::from).collect(),
-      aln: s.aln.map(PathBuf::from),
+      alignment: AlignmentArgs {
+        alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      },
       vcf_reference: s.vcf_reference.map(PathBuf::from),
       tree: PathBuf::from(s.tree),
-      alphabet: s.alphabet,
-      model_name: s.model_name,
-      gtr_params: s.gtr_params,
+      alphabet_args: AlphabetArgs { alphabet: s.alphabet },
+      model_args: ModelArgs {
+        model: s.model_name,
+        model_params: s.gtr_params,
+      },
       method_anc: s.method_anc,
       dense: s.dense,
-      aa: s.aa,
-      gap_fill: s.gap_fill,
-      keep_overhangs: s.keep_overhangs,
+      gap_fill_args: GapFillArgs {
+        gap_fill: s.gap_fill,
+        keep_overhangs: s.keep_overhangs,
+      },
       zero_based: s.zero_based,
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
       output_augur_node_data: None,
-      outdir: PathBuf::from(s.outdir),
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
       seed: s.seed,
@@ -102,16 +113,33 @@ pub struct ServerClockArgs {
 
 impl From<ServerClockArgs> for TreetimeClockArgs {
   fn from(s: ServerClockArgs) -> Self {
+    use treetime::commands::shared::alignment::AlignmentArgs;
+    use treetime::commands::shared::metadata::DateColumnArgs;
+    use treetime::commands::shared::model::ModelArgs;
+    use treetime::commands::shared::output::OutputArgs;
     Self {
-      aln: s.aln.into_iter().map(PathBuf::from).collect(),
+      alignment: AlignmentArgs {
+        alignment: s.aln.into_iter().map(PathBuf::from).collect(),
+      },
       tree: s.tree.map(PathBuf::from),
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      dates: PathBuf::from(s.dates),
-      name_column: s.name_column,
-      date_column: s.date_column,
+      metadata: PathBuf::from(s.dates),
+      metadata_id: {
+        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        if let Some(name_col) = s.name_column {
+          id.metadata_id_columns = vec![name_col];
+        }
+        id
+      },
+      date_column: DateColumnArgs {
+        date_column: s.date_column,
+        ..DateColumnArgs::default()
+      },
       sequence_length: s.sequence_length,
-      gtr: s.gtr,
-      gtr_params: s.gtr_params,
+      model_args: ModelArgs {
+        model: s.gtr,
+        model_params: s.gtr_params,
+      },
       branch_length_mode: s.branch_length_mode,
       method_anc: s.method_anc,
       clock_filter: s.clock_filter,
@@ -121,7 +149,9 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
       tip_slack: s.tip_slack,
       covariation: s.covariation,
       allow_negative_rate: s.allow_negative_rate,
-      outdir: PathBuf::from(s.outdir),
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
       seed: s.seed,
       ..TreetimeClockArgs::default()
     }
@@ -189,13 +219,30 @@ pub struct ServerTimetreeArgs {
 
 impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
   fn from(s: ServerTimetreeArgs) -> Self {
+    use treetime::commands::shared::alignment::AlignmentArgs;
+    use treetime::commands::shared::alphabet::AlphabetArgs;
+    use treetime::commands::shared::gap_fill::GapFillArgs;
+    use treetime::commands::shared::metadata::DateColumnArgs;
+    use treetime::commands::shared::model::ModelArgs;
+    use treetime::commands::shared::output::OutputArgs;
     Self {
-      input_fastas: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      alignment: AlignmentArgs {
+        alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      },
       tree: s.tree.map(PathBuf::from),
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      dates: s.dates.map(PathBuf::from),
-      name_column: s.name_column,
-      date_column: s.date_column,
+      metadata: s.dates.map(PathBuf::from),
+      metadata_id: {
+        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        if let Some(name_col) = s.name_column {
+          id.metadata_id_columns = vec![name_col];
+        }
+        id
+      },
+      date_column_args: DateColumnArgs {
+        date_column: s.date_column,
+        ..DateColumnArgs::default()
+      },
       sequence_length: s.sequence_length,
       clock_rate: s.clock_rate,
       clock_std_dev: s.clock_std_dev,
@@ -222,20 +269,27 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       allow_negative_rate: s.allow_negative_rate,
       tip_slack: s.tip_slack,
       covariation: s.covariation,
-      gtr: s.gtr,
-      gtr_params: s.gtr_params,
+      model_args: ModelArgs {
+        model: s.gtr,
+        model_params: s.gtr_params,
+      },
       method_anc: s.method_anc,
-      alphabet: s.alphabet,
+      alphabet_args: AlphabetArgs {
+        alphabet: Some(s.alphabet),
+      },
       dense: s.dense,
-      aa: s.aa,
-      gap_fill: s.gap_fill,
-      keep_overhangs: s.keep_overhangs,
+      gap_fill_args: GapFillArgs {
+        gap_fill: s.gap_fill,
+        keep_overhangs: s.keep_overhangs,
+      },
       zero_based: s.zero_based,
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
       no_indels: s.no_indels,
       output_augur_node_data: None,
-      outdir: PathBuf::from(s.outdir),
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
       tracelog: s.tracelog.map(PathBuf::from),
       seed: s.seed,
     }
@@ -265,20 +319,29 @@ pub struct ServerMugrationArgs {
 
 impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
   fn from(s: ServerMugrationArgs) -> Self {
+    use treetime::commands::shared::output::OutputArgs;
     Self {
       tree: s.tree.map(PathBuf::from),
       attribute: s.attribute,
-      states: PathBuf::from(s.states),
+      metadata: PathBuf::from(s.states),
       weights: s.weights.map(PathBuf::from),
-      name_column: s.name_column,
-      confidence: s.confidence.map(PathBuf::from),
+      metadata_id: {
+        let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
+        if let Some(name_col) = s.name_column {
+          id.metadata_id_columns = vec![name_col];
+        }
+        id
+      },
+      output_confidence: s.confidence.map(PathBuf::from),
       pc: s.pc,
       missing_data: s.missing_data,
       missing_weights_threshold: s.missing_weights_threshold,
       iterations: s.iterations,
       sampling_bias_correction: s.sampling_bias_correction,
       output_augur_node_data: None,
-      outdir: PathBuf::from(s.outdir),
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
     }
   }
 }
@@ -311,21 +374,35 @@ pub struct ServerOptimizeArgs {
 
 impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
   fn from(s: ServerOptimizeArgs) -> Self {
+    use treetime::commands::shared::alignment::AlignmentArgs;
+    use treetime::commands::shared::alphabet::AlphabetArgs;
+    use treetime::commands::shared::gap_fill::GapFillArgs;
+    use treetime::commands::shared::model::ModelArgs;
+    use treetime::commands::shared::output::OutputArgs;
     Self {
-      input_fastas: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      alignment: AlignmentArgs {
+        alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      },
       tree: PathBuf::from(s.tree),
-      alphabet: s.alphabet,
-      model_name: s.model_name,
+      alphabet_args: AlphabetArgs { alphabet: s.alphabet },
+      model_args: ModelArgs {
+        model: s.model_name,
+        ..ModelArgs::default()
+      },
       dense: s.dense,
-      outdir: PathBuf::from(s.outdir),
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
       max_iter: s.max_iter,
       dp: s.dp,
       damping: s.damping,
       branch_length_initial_guess: s.branch_length_initial_guess,
       opt_method: s.opt_method,
       no_indels: s.no_indels,
-      gap_fill: s.gap_fill,
-      keep_overhangs: s.keep_overhangs,
+      gap_fill_args: GapFillArgs {
+        gap_fill: s.gap_fill,
+        keep_overhangs: s.keep_overhangs,
+      },
       output_augur_node_data: None,
     }
   }
@@ -351,11 +428,18 @@ pub struct ServerPruneArgs {
 
 impl From<ServerPruneArgs> for TreetimePruneArgs {
   fn from(s: ServerPruneArgs) -> Self {
+    use treetime::commands::shared::alignment::AlignmentArgs;
+    use treetime::commands::shared::alphabet::AlphabetArgs;
+    use treetime::commands::shared::output::OutputArgs;
     Self {
-      input_fastas: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      alignment: AlignmentArgs {
+        alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
+      },
       tree: PathBuf::from(s.tree),
-      alphabet: s.alphabet,
-      outdir: PathBuf::from(s.outdir),
+      alphabet_args: AlphabetArgs { alphabet: s.alphabet },
+      output: OutputArgs {
+        outdir: PathBuf::from(s.outdir),
+      },
       prune_short: s.prune_short,
       prune_empty: s.prune_empty,
       merge_shared_mutations: s.merge_shared_mutations,

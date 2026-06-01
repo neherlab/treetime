@@ -2,7 +2,10 @@ use crate::ancestral::params::MethodAncestral;
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::params::RerootMode;
 use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
-use crate::gtr::get_gtr::GtrModelName;
+use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
+use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::output::OutputArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -15,18 +18,8 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// If no input files provided, the plain fasta input is read from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub aln: Vec<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
@@ -40,36 +33,23 @@ pub struct TreetimeClockArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub vcf_reference: Option<PathBuf>,
 
-  /// CSV file with dates for nodes with 'node_name, date' where date is float (as in 2012.15)
-  #[cfg_attr(feature = "clap", clap(long, short = 'd'))]
+  /// CSV/TSV file with metadata including sampling dates
+  #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub dates: PathBuf,
+  pub metadata: PathBuf,
 
-  /// Label of the column to be used as taxon name
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub name_column: Option<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub metadata_id: MetadataIdArgs,
 
-  /// Label of the column to be used as sampling date
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub date_column: Option<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub date_column: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
   #[cfg_attr(feature = "clap", clap(long))]
   pub sequence_length: Option<usize>,
 
-  /// GTR model to use
-  ///
-  /// '--gtr infer' will infer a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use '--gtr-params' to specify those.
-  #[cfg_attr(feature = "clap", clap(long, short = 'g', value_enum, default_value_t = GtrModelName::default()))]
-  pub gtr: GtrModelName,
-
-  /// GTR parameters for the model specified by the --gtr argument. The parameters should be feed as 'key=value' list of parameters.
-  ///
-  /// Example: '--gtr K80 --gtr-params kappa=0.2 pis=0.25,0.25,0.25,0.25'.
-  ///
-  /// See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub gtr_params: Vec<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub model_args: ModelArgs,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthMode::default()))]
@@ -94,7 +74,7 @@ pub struct TreetimeClockArgs {
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = RerootMode::default()))]
   pub reroot: RerootMode,
 
-  /// don't reroot the tree. Otherwise, reroot to minimize the the residual of the regression of
+  /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
   /// root-to-tip distance and sampling time
   #[cfg_attr(feature = "clap", clap(long))]
   pub keep_root: bool,
@@ -115,9 +95,8 @@ pub struct TreetimeClockArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub allow_negative_rate: bool,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long))]

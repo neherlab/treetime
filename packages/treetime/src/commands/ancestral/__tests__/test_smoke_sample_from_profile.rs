@@ -4,6 +4,9 @@ mod tests {
   use crate::ancestral::sample::SampleMode;
   use crate::commands::ancestral::args::TreetimeAncestralArgs;
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
+  use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::model::ModelArgs;
+  use crate::commands::shared::output::OutputArgs;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -19,8 +22,6 @@ mod tests {
       .to_path_buf();
   }
 
-  /// Root sampling runs end-to-end through the ancestral command and is reproducible: two runs with
-  /// the same seed produce byte-identical reconstructed sequences.
   #[test]
   fn test_smoke_ancestral_sample_from_profile_root_reproducible() -> Result<(), Report> {
     let seqs_a = helpers::run_root_sampled("tmp/test-sample-root-a", 42)?;
@@ -34,23 +35,29 @@ mod tests {
     use crate::ancestral::sample::SampleMode;
     use crate::commands::ancestral::args::TreetimeAncestralArgs;
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::model::ModelArgs;
+    use crate::commands::shared::output::OutputArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::progress::NoopProgress;
     use eyre::Report;
 
-    /// Run the ancestral command with root sampling at the given seed, returning the reconstructed
-    /// `ancestral_sequences.fasta` contents for comparison across runs.
     pub fn run_root_sampled(out_subdir: &str, seed: u64) -> Result<String, Report> {
       let outdir = PROJECT_ROOT.join(out_subdir);
       std::fs::create_dir_all(&outdir)?;
 
       let args = TreetimeAncestralArgs {
-        input_fastas: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+        alignment: AlignmentArgs {
+          alignment: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+        },
         tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
-        model_name: GtrModelName::Infer,
+        model_args: ModelArgs {
+          model: GtrModelName::Infer,
+          ..ModelArgs::default()
+        },
         sample_from_profile: SampleMode::Root,
         seed: Some(seed),
-        outdir: outdir.clone(),
+        output: OutputArgs { outdir: outdir.clone() },
         ..TreetimeAncestralArgs::default()
       };
 
@@ -59,16 +66,18 @@ mod tests {
     }
   }
 
-  /// Posterior sampling with a non-marginal method is rejected before any input is read. Nonexistent
-  /// input paths confirm the guard fails fast rather than via a file-read error.
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let args = TreetimeAncestralArgs {
-      input_fastas: vec![PathBuf::from("/nonexistent/aln.fasta")],
+      alignment: AlignmentArgs {
+        alignment: vec![PathBuf::from("/nonexistent/aln.fasta")],
+      },
       tree: PathBuf::from("/nonexistent/tree.nwk"),
       method_anc: MethodAncestral::Parsimony,
       sample_from_profile: SampleMode::Root,
-      outdir: PathBuf::from("/nonexistent/out"),
+      output: OutputArgs {
+        outdir: PathBuf::from("/nonexistent/out"),
+      },
       ..TreetimeAncestralArgs::default()
     };
 
@@ -81,19 +90,23 @@ mod tests {
     );
   }
 
-  /// Sampling every node runs end-to-end without error.
   #[test]
   fn test_smoke_ancestral_sample_from_profile_all() -> Result<(), Report> {
     let outdir = PROJECT_ROOT.join("tmp/test-sample-all");
     std::fs::create_dir_all(&outdir)?;
 
     let args = TreetimeAncestralArgs {
-      input_fastas: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      alignment: AlignmentArgs {
+        alignment: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
       tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
-      model_name: GtrModelName::Infer,
+      model_args: ModelArgs {
+        model: GtrModelName::Infer,
+        ..ModelArgs::default()
+      },
       sample_from_profile: SampleMode::All,
       seed: Some(7),
-      outdir: outdir.clone(),
+      output: OutputArgs { outdir: outdir.clone() },
       ..TreetimeAncestralArgs::default()
     };
 

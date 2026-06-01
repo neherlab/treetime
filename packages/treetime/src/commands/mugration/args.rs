@@ -1,3 +1,5 @@
+use crate::commands::shared::metadata::MetadataIdArgs;
+use crate::commands::shared::output::OutputArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -21,23 +23,22 @@ pub struct TreetimeMugrationArgs {
   pub attribute: String,
 
   /// CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
-  #[cfg_attr(feature = "clap", clap(long, short = 's'))]
+  #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "states", short = 's'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub states: PathBuf,
+  pub metadata: PathBuf,
 
   /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
   #[cfg_attr(feature = "clap", clap(long, short = 'w'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub weights: Option<PathBuf>,
 
-  /// Label of the column to be used as taxon name
-  #[cfg_attr(feature = "clap", clap(long))]
-  pub name_column: Option<String>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub metadata_id: MetadataIdArgs,
 
-  /// Output confidence of mugration inference
-  #[cfg_attr(feature = "clap", clap(long))]
+  /// Write confidence profile of mugration inference to this path
+  #[cfg_attr(feature = "clap", clap(long = "output-confidence"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::AnyPath))]
-  pub confidence: Option<PathBuf>,
+  pub output_confidence: Option<PathBuf>,
 
   /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
   #[cfg_attr(feature = "clap", clap(long))]
@@ -73,7 +74,6 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 }

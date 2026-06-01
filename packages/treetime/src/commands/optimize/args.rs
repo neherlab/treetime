@@ -1,7 +1,9 @@
-use crate::alphabet::alphabet::AlphabetName;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::output::OutputArgs;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
-use crate::seq::gap_fill::GapFill;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -13,17 +15,8 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeOptimizeArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// Use '-' to read uncompressed FASTA from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
-  #[cfg_attr(feature = "clap", clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH"))]
-  pub input_fastas: Vec<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
@@ -32,18 +25,11 @@ pub struct TreetimeOptimizeArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: PathBuf,
 
-  /// Alphabet
-  ///
-  #[cfg_attr(feature = "clap", clap(long, short = 'a', value_enum))]
-  pub alphabet: Option<AlphabetName>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alphabet_args: AlphabetArgs,
 
-  /// GTR model to use
-  ///
-  /// '--model infer' will infer a model from the data. Alternatively, specify the model
-  /// type. If the specified model requires additional options, use '--gtr-params' to
-  /// specify those.
-  #[cfg_attr(feature = "clap", clap(long = "model", short = 'g', value_enum, default_value_t = GtrModelName::Infer))]
-  pub model_name: GtrModelName,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub model_args: ModelArgs,
 
   /// Use dense representation of sequences on the tree
   ///
@@ -53,9 +39,8 @@ pub struct TreetimeOptimizeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub dense: Option<bool>,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 
   /// Write augur-compatible node data JSON to this path
   ///
@@ -125,21 +110,6 @@ pub struct TreetimeOptimizeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
 
-  /// Gap fill strategy for terminal and internal gaps
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = GapFill::default(), conflicts_with = "keep_overhangs"))]
-  pub gap_fill: GapFill,
-
-  /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
-  pub keep_overhangs: bool,
-}
-
-impl TreetimeOptimizeArgs {
-  pub fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill
-    }
-  }
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub gap_fill_args: GapFillArgs,
 }

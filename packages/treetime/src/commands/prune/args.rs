@@ -1,4 +1,6 @@
-use crate::alphabet::alphabet::AlphabetName;
+use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::output::OutputArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -10,33 +12,19 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimePruneArgs {
-  /// Path to one or multiple FASTA files with aligned input sequences
-  ///
-  /// Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently
-  /// decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file
-  /// extension. If there's multiple input files, then different files can have different compression formats.
-  ///
-  /// Use '-' to read uncompressed FASTA from standard input (stdin).
-  ///
-  /// See: https://en.wikipedia.org/wiki/FASTA_format
-  ///
-  /// Required if --prune-empty is set.
-  #[cfg_attr(feature = "clap", clap(long = "aln", value_hint = ValueHint::FilePath, value_name = "FILEPATH"))]
-  pub input_fastas: Vec<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub tree: PathBuf,
 
-  /// Alphabet
-  ///
-  #[cfg_attr(feature = "clap", clap(long, short = 'a', value_enum))]
-  pub alphabet: Option<AlphabetName>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub alphabet_args: AlphabetArgs,
 
-  /// Directory to write the output to
-  #[cfg_attr(feature = "clap", clap(long, short = 'O'))]
-  pub outdir: PathBuf,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub output: OutputArgs,
 
   /// Threshold value for pruning of branches
   ///
@@ -48,7 +36,7 @@ pub struct TreetimePruneArgs {
   ///
   /// If set, prune any branch that does not have a mutation or other state transition mapped to it.
   ///
-  /// Requires --aln
+  /// Requires --alignment
   #[cfg_attr(feature = "clap", clap(long, short = 'e'))]
   pub prune_empty: bool,
 
@@ -59,7 +47,7 @@ pub struct TreetimePruneArgs {
   /// (parent to new node), and only unique mutations remain on children's edges.
   /// Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
   ///
-  /// Requires --aln
+  /// Requires --alignment
   #[cfg_attr(feature = "clap", clap(long, short = 'm'))]
   pub merge_shared_mutations: bool,
 

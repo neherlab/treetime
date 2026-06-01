@@ -21,7 +21,7 @@ pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
   progress: &dyn crate::progress::ProgressSink,
 ) -> Result<MugrationResult, Report> {
-  let outdir = &mugration_args.outdir;
+  let outdir = &mugration_args.output.outdir;
   fs::create_dir_all(outdir)?;
 
   progress.check_cancelled()?;
@@ -33,8 +33,8 @@ pub fn run_mugration(
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
-    &mugration_args.states,
-    &mugration_args.name_column,
+    &mugration_args.metadata,
+    &None,
     &Some(mugration_args.attribute.clone()),
     |s| Ok(s.to_owned()),
   )?;
@@ -77,7 +77,7 @@ pub fn run_mugration(
 
   fs::write(outdir.join("traits.csv"), result.traits.render_csv())?;
 
-  if let Some(confidence_path) = &mugration_args.confidence {
+  if let Some(confidence_path) = &mugration_args.output_confidence {
     fs::write(confidence_path, result.confidence.render_csv())?;
   }
 

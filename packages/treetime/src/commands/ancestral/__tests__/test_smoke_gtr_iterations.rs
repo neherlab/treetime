@@ -2,6 +2,9 @@
 mod tests {
   use crate::commands::ancestral::args::TreetimeAncestralArgs;
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
+  use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::model::ModelArgs;
+  use crate::commands::shared::output::OutputArgs;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -22,11 +25,16 @@ mod tests {
     std::fs::create_dir_all(&outdir)?;
 
     let args = TreetimeAncestralArgs {
-      input_fastas: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      alignment: AlignmentArgs {
+        alignment: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
       tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
-      model_name: GtrModelName::Infer,
+      model_args: ModelArgs {
+        model: GtrModelName::Infer,
+        ..ModelArgs::default()
+      },
       gtr_iterations: 3,
-      outdir: outdir.clone(),
+      output: OutputArgs { outdir: outdir.clone() },
       ..TreetimeAncestralArgs::default()
     };
 
@@ -48,12 +56,17 @@ mod tests {
     std::fs::create_dir_all(&outdir)?;
 
     let args = TreetimeAncestralArgs {
-      input_fastas: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      alignment: AlignmentArgs {
+        alignment: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
       tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
-      model_name: GtrModelName::Infer,
+      model_args: ModelArgs {
+        model: GtrModelName::Infer,
+        ..ModelArgs::default()
+      },
       dense: Some(true),
       gtr_iterations: 3,
-      outdir: outdir.clone(),
+      output: OutputArgs { outdir: outdir.clone() },
       ..TreetimeAncestralArgs::default()
     };
 

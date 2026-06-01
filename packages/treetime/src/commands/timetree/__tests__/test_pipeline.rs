@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::output::OutputArgs;
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
@@ -15,11 +17,13 @@ mod tests {
     let tracelog_path = outdir.join("tracelog.csv");
 
     let args = TreetimeTimetreeArgs {
-      input_fastas: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      alignment: AlignmentArgs {
+        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
       tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
-      dates: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
-      outdir: outdir.clone(),
+      output: OutputArgs { outdir: outdir.clone() },
       tracelog: Some(tracelog_path.clone()),
       ..TreetimeTimetreeArgs::default()
     };

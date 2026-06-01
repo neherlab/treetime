@@ -30,22 +30,18 @@ pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
   progress: &dyn crate::progress::ProgressSink,
 ) -> Result<OptimizeResult, Report> {
-  let TreetimeOptimizeArgs {
-    input_fastas,
-    tree,
-    alphabet,
-    model_name,
-    dense,
-    outdir,
-    max_iter,
-    dp,
-    damping,
-    branch_length_initial_guess,
-    opt_method,
-    no_indels,
-    ..
-  } = args;
-  let gap_fill = args.effective_gap_fill();
+  let input_fastas = &args.alignment.alignment;
+  let tree = &args.tree;
+  let model_name = &args.model_args.model;
+  let dense = &args.dense;
+  let outdir = &args.output.outdir;
+  let max_iter = &args.max_iter;
+  let dp = &args.dp;
+  let damping = &args.damping;
+  let branch_length_initial_guess = &args.branch_length_initial_guess;
+  let opt_method = &args.opt_method;
+  let no_indels = &args.no_indels;
+  let gap_fill = args.gap_fill_args.effective_gap_fill();
 
   if !(0.0..1.0).contains(damping) {
     return make_error!("--damping must be in [0.0, 1.0), got {damping}");
@@ -54,7 +50,7 @@ pub fn run_optimize(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let dense = dense.unwrap_or_else(infer_dense);
-  let alphabet = Alphabet::new(alphabet.unwrap_or_default())?;
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
   let mut aln = read_many_fasta(input_fastas, &alphabet)?;
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());

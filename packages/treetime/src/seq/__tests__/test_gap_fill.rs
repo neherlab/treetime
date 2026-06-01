@@ -129,7 +129,7 @@ mod tests {
   #[test]
   fn test_gap_fill_cli_default_is_only_terminal() {
     let args = TreetimeAncestralArgs::try_parse_from(base_args()).unwrap();
-    assert_eq!(GapFill::OnlyTerminal, args.effective_gap_fill());
+    assert_eq!(GapFill::OnlyTerminal, args.gap_fill_args.effective_gap_fill());
   }
 
   #[test]
@@ -137,7 +137,7 @@ mod tests {
     let mut a = base_args();
     a.push("--gap-fill=none");
     let args = TreetimeAncestralArgs::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::None, args.effective_gap_fill());
+    assert_eq!(GapFill::None, args.gap_fill_args.effective_gap_fill());
   }
 
   #[test]
@@ -145,7 +145,7 @@ mod tests {
     let mut a = base_args();
     a.push("--gap-fill=all");
     let args = TreetimeAncestralArgs::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::All, args.effective_gap_fill());
+    assert_eq!(GapFill::All, args.gap_fill_args.effective_gap_fill());
   }
 
   #[test]
@@ -153,7 +153,7 @@ mod tests {
     let mut a = base_args();
     a.push("--keep-overhangs");
     let args = TreetimeAncestralArgs::try_parse_from(a).unwrap();
-    assert_eq!(GapFill::None, args.effective_gap_fill());
+    assert_eq!(GapFill::None, args.gap_fill_args.effective_gap_fill());
   }
 
   #[test]

@@ -409,7 +409,7 @@ pub fn run_timetree_estimation(
   let confidence_intervals =
     if matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some() {
       let intervals = extract_confidence_intervals(&graph);
-      let ci_path = args.outdir.join("confidence_intervals.tsv");
+      let ci_path = args.output.outdir.join("confidence_intervals.tsv");
       write_confidence_intervals_file(&intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
       info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
       Some(intervals)
@@ -549,15 +549,16 @@ fn write_outputs(
     let guard = partitions[0].read_arc();
     let provider = MutationCommentProvider::new(&*guard, graph);
     let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with(&args.outdir, "timetree", graph, &providers).wrap_err("Failed to write tree output")?;
+    write_graph_files_with(&args.output.outdir, "timetree", graph, &providers)
+      .wrap_err("Failed to write tree output")?;
   } else {
-    write_graph_files_with(&args.outdir, "timetree", graph, &CommentProviders::new())
+    write_graph_files_with(&args.output.outdir, "timetree", graph, &CommentProviders::new())
       .wrap_err("Failed to write tree output")?;
   }
 
-  write_clock_model(clock_model, &args.outdir.join("timetree"))?;
+  write_clock_model(clock_model, &args.output.outdir.join("timetree"))?;
 
-  write_auspice_json(graph, confidence_intervals, &args.outdir)?;
+  write_auspice_json(graph, confidence_intervals, &args.output.outdir)?;
 
   // Augur-compatible node data JSON (treetime equivalent of `augur refine`).
   // Branch lengths and dates come from the graph payloads and clock model; the
@@ -565,8 +566,8 @@ fn write_outputs(
   let augur_node_data_path = args
     .output_augur_node_data
     .clone()
-    .unwrap_or_else(|| args.outdir.join("timetree.augur-node-data.json"));
-  let alignment = args.input_fastas.first().map(PathBuf::as_path);
+    .unwrap_or_else(|| args.output.outdir.join("timetree.augur-node-data.json"));
+  let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
   write_augur_node_data_json(
     graph,
     clock_model,
