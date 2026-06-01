@@ -731,7 +731,10 @@ mod tests {
       .map(|rw| rw.into_inner())
       .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
 
-    let gtr = jc69(JC69Params { alphabet: AlphabetName::Nuc, ..JC69Params::default() })?;
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
     let mut sparse = fitch.into_marginal_sparse(gtr, &graph)?;
 
     // Find relevant node keys and the AB→A edge key
@@ -750,8 +753,16 @@ mod tests {
       .expect("AB→A edge not found");
 
     // Record original AB→A subs and indels before the split
-    let orig_subs: Vec<String> = sparse.edges[&edge_ab_a_key].fitch_subs().iter().map(|s| s.to_string()).collect();
-    let orig_indels: Vec<String> = sparse.edges[&edge_ab_a_key].indels.iter().map(|i| i.to_string()).collect();
+    let orig_subs: Vec<String> = sparse.edges[&edge_ab_a_key]
+      .fitch_subs()
+      .iter()
+      .map(|s| s.to_string())
+      .collect();
+    let orig_indels: Vec<String> = sparse.edges[&edge_ab_a_key]
+      .indels
+      .iter()
+      .map(|i| i.to_string())
+      .collect();
 
     // Find the root→AB edge key (for verifying inversion)
     let edge_root_ab_key = graph
@@ -764,14 +775,22 @@ mod tests {
       .map(|e| e.read_arc().key())
       .expect("root→AB edge not found");
 
-    let orig_root_ab_subs: Vec<String> = sparse.edges[&edge_root_ab_key].fitch_subs().iter().map(|s| s.to_string()).collect();
-    let orig_root_ab_indels: Vec<String> = sparse.edges[&edge_root_ab_key].indels.iter().map(|i| i.to_string()).collect();
+    let orig_root_ab_subs: Vec<String> = sparse.edges[&edge_root_ab_key]
+      .fitch_subs()
+      .iter()
+      .map(|s| s.to_string())
+      .collect();
+    let orig_root_ab_indels: Vec<String> = sparse.edges[&edge_root_ab_key]
+      .indels
+      .iter()
+      .map(|i| i.to_string())
+      .collect();
 
     // Split AB→A at 0.5 to insert new root node
     let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
     let new_root_key = split_info.new_node_key;
     let parent_side_key = split_info.parent_side_edge_key; // AB → new_root
-    let child_side_key = split_info.child_side_edge_key;   // new_root → A
+    let child_side_key = split_info.child_side_edge_key; // new_root → A
 
     // Invert graph topology: edges on path new_root → old_root are inverted
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
@@ -791,20 +810,32 @@ mod tests {
     // After inversion, root_seq should reflect AB's state: ACATCCCTGTA--G--
     let expected_root_seq = "ACATCCCTGTA--G--";
     let actual_root_seq = sparse.root_sequence.as_str();
-    assert_eq!(expected_root_seq, actual_root_seq, "root_sequence after reroot should equal AB's sequence");
+    assert_eq!(
+      expected_root_seq, actual_root_seq,
+      "root_sequence after reroot should equal AB's sequence"
+    );
 
     // --- Verify child-side edge (new_root→A) ---
     // Should carry the original AB→A subs and indels unchanged
     let child_edge = &sparse.edges[&child_side_key];
     let child_subs: Vec<String> = child_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let child_indels: Vec<String> = child_edge.indels.iter().map(|i| i.to_string()).collect();
-    assert_eq!(orig_subs, child_subs, "child-side edge subs should equal original AB→A subs");
-    assert_eq!(orig_indels, child_indels, "child-side edge indels should equal original AB→A indels");
+    assert_eq!(
+      orig_subs, child_subs,
+      "child-side edge subs should equal original AB→A subs"
+    );
+    assert_eq!(
+      orig_indels, child_indels,
+      "child-side edge indels should equal original AB→A indels"
+    );
 
     // --- Verify parent-side edge (new_root→AB, was AB→new_root before inversion) ---
     // Should be empty (no mutations between split point and AB)
     let parent_edge = &sparse.edges[&parent_side_key];
-    assert!(parent_edge.fitch_subs().is_empty(), "parent-side edge should have no subs");
+    assert!(
+      parent_edge.fitch_subs().is_empty(),
+      "parent-side edge should have no subs"
+    );
     assert!(parent_edge.indels.is_empty(), "parent-side edge should have no indels");
 
     // --- Verify inverted root→AB edge (now AB→root) ---
@@ -813,8 +844,16 @@ mod tests {
     let inv_edge = &sparse.edges[&edge_root_ab_key];
     let inv_subs: Vec<String> = inv_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let inv_indels: Vec<String> = inv_edge.indels.iter().map(|i| i.to_string()).collect();
-    assert_eq!(vec_of_owned!["T4G", "C7A"], inv_subs, "inverted AB→root subs should have reff/qry swapped");
-    assert_eq!(vec_of_owned!["11--13: -- -> TT"], inv_indels, "inverted AB→root indel should be toggled to insertion");
+    assert_eq!(
+      vec_of_owned!["T4G", "C7A"],
+      inv_subs,
+      "inverted AB→root subs should have reff/qry swapped"
+    );
+    assert_eq!(
+      vec_of_owned!["11--13: -- -> TT"],
+      inv_indels,
+      "inverted AB→root indel should be toggled to insertion"
+    );
 
     // Sanity: original root→AB subs were [G4T, A7C]
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
