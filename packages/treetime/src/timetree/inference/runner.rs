@@ -120,7 +120,6 @@ where
         .map(|partition| partition.read_arc().edge_indel_count(edge_key))
         .sum()
     };
-
     let distribution = compute_branch_length_distribution(
       &contributions,
       indel_count,

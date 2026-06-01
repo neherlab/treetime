@@ -719,7 +719,7 @@ mod tests {
 
     let partitions = [Arc::new(RwLock::new(PartitionFitch {
       index: 0,
-      alphabet: alphabet.clone(),
+      alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
@@ -729,7 +729,7 @@ mod tests {
 
     let fitch = Arc::try_unwrap(partitions.into_iter().next().unwrap())
       .map(|rw| rw.into_inner())
-      .map_err(|_| eyre::eyre!("Fitch partition still shared"))?;
+      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
 
     let gtr = jc69(JC69Params { alphabet: AlphabetName::Nuc, ..JC69Params::default() })?;
     let mut sparse = fitch.into_marginal_sparse(gtr, &graph)?;
@@ -780,7 +780,7 @@ mod tests {
     let changes = RerootChanges {
       edge_split: Some(split_info),
       edge_merge: None,
-      inverted_edge_keys: inverted_edge_keys.clone(),
+      inverted_edge_keys,
     };
 
     sparse.apply_reroot(&changes)?;
