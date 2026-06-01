@@ -7,12 +7,13 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::commands::timetree::args::{TimeMarginalMode, TreetimeTimetreeArgs};
+use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::{InputData, initialize_partitions, load_input_data};
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::auspice::write_auspice_json;
-use crate::commands::timetree::refinement::run_refinement_iteration;
 use crate::commands::timetree::result::TimetreeResult;
+use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
+use crate::timetree::refinement::{RefinementParams, run_refinement_iteration};
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::BranchLengthMode;
@@ -21,7 +22,6 @@ use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::{MutationCommentProvider, PartitionTimetreeAll};
 use crate::payload::timetree::EdgeTimetree;
 use crate::payload::timetree::NodeTimetree;
-use crate::seq::alignment::get_common_length;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
   write_confidence_intervals_file,
@@ -31,7 +31,7 @@ use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::utils::initialize_clock_totals_from_time_distributions;
-use crate::{make_error, make_report};
+use crate::make_error;
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use parking_lot::RwLock;
@@ -39,7 +39,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_io::dates_csv::DatesMap;
-use treetime_io::fasta::FastaRecord;
 use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -63,7 +62,7 @@ pub fn run_timetree_estimation(
   //   - --confidence with --covariation or --clock-std-dev: set time_marginal='confidence-only'
   //     (equivalent to v1's OnlyFinal -- runs a final marginal pass for CI estimation)
   //   - --confidence without prerequisites: warn and disable confidence
-  let time_marginal = compute_effective_time_marginal(args);
+  let time_marginal = compute_effective_time_marginal(args.time_marginal, args.confidence, args.clock_std_dev, args.covariation);
 
   progress.check_cancelled()?;
   progress.report("Loading input", 0.0, "");
@@ -95,7 +94,7 @@ pub fn run_timetree_estimation(
   // v0 uses default (non-covariation) params for the initial regression and clock
   // filter, switching to covariation params only during iteration-loop reroots
   // (treetime.py:488,491 vs 643-644). We follow the same pattern.
-  let covariation_clock_params = build_covariation_clock_params(args, aln.as_deref())?;
+  let covariation_clock_params = build_covariation_clock_params(args.covariation, args.sequence_length, args.tip_slack, aln.as_deref())?;
   let branch_params = BranchPointOptimizationParams::default();
 
   progress.check_cancelled()?;
@@ -298,8 +297,14 @@ pub fn run_timetree_estimation(
       }
     }
 
+    let refinement_params = RefinementParams {
+      relax: args.relax.clone(),
+      resolve_polytomies: args.resolve_polytomies,
+      clock_rate: args.clock_rate,
+      no_indels: args.no_indels,
+    };
     let (n_diff, n_resolved) = run_refinement_iteration(
-      args,
+      &refinement_params,
       &mut graph,
       &partitions,
       &mut clock_model,
@@ -436,71 +441,6 @@ pub fn run_timetree_estimation(
   })
 }
 
-/// Compute effective time_marginal mode, promoting Never to OnlyFinal when
-/// --confidence is set with rate uncertainty prerequisites.
-///
-/// v0 (wrappers.py:478):
-///   time_marginal = 'confidence-only' if (calc_confidence and time_marginal == 'never') else time_marginal
-fn compute_effective_time_marginal(args: &TreetimeTimetreeArgs) -> TimeMarginalMode {
-  if args.confidence && args.time_marginal == TimeMarginalMode::Never {
-    if args.clock_std_dev.is_some() || args.covariation {
-      info!("--confidence: promoting time-marginal from never to only-final for CI estimation");
-      TimeMarginalMode::OnlyFinal
-    } else {
-      warn!(
-        "Cannot estimate confidence intervals without clock rate uncertainty. \
-         Specify --clock-std-dev or rerun with --covariation. \
-         Proceeding without confidence estimation."
-      );
-      TimeMarginalMode::Never
-    }
-  } else {
-    args.time_marginal
-  }
-}
-
-/// Build covariation-aware ClockParams when --covariation is enabled.
-///
-/// v0 (clock_tree.py:277-285):
-///   branch_variance = (max(0, clock_length) + tip_slack^2 * om) * om   [leaves]
-///   branch_variance = max(0, clock_length) * om                         [internal]
-/// where om = 1/seq_len, tip_slack = OVER_DISPERSION = 10 (config.py:8)
-///
-/// In v1's ClockParams model:
-///   branch_variance = variance_factor * edge_len + variance_offset        [all]
-///   branch_variance += variance_offset_leaf                               [leaves only]
-///
-/// Mapping:
-///   variance_factor = 1.0 / seq_len   (= om, the one_mutation value)
-///   variance_offset = 0.0
-///   variance_offset_leaf = tip_slack^2 / seq_len^2   (= tip_slack^2 * om^2)
-fn build_covariation_clock_params(
-  args: &TreetimeTimetreeArgs,
-  aln: Option<&[FastaRecord]>,
-) -> Result<Option<ClockParams>, Report> {
-  if !args.covariation {
-    return Ok(None);
-  }
-
-  let seq_len = if let Some(aln_data) = aln {
-    get_common_length(aln_data)? as f64
-  } else {
-    args
-      .sequence_length
-      .ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))? as f64
-  };
-
-  // v0 default: OVER_DISPERSION = 10 (config.py:8), overridable via --tip-slack
-  let tip_slack = args.tip_slack.unwrap_or(10.0);
-
-  info!("Covariation-aware clock regression: seq_len={seq_len}, tip_slack={tip_slack}");
-
-  Ok(Some(ClockParams {
-    variance_factor: 1.0 / seq_len,
-    variance_offset: 0.0,
-    variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),
-  }))
-}
 
 /// Run one pass of ML branch-length optimization on timetree partitions.
 ///
@@ -599,21 +539,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
-  fn args_with(
-    time_marginal: TimeMarginalMode,
-    confidence: bool,
-    covariation: bool,
-    clock_std_dev: Option<f64>,
-  ) -> TreetimeTimetreeArgs {
-    TreetimeTimetreeArgs {
-      clock_std_dev,
-      time_marginal,
-      confidence,
-      covariation,
-      ..TreetimeTimetreeArgs::default()
-    }
-  }
-
   #[rustfmt::skip]
   #[rstest]
   #[case::never_no_confidence(            (TimeMarginalMode::Never,     false, false, None),      TimeMarginalMode::Never)]
@@ -626,11 +551,10 @@ mod tests {
   #[case::only_final_no_confidence(       (TimeMarginalMode::OnlyFinal, false, false, None),      TimeMarginalMode::OnlyFinal)]
   #[case::only_final_confidence(          (TimeMarginalMode::OnlyFinal, true,  true,  None),      TimeMarginalMode::OnlyFinal)]
   #[trace]
-  fn test_compute_effective_time_marginal(
+  fn test_timetree_compute_effective_time_marginal(
     #[case] (mode, confidence, covariation, clock_std_dev): (TimeMarginalMode, bool, bool, Option<f64>),
     #[case] expected: TimeMarginalMode,
   ) {
-    let args = args_with(mode, confidence, covariation, clock_std_dev);
-    assert_eq!(expected, compute_effective_time_marginal(&args));
+    assert_eq!(expected, compute_effective_time_marginal(mode, confidence, clock_std_dev, covariation));
   }
 }

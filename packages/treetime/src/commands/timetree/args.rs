@@ -23,15 +23,7 @@ fn parse_n_skyline(s: &str) -> Result<usize, String> {
   Ok(n)
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
-pub enum TimeMarginalMode {
-  #[default]
-  Never,
-  Always,
-  OnlyFinal,
-}
+pub use crate::timetree::params::TimeMarginalMode;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
