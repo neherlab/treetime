@@ -16,16 +16,17 @@ v1 adds a dedicated `treetime optimize` subcommand ([packages/treetime/src/comma
 
 ### CLI arguments
 
-| Argument     | Default    | Purpose                                                    |
-| ------------ | ---------- | ---------------------------------------------------------- |
-| `--tree`     | (required) | Input tree in Newick/Nexus/Phylip                          |
-| `--aln`      | (required) | FASTA alignment (supports compression)                     |
-| `--model`    | `infer`    | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
-| `--alphabet` | auto       | Nucleotide or amino acid alphabet                          |
-| `--dense`    | auto       | Force dense sequence representation                        |
-| `--max-iter` | 10         | Maximum outer iterations                                   |
-| `--dp`       | 0.1        | Convergence tolerance (log-likelihood delta)               |
-| `--outdir`   | (required) | Output directory                                           |
+| Argument                   | Default                                  | Purpose                                                    |
+| -------------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| `--tree`                   | (required)                               | Input tree in Newick/Nexus/Phylip                          |
+| `--aln`                    | (required)                               | FASTA alignment (supports compression)                     |
+| `--model`                  | `infer`                                  | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
+| `--alphabet`               | auto                                     | Nucleotide or amino acid alphabet                          |
+| `--dense`                  | auto                                     | Force dense sequence representation                        |
+| `--max-iter`               | 10                                       | Maximum outer iterations                                   |
+| `--dp`                     | 0.1                                      | Convergence tolerance (log-likelihood delta)               |
+| `--outdir`                 | (required)                               | Output directory                                           |
+| `--output-augur-node-data` | `<outdir>/optimize.augur-node-data.json` | Path for the augur-compatible node data JSON               |
 
 ### Algorithm
 
@@ -38,7 +39,15 @@ The command runs an iterative cycle of marginal ancestral reconstruction and per
    - Run marginal reconstruction on both sparse and dense partitions, computing total log-likelihood.
    - If `|log_lh - log_lh_prev| < dp`, stop.
    - Optimize each branch length independently using Newton-Raphson with grid search fallback (documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md)).
-5. Write `annotated_tree.nwk` and `annotated_tree.nexus` to the output directory.
+5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `gtr.json`, and `optimize.augur-node-data.json` to the output directory.
+
+### Augur node data JSON output
+
+The command writes an augur-compatible node data JSON ([packages/treetime/src/commands/optimize/augur_node_data.rs](../../packages/treetime/src/commands/optimize/augur_node_data.rs)), consumed by `augur export v2 --node-data`. There is no augur "optimize" command, so the output contract is `augur refine` run WITHOUT `--timetree`: top-level `generated_by`, `alignment`, and `input_tree`, plus per-node `branch_length`. Augur's non-timetree path sets `attributes = ['branch_length', 'confidence']` and skips the clock, date, and `num_date_confidence` fields ([augur/refine.py](https://github.com/nextstrain/augur/blob/024292af6daf/augur/refine.py)).
+
+The one content difference from augur's non-timetree refine: augur reads `branch_length` from the unmodified input tree (it only instantiates `TreeAnc` to name internal nodes), whereas `optimize` writes the ML-optimized branch length into the same field. The file shape is identical; the values are v1's optimized divergences (substitutions per site). `augur export v2`'s `node_div()` consumes `branch_length` for cumulative divergence when `mutation_length` is absent.
+
+The types are reused from the `util-augur-node-data-json` crate (`AugurNodeDataJsonRefine`), shared with the timetree command. `confidence` is omitted because v1's Newick reader does not parse input-tree branch support values ([kb/issues/N-timetree-node-data-confidence-not-emitted.md](../issues/N-timetree-node-data-confidence-not-emitted.md)), and the integer `--divergence-units=mutations` mode is unimplemented (shared with timetree).
 
 The per-branch optimization uses the GTR eigensystem decomposition to precompute branch-length-independent coefficients `k_c = (msg_child . V)_c * (msg_parent . V_inv^T)_c` for each alignment position. These coefficients allow computing log-likelihood, first derivative, and second derivative from the same cached exponentials. Dense partitions contribute per-position coefficients; sparse partitions group invariant positions by state pair with multiplicity counts ([packages/treetime/src/partition/optimize_sparse.rs#L36-L119](../../packages/treetime/src/partition/optimize_sparse.rs#L36-L119)).
 

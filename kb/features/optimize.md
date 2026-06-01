@@ -10,6 +10,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 - [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output annotated Newick and Nexus trees
 - [x] GTR parameters written to JSON
+- [x] Augur-compatible node data JSON (`optimize.augur-node-data.json`, `--output-augur-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
 
 ## Per-Edge Likelihood (v0 parity via different method)
 

@@ -93,6 +93,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [write_graph_files missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                     |
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
+| Negligible | I/O          | [Newick branch lengths lose precision through f32 round-trip](N-nwk-branch-length-f32-precision-loss.md)                                            |
 | Negligible | Optimize     | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |
 | Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](N-optimize-initial-guess-alloc.md)                                               |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                                  |
