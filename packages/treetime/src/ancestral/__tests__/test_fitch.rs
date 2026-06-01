@@ -4,12 +4,15 @@ mod tests {
   use crate::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
   };
+  use crate::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::fitch::PartitionFitch;
-  use crate::partition::traits::PartitionRerootOps;
+  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::traits::{PartitionBranchOps, PartitionRerootOps};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::composition::Composition;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
@@ -20,9 +23,10 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::reroot::{RerootChanges, apply_reroot_topology, split_edge};
+  use treetime_graph::reroot::{RerootChanges, apply_reroot_topology, remove_node_if_trivial, split_edge};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlphabetLike;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::mutex::unwrap_arc_rwlock;
   use treetime_utils::vec_of_owned;
@@ -684,20 +688,20 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that the sparse partition remains consistent after rerooting on branch AB→A.
+  /// Verify that the sparse partition remains consistent after rerooting on branch AB->A.
   ///
   /// Uses the same 4-taxon tree and alignment as `test_fitch_internals`. After Fitch
   /// reconstruction, converts to a sparse partition, then places the new root at the
-  /// midpoint of the AB→A edge using `split_edge`. The old root is kept as a trivial node
+  /// midpoint of the AB->A edge using `split_edge`. The old root is kept as a trivial node
   /// (no merge). Verifies:
   ///
   /// - The root_sequence after reroot equals the AB node's sequence (new root sits on
-  ///   the AB→A branch, so it inherits AB's ancestral state with no further mutations).
-  /// - The child-side edge (new_root→A) retains the original AB→A substitutions and
+  ///   the AB->A branch, so it inherits AB's ancestral state with no further mutations).
+  /// - The child-side edge (new_root->A) retains the original AB->A substitutions and
   ///   indels unchanged (mutations still describe AB-state to A-state).
-  /// - The parent-side edge (new_root→AB) is empty (no mutations between the split point
+  /// - The parent-side edge (new_root->AB) is empty (no mutations between the split point
   ///   and AB, since the split was placed at 0.0 relative to AB).
-  /// - The inverted root→AB edge (now AB→root) has its substitutions and indels inverted:
+  /// - The inverted root->AB edge (now AB->root) has its substitutions and indels inverted:
   ///   reff and qry swapped, deletion flag toggled.
   #[test]
   fn test_fitch_reroot_sparse_on_branch_ab_to_a() -> Result<(), Report> {
@@ -736,7 +740,7 @@ mod tests {
     })?;
     let mut sparse = fitch.into_marginal_sparse(gtr, &graph)?;
 
-    // Find relevant node keys and the AB→A edge key
+    // Find relevant node keys and the AB->A edge key
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
     let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
@@ -749,9 +753,9 @@ mod tests {
         e.source() == ab_key && e.target() == a_key
       })
       .map(|e| e.read_arc().key())
-      .expect("AB→A edge not found");
+      .expect("AB->A edge not found");
 
-    // Record original AB→A subs and indels before the split
+    // Record original AB->A subs and indels before the split
     let orig_subs: Vec<String> = sparse.edges[&edge_ab_a_key]
       .fitch_subs()
       .iter()
@@ -763,7 +767,7 @@ mod tests {
       .map(|i| i.to_string())
       .collect();
 
-    // Find the root→AB edge key (for verifying inversion)
+    // Find the root->AB edge key (for verifying inversion)
     let edge_root_ab_key = graph
       .get_edges()
       .iter()
@@ -772,7 +776,7 @@ mod tests {
         e.source() == old_root_key && e.target() == ab_key
       })
       .map(|e| e.read_arc().key())
-      .expect("root→AB edge not found");
+      .expect("root->AB edge not found");
 
     let orig_root_ab_subs: Vec<String> = sparse.edges[&edge_root_ab_key]
       .fitch_subs()
@@ -785,13 +789,13 @@ mod tests {
       .map(|i| i.to_string())
       .collect();
 
-    // Split AB→A at 0.5 to insert new root node
+    // Split AB->A at 0.5 to insert new root node
     let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
     let new_root_key = split_info.new_node_key;
-    let parent_side_key = split_info.parent_side_edge_key; // AB → new_root
-    let child_side_key = split_info.child_side_edge_key; // new_root → A
+    let parent_side_key = split_info.parent_side_edge_key; // AB -> new_root
+    let child_side_key = split_info.child_side_edge_key; // new_root -> A
 
-    // Invert graph topology: edges on path new_root → old_root are inverted
+    // Invert graph topology: edges on path new_root -> old_root are inverted
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
     // Keep old root as trivial node (no merge)
@@ -804,8 +808,8 @@ mod tests {
     sparse.apply_reroot(&changes)?;
 
     // --- Verify root_sequence ---
-    // New root sits on AB→A (closer to AB side, split at 0.5 with empty parent-side).
-    // The only mutations on the path from old_root to new_root are via root→AB (now AB→root).
+    // New root sits on AB->A (closer to AB side, split at 0.5 with empty parent-side).
+    // The only mutations on the path from old_root to new_root are via root->AB (now AB->root).
     // After inversion, root_seq should reflect AB's state: ACATCCCTGTA--G--
     let expected_root_seq = "ACATCCCTGTA--G--";
     let actual_root_seq = sparse.root_sequence.as_str();
@@ -814,21 +818,21 @@ mod tests {
       "root_sequence after reroot should equal AB's sequence"
     );
 
-    // --- Verify child-side edge (new_root→A) ---
-    // Should carry the original AB→A subs and indels unchanged
+    // --- Verify child-side edge (new_root->A) ---
+    // Should carry the original AB->A subs and indels unchanged
     let child_edge = &sparse.edges[&child_side_key];
     let child_subs: Vec<String> = child_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let child_indels: Vec<String> = child_edge.indels.iter().map(|i| i.to_string()).collect();
     assert_eq!(
       orig_subs, child_subs,
-      "child-side edge subs should equal original AB→A subs"
+      "child-side edge subs should equal original AB->A subs"
     );
     assert_eq!(
       orig_indels, child_indels,
-      "child-side edge indels should equal original AB→A indels"
+      "child-side edge indels should equal original AB->A indels"
     );
 
-    // --- Verify parent-side edge (new_root→AB, was AB→new_root before inversion) ---
+    // --- Verify parent-side edge (new_root->AB, was AB->new_root before inversion) ---
     // Should be empty (no mutations between split point and AB)
     let parent_edge = &sparse.edges[&parent_side_key];
     assert!(
@@ -837,26 +841,65 @@ mod tests {
     );
     assert!(parent_edge.indels.is_empty(), "parent-side edge should have no indels");
 
-    // --- Verify inverted root→AB edge (now AB→root) ---
-    // Original root→AB: subs=[G4T, A7C], indels=[11--13: TT→--]
-    // After inversion: subs=[T4G, C7A], indels=[11--13: --→TT]
+    // --- Verify inverted root->AB edge (now AB->root) ---
+    // Original root->AB: subs=[G4T, A7C], indels=[11--13: TT->--]
+    // After inversion: subs=[T4G, C7A], indels=[11--13: --->TT]
     let inv_edge = &sparse.edges[&edge_root_ab_key];
     let inv_subs: Vec<String> = inv_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     let inv_indels: Vec<String> = inv_edge.indels.iter().map(|i| i.to_string()).collect();
     assert_eq!(
       vec_of_owned!["T4G", "C7A"],
       inv_subs,
-      "inverted AB→root subs should have reff/qry swapped"
+      "inverted AB->root subs should have reff/qry swapped"
     );
     assert_eq!(
       vec_of_owned!["11--13: -- -> TT"],
       inv_indels,
-      "inverted AB→root indel should be toggled to insertion"
+      "inverted AB->root indel should be toggled to insertion"
     );
 
-    // Sanity: original root→AB subs were [G4T, A7C]
+    // Sanity: original root->AB subs were [G4T, A7C]
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
+
+    // --- G1: new root node composition matches root_sequence ---
+    let root_node = &sparse.nodes[&new_root_key];
+    let expected_comp = Composition::with_sequence(
+      sparse.root_sequence.iter().copied(),
+      sparse.alphabet.chars(),
+      sparse.alphabet.gap(),
+    );
+    assert_eq!(
+      expected_comp, root_node.seq.composition,
+      "new root node composition should match root_sequence character counts"
+    );
+
+    // --- G2: gap and non_char ranges match root_sequence ---
+    // Root sequence ACATCCCTGTA--G--: gaps at positions 11-12 and 14-15
+    assert_eq!(
+      vec![(11, 13), (14, 16)],
+      root_node.seq.gaps,
+      "new root gaps should cover gap positions in root_sequence"
+    );
+    assert!(
+      root_node.seq.unknown.is_empty(),
+      "new root should have no unknown (N) positions"
+    );
+    assert_eq!(
+      root_node.seq.gaps, root_node.seq.non_char,
+      "non_char should equal gaps when there are no N positions"
+    );
+
+    // --- G3: edge_effective_length excludes non_char positions ---
+    // Root non_char: positions 11-12, 14-15 (4 positions)
+    // Child A non_char: gaps at 11-12 + N at 8-9 (from original sequence ACATCGCCNNA--GAC)
+    // Union: positions 8-9, 11-12, 14-15 = 6 positions
+    // Effective length = 16 - 6 = 10
+    let effective = sparse.edge_effective_length(&graph, child_side_key)?;
+    assert_eq!(
+      10, effective,
+      "effective length should exclude union of parent+child non_char positions"
+    );
 
     // Non-char positions (N, gap) are tracked through non_char ranges, not
     // Fitch substitutions. Applying child-side subs+indels to root composition
@@ -865,7 +908,6 @@ mod tests {
     //
     // Child A has N at positions 8-9 where root has G,T. No Fitch sub exists
     // for these positions because N is ambiguous (non-informative).
-    let root_node = &sparse.nodes[&new_root_key];
     let child_node = &sparse.nodes[&a_key];
     let child_edge = &sparse.edges[&child_side_key];
 
@@ -880,6 +922,261 @@ mod tests {
       derived, child_node.seq.composition,
       "root + subs/indels should NOT equal child composition (non-char positions are not Fitch subs)"
     );
+
+    Ok(())
+  }
+
+  /// Reroot on branch AB->A with trivial root removal (edge_merge path).
+  ///
+  /// Same tree and alignment as `test_fitch_reroot_sparse_on_branch_ab_to_a`.
+  /// After splitting AB->A and inverting the path to the old root, the old root
+  /// becomes trivial (1 parent, 1 child). `remove_node_if_trivial` merges the
+  /// two edges around it. Verifies:
+  ///
+  /// - Root sequence is derived from inverted edges (not from merge parent_edge)
+  /// - Old root node is removed from the partition
+  /// - Merged edge has composed substitutions from both original edges
+  /// - New root node fields (gaps, non_char) are correct
+  #[test]
+  fn test_fitch_reroot_sparse_with_trivial_root_removal() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACATCGCCNNA--GAC
+        >B
+        GCATCCCTGTA-NG--
+        >C
+        CCGGCGATGTRTTG--
+        >D
+        TCGGCCGTGTRTTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let alphabet = Alphabet::default();
+
+    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+      index: 0,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &partitions, &aln)?;
+
+    let fitch = Arc::try_unwrap(partitions.into_iter().next().unwrap())
+      .map(|rw| rw.into_inner())
+      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
+
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let mut sparse = fitch.into_marginal_sparse(gtr, &graph)?;
+
+    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
+    let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
+
+    let edge_ab_a_key = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        e.source() == ab_key && e.target() == a_key
+      })
+      .map(|e| e.read_arc().key())
+      .expect("AB->A edge not found");
+
+    // Record original root->CD subs (will appear in merged edge)
+    let edge_root_cd_key = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        let cd_key = find_node_key_by_name(&graph, "CD").unwrap();
+        e.source() == old_root_key && e.target() == cd_key
+      })
+      .map(|e| e.read_arc().key())
+      .expect("root->CD edge not found");
+
+    let orig_root_cd_subs: Vec<String> = sparse.edges[&edge_root_cd_key]
+      .fitch_subs()
+      .iter()
+      .map(|s| s.to_string())
+      .collect();
+
+    let orig_root_ab_subs: Vec<String> = {
+      let edge_root_ab_key = graph
+        .get_edges()
+        .iter()
+        .find(|e| {
+          let e = e.read_arc();
+          e.source() == old_root_key && e.target() == ab_key
+        })
+        .map(|e| e.read_arc().key())
+        .expect("root->AB edge not found");
+      sparse.edges[&edge_root_ab_key]
+        .fitch_subs()
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+    };
+
+    // Split AB->A at midpoint
+    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
+    let new_root_key = split_info.new_node_key;
+
+    // Invert path from new_root to old_root
+    let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
+
+    // Old root is now trivial (1 parent: AB, 1 child: CD) - remove it
+    let edge_merge = remove_node_if_trivial(&mut graph, old_root_key)?;
+    assert!(edge_merge.is_some(), "old root should be trivial after reroot");
+
+    let changes = RerootChanges {
+      edge_split: Some(split_info),
+      edge_merge,
+      inverted_edge_keys,
+    };
+
+    sparse.apply_reroot(&changes)?;
+
+    // Root sequence should be AB's ancestral state (derived from inverted edges)
+    assert_eq!(
+      "ACATCCCTGTA--G--",
+      sparse.root_sequence.as_str(),
+      "root_sequence should equal AB's sequence after reroot with merge"
+    );
+
+    // Old root node should be removed
+    assert!(
+      !sparse.nodes.contains_key(&old_root_key),
+      "old root node should be removed from partition after trivial root removal"
+    );
+
+    // New root node should have correct fields
+    let root_node = &sparse.nodes[&new_root_key];
+    assert_eq!(vec![(11, 13), (14, 16)], root_node.seq.gaps);
+    assert!(root_node.seq.unknown.is_empty());
+    assert_eq!(root_node.seq.gaps, root_node.seq.non_char);
+
+    // Merged edge (AB->CD, replacing AB->root + root->CD) should have composed subs.
+    // Original root->AB: [G4T, A7C], inverted to AB->root: [T4G, C7A]
+    // Original root->CD: [A1C, A3G]
+    // After merge removal, the merged edge connects AB->CD.
+    // Composed subs: AB->root subs [T4G, C7A] chained with root->CD subs [A1C, A3G]
+    let merge_info = changes.edge_merge.as_ref().unwrap();
+    let merged_edge = &sparse.edges[&merge_info.merged_edge_key];
+    assert!(
+      !merged_edge.fitch_subs().is_empty(),
+      "merged edge should have composed substitutions from both original edges"
+    );
+
+    // Sanity: original subs are what we expect
+    assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
+    assert_eq!(vec_of_owned!["A1C", "A3G"], orig_root_cd_subs);
+
+    Ok(())
+  }
+
+  /// After reroot, a marginal forward pass should produce non-zero fixed_counts.
+  ///
+  /// This is the integration test that would have caught the original bug where
+  /// `SparseNodePartition::empty()` left composition as zero, causing
+  /// `process_node_forward` to seed `msg_to_child.fixed_counts` with zero
+  /// multiplicity for all characters.
+  #[test]
+  fn test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACATCGCCNNA--GAC
+        >B
+        GCATCCCTGTA-NG--
+        >C
+        CCGGCGATGTRTTG--
+        >D
+        TCGGCCGTGTRTTG--
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let alphabet = Alphabet::default();
+
+    let partitions_fitch = [Arc::new(RwLock::new(PartitionFitch {
+      index: 0,
+      alphabet,
+      length: get_common_length(&aln)?,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+    }))];
+
+    compress_sequences(&graph, &partitions_fitch, &aln)?;
+
+    let fitch = Arc::try_unwrap(partitions_fitch.into_iter().next().unwrap())
+      .map(|rw| rw.into_inner())
+      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
+
+    let gtr = jc69(JC69Params {
+      alphabet: AlphabetName::Nuc,
+      ..JC69Params::default()
+    })?;
+    let sparse = fitch.into_marginal_sparse(gtr, &graph)?;
+
+    // Run initial marginal pass before reroot
+    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![Arc::new(RwLock::new(sparse))];
+    update_marginal(&graph, &partitions)?;
+
+    // Reroot on AB->A
+    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
+    let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
+
+    let edge_ab_a_key = graph
+      .get_edges()
+      .iter()
+      .find(|e| {
+        let e = e.read_arc();
+        e.source() == ab_key && e.target() == a_key
+      })
+      .map(|e| e.read_arc().key())
+      .expect("AB->A edge not found");
+
+    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
+    let new_root_key = split_info.new_node_key;
+    let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
+
+    let changes = RerootChanges {
+      edge_split: Some(split_info),
+      edge_merge: None,
+      inverted_edge_keys,
+    };
+
+    partitions[0].write_arc().apply_reroot(&changes)?;
+
+    // Run marginal pass after reroot
+    update_marginal(&graph, &partitions)?;
+
+    // Check that msg_to_child.fixed_counts for edges from the new root have
+    // non-zero entries. With zero composition (the original bug), all counts
+    // would be zero.
+    let partition = partitions[0].read_arc();
+    for edge_ref in graph.get_edges() {
+      let edge = edge_ref.read_arc();
+      if edge.source() == new_root_key {
+        let edge_data = &partition.edges[&edge.key()];
+        let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();
+        assert!(
+          total > 0,
+          "msg_to_child.fixed_counts for edge from new root to {:?} should have non-zero entries (total={total})",
+          edge.target()
+        );
+      }
+    }
 
     Ok(())
   }

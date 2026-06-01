@@ -35,15 +35,18 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 
 **Impl:** [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)
 
-| Test                                                       | Purpose                                                     |
-| ---------------------------------------------------------- | ----------------------------------------------------------- |
-| `test_ancestral_reconstruction_fitch`                      | MAP sequences at internal nodes                             |
-| `test_ancestral_reconstruction_fitch_with_leaves`          | Same with leaf sequences included                           |
-| `test_compress_sequences_retains_internal_exact_sequences` | Internal exact sequences remain available after compression |
-| `test_fitch_internals`                                     | Substitution and indel mutations on edges                   |
-| `test_fitch_complex_gaps`                                  | Overlapping deletions and variable insertions               |
-| `test_fitch_polytomy`                                      | Multifurcation with 3 children                              |
-| `test_fitch_backward_state`                                | Intermediate state between backward/forward passes          |
+| Test                                                         | Purpose                                                      |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `test_ancestral_reconstruction_fitch`                        | MAP sequences at internal nodes                              |
+| `test_ancestral_reconstruction_fitch_with_leaves`            | Same with leaf sequences included                            |
+| `test_compress_sequences_retains_internal_exact_sequences`   | Internal exact sequences remain available after compression  |
+| `test_fitch_internals`                                       | Substitution and indel mutations on edges                    |
+| `test_fitch_complex_gaps`                                    | Overlapping deletions and variable insertions                |
+| `test_fitch_polytomy`                                        | Multifurcation with 3 children                               |
+| `test_fitch_backward_state`                                  | Intermediate state between backward/forward passes           |
+| `test_fitch_reroot_sparse_on_branch_ab_to_a`                 | Sparse partition consistency after reroot (no merge)         |
+| `test_fitch_reroot_sparse_with_trivial_root_removal`         | Reroot with edge merge: old root removed, edge composed      |
+| `test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts` | Marginal forward pass after reroot has non-zero multiplicity |
 
 **Algorithm:** Fitch maximum parsimony (backward pass, forward pass, gap tracking)
 
