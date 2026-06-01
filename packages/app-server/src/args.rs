@@ -326,6 +326,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       no_indels: s.no_indels,
       gap_fill: s.gap_fill,
       keep_overhangs: s.keep_overhangs,
+      output_augur_node_data: None,
     }
   }
 }

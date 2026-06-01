@@ -3,6 +3,7 @@ use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::OptimizeResult;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
 use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates};
@@ -15,7 +16,9 @@ use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
+use log::info;
 use parking_lot::RwLock;
+use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::graph::write_graph_files_with;
@@ -143,6 +146,20 @@ pub fn run_optimize(
     let providers = CommentProviders::new().with(&provider);
     write_graph_files_with(outdir, "annotated_tree", &graph, &providers)?;
   }
+
+  // Augur-compatible node data JSON (treetime equivalent of `augur refine` run
+  // without `--timetree`). Branch lengths come from the optimized graph edges;
+  // no clock or date fields are produced.
+  let augur_node_data_path = args
+    .output_augur_node_data
+    .clone()
+    .unwrap_or_else(|| outdir.join("optimize.augur-node-data.json"));
+  let alignment = input_fastas.first().map(PathBuf::as_path);
+  write_augur_node_data_json(&graph, alignment, Some(tree.as_path()), &augur_node_data_path)?;
+  info!(
+    "Wrote augur node data JSON to {path}",
+    path = augur_node_data_path.display()
+  );
 
   progress.report("Done", 1.0, "");
   Ok(OptimizeResult { graph })
