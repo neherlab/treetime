@@ -29,6 +29,7 @@ declare -A ALIASES=(
   ["cov"]="coverage"
   ["cl"]="coverage-lcov"
   ["w"]="why"
+  ["D"]="docs"
   ["L"]="list"
   ["d"]="desktop-start"
   ["db"]="desktop-build"
@@ -280,6 +281,12 @@ for pkg in data['packages']:
 for kind, name in sorted(targets):
     print(f'{kind:<8} {name}')
 "
+    ;;
+  "docs")
+    run_one build "$@"
+    local bin_path="${_BUILD_DIR}/debug/treetime"
+    "$(project_root)/docs/generate-reference-docs" "${bin_path}" "$(project_root)/docs/docs/reference.md"
+    printf "Generated: docs/docs/reference.md\n"
     ;;
   "js-install")
     pushd "$(project_root)" >/dev/null

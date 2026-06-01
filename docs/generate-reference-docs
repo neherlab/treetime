@@ -1,18 +1,38 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 <executable> <output.md>
+#
+# Re-generate CLI reference documentation in Markdown format.
+#
+# The executable must support the `help-markdown` subcommand.
+# Output file is overwritten with a Docusaurus-compatible header
+# followed by the generated markdown.
+#
+# Examples:
+#   $0 .out/treetime docs/docs/reference.md
+#   $0 ../target/debug/treetime docs/docs/reference.md
+#
 set -euo pipefail
 trap "exit" INT
 
-if [ "$#" != 2 ]; then
-  echo "Re-generates CLI reference documentation in Markdown format"
-  echo "Usage: $0 <executable> <output.md>"
-  exit 1
-fi
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
 
-exe="$1"
-out="$2"
+  [[ "${1:-}" =~ ^(-h|--help)$ ]] && { show_help; exit 0; }
 
-# Add header
-cat << EOF > "${out}"
+  if (( $# != 2 )); then
+    show_help
+    exit 1
+  fi
+
+  local exe="${1}"
+  local out="${2}"
+
+  mkdir -p "$(dirname "${out}")"
+
+  cat <<'EOF' > "${out}"
 ---
 sidebar_position: 9999
 ---
@@ -29,5 +49,9 @@ Generated content. Report issues at https://github.com/neherlab/treetime/issues
 
 EOF
 
-# Append body
-./"${exe}" help-markdown >> "${out}"
+  "${exe}" help-markdown >> "${out}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
