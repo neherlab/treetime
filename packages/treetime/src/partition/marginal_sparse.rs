@@ -15,12 +15,11 @@ use crate::{make_error, make_internal_report};
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::{BTreeMap, BTreeSet};
-use std::mem;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::reroot::{EdgeMergeInfo, EdgeSplitInfo, RerootChanges};
+use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -281,39 +280,51 @@ impl PartitionMarginalSparse {
     result
   }
 
-  fn reroot_split_edges(&mut self, info: &EdgeSplitInfo) -> Result<(), Report> {
-    let mut old_edge_data = self
-      .edges
-      .remove(&info.old_edge_key)
-      .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
+  // Phase 1: topology changes + root_sequence derivation + new node init.
+  // Must complete before remove_trivial_root (phase 2) because
+  // derive_root_sequence reads the parent_edge that phase 2 deletes.
+  //
+  // Note: root_composition + child-side fitch_subs + indels != child_composition.
+  // Non-char (N, gap) differences between nodes are not encoded as Fitch subs -
+  // they are tracked through non_char ranges on each node instead.
+  fn apply_reroot_changes(&mut self, changes: &RerootChanges) -> Result<(), Report> {
+    // Split edge: child-side gets all mutations, parent-side is empty
+    if let Some(info) = &changes.edge_split {
+      let mut old_edge_data = self
+        .edges
+        .remove(&info.old_edge_key)
+        .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
+      old_edge_data.clear_ml_subs();
+      self.edges.insert(info.child_side_edge_key, old_edge_data);
+      self
+        .edges
+        .insert(info.parent_side_edge_key, SparseEdgePartition::default());
+    }
 
-    old_edge_data.clear_ml_subs();
-    self.edges.insert(info.child_side_edge_key, old_edge_data);
-    self
-      .edges
-      .insert(info.parent_side_edge_key, SparseEdgePartition::default());
-    Ok(())
-  }
-
-  fn reroot_invert_edges(&mut self, inverted_edge_keys: &[GraphEdgeKey]) -> Result<(), Report> {
-    for edge_key in inverted_edge_keys {
+    // Invert edges on the reroot path
+    for edge_key in &changes.inverted_edge_keys {
       let edge_data = self
         .edges
         .get_mut(edge_key)
         .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?;
-
-      edge_data.invert_fitch_subs();
-      edge_data.clear_ml_subs();
-      for indel in &mut edge_data.indels {
-        indel.invert();
-      }
-      mem::swap(&mut edge_data.msg_to_parent, &mut edge_data.msg_to_child);
-      edge_data.msg_from_child = SparseSeqDistribution::default();
+      edge_data.invert_for_reroot();
     }
+
+    // Derive root_sequence for the new root
+    self.derive_root_sequence(changes);
+
+    // Initialize the new split node from the finalized root_sequence
+    if let Some(info) = &changes.edge_split {
+      self.nodes.insert(
+        info.new_node_key,
+        SparseNodePartition::new(&self.root_sequence, &self.alphabet)?,
+      );
+    }
+
     Ok(())
   }
 
-  fn reroot_merge_edges(&mut self, info: &EdgeMergeInfo) -> Result<(), Report> {
+  fn remove_trivial_root(&mut self, info: &EdgeMergeInfo) -> Result<(), Report> {
     let parent_edge = self
       .edges
       .remove(&info.parent_edge_key)
@@ -336,12 +347,7 @@ impl PartitionMarginalSparse {
     Ok(())
   }
 
-  /// Derive root_sequence for the new root. Two cases:
-  /// - Inverted edges present: walk the inverted path from old root to new root,
-  ///   applying post-inversion subs and indels at each step.
-  /// - No inverted edges (trivial root removal only): apply the parent_edge subs
-  ///   that describe the old-root-to-removed-node transition.
-  fn reroot_derive_root_sequence(&mut self, changes: &RerootChanges) {
+  fn derive_root_sequence(&mut self, changes: &RerootChanges) {
     if !changes.inverted_edge_keys.is_empty() {
       let mut new_root_seq = self.root_sequence.clone();
       for edge_key in &changes.inverted_edge_keys {
@@ -351,10 +357,6 @@ impl PartitionMarginalSparse {
       }
       self.root_sequence = new_root_seq;
     } else if let Some(info) = &changes.edge_merge {
-      // No inversion: the merge removed the old root. The parent_edge
-      // described the path from new-root-side to the removed node.
-      // sub.reff() = new-root-side state. Apply to root_sequence before
-      // the edge is discarded by merge.
       if let Some(parent_edge) = self.edges.get(&info.parent_edge_key) {
         let parent_edge = parent_edge.clone();
         Self::apply_edge_to_sequence(&mut self.root_sequence, &parent_edge, &self.alphabet);
@@ -392,23 +394,10 @@ where
 
 impl PartitionRerootOps for PartitionMarginalSparse {
   fn apply_reroot(&mut self, changes: &RerootChanges) -> Result<(), Report> {
-    if let Some(info) = &changes.edge_split {
-      self.reroot_split_edges(info)?;
-    }
-
-    self.reroot_invert_edges(&changes.inverted_edge_keys)?;
-
-    self.reroot_derive_root_sequence(changes);
+    self.apply_reroot_changes(changes)?;
 
     if let Some(info) = &changes.edge_merge {
-      self.reroot_merge_edges(info)?;
-    }
-
-    if let Some(info) = &changes.edge_split {
-      self.nodes.insert(
-        info.new_node_key,
-        SparseNodePartition::new(&self.root_sequence, &self.alphabet)?,
-      );
+      self.remove_trivial_root(info)?;
     }
 
     Ok(())

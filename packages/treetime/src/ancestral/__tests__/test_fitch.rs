@@ -859,6 +859,29 @@ mod tests {
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
 
+    // Non-char positions (N, gap) are tracked through non_char ranges, not
+    // Fitch substitutions. Applying child-side subs+indels to root composition
+    // does NOT reproduce child composition when the child has N or gaps that
+    // the root does not.
+    //
+    // Child A has N at positions 8-9 where root has G,T. No Fitch sub exists
+    // for these positions because N is ambiguous (non-informative).
+    let root_node = &sparse.nodes[&new_root_key];
+    let child_node = &sparse.nodes[&a_key];
+    let child_edge = &sparse.edges[&child_side_key];
+
+    let mut derived = root_node.seq.composition.clone();
+    for sub in child_edge.fitch_subs() {
+      derived.add_sub(sub);
+    }
+    for indel in &child_edge.indels {
+      derived.add_indel(indel);
+    }
+    assert_ne!(
+      derived, child_node.seq.composition,
+      "root + subs/indels should NOT equal child composition (non-char positions are not Fitch subs)"
+    );
+
     Ok(())
   }
 }

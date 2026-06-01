@@ -63,6 +63,18 @@ The backward pass (leaf-to-root) computes partial likelihoods. The forward pass 
 
 v0: [`packages/legacy/treetime/treetime/treeanc.py#L762-L927`](../../packages/legacy/treetime/treetime/treeanc.py#L762-L927).
 
+### Sparse node data model
+
+Each sparse node carries `SparseSeqInfo` with two groups of fields:
+
+Sequence state: `composition` (character counts), `sequence` (resolved nucleotides), `gaps`/`unknown`/`non_char` (position ranges where the node has no informative data).
+
+Fitch state: `fitch.variable` (ambiguous positions from parsimony), `fitch.chosen_state` (resolved state per variable position from Fitch forward pass).
+
+`composition` flows into `fixed_counts` in `msg_to_child` (`process_node_forward`), which provides the per-character multiplicity weights for branch-length optimization (`optimize_sparse.rs`). `non_char` is used to mask positions from state propagation (`process_node_forward`, `process_node_backward`) and to exclude non-evolving positions from `edge_effective_length`.
+
+Non-char (N, gap) differences between parent and child are tracked through `non_char` ranges, not as Fitch substitutions. Applying a child edge's fitch_subs and indels to the parent's composition does not reproduce the child's composition when non-char positions differ. This is by design: Fitch parsimony assigns concrete states at ambiguous positions, and N/gap masking is a separate layer.
+
 ### v0 differences
 
 v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `normalize_from_log()`, sparse `softmax_with_log_norm()` in `combine_messages()`). v1 forward pass uses plain probability space (division). v0 uses neg-log space throughout. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
@@ -150,11 +162,11 @@ Both implementations produce the same mutation set for the same reconstruction. 
 
 ## File Index
 
-| File                                                                                                                                             | Algorithms                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)                                   | Fitch parsimony (backward, forward, cleanup)                                     |
-| [`packages/treetime/src/ancestral/marginal.rs`](../../packages/treetime/src/ancestral/marginal.rs)                             | Marginal ML orchestration                                                        |
-| [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs)                                       | Ancestral command entry point, method dispatch                                   |
+| File                                                                                                               | Algorithms                                                                       |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)                       | Fitch parsimony (backward, forward, cleanup)                                     |
+| [`packages/treetime/src/ancestral/marginal.rs`](../../packages/treetime/src/ancestral/marginal.rs)                 | Marginal ML orchestration                                                        |
+| [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs)         | Ancestral command entry point, method dispatch                                   |
 | [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
 | [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
 | [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)   | Sparse message passing                                                           |

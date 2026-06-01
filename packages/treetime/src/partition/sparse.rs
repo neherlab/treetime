@@ -8,6 +8,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem;
 use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
@@ -158,6 +159,16 @@ impl SparseEdgePartition {
 
   pub fn clear_ml_subs(&mut self) {
     self.subs_ml = None;
+  }
+
+  pub fn invert_for_reroot(&mut self) {
+    self.invert_fitch_subs();
+    self.clear_ml_subs();
+    for indel in &mut self.indels {
+      indel.invert();
+    }
+    mem::swap(&mut self.msg_to_parent, &mut self.msg_to_child);
+    self.msg_from_child = SparseSeqDistribution::default();
   }
 }
 
