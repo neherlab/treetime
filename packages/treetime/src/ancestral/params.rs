@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 #[derive(Default)]
 pub enum MethodAncestral {
-  Joint,
   #[default]
   Marginal,
   Parsimony,

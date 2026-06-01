@@ -308,10 +308,5 @@ pub fn run_ancestral_reconstruction(
         })
       }
     },
-    MethodAncestral::Joint => {
-      make_error!(
-        "Joint ancestral reconstruction is not yet implemented. Use --method-anc=marginal or --method-anc=parsimony"
-      )
-    },
   }
 }
