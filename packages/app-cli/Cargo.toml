@@ -20,6 +20,7 @@ treetime-utils = { workspace = true }
 
 # [external]
 clap = { workspace = true }
+clap-markdown = { workspace = true }
 clap_complete = { workspace = true }
 clap_complete_fig = { workspace = true }
 color-eyre = { workspace = true }
@@ -37,6 +38,7 @@ parking_lot = { workspace = true }
 num-traits = { workspace = true }
 plotters = { workspace = true }
 rayon = { workspace = true }
+regex = { workspace = true }
 rgb = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

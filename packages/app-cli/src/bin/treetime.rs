@@ -7,6 +7,7 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+use app_cli::cli::print_help_markdown::print_help_markdown;
 use app_cli::cli::progress::{BarProgress, TextProgress};
 use app_cli::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
@@ -107,6 +108,9 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
+    },
+    TreetimeCommands::HelpMarkdown => {
+      print_help_markdown()?;
     },
     TreetimeCommands::Schema(TreetimeSchemaArgs { for_format, output }) => {
       generate_schema(&for_format, output.as_ref())?;

@@ -77,6 +77,7 @@ bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "=0.4.42", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
 clap = { version = "=4.5.48", features = ["derive"] }
+clap-markdown = "=0.1.5"
 clap_complete = "=4.5.58"
 clap_complete_fig = "=4.5.2"
 color-eyre = "=0.6.5"

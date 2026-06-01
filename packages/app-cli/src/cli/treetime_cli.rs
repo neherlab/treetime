@@ -88,6 +88,10 @@ pub enum TreetimeCommands {
   /// Write JSON Schema definitions for TreeTime data types
   Schema(TreetimeSchemaArgs),
 
+  /// Print CLI reference documentation in Markdown format
+  #[clap(name = "help-markdown")]
+  HelpMarkdown,
+
   /// Print system information for debugging
   #[clap(hide = true)]
   Debug,
