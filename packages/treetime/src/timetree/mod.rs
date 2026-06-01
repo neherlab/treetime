@@ -4,5 +4,6 @@ pub mod inference;
 pub mod optimization;
 pub mod output;
 pub mod params;
+pub mod pipeline;
 pub mod refinement;
 pub mod utils;

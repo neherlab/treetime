@@ -10,6 +10,7 @@ pub mod likelihood;
 pub(super) mod method_brent;
 pub(super) mod method_newton;
 pub mod params;
+pub mod pipeline;
 pub(super) mod run_loop;
 pub(super) mod sparse_eval;
 pub mod topology;
