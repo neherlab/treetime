@@ -27,7 +27,7 @@ use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
-use treetime_utils::sync::mutex::extract_parallel_error;
+use treetime_utils::sync::mutex::{extract_parallel_error, unwrap_arc_rwlock};
 
 pub fn create_fitch_partition<N, E>(
   graph: &Graph<N, E, ()>,
@@ -48,9 +48,7 @@ where
     edges: btreemap! {},
   }));
   compress_sequences(graph, std::slice::from_ref(&partition), aln)?;
-  Arc::try_unwrap(partition)
-    .map(|rw| rw.into_inner())
-    .map_err(|_arc| make_report!("create_fitch_partition: Arc still shared after compress_sequences"))
+  unwrap_arc_rwlock(partition)
 }
 
 pub(crate) fn attach_seqs_to_graph<N, E, P>(

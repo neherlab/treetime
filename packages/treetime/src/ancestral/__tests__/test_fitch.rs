@@ -24,6 +24,7 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::sync::mutex::unwrap_arc_rwlock;
   use treetime_utils::vec_of_owned;
 
   /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
@@ -727,9 +728,7 @@ mod tests {
 
     compress_sequences(&graph, &partitions, &aln)?;
 
-    let fitch = Arc::try_unwrap(partitions.into_iter().next().unwrap())
-      .map(|rw| rw.into_inner())
-      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
+    let fitch = unwrap_arc_rwlock(partitions.into_iter().next().unwrap())?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
