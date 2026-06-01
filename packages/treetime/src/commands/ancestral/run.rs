@@ -24,6 +24,7 @@ use log::info;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use strum::VariantNames;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
@@ -301,6 +302,15 @@ pub fn run_ancestral_reconstruction(
           model_name: *model_name,
         })
       }
+    },
+    MethodAncestral::Joint => {
+      let available = MethodAncestral::VARIANTS
+        .iter()
+        .filter(|v| **v != "joint")
+        .copied()
+        .collect::<Vec<_>>()
+        .join(", ");
+      make_error!("Joint ancestral reconstruction has been removed. Available methods: {available}")
     },
   }
 }
