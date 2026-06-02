@@ -973,9 +973,7 @@ mod tests {
 
     compress_sequences(&graph, &partitions, &aln)?;
 
-    let fitch = Arc::try_unwrap(partitions.into_iter().next().unwrap())
-      .map(|rw| rw.into_inner())
-      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
+    let fitch = unwrap_arc_rwlock(partitions.into_iter().next().unwrap())?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1077,24 +1075,24 @@ mod tests {
     // Composed subs: AB->root subs [T4G, C7A] chained with root->CD subs [A1C, A3G]
     let merge_info = changes.edge_merge.as_ref().unwrap();
     let merged_edge = &sparse.edges[&merge_info.merged_edge_key];
-    assert!(
-      !merged_edge.fitch_subs().is_empty(),
-      "merged edge should have composed substitutions from both original edges"
-    );
 
     // Sanity: original subs are what we expect
     assert_eq!(vec_of_owned!["G4T", "A7C"], orig_root_ab_subs);
     assert_eq!(vec_of_owned!["A1C", "A3G"], orig_root_cd_subs);
+
+    // Merged AB->CD edge: inverted AB->root [T4G, C7A] chained with root->CD [A1C, A3G]
+    let mut merged_subs = merged_edge.fitch_subs().to_vec();
+    merged_subs.sort();
+    assert_eq!(vec_of_owned!["A1C", "A3G", "C7A", "T4G"], merged_subs);
 
     Ok(())
   }
 
   /// After reroot, a marginal forward pass should produce non-zero fixed_counts.
   ///
-  /// This is the integration test that would have caught the original bug where
-  /// `SparseNodePartition::empty()` left composition as zero, causing
-  /// `process_node_forward` to seed `msg_to_child.fixed_counts` with zero
-  /// multiplicity for all characters.
+  /// Invariant: rerooted sparse nodes must seed nonzero fixed_counts for outgoing
+  /// messages, since `Composition::with_seq` populates character counts from the
+  /// root sequence during `SparseNodePartition::new`.
   #[test]
   fn test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts() -> Result<(), Report> {
     let aln = read_many_fasta_str(
@@ -1124,9 +1122,7 @@ mod tests {
 
     compress_sequences(&graph, &partitions_fitch, &aln)?;
 
-    let fitch = Arc::try_unwrap(partitions_fitch.into_iter().next().unwrap())
-      .map(|rw| rw.into_inner())
-      .map_err(|_e| eyre::eyre!("Fitch partition still shared"))?;
+    let fitch = unwrap_arc_rwlock(partitions_fitch.into_iter().next().unwrap())?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1168,21 +1164,28 @@ mod tests {
     // Run marginal pass after reroot
     update_marginal(&graph, &partitions)?;
 
-    // Check that msg_to_child.fixed_counts for edges from the new root have
-    // non-zero entries. With zero composition (the original bug), all counts
-    // would be zero.
     let partition = partitions[0].read_arc();
-    for edge_ref in graph.get_edges() {
-      let edge = edge_ref.read_arc();
-      if edge.source() == new_root_key {
-        let edge_data = &partition.edges[&edge.key()];
-        let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();
-        assert!(
-          total > 0,
-          "msg_to_child.fixed_counts for edge from new root to {:?} should have non-zero entries (total={total})",
-          edge.target()
-        );
-      }
+    let root_edge_totals: Vec<(_, usize)> = graph
+      .get_edges()
+      .iter()
+      .filter_map(|edge_ref| {
+        let edge = edge_ref.read_arc();
+        (edge.source() == new_root_key).then(|| {
+          let edge_data = &partition.edges[&edge.key()];
+          let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();
+          (edge.target(), total)
+        })
+      })
+      .collect();
+    assert!(
+      !root_edge_totals.is_empty(),
+      "new root should have outgoing edges"
+    );
+    for (target, total) in &root_edge_totals {
+      assert!(
+        *total > 0,
+        "msg_to_child.fixed_counts for edge from new root to {target:?} should have non-zero entries (total={total})"
+      );
     }
 
     Ok(())
