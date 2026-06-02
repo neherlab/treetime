@@ -53,7 +53,6 @@ pub fn run_optimize(
 
   write_gtr_json(&output.gtr, output.model_name, outdir, None)?;
 
-  let dense = !output.sparse_partitions.is_empty();
   if !output.dense_partitions.is_empty() {
     let guard = output.dense_partitions[0].read_arc();
     let provider = MutationCommentProvider::new(&*guard, &output.graph);

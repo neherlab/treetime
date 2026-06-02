@@ -42,7 +42,6 @@ pub struct AncestralInput {
   pub sequences: Vec<FastaRecord>,
 }
 
-/// Partition variant returned from ancestral reconstruction, allowing the caller to build comment providers.
 pub enum AncestralPartition {
   Fitch(Arc<RwLock<PartitionFitch>>),
   Sparse(Arc<RwLock<crate::partition::marginal_sparse::PartitionMarginalSparse>>),

@@ -1,7 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::pipeline::{self, AncestralInput, AncestralParams, AncestralPartition};
-use crate::ancestral::sample::SampleMode;
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json;
 use crate::commands::ancestral::result::AncestralResult;
@@ -16,29 +14,11 @@ use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
-use treetime_utils::make_error;
 
 pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
-  if ancestral_args.site_specific_gtr {
-    return make_error!(
-      "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
-       The mathematical core (GTRSiteSpecific) is implemented but partition system wiring is pending."
-    );
-  }
-
-  if ancestral_args.sample_from_profile != SampleMode::Argmax && ancestral_args.method_anc != MethodAncestral::Marginal {
-    return make_error!(
-      "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
-       for marginal reconstruction; {:?} has no posterior profile to sample. Use --method-anc=marginal, \
-       or --sample-from-profile=argmax.",
-      ancestral_args.sample_from_profile,
-      ancestral_args.method_anc
-    );
-  }
-
   let outdir = &ancestral_args.output.outdir;
   let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(ancestral_args.alphabet_args.alphabet.unwrap_or_default())?;
