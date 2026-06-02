@@ -95,13 +95,23 @@ pub fn run_ancestral_reconstruction(
   match &result.partition {
     Some(AncestralPartition::Fitch(partition)) => {
       let guard = partition.read_arc();
-      write_augur_node_data_json(&result.output.graph, &*guard, &result.output.mask, &augur_node_data_path)?;
+      write_augur_node_data_json(
+        &result.output.graph,
+        &*guard,
+        &result.output.mask,
+        &augur_node_data_path,
+      )?;
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       write_graph_files_with(outdir, "annotated_tree", &result.output.graph, &CommentProviders::new())?;
     },
     Some(AncestralPartition::Sparse(partition)) => {
       let guard = partition.read_arc();
-      write_augur_node_data_json(&result.output.graph, &*guard, &result.output.mask, &augur_node_data_path)?;
+      write_augur_node_data_json(
+        &result.output.graph,
+        &*guard,
+        &result.output.mask,
+        &augur_node_data_path,
+      )?;
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);
@@ -109,7 +119,12 @@ pub fn run_ancestral_reconstruction(
     },
     Some(AncestralPartition::Dense(partition)) => {
       let guard = partition.read_arc();
-      write_augur_node_data_json(&result.output.graph, &*guard, &result.output.mask, &augur_node_data_path)?;
+      write_augur_node_data_json(
+        &result.output.graph,
+        &*guard,
+        &result.output.mask,
+        &augur_node_data_path,
+      )?;
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);

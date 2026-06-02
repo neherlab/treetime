@@ -70,8 +70,16 @@ pub fn run_optimize(
     .clone()
     .unwrap_or_else(|| outdir.join("optimize.augur-node-data.json"));
   let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-  write_augur_node_data_json(&output.graph, alignment, Some(args.tree.as_path()), &augur_node_data_path)?;
-  info!("Wrote augur node data JSON to {path}", path = augur_node_data_path.display());
+  write_augur_node_data_json(
+    &output.graph,
+    alignment,
+    Some(args.tree.as_path()),
+    &augur_node_data_path,
+  )?;
+  info!(
+    "Wrote augur node data JSON to {path}",
+    path = augur_node_data_path.display()
+  );
 
   progress.report("Done", 1.0, "");
   Ok(OptimizeResult { graph: output.graph })

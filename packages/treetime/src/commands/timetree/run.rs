@@ -108,7 +108,11 @@ fn write_outputs(args: &TreetimeTimetreeArgs, output: &pipeline::TimetreeOutput)
     write_gtr_json(gtr, model_name, &args.output.outdir, None)?;
   }
 
-  write_auspice_json(&output.graph, output.confidence_intervals.as_deref(), &args.output.outdir)?;
+  write_auspice_json(
+    &output.graph,
+    output.confidence_intervals.as_deref(),
+    &args.output.outdir,
+  )?;
 
   let augur_node_data_path = args
     .output_augur_node_data
@@ -124,7 +128,10 @@ fn write_outputs(args: &TreetimeTimetreeArgs, output: &pipeline::TimetreeOutput)
     args.tree.as_deref(),
     &augur_node_data_path,
   )?;
-  info!("Wrote augur node data JSON to {path}", path = augur_node_data_path.display());
+  info!(
+    "Wrote augur node data JSON to {path}",
+    path = augur_node_data_path.display()
+  );
 
   if args.plot_rtt.is_some() {
     return make_error!("--plot-rtt is not yet implemented");

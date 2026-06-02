@@ -108,9 +108,12 @@ where
 
       compress_sequences(&input.graph, &partitions_parsimony, &input.sequences)?;
 
-      ancestral_reconstruction_fitch(&input.graph, params.reconstruct_tip_states, &partitions_parsimony, |node, seq| {
-        on_sequence(&node.payload, seq)
-      })?;
+      ancestral_reconstruction_fitch(
+        &input.graph,
+        params.reconstruct_tip_states,
+        &partitions_parsimony,
+        |node, seq| on_sequence(&node.payload, seq),
+      )?;
 
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
@@ -127,7 +130,14 @@ where
       progress.check_cancelled()?;
       progress.report("Inferring GTR model", 0.2, "");
 
-      let created = create_marginal_partition(&input.graph, 0, input.alphabet, &input.sequences, params.model, params.dense)?;
+      let created = create_marginal_partition(
+        &input.graph,
+        0,
+        input.alphabet,
+        &input.sequences,
+        params.model,
+        params.dense,
+      )?;
 
       match created.partition {
         MarginalPartition::Sparse(partition) => {
@@ -138,7 +148,15 @@ where
           update_marginal(&input.graph, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(&input.graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
+            refine_gtr_iterative(
+              &input.graph,
+              &partitions[0],
+              params.gtr_iterations,
+              None,
+              1.0,
+              None,
+              false,
+            )?;
           }
 
           progress.check_cancelled()?;
@@ -161,7 +179,9 @@ where
               model_name: created.model_name,
               mask,
             },
-            partition: Some(AncestralPartition::Sparse(partitions.into_iter().next().expect("partition vec not empty"))),
+            partition: Some(AncestralPartition::Sparse(
+              partitions.into_iter().next().expect("partition vec not empty"),
+            )),
           })
         },
         MarginalPartition::Dense(partition) => {
@@ -173,7 +193,15 @@ where
           update_marginal(&input.graph, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(&input.graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
+            refine_gtr_iterative(
+              &input.graph,
+              &partitions[0],
+              params.gtr_iterations,
+              None,
+              1.0,
+              None,
+              false,
+            )?;
           }
 
           progress.check_cancelled()?;
@@ -196,7 +224,9 @@ where
               model_name: created.model_name,
               mask,
             },
-            partition: Some(AncestralPartition::Dense(partitions.into_iter().next().expect("partition vec not empty"))),
+            partition: Some(AncestralPartition::Dense(
+              partitions.into_iter().next().expect("partition vec not empty"),
+            )),
           })
         },
       }

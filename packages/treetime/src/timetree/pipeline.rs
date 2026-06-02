@@ -105,9 +105,17 @@ pub fn run(
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
   info!("# TreeTime Timetree Estimation");
-  debug!("Branch length mode: {:?}, Keep root: {}", params.branch_length_mode, params.keep_root);
+  debug!(
+    "Branch length mode: {:?}, Keep root: {}",
+    params.branch_length_mode, params.keep_root
+  );
 
-  let time_marginal = compute_effective_time_marginal(params.time_marginal, params.confidence, params.clock_std_dev, params.covariation);
+  let time_marginal = compute_effective_time_marginal(
+    params.time_marginal,
+    params.confidence,
+    params.clock_std_dev,
+    params.covariation,
+  );
 
   let covariation_clock_params = build_covariation_clock_params(
     params.covariation,
@@ -150,7 +158,8 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("Branch length mode: Marginal - initializing partitions from alignment");
-        let init = initialize_partitions_from_params(params, &input.graph, input.alphabet.clone(), input.sequences.as_deref())?;
+        let init =
+          initialize_partitions_from_params(params, &input.graph, input.alphabet.clone(), input.sequences.as_deref())?;
         (init.partitions, Some(init.gtr), Some(init.model_name))
       },
     };
@@ -219,7 +228,10 @@ pub fn run(
     info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
     match optimize_tc(&input.graph, initial_tc) {
       Ok(result) if result.success => {
-        info!("Pre-loop Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+        info!(
+          "Pre-loop Tc = {:.6e} (likelihood = {:.4})",
+          result.tc, result.likelihood
+        );
         Some(Distribution::constant(result.tc))
       },
       Ok(_) => {
@@ -236,7 +248,13 @@ pub fn run(
   };
 
   if coalescent_tc.is_some() {
-    run_timetree(&mut input.graph, &partitions, &clock_model, coalescent_tc.as_ref(), params.no_indels)?;
+    run_timetree(
+      &mut input.graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      params.no_indels,
+    )?;
   }
 
   let default_clock_params = ClockParams::default();
@@ -266,7 +284,11 @@ pub fn run(
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     progress.check_cancelled()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
-    progress.report("Optimization", iter_fraction, &format!("iteration {}/{max_iter}", i + 1));
+    progress.report(
+      "Optimization",
+      iter_fraction,
+      &format!("iteration {}/{max_iter}", i + 1),
+    );
 
     if (params.coalescent_opt || params.coalescent_skyline) && i >= 2 {
       let initial_tc = coalescent_tc.as_ref().map_or(1.0, |d| d.max_value());
@@ -274,7 +296,10 @@ pub fn run(
         Ok(result) => {
           if result.success {
             coalescent_tc = Some(Distribution::constant(result.tc));
-            info!("Optimized Tc = {:.6e} (likelihood = {:.4})", result.tc, result.likelihood);
+            info!(
+              "Optimized Tc = {:.6e} (likelihood = {:.4})",
+              result.tc, result.likelihood
+            );
           } else {
             warn!("Tc optimization did not converge, keeping Tc = {initial_tc:.6e}");
           }
@@ -312,12 +337,21 @@ pub fn run(
     info!("### Re-optimizing skyline coalescent with stabilized node times");
     let skyline_result =
       optimize_skyline(&input.graph, &skyline_params).wrap_err("Failed to re-optimize skyline coalescent model")?;
-    info!("Skyline re-optimization completed: log_likelihood={:.4}", skyline_result.log_likelihood);
+    info!(
+      "Skyline re-optimization completed: log_likelihood={:.4}",
+      skyline_result.log_likelihood
+    );
     coalescent_tc = Some(skyline_result.tc_distribution);
 
     if time_marginal != TimeMarginalMode::OnlyFinal {
-      run_timetree(&mut input.graph, &partitions, &clock_model, coalescent_tc.as_ref(), params.no_indels)
-        .wrap_err("Final timetree pass with optimized skyline failed")?;
+      run_timetree(
+        &mut input.graph,
+        &partitions,
+        &clock_model,
+        coalescent_tc.as_ref(),
+        params.no_indels,
+      )
+      .wrap_err("Final timetree pass with optimized skyline failed")?;
 
       if !partitions.is_empty() {
         update_marginal(&input.graph, &partitions)?;
@@ -355,17 +389,23 @@ pub fn run(
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut input.graph, &partitions, &clock_model, coalescent_tc.as_ref(), params.no_indels)
-      .wrap_err("Final timetree inference failed")?;
+    run_timetree(
+      &mut input.graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      params.no_indels,
+    )
+    .wrap_err("Final timetree inference failed")?;
 
     if !partitions.is_empty() {
       update_marginal(&input.graph, &partitions)?;
     }
   }
 
-  let confidence_intervals =
-    (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always) || rate_std.is_some())
-      .then(|| extract_confidence_intervals(&input.graph));
+  let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
+    || rate_std.is_some())
+  .then(|| extract_confidence_intervals(&input.graph));
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {

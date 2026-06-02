@@ -68,7 +68,8 @@ pub fn build_covariation_clock_params(
   let seq_len = if let Some(aln_data) = aln {
     get_common_length(aln_data)? as f64
   } else {
-    sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))? as f64
+    sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?
+      as f64
   };
 
   let tip_slack = tip_slack.unwrap_or(10.0);

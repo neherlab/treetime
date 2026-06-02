@@ -1,11 +1,11 @@
-use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_output::write_clock_model;
+use crate::clock::clock_regression::ClockParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
-use crate::clock::clock_regression::ClockParams;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};

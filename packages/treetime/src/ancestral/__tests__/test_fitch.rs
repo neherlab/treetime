@@ -1177,10 +1177,7 @@ mod tests {
         })
       })
       .collect();
-    assert!(
-      !root_edge_totals.is_empty(),
-      "new root should have outgoing edges"
-    );
+    assert!(!root_edge_totals.is_empty(), "new root should have outgoing edges");
     for (target, total) in &root_edge_totals {
       assert!(
         *total > 0,

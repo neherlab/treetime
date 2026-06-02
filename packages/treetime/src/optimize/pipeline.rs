@@ -3,7 +3,9 @@ use crate::ancestral::marginal::{initialize_marginal, update_marginal};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
-use crate::optimize::run_loop::{apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop};
+use crate::optimize::run_loop::{
+  apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
+};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
@@ -47,12 +49,23 @@ pub struct OptimizeOutput {
   pub dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>>,
 }
 
-pub fn run(params: &OptimizeParams, mut input: OptimizeInput, progress: &dyn ProgressSink) -> Result<OptimizeOutput, Report> {
+pub fn run(
+  params: &OptimizeParams,
+  mut input: OptimizeInput,
+  progress: &dyn ProgressSink,
+) -> Result<OptimizeOutput, Report> {
   if !(0.0..1.0).contains(&params.damping) {
     return make_error!("damping must be in [0.0, 1.0), got {}", params.damping);
   }
 
-  let created = create_marginal_partition(&input.graph, 0, input.alphabet, &input.sequences, params.model, params.dense)?;
+  let created = create_marginal_partition(
+    &input.graph,
+    0,
+    input.alphabet,
+    &input.sequences,
+    params.model,
+    params.dense,
+  )?;
   let model_name = created.model_name;
   let gtr = created.gtr;
 

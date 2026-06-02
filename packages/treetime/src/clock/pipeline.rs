@@ -33,7 +33,11 @@ pub struct ClockOutput {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
-pub fn run(params: &ClockPipelineParams, mut input: ClockInput, progress: &dyn ProgressSink) -> Result<ClockOutput, Report> {
+pub fn run(
+  params: &ClockPipelineParams,
+  mut input: ClockInput,
+  progress: &dyn ProgressSink,
+) -> Result<ClockOutput, Report> {
   progress.check_cancelled()?;
   progress.report("Assigning dates", 0.1, "");
   assign_dates(&input.graph, &input.dates)?;

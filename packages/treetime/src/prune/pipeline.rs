@@ -37,16 +37,25 @@ pub struct PruneOutput {
 pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, Report> {
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if needs_sequences {
-    let sequences = input.sequences.as_ref().ok_or_else(|| {
-      eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations")
-    })?;
-    let created = create_marginal_partition(&input.graph, 0, input.alphabet.clone(), sequences, GtrModelName::JC69, None)?;
+    let sequences = input
+      .sequences
+      .as_ref()
+      .ok_or_else(|| eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations"))?;
+    let created = create_marginal_partition(
+      &input.graph,
+      0,
+      input.alphabet.clone(),
+      sequences,
+      GtrModelName::JC69,
+      None,
+    )?;
     match created.partition {
       MarginalPartition::Sparse(p) => vec![Arc::new(RwLock::new(p))],
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
-        let fitch = crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences)?;
+        let fitch =
+          crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences)?;
         let partition = fitch.into_marginal_sparse(gtr, &input.graph)?;
         vec![Arc::new(RwLock::new(partition))]
       },
@@ -55,7 +64,13 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
     vec![]
   };
 
-  prune_nodes(&mut input.graph, &partitions, params.prune_short, params.prune_empty, &params.node_names)?;
+  prune_nodes(
+    &mut input.graph,
+    &partitions,
+    params.prune_short,
+    params.prune_empty,
+    &params.node_names,
+  )?;
 
   if params.merge_shared_mutations {
     merge_shared_mutation_branches(&mut input.graph, &partitions)?;
