@@ -70,19 +70,18 @@ mod tests {
     }
   }
 
-  /// Posterior sampling with a non-marginal method is rejected before any input is read. Nonexistent
-  /// input paths confirm the guard fails fast rather than via a file-read error.
+  /// Posterior sampling with a non-marginal method is rejected by the pipeline.
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let args = TreetimeAncestralArgs {
       alignment: AlignmentArgs {
-        alignment: vec![PathBuf::from("/nonexistent/aln.fasta")],
+        alignment: vec![PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
-      tree: PathBuf::from("/nonexistent/tree.nwk"),
+      tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
       method_anc: MethodAncestral::Parsimony,
       sample_from_profile: SampleMode::Root,
       output: OutputArgs {
-        outdir: PathBuf::from("/nonexistent/out"),
+        outdir: PROJECT_ROOT.join("tmp/test-sample-parsimony-reject"),
       },
       ..TreetimeAncestralArgs::default()
     };
