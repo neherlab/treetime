@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
@@ -190,7 +190,11 @@ where
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");
-    let reroot_result = reroot_in_place(graph, options, optimization_params, reroot_params)?;
+    let reroot_params = clock_rate.map_or_else(
+      || reroot_params.clone(),
+      |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
+    );
+    let reroot_result = reroot_in_place(graph, options, optimization_params, &reroot_params)?;
     info!("Rerooted to node {}", reroot_result.new_root_key.0);
     debug!("Rerooting completed");
     Some(reroot_result)

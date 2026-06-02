@@ -38,13 +38,13 @@ where
   let root = root.read_arc().payload().read_arc();
   let root_acceptable = !force_positive || has_positive_clock_rate(root.clock_set());
   let mut best_chisq = if root_acceptable {
-    cost(root.clock_set(), objective)
+    objective.score(root.clock_set())
   } else {
     f64::INFINITY
   };
   debug!(
     "Initial root chi-squared: {:.6e} (acceptable: {root_acceptable})",
-    cost(root.clock_set(), objective)
+    objective.score(root.clock_set())
   );
 
   let mut best_res = FindRootResult {
@@ -67,7 +67,7 @@ where
       node_count += 1;
       continue;
     }
-    let tmp_chisq = cost(clock_set, objective);
+    let tmp_chisq = objective.score(clock_set);
     drop(payload_guard);
     drop(node_guard);
     if tmp_chisq < best_chisq {
@@ -142,11 +142,4 @@ where
 fn has_positive_clock_rate(clock_set: &ClockSet) -> bool {
   let det = clock_set.determinant();
   det > 0.0 && clock_set.clock_rate(det) > 0.0
-}
-
-fn cost(clock_set: &ClockSet, objective: RootObjective) -> f64 {
-  match objective {
-    RootObjective::EstimatedRate => clock_set.chisq(),
-    RootObjective::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
-  }
 }

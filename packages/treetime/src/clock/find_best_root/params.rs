@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
+use crate::payload::clock_set::ClockSet;
+
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
@@ -23,10 +25,20 @@ impl Default for RerootSpec {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq)]
+#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
 pub enum RootObjective {
+  #[default]
   EstimatedRate,
   FixedRate(f64),
+}
+
+impl RootObjective {
+  pub fn score(self, clock_set: &ClockSet) -> f64 {
+    match self {
+      Self::EstimatedRate => clock_set.chisq(),
+      Self::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
+    }
+  }
 }
 
 /// Configuration for branch point optimization methods

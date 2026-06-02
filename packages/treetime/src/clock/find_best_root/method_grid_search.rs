@@ -28,7 +28,7 @@ pub fn optimize_grid_search(
 
   for (point_count, x) in grid_points.into_iter().enumerate() {
     let clock_set = cost_fn.evaluate_clock_set(x).expect("Failed to evaluate clock set");
-    let chisq = clock_set.chisq();
+    let chisq = cost_fn.score_clock_set(&clock_set);
 
     if chisq < best_chisq {
       debug!(

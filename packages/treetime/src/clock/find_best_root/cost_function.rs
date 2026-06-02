@@ -82,6 +82,10 @@ impl<'a> BranchPointCostFunction<'a> {
 
     Ok(clock_set)
   }
+
+  pub fn score_clock_set(&self, clock_set: &ClockSet) -> f64 {
+    self.objective.score(clock_set)
+  }
 }
 
 impl CostFunction for &BranchPointCostFunction<'_> {
@@ -94,13 +98,10 @@ impl CostFunction for &BranchPointCostFunction<'_> {
       return Ok(f64::INFINITY);
     }
 
-    // Evaluate the clock set and return chi-squared
+    // Evaluate the clock set and return the configured objective value.
     let result = self
       .evaluate_clock_set(*x)
-      .map_or(f64::INFINITY, |clock_set| match self.objective {
-        RootObjective::EstimatedRate => clock_set.chisq(),
-        RootObjective::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
-      });
+      .map_or(f64::INFINITY, |clock_set| self.score_clock_set(&clock_set));
 
     Ok(result)
   }

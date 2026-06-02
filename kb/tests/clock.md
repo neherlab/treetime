@@ -6,12 +6,32 @@
 
 | Category                                   | Type                        |
 | ------------------------------------------ | --------------------------- |
+| [ClockSet statistics](#clockset-statistics) | Unit                        |
 | [Clock regression](#clock-regression)      | Unit                        |
 | [Date constraints](#date-constraints)      | Unit                        |
 | [Rerooting](#rerooting)                    | Unit                        |
 | [Clock filter](#clock-filter)              | Unit                        |
 | [Find best root](#find-best-root)          | Unit                        |
 | [Dengue/100 pipeline](#dengue100-pipeline) | Integration + Golden-master |
+
+---
+
+## ClockSet Statistics
+
+**Test:** [`packages/treetime/src/clock/__tests__/test_clock_set.rs`](../../packages/treetime/src/clock/__tests__/test_clock_set.rs)
+
+**Impl:** [`packages/treetime/src/payload/clock_set.rs`](../../packages/treetime/src/payload/clock_set.rs)
+
+| Test                                                                 | Purpose                                      |
+| -------------------------------------------------------------------- | -------------------------------------------- |
+| `test_clock_set_cov_is_hessian_inverse`                              | Covariance inverts ill-conditioned Hessian   |
+| `test_clock_set_chisq_fixed_rate_matches_zero_rate_formula`          | Fixed-rate chisq for zero-rate model         |
+| `test_clock_set_chisq_fixed_rate_matches_nonzero_rate_formula`       | Fixed-rate chisq for nonzero-rate model      |
+| `test_clock_set_cov_is_hessian_inverse_centered`                     | Covariance inverts centered Hessian          |
+| `test_clock_set_cov_off_diagonal_symmetry`                           | Covariance off-diagonal symmetry             |
+| `test_clock_set_cov_diagonal_positive`                               | Positive covariance diagonal entries         |
+| `test_clock_set_cov_off_diagonal_uses_t_sum_not_dt_sum`              | Off-diagonal uses `t_sum`                    |
+| `test_clock_set_cov_entrywise_against_formula`                       | Covariance entries match explicit 2x2 inverse |
 
 ---
 
@@ -64,6 +84,9 @@
 | `test_reroot_policy_allow_edge_split_false_no_new_nodes`                 | No edge split preserves node count   |
 | `test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root` | Old root preserved when flag off     |
 | `test_reroot_policy_default_allows_edge_split`                           | Default policy allows edge splitting |
+| `test_reroot_tips_uses_mrca_branch`                                      | Tip group reroot uses MRCA branch    |
+| `test_reroot_tips_reports_missing_tip`                                   | Missing tip error identifies name    |
+| `test_reroot_oldest_uses_oldest_dated_leaf`                              | Oldest mode uses oldest dated leaf   |
 
 ---
 
@@ -81,6 +104,7 @@
 | ---------------------------------------------------------------- | ------------------------------------------------------ |
 | `test_find_best_root_grid`                                       | Grid search root placement                             |
 | `test_find_best_root_grid_with_params`                           | Grid search with custom n_points                       |
+| `test_find_best_root_grid_scores_fixed_rate_objective`           | Grid search uses fixed-rate objective                  |
 | `test_find_best_root_brent`                                      | Brent method root placement                            |
 | `test_find_best_root_brent_with_params`                          | Brent method with custom params                        |
 | `test_find_best_root_golden_section`                             | Golden section root placement                          |

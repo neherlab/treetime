@@ -24,6 +24,9 @@ pub struct RerootParams {
   /// Root selection method.
   pub spec: RerootSpec,
 
+  /// Objective used to rank candidate root positions for least-squares rerooting.
+  pub objective: RootObjective,
+
   /// Allow creating a new node by splitting an edge during reroot.
   /// When false, reroot will snap to the nearest existing node endpoint.
   #[default = true]
@@ -39,6 +42,16 @@ pub struct RerootParams {
   /// Use false for pre-filter steps where outliers may cause negative rates at all positions.
   #[default = true]
   pub force_positive_rate: bool,
+}
+
+impl RerootParams {
+  #[must_use]
+  pub fn with_objective(&self, objective: RootObjective) -> Self {
+    Self {
+      objective,
+      ..self.clone()
+    }
+  }
 }
 
 pub fn reroot_in_place<N, E, D>(
@@ -156,17 +169,22 @@ where
       options,
       params,
       reroot_params.force_positive_rate,
-      RootObjective::EstimatedRate,
+      reroot_params.objective,
     ),
     RerootSpec::Method(RerootMethod::MinDev) => {
-      find_best_root(graph, options, params, false, RootObjective::FixedRate(0.0))
+      // v0 min_dev disables the positive-rate guard but still ranks roots by estimated-rate WLS chisq.
+      find_best_root(graph, options, params, false, RootObjective::EstimatedRate)
     },
-    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options),
-    RerootSpec::Tips(tips) => find_tip_group_root(graph, options, tips),
+    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options, reroot_params.objective),
+    RerootSpec::Tips(tips) => find_tip_group_root(graph, options, tips, reroot_params.objective),
   }
 }
 
-fn find_oldest_root<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams) -> Result<FindRootResult, Report>
+fn find_oldest_root<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  objective: RootObjective,
+) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -186,13 +204,14 @@ where
     return make_error!("Cannot reroot to oldest tip because no dated leaves were found");
   };
 
-  find_named_root_point(graph, options, oldest_key)
+  find_named_root_point(graph, options, oldest_key, objective)
 }
 
 fn find_tip_group_root<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   tips: &[String],
+  objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode + Named,
@@ -208,13 +227,14 @@ where
     .map(|tip| find_node_key_by_name(graph, tip).ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}")))
     .try_collect::<_, Vec<_>, _>()?;
   let mrca_key = common_ancestor(graph, &tip_keys)?;
-  find_named_root_point(graph, options, mrca_key)
+  find_named_root_point(graph, options, mrca_key, objective)
 }
 
 fn find_named_root_point<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   node_key: GraphNodeKey,
+  objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode,
@@ -227,18 +247,18 @@ where
     return Ok(FindRootResult {
       edge: None,
       split: 0.0,
-      chisq: clock_set.chisq(),
+      chisq: objective.score(&clock_set),
       clock_set,
     });
   };
 
   let split = 0.5;
-  let cost_fn = BranchPointCostFunction::new(graph, edge, options, RootObjective::EstimatedRate)?;
+  let cost_fn = BranchPointCostFunction::new(graph, edge, options, objective)?;
   let clock_set = cost_fn.evaluate_clock_set(split)?;
   Ok(FindRootResult {
     edge: Some(edge),
     split,
-    chisq: clock_set.chisq(),
+    chisq: objective.score(&clock_set),
     clock_set,
   })
 }

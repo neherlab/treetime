@@ -119,6 +119,28 @@ mod tests {
   }
 
   #[test]
+  fn test_find_best_root_grid_scores_fixed_rate_objective() -> Result<(), Report> {
+    let (graph, options) = setup_test_graph()?;
+
+    let best_root = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::grid(),
+      true,
+      RootObjective::FixedRate(0.0),
+    )?;
+
+    let expected_chisq = best_root.clock_set.chisq_fixed_rate(0.0);
+    pretty_assert_ulps_eq!(best_root.chisq, expected_chisq, max_ulps = 4);
+    assert!(
+      (best_root.chisq - best_root.clock_set.chisq()).abs() > 1e-10,
+      "test must distinguish fixed-rate and estimated-rate objectives"
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn test_find_best_root_brent() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 

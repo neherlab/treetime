@@ -20,6 +20,22 @@ mod tests {
   }
 
   #[test]
+  fn test_clock_set_chisq_fixed_rate_matches_zero_rate_formula() {
+    let cs = ClockSet::leaf_contribution_to_parent(Some(0.0), 1.0, 1.0)
+      + ClockSet::leaf_contribution_to_parent(Some(1.0), 3.0, 1.0);
+
+    pretty_assert_ulps_eq!(cs.chisq_fixed_rate(0.0), 0.5, max_ulps = 4);
+  }
+
+  #[test]
+  fn test_clock_set_chisq_fixed_rate_matches_nonzero_rate_formula() {
+    let cs = ClockSet::leaf_contribution_to_parent(Some(0.0), 1.0, 1.0)
+      + ClockSet::leaf_contribution_to_parent(Some(1.0), 3.0, 1.0);
+
+    pretty_assert_ulps_eq!(cs.chisq_fixed_rate(1.0), 0.125, max_ulps = 4);
+  }
+
+  #[test]
   fn test_clock_set_cov_is_hessian_inverse_centered() {
     // Centered dates produce a well-conditioned Hessian, enabling tight tolerance
     let cs = ClockSet::leaf_contribution_to_parent(Some(0.5), 0.03, 0.001)
