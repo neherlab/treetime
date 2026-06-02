@@ -24,6 +24,7 @@
 - [x] CSV (clock regression, confidence intervals)
 - [x] SVG/PNG charts (clock regression)
 - [x] Graphviz DOT
+- [x] Output topology ordering (default ladderization, input order preservation, target leaf order)
 - [ ] VCF output (v0 writes .vcf for VCF inputs)
 - [/] Auspice JSON (partial - [known issue](../issues/N-timetree-auspice-json-incomplete.md))
 - [ ] Skyline TSV/plot

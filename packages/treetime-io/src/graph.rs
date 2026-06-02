@@ -6,48 +6,48 @@ use serde::Serialize;
 use std::path::Path;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
+use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::topology_order::TopologyOrderSpec;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-pub fn write_graph_files<N, E, D>(outdir: impl AsRef<Path>, stem: &str, graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode + NodeToNwk + NodeToGraphviz + Serialize,
-  E: GraphEdge + EdgeToNwk + EdgeToGraphviz + Serialize,
-  D: Send + Sync + Default + Serialize,
-{
-  write_graph_files_with(outdir, stem, graph, &CommentProviders::new())
+#[derive(Clone, Debug, Default)]
+pub struct GraphWriteOptions {
+  pub topology_order: TopologyOrderSpec,
 }
 
-pub fn write_graph_files_with<N, E, D>(
+pub fn write_graph_files_with_options<N, E, D>(
   outdir: impl AsRef<Path>,
   stem: &str,
   graph: &Graph<N, E, D>,
   providers: &CommentProviders,
+  options: &GraphWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk + NodeToGraphviz + Serialize,
+  N: GraphNode + Named + NodeToNwk + NodeToGraphviz + Serialize,
   E: GraphEdge + EdgeToNwk + EdgeToGraphviz + Serialize,
   D: Send + Sync + Default + Serialize,
 {
   let outdir = outdir.as_ref();
+  let plan = options.topology_order.plan(graph)?;
+  let graph = plan.ordered_graph(graph)?;
 
   nwk_write_file_with(
     outdir.join(format!("{stem}.nwk")),
-    graph,
+    &graph,
     &NwkWriteOptions::default(),
     providers,
   )?;
 
   nex_write_file_with(
     outdir.join(format!("{stem}.nexus")),
-    graph,
+    &graph,
     &NexWriteOptions::default(),
     providers,
   )?;
 
-  json_write_file(outdir.join(format!("{stem}.graph.json")), graph, JsonPretty(true))?;
+  json_write_file(outdir.join(format!("{stem}.graph.json")), &graph, JsonPretty(true))?;
 
-  graphviz_write_file(outdir.join(format!("{stem}.dot")), graph)?;
+  graphviz_write_file(outdir.join(format!("{stem}.dot")), &graph)?;
 
   Ok(())
 }

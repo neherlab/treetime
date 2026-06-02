@@ -14,7 +14,7 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::info;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use treetime_io::graph::write_graph_files_with;
+use treetime_io::graph::write_graph_files_with_options;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
@@ -112,6 +112,7 @@ pub fn run_ancestral_reconstruction(
 
   match &result.partition {
     Some(AncestralPartition::Fitch(partition)) => {
+      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
       let guard = partition.read_arc();
       write_augur_node_data_json_with_aa(
         &result.output.graph,
@@ -121,9 +122,16 @@ pub fn run_ancestral_reconstruction(
         &augur_node_data_path,
       )?;
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
-      write_graph_files_with(outdir, "annotated_tree", &result.output.graph, &CommentProviders::new())?;
+      write_graph_files_with_options(
+        outdir,
+        "annotated_tree",
+        &result.output.graph,
+        &CommentProviders::new(),
+        &graph_options,
+      )?;
     },
     Some(AncestralPartition::Sparse(partition)) => {
+      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
       let guard = partition.read_arc();
       write_augur_node_data_json_with_aa(
         &result.output.graph,
@@ -135,9 +143,16 @@ pub fn run_ancestral_reconstruction(
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_graph_files_with(outdir, "annotated_tree", &result.output.graph, &providers)?;
+      write_graph_files_with_options(
+        outdir,
+        "annotated_tree",
+        &result.output.graph,
+        &providers,
+        &graph_options,
+      )?;
     },
     Some(AncestralPartition::Dense(partition)) => {
+      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
       let guard = partition.read_arc();
       write_augur_node_data_json_with_aa(
         &result.output.graph,
@@ -149,10 +164,23 @@ pub fn run_ancestral_reconstruction(
       info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_graph_files_with(outdir, "annotated_tree", &result.output.graph, &providers)?;
+      write_graph_files_with_options(
+        outdir,
+        "annotated_tree",
+        &result.output.graph,
+        &providers,
+        &graph_options,
+      )?;
     },
     None => {
-      write_graph_files_with(outdir, "annotated_tree", &result.output.graph, &CommentProviders::new())?;
+      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
+      write_graph_files_with_options(
+        outdir,
+        "annotated_tree",
+        &result.output.graph,
+        &CommentProviders::new(),
+        &graph_options,
+      )?;
     },
   }
 

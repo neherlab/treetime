@@ -6,7 +6,7 @@ The timetree command infers node dates and branch lengths in time units, but the
 
 ## Details
 
-v0 `write_json` and `BranchLengthMode` support emitting branch lengths in calendar time units (`node.branch_length` vs `node.mutation_length`). v1 `write_graph_files` always writes divergence-based lengths from `edge.branch_length()`.
+v0 `write_json` and `BranchLengthMode` support emitting branch lengths in calendar time units (`node.branch_length` vs `node.mutation_length`). v1 shared graph output always writes divergence-based lengths from `edge.branch_length()`.
 
 After timetree inference, each node has both a divergence-based branch length and inferred dates. The time-based branch length is the date difference between parent and child. This is available in the graph but not exposed as an output option.
 

@@ -95,7 +95,10 @@ mod tests {
       },
       tree: root.join("data/flu/h3n2/20/tree.nwk"),
       max_iter: 2,
-      output: OutputArgs { outdir: outdir.clone() },
+      output: OutputArgs {
+        outdir: outdir.clone(),
+        ..Default::default()
+      },
       ..TreetimeOptimizeArgs::default()
     };
 

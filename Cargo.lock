@@ -4346,11 +4346,13 @@ dependencies = [
 name = "treetime-graph"
 version = "1.0.0"
 dependencies = [
+ "ctor 0.5.0",
  "derive_more",
  "eyre",
  "getset",
  "itertools 0.14.0",
  "parking_lot",
+ "pretty_assertions",
  "rayon",
  "serde",
  "traversal",

@@ -14,7 +14,7 @@
 | [treetime (alphabet)](#alphabet)            | Alphabet, AlphabetConfig                                               | Unit, Parameterized |
 | [treetime (io)](#io)                        | FASTA, Newick                                                          | Unit                |
 | [treetime (seq)](#sequence-operations)      | composition, div, char_ranges, mutation                                | Unit, Parameterized |
-| [treetime (graph)](#graph)                  | traversal, collapse, edge                                              | Unit                |
+| [treetime (graph)](#graph)                  | traversal, collapse, edge, topology_order                              | Unit                |
 | [treetime (repr)](representation.md)        | compose_substitutions, discrete_states, marginal_helpers, payloads     | Unit, Parameterized |
 | [treetime (prune)](#commands-prune)         | prune, collapse, merge                                                 | Unit                |
 
@@ -757,6 +757,7 @@ Unit and parameterized tests for all BitSet128 operations.
 - [`packages/treetime-graph/src/graph.rs`](../../packages/treetime-graph/src/graph.rs)
 - [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs)
 - [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)
+- [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs)
 
 **Fixtures:** [`packages/treetime/src/test_utils/graph_fixtures.rs`](../../packages/treetime/src/test_utils/graph_fixtures.rs) (`TestNode`, `TestEdge`)
 
@@ -779,6 +780,19 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_graph_collapse_edge_adjacency_lists_maintained`       | Adjacency lists correct after collapse |
 | `test_graph_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
 | `test_graph_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
+
+**Test:** [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) (inline)
+
+**Impl:** [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs)
+
+| Test                                                             | Purpose                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------ |
+| `topology_order_descendant_count_sorts_children_ascending`       | Default ladderization sorts siblings by tip count |
+| `topology_order_descendant_count_reverse_sorts_children_descending` | Reverse ladderization sorts larger subtrees first |
+| `topology_order_keep_preserves_outbound_order`                   | Keep preset leaves existing child order intact   |
+| `topology_order_dag_counts_shared_descendant_once_per_child`     | DAG shared descendants are counted once per child |
+| `topology_order_target_order_uses_requested_tip_order`           | Target-order preset follows requested tip order  |
+| `topology_order_rejects_cycles`                                  | Cyclic directed graphs fail before output        |
 
 **Test:** [`packages/treetime/src/graph/__tests__/test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
 

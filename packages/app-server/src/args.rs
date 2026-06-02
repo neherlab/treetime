@@ -77,6 +77,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       aa_root_sequence: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
@@ -159,6 +160,7 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
       allow_negative_rate: s.allow_negative_rate,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
       seed: s.seed,
       ..TreetimeClockArgs::default()
@@ -300,6 +302,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       output_augur_node_data: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
       tracelog: s.tracelog.map(PathBuf::from),
       seed: s.seed,
@@ -352,6 +355,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
       output_augur_node_data: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
     }
   }
@@ -403,6 +407,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       dense: s.dense,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
       max_iter: s.max_iter,
       dp: s.dp,
@@ -450,6 +455,7 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
+        ..Default::default()
       },
       prune_short: s.prune_short,
       prune_empty: s.prune_empty,

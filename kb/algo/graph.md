@@ -34,6 +34,14 @@ v1: [`packages/treetime-graph/src/graph_ops.rs#L146-L206`](../../packages/treeti
 
 ---
 
+## Topology Ordering
+
+Output-boundary topology ordering computes a deterministic child order before writing graph-backed tree files. The default order matches TreeTime v0 ladderization by sorting siblings by reachable leaf count in ascending order. Additional presets preserve input order, reverse ladderization, sort by subtree height, sort by leaf labels, or sort against an explicit target leaf order. Target-order scores use mean or median target position across each subtree's descendant leaves. DAG inputs count each reachable leaf once per child and cyclic inputs fail before output.
+
+v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs).
+
+---
+
 ## References
 
 - <a id="ref-1"></a>Leiserson, Charles E., and Tao B. Schardl. 2010. "A Work-Efficient Parallel Breadth-First Search Algorithm (or How to Cope with the Nondeterminism of Reducers)." In _Proceedings of the 22nd ACM Symposium on Parallelism in Algorithms and Architectures (SPAA),_ 303-314. https://doi.org/10.1145/1810479.1810534 [↩](#cite-1)
@@ -50,3 +58,4 @@ v1: [`packages/treetime-graph/src/graph_ops.rs#L146-L206`](../../packages/treeti
 | [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs) | DFS preorder/postorder, sequential BFS |
 | [`packages/treetime-graph/src/find_paths.rs`](../../packages/treetime-graph/src/find_paths.rs)         | Path finding                           |
 | [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)           | Edge collapse                          |
+| [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) | Topology ordering                      |

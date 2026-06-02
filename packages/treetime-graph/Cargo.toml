@@ -24,5 +24,9 @@ rayon = { workspace = true }
 serde = { workspace = true }
 traversal = { workspace = true }
 
+[dev-dependencies]
+ctor = { workspace = true }
+pretty_assertions = { workspace = true }
+
 [lints]
 workspace = true

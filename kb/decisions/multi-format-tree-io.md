@@ -181,11 +181,11 @@ The `auspice_to_graph()` and `auspice_from_graph()` functions ([packages/treetim
 
 ### PhyloGraph JSON
 
-An internal graph serialization format that round-trips the full graph structure (nodes, edges, graph-level data) through serde JSON. No custom format logic - the graph type derives `Serialize`/`Deserialize` and uses the generic `json_read_file()`/`json_write_file()` helpers from `treetime-utils`. Useful for debugging and for lossless intermediate storage during multi-step format conversions. All tree-outputting commands produce this format as `{stem}.graph.json` via the shared `write_graph_files()` helper in `treetime-io`.
+An internal graph serialization format that round-trips the full graph structure (nodes, edges, graph-level data) through serde JSON. No custom format logic - the graph type derives `Serialize`/`Deserialize` and uses the generic `json_read_file()`/`json_write_file()` helpers from `treetime-utils`. Useful for debugging and for lossless intermediate storage during multi-step format conversions. All tree-outputting commands produce this format as `{stem}.graph.json` via the shared graph writer in `treetime-io`.
 
 ### Graphviz DOT
 
-The `graphviz_write_file()` function ([packages/treetime-io/src/graphviz.rs](../../packages/treetime-io/src/graphviz.rs)) generates directed graph output with subgraphs for roots, internal nodes, and leaves. All tree-outputting commands produce this format as `{stem}.dot` via the shared `write_graph_files()` helper in `treetime-io`. Output only, not available in the convert command.
+The `graphviz_write_file()` function ([packages/treetime-io/src/graphviz.rs](../../packages/treetime-io/src/graphviz.rs)) generates directed graph output with subgraphs for roots, internal nodes, and leaves. All tree-outputting commands produce this format as `{stem}.dot` via the shared graph writer in `treetime-io`. Output only, not available in the convert command.
 
 ## I/O architecture
 
@@ -197,7 +197,7 @@ The `convert` subcommand exposes all eight format adapters as a standalone tool.
 
 ### Current limitations
 
-- Analysis commands (ancestral, clock, timetree, optimize, prune) still read Newick only - the new format adapters for reading are not yet integrated into the analysis pipeline. Writing uses the shared `write_graph_files()` helper producing Newick, Nexus, PhyloGraph JSON, and Graphviz DOT.
+- Analysis commands (ancestral, clock, timetree, optimize, prune) still read Newick only - the new format adapters for reading are not yet integrated into the analysis pipeline. Writing uses the shared graph writer producing Newick, Nexus, PhyloGraph JSON, and Graphviz DOT.
 - Nexus reading is not implemented (`convert_read_file` panics with `unimplemented!()` for `TreeFormat::Nexus`)
 - Graphviz DOT is not available as a convert command format
 

@@ -34,7 +34,10 @@ mod tests {
         ..ModelArgs::default()
       },
       gtr_iterations: 3,
-      output: OutputArgs { outdir: outdir.clone() },
+      output: OutputArgs {
+        outdir: outdir.clone(),
+        ..Default::default()
+      },
       ..TreetimeAncestralArgs::default()
     };
 
@@ -66,7 +69,10 @@ mod tests {
       },
       dense: Some(true),
       gtr_iterations: 3,
-      output: OutputArgs { outdir: outdir.clone() },
+      output: OutputArgs {
+        outdir: outdir.clone(),
+        ..Default::default()
+      },
       ..TreetimeAncestralArgs::default()
     };
 

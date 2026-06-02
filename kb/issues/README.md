@@ -96,7 +96,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                 |
 | Negligible | I/O          | [Time-based branch lengths not written to Newick/Nexus output](N-io-time-based-branch-lengths-not-implemented.md)                                   |
-| Negligible | I/O          | [write_graph_files missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                     |
+| Negligible | I/O          | [shared graph writer missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                   |
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Negligible | I/O          | [Newick branch lengths lose precision through f32 round-trip](N-nwk-branch-length-f32-precision-loss.md)                                            |

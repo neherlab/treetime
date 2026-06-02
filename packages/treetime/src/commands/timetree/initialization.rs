@@ -20,12 +20,14 @@ use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::node::Named;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
 
 pub struct InputData {
   pub graph: GraphTimetree,
+  pub input_leaf_order: Vec<String>,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
   /// Parsed date constraints, retained for node data JSON output (`raw_date`,
@@ -39,6 +41,19 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
+  let input_leaf_order = graph
+    .get_leaves()
+    .into_iter()
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      leaf
+        .payload()
+        .read_arc()
+        .name()
+        .map(|name| name.as_ref().to_owned())
+        .ok_or_else(|| make_report!("Leaf node {} has no name", leaf.key()))
+    })
+    .collect::<Result<Vec<_>, _>>()?;
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
@@ -77,6 +92,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
   Ok(InputData {
     graph,
+    input_leaf_order,
     alphabet,
     aln,
     dates,

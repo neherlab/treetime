@@ -1,6 +1,6 @@
-# write_graph_files missing PhyloXML, Auspice, and UShER MAT formats
+# shared graph writer missing PhyloXML, Auspice, and UShER MAT formats
 
-`treetime_io::graph::write_graph_files` produces four output formats (Newick, NEXUS, JSON, Graphviz) for every tree-outputting command. The converter tool supports three additional formats that are not included: PhyloXML, Auspice JSON, and UShER MAT (JSON and protobuf).
+The shared graph writer produces four output formats (Newick, NEXUS, JSON, Graphviz) for every tree-outputting command. The converter tool supports three additional formats that are not included: PhyloXML, Auspice JSON, and UShER MAT (JSON and protobuf).
 
 ## Constraints
 
@@ -12,7 +12,7 @@ Each missing format requires adapter traits that are not implemented on all grap
 
 ## Options
 
-- Implement `PhyloxmlFromGraph` for `NodeAncestral`/`EdgeAncestral`, `NodeTimetree`/`EdgeTimetree`, and `NodeClock`/`EdgeClock`, then add PhyloXML to `write_graph_files`
+- Implement `PhyloxmlFromGraph` for `NodeAncestral`/`EdgeAncestral`, `NodeTimetree`/`EdgeTimetree`, and `NodeClock`/`EdgeClock`, then add PhyloXML to the shared graph writer
 - Auspice and UShER MAT may not be feasible as generic outputs due to command-specific adapter logic
 
 ## Locations

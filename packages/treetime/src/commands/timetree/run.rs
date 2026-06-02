@@ -12,7 +12,7 @@ use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::info;
 use std::path::PathBuf;
-use treetime_io::graph::write_graph_files_with;
+use treetime_io::graph::write_graph_files_with_options;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -24,6 +24,7 @@ pub fn run_timetree_estimation(
   progress.report("Loading input", 0.0, "");
 
   let input_data = load_input_data(args)?;
+  let input_leaf_order = input_data.input_leaf_order.clone();
 
   let tracelog: Option<Box<dyn std::io::Write + Send>> = if let Some(path) = &args.tracelog {
     Some(Box::new(create_file_or_stdout(path)?))
@@ -81,7 +82,7 @@ pub fn run_timetree_estimation(
     info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
   }
 
-  write_outputs(args, &output)?;
+  write_outputs(args, &output, input_leaf_order)?;
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult {
@@ -91,16 +92,36 @@ pub fn run_timetree_estimation(
   })
 }
 
-fn write_outputs(args: &TreetimeTimetreeArgs, output: &pipeline::TimetreeOutput) -> Result<(), Report> {
+fn write_outputs(
+  args: &TreetimeTimetreeArgs,
+  output: &pipeline::TimetreeOutput,
+  input_leaf_order: Vec<String>,
+) -> Result<(), Report> {
+  let graph_options = args
+    .output
+    .graph_write_options_with_input_order(&output.graph, input_leaf_order)?;
+
   if !output.partitions.is_empty() {
     let guard = output.partitions[0].read_arc();
     let provider = MutationCommentProvider::new(&*guard, &output.graph);
     let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with(&args.output.outdir, "timetree", &output.graph, &providers)
-      .wrap_err("Failed to write tree output")?;
+    write_graph_files_with_options(
+      &args.output.outdir,
+      "timetree",
+      &output.graph,
+      &providers,
+      &graph_options,
+    )
+    .wrap_err("Failed to write tree output")?;
   } else {
-    write_graph_files_with(&args.output.outdir, "timetree", &output.graph, &CommentProviders::new())
-      .wrap_err("Failed to write tree output")?;
+    write_graph_files_with_options(
+      &args.output.outdir,
+      "timetree",
+      &output.graph,
+      &CommentProviders::new(),
+      &graph_options,
+    )
+    .wrap_err("Failed to write tree output")?;
   }
 
   write_clock_model(&output.clock_model, &args.output.outdir.join("timetree"))?;

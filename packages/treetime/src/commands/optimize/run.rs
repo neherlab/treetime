@@ -10,7 +10,7 @@ use eyre::Report;
 use log::info;
 use std::path::PathBuf;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::graph::write_graph_files_with;
+use treetime_io::graph::write_graph_files_with_options;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 
@@ -52,17 +52,18 @@ pub fn run_optimize(
   let outdir = &args.output.outdir;
 
   write_gtr_json(&output.gtr, output.model_name, outdir, None)?;
+  let graph_options = args.output.graph_write_options(&output.graph)?;
 
   if !output.dense_partitions.is_empty() {
     let guard = output.dense_partitions[0].read_arc();
     let provider = MutationCommentProvider::new(&*guard, &output.graph);
     let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with(outdir, "annotated_tree", &output.graph, &providers)?;
+    write_graph_files_with_options(outdir, "annotated_tree", &output.graph, &providers, &graph_options)?;
   } else if !output.sparse_partitions.is_empty() {
     let guard = output.sparse_partitions[0].read_arc();
     let provider = MutationCommentProvider::new(&*guard, &output.graph);
     let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with(outdir, "annotated_tree", &output.graph, &providers)?;
+    write_graph_files_with_options(outdir, "annotated_tree", &output.graph, &providers, &graph_options)?;
   }
 
   let augur_node_data_path = args

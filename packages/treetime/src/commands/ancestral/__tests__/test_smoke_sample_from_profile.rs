@@ -61,7 +61,10 @@ mod tests {
         },
         sample_from_profile: SampleMode::Root,
         seed: Some(seed),
-        output: OutputArgs { outdir: outdir.clone() },
+        output: OutputArgs {
+          outdir: outdir.clone(),
+          ..Default::default()
+        },
         ..TreetimeAncestralArgs::default()
       };
 
@@ -82,6 +85,7 @@ mod tests {
       sample_from_profile: SampleMode::Root,
       output: OutputArgs {
         outdir: PROJECT_ROOT.join("tmp/test-sample-parsimony-reject"),
+        ..Default::default()
       },
       ..TreetimeAncestralArgs::default()
     };
@@ -112,7 +116,10 @@ mod tests {
       },
       sample_from_profile: SampleMode::All,
       seed: Some(7),
-      output: OutputArgs { outdir: outdir.clone() },
+      output: OutputArgs {
+        outdir: outdir.clone(),
+        ..Default::default()
+      },
       ..TreetimeAncestralArgs::default()
     };
 

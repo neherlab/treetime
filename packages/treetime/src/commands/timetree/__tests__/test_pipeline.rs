@@ -23,7 +23,10 @@ mod tests {
       tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
-      output: OutputArgs { outdir: outdir.clone() },
+      output: OutputArgs {
+        outdir: outdir.clone(),
+        ..Default::default()
+      },
       tracelog: Some(tracelog_path.clone()),
       ..TreetimeTimetreeArgs::default()
     };

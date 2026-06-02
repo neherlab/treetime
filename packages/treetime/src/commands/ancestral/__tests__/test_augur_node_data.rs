@@ -271,6 +271,7 @@ mod tests {
         },
         output: OutputArgs {
           outdir: dir.path().to_path_buf(),
+          ..Default::default()
         },
         ..TreetimeAncestralArgs::default()
       };

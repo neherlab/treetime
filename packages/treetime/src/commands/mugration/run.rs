@@ -12,7 +12,7 @@ use log::info;
 use std::collections::BTreeMap;
 use std::fs;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
-use treetime_io::graph::write_graph_files_with;
+use treetime_io::graph::write_graph_files_with_options;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -71,7 +71,8 @@ pub fn run_mugration(
   progress.report("Writing output", 0.8, "");
   let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
   let providers = CommentProviders::new().with(&provider);
-  write_graph_files_with(outdir, "annotated_tree", &result.graph, &providers)?;
+  let graph_options = mugration_args.output.graph_write_options(&result.graph)?;
+  write_graph_files_with_options(outdir, "annotated_tree", &result.graph, &providers, &graph_options)?;
 
   let gtr_output = GtrOutput::new(result.partition.gtr(), GtrModelName::Infer)
     .with_discrete_states(&result.traits.attribute, result.partition.states.iter());

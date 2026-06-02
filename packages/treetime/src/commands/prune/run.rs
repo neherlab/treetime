@@ -9,8 +9,12 @@ use itertools::Itertools;
 use maplit::btreeset;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::graph::write_graph_files;
+use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
@@ -26,6 +30,7 @@ pub fn run_prune(
   progress.report("Reading input", 0.0, "");
 
   let graph: GraphAncestral = nwk_read_file(&args.tree)?;
+  let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
@@ -64,7 +69,16 @@ pub fn run_prune(
   if let Some(gtr) = &output.gtr {
     write_gtr_json(gtr, GtrModelName::JC69, outdir, None)?;
   }
-  write_graph_files(outdir, "pruned_tree", &output.graph)?;
+  let graph_options = args
+    .output
+    .graph_write_options_with_input_order(&output.graph, input_order)?;
+  write_graph_files_with_options(
+    outdir,
+    "pruned_tree",
+    &output.graph,
+    &CommentProviders::new(),
+    &graph_options,
+  )?;
 
   progress.report("Done", 1.0, "");
   Ok(PruneResult { graph: output.graph })
@@ -84,6 +98,27 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   }
 
   Ok(())
+}
+
+fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>
+where
+  N: GraphNode + Named,
+  E: GraphEdge,
+  D: Sync + Send,
+{
+  graph
+    .get_leaves()
+    .into_iter()
+    .map(|leaf| {
+      let leaf = leaf.read_arc();
+      leaf
+        .payload()
+        .read_arc()
+        .name()
+        .map(|name| name.as_ref().to_owned())
+        .ok_or_else(|| crate::make_report!("Leaf node {} has no name", leaf.key()))
+    })
+    .collect()
 }
 
 fn parse_node_names(
