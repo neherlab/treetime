@@ -73,6 +73,9 @@ fn estimate_clock_model_with_prefilter(
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
+      // Allow negative rates during pre-filter root finding. Some datasets (e.g. dengue/100)
+      // have negative estimated rate at ALL root positions when outliers are included.
+      // The pre-filter clock model only needs to be good enough for IQD-based outlier detection.
       let reroot_params = RerootParams {
         force_positive_rate: false,
         ..RerootParams::default()
@@ -88,6 +91,9 @@ fn estimate_clock_model_with_prefilter(
       )?;
       let pre_clock_model = result.clock_model;
       if pre_clock_model.clock_rate() < 0.0 {
+        // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value
+        // comparison is slope-sign-invariant: outliers are identified by distance from the
+        // fitted line regardless of slope direction.
         log::warn!(
           "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
           pre_clock_model.clock_rate()

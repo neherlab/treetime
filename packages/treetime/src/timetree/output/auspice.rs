@@ -12,7 +12,11 @@ use treetime_io::auspice_types::{
 };
 use treetime_utils::make_error;
 
-/// Build auspice v2 tree data from a timetree graph without file I/O.
+/// Build partial auspice v2 tree data from a timetree graph without file I/O.
+///
+/// Produces node dates (with optional confidence intervals), cumulative divergence,
+/// and bad-branch status. Branch mutations, branch-support confidence, and genome
+/// annotations are not yet included (see `kb/issues/N-timetree-auspice-json-incomplete.md`).
 pub fn build_timetree_auspice(
   graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
@@ -82,6 +86,7 @@ impl AuspiceWrite<NodeTimetree, EdgeTimetree, ()> for TimetreeAuspiceWriter {
       .name()
       .map_or_else(|| format!("node_{}", node_key.as_usize()), |n| n.as_ref().to_owned());
 
+    // JSON (RFC 8259) does not permit NaN or Infinity
     if !node.div.is_finite() {
       return make_error!("Node '{name}' has non-finite div={div}", div = node.div);
     }
