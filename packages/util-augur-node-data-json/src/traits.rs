@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 pub type AugurNodeDataJsonTraits = AugurNodeDataJson<AugurNodeDataJsonTraitsMeta, AugurNodeDataJsonTraitsNode>;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonTraitsMeta {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub models: Option<BTreeMap<String, AugurNodeDataJsonTraitModel>>,
@@ -13,7 +13,7 @@ pub struct AugurNodeDataJsonTraitsMeta {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonTraitModel {
   pub rate: f64,
   pub alphabet: Vec<String>,
@@ -24,13 +24,13 @@ pub struct AugurNodeDataJsonTraitModel {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonTraitsNode {
   #[serde(flatten)]
   pub fields: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonTraitsBranches {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub labels: Option<BTreeMap<String, String>>,

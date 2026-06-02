@@ -7,8 +7,7 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::ancestral::result::AncestralResult;
-use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::get_gtr::write_gtr_json;
+use crate::gtr::get_gtr::{GtrModelName, write_gtr_json};
 use crate::partition::traits::MutationCommentProvider;
 use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
@@ -17,8 +16,9 @@ use log::info;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::graph::write_graph_files_with;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
+use treetime_utils::io::fs::read_file_to_string;
 
 pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
@@ -173,6 +173,7 @@ fn run_aa_reconstructions(
   let mut aa_node_data = AaNodeData::default();
   let annotations = read_gff3_annotations(ancestral_args.annotation_gff.as_deref(), &ancestral_args.genes)?;
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &ancestral_args.genes)?;
+  let tree = read_file_to_string(&ancestral_args.tree)?;
 
   for (index, gene) in ancestral_args.genes.iter().enumerate() {
     progress.check_cancelled()?;
@@ -189,7 +190,7 @@ fn run_aa_reconstructions(
       apply_gap_fill(&mut record.seq, gap_fill_mode, aa_alphabet.gap(), aa_alphabet.unknown());
     }
 
-    let graph = nwk_read_file(&ancestral_args.tree)?;
+    let graph = nwk_read_str(&tree)?;
     let input = AncestralInput {
       graph,
       alphabet: aa_alphabet.clone(),

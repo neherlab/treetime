@@ -157,10 +157,7 @@ mod tests {
     let actual = helpers::build_json_with_aa();
     let expected = helpers::expected_json_with_aa();
 
-    assert_eq!(
-      serde_json::to_value(expected).unwrap(),
-      serde_json::to_value(actual).unwrap()
-    );
+    assert_eq!(expected, actual);
   }
 
   mod helpers {

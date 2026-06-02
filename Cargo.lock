@@ -4279,6 +4279,7 @@ dependencies = [
  "openblas-src",
  "ordered-float",
  "parking_lot",
+ "percent-encoding",
  "petgraph",
  "pretty_assertions",
  "proptest",

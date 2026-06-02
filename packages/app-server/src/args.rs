@@ -70,6 +70,10 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
       output_augur_node_data: None,
+      translations: None,
+      genes: vec![],
+      annotation_gff: None,
+      aa_root_sequence: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
       },

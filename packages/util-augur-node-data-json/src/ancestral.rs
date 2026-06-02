@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 pub type AugurNodeDataJsonAncestral = AugurNodeDataJson<AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode>;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonAncestralMeta {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub annotations: Option<AugurNodeDataJsonAnnotations>,
@@ -20,7 +20,7 @@ pub struct AugurNodeDataJsonAncestralMeta {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonAncestralNode {
   pub muts: Vec<String>,
 

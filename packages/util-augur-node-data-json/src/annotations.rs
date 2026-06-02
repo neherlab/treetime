@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonAnnotations {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub nuc: Option<AugurNodeDataJsonAnnotationEntry>,
@@ -10,7 +10,7 @@ pub struct AugurNodeDataJsonAnnotations {
   pub other: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonAnnotationEntry {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub start: Option<i64>,
@@ -32,7 +32,7 @@ pub struct AugurNodeDataJsonAnnotationEntry {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonAnnotationSegment {
   pub start: i64,
   pub end: i64,

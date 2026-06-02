@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 pub type AugurNodeDataJsonRefine = AugurNodeDataJson<AugurNodeDataJsonRefineMeta, AugurNodeDataJsonRefineNode>;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonRefineMeta {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub alignment: Option<String>,
@@ -19,7 +19,7 @@ pub struct AugurNodeDataJsonRefineMeta {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonClock {
   pub rate: f64,
   pub intercept: f64,
@@ -37,7 +37,7 @@ pub struct AugurNodeDataJsonClock {
   pub other: BTreeMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct AugurNodeDataJsonRefineNode {
   pub branch_length: f64,
 
