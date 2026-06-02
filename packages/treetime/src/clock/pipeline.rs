@@ -12,7 +12,7 @@ use log::info;
 use serde::Serialize;
 use treetime_io::dates_csv::DatesMap;
 
-pub struct ClockParams_ {
+pub struct ClockPipelineParams {
   pub clock_params: ClockParams,
   pub clock_filter: f64,
   pub keep_root: bool,
@@ -33,7 +33,7 @@ pub struct ClockOutput {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
-pub fn run(params: &ClockParams_, mut input: ClockInput, progress: &dyn ProgressSink) -> Result<ClockOutput, Report> {
+pub fn run(params: &ClockPipelineParams, mut input: ClockInput, progress: &dyn ProgressSink) -> Result<ClockOutput, Report> {
   progress.check_cancelled()?;
   progress.report("Assigning dates", 0.1, "");
   assign_dates(&input.graph, &input.dates)?;

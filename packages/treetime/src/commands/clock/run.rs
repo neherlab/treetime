@@ -1,7 +1,7 @@
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::pipeline::{self, ClockInput, ClockParams_};
+use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::clock::clock_regression::ClockParams;
@@ -66,7 +66,7 @@ pub fn run_clock(
     clock_args.clock_regression.clock_params.clone()
   };
 
-  let params = ClockParams_ {
+  let params = ClockPipelineParams {
     clock_params,
     clock_filter: clock_args.clock_filter,
     keep_root: clock_args.keep_root,

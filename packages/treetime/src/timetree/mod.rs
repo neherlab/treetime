@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 pub mod confidence;
 pub mod convergence;
 pub mod inference;
@@ -10,3 +7,6 @@ pub mod params;
 pub mod pipeline;
 pub mod refinement;
 pub mod utils;
+
+#[cfg(test)]
+mod __tests__;
