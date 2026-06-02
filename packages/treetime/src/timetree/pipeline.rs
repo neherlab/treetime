@@ -16,7 +16,7 @@ use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
-use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::traits::{HasGtr, PartitionTimetreeAll};
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
@@ -440,6 +440,15 @@ fn initialize_partitions_from_params(
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
   let created = create_marginal_partition(graph, 0, alphabet, aln_data, model_name, params.dense)?;
 
+  // Read the GTR from the owning partition (single source of truth), not from a
+  // standalone clone. Timetree does not mutate the GTR after creation, so this
+  // is behavior-preserving; it keeps the contract consistent with the other
+  // pipelines and lets the duplicate `PartitionCreated.gtr` field go away.
+  let gtr = match &created.partition {
+    MarginalPartition::Sparse(p) => p.gtr().clone(),
+    MarginalPartition::Dense(p) => p.gtr().clone(),
+  };
+
   let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = match created.partition {
     MarginalPartition::Sparse(p) => Arc::new(RwLock::new(p)),
     MarginalPartition::Dense(p) => Arc::new(RwLock::new(p)),
@@ -447,7 +456,7 @@ fn initialize_partitions_from_params(
 
   Ok(PartitionInitResult {
     partitions: vec![partition],
-    gtr: created.gtr,
+    gtr,
     model_name: created.model_name,
   })
 }
