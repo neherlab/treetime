@@ -1,6 +1,6 @@
 # Dead CLI flags in timetree
 
-11 flags are parsed by clap but never read in the timetree pipeline:
+10 flags are parsed by clap but never read in the timetree pipeline:
 
 | Flag                       | Notes                                    |
 | -------------------------- | ---------------------------------------- |
@@ -14,9 +14,8 @@
 | `--report-ambiguous`       | Never read                               |
 | `--seed`                   | Never read                               |
 | `--model-params`           | Never read (renamed from `--gtr-params`) |
-| `--reroot`                 | Accepted but always uses least-squares   |
 
-Removed: `--aa` (redundant with `--alphabet`, dropped in CLI args unification).
+Removed: `--aa` (redundant with `--alphabet`, dropped in CLI args unification). Wired: `--reroot` and `--reroot-tips` now pass an explicit root selection spec into timetree rerooting.
 
 Flags that are already wired and not part of this issue:
 
@@ -25,8 +24,6 @@ Flags that are already wired and not part of this issue:
 - `--clock-std-dev` provides user-specified rate standard deviation for rate susceptibility
 - `--tip-slack` used in covariation variance computation
 - `--time-marginal=always` already triggers confidence-interval extraction, so it is intentionally excluded from the dead-flag list
-
-`--reroot` is accepted but `reroot_tree()` at [`packages/treetime/src/timetree/optimization/reroot.rs#L30`](../../packages/treetime/src/timetree/optimization/reroot.rs#L30) always uses `RerootParams::default()` (least-squares). The `--reroot=oldest`, `--reroot=min-dev` modes are never dispatched.
 
 ## Related issues
 

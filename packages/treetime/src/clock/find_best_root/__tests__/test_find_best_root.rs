@@ -5,7 +5,7 @@ mod tests {
   use crate::clock::find_best_root::find_best_root::find_best_root;
   use crate::clock::find_best_root::find_best_split::FindRootResult;
   use crate::clock::find_best_root::params::{
-    BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
+    BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams, RootObjective,
   };
   use crate::o;
   use crate::pretty_assert_ulps_eq;
@@ -64,7 +64,13 @@ mod tests {
   fn test_find_best_root_grid() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true)?;
+    let best_root = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::grid(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
 
     // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
@@ -92,6 +98,7 @@ mod tests {
       &options,
       &BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),
       true,
+      RootObjective::EstimatedRate,
     )?;
 
     // Verify chisq value
@@ -115,7 +122,13 @@ mod tests {
   fn test_find_best_root_brent() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent(), true)?;
+    let best_root = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::brent(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
 
     // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
@@ -146,6 +159,7 @@ mod tests {
         brent_tolerance: 1e-8,
       }),
       true,
+      RootObjective::EstimatedRate,
     )?;
 
     // Verify chisq value
@@ -169,7 +183,13 @@ mod tests {
   fn test_find_best_root_golden_section() -> Result<(), Report> {
     let (graph, options) = setup_test_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section(), true)?;
+    let best_root = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::golden_section(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
 
     // Verify chisq value
     pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
@@ -200,6 +220,7 @@ mod tests {
         golden_tolerance: 1e-8,
       }),
       true,
+      RootObjective::EstimatedRate,
     )?;
 
     // Verify chisq value
@@ -224,9 +245,27 @@ mod tests {
     let (graph, options) = setup_test_graph()?;
 
     // Run all three methods
-    let grid_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true)?;
-    let brent_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::brent(), true)?;
-    let golden_result = find_best_root(&graph, &options, &BranchPointOptimizationParams::golden_section(), true)?;
+    let grid_result = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::grid(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
+    let brent_result = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::brent(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
+    let golden_result = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::golden_section(),
+      true,
+      RootObjective::EstimatedRate,
+    )?;
 
     // Brent and golden section should find better or equal chisq than default grid
     // (lower chisq is better)
@@ -272,7 +311,13 @@ mod tests {
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
     let (graph, options) = setup_negative_rate_graph()?;
 
-    let result = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), true);
+    let result = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::grid(),
+      true,
+      RootObjective::EstimatedRate,
+    );
 
     assert!(
       result.is_err(),
@@ -291,7 +336,13 @@ mod tests {
   fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
     let (graph, options) = setup_negative_rate_graph()?;
 
-    let best_root = find_best_root(&graph, &options, &BranchPointOptimizationParams::grid(), false)?;
+    let best_root = find_best_root(
+      &graph,
+      &options,
+      &BranchPointOptimizationParams::grid(),
+      false,
+      RootObjective::EstimatedRate,
+    )?;
 
     // Confirm the fixture produces a negative-rate scenario
     let det = best_root.clock_set.determinant();

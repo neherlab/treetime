@@ -4,13 +4,29 @@ use smart_default::SmartDefault;
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
-pub enum RerootMode {
+pub enum RerootMethod {
   #[default]
   LeastSquares,
   MinDev,
   Oldest,
-  ClockFilter,
-  Mrca,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RerootSpec {
+  Method(RerootMethod),
+  Tips(Vec<String>),
+}
+
+impl Default for RerootSpec {
+  fn default() -> Self {
+    Self::Method(RerootMethod::default())
+  }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq)]
+pub enum RootObjective {
+  EstimatedRate,
+  FixedRate(f64),
 }
 
 /// Configuration for branch point optimization methods

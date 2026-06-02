@@ -9,7 +9,7 @@ This initial sweep is not exhaustive. More investigation and more reorganization
 Five cross-command dependency edges exist in production code (excluding tests):
 
 - ~~`clock` -> `ancestral`: `MethodAncestral`~~ **Resolved**: extracted to `commands/shared/args`
-- ~~`clock` -> `timetree`: `BranchLengthMode`, `RerootMode`~~ **Resolved**: extracted to `commands/shared/args`
+- ~~`clock` -> `timetree`: `BranchLengthMode`, `RerootMethod`~~ **Resolved**: extracted to domain and shared command modules
 - ~~`timetree` -> `ancestral` (6 sites)~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
 - ~~`timetree` -> `clock` (20 sites)~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
 - ~~`timetree` -> `optimize` (8 sites)~~ **Resolved**: optimization machinery extracted to top-level `src/optimize/`; iteration helpers to `packages/treetime/src/optimize/iteration.rs`
@@ -52,7 +52,7 @@ Traits and types moved to `partition/` and `payload/`: partition traits (`Partit
 
 ### ~~CLI args shared across commands~~ **Resolved**
 
-`BranchLengthMode`, `RerootMode`, `MethodAncestral` extracted to `packages/treetime/src/commands/ancestral/args.rs`. `BranchOptMethod`, `InitialGuessMode` extracted to `optimize/args.rs`.
+`BranchLengthMode`, `RerootMethod`, `RerootSpec`, and `MethodAncestral` extracted to domain and shared command modules. `BranchOptMethod` and `InitialGuessMode` extracted to `optimize/args.rs`.
 
 ## Remaining items
 

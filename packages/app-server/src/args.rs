@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
-use treetime::clock::find_best_root::params::RerootMode;
+use treetime::clock::find_best_root::params::RerootMethod;
+use treetime::commands::shared::reroot::RerootArgs;
 use treetime::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode};
@@ -104,8 +105,8 @@ pub struct ServerClockArgs {
   pub method_anc: MethodAncestral,
   #[default = 3.0]
   pub clock_filter: f64,
-  #[default(RerootMode::default())]
-  pub reroot: RerootMode,
+  pub reroot: Option<RerootMethod>,
+  pub reroot_tips: Vec<String>,
   pub keep_root: bool,
   pub prune_short: bool,
   pub tip_slack: Option<f64>,
@@ -147,7 +148,10 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
       branch_length_mode: s.branch_length_mode,
       method_anc: s.method_anc,
       clock_filter: s.clock_filter,
-      reroot: s.reroot,
+      reroot: RerootArgs {
+        reroot: s.reroot,
+        reroot_tips: s.reroot_tips,
+      },
       keep_root: s.keep_root,
       prune_short: s.prune_short,
       tip_slack: s.tip_slack,
@@ -194,8 +198,8 @@ pub struct ServerTimetreeArgs {
   pub no_tip_labels: bool,
   pub clock_filter: f64,
   pub n_iqd: Option<f64>,
-  #[default(RerootMode::default())]
-  pub reroot: RerootMode,
+  pub reroot: Option<RerootMethod>,
+  pub reroot_tips: Vec<String>,
   pub keep_root: bool,
   pub allow_negative_rate: bool,
   pub tip_slack: Option<f64>,
@@ -268,7 +272,10 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       no_tip_labels: s.no_tip_labels,
       clock_filter: s.clock_filter,
       n_iqd: s.n_iqd,
-      reroot: s.reroot,
+      reroot: RerootArgs {
+        reroot: s.reroot,
+        reroot_tips: s.reroot_tips,
+      },
       keep_root: s.keep_root,
       allow_negative_rate: s.allow_negative_rate,
       tip_slack: s.tip_slack,

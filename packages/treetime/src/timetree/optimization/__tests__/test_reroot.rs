@@ -5,7 +5,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::update_marginal;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
@@ -108,6 +108,7 @@ mod tests {
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
+      &RerootSpec::default(),
       true,
     )?;
 
@@ -505,6 +506,7 @@ mod tests {
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
+      &RerootSpec::default(),
       true,
     )?;
 
@@ -525,6 +527,7 @@ mod tests {
       &clock_params,
       Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),
+      &RerootSpec::default(),
       true,
     )?;
 

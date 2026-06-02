@@ -1,16 +1,19 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
+use crate::make_error;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use approx::ulps_eq;
 use eyre::Report;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
@@ -18,6 +21,9 @@ use topology_reroot::{EdgeSplitInfo, RerootResult};
 /// Controls reroot behavior for graph topology changes.
 #[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
 pub struct RerootParams {
+  /// Root selection method.
+  pub spec: RerootSpec,
+
   /// Allow creating a new node by splitting an edge during reroot.
   /// When false, reroot will snap to the nearest existing node endpoint.
   #[default = true]
@@ -42,13 +48,13 @@ pub fn reroot_in_place<N, E, D>(
   reroot_params: &RerootParams,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + ClockNode + Default,
+  N: GraphNode + ClockNode + Named + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = find_best_root(graph, options, params, reroot_params.force_positive_rate)?;
+  } = select_root(graph, options, params, reroot_params)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -131,6 +137,149 @@ where
   new_node.write_arc().payload().write_arc().set_clock_set(clock_set);
 
   Ok(split_info)
+}
+
+fn select_root<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  params: &BranchPointOptimizationParams,
+  reroot_params: &RerootParams,
+) -> Result<FindRootResult, Report>
+where
+  N: GraphNode + ClockNode + Named,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  match &reroot_params.spec {
+    RerootSpec::Method(RerootMethod::LeastSquares) => find_best_root(
+      graph,
+      options,
+      params,
+      reroot_params.force_positive_rate,
+      RootObjective::EstimatedRate,
+    ),
+    RerootSpec::Method(RerootMethod::MinDev) => {
+      find_best_root(graph, options, params, false, RootObjective::FixedRate(0.0))
+    },
+    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options),
+    RerootSpec::Tips(tips) => find_tip_group_root(graph, options, tips),
+  }
+}
+
+fn find_oldest_root<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams) -> Result<FindRootResult, Report>
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  let Some(oldest_key) = graph
+    .get_leaves()
+    .into_iter()
+    .filter_map(|node| {
+      let node = node.read_arc();
+      let time = node.payload().read_arc().likely_time()?;
+      Some((time, node.key()))
+    })
+    .min_by(|(lhs, _), (rhs, _)| lhs.total_cmp(rhs))
+    .map(|(_, key)| key)
+  else {
+    return make_error!("Cannot reroot to oldest tip because no dated leaves were found");
+  };
+
+  find_named_root_point(graph, options, oldest_key)
+}
+
+fn find_tip_group_root<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  tips: &[String],
+) -> Result<FindRootResult, Report>
+where
+  N: GraphNode + ClockNode + Named,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  if tips.is_empty() {
+    return make_error!("--reroot-tips requires at least one tip name");
+  }
+
+  let tip_keys = tips
+    .iter()
+    .map(|tip| find_node_key_by_name(graph, tip).ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}")))
+    .try_collect::<_, Vec<_>, _>()?;
+  let mrca_key = common_ancestor(graph, &tip_keys)?;
+  find_named_root_point(graph, options, mrca_key)
+}
+
+fn find_named_root_point<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  node_key: GraphNodeKey,
+) -> Result<FindRootResult, Report>
+where
+  N: GraphNode + ClockNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  let Some(edge) = graph.parent_inbound_edge(node_key)? else {
+    let root = graph.get_exactly_one_root()?;
+    let clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+    return Ok(FindRootResult {
+      edge: None,
+      split: 0.0,
+      chisq: clock_set.chisq(),
+      clock_set,
+    });
+  };
+
+  let split = 0.5;
+  let cost_fn = BranchPointCostFunction::new(graph, edge, options, RootObjective::EstimatedRate)?;
+  let clock_set = cost_fn.evaluate_clock_set(split)?;
+  Ok(FindRootResult {
+    edge: Some(edge),
+    split,
+    chisq: clock_set.chisq(),
+    clock_set,
+  })
+}
+
+fn find_node_key_by_name<N, E, D>(graph: &Graph<N, E, D>, name: &str) -> Option<GraphNodeKey>
+where
+  N: GraphNode + Named,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  graph.find_node(|node| node.name().is_some_and(|node_name| node_name.as_ref() == name))
+}
+
+fn common_ancestor<N, E, D>(graph: &Graph<N, E, D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  let paths = node_keys
+    .iter()
+    .map(|key| {
+      graph
+        .path_from_root_to_node(*key)
+        .map(|path| path.into_iter().map(|node| node.read_arc().key()).collect_vec())
+    })
+    .try_collect::<_, Vec<_>, _>()?;
+
+  let first_path = paths
+    .first()
+    .ok_or_else(|| eyre::eyre!("Cannot find MRCA of an empty node set"))?;
+  let mut ancestor = first_path[0];
+  for (index, candidate) in first_path.iter().copied().enumerate() {
+    if paths.iter().all(|path| path.get(index).copied() == Some(candidate)) {
+      ancestor = candidate;
+    } else {
+      break;
+    }
+  }
+
+  Ok(ancestor)
 }
 
 /// Modify graph topology to make the newly identified root the actual root,

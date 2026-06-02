@@ -1,4 +1,5 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::find_best_root::params::RootObjective;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use argmin::core::{CostFunction, Error};
@@ -17,6 +18,7 @@ pub struct BranchPointCostFunction<'a> {
   pub is_leaf: bool,
   pub node_time: Option<f64>,
   pub options: &'a ClockParams,
+  pub objective: RootObjective,
 }
 
 impl<'a> BranchPointCostFunction<'a> {
@@ -24,6 +26,7 @@ impl<'a> BranchPointCostFunction<'a> {
     graph: &Graph<N, E, D>,
     edge: GraphEdgeKey,
     options: &'a ClockParams,
+    objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report>
   where
     N: GraphNode + ClockNode,
@@ -53,6 +56,7 @@ impl<'a> BranchPointCostFunction<'a> {
       is_leaf,
       node_time,
       options,
+      objective,
     })
   }
 
@@ -93,7 +97,10 @@ impl CostFunction for &BranchPointCostFunction<'_> {
     // Evaluate the clock set and return chi-squared
     let result = self
       .evaluate_clock_set(*x)
-      .map_or(f64::INFINITY, |clock_set| clock_set.chisq());
+      .map_or(f64::INFINITY, |clock_set| match self.objective {
+        RootObjective::EstimatedRate => clock_set.chisq(),
+        RootObjective::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
+      });
 
     Ok(result)
   }

@@ -24,7 +24,7 @@ Three extraction tickets, independent of each other:
 
 ### ~~3. Move shared domain enums~~ Done
 
-- ~~`architecture-move-shared-domain-enums-from-commands.md`~~ (resolved: `BranchLengthMode`, `RerootMode`, `MethodAncestral` moved to domain modules)
+- ~~`architecture-move-shared-domain-enums-from-commands.md`~~ (resolved: `BranchLengthMode`, `RerootMethod`, `RerootSpec`, and `MethodAncestral` moved to domain modules)
 
 ### 4. Move commands/ shell to CLI crate
 

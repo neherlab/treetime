@@ -42,6 +42,7 @@ pub fn run_timetree_estimation(
     clock_rate: args.clock_rate,
     clock_std_dev: args.clock_std_dev,
     keep_root: args.keep_root,
+    reroot_spec: args.reroot.spec(),
     allow_negative_rate: args.allow_negative_rate,
     clock_filter: args.clock_filter,
     covariation: args.covariation,

@@ -1,11 +1,11 @@
 use crate::ancestral::params::MethodAncestral;
 use crate::clock::clock_regression::ClockParams;
-use crate::clock::find_best_root::params::RerootMode;
 use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -64,19 +64,12 @@ pub struct TreetimeClockArgs {
   #[default = 3.0]
   pub clock_filter: f64,
 
-  /// Reroot the tree using root-to-tip regression. Valid choices are 'min_dev', 'least-squares',
-  /// and 'oldest'. 'least-squares' adjusts the root to minimize residuals of the root-to-tip vs
-  /// sampling time regression, 'min_dev' minimizes variance of root-to-tip distances. 'least-
-  /// squares' can be combined with --covariation to account for shared ancestry. Alternatively, you
-  /// can specify a node name or a list of node names to be used as outgroup or use 'oldest' to
-  /// reroot to the oldest node. By default, TreeTime will reroot using 'least-squares'. Use --keep-
-  /// root to keep the current root.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = RerootMode::default()))]
-  pub reroot: RerootMode,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub reroot: RerootArgs,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
   /// root-to-tip distance and sampling time
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
   pub keep_root: bool,
 
   #[cfg_attr(feature = "clap", clap(long))]

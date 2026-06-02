@@ -4,7 +4,7 @@ use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::date_constraints::load_date_constraints;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
@@ -53,6 +53,7 @@ pub struct TimetreeParams {
   pub clock_rate: Option<f64>,
   pub clock_std_dev: Option<f64>,
   pub keep_root: bool,
+  pub reroot_spec: RerootSpec,
   pub allow_negative_rate: bool,
   pub clock_filter: f64,
   pub covariation: bool,
@@ -135,6 +136,7 @@ pub fn run(
   progress.check_cancelled()?;
   progress.report("Clock regression", 0.1, "");
   let reroot_params = RerootParams {
+    spec: params.reroot_spec.clone(),
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
@@ -181,6 +183,7 @@ pub fn run(
       &ClockParams::default(),
       params.clock_rate,
       &branch_params,
+      &params.reroot_spec,
       !params.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (pre-ancestral)")?;
@@ -268,6 +271,7 @@ pub fn run(
       reroot_clock_params,
       params.clock_rate,
       &branch_params,
+      &params.reroot_spec,
       !params.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;

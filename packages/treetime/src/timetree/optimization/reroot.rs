@@ -1,7 +1,7 @@
 use crate::ancestral::marginal::update_marginal;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
@@ -23,9 +23,11 @@ pub fn reroot_tree(
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
+  reroot_spec: &RerootSpec,
   force_positive_rate: bool,
 ) -> Result<ClockModel, Report> {
   let reroot_params = RerootParams {
+    spec: reroot_spec.clone(),
     force_positive_rate,
     ..RerootParams::default()
   };

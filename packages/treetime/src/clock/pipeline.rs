@@ -3,7 +3,7 @@ use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::progress::ProgressSink;
@@ -18,6 +18,7 @@ pub struct ClockPipelineParams {
   pub keep_root: bool,
   pub allow_negative_rate: bool,
   pub branch_params: BranchPointOptimizationParams,
+  pub reroot_spec: RerootSpec,
 }
 
 pub struct ClockInput {
@@ -51,6 +52,7 @@ pub fn run(
     &params.branch_params,
     params.clock_filter,
     params.allow_negative_rate,
+    &params.reroot_spec,
   )?;
 
   if let Some(delta) = new_outliers {
@@ -74,6 +76,7 @@ fn estimate_clock_model_with_prefilter(
   branch_params: &BranchPointOptimizationParams,
   clock_filter_threshold: f64,
   allow_negative_rate: bool,
+  reroot_spec: &RerootSpec,
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
@@ -81,6 +84,7 @@ fn estimate_clock_model_with_prefilter(
       // have negative estimated rate at ALL root positions when outliers are included.
       // The pre-filter clock model only needs to be good enough for IQD-based outlier detection.
       let reroot_params = RerootParams {
+        spec: reroot_spec.clone(),
         force_positive_rate: false,
         ..RerootParams::default()
       };
@@ -108,6 +112,7 @@ fn estimate_clock_model_with_prefilter(
     .transpose()?;
 
   let reroot_params = RerootParams {
+    spec: reroot_spec.clone(),
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()
   };

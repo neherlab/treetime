@@ -124,6 +124,13 @@ impl ClockSet {
       / self.norm()
   }
 
+  pub fn chisq_fixed_rate(&self, rate: f64) -> f64 {
+    0.5
+      * (self.dsq_sum() - 2.0 * rate * self.dt_sum() + rate.powi(2) * self.tsq_sum()
+        - (self.d_sum() - rate * self.t_sum()).powi(2) / self.norm())
+      / self.norm()
+  }
+
   pub fn r_val(&self) -> f64 {
     (self.dt_sum * self.norm() - self.t_sum * self.d_sum)
       / ((self.dsq_sum * self.norm() - self.d_sum.powi(2)) * (self.tsq_sum * self.norm() - self.t_sum.powi(2))).sqrt()

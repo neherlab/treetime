@@ -113,6 +113,7 @@
 - [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`
 - [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
 - [x] `--covariation` wired into timetree clock regression
+- [x] Reroot method and tip/MRCA selection passed into clock rerooting
 
 ## Output
 
@@ -133,13 +134,12 @@
 - [x] `--confidence` (time_marginal promotion, rate susceptibility)
 - [x] `--covariation` (GLS clock regression, rate susceptibility)
 - [x] `--tip-slack` (covariation variance computation)
+- [x] `--reroot` / `--reroot-tips`
 - [ ] `--n-iqd`
-- [ ] `--reroot`
 - [ ] `--tip-labels` / `--no-tip-labels`
 - [x] `--gtr` (model selection: named models and inference)
 - [ ] `--gtr-params` (parsed but not wired)
 - [ ] `--method-anc`
-- [ ] `--aa`
 - [ ] `--keep-overhangs` (gap handling not implemented)
 - [ ] `--zero-based`
 - [ ] `--reconstruct-tip-states`

@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
@@ -21,6 +21,7 @@ pub fn find_best_root<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   force_positive: bool,
+  objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode,
@@ -37,13 +38,13 @@ where
   let root = root.read_arc().payload().read_arc();
   let root_acceptable = !force_positive || has_positive_clock_rate(root.clock_set());
   let mut best_chisq = if root_acceptable {
-    root.clock_set().chisq()
+    cost(root.clock_set(), objective)
   } else {
     f64::INFINITY
   };
   debug!(
     "Initial root chi-squared: {:.6e} (acceptable: {root_acceptable})",
-    root.clock_set().chisq()
+    cost(root.clock_set(), objective)
   );
 
   let mut best_res = FindRootResult {
@@ -66,7 +67,7 @@ where
       node_count += 1;
       continue;
     }
-    let tmp_chisq = clock_set.chisq();
+    let tmp_chisq = cost(clock_set, objective);
     drop(payload_guard);
     drop(node_guard);
     if tmp_chisq < best_chisq {
@@ -88,7 +89,7 @@ where
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
-    let res = find_best_split(graph, *edge, options, params)?;
+    let res = find_best_split(graph, *edge, options, params, objective)?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -107,7 +108,7 @@ where
   // Check if some place on a child branch is better
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(graph, *e, options, params)?;
+    let res = find_best_split(graph, *e, options, params, objective)?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split
@@ -141,4 +142,11 @@ where
 fn has_positive_clock_rate(clock_set: &ClockSet) -> bool {
   let det = clock_set.determinant();
   det > 0.0 && clock_set.clock_rate(det) > 0.0
+}
+
+fn cost(clock_set: &ClockSet, objective: RootObjective) -> f64 {
+  match objective {
+    RootObjective::EstimatedRate => clock_set.chisq(),
+    RootObjective::FixedRate(rate) => clock_set.chisq_fixed_rate(rate),
+  }
 }

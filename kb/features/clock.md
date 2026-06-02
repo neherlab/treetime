@@ -23,13 +23,12 @@
 - [x] Reroot rejects candidates with non-positive inferred clock rate
 - [x] `--keep-root` (disable rerooting)
 
-## Reroot Modes (5 modes)
+## Reroot Modes (4 modes)
 
 - [x] Least-squares (minimize RTT regression residuals)
 - [x] Min-dev (minimize RTT variance)
 - [x] Oldest (root at oldest node)
-- [x] Clock-filter mode
-- [x] MRCA mode
+- [x] Tip/MRCA mode (`--reroot-tips`)
 
 ## Edge Split Optimization (3 methods)
 
@@ -69,14 +68,13 @@
 - [x] `--clock-rate` (fixed rate bypasses estimation)
 - [x] `--allow-negative-rate` (for midpoint rooting)
 - [x] `--tip-slack` (terminal node excess variance)
+- [x] `--reroot` / `--reroot-tips`
 - [ ] `--aln` (parsed but not wired)
 - [ ] `--vcf-reference` (parsed but not wired)
 - [ ] `--gtr` (parsed but not wired)
 - [ ] `--gtr-params` (parsed but not wired)
 - [ ] `--branch-length-mode` (parsed but not wired)
 - [ ] `--method-anc` (parsed but not wired)
-- [ ] `--reroot` (parsed but not wired)
 - [ ] `--prune-short` (parsed but not wired)
-- [ ] `--plot-rtt` (parsed but not wired)
 - [ ] `--seed` (parsed but not wired)
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

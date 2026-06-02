@@ -4,3 +4,4 @@ pub mod gap_fill;
 pub mod metadata;
 pub mod model;
 pub mod output;
+pub mod reroot;

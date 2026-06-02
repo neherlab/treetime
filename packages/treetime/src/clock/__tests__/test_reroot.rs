@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec};
   use crate::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
   use eyre::Report;
@@ -143,6 +143,118 @@ mod tests {
     assert!(
       node_count_after >= node_count_before - 1,
       "Node count should be reasonable after reroot with default policy"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_tips_uses_mrca_branch() -> Result<(), Report> {
+    let (mut graph, options) = setup_reroot_test_graph()?;
+    let reroot_params = RerootParams {
+      spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
+      ..RerootParams::default()
+    };
+
+    let reroot_result = reroot_in_place(
+      &mut graph,
+      &options,
+      &BranchPointOptimizationParams::default(),
+      &reroot_params,
+    )?;
+
+    let root = graph
+      .get_node(reroot_result.new_root_key)
+      .expect("new root should exist");
+    let child_names = root
+      .read_arc()
+      .outbound()
+      .iter()
+      .map(|edge_key| {
+        let child_key = graph.get_target_node_key(*edge_key)?;
+        let child = graph.get_node(child_key).expect("child should exist");
+        Ok(
+          child
+            .read_arc()
+            .payload()
+            .read_arc()
+            .name()
+            .map(|name| name.as_ref().to_owned()),
+        )
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+
+    assert!(
+      child_names.contains(&Some(o!("AB"))),
+      "new root should split the branch leading to the AB MRCA"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_tips_reports_missing_tip() -> Result<(), Report> {
+    let (mut graph, options) = setup_reroot_test_graph()?;
+    let reroot_params = RerootParams {
+      spec: RerootSpec::Tips(vec![o!("missing")]),
+      ..RerootParams::default()
+    };
+
+    let err = reroot_in_place(
+      &mut graph,
+      &options,
+      &BranchPointOptimizationParams::default(),
+      &reroot_params,
+    )
+    .unwrap_err();
+
+    assert!(
+      err.to_string().contains("Reroot tip not found: missing"),
+      "error should identify the missing tip"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_oldest_uses_oldest_dated_leaf() -> Result<(), Report> {
+    let (mut graph, options) = setup_reroot_test_graph()?;
+    let reroot_params = RerootParams {
+      spec: RerootSpec::Method(RerootMethod::Oldest),
+      ..RerootParams::default()
+    };
+
+    let reroot_result = reroot_in_place(
+      &mut graph,
+      &options,
+      &BranchPointOptimizationParams::default(),
+      &reroot_params,
+    )?;
+
+    let root = graph
+      .get_node(reroot_result.new_root_key)
+      .expect("new root should exist");
+    let child_names = root
+      .read_arc()
+      .outbound()
+      .iter()
+      .map(|edge_key| {
+        let child_key = graph.get_target_node_key(*edge_key)?;
+        let child = graph.get_node(child_key).expect("child should exist");
+        Ok(
+          child
+            .read_arc()
+            .payload()
+            .read_arc()
+            .name()
+            .map(|name| name.as_ref().to_owned()),
+        )
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+
+    assert!(
+      child_names.contains(&Some(o!("D"))),
+      "new root should split the branch leading to the oldest dated leaf"
     );
 
     Ok(())

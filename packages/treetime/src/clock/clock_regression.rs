@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
+use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::reroot::RerootResult;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -139,7 +139,7 @@ pub fn estimate_clock_model_with_reroot<N, E, D>(
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockModel, Report>
 where
-  N: GraphNode + ClockNode + Default,
+  N: GraphNode + ClockNode + Named + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
@@ -170,7 +170,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockRerootResult, Report>
 where
-  N: GraphNode + ClockNode + Default,
+  N: GraphNode + ClockNode + Named + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {

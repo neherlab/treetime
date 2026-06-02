@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
@@ -30,6 +30,7 @@ pub fn find_best_split<N, E, D>(
   edge: GraphEdgeKey,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
+  objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + ClockNode,
@@ -37,7 +38,7 @@ where
   D: Send + Sync,
 {
   // Create cost function once
-  let cost_fn = BranchPointCostFunction::new(graph, edge, options)?;
+  let cost_fn = BranchPointCostFunction::new(graph, edge, options, objective)?;
 
   match params {
     BranchPointOptimizationParams::Grid(params) => method_grid_search::optimize_grid_search(edge, &cost_fn, params),
