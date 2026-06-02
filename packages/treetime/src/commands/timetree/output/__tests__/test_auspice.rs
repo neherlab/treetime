@@ -4,20 +4,24 @@ mod tests {
   use crate::partition::timetree::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
   use crate::timetree::confidence::NodeConfidenceInterval;
+  use crate::timetree::output::auspice::build_timetree_auspice;
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
 
   use treetime_graph::node::{GraphNodeKey, Named};
   use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree};
-  use treetime_utils::io::json::json_read_file;
+
+  fn build_and_roundtrip(graph: &GraphTimetree, ci: Option<&[NodeConfidenceInterval]>) -> AuspiceTree {
+    let tree = build_timetree_auspice(graph, ci).unwrap();
+    let json = serde_json::to_value(&tree).unwrap();
+    serde_json::from_value(json).unwrap()
+  }
 
   #[test]
   fn test_auspice_metadata_structure() {
     let graph = build_simple_tree();
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
+    let tree = build_and_roundtrip(&graph, None);
 
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
     assert_eq!(tree.data.version.as_deref(), Some("v2"));
     assert!(tree.data.meta.title.as_deref().is_some());
     assert!(tree.data.meta.updated.is_some());
@@ -53,10 +57,7 @@ mod tests {
   #[test]
   fn test_auspice_root_node_attributes() {
     let graph = build_simple_tree();
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, None);
 
     // Root has zero divergence (from NodeTimetree.div)
     assert_relative_eq!(tree.tree.node_attrs.div.unwrap(), 0.0);
@@ -73,10 +74,7 @@ mod tests {
   #[test]
   fn test_auspice_divergence_from_node_payload() {
     let graph = build_simple_tree();
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, None);
 
     // Root div = 0.0 (set in make_named_node)
     assert_relative_eq!(tree.tree.node_attrs.div.unwrap(), 0.0);
@@ -101,10 +99,7 @@ mod tests {
     graph.add_edge(root_key, bad_key, make_edge(0.003)).unwrap();
     graph.build().unwrap();
 
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, None);
     assert_eq!(tree.tree.node_attrs.bad_branch.as_ref().unwrap().value, "No");
     assert_eq!(
       tree.tree.children[0].node_attrs.bad_branch.as_ref().unwrap().value,
@@ -134,10 +129,7 @@ mod tests {
       },
     ];
 
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, Some(&intervals), dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, Some(&intervals));
 
     // Root gets CI (looked up by key, not name)
     let root_ci = tree.tree.node_attrs.num_date.as_ref().unwrap().confidence.unwrap();
@@ -182,10 +174,7 @@ mod tests {
       upper: 2001.0,
     }];
 
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, Some(&intervals), dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, Some(&intervals));
 
     // Unnamed node gets fallback name
     assert!(tree.tree.name.starts_with("node_"));
@@ -204,10 +193,7 @@ mod tests {
     graph.add_node(root);
     graph.build().unwrap();
 
-    let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
-
-    let tree: AuspiceTree = json_read_file(dir.path().join("auspice_tree.json")).unwrap();
+    let tree = build_and_roundtrip(&graph, None);
     assert!(tree.tree.node_attrs.num_date.is_none());
   }
 
@@ -218,8 +204,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let dir = tempfile::tempdir().unwrap();
-    let err = write_auspice_json(&graph, None, dir.path()).unwrap_err();
+    let err = build_timetree_auspice(&graph, None).unwrap_err();
     let msg = format!("{err}");
     assert!(msg.contains("non-finite div"), "expected div error, got: {msg}");
     assert!(msg.contains("bad"), "expected node name in error, got: {msg}");
@@ -234,8 +219,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let dir = tempfile::tempdir().unwrap();
-    let err = write_auspice_json(&graph, None, dir.path()).unwrap_err();
+    let err = build_timetree_auspice(&graph, None).unwrap_err();
     let msg = format!("{err}");
     assert!(msg.contains("non-finite time"), "expected time error, got: {msg}");
     assert!(msg.contains("inf_node"), "expected node name in error, got: {msg}");
@@ -251,7 +235,7 @@ mod tests {
     assert!(path.exists());
 
     // Verify it parses as valid AuspiceTree
-    let tree: AuspiceTree = json_read_file(&path).unwrap();
+    let tree: AuspiceTree = treetime_utils::io::json::json_read_file(&path).unwrap();
     assert!(!tree.tree.name.is_empty());
   }
 

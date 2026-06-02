@@ -118,25 +118,17 @@ mod tests {
   }
 
   mod helpers {
-    use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
+    use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
     use crate::payload::ancestral::GraphAncestral;
     use std::path::{Path, PathBuf};
-    use tempfile::NamedTempFile;
     use treetime_io::nwk::nwk_read_str;
-    use treetime_utils::io::json::json_read_str;
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub fn write_json(nwk: &str) -> String {
       let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
-      let tmp = NamedTempFile::new().unwrap();
-      write_augur_node_data_json(
-        &graph,
-        Some(Path::new("aln.fasta")),
-        Some(Path::new("tree.nwk")),
-        tmp.path(),
-      )
-      .unwrap();
-      std::fs::read_to_string(tmp.path()).unwrap()
+      let data = build_augur_node_data_json(&graph, Some(Path::new("aln.fasta")), Some(Path::new("tree.nwk"))).unwrap();
+      json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
     pub fn write_and_read(nwk: &str) -> AugurNodeDataJsonRefine {

@@ -13,7 +13,7 @@ use util_augur_node_data_json::{
   AugurNodeDataJsonTraitsMeta, AugurNodeDataJsonTraitsNode,
 };
 
-pub fn write_augur_node_data_json(result: &MugrationResult, path: &Path) -> Result<(), Report> {
+pub fn build_augur_node_data_json(result: &MugrationResult) -> Result<AugurNodeDataJsonTraits, Report> {
   let attribute = &result.traits.attribute;
   let partition = &result.partition;
   let graph = &result.graph;
@@ -22,7 +22,7 @@ pub fn write_augur_node_data_json(result: &MugrationResult, path: &Path) -> Resu
   let nodes = build_nodes(attribute, graph, partition);
   let branches = build_branches(attribute, graph, partition);
 
-  let data = AugurNodeDataJsonTraits {
+  Ok(AugurNodeDataJsonTraits {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
       program: "treetime".to_owned(),
       version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -38,8 +38,11 @@ pub fn write_augur_node_data_json(result: &MugrationResult, path: &Path) -> Resu
       },
     },
     nodes,
-  };
+  })
+}
 
+pub fn write_augur_node_data_json(result: &MugrationResult, path: &Path) -> Result<(), Report> {
+  let data = build_augur_node_data_json(result)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

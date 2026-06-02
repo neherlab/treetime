@@ -45,15 +45,14 @@ use util_augur_node_data_json::{
 /// `dates` carries the parsed metadata date constraints used for `raw_date` (tips)
 /// and `date_inferred`; the inferred `date` string derives from each node's
 /// `numdate`.
-pub fn write_augur_node_data_json(
+pub fn build_augur_node_data_json(
   graph: &GraphTimetree,
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   dates: Option<&DatesMap>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
-  path: &Path,
-) -> Result<(), Report> {
+) -> Result<AugurNodeDataJsonRefine, Report> {
   let ci_map = confidence_intervals.map(build_ci_map);
 
   let mut nodes = BTreeMap::new();
@@ -122,7 +121,7 @@ pub fn write_augur_node_data_json(
     );
   }
 
-  let data = AugurNodeDataJsonRefine {
+  Ok(AugurNodeDataJsonRefine {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
       program: "treetime".to_owned(),
       version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -134,8 +133,19 @@ pub fn write_augur_node_data_json(
       other: BTreeMap::new(),
     },
     nodes,
-  };
+  })
+}
 
+pub fn write_augur_node_data_json(
+  graph: &GraphTimetree,
+  clock_model: &ClockModel,
+  confidence_intervals: Option<&[NodeConfidenceInterval]>,
+  dates: Option<&DatesMap>,
+  alignment: Option<&Path>,
+  input_tree: Option<&Path>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(graph, clock_model, confidence_intervals, dates, alignment, input_tree)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

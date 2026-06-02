@@ -165,7 +165,7 @@ mod tests {
     use crate::ancestral::params::MethodAncestral;
     use crate::commands::ancestral::aa_node_data::{AaGeneNodeData, AaNodeData};
     use crate::commands::ancestral::args::TreetimeAncestralArgs;
-    use crate::commands::ancestral::augur_node_data::{build_augur_node_data_json, write_augur_node_data_json};
+    use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::ModelArgs;
@@ -178,10 +178,11 @@ mod tests {
     use crate::seq::mutation::Sub;
     use maplit::btreemap;
     use std::collections::BTreeMap;
-    use tempfile::{NamedTempFile, tempdir};
+    use tempfile::tempdir;
     use treetime_graph::node::Named;
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
+    use treetime_utils::io::json::{JsonPretty, json_write_str};
     use treetime_utils::o;
     use util_augur_node_data_json::{
       AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
@@ -246,9 +247,8 @@ mod tests {
     }
 
     pub fn write_json(graph: &GraphAncestral, partition: &PartitionFitch, mask: &[bool]) -> String {
-      let tmp = NamedTempFile::new().unwrap();
-      write_augur_node_data_json(graph, partition, mask, tmp.path()).unwrap();
-      std::fs::read_to_string(tmp.path()).unwrap()
+      let data = build_augur_node_data_json(graph, partition, mask, None).unwrap();
+      json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
     pub fn reconstruct_json(method: MethodAncestral, dense: Option<bool>, model: GtrModelName) -> String {

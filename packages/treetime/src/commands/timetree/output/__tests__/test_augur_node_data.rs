@@ -123,16 +123,15 @@ mod tests {
 
   mod helpers {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
-    use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
+    use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
     use crate::partition::timetree::GraphTimetree;
     use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;
     use std::path::Path;
-    use tempfile::NamedTempFile;
     use treetime_graph::node::Named;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
-    use treetime_utils::io::json::json_read_str;
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub struct SampleCase {
@@ -144,18 +143,16 @@ mod tests {
 
     impl SampleCase {
       pub fn write_json(&self) -> String {
-        let tmp = NamedTempFile::new().unwrap();
-        write_augur_node_data_json(
+        let data = build_augur_node_data_json(
           &self.graph,
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
           Some(Path::new("aln.fasta")),
           Some(Path::new("tree.nwk")),
-          tmp.path(),
         )
         .unwrap();
-        std::fs::read_to_string(tmp.path()).unwrap()
+        json_write_str(&data, JsonPretty(true)).unwrap()
       }
 
       pub fn write_and_read(&self) -> AugurNodeDataJsonRefine {

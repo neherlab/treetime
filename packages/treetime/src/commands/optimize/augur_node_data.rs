@@ -37,12 +37,11 @@ use util_augur_node_data_json::{
 /// - `confidence` is omitted: v1's Newick reader does not parse input-tree branch
 ///   support values (shared gap with `timetree`, tracked in
 ///   `kb/issues/N-timetree-node-data-confidence-not-emitted.md`).
-pub fn write_augur_node_data_json(
+pub fn build_augur_node_data_json(
   graph: &GraphAncestral,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
-  path: &Path,
-) -> Result<(), Report> {
+) -> Result<AugurNodeDataJsonRefine, Report> {
   let mut nodes = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
@@ -83,7 +82,7 @@ pub fn write_augur_node_data_json(
     );
   }
 
-  let data = AugurNodeDataJsonRefine {
+  Ok(AugurNodeDataJsonRefine {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
       program: "treetime".to_owned(),
       version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -96,8 +95,16 @@ pub fn write_augur_node_data_json(
       other: BTreeMap::new(),
     },
     nodes,
-  };
+  })
+}
 
+pub fn write_augur_node_data_json(
+  graph: &GraphAncestral,
+  alignment: Option<&Path>,
+  input_tree: Option<&Path>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(graph, alignment, input_tree)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
