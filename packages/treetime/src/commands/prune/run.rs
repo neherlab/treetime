@@ -28,7 +28,8 @@ pub fn run_prune(
   let graph: GraphAncestral = nwk_read_file(&args.tree)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
-  let sequences = if !args.alignment.alignment.is_empty() {
+  let needs_sequences = args.prune_empty || args.merge_shared_mutations;
+  let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
     Some(read_many_fasta(&args.alignment.alignment, &alphabet)?)
   } else {
     None

@@ -1,13 +1,14 @@
+use crate::clock::clock_output::write_clock_model;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
-use crate::clock::clock_output::write_clock_model;
+use crate::gtr::get_gtr::write_gtr_json;
+use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
-use crate::make_error;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::path::PathBuf;
@@ -102,6 +103,10 @@ fn write_outputs(args: &TreetimeTimetreeArgs, output: &pipeline::TimetreeOutput)
   }
 
   write_clock_model(&output.clock_model, &args.output.outdir.join("timetree"))?;
+
+  if let (Some(gtr), Some(model_name)) = (&output.gtr, output.model_name) {
+    write_gtr_json(gtr, model_name, &args.output.outdir, None)?;
+  }
 
   write_auspice_json(&output.graph, output.confidence_intervals.as_deref(), &args.output.outdir)?;
 

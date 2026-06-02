@@ -9,6 +9,7 @@ use crate::clock::reroot::RerootParams;
 use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::gtr::GTR;
 use crate::make_error;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
@@ -92,6 +93,10 @@ pub struct TimetreeOutput {
   pub partitions: PartitionTimetreeAllVec,
   #[serde(skip)]
   pub dates: Option<DatesMap>,
+  #[serde(skip)]
+  pub gtr: Option<GTR>,
+  #[serde(skip)]
+  pub model_name: Option<GtrModelName>,
 }
 
 pub fn run(
@@ -138,16 +143,18 @@ pub fn run(
   .wrap_err("Failed to infer clock model")?
   .clock_model;
 
-  let partitions: PartitionTimetreeAllVec = match params.branch_length_mode {
-    BranchLengthMode::Input => {
-      info!("Branch length mode: Input - using tree branch lengths");
-      vec![]
-    },
-    BranchLengthMode::Marginal => {
-      info!("Branch length mode: Marginal - initializing partitions from alignment");
-      initialize_partitions_from_params(params, &input.graph, input.alphabet.clone(), input.sequences.as_deref())?
-    },
-  };
+  let (partitions, partition_gtr, partition_model_name): (PartitionTimetreeAllVec, Option<GTR>, Option<GtrModelName>) =
+    match params.branch_length_mode {
+      BranchLengthMode::Input => {
+        info!("Branch length mode: Input - using tree branch lengths");
+        (vec![], None, None)
+      },
+      BranchLengthMode::Marginal => {
+        info!("Branch length mode: Marginal - initializing partitions from alignment");
+        let init = initialize_partitions_from_params(params, &input.graph, input.alphabet.clone(), input.sequences.as_deref())?;
+        (init.partitions, Some(init.gtr), Some(init.model_name))
+      },
+    };
 
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
@@ -368,7 +375,15 @@ pub fn run(
     confidence_intervals,
     partitions,
     dates: input.dates,
+    gtr: partition_gtr,
+    model_name: partition_model_name,
   })
+}
+
+struct PartitionInitResult {
+  partitions: PartitionTimetreeAllVec,
+  gtr: GTR,
+  model_name: GtrModelName,
 }
 
 fn initialize_partitions_from_params(
@@ -376,15 +391,8 @@ fn initialize_partitions_from_params(
   graph: &GraphTimetree,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
-) -> Result<PartitionTimetreeAllVec, Report> {
+) -> Result<PartitionInitResult, Report> {
   let model_name = params.model;
-  let length = if let Some(aln_data) = aln {
-    get_common_length(aln_data)?
-  } else {
-    params
-      .sequence_length
-      .ok_or_else(|| make_report!("sequence_length required when no alignment provided"))?
-  };
 
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
   let created = create_marginal_partition(graph, 0, alphabet, aln_data, model_name, params.dense)?;
@@ -394,7 +402,11 @@ fn initialize_partitions_from_params(
     MarginalPartition::Dense(p) => Arc::new(RwLock::new(p)),
   };
 
-  Ok(vec![partition])
+  Ok(PartitionInitResult {
+    partitions: vec![partition],
+    gtr: created.gtr,
+    model_name: created.model_name,
+  })
 }
 
 fn optimize_branch_lengths_pre_step(
