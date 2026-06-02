@@ -88,7 +88,7 @@ pub fn build_augur_node_data_json(
       }
     }
 
-    let aa_muts = aa_node_data.and_then(|aa| aa.node_aa_muts.get(&node_name).cloned());
+    let aa_muts = aa_node_data.and_then(|aa| aa.node_aa_muts.get(&node_key).cloned());
     nodes.insert(
       node_name,
       AugurNodeDataJsonAncestralNode {

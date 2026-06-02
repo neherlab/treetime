@@ -72,9 +72,7 @@ where
     let leaf_fasta = aln
       .iter()
       .find(|fasta| fasta.seq_name == leaf_name)
-      // Missing tips are filled with all-unknown sequences upstream by `complete_alignment_for_leaves`
-      // (see `crate::ancestral::attach`), so every leaf has a record by this point. A miss here means
-      // that invariant was violated.
+      // Every leaf has a sequence record after alignment completion.
       .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
 
     leaf.set_desc(leaf_fasta.desc.clone());

@@ -5,6 +5,7 @@ use treetime::alphabet::alphabet::AlphabetName;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
+use treetime::commands::ancestral::aa_model::AaModelName;
 use treetime::commands::shared::reroot::RerootArgs;
 use treetime::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
@@ -73,9 +74,11 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       ignore_missing_alns: false,
       output_augur_node_data: None,
       translations: None,
-      genes: vec![],
-      annotation_gff: None,
+      cdses: vec![],
+      annotation: None,
       aa_root_sequence: None,
+      aa_model: AaModelName::default(),
+      output_aa_sequences: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
         ..Default::default()

@@ -163,7 +163,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::params::MethodAncestral;
-    use crate::commands::ancestral::aa_node_data::{AaGeneNodeData, AaNodeData};
+    use crate::commands::ancestral::aa_node_data::{AaCdsNodeData, AaNodeData};
     use crate::commands::ancestral::args::TreetimeAncestralArgs;
     use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
@@ -179,7 +179,7 @@ mod tests {
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
-    use treetime_graph::node::Named;
+    use treetime_graph::node::{GraphNodeKey, Named};
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -206,6 +206,19 @@ mod tests {
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
       let partition = build_fitch_partition(&graph, &seqs, &edge_subs, 4);
       (graph, partition)
+    }
+
+    pub fn node_name_to_key(graph: &GraphAncestral) -> BTreeMap<String, GraphNodeKey> {
+      graph
+        .get_nodes()
+        .into_iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          (name, key)
+        })
+        .collect()
     }
 
     pub fn build_fitch_partition(
@@ -282,17 +295,18 @@ mod tests {
 
     pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
       let (graph, partition) = mutation_case();
+      let name_to_key = node_name_to_key(&graph);
       let mut aa_node_data = AaNodeData::default();
 
-      aa_node_data.add_gene(
+      aa_node_data.add_cds(
         "S",
-        AaGeneNodeData {
+        AaCdsNodeData {
           reference: "AC".to_owned(),
           root_sequence: "AC".to_owned(),
           node_muts: btreemap! {
-            o!("A") => vec![o!("C2D")],
-            o!("B") => vec![],
-            o!("root") => vec![],
+            name_to_key["A"] => vec![o!("C2D")],
+            name_to_key["B"] => vec![],
+            name_to_key["root"] => vec![],
           },
         },
         Some(AugurNodeDataJsonAnnotationEntry {

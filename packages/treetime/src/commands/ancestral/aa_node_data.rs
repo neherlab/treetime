@@ -11,17 +11,13 @@ use percent_encoding::percent_decode_str;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use treetime_graph::node::Named;
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::fasta::read_many_fasta;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::io::fs::read_file_to_string;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
-/// CDS-name attribute priority, matching nextclade's `NAME_ATTRS_CDS`
-/// (`~/work/nextclade/packages/nextclade/src/io/gff3_reader.rs:35`). The resolved name is the key
-/// used for the `{cds}` translation-file token, the annotation entry, and the `aa_muts`/`reference`
-/// keys, so it must equal the producer's CDS name. `Parent` is intentionally absent (nextclade never
-/// uses it as a name source).
+/// CDS-name attribute priority matching nextclade's `NAME_ATTRS_CDS` in `gff3_reader.rs`.
 const NAME_ATTRS_CDS: &[&str] = &[
   "Name",
   "name",
@@ -46,71 +42,71 @@ const NAME_ATTRS_CDS: &[&str] = &[
 pub struct AaNodeData {
   pub annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   pub reference: BTreeMap<String, String>,
-  pub node_aa_muts: BTreeMap<String, BTreeMap<String, Vec<String>>>,
+  // Keyed by graph node key, not node name: every amino-acid partition is reconstructed on the same
+  // shared tree as the nucleotide partition, so per-node results join by node identity (key) rather
+  // than by reconstructing identity from a synthesized node name across independent graphs.
+  pub node_aa_muts: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<String>>>,
   pub root_aa_sequences: BTreeMap<String, String>,
 }
 
 impl AaNodeData {
-  pub fn add_gene(
-    &mut self,
-    gene: &str,
-    gene_data: AaGeneNodeData,
-    annotation: Option<AugurNodeDataJsonAnnotationEntry>,
-  ) {
+  pub fn add_cds(&mut self, cds: &str, cds_data: AaCdsNodeData, annotation: Option<AugurNodeDataJsonAnnotationEntry>) {
     if let Some(annotation) = annotation {
-      self.annotations.insert(gene.to_owned(), annotation);
+      self.annotations.insert(cds.to_owned(), annotation);
     }
-    self.reference.insert(gene.to_owned(), gene_data.reference);
-    self.root_aa_sequences.insert(gene.to_owned(), gene_data.root_sequence);
-    for (node_name, muts) in gene_data.node_muts {
+    self.reference.insert(cds.to_owned(), cds_data.reference);
+    self.root_aa_sequences.insert(cds.to_owned(), cds_data.root_sequence);
+    for (node_key, muts) in cds_data.node_muts {
       self
         .node_aa_muts
-        .entry(node_name)
+        .entry(node_key)
         .or_default()
-        .insert(gene.to_owned(), muts);
+        .insert(cds.to_owned(), muts);
     }
   }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AaGeneNodeData {
+pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,
-  pub node_muts: BTreeMap<String, Vec<String>>,
+  pub node_muts: BTreeMap<GraphNodeKey, Vec<String>>,
 }
 
 pub fn validate_aa_args(
   translations: &Option<String>,
-  genes: &[String],
-  annotation_gff: &Option<PathBuf>,
+  cdses: &[String],
+  annotation: &Option<PathBuf>,
   aa_root_sequence: &Option<PathBuf>,
 ) -> Result<(), Report> {
-  if translations.is_none() && genes.is_empty() && annotation_gff.is_none() && aa_root_sequence.is_none() {
+  if translations.is_none() && cdses.is_empty() && annotation.is_none() && aa_root_sequence.is_none() {
     return Ok(());
   }
 
   let Some(template) = translations else {
-    return make_error!("--translations is required when using --genes, --annotation-gff, or --aa-root-sequence");
+    return make_error!("--translations is required when using --cdses, --annotation, or --aa-root-sequence");
   };
 
-  if !template.contains("{cds}") {
-    return make_error!("--translations must contain the placeholder '{{cds}}'");
+  #[allow(clippy::literal_string_with_formatting_args)]
+  if !template_has_cds_placeholder(template) {
+    return make_error!("--translations must contain a CDS placeholder ('{{cds}}' or '%GENE')");
   }
 
-  if genes.is_empty() {
-    return make_error!("--genes must contain at least one gene when --translations is provided");
+  // The CDS set is either listed explicitly or derived from the annotation; require at least one source.
+  if cdses.is_empty() && annotation.is_none() {
+    return make_error!("--cdses must list at least one CDS, or pass --annotation to derive the CDS set");
   }
 
-  validate_file_arg("--annotation-gff", annotation_gff.as_deref())?;
+  validate_file_arg("--annotation", annotation.as_deref())?;
   validate_file_arg("--aa-root-sequence", aa_root_sequence.as_deref())?;
 
   let mut seen = BTreeSet::new();
-  for gene in genes {
-    if gene.is_empty() {
-      return make_error!("--genes must not contain an empty gene name");
+  for cds in cdses {
+    if cds.is_empty() {
+      return make_error!("--cdses must not contain an empty CDS name");
     }
-    if !seen.insert(gene) {
-      return make_error!("--genes contains duplicate gene '{gene}'");
+    if !seen.insert(cds) {
+      return make_error!("--cdses contains duplicate CDS '{cds}'");
     }
   }
 
@@ -126,13 +122,26 @@ fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> 
   Ok(())
 }
 
-pub fn translation_path(template: &str, gene: &str) -> PathBuf {
-  PathBuf::from(template.replace("{cds}", gene))
+/// CDS placeholders accepted in path templates: `{cds}` (Nextclade) and `%GENE` (augur).
+const CDS_PLACEHOLDERS: &[&str] = &["{cds}", "%GENE"];
+
+pub fn template_has_cds_placeholder(template: &str) -> bool {
+  CDS_PLACEHOLDERS
+    .iter()
+    .any(|placeholder| template.contains(placeholder))
+}
+
+pub fn translation_path(template: &str, cds: &str) -> PathBuf {
+  let mut path = template.to_owned();
+  for placeholder in CDS_PLACEHOLDERS {
+    path = path.replace(placeholder, cds);
+  }
+  PathBuf::from(path)
 }
 
 pub fn read_aa_root_sequences(
   path: Option<&Path>,
-  genes: &[String],
+  cdses: &[String],
   recon_alphabet: &Alphabet,
 ) -> Result<BTreeMap<String, Seq>, Report> {
   let Some(path) = path else {
@@ -143,28 +152,28 @@ pub fn read_aa_root_sequences(
   // state of the reconstruction alphabet so the root sequence shares its alphabet with the partition.
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let records = read_many_fasta(&[path], &read_alphabet)?;
-  let mut by_gene = BTreeMap::new();
+  let mut by_cds = BTreeMap::new();
   for record in records {
     let (seq, _changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);
-    by_gene.insert(record.seq_name, seq);
+    by_cds.insert(record.seq_name, seq);
   }
 
-  validate_aa_root_sequence_genes(path, &by_gene, genes)?;
+  validate_aa_root_sequence_cdses(path, &by_cds, cdses)?;
 
-  Ok(by_gene)
+  Ok(by_cds)
 }
 
-fn validate_aa_root_sequence_genes(
+fn validate_aa_root_sequence_cdses(
   path: &Path,
-  by_gene: &BTreeMap<String, Seq>,
-  genes: &[String],
+  by_cds: &BTreeMap<String, Seq>,
+  cdses: &[String],
 ) -> Result<(), Report> {
-  for gene in genes {
-    if !by_gene.contains_key(gene) {
+  for cds in cdses {
+    if !by_cds.contains_key(cds) {
       return make_error!(
-        "--aa-root-sequence '{}' does not contain a FASTA record for gene '{}'",
+        "--aa-root-sequence '{}' does not contain a FASTA record for CDS '{}'",
         path.display(),
-        gene
+        cds
       );
     }
   }
@@ -173,26 +182,29 @@ fn validate_aa_root_sequence_genes(
 
 pub fn read_gff3_annotations(
   path: Option<&Path>,
-  genes: &[String],
+  cdses: &[String],
 ) -> Result<BTreeMap<String, AugurNodeDataJsonAnnotationEntry>, Report> {
   let Some(path) = path else {
     return Ok(BTreeMap::new());
   };
 
   let contents = read_file_to_string(path)?;
-  parse_gff3_annotations(&contents, genes, path)
+  parse_gff3_annotations(&contents, cdses, path)
 }
 
 fn parse_gff3_annotations(
   contents: &str,
-  genes: &[String],
+  cdses: &[String],
   path: &Path,
 ) -> Result<BTreeMap<String, AugurNodeDataJsonAnnotationEntry>, Report> {
-  let wanted: BTreeSet<&str> = genes.iter().map(String::as_str).collect();
+  let wanted: BTreeSet<&str> = cdses.iter().map(String::as_str).collect();
   let mut features: BTreeMap<String, Vec<GffCdsRow>> = BTreeMap::new();
 
   for (line_no, line) in contents.lines().enumerate() {
     let line = line.trim();
+    if line == "##FASTA" {
+      break;
+    }
     if line.is_empty() || line.starts_with('#') {
       continue;
     }
@@ -216,32 +228,32 @@ fn parse_gff3_annotations(
         path.display()
       )
     })?;
-    let Some(gene) = resolve_cds_name(&attrs) else {
+    let Some(cds) = resolve_cds_name(&attrs) else {
       continue;
     };
 
     // Empty `wanted` means derive the CDS set from the annotation itself (every CDS feature).
-    if !wanted.is_empty() && !wanted.contains(gene.as_str()) {
+    if !wanted.is_empty() && !wanted.contains(cds.as_str()) {
       continue;
     }
 
     let start = cols[3].parse::<i64>()?;
     let end = cols[4].parse::<i64>()?;
     if start < 1 || end < start {
-      return make_error!("Invalid CDS coordinates for gene '{gene}' on GFF3 line {}", line_no + 1);
+      return make_error!("Invalid CDS coordinates for CDS '{cds}' on GFF3 line {}", line_no + 1);
     }
 
     let strand = match cols[6] {
       "+" | "-" => cols[6].to_owned(),
       strand => {
         return make_error!(
-          "Invalid CDS strand '{strand}' for gene '{gene}' on GFF3 line {}",
+          "Invalid CDS strand '{strand}' for CDS '{cds}' on GFF3 line {}",
           line_no + 1
         );
       },
     };
 
-    features.entry(gene).or_default().push(GffCdsRow {
+    features.entry(cds).or_default().push(GffCdsRow {
       seqid: cols[0].to_owned(),
       start,
       end,
@@ -249,25 +261,29 @@ fn parse_gff3_annotations(
     });
   }
 
-  for gene in genes {
-    if !features.contains_key(gene) {
+  for cds in cdses {
+    if !features.contains_key(cds) {
       return make_error!(
-        "--annotation-gff '{}' does not contain a CDS feature for gene '{}'",
+        "--annotation '{}' does not contain a CDS feature for CDS '{}'",
         path.display(),
-        gene
+        cds
       );
     }
   }
 
   features
     .into_iter()
-    .map(|(gene, mut rows)| {
+    .map(|(cds, mut rows)| {
       rows.sort_by_key(|row| (row.start, row.end));
       let strand = rows.first().expect("features are non-empty").strand.clone();
       let seqid = rows.first().expect("features are non-empty").seqid.clone();
 
       if rows.iter().any(|row| row.strand != strand) {
-        return make_error!("CDS feature rows for gene '{gene}' use multiple strands");
+        return make_error!("CDS feature rows for CDS '{cds}' use multiple strands");
+      }
+
+      if rows.iter().any(|row| row.seqid != seqid) {
+        return make_error!("CDS feature rows for CDS '{cds}' span multiple sequence IDs");
       }
 
       // Auspice requires segments in 5'-to-3' order. GFF coordinates are always ascending, so the
@@ -283,7 +299,7 @@ fn parse_gff3_annotations(
       let cds_length: i64 = rows.iter().map(|row| row.end - row.start + 1).sum();
       if cds_length % 3 != 0 {
         return make_error!(
-          "CDS feature for gene '{gene}' has nucleotide length {cds_length}, which is not a multiple of 3. \
+          "CDS feature for CDS '{cds}' has nucleotide length {cds_length}, which is not a multiple of 3. \
            Check that the annotation matches the translations."
         );
       }
@@ -321,24 +337,24 @@ fn parse_gff3_annotations(
         }
       };
 
-      Ok((gene, annotation))
+      Ok((cds, annotation))
     })
     .collect()
 }
 
-pub fn collect_aa_gene_node_data(
+pub fn collect_aa_cds_node_data(
   graph: &GraphAncestral,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
-  gene: &str,
+  cds: &str,
   reference_override: Option<&Seq>,
-) -> Result<AaGeneNodeData, Report> {
+) -> Result<AaCdsNodeData, Report> {
   let root_key = graph.root_key()?;
   let inferred_root = partition.root_sequence(graph)?;
   let reference = reference_override.cloned().unwrap_or_else(|| inferred_root.clone());
 
   if reference.len() != inferred_root.len() {
     return make_error!(
-      "AA root/reference sequence for gene '{gene}' has length {}, but inferred root has length {}",
+      "AA root/reference sequence for CDS '{cds}' has length {}, but inferred root has length {}",
       reference.len(),
       inferred_root.len()
     );
@@ -367,10 +383,10 @@ pub fn collect_aa_gene_node_data(
         .collect()
     };
 
-    node_muts.insert(node_name, muts);
+    node_muts.insert(node_key, muts);
   }
 
-  Ok(AaGeneNodeData {
+  Ok(AaCdsNodeData {
     reference: reference.as_str().to_owned(),
     root_sequence: inferred_root.as_str().to_owned(),
     node_muts,
@@ -406,6 +422,18 @@ fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
   NAME_ATTRS_CDS.iter().find_map(|key| attrs.get(*key).cloned())
 }
 
+/// Total nucleotide length of a CDS annotation: the sum of its segment lengths, or the single
+/// `start..=end` span, in 1-based inclusive coordinates. `None` when the entry carries neither.
+pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
+  if let Some(segments) = &entry.segments {
+    Some(segments.iter().map(|segment| segment.end - segment.start + 1).sum())
+  } else if let (Some(start), Some(end)) = (entry.start, entry.end) {
+    Some(end - start + 1)
+  } else {
+    None
+  }
+}
+
 fn parse_gff_attributes(raw: &str) -> Result<BTreeMap<String, String>, Report> {
   raw
     .split(';')
@@ -439,24 +467,69 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::node::GraphNodeKey;
   use treetime_utils::o;
 
   #[test]
   fn test_validate_aa_args_requires_cds_placeholder() {
     let err = validate_aa_args(&Some("translations.fasta".to_owned()), &["S".to_owned()], &None, &None).unwrap_err();
-    assert!(err.to_string().contains("{cds}"));
+    assert!(err.to_string().contains("CDS placeholder"));
   }
 
   #[test]
-  fn test_validate_aa_root_sequence_genes_requires_every_gene() {
-    let by_gene = btreemap! {
+  fn test_validate_aa_args_accepts_percent_gene_placeholder() {
+    let result = validate_aa_args(&Some("out/%GENE.fasta".to_owned()), &["S".to_owned()], &None, &None);
+    result.unwrap();
+  }
+
+  #[test]
+  fn test_validate_aa_args_accepts_cds_placeholder() {
+    let template = ["{", "cds", "}"].concat();
+    let result = validate_aa_args(&Some(format!("out/{template}.fasta")), &["S".to_owned()], &None, &None);
+    result.unwrap();
+  }
+
+  #[test]
+  fn test_validate_aa_args_empty_cdses_with_annotation_ok() {
+    let template = ["{", "cds", "}"].concat();
+    let result = validate_aa_args(
+      &Some(format!("out/{template}.fasta")),
+      &[],
+      &Some(PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
+      &None,
+    );
+    result.unwrap();
+  }
+
+  #[test]
+  fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
+    let template = ["{", "cds", "}"].concat();
+    let err = validate_aa_args(&Some(format!("out/{template}.fasta")), &[], &None, &None).unwrap_err();
+    assert!(err.to_string().contains("--cdses"));
+  }
+
+  #[allow(clippy::literal_string_with_formatting_args)]
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::cds_placeholder( "out/{cds}.fasta",  "S",  "out/S.fasta")]
+  #[case::gene_placeholder("out/%GENE.fasta",   "S",  "out/S.fasta")]
+  #[case::both_placeholders("out/{cds}/%GENE.fasta", "ORF1a", "out/ORF1a/ORF1a.fasta")]
+  fn test_translation_path_expands_placeholders(
+    #[case] template: &str,
+    #[case] cds: &str,
+    #[case] expected: &str,
+  ) {
+    assert_eq!(PathBuf::from(expected), translation_path(template, cds));
+  }
+
+  #[test]
+  fn test_validate_aa_root_sequence_cdses_requires_every_cds() {
+    let by_cds = btreemap! {
       o!("S") => Seq::try_from_str("AC").unwrap(),
     };
 
-    let err = validate_aa_root_sequence_genes(Path::new("roots.fasta"), &by_gene, &[o!("S"), o!("M")]).unwrap_err();
+    let err = validate_aa_root_sequence_cdses(Path::new("roots.fasta"), &by_cds, &[o!("S"), o!("M")]).unwrap_err();
 
-    assert!(err.to_string().contains("gene 'M'"));
+    assert!(err.to_string().contains("CDS 'M'"));
   }
 
   #[test]
@@ -468,9 +541,9 @@ MN908947.3\tNextclade\tCDS\t266\t13468\t.\t+\t0\tID=cds-ORF1a;Name=ORF%31a
 MN908947.3\tNextclade\tCDS\t13468\t21555\t.\t+\t0\tID=cds-ORF1a-2;Name=ORF%31a
 MN908947.3\tNextclade\tgene\t100\t200\t.\t+\t.\tName=ignored
 ";
-    let genes = vec![o!("S"), o!("ORF1a")];
+    let cdses = vec![o!("S"), o!("ORF1a")];
 
-    let actual = parse_gff3_annotations(input, &genes, Path::new("annotations.gff3")).unwrap();
+    let actual = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap();
 
     let expected = btreemap! {
       o!("ORF1a") => AugurNodeDataJsonAnnotationEntry {
@@ -515,9 +588,9 @@ MN908947.3\tNextclade\tgene\t100\t200\t.\t+\t.\tName=ignored
 seq1\tNextclade\tCDS\t100\t150\t.\t-\t0\tName=ORF
 seq1\tNextclade\tCDS\t200\t250\t.\t-\t0\tName=ORF
 ";
-    let genes = vec![o!("ORF")];
+    let cdses = vec![o!("ORF")];
 
-    let actual = parse_gff3_annotations(input, &genes, Path::new("annotations.gff3")).unwrap();
+    let actual = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap();
 
     let expected = btreemap! {
       o!("ORF") => AugurNodeDataJsonAnnotationEntry {
@@ -541,15 +614,15 @@ seq1\tNextclade\tCDS\t200\t250\t.\t-\t0\tName=ORF
 ##gff-version 3
 seq1\tNextclade\tCDS\t1\t5\t.\t+\t0\tName=BAD
 ";
-    let genes = vec![o!("BAD")];
+    let cdses = vec![o!("BAD")];
 
-    let err = parse_gff3_annotations(input, &genes, Path::new("annotations.gff3")).unwrap_err();
+    let err = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap_err();
 
     assert!(err.to_string().contains("not a multiple of 3"));
   }
 
   #[test]
-  fn test_parse_gff3_annotations_derives_all_cds_when_genes_empty() {
+  fn test_parse_gff3_annotations_derives_all_cds_when_cdses_empty() {
     let input = "\
 ##gff-version 3
 seq1\tNextclade\tCDS\t1\t6\t.\t+\t0\tName=A
@@ -559,8 +632,63 @@ seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
     let actual = parse_gff3_annotations(input, &[], Path::new("annotations.gff3")).unwrap();
 
     assert_eq!(2, actual.len());
+    assert_eq!(Some(1), actual["A"].start);
+    assert_eq!(Some(6), actual["A"].end);
+    assert_eq!(Some(10), actual["B"].start);
+    assert_eq!(Some(18), actual["B"].end);
+  }
+
+  #[test]
+  fn test_parse_gff3_annotations_stops_at_fasta_directive() {
+    let input = "\
+##gff-version 3
+seq1\tNextclade\tCDS\t1\t6\t.\t+\t0\tName=A
+##FASTA
+>seq1
+ACGTAC
+";
+
+    let actual = parse_gff3_annotations(input, &[], Path::new("annotations.gff3")).unwrap();
+    assert_eq!(1, actual.len());
     assert!(actual.contains_key("A"));
-    assert!(actual.contains_key("B"));
+  }
+
+  #[test]
+  fn test_parse_gff3_annotations_rejects_mixed_seqids() {
+    let input = "\
+##gff-version 3
+chr1\tNextclade\tCDS\t1\t3\t.\t+\t0\tName=X
+chr2\tNextclade\tCDS\t4\t6\t.\t+\t0\tName=X
+";
+    let err = parse_gff3_annotations(input, &[o!("X")], Path::new("annotations.gff3")).unwrap_err();
+    assert!(err.to_string().contains("multiple sequence IDs"));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::single_span(
+    AugurNodeDataJsonAnnotationEntry { start: Some(100), end: Some(400), segments: None, ..Default::default() },
+    Some(301)
+  )]
+  #[case::segments(
+    AugurNodeDataJsonAnnotationEntry {
+      segments: Some(vec![
+        AugurNodeDataJsonAnnotationSegment { start: 1, end: 100, other: btreemap! {} },
+        AugurNodeDataJsonAnnotationSegment { start: 200, end: 300, other: btreemap! {} },
+      ]),
+      ..Default::default()
+    },
+    Some(201)
+  )]
+  #[case::neither(
+    AugurNodeDataJsonAnnotationEntry::default(),
+    None
+  )]
+  fn test_annotation_cds_nuc_length(
+    #[case] entry: AugurNodeDataJsonAnnotationEntry,
+    #[case] expected: Option<i64>,
+  ) {
+    assert_eq!(expected, annotation_cds_nuc_length(&entry));
   }
 
   #[rustfmt::skip]
@@ -586,8 +714,9 @@ seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
   }
 
   #[test]
-  fn test_collect_aa_gene_node_data_keeps_inferred_root_sequence() {
+  fn test_collect_aa_cds_node_data_keeps_inferred_root_sequence() {
     let graph = helpers::named_tree();
+    let name_to_key = helpers::node_name_to_key(&graph);
     let partition = helpers::StubAugurPartition::new(
       &graph,
       &btreemap! {
@@ -598,15 +727,15 @@ seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
     );
     let reference = Seq::try_from_str("AA").unwrap();
 
-    let actual = collect_aa_gene_node_data(&graph, &partition, "S", Some(&reference)).unwrap();
+    let actual = collect_aa_cds_node_data(&graph, &partition, "S", Some(&reference)).unwrap();
 
-    let expected = AaGeneNodeData {
+    let expected = AaCdsNodeData {
       reference: o!("AA"),
       root_sequence: o!("AC"),
       node_muts: btreemap! {
-        o!("A") => vec![],
-        o!("B") => vec![],
-        o!("root") => vec![o!("A2C")],
+        name_to_key["A"] => vec![],
+        name_to_key["B"] => vec![],
+        name_to_key["root"] => vec![o!("A2C")],
       },
     };
     assert_eq!(expected, actual);
@@ -614,8 +743,21 @@ seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
 
   mod helpers {
     use super::*;
-    use treetime_graph::node::Named;
+    use treetime_graph::node::{GraphNodeKey, Named};
     use treetime_io::nwk::nwk_read_str;
+
+    pub fn node_name_to_key(graph: &GraphAncestral) -> BTreeMap<String, GraphNodeKey> {
+      graph
+        .get_nodes()
+        .into_iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          (name, key)
+        })
+        .collect()
+    }
 
     pub fn named_tree() -> GraphAncestral {
       nwk_read_str("(A:0.1,B:0.1)root;").unwrap()

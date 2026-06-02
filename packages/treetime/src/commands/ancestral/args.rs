@@ -1,5 +1,6 @@
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
+use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
@@ -81,27 +82,44 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Path template for per-gene amino-acid FASTA alignments.
+  /// Path template for per-CDS amino-acid FASTA alignments.
   ///
-  /// The template must contain `{cds}`, which is replaced with each value from
-  /// `--genes`. This matches Nextclade's `--output-translations` template.
+  /// The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
+  /// CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
+  /// `--output-translations`) and `%GENE` (augur) placeholders are accepted.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub translations: Option<String>,
 
-  /// Gene/CDS names to reconstruct from `--translations`.
-  #[cfg_attr(feature = "clap", clap(long = "genes", value_name = "GENE"))]
-  pub genes: Vec<String>,
+  /// CDS names to reconstruct from `--translations`.
+  ///
+  /// When omitted, the CDS set is derived from `--annotation`.
+  #[cfg_attr(feature = "clap", clap(long = "cdses", visible_alias = "genes", value_name = "CDS"))]
+  pub cdses: Vec<String>,
 
   /// GFF3 file with CDS coordinates for Augur node data annotations.
-  #[cfg_attr(feature = "clap", clap(long))]
+  ///
+  /// Also supplies the CDS set when `--cdses` is omitted.
+  #[cfg_attr(feature = "clap", clap(long, alias = "annotation-gff"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub annotation_gff: Option<PathBuf>,
+  pub annotation: Option<PathBuf>,
 
-  /// FASTA file with one amino-acid root/reference sequence per gene.
+  /// FASTA file with one amino-acid root/reference sequence per CDS.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub aa_root_sequence: Option<PathBuf>,
+
+  /// Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AaModelName::default()))]
+  pub aa_model: AaModelName,
+
+  /// Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
+  ///
+  /// Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts
+  /// the same `{cds}`/`%GENE` placeholders as `--translations`.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub output_aa_sequences: Option<String>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputArgs,
