@@ -19,7 +19,6 @@ use crate::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::progress::ProgressSink;
-use crate::seq::alignment::get_common_length;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };

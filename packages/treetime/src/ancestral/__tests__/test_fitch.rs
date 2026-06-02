@@ -1081,7 +1081,7 @@ mod tests {
     assert_eq!(vec_of_owned!["A1C", "A3G"], orig_root_cd_subs);
 
     // Merged AB->CD edge: inverted AB->root [T4G, C7A] chained with root->CD [A1C, A3G]
-    let mut merged_subs = merged_edge.fitch_subs().to_vec();
+    let mut merged_subs: Vec<String> = merged_edge.fitch_subs().iter().map(|s| s.to_string()).collect();
     merged_subs.sort();
     assert_eq!(vec_of_owned!["A1C", "A3G", "C7A", "T4G"], merged_subs);
 

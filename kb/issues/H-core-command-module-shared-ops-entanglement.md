@@ -58,4 +58,4 @@ Traits and types moved to `partition/` and `payload/`: partition traits (`Partit
 
 - `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` CLI struct embedding (minor)
 - Output helpers: `write_graph()` duplicated across `ancestral`, `optimize`, `prune` (tracked separately, not yet filed)
-- Pipeline layer added: all commands now have `<module>/pipeline.rs` with pure computation functions. `commands/*/run.rs` are thin I/O wrappers delegating to pipelines. Next step: move `commands/` (args + I/O handlers) from library to consumer crates (`app-api`, `app-cli`)
+- All commands delegate to `<module>/pipeline.rs` for pure computation. `commands/` (args + I/O handlers) remains in the library; planned move to consumer crates (`app-api`, `app-cli`) is not yet done

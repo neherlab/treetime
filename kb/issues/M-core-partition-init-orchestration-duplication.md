@@ -1,6 +1,6 @@
 # Partition creation is hardcoded per-command instead of configured
 
-## Status: partially resolved
+## Current state
 
 `partition/create.rs` provides `create_marginal_partition()` consolidating the 3-way branch (sparse, dense+infer, dense+named) without `write_gtr_json` during init. All pipeline functions use it. The full `PartitionSpec`/config layer for multi-partition support is not yet implemented.
 
