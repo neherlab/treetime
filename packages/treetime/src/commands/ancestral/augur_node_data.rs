@@ -1,4 +1,5 @@
 use crate::ancestral::mask::mask_to_string;
+use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
@@ -28,11 +29,20 @@ pub fn write_augur_node_data_json(
   mask: &[bool],
   path: &Path,
 ) -> Result<(), Report> {
+  write_augur_node_data_json_with_aa(graph, partition, mask, None, path)
+}
+
+pub fn build_augur_node_data_json(
+  graph: &GraphAncestral,
+  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  mask: &[bool],
+  aa_node_data: Option<&AaNodeData>,
+) -> Result<AugurNodeDataJsonAncestral, Report> {
   let alignment_length = partition.sequence_length();
   let reference_seq = partition.root_sequence(graph)?;
   let ambiguous = partition.ambiguous_char();
 
-  let annotations = AugurNodeDataJsonAnnotations {
+  let mut annotations = AugurNodeDataJsonAnnotations {
     nuc: Some(AugurNodeDataJsonAnnotationEntry {
       start: Some(1),
       end: Some(i64::try_from(alignment_length)?),
@@ -43,8 +53,12 @@ pub fn write_augur_node_data_json(
     }),
     other: BTreeMap::new(),
   };
+  if let Some(aa_node_data) = aa_node_data {
+    annotations.other.extend(aa_node_data.annotations.clone());
+  }
 
   let mut nodes = BTreeMap::new();
+  let root_key = graph.root_key()?;
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
@@ -74,32 +88,53 @@ pub fn write_augur_node_data_json(
       }
     }
 
+    let aa_muts = aa_node_data.and_then(|aa| aa.node_aa_muts.get(&node_name).cloned());
     nodes.insert(
       node_name,
       AugurNodeDataJsonAncestralNode {
         muts,
         sequence: Some(sequence.as_str().to_owned()),
-        aa_muts: None,
-        aa_sequences: None,
+        aa_muts,
+        aa_sequences: if node_key == root_key {
+          aa_node_data
+            .map(|aa| aa.root_aa_sequences.clone())
+            .filter(|seqs| !seqs.is_empty())
+        } else {
+          None
+        },
         other: BTreeMap::new(),
       },
     );
   }
 
-  let data = AugurNodeDataJsonAncestral {
+  let mut reference = btreemap! { "nuc".to_owned() => reference_seq.as_str().to_owned() };
+  if let Some(aa_node_data) = aa_node_data {
+    reference.extend(aa_node_data.reference.clone());
+  }
+
+  Ok(AugurNodeDataJsonAncestral {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
       program: "treetime".to_owned(),
       version: env!("CARGO_PKG_VERSION").to_owned(),
     }),
     metadata: AugurNodeDataJsonAncestralMeta {
       annotations: Some(annotations),
-      reference: Some(btreemap! { "nuc".to_owned() => reference_seq.as_str().to_owned() }),
+      reference: Some(reference),
       mask: Some(mask_to_string(mask)),
       other: BTreeMap::new(),
     },
     nodes,
-  };
+  })
+}
 
+pub fn write_augur_node_data_json_with_aa(
+  graph: &GraphAncestral,
+  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  mask: &[bool],
+  aa_node_data: Option<&AaNodeData>,
+  path: &Path,
+) -> Result<(), Report> {
+  let data = build_augur_node_data_json(graph, partition, mask, aa_node_data)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

@@ -72,6 +72,28 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
 
+  /// Path template for per-gene amino-acid FASTA alignments.
+  ///
+  /// The template must contain `{cds}`, which is replaced with each value from
+  /// `--genes`. This matches Nextclade's `--output-translations` template.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub translations: Option<String>,
+
+  /// Gene/CDS names to reconstruct from `--translations`.
+  #[cfg_attr(feature = "clap", clap(long = "genes", value_name = "GENE"))]
+  pub genes: Vec<String>,
+
+  /// GFF3 file with CDS coordinates for Augur node data annotations.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub annotation_gff: Option<PathBuf>,
+
+  /// FASTA file with one amino-acid root/reference sequence per gene.
+  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub aa_root_sequence: Option<PathBuf>,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputArgs,
 

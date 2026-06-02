@@ -152,11 +152,23 @@ mod tests {
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
+  #[test]
+  fn test_augur_node_data_ancestral_with_aa_reconstruction() {
+    let actual = helpers::build_json_with_aa();
+    let expected = helpers::expected_json_with_aa();
+
+    assert_eq!(
+      serde_json::to_value(expected).unwrap(),
+      serde_json::to_value(actual).unwrap()
+    );
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::params::MethodAncestral;
+    use crate::commands::ancestral::aa_node_data::{AaGeneNodeData, AaNodeData};
     use crate::commands::ancestral::args::TreetimeAncestralArgs;
-    use crate::commands::ancestral::augur_node_data::write_augur_node_data_json;
+    use crate::commands::ancestral::augur_node_data::{build_augur_node_data_json, write_augur_node_data_json};
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::ModelArgs;
@@ -174,6 +186,10 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::o;
+    use util_augur_node_data_json::{
+      AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
+      AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotations, AugurNodeDataJsonGeneratedBy,
+    };
 
     pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(
@@ -264,6 +280,102 @@ mod tests {
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
       std::fs::read_to_string(dir.path().join("ancestral.augur-node-data.json")).unwrap()
+    }
+
+    pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
+      let (graph, partition) = mutation_case();
+      let mut aa_node_data = AaNodeData::default();
+
+      aa_node_data.add_gene(
+        "S",
+        AaGeneNodeData {
+          reference: "AC".to_owned(),
+          root_sequence: "AC".to_owned(),
+          node_muts: btreemap! {
+            o!("A") => vec![o!("C2D")],
+            o!("B") => vec![],
+            o!("root") => vec![],
+          },
+        },
+        Some(AugurNodeDataJsonAnnotationEntry {
+          start: Some(1),
+          end: Some(6),
+          strand: Some("+".to_owned()),
+          entry_type: Some("CDS".to_owned()),
+          segments: None,
+          other: btreemap! {},
+        }),
+      );
+
+      build_augur_node_data_json(&graph, &partition, &[false, false, false, false], Some(&aa_node_data)).unwrap()
+    }
+
+    pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {
+      AugurNodeDataJsonAncestral {
+        generated_by: Some(AugurNodeDataJsonGeneratedBy {
+          program: "treetime".to_owned(),
+          version: env!("CARGO_PKG_VERSION").to_owned(),
+        }),
+        metadata: AugurNodeDataJsonAncestralMeta {
+          annotations: Some(AugurNodeDataJsonAnnotations {
+            nuc: Some(AugurNodeDataJsonAnnotationEntry {
+              start: Some(1),
+              end: Some(4),
+              strand: Some("+".to_owned()),
+              entry_type: Some("source".to_owned()),
+              segments: None,
+              other: btreemap! {},
+            }),
+            other: btreemap! {
+              o!("S") => AugurNodeDataJsonAnnotationEntry {
+                start: Some(1),
+                end: Some(6),
+                strand: Some("+".to_owned()),
+                entry_type: Some("CDS".to_owned()),
+                segments: None,
+                other: btreemap! {},
+              },
+            },
+          }),
+          reference: Some(btreemap! {
+            o!("S") => o!("AC"),
+            o!("nuc") => o!("ACGT"),
+          }),
+          mask: Some("0000".to_owned()),
+          other: btreemap! {},
+        },
+        nodes: btreemap! {
+          o!("A") => AugurNodeDataJsonAncestralNode {
+            muts: vec![o!("T4A")],
+            sequence: Some(o!("ACGA")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![o!("C2D")],
+            }),
+            aa_sequences: None,
+            other: btreemap! {},
+          },
+          o!("B") => AugurNodeDataJsonAncestralNode {
+            muts: vec![],
+            sequence: Some(o!("ACGT")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![],
+            }),
+            aa_sequences: None,
+            other: btreemap! {},
+          },
+          o!("root") => AugurNodeDataJsonAncestralNode {
+            muts: vec![],
+            sequence: Some(o!("ACGT")),
+            aa_muts: Some(btreemap! {
+              o!("S") => vec![],
+            }),
+            aa_sequences: Some(btreemap! {
+              o!("S") => o!("AC"),
+            }),
+            other: btreemap! {},
+          },
+        },
+      }
     }
 
     /// Expected JSON when all leaves share the same sequence ACGT: every node
