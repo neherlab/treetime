@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
-use crate::gtr::gtr::GTR;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
@@ -20,7 +19,6 @@ pub enum MarginalPartition {
 
 pub struct PartitionCreated {
   pub partition: MarginalPartition,
-  pub gtr: GTR,
   pub model_name: GtrModelName,
 }
 
@@ -49,30 +47,27 @@ where
       _ => get_gtr_by_name(model_name)?,
     };
     log_gtr(&gtr, model_name);
-    let partition = fitch.into_marginal_sparse(gtr.clone(), graph)?;
+    let partition = fitch.into_marginal_sparse(gtr, graph)?;
     Ok(PartitionCreated {
       partition: MarginalPartition::Sparse(partition),
-      gtr,
       model_name,
     })
   } else if model_name == GtrModelName::Infer {
     let fitch = create_fitch_partition(graph, index, alphabet, sequences)?;
     let gtr = infer_gtr_fitch(&fitch, graph)?;
     log_gtr(&gtr, model_name);
-    let partition = fitch.into_marginal_dense(gtr.clone());
+    let partition = fitch.into_marginal_dense(gtr);
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
-      gtr,
       model_name,
     })
   } else {
     let length = get_common_length(sequences)?;
     let gtr = get_gtr_by_name(model_name)?;
     log_gtr(&gtr, model_name);
-    let partition = PartitionMarginalDense::new(index, gtr.clone(), alphabet, length);
+    let partition = PartitionMarginalDense::new(index, gtr, alphabet, length);
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
-      gtr,
       model_name,
     })
   }
