@@ -9,6 +9,7 @@ use crate::optimize::run_loop::{
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use eyre::Report;
@@ -67,7 +68,6 @@ pub fn run(
     params.dense,
   )?;
   let model_name = created.model_name;
-  let gtr = created.gtr;
 
   let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>>;
   let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>>;
@@ -115,6 +115,19 @@ pub fn run(
   info!("Re-running marginal to populate subs_ml after optimization loop");
   update_marginal(&input.graph, &sparse_partitions)?;
   update_marginal(&input.graph, &dense_partitions)?;
+
+  // Read the GTR back from the owning partition, not from a snapshot taken at
+  // creation time. For `--gtr=infer` the partition's `mu` is normalized to 1.0
+  // by `normalize_partition_rates` above (rate absorbed into branch lengths);
+  // a creation-time clone would still carry the raw inferred `mu` and disagree
+  // with the rate-scaled branch lengths shipped alongside it.
+  let gtr = if let Some(p) = sparse_partitions.first() {
+    p.read_arc().gtr().clone()
+  } else if let Some(p) = dense_partitions.first() {
+    p.read_arc().gtr().clone()
+  } else {
+    return make_error!("optimize produced no partition to read the GTR from");
+  };
 
   Ok(OptimizeOutput {
     graph: input.graph,
