@@ -168,6 +168,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Core         | [Production unwrap/expect/assert audit](N-production-unwrap-expect-audit.md)                                                                        |
 | Negligible | Test         | [Test coverage gaps across production functions](N-test-coverage-gaps.md)                                                                           |
 | Negligible | Test         | [Test quality deficiencies](N-test-quality-deficiencies.md)                                                                                         |
+| Negligible | Test         | [Tests with unnecessary filesystem dependency](N-test-filesystem-dependency.md)                                                                     |
 | Negligible | Test         | [Loose tolerances in test_gaussian_product.rs](N-test-gaussian-product-loose-tolerances.md)                                                         |
 | Negligible | GTR          | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 | Negligible | Timetree     | [Coalescent integration test uses grossly loose tolerance](N-timetree-coalescent-integration-grossly-loose-tolerance.md)                            |
