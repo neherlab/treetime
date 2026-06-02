@@ -70,6 +70,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       zero_based: s.zero_based,
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
+      ignore_missing_alns: false,
       output_augur_node_data: None,
       translations: None,
       genes: vec![],

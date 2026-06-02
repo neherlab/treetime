@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
 use crate::ancestral::mask::create_mask;
@@ -34,6 +35,7 @@ pub struct AncestralParams {
   pub site_specific_gtr: bool,
   pub seed: Option<u64>,
   pub sample_from_profile: SampleMode,
+  pub ignore_missing_alns: bool,
 }
 
 pub struct AncestralInput {
@@ -89,8 +91,19 @@ where
     );
   }
 
-  let alignment_length = get_common_length(&input.sequences)?;
-  let mask = create_mask(&input.sequences, alignment_length, &input.alphabet);
+  let AncestralInput {
+    graph,
+    alphabet,
+    sequences,
+  } = input;
+
+  // Tips absent from the alignment become fully-ambiguous sequences here, once, for every
+  // partition backend (fitch, sparse, dense) and alphabet (nucleotide, amino acid). After this the
+  // attachment step always finds a sequence for each leaf.
+  let sequences = complete_alignment_for_leaves(&graph, sequences, &alphabet, params.ignore_missing_alns)?;
+
+  let alignment_length = get_common_length(&sequences)?;
+  let mask = create_mask(&sequences, alignment_length, &alphabet);
   let mut rng = get_random_number_generator(params.seed);
 
   match params.method {
@@ -99,17 +112,17 @@ where
       progress.report("Fitch parsimony", 0.3, "");
       let partition = Arc::new(RwLock::new(PartitionFitch {
         index: 0,
-        alphabet: input.alphabet,
+        alphabet,
         length: alignment_length,
         nodes: btreemap! {},
         edges: btreemap! {},
       }));
       let partitions_parsimony = vec![Arc::clone(&partition)];
 
-      compress_sequences(&input.graph, &partitions_parsimony, &input.sequences)?;
+      compress_sequences(&graph, &partitions_parsimony, &sequences)?;
 
       ancestral_reconstruction_fitch(
-        &input.graph,
+        &graph,
         params.reconstruct_tip_states,
         &partitions_parsimony,
         |node, seq| on_sequence(&node.payload, seq),
@@ -118,7 +131,7 @@ where
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
         output: AncestralOutput {
-          graph: input.graph,
+          graph,
           gtr: None,
           model_name: params.model,
           mask,
@@ -130,14 +143,7 @@ where
       progress.check_cancelled()?;
       progress.report("Inferring GTR model", 0.2, "");
 
-      let created = create_marginal_partition(
-        &input.graph,
-        0,
-        input.alphabet,
-        &input.sequences,
-        params.model,
-        params.dense,
-      )?;
+      let created = create_marginal_partition(&graph, 0, alphabet, &sequences, params.model, params.dense)?;
 
       match created.partition {
         MarginalPartition::Sparse(partition) => {
@@ -145,24 +151,16 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          update_marginal(&input.graph, &partitions)?;
+          update_marginal(&graph, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(
-              &input.graph,
-              &partitions[0],
-              params.gtr_iterations,
-              None,
-              1.0,
-              None,
-              false,
-            )?;
+            refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
           }
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
           ancestral_reconstruction_marginal(
-            &input.graph,
+            &graph,
             params.reconstruct_tip_states,
             &partitions,
             params.sample_from_profile,
@@ -174,7 +172,7 @@ where
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              graph: input.graph,
+              graph,
               gtr: Some(gtr),
               model_name: created.model_name,
               mask,
@@ -189,25 +187,17 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(&input.graph, &partitions, &input.sequences)?;
-          update_marginal(&input.graph, &partitions)?;
+          initialize_marginal(&graph, &partitions, &sequences)?;
+          update_marginal(&graph, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(
-              &input.graph,
-              &partitions[0],
-              params.gtr_iterations,
-              None,
-              1.0,
-              None,
-              false,
-            )?;
+            refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
           }
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
           ancestral_reconstruction_marginal(
-            &input.graph,
+            &graph,
             params.reconstruct_tip_states,
             &partitions,
             params.sample_from_profile,
@@ -219,7 +209,7 @@ where
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              graph: input.graph,
+              graph,
               gtr: Some(gtr),
               model_name: created.model_name,
               mask,

@@ -75,6 +75,7 @@ pub fn run_ancestral_reconstruction(
     site_specific_gtr: ancestral_args.site_specific_gtr,
     seed: ancestral_args.seed,
     sample_from_profile: ancestral_args.sample_from_profile,
+    ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
   let input = AncestralInput {
@@ -233,6 +234,7 @@ fn run_aa_reconstructions(
       site_specific_gtr: false,
       seed: ancestral_args.seed,
       sample_from_profile: ancestral_args.sample_from_profile,
+      ignore_missing_alns: ancestral_args.ignore_missing_alns,
     };
 
     let result = pipeline::run(&params, input, |_node, _seq| Ok(()), progress)?;

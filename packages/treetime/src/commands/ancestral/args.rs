@@ -63,6 +63,15 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub report_ambiguous: bool,
 
+  /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
+  /// instead of aborting.
+  ///
+  /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching
+  /// TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
+  /// given CDS.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub ignore_missing_alns: bool,
+
   /// Write augur-compatible node data JSON to this path.
   ///
   /// Contains per-node nucleotide mutations, reconstructed sequences, the alignment
