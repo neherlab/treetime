@@ -16,6 +16,31 @@ use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::io::fs::read_file_to_string;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
+/// CDS-name attribute priority, matching nextclade's `NAME_ATTRS_CDS`
+/// (`~/work/nextclade/packages/nextclade/src/io/gff3_reader.rs:35`). The resolved name is the key
+/// used for the `{cds}` translation-file token, the annotation entry, and the `aa_muts`/`reference`
+/// keys, so it must equal the producer's CDS name. `Parent` is intentionally absent (nextclade never
+/// uses it as a name source).
+const NAME_ATTRS_CDS: &[&str] = &[
+  "Name",
+  "name",
+  "Alias",
+  "alias",
+  "standard_name",
+  "old-name",
+  "Gene",
+  "gene",
+  "gene_name",
+  "locus_tag",
+  "product",
+  "gene_synonym",
+  "gb-synonym",
+  "acronym",
+  "gb-acronym",
+  "protein_id",
+  "ID",
+];
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AaNodeData {
   pub annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
@@ -183,17 +208,12 @@ fn parse_gff3_annotations(
         path.display()
       )
     })?;
-    let Some(gene) = attrs
-      .get("Name")
-      .or_else(|| attrs.get("gene"))
-      .or_else(|| attrs.get("ID"))
-      .or_else(|| attrs.get("Parent"))
-      .cloned()
-    else {
+    let Some(gene) = resolve_cds_name(&attrs) else {
       continue;
     };
 
-    if !wanted.contains(gene.as_str()) {
+    // Empty `wanted` means derive the CDS set from the annotation itself (every CDS feature).
+    if !wanted.is_empty() && !wanted.contains(gene.as_str()) {
       continue;
     }
 
@@ -235,21 +255,39 @@ fn parse_gff3_annotations(
     .into_iter()
     .map(|(gene, mut rows)| {
       rows.sort_by_key(|row| (row.start, row.end));
-      let first = rows.first().expect("features are non-empty");
-      let strand = first.strand.clone();
-      let seqid = first.seqid.clone();
+      let strand = rows.first().expect("features are non-empty").strand.clone();
+      let seqid = rows.first().expect("features are non-empty").seqid.clone();
 
       if rows.iter().any(|row| row.strand != strand) {
         return make_error!("CDS feature rows for gene '{gene}' use multiple strands");
+      }
+
+      // Auspice requires segments in 5'-to-3' order. GFF coordinates are always ascending, so the
+      // 5' end is the smallest coordinate on the plus strand and the largest on the minus strand.
+      // After the ascending sort above, reverse for the minus strand to get 5'-to-3' order. This
+      // matches BioPython's `CompoundLocation.parts` ordering that augur relies on.
+      if strand == "-" {
+        rows.reverse();
+      }
+
+      // The CDS nucleotide length must be a multiple of 3 to translate to whole codons. Auspice
+      // silently drops a non-divisible CDS from the genome map; augur errors. We error.
+      let cds_length: i64 = rows.iter().map(|row| row.end - row.start + 1).sum();
+      if cds_length % 3 != 0 {
+        return make_error!(
+          "CDS feature for gene '{gene}' has nucleotide length {cds_length}, which is not a multiple of 3. \
+           Check that the annotation matches the translations."
+        );
       }
 
       let mut other = BTreeMap::new();
       other.insert("seqid".to_owned(), json!(seqid));
 
       let annotation = if rows.len() == 1 {
+        let row = rows.first().expect("features are non-empty");
         AugurNodeDataJsonAnnotationEntry {
-          start: Some(first.start),
-          end: Some(first.end),
+          start: Some(row.start),
+          end: Some(row.end),
           strand: Some(strand),
           entry_type: Some("CDS".to_owned()),
           segments: None,
@@ -356,6 +394,10 @@ fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> boo
   reff != gap && qry != gap && reff != unknown && qry != unknown
 }
 
+fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
+  NAME_ATTRS_CDS.iter().find_map(|key| attrs.get(*key).cloned())
+}
+
 fn parse_gff_attributes(raw: &str) -> Result<BTreeMap<String, String>, Report> {
   raw
     .split(';')
@@ -387,6 +429,7 @@ mod tests {
   use crate::seq::mutation::Sub;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_utils::o;
@@ -455,6 +498,72 @@ MN908947.3\tNextclade\tgene\t100\t200\t.\t+\t.\tName=ignored
       },
     };
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_parse_gff3_annotations_orders_minus_strand_segments_5_to_3() {
+    let input = "\
+##gff-version 3
+seq1\tNextclade\tCDS\t100\t150\t.\t-\t0\tName=ORF
+seq1\tNextclade\tCDS\t200\t250\t.\t-\t0\tName=ORF
+";
+    let genes = vec![o!("ORF")];
+
+    let actual = parse_gff3_annotations(input, &genes, Path::new("annotations.gff3")).unwrap();
+
+    let expected = btreemap! {
+      o!("ORF") => AugurNodeDataJsonAnnotationEntry {
+        start: None,
+        end: None,
+        strand: Some(o!("-")),
+        entry_type: Some(o!("CDS")),
+        segments: Some(vec![
+          AugurNodeDataJsonAnnotationSegment { start: 200, end: 250, other: btreemap! {} },
+          AugurNodeDataJsonAnnotationSegment { start: 100, end: 150, other: btreemap! {} },
+        ]),
+        other: btreemap! { o!("seqid") => json!("seq1") },
+      },
+    };
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_parse_gff3_annotations_rejects_non_multiple_of_three() {
+    let input = "\
+##gff-version 3
+seq1\tNextclade\tCDS\t1\t5\t.\t+\t0\tName=BAD
+";
+    let genes = vec![o!("BAD")];
+
+    let err = parse_gff3_annotations(input, &genes, Path::new("annotations.gff3")).unwrap_err();
+
+    assert!(err.to_string().contains("not a multiple of 3"));
+  }
+
+  #[test]
+  fn test_parse_gff3_annotations_derives_all_cds_when_genes_empty() {
+    let input = "\
+##gff-version 3
+seq1\tNextclade\tCDS\t1\t6\t.\t+\t0\tName=A
+seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
+";
+
+    let actual = parse_gff3_annotations(input, &[], Path::new("annotations.gff3")).unwrap();
+
+    assert_eq!(2, actual.len());
+    assert!(actual.contains_key("A"));
+    assert!(actual.contains_key("B"));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::name(        btreemap! { o!("Name") => o!("S") },                          Some(o!("S")))]
+  #[case::locus_tag(   btreemap! { o!("locus_tag") => o!("LT1"), o!("Parent") => o!("p") }, Some(o!("LT1")))]
+  #[case::gene_over_id(btreemap! { o!("gene") => o!("G"), o!("ID") => o!("cds-G") },  Some(o!("G")))]
+  #[case::parent_only( btreemap! { o!("Parent") => o!("gene-Y") },                    None)]
+  #[case::id_fallback( btreemap! { o!("ID") => o!("cds-X") },                         Some(o!("cds-X")))]
+  fn test_resolve_cds_name_priority(#[case] attrs: BTreeMap<String, String>, #[case] expected: Option<String>) {
+    assert_eq!(expected, resolve_cds_name(&attrs));
   }
 
   #[test]
