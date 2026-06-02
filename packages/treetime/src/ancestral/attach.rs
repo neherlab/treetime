@@ -8,7 +8,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::NodeAncestralOps;
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::seq;
+use treetime_primitives::{AlphabetLike, Seq, seq};
 
 /// Complete an alignment so every tree leaf has a sequence, matching v0 missing-tip semantics.
 ///
@@ -86,4 +86,28 @@ where
   }
 
   Ok(sequences)
+}
+
+/// Map characters not present in `alphabet` to its unknown state, returning the sanitized sequence
+/// and the number of characters changed.
+///
+/// Amino-acid translation files are read with the stop-inclusive `Aa` alphabet so that a stop codon
+/// `*` is accepted. When reconstruction runs over an empirical 20-amino-acid model (no stop), the
+/// stop codon and any other out-of-alphabet character must be folded into the unknown state `X`
+/// before attachment, matching augur's amino-acid sequence correction (`_make_seq_corrector('aa')`).
+pub fn sanitize_to_alphabet(seq: &Seq, alphabet: &Alphabet) -> (Seq, usize) {
+  let unknown = alphabet.unknown();
+  let mut changed = 0_usize;
+  let sanitized = seq
+    .iter()
+    .map(|&c| {
+      if alphabet.contains(c) {
+        c
+      } else {
+        changed += 1;
+        unknown
+      }
+    })
+    .collect();
+  (sanitized, changed)
 }

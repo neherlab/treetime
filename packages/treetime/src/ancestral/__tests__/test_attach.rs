@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::attach::complete_alignment_for_leaves;
+use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
@@ -71,6 +71,23 @@ fn test_attach_keeps_extra_records_not_matching_any_leaf() {
 
   assert_eq!(3, by_name.len());
   assert!(by_name.contains_key("reference"));
+}
+
+#[test]
+fn test_sanitize_to_alphabet_folds_stop_into_unknown_for_no_stop_alphabet() {
+  let aa = Alphabet::new(AlphabetName::Aa).unwrap();
+  let aa_no_stop = Alphabet::new(AlphabetName::AaNoStop).unwrap();
+  let seq = Seq::try_from_str("MC*X-").unwrap();
+
+  // The stop-inclusive alphabet keeps the stop codon `*` as a real state.
+  let (kept, changed_aa) = sanitize_to_alphabet(&seq, &aa);
+  assert_eq!(0, changed_aa);
+  assert_eq!(seq, kept);
+
+  // The 20-amino-acid alphabet has no stop state, so `*` is folded into the unknown state `X`.
+  let (folded, changed) = sanitize_to_alphabet(&seq, &aa_no_stop);
+  assert_eq!(1, changed);
+  assert_eq!(Seq::try_from_str("MCXX-").unwrap(), folded);
 }
 
 mod helpers {

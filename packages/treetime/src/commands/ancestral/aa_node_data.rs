@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::ancestral::attach::sanitize_to_alphabet;
 use crate::make_error;
 use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
@@ -129,16 +130,23 @@ pub fn translation_path(template: &str, gene: &str) -> PathBuf {
   PathBuf::from(template.replace("{cds}", gene))
 }
 
-pub fn read_aa_root_sequences(path: Option<&Path>, genes: &[String]) -> Result<BTreeMap<String, Seq>, Report> {
+pub fn read_aa_root_sequences(
+  path: Option<&Path>,
+  genes: &[String],
+  recon_alphabet: &Alphabet,
+) -> Result<BTreeMap<String, Seq>, Report> {
   let Some(path) = path else {
     return Ok(BTreeMap::new());
   };
 
-  let alphabet = Alphabet::new(AlphabetName::AaNoStop)?;
-  let records = read_many_fasta(&[path], &alphabet)?;
+  // Read with the stop-inclusive alphabet, then fold out-of-alphabet characters into the unknown
+  // state of the reconstruction alphabet so the root sequence shares its alphabet with the partition.
+  let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
+  let records = read_many_fasta(&[path], &read_alphabet)?;
   let mut by_gene = BTreeMap::new();
   for record in records {
-    by_gene.insert(record.seq_name, record.seq);
+    let (seq, _changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);
+    by_gene.insert(record.seq_name, seq);
   }
 
   validate_aa_root_sequence_genes(path, &by_gene, genes)?;
