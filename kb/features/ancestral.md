@@ -20,7 +20,7 @@
 - [x] Pre-inference marginal pass to populate profiles
 - [x] GTR selection after profiles exist
 - [x] Second marginal pass after final GTR assignment
-- [ ] Profile sampling (`sample_from_prof` - v0 supports stochastic sampling, v1 argmax only)
+- [x] Profile sampling (`--sample-from-profile` with argmax/root/all modes, seeded RNG)
 
 ## Marginal Reconstruction (Sparse)
 
@@ -32,6 +32,19 @@
 - [x] Sparse compression before GTR selection
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
+
+## Per-CDS Amino-Acid Reconstruction
+
+- [x] Multi-partition marginal traversal on shared graph (one parse, key-join)
+- [x] Stop-inclusive AA alphabet (22-state `aa`) for default infer model
+- [x] Empirical model out-of-alphabet handling (map to unknown, warn) ([decision](../decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md))
+- [x] GFF3 CDS parsing with nextclade name-resolution priority
+- [x] Minus-strand compound CDS segments ordered 5'-to-3'
+- [x] CDS nucleotide length divisible-by-3 validation
+- [x] AA-to-annotation length invariant (`3 * aa_len == cds_nt_len`)
+- [x] Augur node-data JSON: `aa_muts`, `aa_sequences` (root-only), per-CDS annotations, per-CDS reference
+- [x] Missing-tip handling shared with nuc (all-unknown synthesis, >1/3 threshold)
+- [ ] Golden master validation vs augur (blocked: augur not installed in dev container)
 
 ## Joint Reconstruction
 
@@ -52,9 +65,14 @@
 - [ ] `--keep-overhangs` (parsed but not wired; gap handling not implemented)
 - [ ] `--zero-based` indexing (parsed but not wired)
 - [ ] `--report-ambiguous` (parsed but not wired)
-- [ ] `--seed` for reproducibility (parsed but not wired)
+- [x] `--seed` for reproducibility
 - [ ] `--gtr-params` custom GTR parameters (parsed but not wired)
-- [ ] `--aa` (parsed but not wired)
+- [x] `--translations` per-CDS AA FASTA input (both `{cds}` and `%GENE` placeholders)
+- [x] `--cdses` / `--genes` CDS names (derived from `--annotation` when omitted)
+- [x] `--annotation` GFF3 annotation (CDS coordinates for node data; GenBank [not supported](../issues/M-ancestral-genbank-annotation-unsupported.md))
+- [x] `--aa-model` AA substitution model (infer default, jtt92 opt-in)
+- [x] `--aa-root-sequence` per-CDS root/reference override
+- [x] `--output-aa-sequences` per-CDS reconstructed AA FASTA output
 - [ ] `--vcf-reference` (parsed, VCF reader not implemented)
 - [ ] `--aln` legacy option (parsed but not wired)
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

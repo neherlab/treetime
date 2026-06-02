@@ -680,7 +680,7 @@ Tracked: [../tickets/ancestral-implement-mask-computation.md](../tickets/ancestr
 
 Node data JSON from `augur ancestral --genes` includes per-gene AA mutations, root AA sequences, and gene annotations. This is not a separate algorithm: augur loops over genes, calling the same `run_ancestral()` with `alphabet='aa'` on pre-translated AA alignments. v1's reconstruction pipeline is alphabet-agnostic and supports AA alphabet + JTT92. The gap is input/output plumbing (gene annotation parsing, per-gene loop, CLI wiring). TreeTime v0 standalone does not do per-gene AA reconstruction either - this is augur-side orchestration.
 
-Initial node data JSON implementation is nuc-only. Tracked: [../proposals/node-data-json-aa-reconstruction.md](../proposals/node-data-json-aa-reconstruction.md).
+Per-CDS amino-acid reconstruction is implemented. See [../decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md](../decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md) and [../features/ancestral.md](../features/ancestral.md).
 
 ## Implementation notes
 
