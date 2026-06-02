@@ -44,7 +44,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | High       | Clock        | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
 | High       | Core         | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
 | High       | Core         | [Library crate is not consumable by non-CLI clients](H-core-multi-client-architecture-library-purity.md)                                            |
-| High       | Core         | [Pipeline serializes a stale GTR snapshot instead of the partition's live model](H-core-pipeline-gtr-stale-snapshot.md)                             |
 | High       | Homoplasy    | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
 | High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                  |
 | High       | Timetree     | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                          |

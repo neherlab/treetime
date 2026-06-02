@@ -35,6 +35,7 @@
 | [Run optimize loop contract](#run-optimize-loop-contract)                               | Unit            |
 | [CLI args](#cli-args)                                                                   | Unit            |
 | [Zero sequence length](#zero-sequence-length)                                           | Unit            |
+| [Pipeline GTR normalization](#pipeline-gtr-normalization)                               | Unit            |
 
 ---
 
@@ -537,17 +538,17 @@ Fixtures in `__fixtures__/`:
 
 Focused regression coverage for the Poisson indel term, zero-branch-length bootstrapping, and indel-aware optimization behavior.
 
-| Test                                                     | Purpose                                                                  |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `test_optimize_indel_estimate_rate_no_indels`            | Global indel rate is zero when no edges carry indels                     |
-| `test_optimize_indel_estimate_rate_with_indels`          | Global indel rate equals total indels divided by total branch length     |
-| `test_optimize_indel_total_log_lh_matches_manual_sum`    | Tree-level Poisson indel objective matches manual per-edge summation     |
-| `test_optimize_indel_initial_guess_nonzero_with_indels`  | Indel-only signal produces positive initial branch length                |
-| `test_optimize_indel_initial_guess_zero_bl_tree_with_indels` | Zero-BL trees bootstrap away from zero when indels are present       |
-| `test_optimize_indel_run_optimize_nonzero_with_indels`   | All 6 optimize methods produce positive finite BL on indel-bearing edge  |
-| `test_optimize_indel_zero_bl_pipeline_escapes_zero`      | Initial guess plus optimize escapes zero in the sparse production path   |
-| `test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels` | Zero-boundary shortcut rejects zero when Poisson term is active |
-| `test_optimize_indel_grid_zero_comparison_allows_zero_without_indels` | Zero-boundary shortcut preserves substitution-only behavior      |
+| Test                                                                  | Purpose                                                                 |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `test_optimize_indel_estimate_rate_no_indels`                         | Global indel rate is zero when no edges carry indels                    |
+| `test_optimize_indel_estimate_rate_with_indels`                       | Global indel rate equals total indels divided by total branch length    |
+| `test_optimize_indel_total_log_lh_matches_manual_sum`                 | Tree-level Poisson indel objective matches manual per-edge summation    |
+| `test_optimize_indel_initial_guess_nonzero_with_indels`               | Indel-only signal produces positive initial branch length               |
+| `test_optimize_indel_initial_guess_zero_bl_tree_with_indels`          | Zero-BL trees bootstrap away from zero when indels are present          |
+| `test_optimize_indel_run_optimize_nonzero_with_indels`                | All 6 optimize methods produce positive finite BL on indel-bearing edge |
+| `test_optimize_indel_zero_bl_pipeline_escapes_zero`                   | Initial guess plus optimize escapes zero in the sparse production path  |
+| `test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels`   | Zero-boundary shortcut rejects zero when Poisson term is active         |
+| `test_optimize_indel_grid_zero_comparison_allows_zero_without_indels` | Zero-boundary shortcut preserves substitution-only behavior             |
 
 ---
 
@@ -557,14 +558,14 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 **Impl:** [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)
 
-| Test                                              | Purpose                                                  |
-| ------------------------------------------------- | -------------------------------------------------------- |
-| `test_run_optimize_loop_records_lh_history`                         | `lh_history` has one entry per executed iteration                    |
+| Test                                                                 | Purpose                                                           |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `test_run_optimize_loop_records_lh_history`                          | `lh_history` has one entry per executed iteration                 |
 | `test_run_optimize_loop_records_joint_likelihood_with_sparse_indels` | `lh_history` records substitution + indel objective on indel runs |
-| `test_run_optimize_loop_breaks_on_convergence`                      | Breaks and records `stopped_at` with `Converged`                     |
-| `test_run_optimize_loop_zero_max_iter_is_noop`                      | `max_iter = 0` runs the body zero times                              |
-| `test_run_optimize_loop_all_likelihoods_finite`                     | All likelihoods finite (guards against forward-pass NaN)             |
-| `test_run_optimize_loop_improves_likelihood`                        | Damped loop improves likelihood from initial state                   |
+| `test_run_optimize_loop_breaks_on_convergence`                       | Breaks and records `stopped_at` with `Converged`                  |
+| `test_run_optimize_loop_zero_max_iter_is_noop`                       | `max_iter = 0` runs the body zero times                           |
+| `test_run_optimize_loop_all_likelihoods_finite`                      | All likelihoods finite (guards against forward-pass NaN)          |
+| `test_run_optimize_loop_improves_likelihood`                         | Damped loop improves likelihood from initial state                |
 
 ---
 
@@ -1024,3 +1025,18 @@ Tests the 6 per-edge branch length optimization methods (Newton, NewtonSqrt, New
 | -------------------------------------------------------- | ------------------------------------------------------------ |
 | `test_optimize_zero_sequence_length_run_optimize_error`  | run_optimize_mixed returns error for zero-length partitions  |
 | `test_optimize_zero_sequence_length_initial_guess_error` | initial_guess_mixed returns error for zero-length partitions |
+
+---
+
+## Pipeline GTR Normalization
+
+**Test:** [`packages/treetime/src/optimize/__tests__/test_pipeline_gtr_normalized.rs`](../../packages/treetime/src/optimize/__tests__/test_pipeline_gtr_normalized.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/optimize/pipeline.rs`](../../packages/treetime/src/optimize/pipeline.rs)
+- [`packages/treetime/src/partition/create.rs`](../../packages/treetime/src/partition/create.rs)
+
+| Test                                             | Purpose                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `test_optimize_pipeline_infer_gtr_mu_normalized` | `optimize --gtr=infer` output GTR has `mu == 1.0`, read from the live partition not a snapshot |
