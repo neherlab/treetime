@@ -5,7 +5,7 @@ use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{Described, GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 
@@ -91,17 +91,7 @@ impl EdgeToNwk for EdgeAncestral {
   }
 }
 
-impl EdgeToGraphviz for EdgeAncestral {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .branch_length()
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.branch_length()
-  }
-}
+impl EdgeToGraphviz for EdgeAncestral {}
 
 #[cfg(test)]
 mod tests {

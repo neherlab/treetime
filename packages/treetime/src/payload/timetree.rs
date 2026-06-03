@@ -10,7 +10,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeTimetree {
@@ -259,17 +259,7 @@ impl EdgeToNwk for EdgeTimetree {
   }
 }
 
-impl EdgeToGraphviz for EdgeTimetree {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .branch_length()
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.branch_length()
-  }
-}
+impl EdgeToGraphviz for EdgeTimetree {}
 
 impl TimetreeEdge for EdgeTimetree {
   fn set_gamma(&mut self, gamma: f64) {

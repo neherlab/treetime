@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TestNode(pub Option<String>);
@@ -64,12 +64,4 @@ impl EdgeToNwk for TestEdge {
   }
 }
 
-impl EdgeToGraphviz for TestEdge {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.0.map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.0
-  }
-}
+impl EdgeToGraphviz for TestEdge {}

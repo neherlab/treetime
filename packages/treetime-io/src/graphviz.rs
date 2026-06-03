@@ -1,9 +1,10 @@
+use crate::nwk::{NwkWriteOptions, format_weight};
 use eyre::Report;
 use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::{Graph, SafeNode};
 use treetime_graph::node::GraphNode;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -179,15 +180,19 @@ pub trait NodeToGraphviz {
   }
 }
 
-/// Defines how to display edge information when writing to GraphViz (.dot) file
-pub trait EdgeToGraphviz {
-  // Defines how to display label (name) of the edge in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>>;
+/// Defines how to display edge information when writing to GraphViz (.dot) file.
+/// Default implementations derive label and weight from `HasBranchLength`.
+pub trait EdgeToGraphviz: HasBranchLength {
+  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
+    self
+      .branch_length()
+      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
+  }
 
-  // Defines how to assign weight of the edge in GraphViz (.dot) file
-  fn to_graphviz_weight(&self) -> Option<f64>;
+  fn to_graphviz_weight(&self) -> Option<f64> {
+    self.branch_length()
+  }
 
-  // Defines how to display additional attributes of the edge in GraphViz (.dot) file
   fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
     BTreeMap::<String, String>::new()
   }

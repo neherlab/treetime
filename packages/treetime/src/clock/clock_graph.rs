@@ -7,7 +7,7 @@ use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength, TimeLength
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named, Outlier};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
-use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkWriteOptions, format_weight};
+use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 pub type GraphClock = Graph<NodeClock, EdgeClock, ()>;
 
@@ -103,17 +103,7 @@ impl EdgeToNwk for EdgeClock {
   }
 }
 
-impl EdgeToGraphviz for EdgeClock {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .branch_length()
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.branch_length()
-  }
-}
+impl EdgeToGraphviz for EdgeClock {}
 
 impl ClockNode for NodeClock {
   fn likely_time(&self) -> Option<f64> {
