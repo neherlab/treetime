@@ -5,38 +5,16 @@ use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::Sub;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::Itertools;
-use percent_encoding::percent_decode_str;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::fasta::read_many_fasta;
+use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::{AsciiChar, Seq};
-use treetime_utils::io::fs::read_file_to_string;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
-
-/// CDS-name attribute priority matching nextclade's `NAME_ATTRS_CDS` in `gff3_reader.rs`.
-const NAME_ATTRS_CDS: &[&str] = &[
-  "Name",
-  "name",
-  "Alias",
-  "alias",
-  "standard_name",
-  "old-name",
-  "Gene",
-  "gene",
-  "gene_name",
-  "locus_tag",
-  "product",
-  "gene_synonym",
-  "gb-synonym",
-  "acronym",
-  "gb-acronym",
-  "protein_id",
-  "ID",
-];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AaNodeData {
@@ -188,158 +166,52 @@ pub fn read_gff3_annotations(
     return Ok(BTreeMap::new());
   };
 
-  let contents = read_file_to_string(path)?;
-  parse_gff3_annotations(&contents, cdses, path)
+  let features = read_gff3_cds_features_filtered(path, cdses)?;
+  Ok(
+    features
+      .into_iter()
+      .map(|feature| {
+        let annotation = gff_cds_to_annotation(&feature);
+        (feature.name, annotation)
+      })
+      .collect(),
+  )
 }
 
-fn parse_gff3_annotations(
-  contents: &str,
-  cdses: &[String],
-  path: &Path,
-) -> Result<BTreeMap<String, AugurNodeDataJsonAnnotationEntry>, Report> {
-  let wanted: BTreeSet<&str> = cdses.iter().map(String::as_str).collect();
-  let mut features: BTreeMap<String, Vec<GffCdsRow>> = BTreeMap::new();
+fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotationEntry {
+  let mut other = BTreeMap::new();
+  other.insert("seqid".to_owned(), json!(feature.seqid));
 
-  for (line_no, line) in contents.lines().enumerate() {
-    let line = line.trim();
-    if line == "##FASTA" {
-      break;
+  if feature.segments.len() == 1 {
+    let seg = &feature.segments[0];
+    AugurNodeDataJsonAnnotationEntry {
+      start: Some(seg.start),
+      end: Some(seg.end),
+      strand: Some(feature.strand.clone()),
+      entry_type: Some("CDS".to_owned()),
+      segments: None,
+      other,
     }
-    if line.is_empty() || line.starts_with('#') {
-      continue;
-    }
-
-    let cols = line.split('\t').collect_vec();
-    if cols.len() != 9 {
-      return make_error!(
-        "Invalid GFF3 line {} in '{}': expected 9 tab-separated columns",
-        line_no + 1,
-        path.display()
-      );
-    }
-    if cols[2] != "CDS" {
-      continue;
-    }
-
-    let attrs = parse_gff_attributes(cols[8]).wrap_err_with(|| {
-      format!(
-        "Invalid GFF3 attributes on line {} in '{}'",
-        line_no + 1,
-        path.display()
-      )
-    })?;
-    let Some(cds) = resolve_cds_name(&attrs) else {
-      continue;
-    };
-
-    // Empty `wanted` means derive the CDS set from the annotation itself (every CDS feature).
-    if !wanted.is_empty() && !wanted.contains(cds.as_str()) {
-      continue;
-    }
-
-    let start = cols[3].parse::<i64>()?;
-    let end = cols[4].parse::<i64>()?;
-    if start < 1 || end < start {
-      return make_error!("Invalid CDS coordinates for CDS '{cds}' on GFF3 line {}", line_no + 1);
-    }
-
-    let strand = match cols[6] {
-      "+" | "-" => cols[6].to_owned(),
-      strand => {
-        return make_error!(
-          "Invalid CDS strand '{strand}' for CDS '{cds}' on GFF3 line {}",
-          line_no + 1
-        );
-      },
-    };
-
-    features.entry(cds).or_default().push(GffCdsRow {
-      seqid: cols[0].to_owned(),
-      start,
-      end,
-      strand,
-    });
-  }
-
-  for cds in cdses {
-    if !features.contains_key(cds) {
-      return make_error!(
-        "--annotation '{}' does not contain a CDS feature for CDS '{}'",
-        path.display(),
-        cds
-      );
+  } else {
+    AugurNodeDataJsonAnnotationEntry {
+      start: None,
+      end: None,
+      strand: Some(feature.strand.clone()),
+      entry_type: Some("CDS".to_owned()),
+      segments: Some(
+        feature
+          .segments
+          .iter()
+          .map(|seg| AugurNodeDataJsonAnnotationSegment {
+            start: seg.start,
+            end: seg.end,
+            other: BTreeMap::new(),
+          })
+          .collect(),
+      ),
+      other,
     }
   }
-
-  features
-    .into_iter()
-    .map(|(cds, mut rows)| {
-      rows.sort_by_key(|row| (row.start, row.end));
-      let strand = rows.first().expect("features are non-empty").strand.clone();
-      let seqid = rows.first().expect("features are non-empty").seqid.clone();
-
-      if rows.iter().any(|row| row.strand != strand) {
-        return make_error!("CDS feature rows for CDS '{cds}' use multiple strands");
-      }
-
-      if rows.iter().any(|row| row.seqid != seqid) {
-        return make_error!("CDS feature rows for CDS '{cds}' span multiple sequence IDs");
-      }
-
-      // Auspice requires segments in 5'-to-3' order. GFF coordinates are always ascending, so the
-      // 5' end is the smallest coordinate on the plus strand and the largest on the minus strand.
-      // After the ascending sort above, reverse for the minus strand to get 5'-to-3' order. This
-      // matches BioPython's `CompoundLocation.parts` ordering that augur relies on.
-      if strand == "-" {
-        rows.reverse();
-      }
-
-      // The CDS nucleotide length must be a multiple of 3 to translate to whole codons. Auspice
-      // silently drops a non-divisible CDS from the genome map; augur errors. We error.
-      let cds_length: i64 = rows.iter().map(|row| row.end - row.start + 1).sum();
-      if cds_length % 3 != 0 {
-        return make_error!(
-          "CDS feature for CDS '{cds}' has nucleotide length {cds_length}, which is not a multiple of 3. \
-           Check that the annotation matches the translations."
-        );
-      }
-
-      let mut other = BTreeMap::new();
-      other.insert("seqid".to_owned(), json!(seqid));
-
-      let annotation = if rows.len() == 1 {
-        let row = rows.first().expect("features are non-empty");
-        AugurNodeDataJsonAnnotationEntry {
-          start: Some(row.start),
-          end: Some(row.end),
-          strand: Some(strand),
-          entry_type: Some("CDS".to_owned()),
-          segments: None,
-          other,
-        }
-      } else {
-        AugurNodeDataJsonAnnotationEntry {
-          start: None,
-          end: None,
-          strand: Some(strand),
-          entry_type: Some("CDS".to_owned()),
-          segments: Some(
-            rows
-              .iter()
-              .map(|row| AugurNodeDataJsonAnnotationSegment {
-                start: row.start,
-                end: row.end,
-                other: BTreeMap::new(),
-              })
-              .collect(),
-          ),
-          other,
-        }
-      };
-
-      Ok((cds, annotation))
-    })
-    .collect()
 }
 
 pub fn collect_aa_cds_node_data(
@@ -418,10 +290,6 @@ fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> boo
   reff != gap && qry != gap && reff != unknown && qry != unknown
 }
 
-fn resolve_cds_name(attrs: &BTreeMap<String, String>) -> Option<String> {
-  NAME_ATTRS_CDS.iter().find_map(|key| attrs.get(*key).cloned())
-}
-
 /// Total nucleotide length of a CDS annotation: the sum of its segment lengths, or the single
 /// `start..=end` span, in 1-based inclusive coordinates. `None` when the entry carries neither.
 pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Option<i64> {
@@ -432,31 +300,6 @@ pub fn annotation_cds_nuc_length(entry: &AugurNodeDataJsonAnnotationEntry) -> Op
   } else {
     None
   }
-}
-
-fn parse_gff_attributes(raw: &str) -> Result<BTreeMap<String, String>, Report> {
-  raw
-    .split(';')
-    .filter(|attr| !attr.is_empty())
-    .map(|attr| {
-      let Some((key, value)) = attr.split_once('=') else {
-        return make_error!("Invalid GFF3 attribute '{attr}': expected key=value");
-      };
-      Ok((decode_gff3_attribute(key)?, decode_gff3_attribute(value)?))
-    })
-    .collect()
-}
-
-fn decode_gff3_attribute(raw: &str) -> Result<String, Report> {
-  Ok(percent_decode_str(raw).decode_utf8()?.into_owned())
-}
-
-#[derive(Clone, Debug)]
-struct GffCdsRow {
-  seqid: String,
-  start: i64,
-  end: i64,
-  strand: String,
 }
 
 #[cfg(test)]
@@ -532,138 +375,6 @@ mod tests {
     assert!(err.to_string().contains("CDS 'M'"));
   }
 
-  #[test]
-  fn test_parse_gff3_annotations_returns_exact_annotations() {
-    let input = "\
-##gff-version 3
-MN908947.3\tNextclade\tCDS\t21563\t25384\t.\t+\t0\tID=cds-S;Name=S
-MN908947.3\tNextclade\tCDS\t266\t13468\t.\t+\t0\tID=cds-ORF1a;Name=ORF%31a
-MN908947.3\tNextclade\tCDS\t13468\t21555\t.\t+\t0\tID=cds-ORF1a-2;Name=ORF%31a
-MN908947.3\tNextclade\tgene\t100\t200\t.\t+\t.\tName=ignored
-";
-    let cdses = vec![o!("S"), o!("ORF1a")];
-
-    let actual = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap();
-
-    let expected = btreemap! {
-      o!("ORF1a") => AugurNodeDataJsonAnnotationEntry {
-        start: None,
-        end: None,
-        strand: Some(o!("+")),
-        entry_type: Some(o!("CDS")),
-        segments: Some(vec![
-          AugurNodeDataJsonAnnotationSegment {
-            start: 266,
-            end: 13468,
-            other: btreemap! {},
-          },
-          AugurNodeDataJsonAnnotationSegment {
-            start: 13468,
-            end: 21555,
-            other: btreemap! {},
-          },
-        ]),
-        other: btreemap! {
-          o!("seqid") => json!("MN908947.3"),
-        },
-      },
-      o!("S") => AugurNodeDataJsonAnnotationEntry {
-        start: Some(21563),
-        end: Some(25384),
-        strand: Some(o!("+")),
-        entry_type: Some(o!("CDS")),
-        segments: None,
-        other: btreemap! {
-          o!("seqid") => json!("MN908947.3"),
-        },
-      },
-    };
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_parse_gff3_annotations_orders_minus_strand_segments_5_to_3() {
-    let input = "\
-##gff-version 3
-seq1\tNextclade\tCDS\t100\t150\t.\t-\t0\tName=ORF
-seq1\tNextclade\tCDS\t200\t250\t.\t-\t0\tName=ORF
-";
-    let cdses = vec![o!("ORF")];
-
-    let actual = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap();
-
-    let expected = btreemap! {
-      o!("ORF") => AugurNodeDataJsonAnnotationEntry {
-        start: None,
-        end: None,
-        strand: Some(o!("-")),
-        entry_type: Some(o!("CDS")),
-        segments: Some(vec![
-          AugurNodeDataJsonAnnotationSegment { start: 200, end: 250, other: btreemap! {} },
-          AugurNodeDataJsonAnnotationSegment { start: 100, end: 150, other: btreemap! {} },
-        ]),
-        other: btreemap! { o!("seqid") => json!("seq1") },
-      },
-    };
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_parse_gff3_annotations_rejects_non_multiple_of_three() {
-    let input = "\
-##gff-version 3
-seq1\tNextclade\tCDS\t1\t5\t.\t+\t0\tName=BAD
-";
-    let cdses = vec![o!("BAD")];
-
-    let err = parse_gff3_annotations(input, &cdses, Path::new("annotations.gff3")).unwrap_err();
-
-    assert!(err.to_string().contains("not a multiple of 3"));
-  }
-
-  #[test]
-  fn test_parse_gff3_annotations_derives_all_cds_when_cdses_empty() {
-    let input = "\
-##gff-version 3
-seq1\tNextclade\tCDS\t1\t6\t.\t+\t0\tName=A
-seq1\tNextclade\tCDS\t10\t18\t.\t+\t0\tName=B
-";
-
-    let actual = parse_gff3_annotations(input, &[], Path::new("annotations.gff3")).unwrap();
-
-    assert_eq!(2, actual.len());
-    assert_eq!(Some(1), actual["A"].start);
-    assert_eq!(Some(6), actual["A"].end);
-    assert_eq!(Some(10), actual["B"].start);
-    assert_eq!(Some(18), actual["B"].end);
-  }
-
-  #[test]
-  fn test_parse_gff3_annotations_stops_at_fasta_directive() {
-    let input = "\
-##gff-version 3
-seq1\tNextclade\tCDS\t1\t6\t.\t+\t0\tName=A
-##FASTA
->seq1
-ACGTAC
-";
-
-    let actual = parse_gff3_annotations(input, &[], Path::new("annotations.gff3")).unwrap();
-    assert_eq!(1, actual.len());
-    assert!(actual.contains_key("A"));
-  }
-
-  #[test]
-  fn test_parse_gff3_annotations_rejects_mixed_seqids() {
-    let input = "\
-##gff-version 3
-chr1\tNextclade\tCDS\t1\t3\t.\t+\t0\tName=X
-chr2\tNextclade\tCDS\t4\t6\t.\t+\t0\tName=X
-";
-    let err = parse_gff3_annotations(input, &[o!("X")], Path::new("annotations.gff3")).unwrap_err();
-    assert!(err.to_string().contains("multiple sequence IDs"));
-  }
-
   #[rustfmt::skip]
   #[rstest]
   #[case::single_span(
@@ -689,17 +400,6 @@ chr2\tNextclade\tCDS\t4\t6\t.\t+\t0\tName=X
     #[case] expected: Option<i64>,
   ) {
     assert_eq!(expected, annotation_cds_nuc_length(&entry));
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::name(        btreemap! { o!("Name") => o!("S") },                          Some(o!("S")))]
-  #[case::locus_tag(   btreemap! { o!("locus_tag") => o!("LT1"), o!("Parent") => o!("p") }, Some(o!("LT1")))]
-  #[case::gene_over_id(btreemap! { o!("gene") => o!("G"), o!("ID") => o!("cds-G") },  Some(o!("G")))]
-  #[case::parent_only( btreemap! { o!("Parent") => o!("gene-Y") },                    None)]
-  #[case::id_fallback( btreemap! { o!("ID") => o!("cds-X") },                         Some(o!("cds-X")))]
-  fn test_resolve_cds_name_priority(#[case] attrs: BTreeMap<String, String>, #[case] expected: Option<String>) {
-    assert_eq!(expected, resolve_cds_name(&attrs));
   }
 
   #[test]

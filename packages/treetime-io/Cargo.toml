@@ -29,6 +29,7 @@ eyre = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
+percent-encoding = { workspace = true }
 maplit = { workspace = true }
 parking_lot = { workspace = true }
 petgraph = { workspace = true }
