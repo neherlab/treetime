@@ -183,9 +183,14 @@ if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
     ["RUSTC_WRAPPER"]="sccache"
     ["SCCACHE_SERVER_UDS"]="/tmp/sccache.sock"
   )
-  sccache_redis_port="${SCCACHE_REDIS_PORT:-63793}"
-  if bash -c "echo > /dev/tcp/127.0.0.1/${sccache_redis_port}" 2>/dev/null; then
-    sccache_env["SCCACHE_REDIS"]="redis://127.0.0.1:${sccache_redis_port}"
+  sccache_minio_port="${SCCACHE_MINIO_PORT:-63900}"
+  if bash -c "echo > /dev/tcp/127.0.0.1/${sccache_minio_port}" 2>/dev/null; then
+    sccache_env["SCCACHE_BUCKET"]="sccache"
+    sccache_env["SCCACHE_ENDPOINT"]="http://127.0.0.1:${sccache_minio_port}"
+    sccache_env["SCCACHE_REGION"]="auto"
+    sccache_env["SCCACHE_S3_USE_SSL"]="false"
+    sccache_env["AWS_ACCESS_KEY_ID"]="sccache"
+    sccache_env["AWS_SECRET_ACCESS_KEY"]="sccache0"
   else
     volumes["${SCCACHE_DIR:-${cache_dir}/sccache}"]="/home/${USER}/.cache/sccache"
     sccache_env["SCCACHE_DIR"]="/home/${USER}/.cache/sccache"
