@@ -1,3 +1,4 @@
+use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
@@ -13,7 +14,7 @@ pub struct OnlyLeaves(pub bool);
 pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   only_leaves: OnlyLeaves,
-) -> BTreeMap<String, f64> {
+) -> Result<BTreeMap<String, f64>, Report> {
   // Track divergence by node key (always available) for internal computation
   let mut divs_by_key: BTreeMap<GraphNodeKey, f64> = btreemap! {};
   let mut result: BTreeMap<String, f64> = btreemap! {};
@@ -31,13 +32,13 @@ pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
 
     divs_by_key.insert(node.key, div);
 
-    // Add to result only if node has a name and matches filter criteria
     if node.is_leaf || !only_leaves.0 {
       if let Some(name) = node.payload.name() {
         result.insert(name.as_ref().to_owned(), div);
       }
     }
-  });
+    Ok(())
+  })?;
 
-  result
+  Ok(result)
 }

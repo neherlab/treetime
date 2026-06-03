@@ -637,7 +637,7 @@ mod tests {
 
     // Run backward pass only
     attach_seqs_to_graph(&graph, &partitions, &aln)?;
-    fitch_backward(&graph, &partitions);
+    fitch_backward(&graph, &partitions)?;
 
     {
       let partition = partitions[0].read_arc();

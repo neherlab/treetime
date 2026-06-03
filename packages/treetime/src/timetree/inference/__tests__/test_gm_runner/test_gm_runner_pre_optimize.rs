@@ -110,7 +110,7 @@ mod tests {
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> =
       vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;
-    initialize_node_divergences(&graph);
+    initialize_node_divergences(&graph)?;
 
     // Pre-optimization step (matching v0 flow)
     #[allow(trivial_casts)]

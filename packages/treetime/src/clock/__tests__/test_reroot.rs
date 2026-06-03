@@ -59,8 +59,8 @@ mod tests {
     }
 
     let options = ClockParams::default();
-    clock_regression_backward(&graph, &options, None);
-    clock_regression_forward(&graph, &options, None);
+    clock_regression_backward(&graph, &options, None)?;
+    clock_regression_forward(&graph, &options, None)?;
 
     Ok((graph, options))
   }

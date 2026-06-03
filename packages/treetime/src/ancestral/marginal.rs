@@ -3,7 +3,7 @@ use crate::partition::traits::graph_log_lh;
 use crate::partition::traits::{PartitionMarginalOps, PartitionMarginalPasses};
 use eyre::Report;
 use log::trace;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
@@ -12,7 +12,6 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
-use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub fn initialize_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
@@ -58,7 +57,7 @@ where
 {
   // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a
   // fixed seed: every node draws from the profile in a fixed traversal order.
-  graph.try_iter_depth_first_preorder_forward(|node| {
+  graph.iter_depth_first_preorder_forward(|node| {
     if !include_leaves && node.is_leaf {
       return Ok(());
     }
@@ -85,18 +84,10 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
-  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_backward(|node| {
-    if let Err(e) = run_marginal_backward(partitions, &node) {
-      let mut guard = error.lock();
-      if guard.is_none() {
-        *guard = Some(e);
-      }
-      return GraphTraversalContinuation::Stop;
-    }
-    GraphTraversalContinuation::Continue
-  });
-  extract_parallel_error(error)
+    run_marginal_backward(partitions, &node)?;
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 fn run_marginal_backward<N, E, P>(
@@ -121,18 +112,10 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
-  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
   graph.par_iter_breadth_first_forward(|node| {
-    if let Err(e) = run_marginal_forward(graph, partitions, &node) {
-      let mut guard = error.lock();
-      if guard.is_none() {
-        *guard = Some(e);
-      }
-      return GraphTraversalContinuation::Stop;
-    }
-    GraphTraversalContinuation::Continue
-  });
-  extract_parallel_error(error)
+    run_marginal_forward(graph, partitions, &node)?;
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 fn run_marginal_forward<N, E, P>(

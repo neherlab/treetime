@@ -1,4 +1,5 @@
 use crate::partition::timetree::GraphTimetree;
+use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{HasBranchLength, TimeLength};
 use treetime_graph::node::GraphNodeKey;
@@ -22,7 +23,7 @@ struct RelaxedClockCoeffs {
 /// The algorithm:
 /// 1. Postorder pass: compute quadratic penalty coefficients (k1, k2) for each node
 /// 2. Preorder pass: compute optimal gamma (rate multiplier) for each branch
-pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: f64) {
+pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: f64) -> Result<(), Report> {
   let slack = params.first().copied().unwrap_or(1.0);
   let coupling = params.get(1).copied().unwrap_or(1.0);
 
@@ -78,9 +79,9 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
     }
 
     coeffs.insert(node.key, node_coeffs);
-  });
+    Ok(())
+  })?;
 
-  // Preorder pass: compute optimal gamma values from root to leaves
   let mut gammas: BTreeMap<GraphNodeKey, f64> = BTreeMap::new();
 
   graph.iter_depth_first_preorder_forward(|node| {
@@ -111,7 +112,8 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
     };
 
     gammas.insert(node.key, gamma);
-  });
+    Ok(())
+  })?;
 
   // Store gammas in edges: each edge stores the gamma of its child node
   for (node_key, gamma) in &gammas {
@@ -122,4 +124,6 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
       }
     }
   }
+
+  Ok(())
 }

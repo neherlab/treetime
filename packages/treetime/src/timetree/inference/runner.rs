@@ -36,7 +36,7 @@ where
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
-  initialize_node_divergences(graph);
+  initialize_node_divergences(graph)?;
 
   info!("## Using clock model");
   let clock_rate = clock_model.clock_rate();

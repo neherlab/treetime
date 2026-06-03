@@ -55,7 +55,7 @@ mod tests {
     let pre_clock_model = prefilter_result.clock_model;
 
     // Filter outliers
-    let filter_result = clock_filter_inplace(graph, &pre_clock_model, 3.0);
+    let filter_result = clock_filter_inplace(graph, &pre_clock_model, 3.0)?;
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();

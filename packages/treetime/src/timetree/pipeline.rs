@@ -129,7 +129,7 @@ pub fn run(
     load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?;
   }
 
-  initialize_node_divergences(&input.graph);
+  initialize_node_divergences(&input.graph)?;
 
   let branch_params = BranchPointOptimizationParams::default();
 
@@ -190,9 +190,9 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    let result = clock_filter_inplace(&input.graph, &clock_model, params.clock_filter);
+    let result = clock_filter_inplace(&input.graph, &clock_model, params.clock_filter)?;
     report_bad_branches(&input.graph, &clock_model, result.iqd);
-    apply_outlier_bad_branches(&input.graph);
+    apply_outlier_bad_branches(&input.graph)?;
   }
 
   if let Some(aln) = input.sequences.as_deref() {

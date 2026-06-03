@@ -62,7 +62,7 @@ mod tests {
     let graph = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&graph);
@@ -79,7 +79,7 @@ mod tests {
     // comparison makes outlier detection slope-sign-invariant for extreme outliers.
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&graph);

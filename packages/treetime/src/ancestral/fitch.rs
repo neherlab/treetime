@@ -27,7 +27,7 @@ use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
-use treetime_utils::sync::mutex::{extract_parallel_error, unwrap_arc_rwlock};
+use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 
 pub fn create_fitch_partition<N, E>(
   graph: &Graph<N, E, ()>,
@@ -101,7 +101,7 @@ where
   Ok(())
 }
 
-pub(crate) fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+pub(crate) fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -109,8 +109,8 @@ where
 {
   graph.par_iter_breadth_first_backward(|node| {
     run_fitch_backward(partitions, &node);
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 fn run_fitch_backward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeBackward<N, E, ()>)
@@ -184,18 +184,10 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  let error: Arc<parking_lot::Mutex<Option<Report>>> = Arc::new(parking_lot::Mutex::new(None));
   graph.par_iter_breadth_first_forward(|node| {
-    if let Err(e) = run_fitch_forward(partitions, &node) {
-      let mut guard = error.lock();
-      if guard.is_none() {
-        *guard = Some(e);
-      }
-      return GraphTraversalContinuation::Stop;
-    }
-    GraphTraversalContinuation::Continue
-  });
-  extract_parallel_error(error)
+    run_fitch_forward(partitions, &node)?;
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 fn run_fitch_forward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>
@@ -279,39 +271,28 @@ where
   Ok(())
 }
 
-fn fitch_cleanup<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>])
+fn fitch_cleanup<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  graph.par_iter_breadth_first_forward(|node| run_fitch_forward_cleanup(&node, partitions));
-}
+  graph.par_iter_breadth_first_forward(|node| {
+    for partition in partitions {
+      let mut partition = partition.write_arc();
+      let seq = &mut partition.node_mut(&node.key).seq;
 
-fn run_fitch_forward_cleanup<N, E, P>(
-  node: &GraphNodeForward<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-) -> GraphTraversalContinuation
-where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionCompressed,
-{
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    let seq = &mut partition.node_mut(&node.key).seq;
+      // delete the variable position everywhere except of leaves
+      if !node.is_leaf {
+        seq.fitch.variable = btreemap! {};
+      }
 
-    // delete the variable position everywhere except of leaves
-    if !node.is_leaf {
-      seq.fitch.variable = btreemap! {};
+      // Keep the exact reconstructed sequence on every node. Sparse marginal
+      // passes need an authoritative reference state for fixed-site lookups at
+      // ambiguous-variable positions.
     }
-
-    // Keep the exact reconstructed sequence on every node. Sparse marginal
-    // passes need an authoritative reference state for fixed-site lookups at
-    // ambiguous-variable positions.
-  }
-
-  GraphTraversalContinuation::Continue
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 pub fn compress_sequences<N, E, P>(
@@ -325,10 +306,9 @@ where
   P: PartitionCompressed,
 {
   attach_seqs_to_graph(graph, partitions, aln)?;
-  fitch_backward(graph, partitions);
+  fitch_backward(graph, partitions)?;
   fitch_forward(graph, partitions)?;
-  fitch_cleanup(graph, partitions);
-  Ok(())
+  fitch_cleanup(graph, partitions)
 }
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
@@ -341,9 +321,8 @@ pub fn ancestral_reconstruction_fitch(
   partitions: &[Arc<RwLock<PartitionFitch>>],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq) -> Result<(), Report>,
 ) -> Result<(), Report> {
-  graph.try_iter_depth_first_preorder_forward(|node| {
-    run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node)
-  })
+  graph
+    .iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node))
 }
 
 fn run_fitch_reconstruction(

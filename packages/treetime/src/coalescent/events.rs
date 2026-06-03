@@ -39,7 +39,8 @@ where
         }
       }
     }
-  });
+    Ok(())
+  })?;
 
   if events.is_empty() {
     return make_error!("No tree events found");

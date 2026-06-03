@@ -59,7 +59,7 @@ pub fn run(
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  let regression_results = gather_clock_regression_results(&input.graph, &clock_model);
+  let regression_results = gather_clock_regression_results(&input.graph, &clock_model)?;
 
   progress.report("Done", 1.0, "");
   Ok(ClockOutput {
@@ -107,7 +107,7 @@ fn estimate_clock_model_with_prefilter(
           pre_clock_model.clock_rate()
         );
       }
-      Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold).new_outliers)
+      Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold)?.new_outliers)
     })
     .transpose()?;
 

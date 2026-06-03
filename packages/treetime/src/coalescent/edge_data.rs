@@ -29,7 +29,10 @@ pub struct CoalescentEdgeData {
 /// time_length or parent-child time difference), and multiplicity (actual
 /// child count for internal nodes, 2.0 for leaves under the binary merger
 /// assumption).
-pub fn collect_coalescent_edges<N, E, D>(graph: &Graph<N, E, D>, present_time: CalendarTime) -> Vec<CoalescentEdgeData>
+pub fn collect_coalescent_edges<N, E, D>(
+  graph: &Graph<N, E, D>,
+  present_time: CalendarTime,
+) -> Result<Vec<CoalescentEdgeData>, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimeLength,
@@ -39,15 +42,15 @@ where
 
   graph.iter_breadth_first_forward(|node| {
     if node.parent_keys.is_empty() {
-      return;
+      return Ok(());
     }
 
     let Some(time_dist) = node.payload.time_distribution() else {
-      return;
+      return Ok(());
     };
 
     let Some(t_calendar) = time_dist.likely_time() else {
-      return;
+      return Ok(());
     };
 
     let t_node = CalendarTime::new(t_calendar).to_tbp(present_time);
@@ -78,7 +81,7 @@ where
         "Coalescent edge data: skipping node (key={:?}) with undetermined branch length",
         node.key
       );
-      return;
+      return Ok(());
     };
 
     // Multiplicity = number of children at the PARENT (merger) node.
@@ -94,9 +97,10 @@ where
       branch_length,
       multiplicity,
     });
-  });
+    Ok(())
+  })?;
 
-  edges
+  Ok(edges)
 }
 
 /// Sums per-edge coalescent cost to produce the total log-likelihood.

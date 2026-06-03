@@ -88,7 +88,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   };
 
   // Calculate divergence distances from root to all nodes
-  initialize_node_divergences(&graph);
+  initialize_node_divergences(&graph)?;
 
   Ok(InputData {
     graph,

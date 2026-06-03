@@ -45,7 +45,7 @@ where
   graph.iter_breadth_first_forward(|node| {
     // Skip nodes without time distributions
     if node.payload.time_distribution().is_none() {
-      return;
+      return Ok(());
     }
 
     let contrib = if node.is_leaf {
@@ -66,11 +66,11 @@ where
         "When computing coalescent contributions for node (\"{name}\") (#{})",
         node.key,
       )
-    })
-    .unwrap();
+    })?;
 
     contributions.insert(node.key, Arc::new(contrib));
-  });
+    Ok(())
+  })?;
 
   Ok(contributions)
 }

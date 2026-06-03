@@ -303,7 +303,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   initialize_marginal(&graph, &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
 
-  initialize_node_divergences(&graph);
+  initialize_node_divergences(&graph)?;
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,
@@ -356,7 +356,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   initialize_marginal(&graph, &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;
 
-  initialize_node_divergences(&graph);
+  initialize_node_divergences(&graph)?;
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,

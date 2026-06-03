@@ -55,7 +55,7 @@ mod tests {
     // At date 2020, expected div = 0.01 * 2020 + (-20.0) = 0.2
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &clock_model, 3.0)?;
 
     // With well-fitting data, no outliers should be detected
     assert_eq!(count_outliers(&graph), 0, "No outliers expected for clean data");
@@ -85,7 +85,7 @@ mod tests {
     // rate=0.01, intercept=-20.0
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &clock_model, 3.0)?;
 
     // A should be detected as outlier (date 1900 with div ~0.2 doesn't fit clock)
     // Expected div at 1900 = 0.01 * 1900 - 20.0 = -1.0, but actual div ~0.2
@@ -124,7 +124,7 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &clock_model, 3.0)?;
 
     // IQD should be computed (may be zero or positive depending on data fit)
     assert!(iqd.is_finite(), "IQD should be a finite number");
@@ -148,7 +148,7 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     // With low threshold, A might be outlier
-    clock_filter_inplace(&graph, &clock_model, 1.0);
+    clock_filter_inplace(&graph, &clock_model, 1.0)?;
     let outliers_low_threshold = count_outliers(&graph);
 
     // Reset outlier status
@@ -157,7 +157,7 @@ mod tests {
     }
 
     // With high threshold, A should not be outlier
-    clock_filter_inplace(&graph, &clock_model, 100.0);
+    clock_filter_inplace(&graph, &clock_model, 100.0)?;
     let outliers_high_threshold = count_outliers(&graph);
 
     assert!(

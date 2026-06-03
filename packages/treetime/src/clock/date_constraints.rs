@@ -64,7 +64,8 @@ where
         .all(|(child_payload, _)| child_payload.read_arc().bad_branch());
       payload.set_bad_branch(all_children_bad);
     }
-  });
+    Ok(())
+  })?;
 
   warn_unused_date_constraints(dates, &used_names);
 

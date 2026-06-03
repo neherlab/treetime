@@ -36,7 +36,7 @@ where
 {
   let pre = CoalescentPrecomputed::from_graph(graph)?;
   let integral_merger_rate = compute_integral_merger_rate(tc_dist, &pre.lineage_counts)?;
-  let edges = collect_coalescent_edges(graph, pre.present_time);
+  let edges = collect_coalescent_edges(graph, pre.present_time)?;
 
   sum_coalescent_cost(&edges, &integral_merger_rate, &pre.lineage_counts, tc_dist)
 }

@@ -1,6 +1,7 @@
 use crate::clock::clock_model::ClockModel;
 use crate::partition::timetree::GraphTimetree;
 use crate::payload::traits::ClockNode;
+use eyre::Report;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
@@ -73,8 +74,7 @@ pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd:
 /// After clock_filter_inplace marks leaves as outliers (is_outlier=true), this
 /// sets bad_branch=true on those leaves and propagates upward: an internal node
 /// is bad only when all its children are bad.
-pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
-  // Set bad_branch on outlier leaves
+pub fn apply_outlier_bad_branches(graph: &GraphTimetree) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let node = leaf.read_arc();
     let mut payload = node.payload().write_arc();
@@ -83,14 +83,14 @@ pub fn apply_outlier_bad_branches(graph: &GraphTimetree) {
     }
   }
 
-  // Propagate upward in postorder: parent is bad only when all children are bad
   graph.iter_depth_first_postorder_forward(|mut node| {
     if node.is_leaf {
-      return;
+      return Ok(());
     }
 
     let all_children_bad = node.children.iter().all(|(child, _)| child.read_arc().bad_branch);
 
     node.payload.bad_branch = all_children_bad;
-  });
+    Ok(())
+  })
 }

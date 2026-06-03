@@ -46,7 +46,11 @@ pub struct ClockRerootResult {
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_backward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams, prev_clock_rate: Option<f64>)
+pub fn clock_regression_backward<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  prev_clock_rate: Option<f64>,
+) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -70,12 +74,11 @@ where
 
     let is_leaf = n.is_leaf;
     let is_root = n.is_root;
-    let edge_to_parent = n.get_exactly_one_parent_edge();
 
     if is_root {
       *n.payload.clock_set_mut() = q_to_parent;
     } else {
-      let edge_to_parent = edge_to_parent.expect("Encountered a node without a parent edge");
+      let edge_to_parent = n.get_exactly_one_parent_edge()?;
       *edge_to_parent.to_parent_mut() = q_to_parent;
       let edge_len = edge_divergence(
         edge_to_parent.branch_length(),
@@ -91,15 +94,19 @@ where
         edge_to_parent.to_parent().propagate_averages(edge_len, branch_variance)
       };
     }
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 /// Runs forward clock regression pass.
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_forward<N, E, D>(graph: &Graph<N, E, D>, options: &ClockParams, prev_clock_rate: Option<f64>)
+pub fn clock_regression_forward<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  prev_clock_rate: Option<f64>,
+) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -107,7 +114,7 @@ where
 {
   graph.par_iter_breadth_first_forward(|mut n| {
     if !n.is_root {
-      let (_, edge) = n.get_exactly_one_parent().unwrap();
+      let (_, edge) = n.get_exactly_one_parent()?;
       let edge = edge.read_arc();
       let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
@@ -122,8 +129,8 @@ where
       q -= child_edge.from_child();
       *child_edge.to_child_mut() = q;
     }
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 /// Estimates clock model with optional rerooting using default policy.
@@ -181,12 +188,12 @@ where
   }
 
   info!("### Running backward regression");
-  clock_regression_backward(graph, options, prev_clock_rate);
+  clock_regression_backward(graph, options, prev_clock_rate)?;
   debug!("Backward regression completed");
 
   let reroot_result = if !keep_root {
     info!("### Running forward regression to find optimal root");
-    clock_regression_forward(graph, options, prev_clock_rate);
+    clock_regression_forward(graph, options, prev_clock_rate)?;
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");

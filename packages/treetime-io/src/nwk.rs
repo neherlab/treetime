@@ -97,7 +97,7 @@ where
 
   graph.build()?;
 
-  assign_node_names(&graph);
+  assign_node_names(&graph)?;
 
   Ok(graph)
 }

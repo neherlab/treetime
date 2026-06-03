@@ -15,10 +15,9 @@ where
   D: Send + Sync,
 {
   graph.par_iter_breadth_first_forward(|mut node| {
-    propagate_distributions_forward_single_node(&mut node).unwrap();
-    GraphTraversalContinuation::Continue
-  });
-  Ok(())
+    propagate_distributions_forward_single_node(&mut node)?;
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 fn propagate_distributions_forward_single_node<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>

@@ -1,5 +1,6 @@
 use crate::clock::clock_model::ClockModel;
 use crate::payload::traits::{ClockEdge, ClockNode};
+use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
@@ -22,7 +23,7 @@ pub fn clock_filter_inplace<N, E, D>(
   graph: &Graph<N, E, D>,
   clock_model: &ClockModel,
   threshold: f64,
-) -> ClockFilterResult
+) -> Result<ClockFilterResult, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
@@ -43,8 +44,8 @@ where
       parent_div + branch_length
     });
     node.payload.set_div(div);
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })?;
 
   // collect clock_deviation of leaf nodes into a vector
   let leaf_clock_deviations: Vec<f64> = graph
@@ -98,5 +99,5 @@ where
     leaf_clock_deviations.last().copied().unwrap_or(0.0)
   );
 
-  ClockFilterResult { new_outliers, iqd }
+  Ok(ClockFilterResult { new_outliers, iqd })
 }

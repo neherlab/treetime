@@ -25,7 +25,10 @@ pub struct ClockRegressionResult {
 }
 
 /// Get results of the root-to-tip clock inference.
-pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockModel) -> Vec<ClockRegressionResult> {
+pub fn gather_clock_regression_results(
+  graph: &GraphClock,
+  clock_model: &ClockModel,
+) -> Result<Vec<ClockRegressionResult>, Report> {
   let result = ArrayQueue::new(graph.num_nodes());
   let divs = SkipMap::new();
 
@@ -61,10 +64,10 @@ pub fn gather_clock_regression_results(graph: &GraphClock, clock_model: &ClockMo
       })
       .expect("ArrayQueue::push() failed. Queue is full.");
 
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })?;
 
-  result.into_iter().collect_vec()
+  Ok(result.into_iter().collect_vec())
 }
 
 pub fn write_clock_regression_result_csv(

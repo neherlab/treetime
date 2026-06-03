@@ -12,13 +12,13 @@ use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, HasBr
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
-pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>)
+pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + Named + ClockNode,
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
-  let divs = compute_divs(graph, OnlyLeaves(false));
+  let divs = compute_divs(graph, OnlyLeaves(false))?;
   for node_ref in graph.get_nodes() {
     let mut node = node_ref.write_arc().payload().write_arc();
     let name = node.name().map(|n| n.as_ref().to_owned());
@@ -28,6 +28,7 @@ where
       }
     }
   }
+  Ok(())
 }
 
 pub fn initialize_clock_totals_from_time_distributions<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>

@@ -75,9 +75,10 @@ mod tests {
 
     partition.attach_traits(&graph, &traits)?;
 
-    graph.iter_breadth_first_reverse(|node| {
-      partition.process_node_backward(&node).unwrap();
-    });
+    graph.iter_breadth_first_backward(|node| {
+      partition.process_node_backward(&node)?;
+      Ok(())
+    })?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -89,8 +90,9 @@ mod tests {
     helpers::assert_profile_normalized(&leaf_to_inner_msg);
 
     graph.iter_breadth_first_forward(|node| {
-      partition.process_node_forward(&graph, &node).unwrap();
-    });
+      partition.process_node_forward(&graph, &node)?;
+      Ok(())
+    })?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);

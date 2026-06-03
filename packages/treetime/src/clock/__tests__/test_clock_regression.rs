@@ -31,7 +31,7 @@ mod tests {
     };
 
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let divs = compute_divs(&graph, OnlyLeaves(true));
+    let divs = compute_divs(&graph, OnlyLeaves(true))?;
     let naive_rate = compute_naive_rate(&dates, &divs);
 
     for n in graph.get_leaves() {
@@ -39,7 +39,7 @@ mod tests {
       n.write_arc().payload().write_arc().time = Some(dates[&name]);
     }
 
-    clock_regression_backward(&graph, &ClockParams::default(), None);
+    clock_regression_backward(&graph, &ClockParams::default(), None)?;
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();
@@ -53,7 +53,7 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, options, None);
+    clock_regression_backward(&graph, options, None)?;
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();

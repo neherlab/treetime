@@ -24,10 +24,9 @@ where
   D: Send + Sync,
 {
   graph.par_iter_breadth_first_backward(|mut node| {
-    propagate_distributions_backward_single_node(&mut node, coalescent_contributions).unwrap();
-    GraphTraversalContinuation::Continue
-  });
-  Ok(())
+    propagate_distributions_backward_single_node(&mut node, coalescent_contributions)?;
+    Ok(GraphTraversalContinuation::Continue)
+  })
 }
 
 /// Computes time distribution for a single internal node from its children.

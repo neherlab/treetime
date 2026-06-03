@@ -61,7 +61,7 @@ mod tests {
 
     let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;
-    initialize_node_divergences(&graph);
+    initialize_node_divergences(&graph)?;
 
     let clock_model = estimate_clock_model_with_reroot(
       &mut graph,

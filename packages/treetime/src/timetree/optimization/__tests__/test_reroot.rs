@@ -91,8 +91,8 @@ mod tests {
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params, None);
-    clock_regression_forward(&graph, &clock_params, None);
+    clock_regression_backward(&graph, &clock_params, None)?;
+    clock_regression_forward(&graph, &clock_params, None)?;
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];
@@ -487,8 +487,8 @@ mod tests {
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params, None);
-    clock_regression_forward(&graph, &clock_params, None);
+    clock_regression_backward(&graph, &clock_params, None)?;
+    clock_regression_forward(&graph, &clock_params, None)?;
 
     let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
     let partitions = vec![partition];

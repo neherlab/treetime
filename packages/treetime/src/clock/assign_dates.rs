@@ -28,7 +28,8 @@ pub fn assign_dates(graph: &GraphClock, dates: &DatesMap) -> Result<(), Report> 
     if node.is_leaf && node.payload.bad_branch {
       n_bad_leaves += 1;
     }
-  });
+    Ok(())
+  })?;
 
   let n_leaves = graph.num_leaves();
   if n_leaves - n_bad_leaves < MIN_GOOD_LEAVES {

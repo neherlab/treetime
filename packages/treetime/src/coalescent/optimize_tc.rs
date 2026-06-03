@@ -108,7 +108,7 @@ impl TcCostFunction {
     D: Sync + Send,
   {
     let pre = CoalescentPrecomputed::from_graph(graph)?;
-    let edges = collect_coalescent_edges(graph, pre.present_time);
+    let edges = collect_coalescent_edges(graph, pre.present_time)?;
 
     Ok(Self {
       lineage_counts: pre.lineage_counts,

@@ -230,7 +230,7 @@ where
   graph.set_data(converter.usher_data_to_graph_data(tree)?);
 
   let mut i = 0;
-  graph.try_iter_depth_first_preorder_forward(|mut node| {
+  graph.iter_depth_first_preorder_forward(|mut node| {
     let context = UsherTreeContext {
       node: UsherNodeImpl {
         index: i,
@@ -289,7 +289,7 @@ where
   let mut metadata = vec![];
 
   let mut converter = C::new(graph)?;
-  graph.try_iter_depth_first_preorder_forward(|node| {
+  graph.iter_depth_first_preorder_forward(|node| {
     let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
     let edge = edge.as_deref();
     let node = &node.payload;
