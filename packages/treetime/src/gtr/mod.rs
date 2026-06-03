@@ -1,3 +1,4 @@
+pub mod brent_bracketed;
 pub mod get_gtr;
 pub mod gtr;
 pub mod gtr_site_specific;

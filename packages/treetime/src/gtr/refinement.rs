@@ -1,10 +1,10 @@
 use crate::ancestral::marginal::{marginal_backward, update_marginal};
+use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
 use crate::partition::traits::{HasGtr, PartitionMarginalPasses, TransitionCounting};
 use argmin::core::{CostFunction, Error, Executor};
-use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::Array1;
@@ -122,11 +122,16 @@ where
   let cost_hi = cost_fn.neg_log_lh(hi);
 
   if cost_mid < cost_lo && cost_mid < cost_hi {
-    let solver = BrentOpt::new(lo, hi);
+    // Seed Brent at the interior estimate `sqrt_old_mu`, matching v0's
+    // scipy.optimize.brent with a length-3 bracket. argmin's BrentOpt instead
+    // seeds at the golden-section point of [lo, hi], which converges to a
+    // different optimum on flat likelihood surfaces. max_iters matches scipy's
+    // default (500).
+    let solver = BrentBracketed::new(lo, sqrt_old_mu, hi);
     let res = Executor::new(&cost_fn, solver)
-      .configure(|cfg| cfg.max_iters(100))
+      .configure(|cfg| cfg.max_iters(500))
       .run()
-      .map_err(|e| make_internal_report!("GTR rate optimization: argmin BrentOpt failed: {e}"))?;
+      .map_err(|e| make_internal_report!("GTR rate optimization: argmin BrentBracketed failed: {e}"))?;
 
     let optimal_sqrt_mu = res
       .state()
