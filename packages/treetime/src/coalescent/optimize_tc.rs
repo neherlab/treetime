@@ -1,7 +1,6 @@
 use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
-use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
-use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
@@ -108,16 +107,13 @@ impl TcCostFunction {
     E: GraphEdge + TimeLength,
     D: Sync + Send,
   {
-    let (present_time, events_calendar) = collect_tree_events(graph)?;
-    let events_tbp: Vec<_> = events_calendar
-      .iter()
-      .map(|(t, delta)| (t.to_tbp(present_time), *delta))
-      .collect();
+    let pre = CoalescentPrecomputed::from_graph(graph)?;
+    let edges = collect_coalescent_edges(graph, pre.present_time);
 
-    let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
-    let edges = collect_coalescent_edges(graph, present_time);
-
-    Ok(Self { lineage_counts, edges })
+    Ok(Self {
+      lineage_counts: pre.lineage_counts,
+      edges,
+    })
   }
 
   fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {

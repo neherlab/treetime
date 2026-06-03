@@ -1,7 +1,6 @@
 use crate::coalescent::contributions::compute_node_contributions;
-use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
-use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use indexmap::IndexMap;
@@ -67,13 +66,7 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
-  let (present_time, events_calendar) = collect_tree_events(graph)?;
-  let events_tbp: Vec<_> = events_calendar
-    .iter()
-    .map(|(t, delta)| (t.to_tbp(present_time), *delta))
-    .collect();
-
-  let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
-  let integral_merger_rate = compute_integral_merger_rate(tc, &lineage_counts)?;
-  compute_node_contributions(graph, &integral_merger_rate, tc, &lineage_counts, present_time)
+  let pre = CoalescentPrecomputed::from_graph(graph)?;
+  let integral_merger_rate = compute_integral_merger_rate(tc, &pre.lineage_counts)?;
+  compute_node_contributions(graph, &integral_merger_rate, tc, &pre.lineage_counts, pre.present_time)
 }

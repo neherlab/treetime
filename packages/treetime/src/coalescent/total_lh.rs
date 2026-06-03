@@ -1,7 +1,6 @@
 use crate::coalescent::edge_data::{collect_coalescent_edges, sum_coalescent_cost};
-use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
-use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_distribution::Distribution;
@@ -35,15 +34,9 @@ where
   E: GraphEdge + TimeLength,
   D: Sync + Send,
 {
-  let (present_time, events_calendar) = collect_tree_events(graph)?;
-  let events_tbp: Vec<_> = events_calendar
-    .iter()
-    .map(|(t, delta)| (t.to_tbp(present_time), *delta))
-    .collect();
+  let pre = CoalescentPrecomputed::from_graph(graph)?;
+  let integral_merger_rate = compute_integral_merger_rate(tc_dist, &pre.lineage_counts)?;
+  let edges = collect_coalescent_edges(graph, pre.present_time);
 
-  let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
-  let integral_merger_rate = compute_integral_merger_rate(tc_dist, &lineage_counts)?;
-  let edges = collect_coalescent_edges(graph, present_time);
-
-  sum_coalescent_cost(&edges, &integral_merger_rate, &lineage_counts, tc_dist)
+  sum_coalescent_cost(&edges, &integral_merger_rate, &pre.lineage_counts, tc_dist)
 }

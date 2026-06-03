@@ -1,6 +1,5 @@
-use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
-use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
 use crate::{make_error, make_report};
@@ -84,17 +83,10 @@ where
     params.n_points, params.stiffness, params.regularization
   );
 
-  // Collect tree events and compute lineage counts
-  let (present_time, events_calendar) = collect_tree_events(graph)?;
-  let events_tbp: Vec<_> = events_calendar
-    .iter()
-    .map(|(t, delta)| (t.to_tbp(present_time), *delta))
-    .collect();
-
-  let lineage_counts = compute_lineage_count_distribution(&events_tbp)?;
+  let pre = CoalescentPrecomputed::from_graph(graph)?;
 
   // Create time grid spanning the tree event range
-  let breakpoints = lineage_counts.breakpoints();
+  let breakpoints = pre.lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
     return make_error!(
       "Skyline optimization requires at least 2 breakpoints, got {}",
@@ -111,7 +103,7 @@ where
 
   // Create cost function
   let cost_fn = SkylineCostFunction {
-    lineage_counts: Arc::new(lineage_counts),
+    lineage_counts: Arc::new(pre.lineage_counts),
     time_grid: time_grid.clone(),
     stiffness: params.stiffness,
     regularization: params.regularization,
