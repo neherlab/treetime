@@ -177,7 +177,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Ancestral    | [Dead production code in gtr_inference_dense.rs](N-ancestral-dead-code-infer-gtr-dense.md)                                                          |
 | Negligible | Coalescent   | [Coalescent event setup repeated at four sites](N-coalescent-event-setup-duplication.md)                                                            |
 | Negligible | Grid         | [Piecewise constant and linear function structs share identical skeleton](N-grid-piecewise-function-shared-skeleton.md)                             |
-| Negligible | Marginal     | [Inline 1D normalization duplicated in sparse marginal passes](N-marginal-inline-1d-normalization-duplication.md)                                   |
 | Negligible | Optimize     | [Argmin observer structs duplicated across three optimization sites](N-optimize-argmin-observer-boilerplate.md)                                     |
 | Negligible | Timetree     | [Clock rate non-positive guard duplicated at two sites](N-timetree-clock-rate-validation-duplication.md)                                            |
 | Negligible | Validation   | [Validation crate histogram and argmax quality issues](N-validation-error-histogram-and-argmax-quality.md)                                          |
