@@ -64,6 +64,23 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub sampling_bias_correction: Option<f64>,
 
+  /// Smooth the initial equilibrium frequencies with the pseudo-count before the first
+  /// reconstruction pass.
+  ///
+  /// Off by default (TreeTime v0 builds the initial model from raw frequencies and applies the
+  /// pseudo-count only as infer_gtr regularization). Enabling this flattens the prior for the first
+  /// pass; it only affects weighted models.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub smooth_initial_pi: bool,
+
+  /// Exclude near-uniform root positions from the equilibrium-frequency prior.
+  ///
+  /// Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling
+  /// this drops root positions whose posterior carries no phylogenetic signal, removing a
+  /// state-order-dependent bias at ambiguous roots.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub filter_uninformative_root: bool,
+
   /// Write augur-compatible node data JSON to this path.
   ///
   /// Contains per-node discrete trait assignments, confidence profiles, entropy,

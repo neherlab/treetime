@@ -158,7 +158,7 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None)?;
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false)?;
 
     assert_eq!(o!("country"), result.traits.attribute);
     assert_eq!(2, result.partition.n_states());
@@ -202,7 +202,19 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", None, 0.5, 5, None)?;
+    let result = execute_mugration(
+      graph,
+      &traits,
+      "country",
+      Some(&weights),
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     assert_eq!(3, result.partition.n_states());
     assert_eq!(
@@ -232,7 +244,19 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", None, 0.5, 5, None)?;
+    let result = execute_mugration(
+      graph,
+      &traits,
+      "country",
+      Some(&weights),
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     assert_eq!(3, result.partition.n_states());
     assert_eq!(
@@ -263,12 +287,113 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let result = execute_mugration(graph, &traits, "country", Some(&weights), "?", Some(1.0), 0.5, 5, None)?;
+    let result = execute_mugration(
+      graph,
+      &traits,
+      "country",
+      Some(&weights),
+      "?",
+      Some(1.0),
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
     assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
     assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
     assert_abs_diff_eq!(0.6, result.partition.data.gtr.pi[2], epsilon = 1e-10); // usa
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_execute_mugration_smooth_initial_pi_preserves_fixed_equilibrium() -> Result<(), Report> {
+    // Smoothing flattens only the initial pi used for the first reconstruction
+    // pass; the final equilibrium stays pinned to the raw weight-derived
+    // fixed_pi, so the returned model matches the unsmoothed equilibrium.
+    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+      o!("C") => o!("france"),
+    };
+    let weights = btreemap! {
+      o!("usa") => 3.0,
+      o!("germany") => 1.0,
+      o!("france") => 1.0,
+    };
+
+    let result = execute_mugration(
+      graph,
+      &traits,
+      "country",
+      Some(&weights),
+      "?",
+      Some(1.0),
+      0.5,
+      5,
+      None,
+      true,
+      false,
+    )?;
+
+    let total = 5.0;
+    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
+    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
+    assert_abs_diff_eq!(3.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-10); // usa
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_execute_mugration_filter_uninformative_root_changes_inferred_equilibrium() -> Result<(), Report> {
+    // Symmetric two-leaf tree: the root posterior is exactly uniform [0.5, 0.5].
+    // With filtering off (v0) the root's argmax state is folded into the
+    // equilibrium-frequency prior; with filtering on the uniform root is
+    // skipped. With no weights (pi inferred from counts) the two policies must
+    // therefore yield different equilibrium frequencies.
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("B") => o!("germany"),
+    };
+
+    let v0 = execute_mugration(
+      nwk_read_str("(A:0.1,B:0.1)root;")?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      0,
+      None,
+      false,
+      false,
+    )?;
+    let filtered = execute_mugration(
+      nwk_read_str("(A:0.1,B:0.1)root;")?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      0,
+      None,
+      false,
+      true,
+    )?;
+
+    let pi_v0 = &v0.partition.data.gtr.pi;
+    let pi_filtered = &filtered.partition.data.gtr.pi;
+    assert!(
+      (pi_v0[0] - pi_filtered[0]).abs() > 1e-9,
+      "uninformative-root filtering must change the inferred equilibrium: v0 pi={pi_v0:?}, filtered pi={pi_filtered:?}"
+    );
 
     Ok(())
   }
@@ -290,6 +415,8 @@ mod tests {
       0.5,
       5,
       None,
+      false,
+      false,
     )?;
     let base_mu = base_result.partition.data.gtr.mu;
 
@@ -303,6 +430,8 @@ mod tests {
       0.5,
       5,
       Some(2.0),
+      false,
+      false,
     )?;
 
     assert_abs_diff_eq!(corrected_result.partition.data.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
@@ -318,7 +447,7 @@ mod tests {
       o!("B") => o!("usa"),
     };
 
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None);
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false);
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     assert!(err_msg.contains("only 1 discrete attributes"));
@@ -334,9 +463,33 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let result_no_iter = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 0, None)?;
+    let result_no_iter = execute_mugration(
+      nwk_read_str(tree)?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      0,
+      None,
+      false,
+      false,
+    )?;
 
-    let result_with_iter = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
+    let result_with_iter = execute_mugration(
+      nwk_read_str(tree)?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     let mu_changed = (result_no_iter.partition.data.gtr.mu - result_with_iter.partition.data.gtr.mu).abs() > 1e-6;
     let pi_changed = result_no_iter
@@ -373,7 +526,19 @@ mod tests {
       o!("D") => o!("germany"),
     };
 
-    let result = execute_mugration(nwk_read_str(tree)?, &traits, "country", None, "?", None, 0.5, 5, None)?;
+    let result = execute_mugration(
+      nwk_read_str(tree)?,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     let pi_usa = result.partition.data.gtr.pi[1];
     assert!(
@@ -397,6 +562,8 @@ mod tests {
       0.5,
       0,
       None,
+      false,
+      false,
     )?;
 
     assert_abs_diff_eq!(result.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);

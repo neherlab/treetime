@@ -11,7 +11,7 @@ mod tests {
 
   fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
     let graph = nwk_read_str(tree).unwrap();
-    let result = execute_mugration(graph, traits, "country", None, "?", None, 0.5, 5, None).unwrap();
+    let result = execute_mugration(graph, traits, "country", None, "?", None, 0.5, 5, None, false, false).unwrap();
     let data = build_augur_node_data_json(&result).unwrap();
     json_write_str(&data, JsonPretty(true)).unwrap()
   }

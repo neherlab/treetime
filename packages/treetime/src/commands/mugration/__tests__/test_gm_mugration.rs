@@ -230,6 +230,8 @@ mod tests {
         0.5,
         fixture.parameters.iterations,
         fixture.parameters.sampling_bias_correction,
+        false,
+        false,
       )
     }
   }

@@ -47,6 +47,9 @@ impl PartitionMarginalDense {
         nodes: btreemap! {},
         edges: btreemap! {},
         min_branch_length,
+        // Nucleotide ancestral inference filters signal-free (gap-only) root
+        // columns out of the equilibrium-frequency prior.
+        filter_uninformative_root: true,
       },
       index,
       alphabet,

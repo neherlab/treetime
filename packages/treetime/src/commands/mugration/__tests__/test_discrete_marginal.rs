@@ -168,6 +168,7 @@ mod tests {
         gtr,
         discrete_states,
         MIN_BRANCH_LENGTH_FRACTION,
+        false,
       ))
     }
 

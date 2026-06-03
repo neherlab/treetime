@@ -87,6 +87,8 @@ pub fn execute_mugration(
   missing_weights_threshold: f64,
   iterations: usize,
   sampling_bias_correction: Option<f64>,
+  smooth_initial_pi: bool,
+  filter_uninformative_root: bool,
 ) -> Result<MugrationResult, Report> {
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
 
@@ -131,7 +133,14 @@ pub fn execute_mugration(
 
   let fixed_pi = weights.map(|_| pi.clone());
 
-  let pi = apply_pseudo_counts(pi, pc);
+  // v0 builds the initial GTR from the raw equilibrium frequencies and reserves
+  // the pseudo-count for infer_gtr regularization. Smoothing the initial pi
+  // (a flatter prior for the first reconstruction pass) is opt-in v1 behavior.
+  let pi = if smooth_initial_pi {
+    apply_pseudo_counts(pi, pc)
+  } else {
+    pi
+  };
 
   let gtr = GTR::new(GTRParams {
     n_states,
@@ -140,7 +149,12 @@ pub fn execute_mugration(
     pi,
   })?;
 
-  let mut partition = PartitionMarginalDiscrete::new(gtr, discrete_states, MIN_BRANCH_LENGTH_FRACTION);
+  let mut partition = PartitionMarginalDiscrete::new(
+    gtr,
+    discrete_states,
+    MIN_BRANCH_LENGTH_FRACTION,
+    filter_uninformative_root,
+  );
   partition.attach_traits(&graph, traits)?;
 
   let partition = Arc::new(RwLock::new(partition));

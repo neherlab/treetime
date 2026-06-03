@@ -17,7 +17,7 @@ mod tests {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None)?;
+    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false)?;
     let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 

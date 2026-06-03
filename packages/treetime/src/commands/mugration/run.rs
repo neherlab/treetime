@@ -66,6 +66,8 @@ pub fn run_mugration(
     mugration_args.missing_weights_threshold,
     mugration_args.iterations,
     mugration_args.sampling_bias_correction,
+    mugration_args.smooth_initial_pi,
+    mugration_args.filter_uninformative_root,
   )?;
 
   progress.report("Writing output", 0.8, "");

@@ -365,6 +365,8 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
       missing_weights_threshold: s.missing_weights_threshold,
       iterations: s.iterations,
       sampling_bias_correction: s.sampling_bias_correction,
+      smooth_initial_pi: false,
+      filter_uninformative_root: false,
       output_augur_node_data: None,
       seed: None,
       output: OutputArgs {

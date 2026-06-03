@@ -22,6 +22,11 @@ pub struct MarginalData {
   pub nodes: BTreeMap<GraphNodeKey, DenseNodePartition>,
   pub edges: BTreeMap<GraphEdgeKey, DenseEdgePartition>,
   pub min_branch_length: f64,
+  /// When `true`, root positions whose posterior profile is essentially uniform
+  /// are excluded from the equilibrium-frequency prior in `count_transitions`.
+  /// v0 never filters (always folds in the root MAP state); the nucleotide
+  /// ancestral path enables filtering to drop signal-free gap-only columns.
+  pub filter_uninformative_root: bool,
 }
 
 pub trait MarginalPartition<N, E>: Send + Sync
@@ -241,7 +246,7 @@ impl MarginalData {
     let root_profile = &self.nodes[&root_key].profile.dis;
     let mut root_state = Array1::zeros(n_states);
     for row in root_profile.rows() {
-      if is_profile_informative(row, n_states) {
+      if !self.filter_uninformative_root || is_profile_informative(row, n_states) {
         if let Some(root_idx) = argmax_first(&row) {
           root_state[root_idx] += 1.0;
         }

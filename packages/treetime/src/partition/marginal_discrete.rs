@@ -27,13 +27,14 @@ pub struct PartitionMarginalDiscrete {
 }
 
 impl PartitionMarginalDiscrete {
-  pub fn new(gtr: GTR, states: DiscreteStates, min_branch_length: f64) -> Self {
+  pub fn new(gtr: GTR, states: DiscreteStates, min_branch_length: f64, filter_uninformative_root: bool) -> Self {
     Self {
       data: MarginalData {
         gtr,
         nodes: btreemap! {},
         edges: btreemap! {},
         min_branch_length,
+        filter_uninformative_root,
       },
       states,
     }
