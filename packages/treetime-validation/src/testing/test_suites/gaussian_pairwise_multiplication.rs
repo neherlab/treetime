@@ -1,5 +1,5 @@
 #![allow(clippy::many_single_char_names)]
-use crate::testing::framework::test_case::TestCase;
+use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use eyre::Report;
 use ndarray::Array1;
@@ -61,11 +61,8 @@ impl MultiplicationTestSuite for GaussianPairwiseMultiplicationTestSuite {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianPairwiseMultiplicationTestCase {
-  pub name: String,
-  pub description: String,
-  pub stress_type: String,
-  pub analytical_caution: String,
-  pub slowness: f64,
+  #[serde(flatten)]
+  pub base: TestCaseBase,
   pub mu_f: f64,
   pub sigma_f: f64,
   pub amplitude_f: f64,
@@ -79,11 +76,13 @@ pub struct GaussianPairwiseMultiplicationTestCase {
 impl From<&AnalyticalCase> for GaussianPairwiseMultiplicationTestCase {
   fn from(case: &AnalyticalCase) -> Self {
     Self {
-      name: case.name.to_owned(),
-      description: case.description.to_owned(),
-      stress_type: case.stress_type.to_owned(),
-      analytical_caution: case.analytical_caution.to_owned(),
-      slowness: case.slowness,
+      base: TestCaseBase {
+        name: case.name.to_owned(),
+        description: case.description.to_owned(),
+        stress_type: case.stress_type.to_owned(),
+        analytical_caution: case.analytical_caution.to_owned(),
+        slowness: case.slowness,
+      },
       mu_f: case.mu_f,
       sigma_f: case.sigma_f,
       amplitude_f: case.amplitude_f,
@@ -97,24 +96,8 @@ impl From<&AnalyticalCase> for GaussianPairwiseMultiplicationTestCase {
 }
 
 impl TestCase for GaussianPairwiseMultiplicationTestCase {
-  fn name(&self) -> &str {
-    &self.name
-  }
-
-  fn description(&self) -> &str {
-    &self.description
-  }
-
-  fn stress_type(&self) -> &str {
-    &self.stress_type
-  }
-
-  fn analytical_caution(&self) -> &str {
-    &self.analytical_caution
-  }
-
-  fn slowness(&self) -> f64 {
-    self.slowness
+  fn base(&self) -> &TestCaseBase {
+    &self.base
   }
 
   fn input_grid_domain(&self) -> (f64, f64) {

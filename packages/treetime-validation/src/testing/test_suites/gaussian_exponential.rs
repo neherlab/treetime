@@ -1,5 +1,5 @@
 #![allow(clippy::many_single_char_names)]
-use crate::testing::framework::test_case::TestCase;
+use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
 use ndarray::Array1;
@@ -42,11 +42,8 @@ impl ConvolutionTestSuite for GaussianExponentialTestSuite {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianExponentialTestCase {
-  pub name: String,
-  pub description: String,
-  pub stress_type: String,
-  pub analytical_caution: String,
-  pub slowness: f64,
+  #[serde(flatten)]
+  pub base: TestCaseBase,
   pub a_f: f64,
   pub input_grid_domain: (f64, f64),
   pub input_grid_n_points: usize,
@@ -55,11 +52,13 @@ pub struct GaussianExponentialTestCase {
 impl From<&AnalyticalCase> for GaussianExponentialTestCase {
   fn from(case: &AnalyticalCase) -> Self {
     Self {
-      name: case.name.to_owned(),
-      description: case.description.to_owned(),
-      stress_type: case.stress_type.to_owned(),
-      analytical_caution: case.analytical_caution.to_owned(),
-      slowness: case.slowness,
+      base: TestCaseBase {
+        name: case.name.to_owned(),
+        description: case.description.to_owned(),
+        stress_type: case.stress_type.to_owned(),
+        analytical_caution: case.analytical_caution.to_owned(),
+        slowness: case.slowness,
+      },
       a_f: case.a_f,
       input_grid_domain: case.input_grid_domain,
       input_grid_n_points: case.input_grid_n_points,
@@ -68,24 +67,8 @@ impl From<&AnalyticalCase> for GaussianExponentialTestCase {
 }
 
 impl TestCase for GaussianExponentialTestCase {
-  fn name(&self) -> &str {
-    &self.name
-  }
-
-  fn description(&self) -> &str {
-    &self.description
-  }
-
-  fn stress_type(&self) -> &str {
-    &self.stress_type
-  }
-
-  fn analytical_caution(&self) -> &str {
-    &self.analytical_caution
-  }
-
-  fn slowness(&self) -> f64 {
-    self.slowness
+  fn base(&self) -> &TestCaseBase {
+    &self.base
   }
 
   fn input_grid_domain(&self) -> (f64, f64) {

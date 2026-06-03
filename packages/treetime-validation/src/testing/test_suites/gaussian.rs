@@ -1,4 +1,4 @@
-use crate::testing::framework::test_case::TestCase;
+use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use eyre::Report;
 use ndarray::Array1;
@@ -42,11 +42,8 @@ impl ConvolutionTestSuite for GaussianTestSuite {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianTestCase {
-  pub name: String,
-  pub description: String,
-  pub stress_type: String,
-  pub analytical_caution: String,
-  pub slowness: f64,
+  #[serde(flatten)]
+  pub base: TestCaseBase,
   pub sigma_f: f64,
   pub sigma_g: f64,
   pub mu: f64,
@@ -57,11 +54,13 @@ pub struct GaussianTestCase {
 impl From<&GaussianConvolutionTestCase> for GaussianTestCase {
   fn from(case: &GaussianConvolutionTestCase) -> Self {
     Self {
-      name: case.name.to_owned(),
-      description: case.description.to_owned(),
-      stress_type: case.stress_type.to_owned(),
-      analytical_caution: case.analytical_caution.to_owned(),
-      slowness: case.slowness,
+      base: TestCaseBase {
+        name: case.name.to_owned(),
+        description: case.description.to_owned(),
+        stress_type: case.stress_type.to_owned(),
+        analytical_caution: case.analytical_caution.to_owned(),
+        slowness: case.slowness,
+      },
       sigma_f: case.sigma_f,
       sigma_g: case.sigma_g,
       mu: case.mu,
@@ -72,24 +71,8 @@ impl From<&GaussianConvolutionTestCase> for GaussianTestCase {
 }
 
 impl TestCase for GaussianTestCase {
-  fn name(&self) -> &str {
-    &self.name
-  }
-
-  fn description(&self) -> &str {
-    &self.description
-  }
-
-  fn stress_type(&self) -> &str {
-    &self.stress_type
-  }
-
-  fn analytical_caution(&self) -> &str {
-    &self.analytical_caution
-  }
-
-  fn slowness(&self) -> f64 {
-    self.slowness
+  fn base(&self) -> &TestCaseBase {
+    &self.base
   }
 
   fn input_grid_domain(&self) -> (f64, f64) {
