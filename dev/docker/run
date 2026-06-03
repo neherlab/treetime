@@ -179,12 +179,18 @@ declare -A volumes=(
 
 declare -A sccache_env=()
 if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
-  volumes["${SCCACHE_DIR:-${cache_dir}/sccache}"]="/home/${USER}/.cache/sccache"
   sccache_env=(
     ["RUSTC_WRAPPER"]="sccache"
-    ["SCCACHE_DIR"]="/home/${USER}/.cache/sccache"
-    ["SCCACHE_CACHE_SIZE"]="${SCCACHE_CACHE_SIZE:-5G}"
+    ["SCCACHE_SERVER_UDS"]="/tmp/sccache.sock"
   )
+  sccache_redis_port="${SCCACHE_REDIS_PORT:-63793}"
+  if bash -c "echo > /dev/tcp/127.0.0.1/${sccache_redis_port}" 2>/dev/null; then
+    sccache_env["SCCACHE_REDIS"]="redis://127.0.0.1:${sccache_redis_port}"
+  else
+    volumes["${SCCACHE_DIR:-${cache_dir}/sccache}"]="/home/${USER}/.cache/sccache"
+    sccache_env["SCCACHE_DIR"]="/home/${USER}/.cache/sccache"
+    sccache_env["SCCACHE_CACHE_SIZE"]="${SCCACHE_CACHE_SIZE:-5G}"
+  fi
 fi
 
 mkdir -p "${!volumes[@]}"
