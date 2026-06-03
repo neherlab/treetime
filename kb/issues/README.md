@@ -132,9 +132,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [Polytomy resolution numerical robustness](N-timetree-polytomy-numerical-robustness.md)                                                             |
 | Negligible | Timetree     | [Polytomy resolution test improvements](N-timetree-polytomy-test-improvements.md)                                                                   |
 | Medium     | Timetree     | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                       |
-| Medium     | Timetree     | [Timetree parallel traversals use unwrap instead of error capture](M-timetree-parallel-traversal-unwrap-panic.md)                                   |
 | Medium     | Timetree     | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                         |
-| Medium     | Timetree     | [Backward and forward traversals use unwrap on fallible distribution math](M-timetree-inference-unwrap-in-traversals.md)                            |
 | Medium     | Timetree     | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                         |
 | Medium     | Clock        | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock        | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |
@@ -172,7 +170,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Test         | [Loose tolerances in test_gaussian_product.rs](N-test-gaussian-product-loose-tolerances.md)                                                         |
 | Negligible | GTR          | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 | Negligible | Timetree     | [Coalescent integration test uses grossly loose tolerance](N-timetree-coalescent-integration-grossly-loose-tolerance.md)                            |
-| Negligible | Ancestral    | [Ancestral parallel traversals repeat identical error-capture boilerplate](N-ancestral-parallel-traversal-error-boilerplate.md)                     |
 | Negligible | Ancestral    | [Dead production code in gtr_inference_dense.rs](N-ancestral-dead-code-infer-gtr-dense.md)                                                          |
 | Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
 | Negligible | Grid         | [Piecewise constant and linear function structs share identical skeleton](N-grid-piecewise-function-shared-skeleton.md)                             |
@@ -180,6 +177,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Validation   | [Validation crate histogram and argmax quality issues](N-validation-error-histogram-and-argmax-quality.md)                                          |
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
+| Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
 
 ## Cross-references
 
