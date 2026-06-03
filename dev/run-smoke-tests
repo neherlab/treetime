@@ -120,7 +120,7 @@ MUGRATION_BATCH_RUNS = [
   # data subdirectory             # output subdirectory                # attribute   # additional args (appended to the batch args)
   ("zika/20",                     "zika/20/country",                  "country",    "--pc=1.0"),
   ("zika/20",                     "zika/20/country-weights",          "country",    "--pc=1.0 --weights={data_dir}/zika/country_weights.csv"),
-  ("zika/20",                     "zika/20/country-confidence",       "country",    "--pc=1.0 --confidence={outdir}/confidence.csv"),
+  ("zika/20",                     "zika/20/country-confidence",       "country",    "--pc=1.0 --output-confidence={outdir}/confidence.csv"),
   ("dengue/20",                   "dengue/20/country",                "country",    "--name-column=genbank_accession --pc=1.0"),
   ("tb/20",                       "tb/20/cluster",                    "cluster",    "--name-column=strain --pc=1.0"),
   ("lassa/L/20",                  "lassa/L/20/country",               "country",    "--name-column=accession --pc=1.0"),
@@ -338,10 +338,15 @@ def make_additional_commands(exe, data_dir, out_dir):
     # display name                 # full command line
     ("help: global",               f"""{exe} --help"""                          ),
     ("help: ancestral",            f"""{exe} ancestral --help"""                ),
+    ("help: arg",                  f"""{exe} arg --help"""                      ),
     ("help: clock",                f"""{exe} clock --help"""                    ),
+    ("help: completions",          f"""{exe} completions --help"""              ),
+    ("help: help-markdown",        f"""{exe} help-markdown --help"""              ),
+    ("help: homoplasy",            f"""{exe} homoplasy --help"""                ),
     ("help: mugration",            f"""{exe} mugration --help"""                ),
     ("help: optimize",             f"""{exe} optimize --help"""                 ),
     ("help: prune",                f"""{exe} prune --help"""                    ),
+    ("help: schema",               f"""{exe} schema --help"""                   ),
     ("help: timetree",             f"""{exe} timetree --help"""                 ),
   ]
   # fmt: on @formatter:on
@@ -476,8 +481,8 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
   --method-anc={method}
   {dense}
   --tree={DATA_DIR}/{name}/tree.nwk
+  --aln={DATA_DIR}/{name}/aln.fasta.xz
   --outdir={outdir_base}/{out}
-  {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
 
@@ -534,8 +539,8 @@ def run_timetree(name: str, out: str, extra_args: str):
   {TREETIME_BIN} timetree
   --tree={DATA_DIR}/{name}/tree.nwk
   --dates={DATA_DIR}/{name}/metadata.tsv
+  --aln={DATA_DIR}/{name}/aln.fasta.xz
   --outdir={RESULTS_DIR}/timetree/{out}
-  {DATA_DIR}/{name}/aln.fasta.xz
   {extra_args}
   """
   return run_batch_cmd(name, "timetree", cmd)
