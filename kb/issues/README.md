@@ -176,7 +176,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Ancestral    | [Ancestral parallel traversals repeat identical error-capture boilerplate](N-ancestral-parallel-traversal-error-boilerplate.md)                     |
 | Negligible | Ancestral    | [Dead production code in gtr_inference_dense.rs](N-ancestral-dead-code-infer-gtr-dense.md)                                                          |
 | Negligible | Coalescent   | [Coalescent event setup repeated at four sites](N-coalescent-event-setup-duplication.md)                                                            |
-| Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
 | Negligible | Grid         | [Piecewise constant and linear function structs share identical skeleton](N-grid-piecewise-function-shared-skeleton.md)                             |
 | Negligible | Marginal     | [Inline 1D normalization duplicated in sparse marginal passes](N-marginal-inline-1d-normalization-duplication.md)                                   |
 | Negligible | Optimize     | [Argmin observer structs duplicated across three optimization sites](N-optimize-argmin-observer-boilerplate.md)                                     |
