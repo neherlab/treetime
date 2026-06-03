@@ -1,4 +1,5 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
+use crate::partition::marginal_core::normalize_1d_inplace;
 use crate::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
 use crate::partition::sparse::{SparseNodePartition, SparseSeqDistribution, VarPos};
@@ -6,7 +7,6 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use ndarray::Array1;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -398,29 +398,16 @@ where
       // Guard against zero divisor: clamp to smallest positive normal f64.
       // Matches the stabilization pattern in discrete.rs:206.
       let safe_divisor = divisor.mapv(|v| v.max(f64::MIN_POSITIVE));
-      let dis = numerator / &safe_divisor;
-      let norm = dis.sum();
-      let dis = if norm > 0.0 && norm.is_finite() {
-        delta_ll += norm.ln();
-        dis / norm
-      } else {
-        delta_ll += f64::NEG_INFINITY;
-        Array1::from_elem(dis.len(), 1.0 / dis.len() as f64)
-      };
+      let mut dis = numerator / &safe_divisor;
+      delta_ll += normalize_1d_inplace(&mut dis, 1.0);
       seq_dis.variable.insert(pos, VarPos { dis, state: pstate });
       seq_dis.fixed_counts.adjust_count(pstate, -1);
     }
     for (s, p) in &seq_info.profile.fixed {
       let safe_fixed = child_dis.fixed[s].mapv(|v| v.max(f64::MIN_POSITIVE));
-      let dis = p / &safe_fixed;
-      let norm = dis.sum();
-      let dis = if norm > 0.0 && norm.is_finite() {
-        delta_ll += norm.ln() * (seq_dis.fixed_counts.get(*s).unwrap() as f64);
-        dis / norm
-      } else {
-        delta_ll += f64::NEG_INFINITY;
-        Array1::from_elem(dis.len(), 1.0 / dis.len() as f64)
-      };
+      let mut dis = p / &safe_fixed;
+      let weight = seq_dis.fixed_counts.get(*s).unwrap() as f64;
+      delta_ll += normalize_1d_inplace(&mut dis, weight);
       seq_dis.fixed.insert(*s, dis);
     }
     seq_dis.log_lh += delta_ll;

@@ -171,6 +171,25 @@ where
   Ok(())
 }
 
+/// 1D specialization of [`normalize_inplace`] for sparse marginal passes.
+///
+/// Normalizes `dis` to sum to 1 and returns the log-likelihood contribution
+/// `weight * ln(norm)`, where `weight` is the number of sites sharing this
+/// distribution (`1.0` for a single variable site, the fixed-state count for a
+/// fixed block). When the norm is non-positive or non-finite, falls back to a
+/// uniform distribution and contributes `f64::NEG_INFINITY` (unweighted,
+/// matching the 2D `normalize_inplace` fallback).
+pub fn normalize_1d_inplace(dis: &mut Array1<f64>, weight: f64) -> f64 {
+  let norm = dis.sum();
+  if norm > 0.0 && norm.is_finite() {
+    *dis /= norm;
+    weight * norm.ln()
+  } else {
+    dis.fill(1.0 / dis.len() as f64);
+    f64::NEG_INFINITY
+  }
+}
+
 pub fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
   let n_cols = dis.ncols() as f64;

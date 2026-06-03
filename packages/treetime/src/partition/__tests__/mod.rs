@@ -1,2 +1,3 @@
+mod test_marginal_core;
 mod test_partition_marginal_sparse;
 mod test_sparse_transition_counting;
