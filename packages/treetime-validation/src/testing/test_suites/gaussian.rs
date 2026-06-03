@@ -83,3 +83,67 @@ impl TestCase for GaussianTestCase {
     self.input_grid_n_points
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use eyre::Report;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
+
+  fn sample() -> GaussianTestCase {
+    GaussianTestCase {
+      base: TestCaseBase {
+        name: "case-1".to_owned(),
+        description: "desc".to_owned(),
+        stress_type: "stress".to_owned(),
+        analytical_caution: "caution".to_owned(),
+        slowness: 1.5,
+      },
+      sigma_f: 1.0,
+      sigma_g: 2.0,
+      mu: 0.5,
+      input_grid_domain: (-5.0, 5.0),
+      input_grid_n_points: 100,
+    }
+  }
+
+  // The trait accessors are defaulted via `self.base()`; verify they forward
+  // the embedded `TestCaseBase` values rather than returning anything else.
+  #[test]
+  fn test_gaussian_test_case_accessors_forward_to_base() {
+    let case = sample();
+    assert_eq!("case-1", case.name());
+    assert_eq!("desc", case.description());
+    assert_eq!("stress", case.stress_type());
+    assert_eq!("caution", case.analytical_caution());
+    #[allow(clippy::float_cmp)] // 1.5 is exactly representable
+    {
+      assert_eq!(1.5, case.slowness());
+    }
+  }
+
+  // `#[serde(flatten)]` keeps the metadata fields at the top level. A
+  // regression that drops the attribute would nest them under a `base` key and
+  // change the JSON written to result files and the console.
+  #[test]
+  fn test_gaussian_test_case_serializes_flat() -> Result<(), Report> {
+    let actual = json_write_str(&sample(), JsonPretty(true))?;
+    let expected = r#"{
+  "name": "case-1",
+  "description": "desc",
+  "stress_type": "stress",
+  "analytical_caution": "caution",
+  "slowness": 1.5,
+  "sigma_f": 1.0,
+  "sigma_g": 2.0,
+  "mu": 0.5,
+  "input_grid_domain": [
+    -5.0,
+    5.0
+  ],
+  "input_grid_n_points": 100
+}"#;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+}
