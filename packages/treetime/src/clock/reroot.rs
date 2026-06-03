@@ -176,6 +176,13 @@ where
       find_best_root(graph, options, params, false, RootObjective::EstimatedRate)
     },
     RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options, reroot_params.objective),
+    RerootSpec::Method(RerootMethod::ClockFilter) => find_best_root(
+      graph,
+      options,
+      params,
+      reroot_params.force_positive_rate,
+      reroot_params.objective,
+    ),
     RerootSpec::Tips(tips) => find_tip_group_root(graph, options, tips, reroot_params.objective),
   }
 }

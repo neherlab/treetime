@@ -8,9 +8,12 @@ use crate::payload::clock_set::ClockSet;
 #[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
 pub enum RerootMethod {
   #[default]
+  #[cfg_attr(feature = "clap", value(alias = "best"))]
   LeastSquares,
   MinDev,
   Oldest,
+  #[cfg_attr(feature = "clap", value(alias = "clock-filter"))]
+  ClockFilter,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

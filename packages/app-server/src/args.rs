@@ -86,6 +86,9 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
       seed: s.seed,
+      aa: s.aa,
+      marginal: false,
+      custom_gtr: None,
       sample_from_profile: SampleMode::default(),
     }
   }
@@ -310,6 +313,12 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       },
       tracelog: s.tracelog.map(PathBuf::from),
       seed: s.seed,
+      aa: s.aa,
+      custom_gtr: None,
+      clock_filter_method: None,
+      gen_per_year: None,
+      greedy_resolve: false,
+      stochastic_resolve: false,
     }
   }
 }
@@ -357,6 +366,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
       iterations: s.iterations,
       sampling_bias_correction: s.sampling_bias_correction,
       output_augur_node_data: None,
+      seed: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
         ..Default::default()

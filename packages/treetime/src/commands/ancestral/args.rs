@@ -141,8 +141,21 @@ pub struct TreetimeAncestralArgs {
   pub site_specific_gtr: bool,
 
   /// Random seed
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
   pub seed: Option<u64>,
+
+  /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub aa: bool,
+
+  /// Shortcut for `--method-anc=marginal` (v0 compat)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub marginal: bool,
+
+  /// Load a custom GTR model from file (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub custom_gtr: Option<PathBuf>,
 
   /// How to pick ancestral states from the marginal posterior profile.
   ///

@@ -92,8 +92,21 @@ pub struct TreetimeClockArgs {
   pub output: OutputArgs,
 
   /// Random seed
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
   pub seed: Option<u64>,
+
+  /// Method for clock filter outlier detection (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub clock_filter_method: Option<String>,
+
+  /// Filename to save root-to-tip regression plot (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub plot_rtt: Option<PathBuf>,
+
+  /// Prune clock outlier tips from the tree (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub prune_outliers: bool,
 
   /// Branch split optimization parameters
   #[cfg_attr(feature = "clap", clap(flatten, next_help_heading = "Branch split optimization"))]

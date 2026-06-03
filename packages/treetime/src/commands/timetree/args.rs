@@ -262,6 +262,31 @@ pub struct TreetimeTimetreeArgs {
   pub tracelog: Option<PathBuf>,
 
   /// Random seed
-  #[cfg_attr(feature = "clap", clap(long))]
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
   pub seed: Option<u64>,
+
+  /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub aa: bool,
+
+  /// Load a custom GTR model from file (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  pub custom_gtr: Option<PathBuf>,
+
+  /// Method for clock filter outlier detection (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub clock_filter_method: Option<String>,
+
+  /// Generations per year for coalescent model (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub gen_per_year: Option<f64>,
+
+  /// Use greedy polytomy resolution (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub greedy_resolve: bool,
+
+  /// Use stochastic polytomy resolution (not yet implemented)
+  #[cfg_attr(feature = "clap", clap(long, hide = true))]
+  pub stochastic_resolve: bool,
 }

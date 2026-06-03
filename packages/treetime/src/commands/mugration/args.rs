@@ -36,7 +36,7 @@ pub struct TreetimeMugrationArgs {
   pub metadata_id: MetadataIdArgs,
 
   /// Write confidence profile of mugration inference to this path
-  #[cfg_attr(feature = "clap", clap(long = "output-confidence"))]
+  #[cfg_attr(feature = "clap", clap(long = "output-confidence", visible_alias = "confidence"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::AnyPath))]
   pub output_confidence: Option<PathBuf>,
 
@@ -73,6 +73,10 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub output_augur_node_data: Option<PathBuf>,
+
+  /// Random seed
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
+  pub seed: Option<u64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputArgs,
