@@ -172,14 +172,18 @@ export -f copy_bin_to_out
 
 function load_env_maybe() {
   local env_file="${1:-}"
-  # shellcheck disable=SC2046
-  [ -n "${env_file}" ] && export $(grep -v '^#' .env | xargs)
+  [[ -n "${env_file}" && -r "${env_file}" ]] || return 0
+  local line key
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    key="${line%%=*}"
+    [[ -z "${!key+x}" ]] && export "${line}"
+  done < <(grep -vE '^(#|$)' "${env_file}") || true
 }
 export -f load_env_maybe
 
 function load_env() {
   local env_file="${1:?}"
-  if ! [ -r "${env_file}" ]; then
+  if ! [[ -r "${env_file}" ]]; then
     err "unable to load env file: '${env_file}'" >&2
     exit 1
   fi
