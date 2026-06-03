@@ -2,35 +2,13 @@ use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GoldenSectionParams;
 use crate::make_report;
-use argmin::core::observers::{Observe, ObserverMode};
-use argmin::core::{Executor, State};
+use crate::optimize::observer::OptimizationObserver;
+use argmin::core::Executor;
+use argmin::core::observers::ObserverMode;
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 use eyre::Report;
-use log::{debug, info};
+use log::info;
 use treetime_graph::edge::GraphEdgeKey;
-
-/// Observer for tracking Golden Section optimization progress
-struct GoldenSectionObserver;
-
-impl<I> Observe<I> for GoldenSectionObserver
-where
-  I: State,
-  <I as State>::Param: std::fmt::Debug,
-  <I as State>::Float: std::fmt::LowerExp,
-{
-  fn observe_iter(&mut self, state: &I, _kv: &argmin::core::KV) -> Result<(), argmin::core::Error> {
-    // Only log every 10th iteration to reduce noise
-    if state.get_iter().is_multiple_of(10) || state.get_iter() <= 5 {
-      debug!(
-        "Golden Section iteration {}: best_param = {:?}, best_cost = {:.6e}",
-        state.get_iter(),
-        state.get_best_param(),
-        state.get_best_cost()
-      );
-    }
-    Ok(())
-  }
-}
 
 /// Golden section search optimization for finding the best split point along an edge
 pub fn optimize_golden_section(
@@ -57,7 +35,13 @@ pub fn optimize_golden_section(
         .target_cost(params.golden_tolerance)
         .param(0.5)
     })
-    .add_observer(GoldenSectionObserver, ObserverMode::Always)
+    .add_observer(
+      OptimizationObserver {
+        label: "Golden Section",
+        early_threshold: 5,
+      },
+      ObserverMode::Always,
+    )
     .run()
     .map_err(|e| make_report!("Golden section search optimization failed: {e}"))?;
 

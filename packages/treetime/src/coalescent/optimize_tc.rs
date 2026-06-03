@@ -3,9 +3,10 @@ use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::make_report;
+use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
-use argmin::core::observers::{Observe, ObserverMode};
-use argmin::core::{CostFunction, Error, Executor, State};
+use argmin::core::observers::ObserverMode;
+use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use log::{debug, info};
@@ -61,7 +62,13 @@ where
 
   let result = Executor::new(&cost_fn, solver)
     .configure(|cfg| cfg.max_iters(100).target_cost(1e-10))
-    .add_observer(TcOptimizationObserver, ObserverMode::Always)
+    .add_observer(
+      OptimizationObserver {
+        label: "Tc optimization",
+        early_threshold: 3,
+      },
+      ObserverMode::Always,
+    )
     .run()
     .map_err(|e| make_report!("Tc optimization failed: {e}"))?;
 
@@ -133,27 +140,5 @@ impl CostFunction for &TcCostFunction {
       .map_err(|e| Error::msg(format!("Failed to compute likelihood: {e}")))?;
 
     Ok(-lh)
-  }
-}
-
-/// Observer for Tc optimization progress.
-struct TcOptimizationObserver;
-
-impl<I> Observe<I> for TcOptimizationObserver
-where
-  I: State,
-  <I as State>::Param: std::fmt::Debug,
-  <I as State>::Float: std::fmt::LowerExp,
-{
-  fn observe_iter(&mut self, state: &I, _kv: &argmin::core::KV) -> Result<(), Error> {
-    if state.get_iter().is_multiple_of(10) || state.get_iter() <= 3 {
-      debug!(
-        "Tc optimization iteration {}: log(Tc) = {:?}, cost = {:.6e}",
-        state.get_iter(),
-        state.get_best_param(),
-        state.get_best_cost()
-      );
-    }
-    Ok(())
   }
 }

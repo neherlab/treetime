@@ -2,35 +2,13 @@ use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BrentParams;
 use crate::make_report;
-use argmin::core::observers::{Observe, ObserverMode};
-use argmin::core::{Executor, State};
+use crate::optimize::observer::OptimizationObserver;
+use argmin::core::Executor;
+use argmin::core::observers::ObserverMode;
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use log::{debug, info};
+use log::info;
 use treetime_graph::edge::GraphEdgeKey;
-
-/// Observer for tracking Brent optimization progress
-struct BrentObserver;
-
-impl<I> Observe<I> for BrentObserver
-where
-  I: State,
-  <I as State>::Param: std::fmt::Debug,
-  <I as State>::Float: std::fmt::LowerExp,
-{
-  fn observe_iter(&mut self, state: &I, _kv: &argmin::core::KV) -> Result<(), argmin::core::Error> {
-    // Only log every 10th iteration to reduce noise
-    if state.get_iter().is_multiple_of(10) || state.get_iter() <= 5 {
-      debug!(
-        "Brent iteration {}: best_param = {:?}, best_cost = {:.6e}",
-        state.get_iter(),
-        state.get_best_param(),
-        state.get_best_cost()
-      );
-    }
-    Ok(())
-  }
-}
 
 /// Brent's method optimization for finding the best split point along an edge
 pub fn optimize_brent(
@@ -54,7 +32,13 @@ pub fn optimize_brent(
         .max_iters(params.brent_max_iters as u64)
         .target_cost(params.brent_tolerance)
     })
-    .add_observer(BrentObserver, ObserverMode::Always)
+    .add_observer(
+      OptimizationObserver {
+        label: "Brent",
+        early_threshold: 5,
+      },
+      ObserverMode::Always,
+    )
     .run()
     .map_err(|e| make_report!("Brent optimization failed: {}", e))?;
 
