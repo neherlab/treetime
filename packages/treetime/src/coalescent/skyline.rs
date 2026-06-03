@@ -220,48 +220,18 @@ fn compute_boundary_penalty(log_tc: &[f64], regularization: f64) -> f64 {
 }
 
 /// Builds a piecewise linear Tc distribution from time grid and log values.
-fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Distribution {
-  let tc_values: Vec<f64> = log_tc.iter().map(|&x| x.exp()).collect();
-
-  // Create piecewise linear distribution by interpolating between grid points
-  // For Distribution, we use a formula-based approach
-  let time_grid = time_grid.clone();
-  let tc_values = Array1::from_vec(tc_values);
+///
+/// `Tc(t)` is `exp(log_tc)` interpolated linearly between grid points, with
+/// constant extrapolation outside the grid (clamped to the first/last value).
+pub(crate) fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Distribution {
+  let tc_values = log_tc.mapv(f64::exp);
 
   let t_min = time_grid[0];
   let t_max = time_grid[time_grid.len() - 1];
 
-  // Create interpolating distribution
-  let time_grid = Arc::new(time_grid);
-  let tc_values = Arc::new(tc_values);
+  let pwl = PiecewiseLinearFn::new(time_grid.clone(), tc_values);
 
-  Distribution::Formula(DistributionFormula::new(
-    move |t| {
-      // Find the segment containing t
-      let n = time_grid.len();
-      if t <= time_grid[0] {
-        return Ok(tc_values[0]);
-      }
-      if t >= time_grid[n - 1] {
-        return Ok(tc_values[n - 1]);
-      }
-
-      // Binary search for segment
-      let idx = time_grid.as_slice().unwrap().partition_point(|&x| x < t);
-      let idx = idx.saturating_sub(1).min(n - 2);
-
-      // Linear interpolation
-      let t0 = time_grid[idx];
-      let t1 = time_grid[idx + 1];
-      let v0 = tc_values[idx];
-      let v1 = tc_values[idx + 1];
-
-      let alpha = (t - t0) / (t1 - t0);
-      Ok(v0 + alpha * (v1 - v0))
-    },
-    t_min,
-    t_max,
-  ))
+  Distribution::Formula(DistributionFormula::new(move |t| Ok(pwl.eval(t)), t_min, t_max))
 }
 
 /// Computes total negative log-likelihood from the coalescent model.

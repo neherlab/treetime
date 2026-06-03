@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::coalescent::skyline::{SkylineParams, build_tc_distribution, optimize_skyline};
   use crate::partition::timetree::GraphTimetree;
+  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
+  use ndarray::array;
+  use rstest::rstest;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
 
@@ -135,6 +138,35 @@ mod tests {
     assert_eq!(result.time_grid.len(), 10);
     assert!(result.log_likelihood.is_finite());
 
+    Ok(())
+  }
+
+  /// `build_tc_distribution` must interpolate `exp(log_tc)` linearly between grid
+  /// points and clamp to the boundary values outside the grid range. With
+  /// `time_grid = [0, 1, 2]` and `log_tc = [0, ln 2, 0]` the values are
+  /// `tc = [1, 2, 1]`, so the function rises linearly 1 -> 2 on `[0, 1]`,
+  /// falls linearly 2 -> 1 on `[1, 2]`, and is flat (= 1) outside `[0, 2]`.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_range_clamps_to_first(-1.0, 1.0)]
+  #[case::first_grid_point(           0.0, 1.0)]
+  #[case::interior_rising(            0.5, 1.5)]
+  #[case::peak_grid_point(            1.0, 2.0)]
+  #[case::interior_falling(           1.5, 1.5)]
+  #[case::last_grid_point(            2.0, 1.0)]
+  #[case::above_range_clamps_to_last( 3.0, 1.0)]
+  #[trace]
+  fn test_skyline_build_tc_distribution_interpolates_and_clamps(
+    #[case] t: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let time_grid = array![0.0, 1.0, 2.0];
+    let log_tc = array![0.0, std::f64::consts::LN_2, 0.0];
+
+    let tc_dist = build_tc_distribution(&time_grid, &log_tc);
+    let actual = tc_dist.eval(t)?;
+
+    assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
     Ok(())
   }
 
