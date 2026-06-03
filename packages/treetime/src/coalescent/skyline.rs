@@ -1,8 +1,10 @@
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
+use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
 use crate::{make_error, make_report};
+use argmin::core::observers::ObserverMode;
 use argmin::core::{CostFunction, Error, Executor};
 use argmin::solver::neldermead::NelderMead;
 use eyre::Report;
@@ -122,6 +124,13 @@ where
   // Run optimization
   let result = Executor::new(&cost_fn, solver)
     .configure(|cfg| cfg.max_iters(params.max_iter).target_cost(params.tolerance))
+    .add_observer(
+      OptimizationObserver {
+        label: "Skyline",
+        early_threshold: 5,
+      },
+      ObserverMode::Always,
+    )
     .run()
     .map_err(|e| make_report!("Skyline optimization failed: {e}"))?;
 
