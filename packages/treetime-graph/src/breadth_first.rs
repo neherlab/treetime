@@ -1,10 +1,12 @@
 use crate::edge::{Edge, GraphEdge};
 use crate::graph::{Graph, SafeNode, SafeNodeRefMut};
 use crate::node::GraphNode;
+use eyre::Report;
 use itertools::Itertools;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::sync::Arc;
+use treetime_utils::sync::mutex::extract_parallel_error;
 
 pub enum GraphTraversalContinuation {
   Stop,
@@ -108,13 +110,14 @@ pub fn directed_breadth_first_traversal_forward<N, E, D, F>(
   graph: &Graph<N, E, D>,
   sources: &[SafeNode<N>],
   explorer: F,
-) where
+) -> Result<(), Report>
+where
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
-  F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&SafeNodeRefMut<N>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyForward>(graph, sources, explorer);
+  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyForward>(graph, sources, explorer)
 }
 
 /// Performs parallel backward breadth-first traversal (from leaves to roots, against edge directions)
@@ -122,13 +125,14 @@ pub fn directed_breadth_first_traversal_backward<N, E, D, F>(
   graph: &Graph<N, E, D>,
   sources: &[SafeNode<N>],
   explorer: F,
-) where
+) -> Result<(), Report>
+where
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
-  F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&SafeNodeRefMut<N>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
 {
-  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyBackward>(graph, sources, explorer);
+  directed_breadth_first_traversal::<N, E, D, F, BfsTraversalPolicyBackward>(graph, sources, explorer)
 }
 
 /// Implements parallel breadth-first traversal of a directed graph, given source nodes, exploration function and
@@ -140,53 +144,45 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
   graph: &Graph<N, E, D>,
   sources: &[SafeNode<N>],
   explorer: F,
-) where
+) -> Result<(), Report>
+where
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
-  F: Fn(&SafeNodeRefMut<N>) -> GraphTraversalContinuation + Sync + Send,
+  F: Fn(&SafeNodeRefMut<N>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
   TraversalPolicy: BfsTraversalPolicy<N, E, D>,
 {
-  // Walk the graph one "frontier" at a time. Frontier is a set of nodes of a "layer" in the graph, where each node
-  // has its dependencies already resolved. Frontiers allow parallelism.
+  let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
+
   let mut frontier = sources.to_vec();
 
-  // We traverse the graph, gathering frontiers. The last frontier will be empty (nodes of the previous to last
-  // frontier will have no unvisited successors), ending this loop.
   while !frontier.is_empty() {
-    // Process each node in the current frontier concurrently
     let frontier_candidate_nodes: Vec<SafeNode<N>> = frontier
       .into_par_iter()
       .map(|node| {
         {
           let node = node.write_arc();
           if !node.is_visited() {
-            // The actual visit. Here we call the user-provided function.
-            if let GraphTraversalContinuation::Stop = explorer(&node) {
+            match explorer(&node) {
+              Ok(GraphTraversalContinuation::Continue) => {},
+              Ok(GraphTraversalContinuation::Stop) => return vec![],
+              Err(e) => {
+                let mut guard = error.lock();
+                if guard.is_none() {
+                  *guard = Some(e);
+                }
                 return vec![];
+              },
             }
-
-            // We mark the node as visited so that it's not visited twice and telling following loop iterations
-            // that its successors can potentially be processed now
             node.mark_as_visited();
           }
         }
 
-        // Gather node's successors:
-        //  - for forward traversal: children
-        //  - for backwards traversal: parents
         TraversalPolicy::node_successors(graph, &node)
       })
-        // For each node, we receive a list of its successors, so overall a list of lists. We flatten it here into a
-        // flat list.
       .flatten()
       .collect();
 
-    // NOTE: this is a barrier. The separation of the two loops is necessary for synchronization.
-
-    // Decide which successors to add to the next frontier. We only add the successors which have ALL of its
-    // predecessors already visited. This ensures exploration where each node is visited exactly once and only when all
-    // of its dependencies are resolved.
     let next_frontier = frontier_candidate_nodes
       .into_par_iter()
       .filter(|candidate_node| {
@@ -196,7 +192,8 @@ pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
       })
       .collect();
 
-    // The newly gathered frontier becomes the new current frontier
     frontier = next_frontier;
   }
+
+  extract_parallel_error(error)
 }

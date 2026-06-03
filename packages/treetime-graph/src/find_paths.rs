@@ -102,9 +102,10 @@ where
   directed_breadth_first_traversal::<N, E, D, _, P>(graph, &[Arc::clone(start)], |node| {
     if node.key() == finish_node_key {
       path_exists.store(true, Relaxed);
-      return GraphTraversalContinuation::Stop;
+      return Ok(GraphTraversalContinuation::Stop);
     }
-    GraphTraversalContinuation::Continue
-  });
+    Ok(GraphTraversalContinuation::Continue)
+  })
+  .expect("find_paths traversal cannot produce errors");
   path_exists.into_inner()
 }

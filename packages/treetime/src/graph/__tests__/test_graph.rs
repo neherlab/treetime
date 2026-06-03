@@ -6,6 +6,7 @@ mod tests {
   use eyre::Report;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use treetime_utils::make_error;
 
   use treetime_graph::breadth_first::GraphTraversalContinuation;
   use treetime_graph::edge::GraphEdgeKey;
@@ -22,7 +23,8 @@ mod tests {
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
       actual.push(node.payload.name().unwrap().as_ref().to_owned());
-    });
+      Ok(())
+    })?;
 
     assert_eq!(vec!["root", "AB", "A", "B", "CD", "C", "D"], actual);
 
@@ -36,7 +38,8 @@ mod tests {
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
       actual.push(node.payload.name().unwrap().as_ref().to_owned());
-    });
+      Ok(())
+    })?;
 
     assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], actual);
 
@@ -50,7 +53,8 @@ mod tests {
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
       actual.push(node.payload.name().unwrap().as_ref().to_owned());
-    });
+      Ok(())
+    })?;
 
     assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], actual);
 
@@ -62,9 +66,10 @@ mod tests {
     let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
-    graph.iter_breadth_first_reverse(|node| {
+    graph.iter_breadth_first_backward(|node| {
       actual.push(node.payload.name().unwrap().as_ref().to_owned());
-    });
+      Ok(())
+    })?;
 
     assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], actual);
 
@@ -80,8 +85,8 @@ mod tests {
       actual
         .write_arc()
         .push(node.payload.name().unwrap().as_ref().to_owned());
-      GraphTraversalContinuation::Continue
-    });
+      Ok(GraphTraversalContinuation::Continue)
+    })?;
 
     assert_eq!(&vec!["root", "AB", "CD", "A", "B", "C", "D"], &*actual.read());
 
@@ -97,10 +102,222 @@ mod tests {
       actual
         .write_arc()
         .push(node.payload.name().unwrap().as_ref().to_owned());
-      GraphTraversalContinuation::Continue
-    });
+      Ok(GraphTraversalContinuation::Continue)
+    })?;
 
     assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_parallel_breadth_first_forward_ok() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let actual = Arc::new(RwLock::new(vec![]));
+    graph.par_iter_breadth_first_forward(|node| {
+      actual
+        .write_arc()
+        .push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(GraphTraversalContinuation::Continue)
+    })?;
+
+    assert_eq!(&vec!["root", "AB", "CD", "A", "B", "C", "D"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_parallel_breadth_first_forward_error() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    // Only one node errors, so the captured error is deterministic.
+    let result = graph.par_iter_breadth_first_forward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      if name == "B" {
+        return make_error!("boom {name}");
+      }
+      Ok(GraphTraversalContinuation::Continue)
+    });
+
+    assert_eq!("boom B", result.unwrap_err().to_string());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_parallel_breadth_first_backward_ok() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let actual = Arc::new(RwLock::new(vec![]));
+    graph.par_iter_breadth_first_backward(|node| {
+      actual
+        .write_arc()
+        .push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(GraphTraversalContinuation::Continue)
+    })?;
+
+    assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_parallel_breadth_first_backward_error() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let result = graph.par_iter_breadth_first_backward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      if name == "B" {
+        return make_error!("boom {name}");
+      }
+      Ok(GraphTraversalContinuation::Continue)
+    });
+
+    assert_eq!("boom B", result.unwrap_err().to_string());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_forward_ok() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    // Serial traversal captures mutable outer state directly, with no Arc/Mutex.
+    let mut visited = vec![];
+    graph.iter_breadth_first_forward(|node| {
+      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(())
+    })?;
+
+    assert_eq!(vec!["root", "AB", "CD", "A", "B", "C", "D"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_forward_stops_at_first_error() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    // "AB" and "CD" both error, but "AB" is visited first in breadth-first order. The traversal
+    // must surface the "AB" error and stop before visiting "CD" or any deeper node.
+    let mut visited = vec![];
+    let result = graph.iter_breadth_first_forward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      visited.push(name.clone());
+      if name == "AB" || name == "CD" {
+        return make_error!("boom {name}");
+      }
+      Ok(())
+    });
+
+    assert_eq!("boom AB", result.unwrap_err().to_string());
+    assert_eq!(vec!["root", "AB"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_forward_single_node() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("root:0.01;")?;
+
+    let mut visited = vec![];
+    graph.iter_breadth_first_forward(|node| {
+      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(())
+    })?;
+
+    assert_eq!(vec!["root"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_forward_error_at_root() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1)root:0.01;")?;
+
+    let mut visited = vec![];
+    let result = graph.iter_breadth_first_forward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      visited.push(name.clone());
+      if name == "root" {
+        return make_error!("boom {name}");
+      }
+      Ok(())
+    });
+
+    assert_eq!("boom root", result.unwrap_err().to_string());
+    assert_eq!(vec!["root"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_backward_ok() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut visited = vec![];
+    graph.iter_breadth_first_backward(|node| {
+      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(())
+    })?;
+
+    assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_serial_breadth_first_backward_stops_at_first_error() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut visited = vec![];
+    let result = graph.iter_breadth_first_backward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      visited.push(name.clone());
+      if name == "AB" {
+        return make_error!("boom {name}");
+      }
+      Ok(())
+    });
+
+    assert_eq!("boom AB", result.unwrap_err().to_string());
+    assert_eq!(vec!["D", "C", "B", "A", "CD", "AB"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_depth_first_postorder_forward_ok() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut visited = vec![];
+    graph.iter_depth_first_postorder_forward(|node| {
+      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      Ok(())
+    })?;
+
+    assert_eq!(vec!["A", "B", "AB", "C", "D", "CD", "root"], visited);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_try_depth_first_postorder_forward_stops_at_first_error() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let mut visited = vec![];
+    let result = graph.iter_depth_first_postorder_forward(|node| {
+      let name = node.payload.name().unwrap().as_ref().to_owned();
+      visited.push(name.clone());
+      if name == "AB" {
+        return make_error!("boom {name}");
+      }
+      Ok(())
+    });
+
+    assert_eq!("boom AB", result.unwrap_err().to_string());
+    assert_eq!(vec!["A", "B", "AB"], visited);
 
     Ok(())
   }

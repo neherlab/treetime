@@ -2,9 +2,12 @@ use crate::edge::GraphEdge;
 use crate::graph::Graph;
 use crate::graph_traverse::GraphNodeForward;
 use crate::node::{GraphNode, Named};
+use eyre::Report;
 use std::collections::BTreeSet;
 
-pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(graph: &Graph<N, E, D>) {
+pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(
+  graph: &Graph<N, E, D>,
+) -> Result<(), Report> {
   let mut names = graph
     .get_node_payloads()
     .map(|node| {
@@ -36,6 +39,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(gra
         names.insert(name);
         internal_node_counter += 1;
       }
+      Ok(())
     },
-  );
+  )
 }

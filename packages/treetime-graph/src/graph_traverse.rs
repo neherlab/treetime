@@ -2,14 +2,14 @@ use crate::breadth_first::{
   GraphTraversalContinuation, directed_breadth_first_traversal_backward, directed_breadth_first_traversal_forward,
 };
 use crate::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNode, SafeNodePayloadRefMut};
+use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNodePayloadRefMut};
 use crate::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::RwLock;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
-use traversal::{Bft, DftPre};
+use traversal::Bft;
 use treetime_utils::collections::container::{get_exactly_one, get_exactly_one_mut};
 
 /// Represents graph node during forward traversal
@@ -222,22 +222,35 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
-  pub fn par_iter_breadth_first_forward<F>(&self, explorer: F)
+  /// Parallel breadth-first forward traversal (roots to leaves, along edge directions).
+  ///
+  /// The callback returns `Result<GraphTraversalContinuation, Report>`:
+  /// - `Ok(Continue)`: mark node visited, expand successors
+  /// - `Ok(Stop)`: stop expanding this node's branch (non-error early termination)
+  /// - `Err(e)`: capture the first error, stop this branch, surface error to caller
+  ///
+  /// Other nodes already scheduled in the same frontier may still execute their callbacks
+  /// before the traversal returns. Subsequent errors are discarded (first error wins).
+  pub fn par_iter_breadth_first_forward<F>(&self, explorer: F) -> Result<(), Report>
   where
-    F: Fn(GraphNodeForward<N, E, D>) -> GraphTraversalContinuation + Sync + Send,
+    F: Fn(GraphNodeForward<N, E, D>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
-    directed_breadth_first_traversal_forward::<N, E, D, _>(self, roots.as_slice(), |node| {
+    let result = directed_breadth_first_traversal_forward::<N, E, D, _>(self, roots.as_slice(), |node| {
       explorer(GraphNodeForward::new(self, node))
     });
 
     self.reset_nodes();
+    result
   }
 
-  pub fn par_iter_breadth_first_backward<F>(&self, explorer: F)
+  /// Parallel breadth-first backward traversal (leaves to roots, against edge directions).
+  ///
+  /// See [`Self::par_iter_breadth_first_forward`] for callback semantics.
+  pub fn par_iter_breadth_first_backward<F>(&self, explorer: F) -> Result<(), Report>
   where
-    F: Fn(GraphNodeBackward<N, E, D>) -> GraphTraversalContinuation + Sync + Send,
+    F: Fn(GraphNodeBackward<N, E, D>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
   {
     let leaves = self
       .leaves
@@ -246,34 +259,16 @@ where
       .rev()
       .collect_vec();
 
-    directed_breadth_first_traversal_backward::<N, E, D, _>(self, leaves.as_slice(), |node| {
+    let result = directed_breadth_first_traversal_backward::<N, E, D, _>(self, leaves.as_slice(), |node| {
       explorer(GraphNodeBackward::new(self, node))
     });
 
     self.reset_nodes();
+    result
   }
 
-  /// Synchronously traverse graph in depth-first preorder fashion forward (from roots to leaves, along edge directions).
-  ///
-  /// Guarantees that for each visited node, all of it parents (recursively) are visited before
-  /// the node itself is visited.
-  pub fn iter_depth_first_preorder_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E, D>)) {
-    let root = self.get_exactly_one_root().unwrap();
-    let mut stack = Vec::from([(Arc::clone(&root), None)]);
-    while let Some((current_node, _current_edge)) = stack.pop() {
-      let current_node = current_node.read_arc();
-      explorer(GraphNodeForward::new(self, &current_node));
-      for (child, edge) in self.children_of(&current_node).into_iter().rev() {
-        stack.push((child, Some(edge)));
-      }
-    }
-  }
-
-  /// Fallible version of `iter_depth_first_preorder_forward`.
-  ///
-  /// Traverses graph in depth-first preorder fashion forward (from roots to leaves).
-  /// Returns early if the explorer closure returns an error.
-  pub fn try_iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
+  /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
+  pub fn iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
   {
@@ -291,19 +286,14 @@ where
     Ok(())
   }
 
-  pub fn iter_depth_first_preorder_forward_2(&self, mut explorer: impl FnMut(&SafeNode<N>)) {
-    let root = self.get_exactly_one_root().unwrap();
-    DftPre::new(&root, |node| self.iter_children_arc(node)).for_each(move |(_, node)| {
-      explorer(node);
-    });
-  }
-
-  /// Synchronously traverse graph in depth-first postorder fashion forward (from roots to leaves, along edge directions).
-  ///
-  /// Guarantees that for each visited node, all of it children (recursively) are visited before
-  /// the node itself is visited.
-  pub fn iter_depth_first_postorder_forward(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E, D>)) {
-    let root = self.get_exactly_one_root().unwrap();
+  /// Serial depth-first postorder forward traversal (children before parents).
+  pub fn iter_depth_first_postorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
+  where
+    F: FnMut(GraphNodeBackward<N, E, D>) -> Result<(), Report>,
+  {
+    let root = self
+      .get_exactly_one_root()
+      .wrap_err("Graph must have exactly one root")?;
     let mut stack = Vec::new();
     let mut visited = BTreeSet::new();
     stack.push((Arc::clone(&root), None));
@@ -319,42 +309,49 @@ where
           }
         }
       } else {
-        explorer(GraphNodeBackward::new(self, &current_node.read_arc()));
+        explorer(GraphNodeBackward::new(self, &current_node.read_arc()))?;
       }
     }
+    Ok(())
   }
 
-  /// Synchronously traverse graph in breadth-first order forward (from roots to leaves, along edge directions).
+  /// Serial breadth-first forward traversal (roots to leaves, along edge directions).
   ///
-  /// Guarantees that for each visited node, all of it parents (recursively) are visited before
-  /// the node itself is visited.
-  pub fn iter_breadth_first_forward(&self, mut explorer: impl FnMut(GraphNodeForward<N, E, D>)) {
-    let root = self.get_exactly_one_root().unwrap();
+  /// Use this (rather than the parallel [`Self::par_iter_breadth_first_forward`]) when the
+  /// per-node work must capture mutable outer state, which a parallel callback cannot.
+  pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
+  where
+    F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
+  {
+    let root = self
+      .get_exactly_one_root()
+      .wrap_err("Graph must have exactly one root")?;
     let mut queue = VecDeque::new();
     queue.push_back(Arc::clone(&root));
 
     while let Some(current_node) = queue.pop_front() {
-      explorer(GraphNodeForward::new(self, &current_node.read_arc()));
+      explorer(GraphNodeForward::new(self, &current_node.read_arc()))?;
       let children = self.children_of(&current_node.read_arc());
       for (child, _) in children {
         queue.push_back(child);
       }
     }
+    Ok(())
   }
 
-  /// Synchronously traverse graph in breadth-first order backwards (from leaves to roots, against edge directions).
-  ///
-  /// Guarantees that for each visited node, all of it children (recursively) are visited before
-  /// the node itself is visited.
-  pub fn iter_breadth_first_reverse(&self, mut explorer: impl FnMut(GraphNodeBackward<N, E, D>)) {
-    let root = self.get_exactly_one_root().unwrap();
-    Bft::new(&root, |node| self.iter_children_arc(node))
-      .collect_vec() // HACK: how to reverse without collecting?
-      .into_iter()
-      .rev()
-      .for_each(move |(_, node)| {
-        explorer(GraphNodeBackward::new(self, &node.write()));
-      });
+  /// Serial breadth-first backward traversal (leaves to roots, against edge directions).
+  pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
+  where
+    F: FnMut(GraphNodeBackward<N, E, D>) -> Result<(), Report>,
+  {
+    let root = self
+      .get_exactly_one_root()
+      .wrap_err("Graph must have exactly one root")?;
+    let nodes = Bft::new(&root, |node| self.iter_children_arc(node)).collect_vec();
+    for (_, node) in nodes.into_iter().rev() {
+      explorer(GraphNodeBackward::new(self, &node.write()))?;
+    }
+    Ok(())
   }
 
   fn iter_children_arc(&self, node: &Arc<RwLock<Node<N>>>) -> impl Iterator<Item = &Arc<RwLock<Node<N>>>> {
