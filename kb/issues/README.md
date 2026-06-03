@@ -60,7 +60,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Clock        | [Clock covariation overdispersion hardcoded](M-clock-covariation-overdispersion.md)                                                                 |
 | Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
-| Medium     | Coalescent   | [Skyline build_tc_distribution reimplements PiecewiseLinearFn::eval](M-coalescent-skyline-reimplements-piecewise-linear-eval.md)                    |
 | Medium     | GTR          | [GTR rate optimization uses hand-rolled Brent instead of argmin wrapper](M-gtr-hand-rolled-brent-minimizer-duplication.md)                          |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
