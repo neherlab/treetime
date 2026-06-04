@@ -136,8 +136,10 @@ pub fn execute_mugration(
   // v0 builds the initial GTR from the raw equilibrium frequencies and reserves
   // the pseudo-count for infer_gtr regularization. Smoothing the initial pi
   // (a flatter prior for the first reconstruction pass) is opt-in v1 behavior.
+  // When enabled it uses the same effective pseudo-count as the refinement path
+  // (`pc.unwrap_or(1.0)`), so the two pi-smoothing paths stay consistent.
   let pi = if smooth_initial_pi {
-    apply_pseudo_counts(pi, pc)
+    apply_pseudo_counts(pi, Some(pc.unwrap_or(1.0)))
   } else {
     pi
   };
