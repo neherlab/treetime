@@ -169,7 +169,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Test         | [Loose tolerances in test_gaussian_product.rs](N-test-gaussian-product-loose-tolerances.md)                                                         |
 | Negligible | GTR          | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 | Negligible | Timetree     | [Coalescent integration test uses grossly loose tolerance](N-timetree-coalescent-integration-grossly-loose-tolerance.md)                            |
-| Negligible | Ancestral    | [Dead production code in gtr_inference_dense.rs](N-ancestral-dead-code-infer-gtr-dense.md)                                                          |
 | Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
 | Negligible | Grid         | [Piecewise constant and linear function structs share identical skeleton](N-grid-piecewise-function-shared-skeleton.md)                             |
 | Negligible | Timetree     | [Clock rate non-positive guard duplicated at two sites](N-timetree-clock-rate-validation-duplication.md)                                            |
