@@ -2,7 +2,9 @@
 
 This document describes an intentional deviation from v0 in the dense GTR inference path. v1 filters out alignment positions with uninformative marginal profiles when computing `root_state`, while v0 includes all positions regardless of signal content.
 
-The change affects `root_state` computation in `get_mutation_counts_dense()` (`#get_mutation_counts_dense`) at `packages/treetime/src/gtr/infer_gtr/common.rs:153-168:`. v0's equivalent code is at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`. Downstream, this affects equilibrium frequencies (pi), exchangeability matrix (W), and rate scalar (mu) in the GTR model.
+The change affects `root_state` computation in `MarginalData::count_transitions()` at `packages/treetime/src/partition/marginal_core.rs:243-254:`, gated by the `filter_uninformative_root` field (default `true` for the nucleotide dense path, set at `packages/treetime/src/partition/marginal_dense.rs:52:`). v0's equivalent code is at `packages/legacy/treetime/treetime/treeanc.py:1608-1613:`. Downstream, this affects equilibrium frequencies (pi), exchangeability matrix (W), and rate scalar (mu) in the GTR model.
+
+The mugration path carries the same field but defaults to `false` (exact v0 parity), exposing the filter via `--filter-uninformative-root` (see [mugration-root-state-filtering.md](mugration-root-state-filtering.md)).
 
 Datasets with gap-only columns are affected. Measured impact: lassa_L_50 showed ~29% shift in W matrix elements before the golden master capture script was updated to match v1's filtering. After updating the capture script, all seven real datasets pass at 1e-6 tolerance.
 
@@ -103,6 +105,8 @@ Both approaches produce valid GTR models. The difference is whether alignment ar
 The capture script at `packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__/gm_infer_gtr_dense_capture:` replicates v0's nij/Ti accumulation from `packages/legacy/treetime/treetime/treeanc.py:1556-1572:` but applies the same uninformative-position filter to root_state. It calls `GTR.infer()` at `packages/legacy/treetime/treetime/gtr.py:492-599:` directly rather than `tt.infer_gtr()`, which would include v0's unfiltered root_state computation.
 
 Test cases in `packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs:` compare v1 output against the modified capture. All seven real datasets pass at 1e-6 tolerance. The tolerance was widened from 1e-7 to accommodate BLAS drift on mpox_clade_ii_20 (~200k positions).
+
+Because the capture script applies v1's filter rather than capturing pure v0, this golden master validates v1 against a v1-derived expectation for `root_state`, not against v0. That oracle-integrity gap is tracked in [kb/issues/M-gtr-dense-root-filter-golden-master-self-validating.md](../issues/M-gtr-dense-root-filter-golden-master-self-validating.md).
 
 ## References
 

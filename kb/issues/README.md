@@ -136,8 +136,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Clock        | [Clock command discards eleven CLI arguments without wiring](M-clock-dead-cli-arguments.md)                                                         |
 | Medium     | Clock        | [Clock command collapses date intervals to their mean](M-clock-date-interval-collapsed-to-mean.md)                                                  |
 | Medium     | Discrete     | [Discrete partition uniform_profile(0) produces inf-filled profile](M-discrete-missing-zero-states-inf.md)                                          |
-| Medium     | Mugration    | [Mugration fixed_pi capture happens before pseudo-count smoothing](M-mugration-fixed-pi-timing.md)                                                  |
 | Medium     | Mugration    | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                                 |
+| Medium     | GTR          | [Dense GTR golden master bakes v1 root-state filtering into the v0 oracle](M-gtr-dense-root-filter-golden-master-self-validating.md)                |
 | Negligible | Mugration    | [Mugration count_transitions lacks direct unit test](N-mugration-count-transitions-untested.md)                                                     |
 | Medium     | Optimize     | [evaluate_site_contributions does not guard against negative branch lengths](M-optimize-negative-bl-in-evaluate.md)                                 |
 | Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                              |
