@@ -40,6 +40,6 @@ mod tests {
     let ll = normalize_1d_inplace(&mut dis, weight);
     let expected_uniform = Array1::from_elem(n, 1.0 / n as f64);
     pretty_assert_abs_diff_eq!(expected_uniform, dis, epsilon = 1e-12);
-    assert_eq!(f64::NEG_INFINITY, ll);
+    assert!(ll.is_infinite() && ll.is_sign_negative(), "expected NEG_INFINITY, got {ll}");
   }
 }

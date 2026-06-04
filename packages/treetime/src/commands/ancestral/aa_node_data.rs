@@ -355,6 +355,7 @@ mod tests {
   #[rstest]
   #[case::cds_placeholder( "out/{cds}.fasta",  "S",  "out/S.fasta")]
   #[case::gene_placeholder("out/%GENE.fasta",   "S",  "out/S.fasta")]
+  #[allow(clippy::literal_string_with_formatting_args)]
   #[case::both_placeholders("out/{cds}/%GENE.fasta", "ORF1a", "out/ORF1a/ORF1a.fasta")]
   fn test_translation_path_expands_placeholders(
     #[case] template: &str,
