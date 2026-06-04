@@ -1,7 +1,6 @@
 use crate::algorithms::Algo;
 use crate::algorithms::ConvolutionAlgorithm;
-use crate::testing::console::console::ValidationConsole;
-use crate::testing::framework::results::{TestFailure, TestResult};
+use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
 use crate::testing::metrics::metrics::ValidationMetrics;
 use crate::testing::run::Args;
@@ -39,46 +38,6 @@ impl<S: ConvolutionTestSuite + Default> TestRunner for ConvolutionRunner<S> {
     let start_time = Instant::now();
     let algo = algorithm.instantiate()?;
     run_convolution_test(suite, test_case, &*algo, start_time)
-  }
-
-  fn print_test_configuration(
-    test_suite_name: &str,
-    algorithms: &[Self::Algorithm],
-    total_available: usize,
-    selected_count: usize,
-    name_filter_applied: bool,
-    slowness_threshold: f64,
-    output_dir: &str,
-  ) {
-    ValidationConsole::print_test_configuration(
-      test_suite_name,
-      algorithms,
-      total_available,
-      selected_count,
-      name_filter_applied,
-      slowness_threshold,
-      output_dir,
-    );
-  }
-
-  fn print_header(test_cases_count: usize, algorithms_count: usize) {
-    ValidationConsole::print_header(test_cases_count, algorithms_count);
-  }
-
-  fn print_table_header() {
-    ValidationConsole::print_progress_table_header();
-  }
-
-  fn print_success_row(result: &TestResult<Self::TestCase>) {
-    ValidationConsole::print_success_row(result);
-  }
-
-  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
-    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
-  }
-
-  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
-    ValidationConsole::print_error_summary(failures)
   }
 }
 

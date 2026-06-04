@@ -41,17 +41,37 @@ pub trait TestRunner: Send + Sync + Sized {
     name_filter_applied: bool,
     slowness_threshold: f64,
     output_dir: &str,
-  );
+  ) {
+    ValidationConsole::print_test_configuration(
+      test_suite_name,
+      algorithms,
+      total_available,
+      selected_count,
+      name_filter_applied,
+      slowness_threshold,
+      output_dir,
+    );
+  }
 
-  fn print_header(test_cases_count: usize, algorithms_count: usize);
+  fn print_header(test_cases_count: usize, algorithms_count: usize) {
+    ValidationConsole::print_header(test_cases_count, algorithms_count);
+  }
 
-  fn print_table_header();
+  fn print_table_header() {
+    ValidationConsole::print_progress_table_header();
+  }
 
-  fn print_success_row(result: &TestResult<Self::TestCase>);
+  fn print_success_row(result: &TestResult<Self::TestCase>) {
+    ValidationConsole::print_success_row(result);
+  }
 
-  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64);
+  fn print_failure_row(test_case: &Self::TestCase, algorithm: Self::Algorithm, elapsed_ms: f64) {
+    ValidationConsole::print_failure_row(test_case, algorithm, elapsed_ms);
+  }
 
-  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report>;
+  fn print_error_summary(failures: &[&TestFailure<Self::TestCase>]) -> Result<(), Report> {
+    ValidationConsole::print_error_summary(failures)
+  }
 }
 
 #[allow(clippy::needless_pass_by_value)]
