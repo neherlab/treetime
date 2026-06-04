@@ -19,10 +19,13 @@ mod tests {
   // Both v0 and v1 use iterative GTR inference (5 iterations of rate matrix
   // re-estimation followed by rate optimization via Brent's method).
 
+  // v0-parity datasets: v1 reproduces v0 trait assignments exactly with the
+  // default (v0) inference policy.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country(          "zika_20_country")]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[trace]
   fn test_gm_mugration_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
@@ -47,28 +50,33 @@ mod tests {
     Ok(())
   }
 
-  // Remaining 5 datasets diverge from v0 at ambiguous internal nodes.
-  // Causes: D1 (apply_pseudo_counts on initial pi), D2 (root state uniform-threshold
-  // filtering). Both are intentional v1 improvements over v0.
+  // These datasets still diverge from v0 at a few ambiguous internal nodes.
+  // The cause is the residual ~1e-3 difference in the marginal confidence
+  // profiles (see test_gm_mugration_confidence_*), not the inference-policy
+  // toggles: it persists with the default v0 policy and for unweighted,
+  // informative-root datasets where both toggles are no-ops. The small profile
+  // difference tips the argmax at near-tied nodes. Tracked in
+  // kb/issues/M-mugration-iterative-gtr.md.
   #[rustfmt::skip]
   #[rstest]
-  #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[case::dengue_20_country(        "dengue_20_country")]
   #[case::tb_20_cluster(            "tb_20_cluster")]
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: intentional v1 improvements (pseudo-count pi, root-state filtering)"]
+  #[ignore = "v0 parity: residual ~1e-3 marginal divergence tips argmax at ambiguous nodes (kb/issues/M-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
     test_gm_mugration_outputs(case)
   }
 
-  // Confidence profile comparison against v0 oracle.
-  // Max observed error: 1.34e-2 at NODE_0000008 due to intentional v1
-  // improvements (D1: pseudo-count pi, D2: root-state filtering).
+  // Confidence profile comparison against v0 oracle. v1 reproduces v0 trait
+  // assignments for this dataset, but the marginal profiles still differ by
+  // ~1e-3 (e.g. 0.4812 vs 0.4800 at the root). The divergence is in the
+  // marginal/GTR numerics and is independent of the inference-policy toggles
+  // (this case has uniform pi and an informative root, so both are no-ops).
   // See kb/issues/M-mugration-iterative-gtr.md.
   #[test]
-  #[ignore = "v0 parity: max 1.34e-2 confidence divergence at ambiguous node (kb/issues/M-mugration-iterative-gtr.md)"]
+  #[ignore = "v0 parity: residual ~1e-3 marginal-confidence divergence (kb/issues/M-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -92,8 +100,9 @@ mod tests {
     Ok(())
   }
 
-  // Remaining confidence tests: max errors exceed 1e-2 at multiple nodes
-  // due to D1/D2 intentional improvements.
+  // The same residual marginal-confidence divergence across the remaining
+  // datasets (independent of the inference-policy toggles). Tracked in
+  // kb/issues/M-mugration-iterative-gtr.md.
   #[rustfmt::skip]
   #[rstest]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
@@ -103,7 +112,7 @@ mod tests {
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: confidence profiles exceed 1e-2 at multiple nodes (D1/D2 divergence)"]
+  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/M-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
