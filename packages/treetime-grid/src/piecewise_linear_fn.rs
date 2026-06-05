@@ -1,3 +1,4 @@
+use crate::piecewise_fn::PiecewiseFnBase;
 use ndarray::Array1;
 
 /// Piecewise linear function on non-uniform breakpoints with constant extrapolation.
@@ -27,8 +28,7 @@ use ndarray::Array1;
 /// - At least 2 breakpoints
 #[derive(Debug, Clone)]
 pub struct PiecewiseLinearFn {
-  breakpoints: Array1<f64>,
-  values: Array1<f64>,
+  base: PiecewiseFnBase,
 }
 
 impl PiecewiseLinearFn {
@@ -47,25 +47,20 @@ impl PiecewiseLinearFn {
       values.len(),
       "breakpoints and values must have equal length"
     );
-    debug_assert!(
-      breakpoints
-        .as_slice()
-        .unwrap()
-        .windows(2)
-        .all(|w| matches!(w, [a, b] if a < b))
-    );
-    Self { breakpoints, values }
+    Self {
+      base: PiecewiseFnBase::new(breakpoints, values),
+    }
   }
 
   /// Breakpoint positions where the slope may change.
   pub fn breakpoints(&self) -> &Array1<f64> {
-    &self.breakpoints
+    self.base.breakpoints()
   }
 
   /// Values at breakpoints.
   #[allow(dead_code)]
   pub fn values(&self) -> &Array1<f64> {
-    &self.values
+    self.base.values()
   }
 
   /// Evaluate at a single point using linear interpolation.
@@ -73,22 +68,22 @@ impl PiecewiseLinearFn {
   /// Returns the linearly interpolated value within the enclosing segment,
   /// or the nearest boundary value when `t` falls outside the breakpoint range.
   pub fn eval(&self, t: f64) -> f64 {
-    let n = self.breakpoints.len();
+    let n = self.base.breakpoints().len();
 
-    if t <= self.breakpoints[0] {
-      return self.values[0];
+    if t <= self.base.breakpoints()[0] {
+      return self.base.values()[0];
     }
-    if t >= self.breakpoints[n - 1] {
-      return self.values[n - 1];
+    if t >= self.base.breakpoints()[n - 1] {
+      return self.base.values()[n - 1];
     }
 
-    let idx = self.breakpoints.as_slice().unwrap().partition_point(|&bp| bp < t);
+    let idx = self.base.breakpoints_slice().partition_point(|&bp| bp < t);
     let i = idx.saturating_sub(1);
 
-    let t0 = self.breakpoints[i];
-    let t1 = self.breakpoints[i + 1];
-    let y0 = self.values[i];
-    let y1 = self.values[i + 1];
+    let t0 = self.base.breakpoints()[i];
+    let t1 = self.base.breakpoints()[i + 1];
+    let y0 = self.base.values()[i];
+    let y1 = self.base.values()[i + 1];
 
     let alpha = (t - t0) / (t1 - t0);
     y0 + alpha * (y1 - y0)
@@ -106,9 +101,9 @@ impl PiecewiseLinearFn {
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));
 
-    let n = self.breakpoints.len();
-    let breakpoints = self.breakpoints.as_slice().unwrap();
-    let values = self.values.as_slice().unwrap();
+    let n = self.base.breakpoints().len();
+    let breakpoints = self.base.breakpoints_slice();
+    let values = self.base.values_slice();
     let mut bp_iter = breakpoints.iter().enumerate().peekable();
 
     queries.mapv(|t| {

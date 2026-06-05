@@ -1,3 +1,4 @@
+use crate::piecewise_fn::PiecewiseFnBase;
 use ndarray::Array1;
 
 /// Piecewise constant (step) function on non-uniform breakpoints.
@@ -28,8 +29,7 @@ use ndarray::Array1;
 /// - `values.len() == breakpoints.len() + 1`
 #[derive(Debug, Clone)]
 pub struct PiecewiseConstantFn {
-  breakpoints: Array1<f64>,
-  values: Array1<f64>,
+  base: PiecewiseFnBase,
 }
 
 impl PiecewiseConstantFn {
@@ -40,19 +40,19 @@ impl PiecewiseConstantFn {
   /// - `values`: n+1 elements (one per inter-breakpoint region, plus the two tails)
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(breakpoints.len() + 1 == values.len());
-    debug_assert!(
-      breakpoints
-        .as_slice()
-        .unwrap()
-        .windows(2)
-        .all(|w| matches!(w, [a, b] if a < b))
-    );
-    Self { breakpoints, values }
+    Self {
+      base: PiecewiseFnBase::new(breakpoints, values),
+    }
   }
 
   /// Breakpoint positions where the function changes value.
   pub fn breakpoints(&self) -> &Array1<f64> {
-    &self.breakpoints
+    self.base.breakpoints()
+  }
+
+  /// Function values in each region.
+  pub fn values(&self) -> &Array1<f64> {
+    self.base.values()
   }
 
   /// Evaluate at a single point (right-continuous).
@@ -60,8 +60,8 @@ impl PiecewiseConstantFn {
   /// At a breakpoint, returns the value of the interval that starts at that
   /// breakpoint (the post-jump value).
   pub fn eval(&self, t: f64) -> f64 {
-    let idx = self.breakpoints.as_slice().unwrap().partition_point(|&bp| bp <= t);
-    self.values[idx]
+    let idx = self.base.breakpoints_slice().partition_point(|&bp| bp <= t);
+    self.base.values()[idx]
   }
 
   /// Evaluate the left limit at a single point.
@@ -70,8 +70,8 @@ impl PiecewiseConstantFn {
   /// breakpoint (the pre-jump value). Between breakpoints and away from
   /// breakpoints, behaves identically to [`eval`](Self::eval).
   pub fn eval_left(&self, t: f64) -> f64 {
-    let idx = self.breakpoints.as_slice().unwrap().partition_point(|&bp| bp < t);
-    self.values[idx]
+    let idx = self.base.breakpoints_slice().partition_point(|&bp| bp < t);
+    self.base.values()[idx]
   }
 
   /// Evaluate at multiple points in a single sweep.
@@ -87,14 +87,14 @@ impl PiecewiseConstantFn {
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
     debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));
 
-    let breakpoints = self.breakpoints.as_slice().unwrap();
+    let breakpoints = self.base.breakpoints_slice();
     let mut bp_iter = breakpoints.iter().peekable();
 
     queries.mapv(|t| {
       while bp_iter.peek().is_some_and(|&&bp| bp <= t) {
         bp_iter.next();
       }
-      self.values[breakpoints.len() - bp_iter.len()]
+      self.base.values()[breakpoints.len() - bp_iter.len()]
     })
   }
 }
