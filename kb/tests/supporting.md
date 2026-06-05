@@ -785,14 +785,22 @@ Unit and parameterized tests for all BitSet128 operations.
 
 **Impl:** [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs)
 
-| Test                                                             | Purpose                                          |
-| ---------------------------------------------------------------- | ------------------------------------------------ |
-| `topology_order_descendant_count_sorts_children_ascending`       | Default ladderization sorts siblings by tip count |
+| Test                                                                | Purpose                                           |
+| ------------------------------------------------------------------- | ------------------------------------------------- |
+| `topology_order_descendant_count_sorts_children_ascending`          | Default ladderization sorts siblings by tip count |
 | `topology_order_descendant_count_reverse_sorts_children_descending` | Reverse ladderization sorts larger subtrees first |
-| `topology_order_keep_preserves_outbound_order`                   | Keep preset leaves existing child order intact   |
-| `topology_order_dag_counts_shared_descendant_once_per_child`     | DAG shared descendants are counted once per child |
-| `topology_order_target_order_uses_requested_tip_order`           | Target-order preset follows requested tip order  |
-| `topology_order_rejects_cycles`                                  | Cyclic directed graphs fail before output        |
+| `topology_order_keep_preserves_outbound_order`                      | Keep preset leaves existing child order intact    |
+| `topology_order_dag_counts_shared_descendant_once_per_child`        | DAG shared descendants are counted once per child |
+| `topology_order_target_order_uses_requested_tip_order`              | Target-order preset follows requested tip order   |
+| `topology_order_rejects_cycles`                                     | Cyclic directed graphs fail before output         |
+| `topology_order_height_sorts_by_subtree_depth`                      | Height preset sorts by max subtree depth          |
+| `topology_order_height_reverse_sorts_deepest_first`                 | HeightReverse puts deepest subtrees first         |
+| `topology_order_label_sorts_alphabetically`                         | Label preset sorts by min descendant label        |
+| `topology_order_label_reverse_sorts_descending`                     | LabelReverse sorts labels Z-to-A                  |
+| `topology_order_target_order_median_uses_median_position`           | Median aggregate uses median leaf position        |
+| `topology_order_propagates_through_nested_levels`                   | Ordering propagates recursively through tree      |
+| `topology_order_target_order_reverse_inverts_order`                 | TargetOrderReverse inverts target ordering        |
+| `topology_order_target_order_rejects_empty`                         | Empty target order rejected with error            |
 
 **Test:** [`packages/treetime/src/graph/__tests__/test_edge.rs`](../../packages/treetime/src/graph/__tests__/test_edge.rs)
 
