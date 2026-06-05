@@ -4,7 +4,7 @@ use crate::nwk::{CommentProviders, EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_wr
 use eyre::Report;
 use serde::Serialize;
 use std::path::Path;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::topology_order::TopologyOrderSpec;
@@ -24,7 +24,7 @@ pub fn write_graph_files_with_options<N, E, D>(
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + NodeToNwk + NodeToGraphviz + Serialize,
-  E: GraphEdge + EdgeToNwk + EdgeToGraphviz + Serialize,
+  E: GraphEdge + HasBranchLength + EdgeToNwk + EdgeToGraphviz + Serialize,
   D: Send + Sync + Default + Serialize,
 {
   let outdir = outdir.as_ref();

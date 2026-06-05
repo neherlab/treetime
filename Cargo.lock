@@ -4351,6 +4351,7 @@ dependencies = [
  "eyre",
  "getset",
  "itertools 0.14.0",
+ "ordered-float",
  "parking_lot",
  "pretty_assertions",
  "rayon",

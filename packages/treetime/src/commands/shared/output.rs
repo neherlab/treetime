@@ -237,6 +237,8 @@ pub enum TopologyOrderArg {
   DescendantCountReverse,
   Height,
   HeightReverse,
+  Divergence,
+  DivergenceReverse,
   Label,
   #[cfg_attr(feature = "clap", value(alias = "alphabetical-reverse"))]
   LabelReverse,
@@ -258,6 +260,8 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
       TopologyOrderArg::DescendantCountReverse => Self::DescendantCountReverse,
       TopologyOrderArg::Height => Self::Height,
       TopologyOrderArg::HeightReverse => Self::HeightReverse,
+      TopologyOrderArg::Divergence => Self::Divergence,
+      TopologyOrderArg::DivergenceReverse => Self::DivergenceReverse,
       TopologyOrderArg::Label => Self::Label,
       TopologyOrderArg::LabelReverse => Self::LabelReverse,
       TopologyOrderArg::TargetOrder => Self::TargetOrder,

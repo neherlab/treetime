@@ -1,8 +1,9 @@
-use crate::edge::{Edge, GraphEdge, GraphEdgeKey};
+use crate::edge::{Edge, GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::Graph;
 use crate::node::{GraphNode, GraphNodeKey, Named, Node};
 use eyre::Report;
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -49,7 +50,7 @@ impl TopologyOrderSpec {
   pub fn plan<N, E, D>(&self, graph: &Graph<N, E, D>) -> Result<TopologyOrderPlan, Report>
   where
     N: GraphNode + Named,
-    E: GraphEdge,
+    E: GraphEdge + HasBranchLength,
     D: Sync + Send,
   {
     if self.preset == TopologyOrderPreset::Keep {
@@ -67,6 +68,10 @@ impl TopologyOrderSpec {
       },
       TopologyOrderPreset::Height | TopologyOrderPreset::HeightReverse => {
         let keys = compute_heights(graph, &postorder);
+        build_plan(graph, &keys, reverse)
+      },
+      TopologyOrderPreset::Divergence | TopologyOrderPreset::DivergenceReverse => {
+        let keys = compute_divergences(graph, &postorder);
         build_plan(graph, &keys, reverse)
       },
       TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
@@ -89,6 +94,8 @@ pub enum TopologyOrderPreset {
   DescendantCountReverse,
   Height,
   HeightReverse,
+  Divergence,
+  DivergenceReverse,
   Label,
   LabelReverse,
   TargetOrder,
@@ -103,7 +110,11 @@ impl TopologyOrderPreset {
   fn is_reverse(self) -> bool {
     matches!(
       self,
-      Self::DescendantCountReverse | Self::HeightReverse | Self::LabelReverse | Self::TargetOrderReverse
+      Self::DescendantCountReverse
+        | Self::HeightReverse
+        | Self::DivergenceReverse
+        | Self::LabelReverse
+        | Self::TargetOrderReverse
     )
   }
 }
@@ -307,6 +318,34 @@ where
     heights.insert(node_key, height);
   }
   heights
+}
+
+fn compute_divergences<N, E, D>(
+  graph: &Graph<N, E, D>,
+  postorder: &[GraphNodeKey],
+) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Sync + Send,
+{
+  let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
+  for &node_key in postorder {
+    let node = graph.get_node(node_key).unwrap();
+    let node = node.read_arc();
+    let divergence = graph
+      .children_of(&node)
+      .iter()
+      .map(|(child, edge)| {
+        let child_key = child.read_arc().key();
+        let edge_len = edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        divergences[&child_key].0 + edge_len
+      })
+      .reduce(f64::max)
+      .unwrap_or(0.0);
+    divergences.insert(node_key, OrderedFloat(divergence));
+  }
+  divergences
 }
 
 fn compute_labels<N, E, D>(
@@ -586,11 +625,11 @@ mod tests {
     let shared = graph.add_node(TestNode::new("shared"));
     let right_only = graph.add_node(TestNode::new("right_only"));
 
-    graph.add_edge(root, right, TestEdge)?;
-    graph.add_edge(root, left, TestEdge)?;
-    graph.add_edge(left, shared, TestEdge)?;
-    graph.add_edge(right, shared, TestEdge)?;
-    graph.add_edge(right, right_only, TestEdge)?;
+    graph.add_edge(root, right, TestEdge::new())?;
+    graph.add_edge(root, left, TestEdge::new())?;
+    graph.add_edge(left, shared, TestEdge::new())?;
+    graph.add_edge(right, shared, TestEdge::new())?;
+    graph.add_edge(right, right_only, TestEdge::new())?;
     graph.build()?;
 
     let plan = TopologyOrderSpec::default().plan(&graph)?;
@@ -631,9 +670,9 @@ mod tests {
     let b = graph.add_node(TestNode::new("B"));
     let c = graph.add_node(TestNode::new("C"));
 
-    graph.add_edge(a, b, TestEdge)?;
-    graph.add_edge(b, c, TestEdge)?;
-    graph.add_edge(c, a, TestEdge)?;
+    graph.add_edge(a, b, TestEdge::new())?;
+    graph.add_edge(b, c, TestEdge::new())?;
+    graph.add_edge(c, a, TestEdge::new())?;
     graph.build()?;
 
     let err = TopologyOrderSpec::default().plan(&graph).unwrap_err();
@@ -674,6 +713,44 @@ mod tests {
     let actual = child_names(&ordered, "root")?;
 
     assert_eq!(vec!["deep", "shallow", "A"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn topology_order_divergence_sorts_by_total_branch_length() -> Result<(), Report> {
+    // root -> [short(0.1) -> [A(0.1), B(0.1)], long(0.5) -> [C(0.2)], D(0.3)]
+    // short: max divergence = 0.1 + 0.1 = 0.2
+    // long:  max divergence = 0.5 + 0.2 = 0.7
+    // D:     leaf, divergence = 0.0
+    let graph = fixture_branch_length_tree()?;
+    let spec = TopologyOrderSpec {
+      preset: TopologyOrderPreset::Divergence,
+      ..TopologyOrderSpec::default()
+    };
+    let plan = spec.plan(&graph)?;
+    let ordered = plan.ordered_graph(&graph)?;
+
+    let actual = child_names(&ordered, "root")?;
+
+    assert_eq!(vec!["D", "short", "long"], actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn topology_order_divergence_reverse_sorts_longest_first() -> Result<(), Report> {
+    let graph = fixture_branch_length_tree()?;
+    let spec = TopologyOrderSpec {
+      preset: TopologyOrderPreset::DivergenceReverse,
+      ..TopologyOrderSpec::default()
+    };
+    let plan = spec.plan(&graph)?;
+    let ordered = plan.ordered_graph(&graph)?;
+
+    let actual = child_names(&ordered, "root")?;
+
+    assert_eq!(vec!["long", "short", "D"], actual);
 
     Ok(())
   }
@@ -799,15 +876,37 @@ mod tests {
     let tip_b = graph.add_node(TestNode::new("B"));
     let tip_c = graph.add_node(TestNode::new("C"));
 
-    graph.add_edge(root, deep, TestEdge)?;
-    graph.add_edge(root, tip_a, TestEdge)?;
-    graph.add_edge(root, shallow, TestEdge)?;
-    graph.add_edge(deep, tip_d, TestEdge)?;
-    graph.add_edge(deep, mid, TestEdge)?;
-    graph.add_edge(mid, tip_e, TestEdge)?;
-    graph.add_edge(mid, tip_f, TestEdge)?;
-    graph.add_edge(shallow, tip_b, TestEdge)?;
-    graph.add_edge(shallow, tip_c, TestEdge)?;
+    graph.add_edge(root, deep, TestEdge::new())?;
+    graph.add_edge(root, tip_a, TestEdge::new())?;
+    graph.add_edge(root, shallow, TestEdge::new())?;
+    graph.add_edge(deep, tip_d, TestEdge::new())?;
+    graph.add_edge(deep, mid, TestEdge::new())?;
+    graph.add_edge(mid, tip_e, TestEdge::new())?;
+    graph.add_edge(mid, tip_f, TestEdge::new())?;
+    graph.add_edge(shallow, tip_b, TestEdge::new())?;
+    graph.add_edge(shallow, tip_c, TestEdge::new())?;
+    graph.build()?;
+
+    Ok(graph)
+  }
+
+  /// root -> [short(0.1) -> [A(0.1), B(0.1)], long(0.5) -> [C(0.2)], D(0.3)]
+  fn fixture_branch_length_tree() -> Result<Graph<TestNode, TestEdge, ()>, Report> {
+    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
+    let root = graph.add_node(TestNode::new("root"));
+    let short = graph.add_node(TestNode::new("short"));
+    let long = graph.add_node(TestNode::new("long"));
+    let tip_a = graph.add_node(TestNode::new("A"));
+    let tip_b = graph.add_node(TestNode::new("B"));
+    let tip_c = graph.add_node(TestNode::new("C"));
+    let tip_d = graph.add_node(TestNode::new("D"));
+
+    graph.add_edge(root, short, TestEdge::with_length(0.1))?;
+    graph.add_edge(root, long, TestEdge::with_length(0.5))?;
+    graph.add_edge(root, tip_d, TestEdge::with_length(0.3))?;
+    graph.add_edge(short, tip_a, TestEdge::with_length(0.1))?;
+    graph.add_edge(short, tip_b, TestEdge::with_length(0.1))?;
+    graph.add_edge(long, tip_c, TestEdge::with_length(0.2))?;
     graph.build()?;
 
     Ok(graph)
@@ -825,14 +924,14 @@ mod tests {
     let tip_b = graph.add_node(TestNode::new("B"));
     let tip_c = graph.add_node(TestNode::new("C"));
 
-    graph.add_edge(root, def, TestEdge)?;
-    graph.add_edge(root, tip_a, TestEdge)?;
-    graph.add_edge(root, bc, TestEdge)?;
-    graph.add_edge(def, tip_d, TestEdge)?;
-    graph.add_edge(def, tip_e, TestEdge)?;
-    graph.add_edge(def, tip_f, TestEdge)?;
-    graph.add_edge(bc, tip_b, TestEdge)?;
-    graph.add_edge(bc, tip_c, TestEdge)?;
+    graph.add_edge(root, def, TestEdge::new())?;
+    graph.add_edge(root, tip_a, TestEdge::new())?;
+    graph.add_edge(root, bc, TestEdge::new())?;
+    graph.add_edge(def, tip_d, TestEdge::new())?;
+    graph.add_edge(def, tip_e, TestEdge::new())?;
+    graph.add_edge(def, tip_f, TestEdge::new())?;
+    graph.add_edge(bc, tip_b, TestEdge::new())?;
+    graph.add_edge(bc, tip_c, TestEdge::new())?;
     graph.build()?;
 
     Ok(graph)
@@ -879,8 +978,32 @@ mod tests {
     }
   }
 
-  #[derive(Clone, Debug, Eq, PartialEq)]
-  struct TestEdge;
+  #[derive(Clone, Debug, PartialEq)]
+  struct TestEdge {
+    branch_length: Option<f64>,
+  }
+
+  impl TestEdge {
+    fn new() -> Self {
+      Self { branch_length: None }
+    }
+
+    fn with_length(len: f64) -> Self {
+      Self {
+        branch_length: Some(len),
+      }
+    }
+  }
 
   impl GraphEdge for TestEdge {}
+
+  impl HasBranchLength for TestEdge {
+    fn branch_length(&self) -> Option<f64> {
+      self.branch_length
+    }
+
+    fn set_branch_length(&mut self, branch_length: Option<f64>) {
+      self.branch_length = branch_length;
+    }
+  }
 }
