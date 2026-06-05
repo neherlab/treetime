@@ -4,6 +4,12 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HistogramMode {
+  Unsigned { use_log_scale: bool },
+  Signed,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistogramMetrics {
   pub abs_error_histogram: ErrorHistogram,
@@ -30,9 +36,18 @@ pub(super) fn compute_histogram_metrics(
   pointwise_errors: &PointwiseErrors,
   config: &DistributionConfig,
 ) -> eyre::Result<HistogramMetrics> {
-  let abs_error_histogram = compute_error_histogram(&pointwise_errors.absolute, config.histogram_bins, true)?;
-  let rel_error_histogram = compute_error_histogram(&pointwise_errors.relative, config.histogram_bins, false)?;
-  let signed_error_histogram = compute_error_histogram_signed(&pointwise_errors.signed, config.histogram_bins)?;
+  let num_bins = config.histogram_bins;
+  let abs_error_histogram = compute_error_histogram(
+    &pointwise_errors.absolute,
+    num_bins,
+    HistogramMode::Unsigned { use_log_scale: true },
+  )?;
+  let rel_error_histogram = compute_error_histogram(
+    &pointwise_errors.relative,
+    num_bins,
+    HistogramMode::Unsigned { use_log_scale: false },
+  )?;
+  let signed_error_histogram = compute_error_histogram(&pointwise_errors.signed, num_bins, HistogramMode::Signed)?;
 
   let total_count = abs_error_histogram.bin_counts.iter().sum();
 
@@ -72,12 +87,17 @@ pub(super) fn compute_histogram_metrics(
   })
 }
 
-fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, use_log_scale: bool) -> eyre::Result<ErrorHistogram> {
+fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, mode: HistogramMode) -> eyre::Result<ErrorHistogram> {
   if num_bins == 0 {
     return make_error!("Number of histogram bins must be positive");
   }
 
-  let valid_errors: Vec<f64> = errors.iter().copied().filter(|&x| x > 0.0 && x.is_finite()).collect();
+  let use_log_scale = matches!(mode, HistogramMode::Unsigned { use_log_scale: true });
+
+  let valid_errors: Vec<f64> = match mode {
+    HistogramMode::Unsigned { .. } => errors.iter().copied().filter(|&x| x > 0.0 && x.is_finite()).collect(),
+    HistogramMode::Signed => errors.iter().copied().filter(|&x| x.is_finite()).collect(),
+  };
 
   if valid_errors.is_empty() {
     return Ok(ErrorHistogram {
@@ -132,59 +152,15 @@ fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, use_log_scale:
   })
 }
 
-fn compute_error_histogram_signed(errors: &Array1<f64>, num_bins: usize) -> eyre::Result<ErrorHistogram> {
-  if num_bins == 0 {
-    return make_error!("Number of histogram bins must be positive");
-  }
-
-  let valid_errors: Vec<f64> = errors.iter().copied().filter(|&x| x.is_finite()).collect();
-
-  if valid_errors.is_empty() {
-    return Ok(ErrorHistogram {
-      bin_edges: vec![0.0; num_bins + 1],
-      bin_counts: vec![0; num_bins],
-      bin_centers: vec![0.0; num_bins],
-    });
-  }
-
-  let min_val = valid_errors.iter().copied().fold(f64::INFINITY, f64::min);
-  let max_val = valid_errors.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-
-  let range = max_val - min_val;
-  let bin_width = if range > 0.0 { range / num_bins as f64 } else { 1.0 };
-
-  let mut bin_edges = Vec::with_capacity(num_bins + 1);
-  for i in 0..=num_bins {
-    bin_edges.push(min_val + i as f64 * bin_width);
-  }
-
-  let mut bin_counts = vec![0_usize; num_bins];
-  for &err in &valid_errors {
-    let bin_idx = ((err - min_val) / bin_width).floor() as usize;
-    let bin_idx = bin_idx.min(num_bins - 1);
-    bin_counts[bin_idx] += 1;
-  }
-
-  let bin_centers: Vec<f64> = (0..num_bins)
-    .map(|i| f64::midpoint(bin_edges[i], bin_edges[i + 1]))
-    .collect();
-
-  Ok(ErrorHistogram {
-    bin_edges,
-    bin_counts,
-    bin_centers,
-  })
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
 
   #[test]
-  fn test_histogram_creation() {
+  fn test_histograms_unsigned_log_scale() {
     let errors = Array1::linspace(1e-6, 1e-3, 100);
-    let histogram = compute_error_histogram(&errors, 10, true).unwrap();
+    let histogram = compute_error_histogram(&errors, 10, HistogramMode::Unsigned { use_log_scale: true }).unwrap();
 
     assert_eq!(histogram.bin_counts.len(), 10);
     assert_eq!(histogram.bin_edges.len(), 11);
@@ -192,5 +168,63 @@ mod tests {
 
     let total_count: usize = histogram.bin_counts.iter().sum();
     assert_eq!(total_count, 100);
+  }
+
+  #[test]
+  fn test_histograms_unsigned_linear_scale() {
+    let errors = Array1::linspace(0.01, 1.0, 50);
+    let histogram = compute_error_histogram(&errors, 5, HistogramMode::Unsigned { use_log_scale: false }).unwrap();
+
+    assert_eq!(histogram.bin_counts.len(), 5);
+    assert_eq!(histogram.bin_edges.len(), 6);
+
+    let total_count: usize = histogram.bin_counts.iter().sum();
+    assert_eq!(total_count, 50);
+  }
+
+  #[test]
+  fn test_histograms_signed() {
+    let errors = array![-2.0, -1.0, 0.0, 1.0, 2.0];
+    let histogram = compute_error_histogram(&errors, 4, HistogramMode::Signed).unwrap();
+
+    assert_eq!(histogram.bin_counts.len(), 4);
+    assert_eq!(histogram.bin_edges.len(), 5);
+
+    let total_count: usize = histogram.bin_counts.iter().sum();
+    assert_eq!(total_count, 5);
+  }
+
+  #[test]
+  fn test_histograms_unsigned_filters_non_positive() {
+    let errors = array![-1.0, 0.0, 1.0, 2.0, f64::NAN, f64::INFINITY];
+    let histogram = compute_error_histogram(&errors, 2, HistogramMode::Unsigned { use_log_scale: false }).unwrap();
+
+    let total_count: usize = histogram.bin_counts.iter().sum();
+    assert_eq!(total_count, 2);
+  }
+
+  #[test]
+  fn test_histograms_signed_filters_non_finite() {
+    let errors = array![-1.0, 0.0, 1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY];
+    let histogram = compute_error_histogram(&errors, 3, HistogramMode::Signed).unwrap();
+
+    let total_count: usize = histogram.bin_counts.iter().sum();
+    assert_eq!(total_count, 3);
+  }
+
+  #[test]
+  fn test_histograms_zero_bins_error() {
+    let errors = array![1.0, 2.0];
+    let result = compute_error_histogram(&errors, 0, HistogramMode::Signed);
+    let _ = result.unwrap_err();
+  }
+
+  #[test]
+  fn test_histograms_empty_valid_errors() {
+    let errors = array![f64::NAN, f64::INFINITY];
+    let histogram = compute_error_histogram(&errors, 5, HistogramMode::Signed).unwrap();
+
+    assert_eq!(histogram.bin_counts, vec![0; 5]);
+    assert_eq!(histogram.bin_edges, vec![0.0; 6]);
   }
 }
