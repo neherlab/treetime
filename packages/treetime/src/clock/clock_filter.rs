@@ -1,4 +1,4 @@
-use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_model::ClockLine;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use itertools::Itertools;
@@ -18,10 +18,13 @@ pub struct ClockFilterResult {
 ///
 /// Marks leaves as outliers if their clock deviation exceeds `threshold * IQD`
 /// where IQD is the interquartile distance of clock deviations.
+///
+/// Accepts any `ClockLine` implementor: both validated `ClockModel` (positive
+/// rate) and raw `ClockRegression` (any rate sign, used in pre-filter path).
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace<N, E, D>(
   graph: &Graph<N, E, D>,
-  clock_model: &ClockModel,
+  clock_line: &impl ClockLine,
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
@@ -32,8 +35,8 @@ where
   log::info!("### Filtering outliers (threshold={threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",
-    clock_model.clock_rate(),
-    clock_model.intercept()
+    clock_line.clock_rate(),
+    clock_line.intercept()
   );
 
   // assign divergence to each node
@@ -57,7 +60,7 @@ where
       let payload = payload_arc.read();
       let div = payload.div();
       let time = payload.likely_time();
-      time.map(|time| clock_model.clock_deviation(time, div))
+      time.map(|time| clock_line.clock_deviation(time, div))
     })
     .map(OrderedFloat)
     .sorted()
@@ -80,7 +83,7 @@ where
       (payload.div(), payload.likely_time(), payload.is_outlier())
     };
     if let Some(time) = time {
-      let clock_deviation = clock_model.clock_deviation(time, div);
+      let clock_deviation = clock_line.clock_deviation(time, div);
       let is_outlier = clock_deviation.abs() > iqd * threshold;
       if was_outlier != is_outlier {
         new_outliers += 1;

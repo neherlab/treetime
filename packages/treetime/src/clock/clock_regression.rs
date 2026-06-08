@@ -1,4 +1,4 @@
-use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
@@ -13,7 +13,6 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::reroot::RerootResult;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
 #[serde(default)]
@@ -35,11 +34,37 @@ pub struct ClockParams {
   pub variance_offset_leaf: f64,
 }
 
-/// Result of clock model estimation with optional rerooting.
+/// Result of clock estimation with optional rerooting.
+///
+/// Contains either a raw regression result (estimated rate, any sign) or a
+/// validated `ClockModel` (fixed rate, positive). Callers that need a validated
+/// model call `into_clock_model()` at their boundary.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClockRerootResult {
-  pub clock_model: ClockModel,
+  regression: Option<ClockRegression>,
+  clock_model: Option<ClockModel>,
   pub reroot_result: Option<RerootResult>,
+}
+
+impl ClockRerootResult {
+  /// Convert to a validated `ClockModel`, failing if the estimated rate is non-positive.
+  pub fn into_clock_model(self) -> Result<ClockModel, Report> {
+    if let Some(model) = self.clock_model {
+      return Ok(model);
+    }
+    let regression = self
+      .regression
+      .expect("ClockRerootResult has neither regression nor clock_model");
+    ClockModel::from_regression(&regression)
+  }
+
+  /// Access the raw regression result (rate can be any sign).
+  pub fn regression(&self) -> &ClockRegression {
+    self
+      .regression
+      .as_ref()
+      .expect("regression() called on fixed-rate result")
+  }
 }
 
 /// Runs backward clock regression pass.
@@ -160,7 +185,7 @@ where
     &reroot_params,
     prev_clock_rate,
   )?;
-  Ok(result.clock_model)
+  result.into_clock_model()
 }
 
 /// Estimates clock model with optional rerooting using explicit policy.
@@ -213,31 +238,32 @@ where
   info!("### Extracting clock model from root");
   let root = graph.get_exactly_one_root()?;
   let root = root.read_arc().payload().read_arc();
-  let clock_model = if let Some(rate) = clock_rate {
+
+  let (regression, clock_model) = if let Some(rate) = clock_rate {
     info!("### Using fixed clock rate: {rate:.6e}");
-    ClockModel::with_fixed_rate(root.clock_set(), rate)
+    (None, Some(ClockModel::with_fixed_rate(root.clock_set(), rate)?))
   } else {
     info!("### Using estimated clock rate");
-    ClockModel::new(root.clock_set())?
+    let regression = ClockRegression::from_clock_set(root.clock_set())?;
+    (Some(regression), None)
   };
 
-  info!("**Clock rate:** {:.6e}", clock_model.clock_rate());
-  info!("**Intercept:** {:.4}", clock_model.intercept());
-  if let Some(r_val) = clock_model.r_val() {
-    info!("**R²:** {:.4}", r_val * r_val);
+  let rate = clock_model
+    .as_ref()
+    .map_or_else(|| regression.as_ref().unwrap().clock_rate(), |m| m.clock_rate());
+  let intercept = clock_model
+    .as_ref()
+    .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
+  info!("**Clock rate:** {rate:.6e}");
+  info!("**Intercept:** {intercept:.4}");
+  if let Some(ref reg) = regression {
+    info!("**R²:** {:.4}", reg.r_val() * reg.r_val());
+    info!("**χ²:** {:.4}", reg.chisq());
+    info!("**Hessian:**\n{}", reg.hessian());
   }
-  if let Some(chisq) = clock_model.chisq() {
-    info!("**χ²:** {chisq:.4}");
-  }
-  if let Some(hessian) = clock_model.hessian() {
-    info!("**Hessian:**\n{hessian}");
-  }
-  debug!(
-    "Clock model: {}",
-    json_write_str(&clock_model, JsonPretty(true)).unwrap_or_else(|_| "<serialization failed>".to_owned())
-  );
 
   Ok(ClockRerootResult {
+    regression,
     clock_model,
     reroot_result,
   })

@@ -150,7 +150,7 @@ pub fn run(
     None,
   )
   .wrap_err("Failed to infer clock model")?
-  .clock_model;
+  .into_clock_model()?;
 
   let (partitions, partition_gtr, partition_model_name): (PartitionTimetreeAllVec, Option<GTR>, Option<GtrModelName>) =
     match params.branch_length_mode {
@@ -374,21 +374,16 @@ pub fn run(
   };
 
   if let Some(rate_std) = rate_std {
-    let current_rate = clock_model.clock_rate();
-    if current_rate <= 0.0 {
-      warn!("Clock rate is non-positive ({current_rate:.6e}), skipping rate susceptibility");
-    } else {
-      info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-      compute_rate_susceptibility(
-        &mut input.graph,
-        &partitions,
-        &clock_model,
-        coalescent_tc.as_ref(),
-        rate_std,
-        params.no_indels,
-      )
-      .wrap_err("Rate susceptibility analysis failed")?;
-    }
+    info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
+    compute_rate_susceptibility(
+      &mut input.graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      rate_std,
+      params.no_indels,
+    )
+    .wrap_err("Rate susceptibility analysis failed")?;
   }
 
   if time_marginal == TimeMarginalMode::OnlyFinal {

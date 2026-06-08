@@ -1,4 +1,4 @@
-use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::partition::timetree::GraphTimetree;
 use crate::payload::traits::ClockNode;
 use eyre::Report;

@@ -1,5 +1,5 @@
 use crate::clock::clock_graph::GraphClock;
-use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_model::{ClockLine, ClockModel};
 use crossbeam_queue::ArrayQueue;
 use crossbeam_skiplist::SkipMap;
 use eyre::Report;

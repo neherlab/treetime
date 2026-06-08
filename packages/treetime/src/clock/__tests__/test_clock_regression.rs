@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_graph::GraphClock;
-  use crate::clock::clock_model::ClockModel;
+  use crate::clock::clock_model::{ClockModel, ClockRegression};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::o;
   use crate::payload::traits::ClockNode;
@@ -43,7 +43,7 @@ mod tests {
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();
-      ClockModel::new(root.clock_set())
+      ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
     }?;
     pretty_assert_ulps_eq!(naive_rate, clock.clock_rate(), max_ulps = 4);
 
@@ -57,7 +57,7 @@ mod tests {
     let clock = {
       let root = graph.get_exactly_one_root()?;
       let root = root.read_arc().payload().read_arc();
-      ClockModel::new(root.clock_set())
+      ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
     }?;
     pretty_assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), max_ulps = 4);
 

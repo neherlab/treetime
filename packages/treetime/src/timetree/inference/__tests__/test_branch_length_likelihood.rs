@@ -166,27 +166,6 @@ mod tests {
     Ok(())
   }
 
-  /// `compute_branch_length_distribution` rejects non-positive clock rates
-  /// before attempting to build the grid; the error message references the
-  /// `--clock-rate` flag that the user can set.
-  #[test]
-  fn test_branch_length_likelihood_rejects_nonpositive_clock_rate() {
-    let contributions: Vec<OptimizationContribution> = vec![];
-    let result = compute_branch_length_distribution(
-      &contributions,
-      /* indel_count */ 0,
-      /* indel_rate */ 0.0,
-      /* current_branch_length */ 0.01,
-      /* one_mutation */ 1e-3,
-      N_GRID,
-      /* clock_rate */ -0.5,
-      /* gamma */ 1.0,
-    );
-    let report = result.expect_err("expected negative clock rate to error");
-    let rendered = format!("{report:#}");
-    assert!(rendered.contains("--clock-rate"), "unexpected error: {rendered}");
-  }
-
   mod helpers {
     use std::sync::Arc;
 

@@ -52,10 +52,10 @@ mod tests {
       &prefilter_reroot_params,
       None,
     )?;
-    let pre_clock_model = prefilter_result.clock_model;
+    let pre_regression = prefilter_result.regression();
 
     // Filter outliers
-    let filter_result = clock_filter_inplace(graph, &pre_clock_model, 3.0)?;
+    let filter_result = clock_filter_inplace(graph, pre_regression, 3.0)?;
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();
@@ -69,7 +69,7 @@ mod tests {
       None,
     )?;
 
-    Ok((final_result.clock_model, filter_result.new_outliers))
+    Ok((final_result.into_clock_model()?, filter_result.new_outliers))
   }
 
   fn get_outlier_names(graph: &GraphClock) -> Vec<String> {

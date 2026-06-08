@@ -69,5 +69,5 @@ pub fn reroot_tree(
     }
   }
 
-  Ok(clock_reroot_result.clock_model)
+  clock_reroot_result.into_clock_model()
 }

@@ -1,6 +1,5 @@
 use crate::clock::clock_model::ClockModel;
 use crate::coalescent::coalescent::compute_coalescent_contributions;
-use crate::make_error;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::PartitionTimetreeAll;
@@ -41,14 +40,6 @@ where
   info!("## Using clock model");
   let clock_rate = clock_model.clock_rate();
   info!("**Clock rate:** {clock_rate:.6e}");
-
-  if clock_rate <= 0.0 {
-    return make_error!(
-      "Clock rate estimate is negative ({clock_rate:.6e}). \
-       The data may lack sufficient temporal signal for automatic rate estimation. \
-       Please specify --clock-rate explicitly."
-    );
-  }
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");

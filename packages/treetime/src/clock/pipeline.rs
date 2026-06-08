@@ -97,17 +97,17 @@ fn estimate_clock_model_with_prefilter(
         &reroot_params,
         None,
       )?;
-      let pre_clock_model = result.clock_model;
-      if pre_clock_model.clock_rate() < 0.0 {
+      let regression = result.regression();
+      if regression.clock_rate() < 0.0 {
         // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value
         // comparison is slope-sign-invariant: outliers are identified by distance from the
         // fitted line regardless of slope direction.
         log::warn!(
           "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
-          pre_clock_model.clock_rate()
+          regression.clock_rate()
         );
       }
-      Ok(clock_filter_inplace(graph, &pre_clock_model, clock_filter_threshold)?.new_outliers)
+      Ok(clock_filter_inplace(graph, regression, clock_filter_threshold)?.new_outliers)
     })
     .transpose()?;
 
@@ -124,5 +124,5 @@ fn estimate_clock_model_with_prefilter(
         "Clock model estimation failed".to_owned()
       }
     })?;
-  Ok((result.clock_model, delta))
+  Ok((result.into_clock_model()?, delta))
 }

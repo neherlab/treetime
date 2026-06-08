@@ -1,12 +1,19 @@
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
 use eyre::Report;
-use getset::{CopyGetters, Getters};
+use getset::Getters;
 use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
+
+/// Shared interface for types that define a clock line: `div = rate * date + intercept`.
+pub trait ClockLine {
+  fn clock_rate(&self) -> f64;
+  fn intercept(&self) -> f64;
+  fn clock_deviation(&self, date: f64, div: f64) -> f64;
+}
 
 /// Regression statistics from clock model estimation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,30 +24,55 @@ pub struct RegressionStats {
   pub cov: Array2<f64>,
 }
 
-/// Clock model statistics - either estimated from data or fixed by user
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ClockModelStats {
-  /// Clock rate estimated from root-to-tip regression with full statistics
-  Estimated(RegressionStats),
-  /// Clock rate fixed by user input (no regression statistics available)
-  Fixed,
-}
-
+/// Raw regression result from root-to-tip analysis. Clock rate can be any sign.
+///
+/// Used by the estimation pipeline (clock filtering, root search diagnostics)
+/// where negative rates are acceptable. Consumers that require positive rates
+/// convert to `ClockModel` at their boundary.
 #[must_use]
-#[derive(Debug, Clone, Serialize, Deserialize, CopyGetters, Getters)]
-pub struct ClockModel {
-  #[getset(get_copy = "pub")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClockRegression {
   clock_rate: f64,
-
-  #[getset(get_copy = "pub")]
   intercept: f64,
-
-  #[getset(get = "pub")]
-  stats: ClockModelStats,
+  chisq: f64,
+  r_val: f64,
+  hessian: Array2<f64>,
+  cov: Array2<f64>,
 }
 
-impl ClockModel {
-  pub fn new(clock_set: &ClockSet) -> Result<Self, Report> {
+impl ClockLine for ClockRegression {
+  fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  fn clock_deviation(&self, date: f64, div: f64) -> f64 {
+    date * self.clock_rate + self.intercept - div
+  }
+}
+
+#[allow(clippy::same_name_method)]
+impl ClockRegression {
+  pub fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  pub fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  pub fn chisq(&self) -> f64 {
+    self.chisq
+  }
+
+  pub fn r_val(&self) -> f64 {
+    self.r_val
+  }
+
+  pub fn from_clock_set(clock_set: &ClockSet) -> Result<Self, Report> {
     let det = clock_set.determinant();
     if det <= 0.0 {
       debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
@@ -52,21 +84,95 @@ impl ClockModel {
     Ok(Self {
       clock_rate,
       intercept: clock_set.intercept(clock_rate),
+      chisq: clock_set.chisq(),
+      r_val: clock_set.r_val(),
+      hessian: clock_set.hessian(),
+      cov: clock_set.cov(),
+    })
+  }
+
+  pub fn hessian(&self) -> &Array2<f64> {
+    &self.hessian
+  }
+
+  pub fn cov(&self) -> &Array2<f64> {
+    &self.cov
+  }
+}
+
+/// Clock model statistics - either estimated from data or fixed by user
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ClockModelStats {
+  /// Clock rate estimated from root-to-tip regression with full statistics
+  Estimated(RegressionStats),
+  /// Clock rate fixed by user input (no regression statistics available)
+  Fixed,
+}
+
+/// Validated clock model with guaranteed positive rate. Used for time-scaled
+/// phylogenetic analysis where `time = divergence / rate` must be well-defined.
+#[must_use]
+#[derive(Debug, Clone, Serialize, Deserialize, Getters)]
+pub struct ClockModel {
+  clock_rate: f64,
+
+  intercept: f64,
+
+  #[getset(get = "pub")]
+  stats: ClockModelStats,
+}
+
+#[allow(clippy::same_name_method)]
+impl ClockModel {
+  pub fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  pub fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  pub fn from_regression(regression: &ClockRegression) -> Result<Self, Report> {
+    if regression.clock_rate <= 0.0 {
+      return make_error!(
+        "Estimated clock rate is non-positive ({:.6e}).\n\n\
+         This means the root-to-tip regression found no positive correlation between \
+         sampling dates and genetic divergence, which prevents time-scaled analysis.\n\n\
+         Suggestions:\n\
+         - Specify a known substitution rate with --clock-rate\n\
+         - Verify that sampling dates are correct and span a sufficient time range\n\
+         - Check that the alignment has enough informative sites",
+        regression.clock_rate
+      );
+    }
+
+    Ok(Self {
+      clock_rate: regression.clock_rate,
+      intercept: regression.intercept,
       stats: ClockModelStats::Estimated(RegressionStats {
-        chisq: clock_set.chisq(),
-        r_val: clock_set.r_val(),
-        hessian: clock_set.hessian(),
-        cov: clock_set.cov(),
+        chisq: regression.chisq,
+        r_val: regression.r_val,
+        hessian: regression.hessian.clone(),
+        cov: regression.cov.clone(),
       }),
     })
   }
 
-  pub fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> ClockModel {
-    ClockModel {
+  pub fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {
+    if clock_rate <= 0.0 {
+      return make_error!(
+        "Specified clock rate must be positive, got {clock_rate:.6e}.\n\n\
+         The clock rate is the expected number of substitutions per site per year.\n\n\
+         Suggestions:\n\
+         - Provide a positive value, e.g. --clock-rate=0.001\n\
+         - Omit --clock-rate to let the rate be estimated from the data"
+      );
+    }
+    Ok(Self {
       clock_rate,
       intercept: clock_set.intercept(clock_rate),
       stats: ClockModelStats::Fixed,
-    }
+    })
   }
 
   fn get_regression_stat<T>(&self, f: impl FnOnce(&RegressionStats) -> T) -> Option<T> {
@@ -106,10 +212,6 @@ impl ClockModel {
     date * self.clock_rate() + self.intercept()
   }
 
-  pub fn clock_deviation(&self, date: f64, div: f64) -> f64 {
-    self.div(date) - div
-  }
-
   /// Time of root (most recent common ancestor)
   pub fn t_mrca(&self) -> f64 {
     self.date(0.0)
@@ -143,5 +245,19 @@ impl ClockModel {
       intercept,
       stats,
     }
+  }
+}
+
+impl ClockLine for ClockModel {
+  fn clock_rate(&self) -> f64 {
+    self.clock_rate
+  }
+
+  fn intercept(&self) -> f64 {
+    self.intercept
+  }
+
+  fn clock_deviation(&self, date: f64, div: f64) -> f64 {
+    date * self.clock_rate + self.intercept - div
   }
 }
