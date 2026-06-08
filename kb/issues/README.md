@@ -173,7 +173,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | GTR          | [GTR site-specific interpolation tolerance requires investigation](N-gtr-site-specific-interpolation-tolerance.md)                                  |
 | Negligible | Timetree     | [Coalescent integration test uses grossly loose tolerance](N-timetree-coalescent-integration-grossly-loose-tolerance.md)                            |
 | Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
-| Negligible | Timetree     | [Clock rate non-positive guard duplicated at two sites](N-timetree-clock-rate-validation-duplication.md)                                            |
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
 | Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
