@@ -1,4 +1,5 @@
 use crate::clock::clock_output::write_clock_model;
+use crate::commands::shared::output::DivergenceUnits;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
@@ -7,6 +8,7 @@ use crate::commands::timetree::result::TimetreeResult;
 use crate::gtr::get_gtr::write_gtr_json;
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
+use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
@@ -130,9 +132,24 @@ fn write_outputs(
     write_gtr_json(gtr, model_name, &args.output.outdir, None)?;
   }
 
+  let mutation_counts = match args.divergence_units {
+    DivergenceUnits::Mutations => {
+      if output.partitions.is_empty() {
+        return make_error!(
+          "--divergence-units=mutations requires ancestral reconstruction; \
+           incompatible with --branch-length-mode=input"
+        );
+      }
+      let guard = output.partitions[0].read_arc();
+      Some(compute_edge_mutation_counts(&output.graph, &*guard)?)
+    },
+    DivergenceUnits::MutationsPerSite => None,
+  };
+
   write_auspice_json(
     &output.graph,
     output.confidence_intervals.as_deref(),
+    mutation_counts.as_ref(),
     &args.output.outdir,
   )?;
 
@@ -148,6 +165,7 @@ fn write_outputs(
     output.dates.as_ref(),
     alignment,
     args.tree.as_deref(),
+    mutation_counts.as_ref(),
     &augur_node_data_path,
   )?;
   info!(

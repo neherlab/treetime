@@ -1,7 +1,8 @@
+use crate::partition::traits::PartitionBranchOps;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
 use treetime_utils::collections::container::get_exactly_one;
@@ -41,4 +42,21 @@ pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
   })?;
 
   Ok(result)
+}
+
+/// Count reconstructed substitutions per edge.
+///
+/// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous)
+/// substitutions on that edge, as determined by `PartitionBranchOps::edge_subs()`.
+pub fn compute_edge_mutation_counts<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
+  graph: &Graph<N, E, D>,
+  partition: &dyn PartitionBranchOps,
+) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+  let mut counts = BTreeMap::new();
+  for edge in graph.get_edges() {
+    let edge_key = edge.read_arc().key();
+    let subs = partition.edge_subs(graph, edge_key)?;
+    counts.insert(edge_key, subs.len());
+  }
+  Ok(counts)
 }

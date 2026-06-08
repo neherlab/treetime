@@ -2,7 +2,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::{DivergenceUnits, OutputArgs};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -41,6 +41,14 @@ pub struct TreetimeOptimizeArgs {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputArgs,
+
+  /// Units for divergence values in augur node data JSON output.
+  ///
+  /// `mutations-per-site` (default): branch divergence as substitutions per site.
+  /// `mutations`: absolute count of reconstructed substitutions per branch,
+  /// excluding ambiguous and gap positions.
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default()))]
+  pub divergence_units: DivergenceUnits,
 
   /// Write augur-compatible node data JSON to this path
   ///

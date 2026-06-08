@@ -127,7 +127,8 @@ mod tests {
 
     pub fn write_json(nwk: &str) -> String {
       let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
-      let data = build_augur_node_data_json(&graph, Some(Path::new("aln.fasta")), Some(Path::new("tree.nwk"))).unwrap();
+      let data =
+        build_augur_node_data_json(&graph, Some(Path::new("aln.fasta")), Some(Path::new("tree.nwk")), None).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 

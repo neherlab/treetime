@@ -4,7 +4,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::{DivergenceUnits, OutputArgs};
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
@@ -242,6 +242,15 @@ pub struct TreetimeTimetreeArgs {
   /// and enables v0 parity testing. Default: indels enabled.
   #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
+
+  /// Units for divergence values in augur node data JSON and auspice output.
+  ///
+  /// `mutations-per-site` (default): branch divergence as substitutions per site.
+  /// `mutations`: absolute count of reconstructed substitutions per branch,
+  /// excluding ambiguous and gap positions. Requires ancestral reconstruction
+  /// (incompatible with `--branch-length-mode=input`).
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default()))]
+  pub divergence_units: DivergenceUnits,
 
   /// Write augur-compatible node data JSON to this path
   ///

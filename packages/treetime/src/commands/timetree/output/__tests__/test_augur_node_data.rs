@@ -150,6 +150,7 @@ mod tests {
           Some(&self.dates),
           Some(Path::new("aln.fasta")),
           Some(Path::new("tree.nwk")),
+          None,
         )
         .unwrap();
         json_write_str(&data, JsonPretty(true)).unwrap()

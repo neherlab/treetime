@@ -1,8 +1,10 @@
+use crate::partition::traits::BranchTopology;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::auspice::{AuspiceGraphContext, AuspiceWrite, auspice_from_graph_with};
@@ -17,17 +19,28 @@ use treetime_utils::make_error;
 /// Produces node dates (with optional confidence intervals), cumulative divergence,
 /// and bad-branch status. Branch mutations, branch-support confidence, and genome
 /// annotations are not yet included (see `kb/issues/N-timetree-auspice-json-incomplete.md`).
+///
+/// When `mutation_counts` is provided, cumulative divergence is computed by
+/// accumulating per-edge mutation counts during traversal instead of reading
+/// `node.div` (which stores cumulative subs/site from branch lengths).
 pub fn build_timetree_auspice(
   graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
 ) -> Result<AuspiceTree, Report> {
   let ci_map = confidence_intervals.map_or_else(BTreeMap::new, build_ci_map);
-  let mut writer = TimetreeAuspiceWriter { ci_map };
+  let mut writer = TimetreeAuspiceWriter {
+    ci_map,
+    mutation_counts: mutation_counts.cloned(),
+    accumulated_divs: BTreeMap::new(),
+  };
   auspice_from_graph_with(&mut writer, graph)
 }
 
 struct TimetreeAuspiceWriter {
   ci_map: BTreeMap<GraphNodeKey, ConfidenceBounds>,
+  mutation_counts: Option<BTreeMap<GraphEdgeKey, usize>>,
+  accumulated_divs: BTreeMap<GraphNodeKey, f64>,
 }
 
 impl AuspiceWrite<NodeTimetree, EdgeTimetree, ()> for TimetreeAuspiceWriter {
@@ -80,15 +93,35 @@ impl AuspiceWrite<NodeTimetree, EdgeTimetree, ()> for TimetreeAuspiceWriter {
     &mut self,
     context: &AuspiceGraphContext<NodeTimetree, EdgeTimetree, ()>,
   ) -> Result<AuspiceTreeNode, Report> {
-    let &AuspiceGraphContext { node_key, node, .. } = context;
+    let &AuspiceGraphContext {
+      node_key, node, graph, ..
+    } = context;
 
     let name = node
       .name()
       .map_or_else(|| format!("node_{}", node_key.as_usize()), |n| n.as_ref().to_owned());
 
-    // JSON (RFC 8259) does not permit NaN or Infinity
-    if !node.div.is_finite() {
-      return make_error!("Node '{name}' has non-finite div={div}", div = node.div);
+    let div = match &self.mutation_counts {
+      Some(counts) => {
+        let parent_div = match graph.node_parent(node_key)? {
+          Some((_parent_key, edge_key)) => {
+            let parent_div = context
+              .parent_key
+              .and_then(|pk| self.accumulated_divs.get(&pk).copied())
+              .unwrap_or(0.0);
+            let edge_muts = counts.get(&edge_key).copied().unwrap_or_default();
+            parent_div + edge_muts as f64
+          },
+          None => 0.0,
+        };
+        self.accumulated_divs.insert(node_key, parent_div);
+        parent_div
+      },
+      None => node.div,
+    };
+
+    if !div.is_finite() {
+      return make_error!("Node '{name}' has non-finite div={div}");
     }
     if let Some(t) = node.time {
       if !t.is_finite() {
@@ -126,7 +159,7 @@ impl AuspiceWrite<NodeTimetree, EdgeTimetree, ()> for TimetreeAuspiceWriter {
         other: Value::default(),
       },
       node_attrs: AuspiceTreeNodeAttrs {
-        div: Some(node.div),
+        div: Some(div),
         num_date,
         bad_branch,
         clade_membership: None,

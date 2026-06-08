@@ -3,7 +3,7 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_graph::edge::HasBranchLength;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::Named;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_internal_report;
@@ -37,10 +37,14 @@ use util_augur_node_data_json::{
 /// - `confidence` is omitted: v1's Newick reader does not parse input-tree branch
 ///   support values (shared gap with `timetree`, tracked in
 ///   `kb/issues/N-timetree-node-data-confidence-not-emitted.md`).
+///
+/// When `mutation_counts` is `Some`, `branch_length` is set to the per-edge
+/// mutation count instead of the ML branch length (subs/site).
 pub fn build_augur_node_data_json(
   graph: &GraphAncestral,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
 ) -> Result<AugurNodeDataJsonRefine, Report> {
   let mut nodes = BTreeMap::new();
   for node in graph.get_nodes() {
@@ -56,10 +60,14 @@ pub fn build_augur_node_data_json(
     // the root divergence to 0).
     let branch_length = match graph.node_parent(node_key)? {
       Some((_parent_key, edge_key)) => {
-        let edge = graph
-          .get_edge(edge_key)
-          .ok_or_else(|| make_internal_report!("Optimize node data: missing edge {edge_key:?}"))?;
-        edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0)
+        if let Some(counts) = mutation_counts {
+          counts.get(&edge_key).copied().unwrap_or_default() as f64
+        } else {
+          let edge = graph
+            .get_edge(edge_key)
+            .ok_or_else(|| make_internal_report!("Optimize node data: missing edge {edge_key:?}"))?;
+          edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0)
+        }
       },
       None => 0.0,
     };
@@ -102,9 +110,10 @@ pub fn write_augur_node_data_json(
   graph: &GraphAncestral,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, alignment, input_tree)?;
+  let data = build_augur_node_data_json(graph, alignment, input_tree, mutation_counts)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

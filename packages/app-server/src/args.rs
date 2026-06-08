@@ -241,7 +241,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::metadata::DateColumnArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::OutputArgs;
+    use treetime::commands::shared::output::{DivergenceUnits, OutputArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -306,6 +306,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       reconstruct_tip_states: s.reconstruct_tip_states,
       report_ambiguous: s.report_ambiguous,
       no_indels: s.no_indels,
+      divergence_units: DivergenceUnits::default(),
       output_augur_node_data: None,
       output: OutputArgs {
         outdir: PathBuf::from(s.outdir),
@@ -409,7 +410,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::alphabet::AlphabetArgs;
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::OutputArgs;
+    use treetime::commands::shared::output::{DivergenceUnits, OutputArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -431,6 +432,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       branch_length_initial_guess: s.branch_length_initial_guess,
       opt_method: s.opt_method,
       no_indels: s.no_indels,
+      divergence_units: DivergenceUnits::default(),
       gap_fill_args: GapFillArgs {
         gap_fill: s.gap_fill,
         keep_overhangs: s.keep_overhangs,

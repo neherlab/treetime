@@ -12,7 +12,7 @@ mod tests {
   use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree};
 
   fn build_and_roundtrip(graph: &GraphTimetree, ci: Option<&[NodeConfidenceInterval]>) -> AuspiceTree {
-    let tree = build_timetree_auspice(graph, ci).unwrap();
+    let tree = build_timetree_auspice(graph, ci, None).unwrap();
     let json = serde_json::to_value(&tree).unwrap();
     serde_json::from_value(json).unwrap()
   }
@@ -204,7 +204,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let err = build_timetree_auspice(&graph, None).unwrap_err();
+    let err = build_timetree_auspice(&graph, None, None).unwrap_err();
     let msg = format!("{err}");
     assert!(msg.contains("non-finite div"), "expected div error, got: {msg}");
     assert!(msg.contains("bad"), "expected node name in error, got: {msg}");
@@ -219,7 +219,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let err = build_timetree_auspice(&graph, None).unwrap_err();
+    let err = build_timetree_auspice(&graph, None, None).unwrap_err();
     let msg = format!("{err}");
     assert!(msg.contains("non-finite time"), "expected time error, got: {msg}");
     assert!(msg.contains("inf_node"), "expected node name in error, got: {msg}");
@@ -229,7 +229,7 @@ mod tests {
   fn test_auspice_output_file_is_valid_json() {
     let graph = build_simple_tree();
     let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, dir.path()).unwrap();
+    write_auspice_json(&graph, None, None, dir.path()).unwrap();
 
     let path = dir.path().join("auspice_tree.json");
     assert!(path.exists());

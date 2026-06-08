@@ -5,7 +5,7 @@ use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_graph::edge::HasBranchLength;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::dates_csv::{DateConstraint, DatesMap};
 use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
@@ -45,6 +45,10 @@ use util_augur_node_data_json::{
 /// `dates` carries the parsed metadata date constraints used for `raw_date` (tips)
 /// and `date_inferred`; the inferred `date` string derives from each node's
 /// `numdate`.
+///
+/// When `mutation_counts` is `Some`, `mutation_length` is set to the per-edge
+/// mutation count instead of the ML branch length (subs/site). `branch_length`
+/// and `clock_length` remain time-valued (years) regardless.
 pub fn build_augur_node_data_json(
   graph: &GraphTimetree,
   clock_model: &ClockModel,
@@ -52,6 +56,7 @@ pub fn build_augur_node_data_json(
   dates: Option<&DatesMap>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
 ) -> Result<AugurNodeDataJsonRefine, Report> {
   let ci_map = confidence_intervals.map(build_ci_map);
 
@@ -71,12 +76,14 @@ pub fn build_augur_node_data_json(
     // to 0 regardless and never consumes the root's branch fields, so we omit them.
     let (branch_length, clock_length, mutation_length) = match graph.node_parent(node_key)? {
       Some((parent_key, edge_key)) => {
-        let edge = graph
-          .get_edge(edge_key)
-          .ok_or_else(|| make_internal_report!("Timetree node data: missing edge {edge_key:?}"))?;
-        // mutation_length: ML-optimized divergence length (subs/site). Drives `div`.
-        let mutation_length = edge.read_arc().payload().read_arc().branch_length();
-        // branch_length == clock_length: time-tree branch duration (years).
+        let mutation_length = if let Some(counts) = mutation_counts {
+          Some(counts.get(&edge_key).copied().unwrap_or_default() as f64)
+        } else {
+          let edge = graph
+            .get_edge(edge_key)
+            .ok_or_else(|| make_internal_report!("Timetree node data: missing edge {edge_key:?}"))?;
+          edge.read_arc().payload().read_arc().branch_length()
+        };
         let clock_length = parent_time(graph, parent_key)?
           .zip(numdate)
           .map(|(parent, child)| child - parent);
@@ -143,9 +150,18 @@ pub fn write_augur_node_data_json(
   dates: Option<&DatesMap>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
+  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, clock_model, confidence_intervals, dates, alignment, input_tree)?;
+  let data = build_augur_node_data_json(
+    graph,
+    clock_model,
+    confidence_intervals,
+    dates,
+    alignment,
+    input_tree,
+    mutation_counts,
+  )?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

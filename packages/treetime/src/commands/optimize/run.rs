@@ -2,9 +2,11 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::OptimizeResult;
+use crate::commands::shared::output::DivergenceUnits;
 use crate::gtr::get_gtr::write_gtr_json;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use crate::partition::traits::MutationCommentProvider;
+use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::info;
@@ -66,6 +68,22 @@ pub fn run_optimize(
     write_graph_files_with_options(outdir, "annotated_tree", &output.graph, &providers, &graph_options)?;
   }
 
+  let mutation_counts = match args.divergence_units {
+    DivergenceUnits::Mutations => {
+      let partition: &dyn crate::partition::traits::PartitionBranchOps = if !output.dense_partitions.is_empty() {
+        &*output.dense_partitions[0].read_arc()
+      } else if !output.sparse_partitions.is_empty() {
+        &*output.sparse_partitions[0].read_arc()
+      } else {
+        return Err(eyre::eyre!(
+          "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
+        ));
+      };
+      Some(compute_edge_mutation_counts(&output.graph, partition)?)
+    },
+    DivergenceUnits::MutationsPerSite => None,
+  };
+
   let augur_node_data_path = args
     .output_augur_node_data
     .clone()
@@ -75,6 +93,7 @@ pub fn run_optimize(
     &output.graph,
     alignment,
     Some(args.tree.as_path()),
+    mutation_counts.as_ref(),
     &augur_node_data_path,
   )?;
   info!(
