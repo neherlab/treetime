@@ -47,3 +47,7 @@ Survey of file formats for serializing substitution model parameters across phyl
 ### [Augur node data JSON format](augur-node-data-json.md)
 
 The intermediate node data JSON format produced by augur commands (`augur ancestral`, `augur refine`, `augur traits`). Field-by-field specification for all three command outputs with types, presence conditions, and downstream consumption by `augur export v2`. Covers mutation string format, annotations schema, field presence matrix, implementation mapping to treetime v1 data sources, and partition access constraints. Includes augur test fixture examples.
+
+### [Newick annotation dialects](newick-annotation-dialects.md)
+
+Newick-family annotation formats: BEAST/FigTree `[&key=value]`, NHX `[&&NHX:key=value]`, Extended Newick (`#H1` reticulate markers), Rich Newick (`[&R]`/`[&U]` + extra colon fields + inheritance probabilities). Covers formal grammar productions, value types and escaping, node vs branch annotation placement, tool interoperability matrix (18 tools x 5 dialects), file extension conventions, workflow chains, and 7 known compatibility problems. Research from 9 cloned tool repositories (BEAST1/2, MrBayes, FigTree, Forester, IQ-TREE, Dendroscope, SplitsTree, PhyloNet) and 4 verified papers. Informs the v1 Newick parser replacement and `--nwk-style` writer configurability.
