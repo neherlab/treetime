@@ -75,6 +75,26 @@ mod tests {
     assert_eq!(original, roundtripped);
   }
 
+  // --- Divergence units: mutations mode ---
+
+  #[test]
+  fn test_augur_node_data_optimize_mutations_mode_branch_length_is_count() {
+    let data = helpers::write_and_read_with_mutations("(leaf_a:0.005,leaf_b:0.010)root;", &[(0, 3), (1, 7)]);
+
+    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 3.0);
+    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 7.0);
+    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_mutations_mode_no_mutation_length() {
+    let data = helpers::write_and_read_with_mutations("(leaf_a:0.005,leaf_b:0.010)root;", &[(0, 3), (1, 7)]);
+
+    for node in data.nodes.values() {
+      assert!(node.mutation_length.is_none());
+    }
+  }
+
   // End-to-end: the optimize command writes a readable node data file whose
   // branch lengths are finite and non-negative after optimization.
   #[test]
@@ -120,7 +140,9 @@ mod tests {
   mod helpers {
     use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
     use crate::payload::ancestral::GraphAncestral;
+    use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -134,6 +156,23 @@ mod tests {
 
     pub fn write_and_read(nwk: &str) -> AugurNodeDataJsonRefine {
       json_read_str(write_json(nwk)).unwrap()
+    }
+
+    pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
+      let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
+      let edges = graph.get_edges();
+      let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
+        .iter()
+        .map(|&(idx, count)| (edges[idx].read_arc().key(), count))
+        .collect();
+      let data = build_augur_node_data_json(
+        &graph,
+        Some(Path::new("aln.fasta")),
+        Some(Path::new("tree.nwk")),
+        Some(&counts),
+      )
+      .unwrap();
+      json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
 
     pub fn project_root() -> PathBuf {

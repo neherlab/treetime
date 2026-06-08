@@ -239,6 +239,50 @@ mod tests {
     assert!(!tree.tree.name.is_empty());
   }
 
+  // --- Divergence units: mutations mode ---
+
+  #[test]
+  fn test_auspice_mutations_mode_div_is_cumulative_count() {
+    let graph = build_simple_tree();
+    let edges = graph.get_edges();
+    let counts = std::collections::BTreeMap::from([
+      (edges[0].read_arc().key(), 3_usize),
+      (edges[1].read_arc().key(), 7_usize),
+    ]);
+
+    let tree = build_timetree_auspice(&graph, None, Some(&counts)).unwrap();
+
+    assert_relative_eq!(tree.tree.node_attrs.div.unwrap(), 0.0);
+
+    let child_divs: std::collections::BTreeMap<&str, f64> = tree
+      .tree
+      .children
+      .iter()
+      .map(|c| (c.name.as_str(), c.node_attrs.div.unwrap()))
+      .collect();
+
+    assert_relative_eq!(child_divs["child_a"], 3.0);
+    assert_relative_eq!(child_divs["child_b"], 7.0);
+  }
+
+  #[test]
+  fn test_auspice_default_mode_uses_node_div() {
+    let graph = build_simple_tree();
+    let tree = build_timetree_auspice(&graph, None, None).unwrap();
+
+    assert_relative_eq!(tree.tree.node_attrs.div.unwrap(), 0.0);
+
+    let child_divs: std::collections::BTreeMap<&str, f64> = tree
+      .tree
+      .children
+      .iter()
+      .map(|c| (c.name.as_str(), c.node_attrs.div.unwrap()))
+      .collect();
+
+    assert_relative_eq!(child_divs["child_a"], 0.005);
+    assert_relative_eq!(child_divs["child_b"], 0.010);
+  }
+
   /// Build a 3-node tree: root -> child_a, root -> child_b
   /// Sets div on each node to simulate post-clock-regression state.
   fn build_simple_tree() -> GraphTimetree {

@@ -121,6 +121,35 @@ mod tests {
     assert_eq!(generated_by.version, env!("CARGO_PKG_VERSION"));
   }
 
+  // --- Divergence units: mutations mode ---
+
+  #[test]
+  fn test_augur_node_data_timetree_mutations_mode_mutation_length_is_count() {
+    let case = helpers::sample_case();
+    let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
+
+    assert_relative_eq!(data.nodes["leaf_a"].mutation_length.unwrap(), 3.0);
+    assert_relative_eq!(data.nodes["leaf_b"].mutation_length.unwrap(), 7.0);
+  }
+
+  #[test]
+  fn test_augur_node_data_timetree_mutations_mode_branch_length_stays_years() {
+    let case = helpers::sample_case();
+    let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
+
+    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 5.0);
+    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 10.0);
+  }
+
+  #[test]
+  fn test_augur_node_data_timetree_mutations_mode_root_has_no_mutation_length() {
+    let case = helpers::sample_case();
+    let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
+
+    assert!(data.nodes["root"].mutation_length.is_none());
+    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+  }
+
   mod helpers {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
@@ -128,7 +157,9 @@ mod tests {
     use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;
+    use std::collections::BTreeMap;
     use std::path::Path;
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::Named;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -158,6 +189,25 @@ mod tests {
 
       pub fn write_and_read(&self) -> AugurNodeDataJsonRefine {
         json_read_str(self.write_json()).unwrap()
+      }
+
+      pub fn write_and_read_with_mutations(&self, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
+        let edges = self.graph.get_edges();
+        let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
+          .iter()
+          .map(|&(idx, count)| (edges[idx].read_arc().key(), count))
+          .collect();
+        let data = build_augur_node_data_json(
+          &self.graph,
+          &self.clock_model,
+          Some(&self.intervals),
+          Some(&self.dates),
+          Some(Path::new("aln.fasta")),
+          Some(Path::new("tree.nwk")),
+          Some(&counts),
+        )
+        .unwrap();
+        json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
       }
     }
 
