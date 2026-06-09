@@ -91,10 +91,13 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   pub translations: Option<String>,
 
-  /// CDS names to reconstruct from `--translations`.
+  /// Comma-separated CDS names to reconstruct from `--translations`.
   ///
   /// When omitted, the CDS set is derived from `--annotation`.
-  #[cfg_attr(feature = "clap", clap(long = "cdses", visible_alias = "genes", value_name = "CDS"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long = "cdses", visible_alias = "genes", value_name = "CDS", value_delimiter = ',')
+  )]
   pub cdses: Vec<String>,
 
   /// GFF3 file with CDS coordinates for Augur node data annotations.
