@@ -1,5 +1,4 @@
-use crate::progress::{ErrorResponse, ProgressEvent};
-use crate::version::VersionInfo;
+use crate::{ErrorResponse, ProgressEvent, VersionInfo};
 use eyre::Report;
 use log::info;
 use schemars::JsonSchema;

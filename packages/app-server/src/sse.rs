@@ -11,7 +11,8 @@ use std::path::Path;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use treetime::progress::{CancelledError, LogEvent, LogLevel, ProgressEvent};
+use treetime::progress::{CancelledError, LogEvent, LogLevel};
+use treetime_schema::ProgressEvent;
 
 enum SinkEvent {
   Progress(ProgressEvent),

@@ -16,7 +16,7 @@ use treetime::commands::mugration::args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
-use treetime::schema::TreetimeSchemaFormat;
+use treetime_schema::TreetimeSchemaFormat;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;

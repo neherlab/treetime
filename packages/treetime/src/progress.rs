@@ -53,21 +53,8 @@ impl ProgressSink for NoopProgress {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ProgressEvent {
-  pub stage: String,
-  pub fraction: f64,
-  pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LogEvent {
   pub level: LogLevel,
-  pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ErrorResponse {
-  pub code: String,
   pub message: String,
 }
 

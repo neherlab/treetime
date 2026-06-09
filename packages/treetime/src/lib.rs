@@ -13,10 +13,8 @@ pub mod partition;
 pub mod payload;
 pub mod progress;
 pub mod prune;
-pub mod schema;
 pub mod seq;
 pub mod timetree;
-pub mod version;
 
 #[cfg(test)]
 pub mod test_utils;

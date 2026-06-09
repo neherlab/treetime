@@ -1,7 +1,7 @@
 use crate::progress::{self, NapiProgressSink};
 use app_api::datasets::discover_datasets;
 use app_api::progress::{CancelledError, NoopProgress};
-use app_api::version::version_info;
+use treetime_schema::version_info;
 use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
   TreetimeTimetreeArgs,

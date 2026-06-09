@@ -3,8 +3,6 @@ pub mod datasets;
 pub mod pipelines;
 pub mod progress;
 
-pub use treetime::version;
-
 pub use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 pub use treetime::commands::ancestral::result::AncestralResult;
 pub use treetime::commands::clock::args::TreetimeClockArgs;

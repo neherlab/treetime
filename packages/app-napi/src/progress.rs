@@ -1,4 +1,5 @@
-use app_api::progress::{LogEvent, LogLevel, ProgressEvent, ProgressSink};
+use app_api::progress::{LogEvent, LogLevel, ProgressSink};
+use treetime_schema::ProgressEvent;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use serde::Serialize;
 use std::sync::Arc;

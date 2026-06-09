@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use treetime::schema::{TreetimeSchemaFormat, generate_schema};
+use treetime_schema::{TreetimeSchemaFormat, generate_schema};
 
 fn main() {
   println!("cargo:rerun-if-changed=../treetime/src");

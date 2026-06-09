@@ -16,6 +16,7 @@ version.workspace = true
 treetime = { workspace = true, features = ["clap"] }
 treetime-graph = { workspace = true }
 treetime-io = { workspace = true }
+treetime-schema = { workspace = true, features = ["clap"] }
 treetime-utils = { workspace = true }
 
 # [external]
@@ -60,7 +61,7 @@ tikv-jemallocator = { workspace = true }
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [build-dependencies]
-treetime = { workspace = true }
+treetime-schema = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

@@ -15,6 +15,7 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 app-api = { workspace = true }
+treetime-schema = { workspace = true }
 
 eyre = { workspace = true }
 napi = { workspace = true }

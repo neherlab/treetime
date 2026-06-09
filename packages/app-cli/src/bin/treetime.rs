@@ -27,7 +27,7 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime::progress::{NoopProgress, ProgressSink};
-use treetime::schema::generate_schema;
+use treetime_schema::generate_schema;
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
 use treetime_utils::io::console::is_tty;

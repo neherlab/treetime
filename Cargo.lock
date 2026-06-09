@@ -154,6 +154,7 @@ dependencies = [
  "treetime",
  "treetime-graph",
  "treetime-io",
+ "treetime-schema",
  "treetime-utils",
 ]
 
@@ -172,6 +173,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "treetime-schema",
  "treetime-utils",
 ]
 
@@ -197,6 +199,7 @@ dependencies = [
  "tokio-stream",
  "tower-http",
  "treetime",
+ "treetime-schema",
  "treetime-utils",
 ]
 
@@ -4437,6 +4440,20 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "treetime-utils",
+]
+
+[[package]]
+name = "treetime-schema"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "eyre",
+ "log",
+ "schemars",
+ "serde",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
  "treetime-utils",
 ]
 
