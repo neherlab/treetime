@@ -25,5 +25,8 @@ Each missing format requires adapter traits that are not implemented on all grap
 
 ## Related
 
+- [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md) -- three-tier output format selection subsumes this issue
+- [kb/tickets/io-output-selection-infrastructure.md](../tickets/io-output-selection-infrastructure.md) -- output selection infrastructure
+- [kb/tickets/io-format-adapter-impls.md](../tickets/io-format-adapter-impls.md) -- format adapter implementations
 - [N-timetree-auspice-json-incomplete.md](N-timetree-auspice-json-incomplete.md) - timetree auspice output gaps
 - [N-ancestral-auspice-json-not-produced.md](N-ancestral-auspice-json-not-produced.md) - ancestral auspice output missing entirely

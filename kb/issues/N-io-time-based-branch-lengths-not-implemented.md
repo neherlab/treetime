@@ -13,3 +13,8 @@ After timetree inference, each node has both a divergence-based branch length an
 ## v0 reference
 
 `packages/legacy/treetime/treetime/treetime.py` `BranchLengthMode` enum, used in `write_json()` and `save_nexus()`.
+
+## Related
+
+- [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md) -- timetree `divergence-tree` identity addresses this
+- [kb/tickets/io-timetree-divergence-tree-output.md](../tickets/io-timetree-divergence-tree-output.md) -- implementation ticket
