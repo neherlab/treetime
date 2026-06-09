@@ -10,6 +10,7 @@ mod tests {
   use ndarray::Array1;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
@@ -751,6 +752,29 @@ mod tests {
       .read_arc()
       .degree_out();
     assert_eq!(final_children, 2, "ABCD should have 2 children after resolution");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_resolve_polytomies_assign_node_names_names_new_nodes() -> Result<(), Report> {
+    // Resolve a 3-way polytomy (ABC -> {A, B, C}), then assign names.
+    // The new internal node must receive a NODE_NNNNNNN name.
+    let mut graph = helpers::create_polytomy_tree()?;
+    let partitions = vec![];
+    let n_resolved = resolve_polytomies_with_options(&mut graph, &partitions, -1000.0, 10.0, TEST_CLOCK_RATE, false)?;
+    assert_eq!(n_resolved, 1);
+
+    assign_node_names(&graph)?;
+
+    let mut names: Vec<String> = graph
+      .get_nodes()
+      .iter()
+      .filter_map(|n| n.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()))
+      .collect();
+    names.sort();
+
+    assert_eq!(names, vec!["A", "ABC", "B", "C", "NODE_0000000", "root"]);
 
     Ok(())
   }

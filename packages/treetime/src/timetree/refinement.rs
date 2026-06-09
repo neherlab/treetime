@@ -15,6 +15,7 @@ use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_graph::assign_node_names::assign_node_names;
 
 pub struct RefinementParams {
   pub relax: Vec<f64>,
@@ -56,6 +57,7 @@ pub fn run_refinement_iteration(
       .wrap_err("Polytomy resolution failed")?;
     if n > 0 {
       info!("Resolved polytomies, introduced {n} new nodes");
+      assign_node_names(graph)?;
       prepare_tree_after_topology_change(graph).wrap_err("Failed to prepare tree after topology change")?;
 
       for partition in partitions {

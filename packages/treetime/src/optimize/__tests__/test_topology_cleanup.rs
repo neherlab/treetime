@@ -494,4 +494,67 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
+    // Collapse zero-length I, then merge A+B+C (shared sub A0T) under a new
+    // internal node. The new node must receive a NODE_NNNNNNN name.
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+
+    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+
+    populate_test_nodes(&mut partition, &graph);
+
+    partition.edges.insert(ri_key, SparseEdgePartition::default());
+
+    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    let rc_key = find_edge_key(&graph, "root", "C").unwrap();
+    let rd_key = find_edge_key(&graph, "root", "D").unwrap();
+
+    partition
+      .edges
+      .insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(ib_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(rc_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+
+    let sparse = vec![Arc::new(RwLock::new(partition))];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    if let Some(edge) = graph.get_edge(ri_key) {
+      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+    }
+
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key])?;
+    assert!(changed);
+
+    let mut names: Vec<String> = graph
+      .get_nodes()
+      .iter()
+      .filter_map(|n| n.read_arc().payload().read_arc().name.clone())
+      .collect();
+    names.sort();
+
+    // I collapsed, A+B+C merged under a new NODE_0000000
+    assert_eq!(names, vec!["A", "B", "C", "D", "NODE_0000000", "root"]);
+
+    Ok(())
+  }
 }

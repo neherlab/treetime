@@ -15,6 +15,7 @@ use itertools::{Itertools, chain};
 use log::debug;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -347,6 +348,7 @@ pub fn prune_and_merge_in_loop(
   }
 
   graph.build()?;
+  assign_node_names(graph)?;
   Ok(true)
 }
 

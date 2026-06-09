@@ -11,6 +11,7 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_io::fasta::FastaRecord;
 
 pub struct PruneParams {
@@ -75,6 +76,7 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
   if params.merge_shared_mutations {
     merge_shared_mutation_branches(&mut input.graph, &partitions)?;
     input.graph.build()?;
+    assign_node_names(&input.graph)?;
   }
 
   let gtr = (!partitions.is_empty()).then(|| partitions[0].read_arc().gtr.clone());
