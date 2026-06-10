@@ -62,8 +62,9 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |
-| Medium     | I/O          | [Newick output with annotations is incompatible with Newick reader](M-io-newick-output-incompatible-with-reader.md)                                 |
-| Medium     | I/O          | [bio crate Newick parser rejects standard comments](M-io-bio-crate-newick-rejects-comments.md)                                                      |
+| Medium     | I/O          | [Newick writer does not quote names with special characters](M-io-nwk-writer-no-quoting-special-chars.md)                                           |
+| Medium     | I/O          | [Newick writer emits per-key annotation blocks instead of standard BEAST format](M-io-nwk-writer-annotation-format-nonstandard.md)                  |
+| Medium     | I/O          | [Newick writer places all annotations after branch length](M-io-nwk-writer-annotations-after-branch-length.md)                                      |
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
 | Medium     | I/O          | [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md)                                                           |
 | Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                              |
@@ -102,7 +103,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O          | [Nexus writer provides no annotation advantage over Newick](N-io-nexus-writer-no-annotation-advantage.md)                                           |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
-| Negligible | I/O          | [Newick branch lengths lose precision through f32 round-trip](N-nwk-branch-length-f32-precision-loss.md)                                            |
+| Negligible | I/O          | [Newick writer defaults to 3 significant digits, truncating branch lengths](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)                |
 | Negligible | Optimize     | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |
 | Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](N-optimize-initial-guess-alloc.md)                                               |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                                  |

@@ -6,4 +6,4 @@ v1's Newick reader (`packages/treetime-io/src/nwk.rs`) does not parse internal-n
 
 This is distinct from the auspice pseudo-bootstrap `confidence` (`1 - exp(-n_mutations)`) tracked in [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md); that value is computed, whereas this one is read from the input tree.
 
-Fixing requires the Newick/Nexus reader to parse branch support values into a node payload field, which would also benefit other commands. The root cause is shared with [N-nwk-branch-length-f32-precision-loss.md](N-nwk-branch-length-f32-precision-loss.md): both trace to limitations of the `bio` crate's Newick parser (`bio::io::newick`). A custom parser would fix both issues.
+Fixing requires the Newick/Nexus reader to parse branch support values into a node payload field, which would also benefit other commands. The `util-newick` parser already extracts support/confidence annotations; they need to be wired through `NodeFromNwk` (tracked in [kb/tickets/io-nwk-comment-dialect-parsing.md](../tickets/io-nwk-comment-dialect-parsing.md)).

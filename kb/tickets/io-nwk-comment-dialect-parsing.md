@@ -125,5 +125,5 @@ PlainText   = { (!"[" ~ !"]" ~ ANY)* }
 
 ## Related issues
 
-- Source: [kb/issues/M-io-bio-crate-newick-rejects-comments.md](../issues/M-io-bio-crate-newick-rejects-comments.md)
+- Source: resolved `M-io-bio-crate-newick-rejects-comments` (parser now accepts all comment dialects; this ticket tracks wiring parsed annotations into `NodeFromNwk`)
 - Dialect grammars: [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md)

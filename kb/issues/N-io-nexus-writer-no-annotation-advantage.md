@@ -27,5 +27,5 @@ Missing NEXUS features that other tools use:
 
 ## Related
 
-- [M-io-newick-output-incompatible-with-reader.md](M-io-newick-output-incompatible-with-reader.md)
+- [M-io-nwk-writer-annotation-format-nonstandard.md](M-io-nwk-writer-annotation-format-nonstandard.md)
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md)

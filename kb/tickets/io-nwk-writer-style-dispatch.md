@@ -76,5 +76,8 @@ The `util-newick` crate (`packages/util-newick/`) implements the standalone writ
 
 ## Related issues
 
-- Source: [kb/issues/M-io-newick-output-incompatible-with-reader.md](../issues/M-io-newick-output-incompatible-with-reader.md)
+- Source: resolved `M-io-newick-output-incompatible-with-reader` (reader no longer rejects annotated output; writer format issues remain)
 - Source: [kb/issues/N-io-nexus-writer-no-annotation-advantage.md](../issues/N-io-nexus-writer-no-annotation-advantage.md)
+- Source: [kb/issues/M-io-nwk-writer-annotation-format-nonstandard.md](../issues/M-io-nwk-writer-annotation-format-nonstandard.md)
+- Source: [kb/issues/M-io-nwk-writer-annotations-after-branch-length.md](../issues/M-io-nwk-writer-annotations-after-branch-length.md)
+- Source: [kb/issues/M-io-nwk-writer-no-quoting-special-chars.md](../issues/M-io-nwk-writer-no-quoting-special-chars.md)
