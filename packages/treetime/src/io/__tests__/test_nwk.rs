@@ -5,9 +5,11 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use std::path::PathBuf;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
@@ -37,7 +39,6 @@ mod tests {
 
   #[test]
   fn test_nwk_parse_no_branch_lengths() -> Result<(), Report> {
-    // Parser should handle missing branch lengths (stored as NaN internally)
     let input = "((A,B)AB,(C,D)CD)root;";
     let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
@@ -46,13 +47,9 @@ mod tests {
     assert_eq!(graph.get_edges().len(), 6);
     assert_eq!(graph.get_leaves().len(), 4);
 
-    // Verify all edges have NaN branch length (parser default for missing values)
     for edge in graph.get_edges() {
       let branch_len = edge.read_arc().payload().read_arc().branch_length();
-      assert!(
-        branch_len.is_some_and(|v| v.is_nan()),
-        "Missing branch length should be parsed as NaN"
-      );
+      assert!(branch_len.is_none(), "Missing branch length should be parsed as None");
     }
 
     Ok(())
@@ -160,26 +157,25 @@ mod tests {
       }
     }
 
-    // Use epsilon of 1e-6 to accommodate f32 precision in parser
     assert_abs_diff_eq!(
       branch_lengths["A"].expect("A should have branch length"),
       0.123,
-      epsilon = 1e-6
+      epsilon = 1e-10
     );
     assert_abs_diff_eq!(
       branch_lengths["B"].expect("B should have branch length"),
       0.456,
-      epsilon = 1e-6
+      epsilon = 1e-10
     );
     assert_abs_diff_eq!(
       branch_lengths["AB"].expect("AB should have branch length"),
       0.789,
-      epsilon = 1e-6
+      epsilon = 1e-10
     );
     assert_abs_diff_eq!(
       branch_lengths["C"].expect("C should have branch length"),
       1.5,
-      epsilon = 1e-6
+      epsilon = 1e-10
     );
 
     Ok(())
@@ -209,5 +205,101 @@ mod tests {
     assert_eq!(leaf_names.len(), 3);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_nwk_rejects_enewick_hybrid() {
+    let result = nwk_read_str::<TestNode, TestEdge, ()>("((A,(B)x#H1)c,(x#H1,C)d);");
+    let err = result.unwrap_err();
+    let msg = format!("{err:?}");
+    assert!(
+      msg.contains("eNewick") || msg.contains("reticulate") || msg.contains("hybrid"),
+      "Error should mention eNewick/hybrid/reticulate, got: {msg}"
+    );
+  }
+
+  #[test]
+  fn test_nwk_parse_error_includes_position() {
+    let result = nwk_read_str::<TestNode, TestEdge, ()>("(A:0.1,B:0.2");
+    let err = result.unwrap_err();
+    let msg = format!("{err:?}");
+    assert!(
+      msg.contains("line") || msg.contains("-->"),
+      "Parse error should include position info, got: {msg}"
+    );
+  }
+
+  #[test]
+  fn test_nwk_parse_with_beast_comment_succeeds() -> Result<(), Report> {
+    let input = "(A[&prob=0.95]:0.1,B:0.2);";
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+
+    assert_eq!(graph.get_nodes().len(), 3);
+    assert_eq!(graph.get_edges().len(), 2);
+
+    let mut branch_lengths = BTreeMap::new();
+    for edge in graph.get_edges() {
+      let edge_ref = edge.read_arc();
+      let target_node = graph.get_node(edge_ref.target()).expect("target node");
+      let name = target_node.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned());
+      if let Some(name) = name {
+        branch_lengths.insert(name, edge_ref.payload().read_arc().branch_length());
+      }
+    }
+
+    assert_abs_diff_eq!(
+      branch_lengths["A"].expect("A should have branch length"),
+      0.1,
+      epsilon = 1e-10
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_parse_negative_branch_length() -> Result<(), Report> {
+    let input = "(A:-0.001,B:0.2)root;";
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+
+    assert_eq!(graph.get_nodes().len(), 3);
+    assert_eq!(graph.get_edges().len(), 2);
+
+    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!(input, output);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_parse_all_datasets() -> Result<(), Report> {
+    let data_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data");
+    let trees = helpers::find_files_recursive(&data_dir, "tree.nwk")?;
+    assert!(!trees.is_empty(), "data/ directory should contain tree.nwk files");
+
+    for path in &trees {
+      let graph: Graph<TestNode, TestEdge, ()> = nwk_read_file(path)?;
+      assert!(!graph.get_nodes().is_empty(), "Tree {path:?} should have nodes");
+      assert!(!graph.get_edges().is_empty(), "Tree {path:?} should have edges");
+    }
+
+    Ok(())
+  }
+
+  mod helpers {
+    use eyre::Report;
+    use std::path::{Path, PathBuf};
+
+    pub fn find_files_recursive(dir: &Path, filename: &str) -> Result<Vec<PathBuf>, Report> {
+      let mut results = Vec::new();
+      for entry in std::fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.is_dir() {
+          results.extend(find_files_recursive(&path, filename)?);
+        } else if path.file_name().is_some_and(|n| n == filename) {
+          results.push(path);
+        }
+      }
+      Ok(results)
+    }
   }
 }

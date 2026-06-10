@@ -13,11 +13,8 @@ mod tests {
   fn test_augur_node_data_optimize_branch_lengths() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
-    // TODO(kb/issues/N-nwk-branch-length-f32-precision-loss.md): the `bio` crate
-    // Newick reader parses weights as f32; leaf values match only to f32 relative
-    // precision after widening to f64. Root is set to exactly 0.0 by the writer.
-    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 0.005, max_relative = 1e-6);
-    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 0.010, max_relative = 1e-6);
+    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 0.005, max_relative = 1e-10);
+    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 0.010, max_relative = 1e-10);
     assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
 
