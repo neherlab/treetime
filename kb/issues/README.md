@@ -50,6 +50,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                      |
 | Medium     | Timetree     | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)                             |
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |
+| Medium     | Clock        | [MinDev reroot uses wrong objective (EstimatedRate instead of FixedRate(0))](M-clock-mindev-wrong-objective.md)                                     |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                  |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                          |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
@@ -175,8 +176,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
 | Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
-| Negligible | I/O          | [Nexus parser handles a limited subset](N-io-nexus-parser-limited-subset.md)                                                                        |
-| Negligible | I/O          | [Root branch length silently discarded](N-io-newick-root-branch-length-discarded.md)                                                                |
 
 ## Cross-references
 
