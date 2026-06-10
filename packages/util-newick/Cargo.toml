@@ -1,0 +1,31 @@
+[package]
+name = "util-newick"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+eyre = { workspace = true }
+pest = { workspace = true }
+pest_derive = { workspace = true }
+pretty_dtoa = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+smart-default = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+proptest = { workspace = true }
+rayon = { workspace = true }
+rstest = { workspace = true }
+
+[lints]
+workspace = true

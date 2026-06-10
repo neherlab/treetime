@@ -19,6 +19,7 @@ members = [
   "packages/treetime-validation",
   "packages/util-augur-node-data-json",
   "packages/util-phyloxml",
+  "packages/util-newick",
   "packages/util-usher-mat",
 ]
 
@@ -111,6 +112,8 @@ num-traits = "=0.2.19"
 ordered-float = { version = "=5.0.0", default-features = false }
 parking_lot = { version = "=0.12.4", features = ["arc_lock", "serde", "deadlock_detection", "hardware-lock-elision"] }
 percent-encoding = "=2.3.2"
+pest = "=2.8.6"
+pest_derive = "=2.8.6"
 petgraph = { version = "=0.6.5", features = ["serde", "stable_graph"] }
 plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.1"
@@ -157,6 +160,7 @@ treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-schema = { path = "packages/treetime-schema" }
 treetime-utils = { path = "packages/treetime-utils" }
 util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
+util-newick = { path = "packages/util-newick" }
 util-phyloxml = { path = "packages/util-phyloxml" }
 util-usher-mat = { path = "packages/util-usher-mat" }
 
