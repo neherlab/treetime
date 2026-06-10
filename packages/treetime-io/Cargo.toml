@@ -18,21 +18,19 @@ ignored = ["approx"]
 treetime-graph = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-utils = { workspace = true }
+util-newick = { workspace = true }
 util-phyloxml = { workspace = true }
 util-usher-mat = { workspace = true }
 
 # [external]
-bio = { workspace = true }
 bytes = { workspace = true }
 csv = { workspace = true }
 eyre = { workspace = true }
-indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 percent-encoding = { workspace = true }
 maplit = { workspace = true }
 parking_lot = { workspace = true }
-petgraph = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 smart-default = { workspace = true }

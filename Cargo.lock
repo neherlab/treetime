@@ -4386,18 +4386,15 @@ name = "treetime-io"
 version = "1.0.0"
 dependencies = [
  "approx",
- "bio",
  "bytes",
  "csv",
  "ctor 0.5.0",
  "eyre",
- "indexmap",
  "itertools 0.14.0",
  "log",
  "maplit",
  "parking_lot",
  "percent-encoding",
- "petgraph",
  "pretty_assertions",
  "rayon",
  "rstest",
@@ -4408,6 +4405,7 @@ dependencies = [
  "treetime-graph",
  "treetime-primitives",
  "treetime-utils",
+ "util-newick",
  "util-phyloxml",
  "util-usher-mat",
 ]
