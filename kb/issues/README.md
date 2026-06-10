@@ -175,6 +175,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
 | Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
+| Negligible | I/O          | [Nexus parser handles a limited subset](N-io-nexus-parser-limited-subset.md)                                                                        |
+| Negligible | I/O          | [Root branch length silently discarded](N-io-newick-root-branch-length-discarded.md)                                                                |
 
 ## Cross-references
 

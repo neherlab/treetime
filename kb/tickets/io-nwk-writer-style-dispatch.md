@@ -2,7 +2,24 @@
 
 Add `NwkStyle` enum (Plain, Annotated, Nhx) and replace the hardcoded BEAST format string at `treetime-io/src/nwk.rs:255` with a dispatch on style. Default to Plain, fixing the round-trip bug where annotated output is rejected by the reader.
 
-## Scope
+## Done (`util-newick` crate)
+
+The `util-newick` crate (`packages/util-newick/`) implements the standalone writer:
+
+- `NwkStyle` enum: `Plain`, `Beast`, `Nhx` with configurable float precision
+- BEAST2 canonical annotation placement (node attrs before `:`, branch attrs after `:` before length)
+- BEAST key/value escaping (boolean/numeric lookalikes quoted, embedded quotes escaped)
+- NHX serialization with reserved-char rejection (fallible `newick_to_string` returning `Result`)
+- Nexus streaming writer with Taxa block, Translate table, multi-tree support
+
+## Remaining (integration into `treetime-io`)
+
+- Add `NwkStyle` parameter to `nwk_write_with`, `nwk_write_file_with`, `nex_write_with`, `nex_write_file_with`
+- Replace the format string at `nwk.rs:255` with dispatch to `util-newick` writer
+- Default: `Plain` -- suppresses all annotations, fixing the round-trip incompatibility
+- Update all call sites in command `run.rs` files to pass `NwkStyle::Plain`
+
+## Original scope
 
 - Define `NwkStyle` enum: `Plain` (no annotations), `Annotated` (BEAST `[&key="value"]`), `Nhx` (NHX `[&&NHX:key=value:...]`)
 - Add `NwkStyle` parameter to `nwk_write_with`, `nwk_write_file_with`, `nex_write_with`, `nex_write_file_with`

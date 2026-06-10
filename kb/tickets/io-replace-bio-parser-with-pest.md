@@ -2,7 +2,23 @@
 
 Replace `bio::io::newick::read` with a custom pest-based parser for base Newick (no comment parsing yet). Parse branch lengths as f64 directly. Remove the bio crate dependency.
 
-## Scope
+## Done (`util-newick` crate)
+
+The `util-newick` crate (`packages/util-newick/`) implements the standalone parser:
+
+- pest grammar for full Newick including comments, quoted names, scientific notation, eNewick hybrid markers
+- f64 branch lengths throughout
+- `[...]` content parsed with automatic BEAST/NHX/plain dialect detection (exceeds original "strip as plain" scope)
+- 85+ unit tests, 4 property-based round-trip tests, 8 doc tests
+
+## Remaining (integration into `treetime-io`)
+
+- Replace `bio::io::newick::read` in `treetime-io/src/nwk.rs` with `util_newick::newick_from_string`
+- Adapt `NodeFromNwk`/`EdgeFromNwk` traits to consume `util-newick`'s `NewickGraph`/`NewickNode`/`NewickEdge` types
+- Remove `bio` crate dependency (verify no other uses first)
+- Preserve existing `nwk_read`, `nwk_read_file`, `nwk_read_str` API signatures
+
+## Original scope
 
 - Write a pest grammar for base Newick (~20 lines): Tree, Subtree, Leaf, Internal, BranchSet, Branch, Name (quoted/unquoted), Length
 - Implement parser producing `Graph<N, E, D>` via existing `NodeFromNwk`/`EdgeFromNwk` traits

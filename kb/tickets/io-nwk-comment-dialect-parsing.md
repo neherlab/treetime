@@ -2,7 +2,23 @@
 
 Extend the pest grammar from ticket #2 with BEAST, NHX, and plain comment productions. Inline per-comment dialect detection. Populate `BTreeMap<String, String>` on `NodeFromNwk::from_nwk`.
 
-## Scope
+## Done (`util-newick` crate)
+
+The `util-newick` crate (`packages/util-newick/`) implements the standalone dialect parser:
+
+- Inline per-comment dialect detection: `&&NHX:` -> NHX, `&` -> BEAST, else -> plain (discarded or stored as raw comment)
+- BEAST value types: scalars, quoted strings, `{...}` arrays, booleans (case-insensitive), bare-key flags
+- Node vs branch annotation placement: BEAST2 canonical (before `:` = node, after `:` = branch), MrBayes (after length = branch)
+- NHX colon-separated key=value pairs
+- Typed `NewickValue` enum (`String`, `Number`, `Boolean`, `Array`) instead of flat `BTreeMap<String, String>`
+
+## Remaining (integration into `treetime-io`)
+
+- Wire `util-newick` parsed annotations into `treetime-io` node/edge `BTreeMap` population at `nwk.rs:73`
+- Map `NewickValue` variants to `treetime-io`'s string-valued `BTreeMap<String, String>`
+- Optional `--nwk-dialect` CLI override for malformed files
+
+## Original scope
 
 - Add comment productions to the pest grammar (~30 lines): Comment, CommentBody, BeastPairs, NhxPairs, Key, Value, Array, QuotedStr, Scalar, PlainText
 - Inline dialect detection per comment: first chars after `[` determine mode (`&&NHX:` -> NHX, `&` -> BEAST, else -> discard)
