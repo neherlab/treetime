@@ -216,7 +216,7 @@ mod tests {
   fn test_histograms_zero_bins_error() {
     let errors = array![1.0, 2.0];
     let result = compute_error_histogram(&errors, 0, HistogramMode::Signed);
-    let _ = result.unwrap_err();
+    drop(result.unwrap_err());
   }
 
   #[test]

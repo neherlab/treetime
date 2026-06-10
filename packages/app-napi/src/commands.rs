@@ -1,7 +1,6 @@
 use crate::progress::{self, NapiProgressSink};
 use app_api::datasets::discover_datasets;
 use app_api::progress::{CancelledError, NoopProgress};
-use treetime_schema::version_info;
 use app_api::{
   TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
   TreetimeTimetreeArgs,
@@ -11,6 +10,7 @@ use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::path::Path;
 use std::sync::Arc;
+use treetime_schema::version_info;
 
 #[napi]
 pub fn version() -> String {

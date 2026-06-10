@@ -1,9 +1,9 @@
 use app_api::progress::{LogEvent, LogLevel, ProgressSink};
-use treetime_schema::ProgressEvent;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use serde::Serialize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use treetime_schema::ProgressEvent;
 
 static CANCELLED: AtomicBool = AtomicBool::new(false);
 

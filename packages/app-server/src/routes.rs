@@ -5,13 +5,13 @@ use crate::error::AppError;
 use crate::sse::handle_command;
 use crate::state::ServerConfig;
 use app_api::datasets::discover_datasets;
-use treetime_schema::version_info;
 use axum::extract::State;
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::Value;
 use std::sync::Arc;
+use treetime_schema::version_info;
 
 pub fn api_routes(config: ServerConfig) -> Router {
   let state = Arc::new(config);

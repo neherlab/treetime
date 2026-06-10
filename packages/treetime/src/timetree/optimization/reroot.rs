@@ -49,7 +49,7 @@ pub fn reroot_tree(
   )
   .wrap_err("Failed to estimate clock model with reroot")?;
 
-  if let Some(reroot_result) = &clock_reroot_result.reroot_result {
+  if let Some(reroot_result) = clock_reroot_result.reroot_result() {
     if !partitions.is_empty() {
       let changes = RerootChanges {
         edge_split: reroot_result.edge_split.clone(),

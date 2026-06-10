@@ -43,11 +43,10 @@ pub struct ClockParams {
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
   clock_model: Option<ClockModel>,
-  pub reroot_result: Option<RerootResult>,
+  reroot_result: Option<RerootResult>,
 }
 
 impl ClockRerootResult {
-  /// Convert to a validated `ClockModel`, failing if the estimated rate is non-positive.
   pub fn into_clock_model(self) -> Result<ClockModel, Report> {
     if let Some(model) = self.clock_model {
       return Ok(model);
@@ -58,12 +57,15 @@ impl ClockRerootResult {
     ClockModel::from_regression(&regression)
   }
 
-  /// Access the raw regression result (rate can be any sign).
   pub fn regression(&self) -> &ClockRegression {
     self
       .regression
       .as_ref()
       .expect("regression() called on fixed-rate result")
+  }
+
+  pub fn reroot_result(&self) -> Option<&RerootResult> {
+    self.reroot_result.as_ref()
   }
 }
 
@@ -256,7 +258,7 @@ where
     .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
   info!("**Clock rate:** {rate:.6e}");
   info!("**Intercept:** {intercept:.4}");
-  if let Some(ref reg) = regression {
+  if let Some(reg) = &regression {
     info!("**R²:** {:.4}", reg.r_val() * reg.r_val());
     info!("**χ²:** {:.4}", reg.chisq());
     info!("**Hessian:**\n{}", reg.hessian());
