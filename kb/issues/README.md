@@ -62,9 +62,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                             |
 | Medium     | Dates        | [Column auto-detection gaps in CSV readers](M-dates-column-auto-detection-gaps.md)                                                                  |
 | Medium     | GTR          | [Per-site rate variation not implemented](M-gtr-per-site-rate-variation.md)                                                                         |
-| Medium     | I/O          | [Newick writer does not quote names with special characters](M-io-nwk-writer-no-quoting-special-chars.md)                                           |
-| Medium     | I/O          | [Newick writer emits per-key annotation blocks instead of standard BEAST format](M-io-nwk-writer-annotation-format-nonstandard.md)                  |
-| Medium     | I/O          | [Newick writer places all annotations after branch length](M-io-nwk-writer-annotations-after-branch-length.md)                                      |
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
 | Medium     | I/O          | [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md)                                                           |
 | Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                              |
