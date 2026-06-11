@@ -9,26 +9,28 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::no_qualifier(   None,             "gtr.json")]
-  #[case::sparse(         Some("sparse"),   "gtr_sparse.json")]
-  #[case::dense(          Some("dense"),    "gtr_dense.json")]
+  #[case::no_qualifier(   "gtr.json")]
+  #[case::sparse(         "gtr_sparse.json")]
+  #[case::dense(          "gtr_dense.json")]
   #[trace]
-  fn test_write_gtr_json_filename(#[case] qualifier: Option<&str>, #[case] expected_filename: &str) {
+  fn test_write_gtr_json_filename(#[case] filename: &str) {
     let dir = TempDir::new().unwrap();
     let gtr = jc69(JC69Params::default()).unwrap();
-    write_gtr_json(&gtr, GtrModelName::JC69, dir.path(), qualifier).unwrap();
+    let output = GtrOutput::new(&gtr, GtrModelName::JC69);
+    write_gtr_json(&output, dir.path().join(filename)).unwrap();
 
-    let expected_path = dir.path().join(expected_filename);
-    assert!(expected_path.exists(), "Expected file {expected_filename} not found");
+    let expected_path = dir.path().join(filename);
+    assert!(expected_path.exists(), "Expected file {filename} not found");
   }
 
   #[test]
   fn test_write_gtr_json_both_partitions_no_overwrite() {
     let dir = TempDir::new().unwrap();
     let gtr = jc69(JC69Params::default()).unwrap();
+    let output = GtrOutput::new(&gtr, GtrModelName::JC69);
 
-    write_gtr_json(&gtr, GtrModelName::JC69, dir.path(), Some("sparse")).unwrap();
-    write_gtr_json(&gtr, GtrModelName::JC69, dir.path(), Some("dense")).unwrap();
+    write_gtr_json(&output, dir.path().join("gtr_sparse.json")).unwrap();
+    write_gtr_json(&output, dir.path().join("gtr_dense.json")).unwrap();
 
     assert!(
       dir.path().join("gtr_sparse.json").exists(),

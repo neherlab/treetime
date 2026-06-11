@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::ModelArgs;
-  use crate::commands::shared::output::OutputArgs;
+  use crate::commands::shared::output::OutputCoreArgs;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -34,8 +34,8 @@ mod tests {
         ..ModelArgs::default()
       },
       gtr_iterations: 3,
-      output: OutputArgs {
-        outdir: outdir.clone(),
+      output: OutputCoreArgs {
+        output_all: Some(outdir.clone()),
         ..Default::default()
       },
       ..TreetimeAncestralArgs::default()
@@ -48,7 +48,7 @@ mod tests {
     assert!(gtr.mu > 0.0, "mu should be positive after GTR iterations");
 
     assert!(outdir.join("annotated_tree.nwk").exists());
-    assert!(outdir.join("ancestral_sequences.fasta").exists());
+    assert!(outdir.join("annotated_tree.reconstructed-nuc.fasta").exists());
 
     Ok(())
   }
@@ -69,8 +69,8 @@ mod tests {
       },
       dense: Some(true),
       gtr_iterations: 3,
-      output: OutputArgs {
-        outdir: outdir.clone(),
+      output: OutputCoreArgs {
+        output_all: Some(outdir.clone()),
         ..Default::default()
       },
       ..TreetimeAncestralArgs::default()
@@ -83,7 +83,7 @@ mod tests {
     assert!(gtr.mu > 0.0, "mu should be positive after GTR iterations");
 
     assert!(outdir.join("annotated_tree.nwk").exists());
-    assert!(outdir.join("ancestral_sequences.fasta").exists());
+    assert!(outdir.join("annotated_tree.reconstructed-nuc.fasta").exists());
 
     Ok(())
   }

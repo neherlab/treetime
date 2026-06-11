@@ -22,7 +22,7 @@ mod tests {
     let args = TreetimeOptimizeArgs::try_parse_from([
       "treetime",
       "--tree=/dev/null",
-      "--outdir=/dev/null",
+      "--output-all=/dev/null",
       &format!("--opt-method={flag}"),
     ])
     .unwrap();
@@ -34,7 +34,8 @@ mod tests {
   /// the `default_value_t` would silently route CLI runs to the wrong optimizer.
   #[test]
   fn test_args_opt_method_default_is_brent_sqrt() {
-    let args = TreetimeOptimizeArgs::try_parse_from(["treetime", "--tree=/dev/null", "--outdir=/dev/null"]).unwrap();
+    let args =
+      TreetimeOptimizeArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/dev/null"]).unwrap();
     assert_eq!(BranchOptMethod::BrentSqrt, args.opt_method);
   }
 
@@ -46,7 +47,7 @@ mod tests {
     let result = TreetimeOptimizeArgs::try_parse_from([
       "treetime",
       "--tree=/dev/null",
-      "--outdir=/dev/null",
+      "--output-all=/dev/null",
       "--opt-method=brent-foo",
     ]);
     assert!(result.is_err(), "expected parse error for unknown --opt-method value");

@@ -123,7 +123,7 @@ mod tests {
   // --- CLI arg resolution ---
 
   fn base_args() -> Vec<&'static str> {
-    vec!["ancestral", "--tree=t.nwk", "--outdir=out"]
+    vec!["ancestral", "--tree=t.nwk", "--output-all=out"]
   }
 
   #[test]

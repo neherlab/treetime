@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::output::OutputArgs;
+  use crate::commands::shared::output::OutputCoreArgs;
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
@@ -23,8 +23,8 @@ mod tests {
       tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
-      output: OutputArgs {
-        outdir: outdir.clone(),
+      output: OutputCoreArgs {
+        output_all: Some(outdir.clone()),
         ..Default::default()
       },
       tracelog: Some(tracelog_path.clone()),

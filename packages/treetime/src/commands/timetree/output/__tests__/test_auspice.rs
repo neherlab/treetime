@@ -229,9 +229,9 @@ mod tests {
   fn test_auspice_output_file_is_valid_json() {
     let graph = build_simple_tree();
     let dir = tempfile::tempdir().unwrap();
-    write_auspice_json(&graph, None, None, dir.path()).unwrap();
+    let path = dir.path().join("timetree.auspice.json");
+    write_auspice_json(&graph, None, None, &path).unwrap();
 
-    let path = dir.path().join("auspice_tree.json");
     assert!(path.exists());
 
     // Verify it parses as valid AuspiceTree

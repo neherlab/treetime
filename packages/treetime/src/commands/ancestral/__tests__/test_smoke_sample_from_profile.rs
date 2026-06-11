@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::ModelArgs;
-  use crate::commands::shared::output::OutputArgs;
+  use crate::commands::shared::output::OutputCoreArgs;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -39,13 +39,13 @@ mod tests {
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::ModelArgs;
-    use crate::commands::shared::output::OutputArgs;
+    use crate::commands::shared::output::OutputCoreArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::progress::NoopProgress;
     use eyre::Report;
 
     /// Run the ancestral command with root sampling at the given seed, returning the reconstructed
-    /// `ancestral_sequences.fasta` contents for comparison across runs.
+    /// `annotated_tree.reconstructed-nuc.fasta` contents for comparison across runs.
     pub fn run_root_sampled(out_subdir: &str, seed: u64) -> Result<String, Report> {
       let outdir = PROJECT_ROOT.join(out_subdir);
       std::fs::create_dir_all(&outdir)?;
@@ -61,15 +61,17 @@ mod tests {
         },
         sample_from_profile: SampleMode::Root,
         seed: Some(seed),
-        output: OutputArgs {
-          outdir: outdir.clone(),
+        output: OutputCoreArgs {
+          output_all: Some(outdir.clone()),
           ..Default::default()
         },
         ..TreetimeAncestralArgs::default()
       };
 
       run_ancestral_reconstruction(&args, &NoopProgress)?;
-      Ok(std::fs::read_to_string(outdir.join("ancestral_sequences.fasta"))?)
+      Ok(std::fs::read_to_string(
+        outdir.join("annotated_tree.reconstructed-nuc.fasta"),
+      )?)
     }
   }
 
@@ -83,8 +85,8 @@ mod tests {
       tree: PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"),
       method_anc: MethodAncestral::Parsimony,
       sample_from_profile: SampleMode::Root,
-      output: OutputArgs {
-        outdir: PROJECT_ROOT.join("tmp/test-sample-parsimony-reject"),
+      output: OutputCoreArgs {
+        output_all: Some(PROJECT_ROOT.join("tmp/test-sample-parsimony-reject")),
         ..Default::default()
       },
       ..TreetimeAncestralArgs::default()
@@ -116,15 +118,15 @@ mod tests {
       },
       sample_from_profile: SampleMode::All,
       seed: Some(7),
-      output: OutputArgs {
-        outdir: outdir.clone(),
+      output: OutputCoreArgs {
+        output_all: Some(outdir.clone()),
         ..Default::default()
       },
       ..TreetimeAncestralArgs::default()
     };
 
     run_ancestral_reconstruction(&args, &NoopProgress)?;
-    assert!(outdir.join("ancestral_sequences.fasta").exists());
+    assert!(outdir.join("annotated_tree.reconstructed-nuc.fasta").exists());
     Ok(())
   }
 }

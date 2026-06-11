@@ -169,7 +169,7 @@ mod tests {
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::ModelArgs;
-    use crate::commands::shared::output::OutputArgs;
+    use crate::commands::shared::output::OutputCoreArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::PartitionFitch;
     use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -282,15 +282,15 @@ mod tests {
           model,
           ..ModelArgs::default()
         },
-        output: OutputArgs {
-          outdir: dir.path().to_path_buf(),
+        output: OutputCoreArgs {
+          output_all: Some(dir.path().to_path_buf()),
           ..Default::default()
         },
         ..TreetimeAncestralArgs::default()
       };
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
-      std::fs::read_to_string(dir.path().join("ancestral.augur-node-data.json")).unwrap()
+      std::fs::read_to_string(dir.path().join("annotated_tree.augur-node-data.json")).unwrap()
     }
 
     pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {

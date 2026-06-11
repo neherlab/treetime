@@ -99,7 +99,7 @@ mod tests {
     use crate::commands::optimize::args::TreetimeOptimizeArgs;
     use crate::commands::optimize::run::run_optimize;
     use crate::commands::shared::alignment::AlignmentArgs;
-    use crate::commands::shared::output::OutputArgs;
+    use crate::commands::shared::output::OutputCoreArgs;
     use crate::progress::NoopProgress;
 
     let root = helpers::project_root();
@@ -112,8 +112,8 @@ mod tests {
       },
       tree: root.join("data/flu/h3n2/20/tree.nwk"),
       max_iter: 2,
-      output: OutputArgs {
-        outdir: outdir.clone(),
+      output: OutputCoreArgs {
+        output_all: Some(outdir.clone()),
         ..Default::default()
       },
       ..TreetimeOptimizeArgs::default()
@@ -121,7 +121,7 @@ mod tests {
 
     run_optimize(&args, &NoopProgress).unwrap();
 
-    let json_str = std::fs::read_to_string(outdir.join("optimize.augur-node-data.json")).unwrap();
+    let json_str = std::fs::read_to_string(outdir.join("annotated_tree.augur-node-data.json")).unwrap();
     let data: AugurNodeDataJsonRefine = json_read_str(&json_str).unwrap();
 
     assert!(!data.nodes.is_empty(), "node data must contain nodes");
