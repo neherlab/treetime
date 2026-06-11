@@ -1,6 +1,5 @@
 use eyre::{Report, WrapErr};
 use log::warn;
-use maplit::btreemap;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
@@ -17,7 +16,9 @@ use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 pub use util_newick::NwkStyle;
-use util_newick::{newick_from_reader, newick_from_string, NewickGraph, NewickValue, write_beast_attrs, write_label, write_nhx_attrs};
+use util_newick::{
+  NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
+};
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -70,21 +71,30 @@ where
   for (nwk_idx, nwk_node) in nwk_graph.nodes.iter().enumerate() {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
-    // Annotations parsed by util-newick but not yet wired through (kb/tickets/io-nwk-comment-dialect-parsing.md)
-    let comments = btreemap! {};
+    let comments: BTreeMap<String, String> = nwk_node
+      .node_attrs
+      .iter()
+      .map(|(k, v)| (k.clone(), v.to_string()))
+      .collect();
     let node = N::from_nwk(name, &comments)
       .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
     node_keys.push(graph.add_node(node));
   }
 
   for (nwk_idx, nwk_edge) in nwk_graph.edges.iter().enumerate() {
-    let source = node_keys
-      .get(nwk_edge.parent)
-      .ok_or_else(|| make_report!("When inserting edge {nwk_idx}: Node with index {} not found.", nwk_edge.parent))?;
+    let source = node_keys.get(nwk_edge.parent).ok_or_else(|| {
+      make_report!(
+        "When inserting edge {nwk_idx}: Node with index {} not found.",
+        nwk_edge.parent
+      )
+    })?;
 
-    let target = node_keys
-      .get(nwk_edge.child)
-      .ok_or_else(|| make_report!("When inserting edge {nwk_idx}: Node with index {} not found.", nwk_edge.child))?;
+    let target = node_keys.get(nwk_edge.child).ok_or_else(|| {
+      make_report!(
+        "When inserting edge {nwk_idx}: Node with index {} not found.",
+        nwk_edge.child
+      )
+    })?;
 
     let edge = E::from_nwk(nwk_edge.data.branch_length)?;
     graph.add_edge(*source, *target, edge)?;

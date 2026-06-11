@@ -287,7 +287,7 @@ fn find_tree_command(lower: &str) -> Option<usize> {
 
 fn find_newick_semicolon(s: &str) -> Option<usize> {
   let mut in_single_quote = false;
-  let mut bracket_depth = 0u32;
+  let mut bracket_depth = 0_u32;
   for (i, c) in s.char_indices() {
     match c {
       '\'' if bracket_depth == 0 => in_single_quote = !in_single_quote,

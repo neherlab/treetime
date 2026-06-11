@@ -273,7 +273,7 @@ fn write_nhx_value(writer: &mut impl Write, value: &NewickValue) -> Result<(), R
     NewickValue::Boolean(b) => write!(writer, "{b}")?,
     NewickValue::Number(n) => write!(writer, "{n}")?,
     NewickValue::String(s) => {
-      if s.contains(|c: char| matches!(c, ':' | '=' | ']')) {
+      if s.contains([':', '=', ']']) {
         return Err(eyre::eyre!(
           "NHX cannot represent value containing reserved character (':', '=', or ']'): {s}"
         ));

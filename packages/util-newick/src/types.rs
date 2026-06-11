@@ -269,7 +269,7 @@ fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
       (child_h, edge_hasher.finish())
     })
     .collect();
-  child_hashes.sort();
+  child_hashes.sort_unstable();
   child_hashes.hash(&mut hasher);
   hasher.finish()
 }
@@ -321,8 +321,8 @@ fn eq_subtree_unordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize
     })
     .collect();
 
-  hashes1.sort();
-  hashes2.sort();
+  hashes1.sort_unstable();
+  hashes2.sort_unstable();
   hashes1 == hashes2
 }
 
