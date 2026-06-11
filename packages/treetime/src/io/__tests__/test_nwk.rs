@@ -241,7 +241,12 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_ref = edge.read_arc();
       let target_node = graph.get_node(edge_ref.target()).expect("target node");
-      let name = target_node.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned());
+      let name = target_node
+        .read_arc()
+        .payload()
+        .read_arc()
+        .name()
+        .map(|n| n.as_ref().to_owned());
       if let Some(name) = name {
         branch_lengths.insert(name, edge_ref.payload().read_arc().branch_length());
       }

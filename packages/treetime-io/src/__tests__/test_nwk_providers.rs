@@ -207,8 +207,7 @@ mod tests {
 
   #[test]
   fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
-    let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> =
-      nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+    let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
 
     let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);

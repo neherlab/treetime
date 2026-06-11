@@ -281,7 +281,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
-  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
   use treetime_primitives::AsciiChar;
 
   fn c(b: u8) -> AsciiChar {
@@ -375,7 +375,11 @@ mod tests {
 
     let provider = MutationCommentProvider::new(&partition, &graph);
     let providers = CommentProviders::new().with(&provider);
-    let nexus = nex_write_str_with(&graph, &NexWriteOptions::default(), &providers)?;
+    let options = NexWriteOptions {
+      style: NwkStyle::Beast,
+      ..NexWriteOptions::default()
+    };
+    let nexus = nex_write_str_with(&graph, &options, &providers)?;
     let expected = concat!(
       indoc! {r#"
         #NEXUS
@@ -384,7 +388,7 @@ mod tests {
           TaxLabels A;
         End;
         Begin Trees;
-          Tree tree1=(A[&date="2003.84"][&mutations="A55G,T93C"])root;;
+          Tree tree1=(A[&date=2003.84,mutations="A55G,T93C"])root;;
         End;
       "#},
       "\n"
