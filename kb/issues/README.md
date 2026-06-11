@@ -101,6 +101,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [Nexus writer provides no annotation advantage over Newick](N-io-nexus-writer-no-annotation-advantage.md)                                           |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Negligible | I/O          | [Newick writer defaults to 3 significant digits, truncating branch lengths](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)                |
+| Negligible | I/O          | [Edge annotations from Newick not wired into EdgeFromNwk](N-io-edge-annotation-wiring-not-implemented.md)                                           |
+| Negligible | I/O          | [Nexus writer produces double semicolon in TREES block](N-io-nexus-writer-double-semicolon.md)                                                      |
 | Negligible | Optimize     | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |
 | Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](N-optimize-initial-guess-alloc.md)                                               |
 | Negligible | Optimize     | [Dense/sparse equivalence test bounds undocumented](N-optimize-equivalence-bounds-undocumented.md)                                                  |
