@@ -1,6 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
-use crate::gtr::get_gtr::{GtrModelName, GtrOutput};
+use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
 use crate::mugration::result::MugrationResult;
@@ -10,20 +11,16 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
-use std::fs;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
-use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::io::file::create_file_or_stdout;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
   progress: &dyn crate::progress::ProgressSink,
 ) -> Result<MugrationResult, Report> {
-  let outdir = &mugration_args.output.outdir;
-  fs::create_dir_all(outdir)?;
-
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
   let tree_path = mugration_args
@@ -31,6 +28,21 @@ pub fn run_mugration(
     .as_ref()
     .ok_or_else(|| make_report!("Tree file is required"))?;
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
+
+  let resolved = mugration_args.output.resolve(
+    CommandKind::Mugration,
+    &graph,
+    &[
+      (
+        OutputSelection::AugurNodeData,
+        mugration_args.output_augur_node_data.as_deref(),
+      ),
+      (OutputSelection::Gtr, mugration_args.output_gtr.as_deref()),
+      (OutputSelection::Confidence, mugration_args.output_confidence.as_deref()),
+      (OutputSelection::TraitsCsv, mugration_args.output_traits_csv.as_deref()),
+    ],
+    None,
+  )?;
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
     &mugration_args.metadata,
@@ -71,29 +83,36 @@ pub fn run_mugration(
   )?;
 
   progress.report("Writing output", 0.8, "");
-  let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
-  let providers = CommentProviders::new().with(&provider);
-  let graph_options = mugration_args.output.graph_write_options(&result.graph)?;
-  write_graph_files_with_options(outdir, "annotated_tree", &result.graph, &providers, &graph_options)?;
 
-  let gtr_output = GtrOutput::new(result.partition.gtr(), GtrModelName::Infer)
-    .with_discrete_states(&result.traits.attribute, result.partition.states.iter());
-  json_write_file(outdir.join("gtr.json"), &gtr_output, JsonPretty(true))?;
-
-  fs::write(outdir.join("traits.csv"), result.traits.render_csv())?;
-
-  if let Some(confidence_path) = &mugration_args.output_confidence {
-    fs::write(confidence_path, result.confidence.render_csv())?;
+  if !resolved.tree_outputs.is_empty() {
+    let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
+    let providers = CommentProviders::new().with(&provider);
+    let plan = resolved.topology_order.plan(&result.graph)?;
+    let ordered = plan.ordered_graph(&result.graph)?;
+    write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
   }
 
-  let augur_path = mugration_args
-    .output_augur_node_data
-    .clone()
-    .unwrap_or_else(|| outdir.join("mugration.augur-node-data.json"));
-  write_augur_node_data_json(&result, &augur_path)?;
-  info!("Wrote augur node data JSON to {}", augur_path.display());
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+    let gtr_output = GtrOutput::new(result.partition.gtr(), GtrModelName::Infer)
+      .with_discrete_states(&result.traits.attribute, result.partition.states.iter());
+    write_gtr_json(&gtr_output, path)?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
+    let mut f = create_file_or_stdout(path)?;
+    std::io::Write::write_all(&mut f, result.traits.render_csv().as_bytes())?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
+    let mut f = create_file_or_stdout(path)?;
+    std::io::Write::write_all(&mut f, result.confidence.render_csv().as_bytes())?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    write_augur_node_data_json(&result, path)?;
+    info!("Wrote augur node data JSON to {}", path.display());
+  }
 
   progress.report("Done", 1.0, "");
-  info!("Mugration: wrote output to {}", outdir.display());
   Ok(result)
 }

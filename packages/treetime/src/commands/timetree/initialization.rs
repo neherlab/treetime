@@ -3,7 +3,7 @@ use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr, write_gtr_json};
+use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::make_error;
 use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
@@ -126,8 +126,6 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_sparse(gtr, graph)?;
 
-    write_gtr_json(&partition.gtr, model_name, &args.output.outdir, None)?;
-
     let sparse_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
     Ok(vec![sparse_partition])
@@ -138,8 +136,6 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 
-    write_gtr_json(&partition.data.gtr, model_name, &args.output.outdir, None)?;
-
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));
     Ok(vec![dense_partition])
@@ -148,8 +144,6 @@ pub fn initialize_partitions(
     let gtr = get_gtr_by_name(model_name).wrap_err_with(|| format!("When creating GTR model '{model_name}'"))?;
     log_gtr(&gtr, model_name);
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
-
-    write_gtr_json(&partition.data.gtr, model_name, &args.output.outdir, None)?;
 
     let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
       Arc::new(RwLock::new(partition));

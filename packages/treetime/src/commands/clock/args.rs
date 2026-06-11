@@ -4,7 +4,7 @@ use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, Gri
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::OutputCoreArgs;
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
@@ -89,7 +89,19 @@ pub struct TreetimeClockArgs {
   pub allow_negative_rate: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  pub output: OutputArgs,
+  pub output: OutputCoreArgs,
+
+  /// Path to output clock model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_clock_model: Option<PathBuf>,
+
+  /// Path to output clock regression CSV.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_clock_csv: Option<PathBuf>,
 
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]

@@ -5,7 +5,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::OutputCoreArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -73,14 +73,27 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub ignore_missing_alns: bool,
 
-  /// Write augur-compatible node data JSON to this path.
+  /// Path to output augur-compatible node data JSON.
   ///
   /// Contains per-node nucleotide mutations, reconstructed sequences, the alignment
   /// mask, genome annotations, and the reference (root) sequence. The output is
   /// compatible with augur export v2 --node-data for Nextstrain pipeline integration.
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_augur_node_data: Option<PathBuf>,
+
+  /// Path to output GTR model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_gtr: Option<PathBuf>,
+
+  /// Path to output reconstructed nucleotide FASTA.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
 
   /// Path template for per-CDS amino-acid FASTA alignments.
   ///
@@ -120,12 +133,13 @@ pub struct TreetimeAncestralArgs {
   ///
   /// Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts
   /// the same `{cds}`/`%GENE` placeholders as `--translations`.
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub output_aa_sequences: Option<String>,
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_reconstructed_aa_fasta: Option<String>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  pub output: OutputArgs,
+  pub output: OutputCoreArgs,
 
   /// Number of outer GTR refinement iterations.
   ///

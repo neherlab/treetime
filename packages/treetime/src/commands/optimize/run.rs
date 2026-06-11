@@ -2,8 +2,9 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::OptimizeResult;
-use crate::commands::shared::output::DivergenceUnits;
-use crate::gtr::get_gtr::write_gtr_json;
+use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
+use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
+use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
@@ -12,7 +13,7 @@ use eyre::Report;
 use log::info;
 use std::path::PathBuf;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 
@@ -30,6 +31,16 @@ pub fn run_optimize(
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
   let graph = nwk_read_file(&args.tree)?;
+
+  let resolved = args.output.resolve(
+    CommandKind::Optimize,
+    &graph,
+    &[
+      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
+      (OutputSelection::Gtr, args.output_gtr.as_deref()),
+    ],
+    None,
+  )?;
 
   let params = OptimizeParams {
     model: args.model_args.model,
@@ -51,55 +62,58 @@ pub fn run_optimize(
   let output = pipeline::run(&params, input, progress)?;
 
   progress.report("Writing output", 0.9, "");
-  let outdir = &args.output.outdir;
 
-  write_gtr_json(&output.gtr, output.model_name, outdir, None)?;
-  let graph_options = args.output.graph_write_options(&output.graph)?;
-
-  if !output.dense_partitions.is_empty() {
-    let guard = output.dense_partitions[0].read_arc();
-    let provider = MutationCommentProvider::new(&*guard, &output.graph);
-    let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with_options(outdir, "annotated_tree", &output.graph, &providers, &graph_options)?;
-  } else if !output.sparse_partitions.is_empty() {
-    let guard = output.sparse_partitions[0].read_arc();
-    let provider = MutationCommentProvider::new(&*guard, &output.graph);
-    let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with_options(outdir, "annotated_tree", &output.graph, &providers, &graph_options)?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+    let gtr_output = GtrOutput::new(&output.gtr, output.model_name);
+    write_gtr_json(&gtr_output, path)?;
   }
 
-  let mutation_counts = match args.divergence_units {
-    DivergenceUnits::Mutations => {
-      let partition: &dyn crate::partition::traits::PartitionBranchOps = if !output.dense_partitions.is_empty() {
-        &*output.dense_partitions[0].read_arc()
-      } else if !output.sparse_partitions.is_empty() {
-        &*output.sparse_partitions[0].read_arc()
-      } else {
-        return Err(eyre::eyre!(
-          "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
-        ));
-      };
-      Some(compute_edge_mutation_counts(&output.graph, partition)?)
-    },
-    DivergenceUnits::MutationsPerSite => None,
-  };
+  if !resolved.tree_outputs.is_empty() {
+    let plan = resolved.topology_order.plan(&output.graph)?;
+    let ordered = plan.ordered_graph(&output.graph)?;
 
-  let augur_node_data_path = args
-    .output_augur_node_data
-    .clone()
-    .unwrap_or_else(|| outdir.join("optimize.augur-node-data.json"));
-  let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-  write_augur_node_data_json(
-    &output.graph,
-    alignment,
-    Some(args.tree.as_path()),
-    mutation_counts.as_ref(),
-    &augur_node_data_path,
-  )?;
-  info!(
-    "Wrote augur node data JSON to {path}",
-    path = augur_node_data_path.display()
-  );
+    if !output.dense_partitions.is_empty() {
+      let guard = output.dense_partitions[0].read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &output.graph);
+      let providers = CommentProviders::new().with(&provider);
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+    } else if !output.sparse_partitions.is_empty() {
+      let guard = output.sparse_partitions[0].read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &output.graph);
+      let providers = CommentProviders::new().with(&provider);
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+    } else {
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
+    }
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    let mutation_counts = match args.divergence_units {
+      DivergenceUnits::Mutations => {
+        let partition: &dyn crate::partition::traits::PartitionBranchOps = if !output.dense_partitions.is_empty() {
+          &*output.dense_partitions[0].read_arc()
+        } else if !output.sparse_partitions.is_empty() {
+          &*output.sparse_partitions[0].read_arc()
+        } else {
+          return make_error!(
+            "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
+          );
+        };
+        Some(compute_edge_mutation_counts(&output.graph, partition)?)
+      },
+      DivergenceUnits::MutationsPerSite => None,
+    };
+
+    let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
+    write_augur_node_data_json(
+      &output.graph,
+      alignment,
+      Some(args.tree.as_path()),
+      mutation_counts.as_ref(),
+      path,
+    )?;
+    info!("Wrote augur node data JSON to {path}", path = path.display());
+  }
 
   progress.report("Done", 1.0, "");
   Ok(OptimizeResult { graph: output.graph })

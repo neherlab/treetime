@@ -13,11 +13,10 @@ pub fn write_auspice_json(
   graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  outdir: &Path,
+  path: &Path,
 ) -> Result<(), Report> {
   let tree = build_timetree_auspice(graph, confidence_intervals, mutation_counts)?;
-  let filepath = outdir.join("auspice_tree.json");
-  json_write_file(&filepath, &tree, JsonPretty(true)).wrap_err("Failed to write auspice JSON")?;
-  info!("Wrote auspice JSON to {filepath}", filepath = filepath.display());
+  json_write_file(path, &tree, JsonPretty(true)).wrap_err("Failed to write auspice JSON")?;
+  info!("Wrote auspice JSON to {filepath}", filepath = path.display());
   Ok(())
 }

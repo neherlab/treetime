@@ -74,23 +74,9 @@ pub fn log_gtr(gtr: &GTR, model_name: GtrModelName) {
   info!("GTR model initialized:\n{json}");
 }
 
-/// Write GTR model parameters to JSON file.
-///
-/// When `qualifier` is `Some("sparse")`, writes `gtr_sparse.json` instead of `gtr.json`.
-/// Use a qualifier when multiple partitions coexist to avoid overwriting.
-pub fn write_gtr_json(
-  gtr: &GTR,
-  model_name: GtrModelName,
-  outdir: impl AsRef<Path>,
-  qualifier: Option<&str>,
-) -> Result<(), Report> {
-  let output = GtrOutput::new(gtr, model_name);
-  let filename = match qualifier {
-    Some(q) => format!("gtr_{q}.json"),
-    None => "gtr.json".to_owned(),
-  };
-  let path = outdir.as_ref().join(filename);
-  json_write_file(path, &output, JsonPretty(true))
+/// Write GTR model output to a JSON file at the given path.
+pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {
+  json_write_file(path, output, JsonPretty(true))
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]

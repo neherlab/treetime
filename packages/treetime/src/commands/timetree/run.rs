@@ -1,11 +1,11 @@
 use crate::clock::clock_output::write_clock_model;
-use crate::commands::shared::output::DivergenceUnits;
+use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
-use crate::gtr::get_gtr::write_gtr_json;
+use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
@@ -13,8 +13,8 @@ use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::info;
-use std::path::PathBuf;
-use treetime_io::graph::write_graph_files_with_options;
+use std::path::{Path, PathBuf};
+use treetime_io::graph::{AuspiceWriter, write_tree_outputs};
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -78,58 +78,34 @@ pub fn run_timetree_estimation(
   progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
 
+  let resolved = args.output.resolve(
+    CommandKind::Timetree,
+    &output.graph,
+    &[
+      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
+      (OutputSelection::Gtr, args.output_gtr.as_deref()),
+      (OutputSelection::ClockModel, args.output_clock_model.as_deref()),
+      (OutputSelection::Confidence, args.output_confidence.as_deref()),
+    ],
+    Some(input_leaf_order),
+  )?;
+
   if let Some(intervals) = &output.confidence_intervals {
-    let ci_path = args.output.outdir.join("confidence_intervals.tsv");
-    write_confidence_intervals_file(intervals, &ci_path).wrap_err("Failed to write confidence intervals")?;
-    info!("Wrote confidence intervals to {ci_path}", ci_path = ci_path.display());
+    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
+      write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
+      info!("Wrote confidence intervals to {path}", path = path.display());
+    }
   }
 
-  write_outputs(args, &output, input_leaf_order)?;
-
-  progress.report("Done", 1.0, "");
-  Ok(TimetreeResult {
-    graph: output.graph,
-    clock_model: output.clock_model,
-    confidence_intervals: output.confidence_intervals,
-  })
-}
-
-fn write_outputs(
-  args: &TreetimeTimetreeArgs,
-  output: &pipeline::TimetreeOutput,
-  input_leaf_order: Vec<String>,
-) -> Result<(), Report> {
-  let graph_options = args
-    .output
-    .graph_write_options_with_input_order(&output.graph, input_leaf_order)?;
-
-  if !output.partitions.is_empty() {
-    let guard = output.partitions[0].read_arc();
-    let provider = MutationCommentProvider::new(&*guard, &output.graph);
-    let providers = CommentProviders::new().with(&provider);
-    write_graph_files_with_options(
-      &args.output.outdir,
-      "timetree",
-      &output.graph,
-      &providers,
-      &graph_options,
-    )
-    .wrap_err("Failed to write tree output")?;
-  } else {
-    write_graph_files_with_options(
-      &args.output.outdir,
-      "timetree",
-      &output.graph,
-      &CommentProviders::new(),
-      &graph_options,
-    )
-    .wrap_err("Failed to write tree output")?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
+    write_clock_model(&output.clock_model, path)?;
   }
-
-  write_clock_model(&output.clock_model, &args.output.outdir.join("timetree"))?;
 
   if let (Some(gtr), Some(model_name)) = (&output.gtr, output.model_name) {
-    write_gtr_json(gtr, model_name, &args.output.outdir, None)?;
+    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+      let gtr_output = GtrOutput::new(gtr, model_name);
+      write_gtr_json(&gtr_output, path)?;
+    }
   }
 
   let mutation_counts = match args.divergence_units {
@@ -146,32 +122,44 @@ fn write_outputs(
     DivergenceUnits::MutationsPerSite => None,
   };
 
-  write_auspice_json(
-    &output.graph,
-    output.confidence_intervals.as_deref(),
-    mutation_counts.as_ref(),
-    &args.output.outdir,
-  )?;
+  if !resolved.tree_outputs.is_empty() {
+    let plan = resolved.topology_order.plan(&output.graph)?;
+    let ordered = plan.ordered_graph(&output.graph)?;
+    let auspice_ctx = TimetreeAuspiceCtx {
+      graph: &output.graph,
+      confidence_intervals: output.confidence_intervals.as_deref(),
+      mutation_counts: mutation_counts.as_ref(),
+    };
 
-  let augur_node_data_path = args
-    .output_augur_node_data
-    .clone()
-    .unwrap_or_else(|| args.output.outdir.join("timetree.augur-node-data.json"));
-  let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-  write_augur_node_data_json(
-    &output.graph,
-    &output.clock_model,
-    output.confidence_intervals.as_deref(),
-    output.dates.as_ref(),
-    alignment,
-    args.tree.as_deref(),
-    mutation_counts.as_ref(),
-    &augur_node_data_path,
-  )?;
-  info!(
-    "Wrote augur node data JSON to {path}",
-    path = augur_node_data_path.display()
-  );
+    if !output.partitions.is_empty() {
+      let guard = output.partitions[0].read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &output.graph);
+      let providers = CommentProviders::new().with(&provider);
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&auspice_ctx))?;
+    } else {
+      write_tree_outputs(
+        &ordered,
+        &resolved.tree_outputs,
+        &CommentProviders::new(),
+        Some(&auspice_ctx),
+      )?;
+    }
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
+    write_augur_node_data_json(
+      &output.graph,
+      &output.clock_model,
+      output.confidence_intervals.as_deref(),
+      output.dates.as_ref(),
+      alignment,
+      args.tree.as_deref(),
+      mutation_counts.as_ref(),
+      path,
+    )?;
+    info!("Wrote augur node data JSON to {path}", path = path.display());
+  }
 
   if args.plot_rtt.is_some() {
     return make_error!("--plot-rtt is not yet implemented");
@@ -181,5 +169,22 @@ fn write_outputs(
     return make_error!("--plot-tree is not yet implemented");
   }
 
-  Ok(())
+  progress.report("Done", 1.0, "");
+  Ok(TimetreeResult {
+    graph: output.graph,
+    clock_model: output.clock_model,
+    confidence_intervals: output.confidence_intervals,
+  })
+}
+
+struct TimetreeAuspiceCtx<'a> {
+  graph: &'a crate::partition::timetree::GraphTimetree,
+  confidence_intervals: Option<&'a [crate::timetree::confidence::NodeConfidenceInterval]>,
+  mutation_counts: Option<&'a std::collections::BTreeMap<treetime_graph::edge::GraphEdgeKey, usize>>,
+}
+
+impl AuspiceWriter for TimetreeAuspiceCtx<'_> {
+  fn write_auspice(&self, path: &Path) -> Result<(), Report> {
+    write_auspice_json(self.graph, self.confidence_intervals, self.mutation_counts, path)
+  }
 }

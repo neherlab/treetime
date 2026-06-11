@@ -9,7 +9,8 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::ancestral::result::AncestralResult;
-use crate::gtr::get_gtr::write_gtr_json;
+use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
@@ -19,7 +20,7 @@ use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
@@ -28,7 +29,6 @@ pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
-  let outdir = &ancestral_args.output.outdir;
   let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(ancestral_args.alphabet_args.alphabet.unwrap_or_default())?;
 
@@ -67,8 +67,39 @@ pub fn run_ancestral_reconstruction(
   progress.report("Parsing tree", 0.1, "");
   let graph = nwk_read_file(&ancestral_args.tree)?;
 
-  let output_fasta = create_file_or_stdout(outdir.join("ancestral_sequences.fasta"))?;
-  let mut output_fasta = FastaWriter::new(output_fasta);
+  let resolved = ancestral_args.output.resolve(
+    CommandKind::Ancestral,
+    &graph,
+    &[
+      (
+        OutputSelection::AugurNodeData,
+        ancestral_args.output_augur_node_data.as_deref(),
+      ),
+      (OutputSelection::Gtr, ancestral_args.output_gtr.as_deref()),
+      (
+        OutputSelection::ReconstructedNucFasta,
+        ancestral_args.output_reconstructed_nuc_fasta.as_deref(),
+      ),
+      (
+        OutputSelection::ReconstructedAaFasta,
+        ancestral_args
+          .output_reconstructed_aa_fasta
+          .as_deref()
+          .map(std::path::Path::new),
+      ),
+    ],
+    None,
+  )?;
+
+  let mut output_fasta = if resolved
+    .non_tree_outputs
+    .contains_key(&OutputSelection::ReconstructedNucFasta)
+  {
+    let path = &resolved.non_tree_outputs[&OutputSelection::ReconstructedNucFasta];
+    Some(FastaWriter::new(create_file_or_stdout(path)?))
+  } else {
+    None
+  };
 
   let params = AncestralParams {
     method: ancestral_args.method_anc,
@@ -92,9 +123,13 @@ pub fn run_ancestral_reconstruction(
     &params,
     input,
     |node, seq| {
-      let name = node.name.as_deref().unwrap_or("");
-      let desc = &node.desc;
-      output_fasta.write(name, desc, seq)
+      if let Some(ref mut writer) = output_fasta {
+        let name = node.name.as_deref().unwrap_or("");
+        let desc = &node.desc;
+        writer.write(name, desc, seq)
+      } else {
+        Ok(())
+      }
     },
     progress,
   )?;
@@ -111,87 +146,53 @@ pub fn run_ancestral_reconstruction(
   };
 
   progress.report("Writing output", 0.9, "");
-  let augur_node_data_path = ancestral_args
-    .output_augur_node_data
-    .clone()
-    .unwrap_or_else(|| outdir.join("ancestral.augur-node-data.json"));
 
-  if let Some(gtr) = &result.output.gtr {
-    write_gtr_json(gtr, result.output.model_name, outdir, None)?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    match &result.partition {
+      Some(AncestralPartition::Fitch(partition)) => {
+        let guard = partition.read_arc();
+        write_augur_node_data_json_with_aa(
+          &result.output.graph,
+          &*guard,
+          &result.output.mask,
+          aa_node_data.as_ref(),
+          path,
+        )?;
+      },
+      Some(AncestralPartition::Sparse(partition)) => {
+        let guard = partition.read_arc();
+        write_augur_node_data_json_with_aa(
+          &result.output.graph,
+          &*guard,
+          &result.output.mask,
+          aa_node_data.as_ref(),
+          path,
+        )?;
+      },
+      Some(AncestralPartition::Dense(partition)) => {
+        let guard = partition.read_arc();
+        write_augur_node_data_json_with_aa(
+          &result.output.graph,
+          &*guard,
+          &result.output.mask,
+          aa_node_data.as_ref(),
+          path,
+        )?;
+      },
+      None => {},
+    }
+    info!("Wrote augur node data JSON to {}", path.display());
   }
 
-  match &result.partition {
-    Some(AncestralPartition::Fitch(partition)) => {
-      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
-      let guard = partition.read_arc();
-      write_augur_node_data_json_with_aa(
-        &result.output.graph,
-        &*guard,
-        &result.output.mask,
-        aa_node_data.as_ref(),
-        &augur_node_data_path,
-      )?;
-      info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
-      write_graph_files_with_options(
-        outdir,
-        "annotated_tree",
-        &result.output.graph,
-        &CommentProviders::new(),
-        &graph_options,
-      )?;
-    },
-    Some(AncestralPartition::Sparse(partition)) => {
-      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
-      let guard = partition.read_arc();
-      write_augur_node_data_json_with_aa(
-        &result.output.graph,
-        &*guard,
-        &result.output.mask,
-        aa_node_data.as_ref(),
-        &augur_node_data_path,
-      )?;
-      info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
-      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
-      let providers = CommentProviders::new().with(&provider);
-      write_graph_files_with_options(
-        outdir,
-        "annotated_tree",
-        &result.output.graph,
-        &providers,
-        &graph_options,
-      )?;
-    },
-    Some(AncestralPartition::Dense(partition)) => {
-      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
-      let guard = partition.read_arc();
-      write_augur_node_data_json_with_aa(
-        &result.output.graph,
-        &*guard,
-        &result.output.mask,
-        aa_node_data.as_ref(),
-        &augur_node_data_path,
-      )?;
-      info!("Wrote augur node data JSON to {}", augur_node_data_path.display());
-      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
-      let providers = CommentProviders::new().with(&provider);
-      write_graph_files_with_options(
-        outdir,
-        "annotated_tree",
-        &result.output.graph,
-        &providers,
-        &graph_options,
-      )?;
-    },
-    None => {
-      let graph_options = ancestral_args.output.graph_write_options(&result.output.graph)?;
-      write_graph_files_with_options(
-        outdir,
-        "annotated_tree",
-        &result.output.graph,
-        &CommentProviders::new(),
-        &graph_options,
-      )?;
-    },
+  if let Some(gtr) = &result.output.gtr {
+    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+      let gtr_output = GtrOutput::new(gtr, result.output.model_name);
+      write_gtr_json(&gtr_output, path)?;
+    }
+  }
+
+  if !resolved.tree_outputs.is_empty() {
+    write_tree_for_partition(&result, &resolved)?;
   }
 
   progress.report("Done", 1.0, "");
@@ -202,14 +203,39 @@ pub fn run_ancestral_reconstruction(
   })
 }
 
+fn write_tree_for_partition(
+  result: &pipeline::AncestralOutputFull,
+  resolved: &crate::commands::shared::output::ResolvedOutputs,
+) -> Result<(), Report> {
+  let plan = resolved.topology_order.plan(&result.output.graph)?;
+  let ordered = plan.ordered_graph(&result.output.graph)?;
+
+  match &result.partition {
+    Some(AncestralPartition::Sparse(partition)) => {
+      let guard = partition.read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
+      let providers = CommentProviders::new().with(&provider);
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+    },
+    Some(AncestralPartition::Dense(partition)) => {
+      let guard = partition.read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
+      let providers = CommentProviders::new().with(&provider);
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+    },
+    Some(AncestralPartition::Fitch(_)) | None => {
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
+    },
+  }
+  Ok(())
+}
+
 fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
   translations: &str,
   graph: &GraphAncestral,
   progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
-  // AA translations can contain stop codons (`*`), so read with the stop-inclusive alphabet and then
-  // fold out-of-alphabet characters into the unknown state for empirical models that lack a stop.
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
   let recon_alphabet = Alphabet::new(aa_model.alphabet)?;
@@ -217,17 +243,16 @@ fn run_aa_reconstructions(
 
   let annotations = read_gff3_annotations(ancestral_args.annotation.as_deref(), &ancestral_args.cdses)?;
 
-  // When --cdses is omitted, derive the CDS set from the annotation.
   let cdses: Vec<String> = if ancestral_args.cdses.is_empty() {
     annotations.keys().cloned().collect()
   } else {
     ancestral_args.cdses.clone()
   };
 
-  if let Some(aa_seq_template) = &ancestral_args.output_aa_sequences {
+  if let Some(aa_seq_template) = &ancestral_args.output_reconstructed_aa_fasta {
     if cdses.len() > 1 && !template_has_cds_placeholder(aa_seq_template) {
       return make_error!(
-        "--output-aa-sequences template needs a CDS placeholder when reconstructing multiple CDSes, \
+        "--output-reconstructed-aa-fasta template needs a CDS placeholder when reconstructing multiple CDSes, \
          otherwise each CDS overwrites the same output file"
       );
     }
@@ -303,8 +328,7 @@ fn run_aa_reconstructions(
     aa_node_data.add_cds(&partition.name, cds_data, partition.annotation.clone());
   }
 
-  // Write per-CDS reconstructed FASTA when --output-aa-sequences is given.
-  if let Some(aa_seq_template) = &ancestral_args.output_aa_sequences {
+  if let Some(aa_seq_template) = &ancestral_args.output_reconstructed_aa_fasta {
     write_aa_sequences(graph, &reconstructed, aa_seq_template)?;
   }
 

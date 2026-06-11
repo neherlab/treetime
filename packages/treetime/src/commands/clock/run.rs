@@ -6,6 +6,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Optimi
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};
@@ -13,7 +14,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::dates_csv::read_dates;
-use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::nwk_read_file;
 
 #[derive(Debug, serde::Serialize)]
@@ -54,6 +55,16 @@ pub fn run_clock(
   )
   .wrap_err("When reading dates")?;
 
+  let resolved = clock_args.output.resolve(
+    CommandKind::Clock,
+    &graph,
+    &[
+      (OutputSelection::ClockModel, clock_args.output_clock_model.as_deref()),
+      (OutputSelection::ClockCsv, clock_args.output_clock_csv.as_deref()),
+    ],
+    Some(input_order),
+  )?;
+
   let clock_params = if clock_args.covariation {
     let seq_len = clock_args
       .sequence_length
@@ -84,19 +95,25 @@ pub fn run_clock(
   let output = pipeline::run(&params, input, progress)?;
 
   progress.report("Writing output", 0.8, "");
-  let outdir = &clock_args.output.outdir;
-  let graph_options = clock_args
-    .output
-    .graph_write_options_with_input_order(&output.graph, input_order)?;
-  write_graph_files_with_options(
-    outdir,
-    "rerooted",
-    &output.graph,
-    &treetime_io::nwk::CommentProviders::new(),
-    &graph_options,
-  )?;
-  write_clock_model(&output.clock_model, &outdir.join("clock_model"))?;
-  write_clock_regression_result_csv(&output.regression_results, outdir.join("clock.csv"), b',')?;
+
+  if !resolved.tree_outputs.is_empty() {
+    let plan = resolved.topology_order.plan(&output.graph)?;
+    let ordered = plan.ordered_graph(&output.graph)?;
+    write_tree_outputs(
+      &ordered,
+      &resolved.tree_outputs,
+      &treetime_io::nwk::CommentProviders::new(),
+      None,
+    )?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
+    write_clock_model(&output.clock_model, path)?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
+    write_clock_regression_result_csv(&output.regression_results, path, b',')?;
+  }
 
   progress.report("Done", 1.0, "");
   Ok(ClockResult {

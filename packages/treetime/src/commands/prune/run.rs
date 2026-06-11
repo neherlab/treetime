@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::PruneResult;
-use crate::gtr::get_gtr::{GtrModelName, write_gtr_json};
+use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use eyre::Report;
@@ -13,7 +14,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::graph::write_graph_files_with_options;
+use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
@@ -32,6 +33,13 @@ pub fn run_prune(
   let graph: GraphAncestral = nwk_read_file(&args.tree)?;
   let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
+
+  let resolved = args.output.resolve(
+    CommandKind::Prune,
+    &graph,
+    &[(OutputSelection::Gtr, args.output_gtr.as_deref())],
+    Some(input_order),
+  )?;
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
@@ -65,20 +73,19 @@ pub fn run_prune(
   let output = pipeline::run(&params, input)?;
 
   progress.report("Writing output", 0.8, "");
-  let outdir = &args.output.outdir;
+
   if let Some(gtr) = &output.gtr {
-    write_gtr_json(gtr, GtrModelName::JC69, outdir, None)?;
+    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+      let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
+      write_gtr_json(&gtr_output, path)?;
+    }
   }
-  let graph_options = args
-    .output
-    .graph_write_options_with_input_order(&output.graph, input_order)?;
-  write_graph_files_with_options(
-    outdir,
-    "pruned_tree",
-    &output.graph,
-    &CommentProviders::new(),
-    &graph_options,
-  )?;
+
+  if !resolved.tree_outputs.is_empty() {
+    let plan = resolved.topology_order.plan(&output.graph)?;
+    let ordered = plan.ordered_graph(&output.graph)?;
+    write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
+  }
 
   progress.report("Done", 1.0, "");
   Ok(PruneResult { graph: output.graph })

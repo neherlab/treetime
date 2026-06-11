@@ -85,17 +85,18 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Clock(clock_args) => {
       let result = run_clock(&clock_args, &*progress)?;
-      let outdir = &clock_args.output.outdir;
-      write_clock_regression_chart_svg(
-        &result.regression_results,
-        &result.clock_model,
-        outdir.join("clock.svg"),
-      )?;
-      write_clock_regression_chart_png(
-        &result.regression_results,
-        &result.clock_model,
-        outdir.join("clock.png"),
-      )?;
+      if let Some(outdir) = &clock_args.output.output_all {
+        write_clock_regression_chart_svg(
+          &result.regression_results,
+          &result.clock_model,
+          outdir.join("clock.svg"),
+        )?;
+        write_clock_regression_chart_png(
+          &result.regression_results,
+          &result.clock_model,
+          outdir.join("clock.png"),
+        )?;
+      }
       if is_tty() {
         print_clock_regression_chart(&result.regression_results, &result.clock_model)?;
       }

@@ -1,5 +1,5 @@
 use crate::commands::shared::metadata::MetadataIdArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::OutputCoreArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -35,9 +35,10 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub metadata_id: MetadataIdArgs,
 
-  /// Write confidence profile of mugration inference to this path
-  #[cfg_attr(feature = "clap", clap(long = "output-confidence", visible_alias = "confidence"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::AnyPath))]
+  /// Path to output confidence profile CSV.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "confidence", value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_confidence: Option<PathBuf>,
 
   /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
@@ -81,20 +82,33 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub filter_uninformative_root: bool,
 
-  /// Write augur-compatible node data JSON to this path.
+  /// Path to output augur-compatible node data JSON.
   ///
   /// Contains per-node discrete trait assignments, confidence profiles, entropy,
   /// the inferred substitution model, and branch state-change labels. The output
   /// is compatible with augur export v2 --node-data for Nextstrain pipeline
   /// integration.
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_augur_node_data: Option<PathBuf>,
+
+  /// Path to output GTR model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_gtr: Option<PathBuf>,
+
+  /// Path to output traits CSV.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_traits_csv: Option<PathBuf>,
 
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]
   pub seed: Option<u64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  pub output: OutputArgs,
+  pub output: OutputCoreArgs,
 }

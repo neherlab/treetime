@@ -1,6 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
-use crate::commands::shared::output::OutputArgs;
+use crate::commands::shared::output::OutputCoreArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,13 @@ pub struct TreetimePruneArgs {
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  pub output: OutputArgs,
+  pub output: OutputCoreArgs,
+
+  /// Path to output GTR model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_gtr: Option<PathBuf>,
 
   /// Threshold value for pruning of branches
   ///

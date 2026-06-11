@@ -4,7 +4,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{DivergenceUnits, OutputArgs};
+use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs};
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
@@ -252,18 +252,36 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default()))]
   pub divergence_units: DivergenceUnits,
 
-  /// Write augur-compatible node data JSON to this path
+  /// Path to output augur-compatible node data JSON.
   ///
   /// Contains per-node dates, branch lengths, clock model parameters, confidence
   /// intervals, and divergence metrics. The output is compatible with augur
-  /// export v2 --node-data for Nextstrain pipeline integration. Defaults to
-  /// `<outdir>/timetree.augur-node-data.json`.
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  /// export v2 --node-data for Nextstrain pipeline integration.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
+  /// Path to output GTR model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_gtr: Option<PathBuf>,
+
+  /// Path to output clock model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_clock_model: Option<PathBuf>,
+
+  /// Path to output confidence intervals TSV.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_confidence: Option<PathBuf>,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
-  pub output: OutputArgs,
+  pub output: OutputCoreArgs,
 
   /// Write iteration statistics to tracelog CSV file for monitoring convergence
   #[cfg_attr(feature = "clap", clap(long))]
