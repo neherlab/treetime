@@ -70,7 +70,7 @@ pub enum NewickValue {
 }
 
 /// Output annotation style.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
 pub enum NwkStyle {
   /// Name and branch length only, no annotations.
   Plain,
