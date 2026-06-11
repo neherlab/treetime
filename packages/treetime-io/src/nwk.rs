@@ -100,6 +100,7 @@ where
 #[derive(Clone, SmartDefault)]
 pub struct NwkWriteOptions {
   /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
+  #[default(NwkStyle::Plain)]
   pub style: NwkStyle,
 
   /// Format node weights keeping this many significant digits

@@ -6,8 +6,8 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
-  use treetime_io::nwk::{CommentProviders, nwk_read_str};
+  use treetime_io::nex::NexWriteOptions;
+  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
 
   #[test]
@@ -21,7 +21,11 @@ mod tests {
     let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nex_write_str_with(&result.graph, &NexWriteOptions::default(), &providers)?;
+    let options = NexWriteOptions {
+      style: NwkStyle::Beast,
+      ..NexWriteOptions::default()
+    };
+    let actual = treetime_io::nex::nex_write_str_with(&result.graph, &options, &providers)?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;
@@ -29,7 +33,7 @@ mod tests {
         TaxLabels A B;
       End;
       Begin Trees;
-        Tree tree1=(A:0.1[&country="usa"],B:0.2[&country="germany"])root[&country="usa"];;
+        Tree tree1=(A[&country=usa]:0.1,B[&country=germany]:0.2)root[&country=usa];;
       End;
 
     "#};

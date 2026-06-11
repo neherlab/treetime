@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::nwk::{
-    CommentProviders, EdgeFromNwk, EdgeToNwk, NodeCommentProvider, NodeFromNwk, NodeToNwk, NwkWriteOptions,
+    CommentProviders, EdgeFromNwk, EdgeToNwk, NodeCommentProvider, NodeFromNwk, NodeToNwk, NwkStyle, NwkWriteOptions,
     nwk_read_str, nwk_write_str, nwk_write_str_with,
   };
   use eyre::Report;
@@ -12,13 +12,20 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 
+  fn beast_options() -> NwkWriteOptions {
+    NwkWriteOptions {
+      style: NwkStyle::Beast,
+      ..NwkWriteOptions::default()
+    }
+  }
+
   #[test]
-  fn test_comment_provider_empty() -> Result<(), Report> {
+  fn test_nwk_provider_empty_produces_same_output() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     let providers = CommentProviders::new();
 
-    let expected = nwk_write_str(&graph, &NwkWriteOptions::default())?;
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
+    let expected = nwk_write_str(&graph, &beast_options())?;
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
 
     assert_eq!(expected, actual);
 
@@ -26,7 +33,7 @@ mod tests {
   }
 
   #[test]
-  fn test_comment_provider_single() -> Result<(), Report> {
+  fn test_nwk_provider_single_beast_annotation() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     let node_a = helpers::find_node_key_by_name(&graph, "A");
     let provider = helpers::MockCommentProvider::new(btreemap! {
@@ -36,8 +43,8 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
-    let expected = "((A:0.1[&country=\"usa\"],B:0.2)inner:0.3,C:0.4)root;";
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = "((A[&country=usa]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
 
@@ -45,7 +52,7 @@ mod tests {
   }
 
   #[test]
-  fn test_comment_provider_multiple() -> Result<(), Report> {
+  fn test_nwk_provider_multiple_merged_into_single_block() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     let node_a = helpers::find_node_key_by_name(&graph, "A");
     let country_provider = helpers::MockCommentProvider::new(btreemap! {
@@ -60,8 +67,8 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&country_provider).with(&region_provider);
 
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
-    let expected = "((A:0.1[&country=\"usa\"][&region=\"na\"],B:0.2)inner:0.3,C:0.4)root;";
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = "((A[&country=usa,region=na]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
 
@@ -69,7 +76,7 @@ mod tests {
   }
 
   #[test]
-  fn test_comment_provider_precedence() -> Result<(), Report> {
+  fn test_nwk_provider_later_overrides_earlier_on_key_collision() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     let node_a = helpers::find_node_key_by_name(&graph, "A");
     let first_provider = helpers::MockCommentProvider::new(btreemap! {
@@ -84,8 +91,8 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&first_provider).with(&second_provider);
 
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
-    let expected = "((A:0.1[&country=\"canada\"],B:0.2)inner:0.3,C:0.4)root;";
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = "((A[&country=canada]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
 
@@ -93,7 +100,7 @@ mod tests {
   }
 
   #[test]
-  fn test_comment_provider_overwrites_payload() -> Result<(), Report> {
+  fn test_nwk_provider_overrides_payload_comments() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     helpers::set_payload_comments(
       &graph,
@@ -111,8 +118,8 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
-    let expected = "((A:0.1[&country=\"usa\"][&note=\"payload\"],B:0.2)inner:0.3,C:0.4)root;";
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = "((A[&country=usa,note=payload]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
 
@@ -120,7 +127,7 @@ mod tests {
   }
 
   #[test]
-  fn test_comment_provider_serializes_comments() -> Result<(), Report> {
+  fn test_nwk_plain_style_suppresses_all_annotations() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
     let node_a = helpers::find_node_key_by_name(&graph, "A");
     let provider = helpers::MockCommentProvider::new(btreemap! {
@@ -131,9 +138,80 @@ mod tests {
     let providers = CommentProviders::new().with(&provider);
 
     let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
-    let expected = "((A:0.1[&country=\"usa\"],B:0.2)inner:0.3,C:0.4)root;";
+    let expected = "((A:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_nhx_style_annotation() -> Result<(), Report> {
+    let graph = helpers::make_graph()?;
+    let node_a = helpers::find_node_key_by_name(&graph, "A");
+    let provider = helpers::MockCommentProvider::new(btreemap! {
+      node_a => btreemap! {
+        "S".to_owned() => "human".to_owned(),
+        "D".to_owned() => "Y".to_owned(),
+      },
+    });
+    let providers = CommentProviders::new().with(&provider);
+
+    let options = NwkWriteOptions {
+      style: NwkStyle::Nhx,
+      ..NwkWriteOptions::default()
+    };
+    let actual = nwk_write_str_with(&graph, &options, &providers)?;
+    let expected = "((A[&&NHX:D=Y:S=human]:0.1,B:0.2)inner:0.3,C:0.4)root;";
+
+    assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_beast_numeric_value_written_bare() -> Result<(), Report> {
+    let graph = helpers::make_graph()?;
+    let node_a = helpers::find_node_key_by_name(&graph, "A");
+    let provider = helpers::MockCommentProvider::new(btreemap! {
+      node_a => btreemap! {
+        "date".to_owned() => "2020.50".to_owned(),
+      },
+    });
+    let providers = CommentProviders::new().with(&provider);
+
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = "((A[&date=2020.5]:0.1,B:0.2)inner:0.3,C:0.4)root;";
+
+    assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_beast_quoted_value_with_special_chars() -> Result<(), Report> {
+    let graph = helpers::make_graph()?;
+    let node_a = helpers::find_node_key_by_name(&graph, "A");
+    let provider = helpers::MockCommentProvider::new(btreemap! {
+      node_a => btreemap! {
+        "label".to_owned() => "New York, USA".to_owned(),
+      },
+    });
+    let providers = CommentProviders::new().with(&provider);
+
+    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    assert!(actual.contains(r#""New York, USA""#));
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
+    let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> =
+      nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+
+    let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
 
     Ok(())
   }
@@ -144,7 +222,7 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub(super) struct TestNode {
       name: Option<String>,
-      comments: BTreeMap<String, String>,
+      pub(super) comments: BTreeMap<String, String>,
     }
 
     impl TestNode {

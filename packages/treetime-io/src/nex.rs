@@ -13,6 +13,7 @@ use util_newick::NwkStyle;
 #[derive(Clone, SmartDefault)]
 pub struct NexWriteOptions {
   /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
+  #[default(NwkStyle::Plain)]
   pub style: NwkStyle,
 
   /// Format node weights keeping this many significant digits
