@@ -1,6 +1,6 @@
-# shared graph writer missing PhyloXML, Auspice, and UShER MAT formats
+# shared graph writer missing PhyloXML and UShER MAT formats
 
-The shared graph writer produces four output formats (Newick, NEXUS, JSON, Graphviz) for every tree-outputting command. The converter tool supports three additional formats that are not included: PhyloXML, Auspice JSON, and UShER MAT (JSON and protobuf).
+Auspice JSON uses the `AuspiceWriter` trait in the three-tier output selection system. Timetree implements the trait; other commands reject Auspice output at resolution time. PhyloXML and UShER MAT remain unimplemented on analysis command payloads.
 
 ## Constraints
 
@@ -25,8 +25,7 @@ Each missing format requires adapter traits that are not implemented on all grap
 
 ## Related
 
-- [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md) -- three-tier output format selection subsumes this issue
-- [kb/tickets/io-output-selection-infrastructure.md](../tickets/io-output-selection-infrastructure.md) -- output selection infrastructure
+- [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md) -- three-tier output format selection (implemented)
 - [kb/tickets/io-format-adapter-impls.md](../tickets/io-format-adapter-impls.md) -- format adapter implementations
 - [N-timetree-auspice-json-incomplete.md](N-timetree-auspice-json-incomplete.md) - timetree auspice output gaps
 - [N-ancestral-auspice-json-not-produced.md](N-ancestral-auspice-json-not-produced.md) - ancestral auspice output missing entirely

@@ -16,17 +16,17 @@ v1 adds a dedicated `treetime optimize` subcommand ([packages/treetime/src/comma
 
 ### CLI arguments
 
-| Argument                   | Default                                  | Purpose                                                    |
-| -------------------------- | ---------------------------------------- | ---------------------------------------------------------- |
-| `--tree`                   | (required)                               | Input tree in Newick/Nexus/Phylip                          |
-| `--aln`                    | (required)                               | FASTA alignment (supports compression)                     |
-| `--model`                  | `infer`                                  | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
-| `--alphabet`               | auto                                     | Nucleotide or amino acid alphabet                          |
-| `--dense`                  | auto                                     | Force dense sequence representation                        |
-| `--max-iter`               | 10                                       | Maximum outer iterations                                   |
-| `--dp`                     | 0.1                                      | Convergence tolerance (log-likelihood delta)               |
-| `--outdir`                 | (required)                               | Output directory                                           |
-| `--output-augur-node-data` | `<outdir>/optimize.augur-node-data.json` | Path for the augur-compatible node data JSON               |
+| Argument                   | Default                                     | Purpose                                                    |
+| -------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
+| `--tree`                   | (required)                                  | Input tree in Newick/Nexus/Phylip                          |
+| `--aln`                    | (required)                                  | FASTA alignment (supports compression)                     |
+| `--model`                  | `infer`                                     | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
+| `--alphabet`               | auto                                        | Nucleotide or amino acid alphabet                          |
+| `--dense`                  | auto                                        | Force dense sequence representation                        |
+| `--max-iter`               | 10                                          | Maximum outer iterations                                   |
+| `--dp`                     | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
+| `--output-all` (`-O`)      | (optional)                                  | Output directory for default outputs                       |
+| `--output-augur-node-data` | `<dir>/annotated_tree.augur-node-data.json` | Path for the augur-compatible node data JSON               |
 
 ### Algorithm
 
@@ -113,7 +113,7 @@ The per-branch optimization method difference (Newton-Raphson vs Brent) is docum
 
 ## Practical impact
 
-Users can run `treetime optimize --tree=tree.nwk --aln=aln.fasta --outdir=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
+Users can run `treetime optimize --tree=tree.nwk --aln=aln.fasta --output-all=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
 
 v1 applies the same outer-loop exponential damping as v0 (`--damping`, default 0.75) to prevent oscillation between iterations for datasets where the likelihood surface is poorly conditioned.
 

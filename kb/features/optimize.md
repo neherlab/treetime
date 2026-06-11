@@ -4,7 +4,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 
 ## Standalone Command (v1-only)
 
-- [x] `optimize` command with `--tree`, `--aln`, `--outdir`
+- [x] `optimize` command with `--tree`, `--aln`, `--output-all`
 - [x] Mixed dense and sparse partition setup (one of each, from same alignment)
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
 - [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)

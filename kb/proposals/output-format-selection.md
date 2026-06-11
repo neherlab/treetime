@@ -157,6 +157,6 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md) -- NWK dialect grammars and tool interop
 - [kb/proposals/unified-input-format-support.md](unified-input-format-support.md) -- input-side counterpart (analysis commands accept any format)
 - [kb/tickets/io-nwk-writer-style-dispatch.md](../tickets/io-nwk-writer-style-dispatch.md) -- writer annotation style dispatch
-- [kb/tickets/io-output-selection-infrastructure.md](../tickets/io-output-selection-infrastructure.md) -- three-tier output selection
+- three-tier output selection infrastructure -- implemented on `feat/cli-output-args`
 - [kb/tickets/io-timetree-divergence-tree-output.md](../tickets/io-timetree-divergence-tree-output.md) -- timetree divergence-tree output
 - [kb/tickets/io-format-adapter-impls.md](../tickets/io-format-adapter-impls.md) -- format adapter trait implementations

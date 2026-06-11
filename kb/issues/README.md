@@ -98,7 +98,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [Time-based branch lengths not written to Newick/Nexus output](N-io-time-based-branch-lengths-not-implemented.md)                                   |
 | Negligible | I/O          | [shared graph writer missing PhyloXML, Auspice, and UShER MAT formats](N-io-write-graph-files-missing-formats.md)                                   |
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
-| Negligible | I/O          | [Nexus writer provides no annotation advantage over Newick](N-io-nexus-writer-no-annotation-advantage.md)                                           |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Negligible | I/O          | [Newick writer defaults to 3 significant digits, truncating branch lengths](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)                |
 | Negligible | I/O          | [Edge annotations from Newick not wired into EdgeFromNwk](N-io-edge-annotation-wiring-not-implemented.md)                                           |

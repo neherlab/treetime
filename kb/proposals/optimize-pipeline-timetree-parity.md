@@ -56,7 +56,7 @@ Alternate model inference and BL optimization per ECM iteration. Already propose
 Specify output tree file paths, select output formats. Orthogonal to the pipeline items above; addresses a separate user request for workflow integration.
 
 - Proposal: [output-format-selection.md](output-format-selection.md) (existing)
-- Tickets: [io-output-selection-infrastructure.md](../tickets/io-output-selection-infrastructure.md) (existing)
+- Ticket: implemented on `feat/cli-output-args`
 
 ## Execution order
 
