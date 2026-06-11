@@ -1,5 +1,4 @@
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
 use log::warn;
 use maplit::btreemap;
 use smart_default::SmartDefault;
@@ -17,7 +16,8 @@ use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
-use util_newick::{newick_from_reader, newick_from_string, NewickGraph};
+pub use util_newick::NwkStyle;
+use util_newick::{newick_from_reader, newick_from_string, NewickGraph, NewickValue, write_beast_attrs, write_label, write_nhx_attrs};
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
@@ -99,6 +99,9 @@ where
 
 #[derive(Clone, SmartDefault)]
 pub struct NwkWriteOptions {
+  /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
+  pub style: NwkStyle,
+
   /// Format node weights keeping this many significant digits
   pub weight_significant_digits: Option<u8>,
 
@@ -205,7 +208,7 @@ where
 
   let mut stack: Vec<(SafeNode<N>, Option<SafeEdge<E>>, usize)> = vec![(Arc::clone(root), None, 0)];
   while let Some((node, edge, child_visit)) = stack.pop() {
-    let children = graph.children_of(&node.read()).into_iter().collect_vec();
+    let children: Vec<_> = graph.children_of(&node.read()).into_iter().collect();
 
     if child_visit < children.len() {
       stack.push((node, edge, child_visit + 1));
@@ -235,23 +238,21 @@ where
 
       let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
 
-      if let Some(name) = name {
-        write!(writer, "{name}")?;
+      if let Some(name) = &name {
+        write_label(writer, name)?;
+      }
+
+      if options.style != NwkStyle::Plain && !comments.is_empty() {
+        let attrs = str_comments_to_newick_values(&comments);
+        match options.style {
+          NwkStyle::Beast => write_beast_attrs(writer, &attrs)?,
+          NwkStyle::Nhx => write_nhx_attrs(writer, &attrs)?,
+          NwkStyle::Plain => {},
+        }
       }
 
       if let Some(weight) = weight {
         write!(writer, ":{}", format_weight(weight, options))?;
-      }
-
-      if !comments.is_empty() {
-        let comments = comments
-          .iter()
-          .filter(|(_, val)| !val.is_empty())
-          .map(|(key, val)| format!("[&{key}=\"{val}\"]"))
-          .join("");
-        if !comments.is_empty() {
-          write!(writer, "{comments}")?;
-        }
       }
     }
   }
@@ -259,6 +260,25 @@ where
   write!(writer, ";")?;
 
   Ok(())
+}
+
+fn str_comments_to_newick_values(comments: &BTreeMap<String, String>) -> BTreeMap<String, NewickValue> {
+  comments
+    .iter()
+    .filter(|(_, val)| !val.is_empty())
+    .map(|(key, val)| {
+      let nwk_val = if val.eq_ignore_ascii_case("true") {
+        NewickValue::Boolean(true)
+      } else if val.eq_ignore_ascii_case("false") {
+        NewickValue::Boolean(false)
+      } else if let Ok(n) = val.parse::<f64>() {
+        NewickValue::Number(n)
+      } else {
+        NewickValue::String(val.clone())
+      };
+      (key.clone(), nwk_val)
+    })
+    .collect()
 }
 
 pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {

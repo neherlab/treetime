@@ -105,7 +105,7 @@ fn write_name(writer: &mut impl Write, node: &NewickNodeData, is_acceptor: bool)
   Ok(())
 }
 
-fn write_label(writer: &mut impl Write, label: &str) -> Result<(), Report> {
+pub fn write_label(writer: &mut impl Write, label: &str) -> Result<(), Report> {
   if needs_quoting(label) {
     write!(writer, "'")?;
     for part in label.split_inclusive('\'') {
@@ -122,7 +122,7 @@ fn write_label(writer: &mut impl Write, label: &str) -> Result<(), Report> {
   Ok(())
 }
 
-fn needs_quoting(name: &str) -> bool {
+pub fn needs_quoting(name: &str) -> bool {
   name.contains(|c: char| matches!(c, '(' | ')' | '[' | ']' | ',' | ';' | ':' | '\'') || c.is_whitespace())
 }
 
@@ -187,7 +187,7 @@ fn write_edge(writer: &mut impl Write, edge: &NewickEdgeData, options: &NewickWr
   Ok(())
 }
 
-fn write_beast_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
+pub fn write_beast_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
   if attrs.is_empty() {
     return Ok(());
   }
@@ -255,7 +255,7 @@ fn needs_beast_quoting(s: &str) -> bool {
   false
 }
 
-fn write_nhx_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
+pub fn write_nhx_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
   if attrs.is_empty() {
     return Ok(());
   }

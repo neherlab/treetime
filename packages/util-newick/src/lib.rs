@@ -184,7 +184,7 @@ pub use crate::types::{
   NewickEdgeData, NewickEdgeEntry, NewickGraph, NewickHybrid, NewickNodeData, NewickValue, NewickWriteOptions,
   NexusTree, NwkStyle,
 };
-pub use crate::write::{newick_to_string, newick_to_writer};
+pub use crate::write::{newick_to_string, newick_to_writer, needs_quoting, write_beast_attrs, write_label, write_nhx_attrs};
 
 #[cfg(test)]
 mod __tests__;

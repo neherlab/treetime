@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// Adjacency-list representation of a Newick tree or eNewick network.
@@ -171,6 +172,26 @@ impl Hash for NewickValue {
       Self::Number(n) => n.to_bits().hash(state),
       Self::String(s) => s.hash(state),
       Self::Array(a) => a.hash(state),
+    }
+  }
+}
+
+impl fmt::Display for NewickValue {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::Boolean(b) => write!(f, "{b}"),
+      Self::Number(n) => write!(f, "{n}"),
+      Self::String(s) => write!(f, "{s}"),
+      Self::Array(arr) => {
+        write!(f, "{{")?;
+        for (i, elem) in arr.iter().enumerate() {
+          if i > 0 {
+            write!(f, ",")?;
+          }
+          write!(f, "{elem}")?;
+        }
+        write!(f, "}}")
+      },
     }
   }
 }

@@ -8,9 +8,13 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::io::file::create_file_or_stdout;
+use util_newick::NwkStyle;
 
 #[derive(Clone, SmartDefault)]
 pub struct NexWriteOptions {
+  /// Annotation style: Plain suppresses annotations, Beast/Nhx emit structured comments.
+  pub style: NwkStyle,
+
   /// Format node weights keeping this many significant digits
   pub weight_significant_digits: Option<u8>,
 
@@ -113,6 +117,7 @@ where
     &mut nwk,
     graph,
     &NwkWriteOptions {
+      style: options.style,
       weight_significant_digits: options.weight_significant_digits,
       weight_decimal_digits: options.weight_decimal_digits,
     },
