@@ -92,37 +92,45 @@ mod tests {
     }
   }
 
-  // End-to-end: the optimize command writes a readable node data file whose
-  // branch lengths are finite and non-negative after optimization.
   #[test]
   fn test_augur_node_data_optimize_end_to_end() {
-    use crate::commands::optimize::args::TreetimeOptimizeArgs;
-    use crate::commands::optimize::run::run_optimize;
-    use crate::commands::shared::alignment::AlignmentArgs;
-    use crate::commands::shared::output::OutputCoreArgs;
+    use crate::alphabet::alphabet::Alphabet;
+    use crate::gtr::get_gtr::GtrModelName;
+    use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+    use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use crate::progress::NoopProgress;
+    use treetime_io::fasta::read_many_fasta;
+    use treetime_io::nwk::nwk_read_file;
 
     let root = helpers::project_root();
-    let outdir = root.join("tmp/test-optimize-node-data");
-    std::fs::create_dir_all(&outdir).unwrap();
+    let alphabet = Alphabet::default();
+    let graph = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
-    let args = TreetimeOptimizeArgs {
-      alignment: AlignmentArgs {
-        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
-      },
-      tree: root.join("data/flu/h3n2/20/tree.nwk"),
+    let params = OptimizeParams {
+      model: GtrModelName::default(),
+      dense: None,
       max_iter: 2,
-      output: OutputCoreArgs {
-        output_all: Some(outdir.clone()),
-        ..Default::default()
-      },
-      ..TreetimeOptimizeArgs::default()
+      dp: 0.1,
+      damping: 0.75,
+      opt_method: BranchOptMethod::default(),
+      initial_guess: InitialGuessMode::default(),
+      no_indels: false,
     };
 
-    run_optimize(&args, &NoopProgress).unwrap();
+    let input = OptimizeInput {
+      graph,
+      alphabet,
+      sequences,
+    };
 
-    let json_str = std::fs::read_to_string(outdir.join("annotated_tree.augur-node-data.json")).unwrap();
-    let data: AugurNodeDataJsonRefine = json_read_str(&json_str).unwrap();
+    let output = pipeline::run(&params, input, &NoopProgress).unwrap();
+
+    let data = helpers::build_augur_node_data_json_from_output(
+      &output,
+      Some(std::path::Path::new("aln.fasta")),
+      Some(std::path::Path::new("tree.nwk")),
+    );
 
     assert!(!data.nodes.is_empty(), "node data must contain nodes");
     for (name, node) in &data.nodes {
@@ -178,6 +186,15 @@ mod tests {
         .and_then(|p| p.parent())
         .map(PathBuf::from)
         .expect("project has workspace root")
+    }
+
+    pub fn build_augur_node_data_json_from_output(
+      output: &crate::optimize::pipeline::OptimizeOutput,
+      alignment: Option<&Path>,
+      input_tree: Option<&Path>,
+    ) -> AugurNodeDataJsonRefine {
+      let data = build_augur_node_data_json(&output.graph, alignment, input_tree, None).unwrap();
+      json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
   }
 }

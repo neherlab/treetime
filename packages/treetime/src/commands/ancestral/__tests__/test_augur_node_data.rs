@@ -268,6 +268,7 @@ mod tests {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("augur-node-data.json");
       std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
       std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n").unwrap();
 
@@ -283,14 +284,15 @@ mod tests {
           ..ModelArgs::default()
         },
         output: OutputCoreArgs {
-          output_all: Some(dir.path().to_path_buf()),
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()
         },
+        output_augur_node_data: Some(node_data_path.clone()),
         ..TreetimeAncestralArgs::default()
       };
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
-      std::fs::read_to_string(dir.path().join("annotated_tree.augur-node-data.json")).unwrap()
+      std::fs::read_to_string(node_data_path).unwrap()
     }
 
     pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
