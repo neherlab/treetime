@@ -73,7 +73,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.0002610661988682317, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00026106623586340597, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -102,7 +102,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.0002560258129903322, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.000_256_025_848_142_593_5, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -153,7 +153,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -185,7 +185,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471448085, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -214,7 +214,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471244515, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599999999690367, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(
@@ -246,7 +246,7 @@ mod tests {
     )?;
 
     // Verify chisq value
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599996471386156, max_ulps = 4);
+    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_999_2, max_ulps = 4);
 
     // Verify split is in valid range
     assert!(

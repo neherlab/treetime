@@ -77,13 +77,16 @@ mod tests {
   }
 
   #[test]
-  fn test_initial_guess_mode_auto_fills_nan_from_newick() -> Result<(), Report> {
+  fn test_initial_guess_mode_auto_fills_none_from_newick() -> Result<(), Report> {
     let (graph, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
 
-    // Before: all edges have NaN (from bio crate newick parser)
+    // Before: all edges have None (pest parser returns None for missing branch lengths)
     for edge_ref in graph.get_edges() {
       let bl = edge_ref.read_arc().payload().read_arc().branch_length();
-      assert!(bl.is_some_and(|v| v.is_nan()), "Expected NaN from newick parser");
+      assert!(
+        bl.is_none(),
+        "Expected None from newick parser for missing branch lengths"
+      );
     }
 
     initial_guess_mixed(&graph, &partitions, false)?;

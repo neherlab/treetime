@@ -48,12 +48,7 @@ mod tests {
     );
     assert_eq!(counts_actual.root_state, array![4.0, 3.0, 3.0, 4.0]);
     pretty_assert_ulps_eq!(
-      array![
-        1.9800000227987766,
-        2.9450000282377005,
-        2.515000017359853,
-        2.54000001773238
-      ],
+      array![1.98, 2.9450000000000003, 2.515, 2.540000000000001],
       counts_actual.Ti,
       epsilon = 1e-9
     );

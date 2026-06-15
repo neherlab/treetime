@@ -5,8 +5,8 @@ mod tests {
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::o;
   use crate::payload::traits::ClockNode;
-  use crate::pretty_assert_ulps_eq;
   use crate::seq::div::{OnlyLeaves, compute_divs};
+  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
@@ -45,7 +45,7 @@ mod tests {
       let root = root.read_arc().payload().read_arc();
       ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
     }?;
-    pretty_assert_ulps_eq!(naive_rate, clock.clock_rate(), max_ulps = 4);
+    pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
     let options = &ClockParams {
       variance_factor: 1.0,
@@ -59,7 +59,7 @@ mod tests {
       let root = root.read_arc().payload().read_arc();
       ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
     }?;
-    pretty_assert_ulps_eq!(0.007710610998647367, clock.clock_rate(), max_ulps = 4);
+    pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
     Ok(())
   }

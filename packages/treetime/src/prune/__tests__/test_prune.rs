@@ -202,7 +202,7 @@ mod tests {
     let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
     assert_eq!(
       output_nwk,
-      "(E:5.0e-5,(C:3.0e-5,D:0.1)internal2:0.1,A:6.0e-5,B:0.1)root;"
+      "(E:5.0e-5,(C:3.0e-5,D:0.1)internal2:0.1,A:6.00e-5,B:0.1)root;"
     );
     Ok(())
   }
