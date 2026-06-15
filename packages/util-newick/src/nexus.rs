@@ -10,8 +10,8 @@ use std::io::{Read, Write};
 /// Parse a Nexus string, returning all trees from TREES blocks.
 pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
   let input = input.trim();
-  let header_end = input.find(|c: char| c.is_ascii_whitespace()).unwrap_or(input.len());
-  if !input[..header_end].eq_ignore_ascii_case("#nexus") {
+  let header = input.split_ascii_whitespace().next().unwrap_or("");
+  if !header.eq_ignore_ascii_case("#nexus") {
     return Err(eyre::eyre!("Input does not start with #NEXUS header"));
   }
 

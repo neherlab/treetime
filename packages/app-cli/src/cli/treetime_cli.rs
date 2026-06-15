@@ -62,7 +62,7 @@ pub enum TreetimeCommands {
   },
 
   /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
-  Timetree(TreetimeTimetreeArgs),
+  Timetree(Box<TreetimeTimetreeArgs>),
 
   /// Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences.
   Optimize(TreetimeOptimizeArgs),

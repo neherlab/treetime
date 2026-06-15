@@ -19,20 +19,24 @@ mod tests {
     let leaf_b = graph.add_node(TestNode {
       name: Some("B".to_owned()),
     });
-    let _ = graph.add_edge(
-      root,
-      leaf_a,
-      TestEdge {
-        branch_length: Some(0.1),
-      },
-    );
-    let _ = graph.add_edge(
-      root,
-      leaf_b,
-      TestEdge {
-        branch_length: Some(0.2),
-      },
-    );
+    graph
+      .add_edge(
+        root,
+        leaf_a,
+        TestEdge {
+          branch_length: Some(0.1),
+        },
+      )
+      .unwrap();
+    graph
+      .add_edge(
+        root,
+        leaf_b,
+        TestEdge {
+          branch_length: Some(0.2),
+        },
+      )
+      .unwrap();
     graph
   }
 

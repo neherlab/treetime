@@ -221,7 +221,7 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub(super) struct TestNode {
       name: Option<String>,
-      pub(super) comments: BTreeMap<String, String>,
+      comments: BTreeMap<String, String>,
     }
 
     impl TestNode {
