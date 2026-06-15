@@ -388,7 +388,7 @@ mod tests {
           TaxLabels A;
         End;
         Begin Trees;
-          Tree tree1=(A[&date=2003.84,mutations="A55G,T93C"])root;;
+          Tree tree1=(A[&date=2003.84,mutations="A55G,T93C"])root;
         End;
       "#},
       "\n"

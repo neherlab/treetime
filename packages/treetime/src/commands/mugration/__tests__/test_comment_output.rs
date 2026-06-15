@@ -33,7 +33,7 @@ mod tests {
         TaxLabels A B;
       End;
       Begin Trees;
-        Tree tree1=(A[&country=usa]:0.1,B[&country=germany]:0.2)root[&country=usa];;
+        Tree tree1=(A[&country=usa]:0.1,B[&country=germany]:0.2)root[&country=usa];
       End;
 
     "#};

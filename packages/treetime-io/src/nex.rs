@@ -125,6 +125,7 @@ where
     providers,
   )?;
   let nwk = String::from_utf8(nwk)?;
+  let nwk = nwk.strip_suffix(';').unwrap_or(&nwk);
 
   writeln!(
     w,
