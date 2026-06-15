@@ -47,7 +47,11 @@ mod tests {
     let result = crate::ancestral::pipeline::run(&params, input, |_, _| Ok(()), &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
-    assert!(gtr.mu > 0.0, "mu should be positive after GTR iterations, got {}", gtr.mu);
+    assert!(
+      gtr.mu > 0.0,
+      "mu should be positive after GTR iterations, got {}",
+      gtr.mu
+    );
 
     Ok(())
   }
@@ -79,7 +83,11 @@ mod tests {
     let result = crate::ancestral::pipeline::run(&params, input, |_, _| Ok(()), &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
-    assert!(gtr.mu > 0.0, "mu should be positive after GTR iterations, got {}", gtr.mu);
+    assert!(
+      gtr.mu > 0.0,
+      "mu should be positive after GTR iterations, got {}",
+      gtr.mu
+    );
 
     Ok(())
   }

@@ -11,11 +11,11 @@ use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with
 use crate::commands::ancestral::result::AncestralResult;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
-use crate::{make_error, make_report};
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
+use crate::{make_error, make_report};
 use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;

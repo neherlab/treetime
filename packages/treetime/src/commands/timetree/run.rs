@@ -6,11 +6,11 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
-use crate::{make_error, make_report};
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
+use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
 use log::info;
 use std::path::{Path, PathBuf};

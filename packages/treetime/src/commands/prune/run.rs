@@ -76,7 +76,9 @@ pub fn run_prune(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr = output.gtr.as_ref().ok_or_else(|| {
-      crate::make_report!("GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln.")
+      crate::make_report!(
+        "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln."
+      )
     })?;
     let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
     write_gtr_json(&gtr_output, path)?;
