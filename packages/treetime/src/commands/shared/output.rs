@@ -208,6 +208,7 @@ impl CommandKind {
     };
     let mut non_tree = self.non_tree_outputs();
     non_tree.remove(&ReconstructedAaFasta);
+    non_tree.remove(&Confidence);
     &tree_defaults | &non_tree
   }
 
