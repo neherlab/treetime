@@ -6,7 +6,7 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
-use crate::make_error;
+use crate::{make_error, make_report};
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
@@ -90,22 +90,30 @@ pub fn run_timetree_estimation(
     Some(input_leaf_order),
   )?;
 
-  if let Some(intervals) = &output.confidence_intervals {
-    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
-      write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
-      info!("Wrote confidence intervals to {path}", path = path.display());
-    }
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
+    let intervals = output.confidence_intervals.as_ref().ok_or_else(|| {
+      make_report!(
+        "Confidence output requested but no confidence intervals were computed. \
+         Use --time-marginal to enable confidence interval computation."
+      )
+    })?;
+    write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
+    info!("Wrote confidence intervals to {path}", path = path.display());
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
     write_clock_model(&output.clock_model, path)?;
   }
 
-  if let (Some(gtr), Some(model_name)) = (&output.gtr, output.model_name) {
-    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-      let gtr_output = GtrOutput::new(gtr, model_name);
-      write_gtr_json(&gtr_output, path)?;
-    }
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+    let gtr = output.gtr.as_ref().ok_or_else(|| {
+      make_report!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.")
+    })?;
+    let model_name = output.model_name.ok_or_else(|| {
+      make_report!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.")
+    })?;
+    let gtr_output = GtrOutput::new(gtr, model_name);
+    write_gtr_json(&gtr_output, path)?;
   }
 
   let mutation_counts = match args.divergence_units {

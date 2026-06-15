@@ -11,7 +11,7 @@ use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with
 use crate::commands::ancestral::result::AncestralResult;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
-use crate::make_error;
+use crate::{make_error, make_report};
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
@@ -184,11 +184,12 @@ pub fn run_ancestral_reconstruction(
     info!("Wrote augur node data JSON to {}", path.display());
   }
 
-  if let Some(gtr) = &result.output.gtr {
-    if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-      let gtr_output = GtrOutput::new(gtr, result.output.model_name);
-      write_gtr_json(&gtr_output, path)?;
-    }
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+    let gtr = result.output.gtr.as_ref().ok_or_else(|| {
+      make_report!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.")
+    })?;
+    let gtr_output = GtrOutput::new(gtr, result.output.model_name);
+    write_gtr_json(&gtr_output, path)?;
   }
 
   if !resolved.tree_outputs.is_empty() {
