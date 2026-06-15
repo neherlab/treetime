@@ -459,7 +459,7 @@ def run_clock(name: str, out: str, extra_args: str):
   {TREETIME_BIN} clock
   --tree={DATA_DIR}/{name}/tree.nwk
   --dates={DATA_DIR}/{name}/metadata.tsv
-  --outdir={RESULTS_DIR}/clock/{out}
+  --output-all={RESULTS_DIR}/clock/{out}
   {extra_args}
   """
   return run_batch_cmd(name, "clock", cmd)
@@ -476,13 +476,17 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
       dense = "--dense=false"
       outdir_base = f"{outdir_base}-sparse"
 
+  # Parsimony does not infer a GTR model, so exclude gtr from default outputs
+  selection = "--output-selection=nwk,nexus,augur-node-data,reconstructed-nuc-fasta" if method == "parsimony" else ""
+
   cmd = f"""
   {TREETIME_BIN} ancestral
   --method-anc={method}
   {dense}
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --outdir={outdir_base}/{out}
+  --output-all={outdir_base}/{out}
+  {selection}
   {extra_args}
   """
 
@@ -501,7 +505,7 @@ def run_mugration(name: str, out: str, attribute: str, extra_args: str):
   --tree={DATA_DIR}/{name}/tree.nwk
   --states={DATA_DIR}/{name}/metadata.tsv
   --attribute={attribute}
-  --outdir={outdir}
+  --output-all={outdir}
   {extra_args}
   """
   return run_batch_cmd(name, "mugration", cmd)
@@ -514,7 +518,7 @@ def run_optimize(dense: str, name: str, out: str, extra_args: str):
   --dense={dense}
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --outdir={RESULTS_DIR}/optimize/{seq_mode}/{out}
+  --output-all={RESULTS_DIR}/optimize/{seq_mode}/{out}
   {extra_args}
   """
   return run_batch_cmd(name, f"optimize-{seq_mode}", cmd)
@@ -525,7 +529,7 @@ def run_prune(name: str, out: str, extra_args: str):
   {TREETIME_BIN} prune
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --outdir={RESULTS_DIR}/prune/{out}
+  --output-all={RESULTS_DIR}/prune/{out}
   --prune-short=1e-6
   --prune-empty
   --merge-shared-mutations
@@ -535,12 +539,23 @@ def run_prune(name: str, out: str, extra_args: str):
 
 
 def run_timetree(name: str, out: str, extra_args: str):
+  # Build output selection based on which outputs the extra_args actually support:
+  #  - confidence requires --time-marginal or --confidence
+  #  - gtr requires ancestral reconstruction (excluded with --branch-length-mode=input)
+  outputs = ["nwk", "nexus", "auspice", "augur-node-data", "clock-model"]
+  if "--branch-length-mode=input" not in extra_args:
+    outputs.append("gtr")
+  if "--time-marginal" in extra_args or "--confidence" in extra_args:
+    outputs.append("confidence")
+  selection = f"--output-selection={','.join(outputs)}"
+
   cmd = f"""
   {TREETIME_BIN} timetree
   --tree={DATA_DIR}/{name}/tree.nwk
   --dates={DATA_DIR}/{name}/metadata.tsv
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --outdir={RESULTS_DIR}/timetree/{out}
+  --output-all={RESULTS_DIR}/timetree/{out}
+  {selection}
   {extra_args}
   """
   return run_batch_cmd(name, "timetree", cmd)
