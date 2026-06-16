@@ -29,7 +29,7 @@ mod tests {
         output_all: Some(outdir.clone()),
         ..Default::default()
       },
-      tracelog: Some(tracelog_path.clone()),
+      output_tracelog: Some(tracelog_path.clone()),
       ..TreetimeTimetreeArgs::default()
     };
 

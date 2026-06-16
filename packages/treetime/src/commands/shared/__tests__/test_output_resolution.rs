@@ -1,149 +1,79 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::output::{CommandKind, OutputCoreArgs, OutputSelection};
+  use crate::commands::shared::output::{CommandKind, NwkStyleArg, OutputCoreArgs, OutputSelection};
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::path::PathBuf;
+  use tempfile::TempDir;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::NwkStyle;
   use treetime_utils::assert_error;
 
-  fn make_test_graph() -> treetime_graph::graph::Graph<TestNode, TestEdge, ()> {
-    use treetime_graph::graph::Graph;
-    let mut graph: Graph<TestNode, TestEdge, ()> = Graph::new();
-    let root = graph.add_node(TestNode {
-      name: Some("root".to_owned()),
-    });
-    let leaf_a = graph.add_node(TestNode {
-      name: Some("A".to_owned()),
-    });
-    let leaf_b = graph.add_node(TestNode {
-      name: Some("B".to_owned()),
-    });
-    graph
-      .add_edge(
-        root,
-        leaf_a,
-        TestEdge {
-          branch_length: Some(0.1),
-        },
-      )
-      .unwrap();
-    graph
-      .add_edge(
-        root,
-        leaf_b,
-        TestEdge {
-          branch_length: Some(0.2),
-        },
-      )
-      .unwrap();
-    graph
+  fn nwk(style: NwkStyle) -> TreeWriteKind {
+    TreeWriteKind::nwk(style)
   }
+
+  fn nexus(style: NwkStyle) -> TreeWriteKind {
+    TreeWriteKind::nexus(style)
+  }
+
+  // --- Tier resolution behavior ---
 
   #[test]
   fn test_resolve_output_all_default_selection() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
 
-    assert!(
-      resolved.tree_outputs.contains_key(&TreeWriteKind::nwk(NwkStyle::Plain)),
-      "default selection should include Nwk"
-    );
-    assert!(
-      resolved
-        .tree_outputs
-        .contains_key(&TreeWriteKind::nexus(NwkStyle::Plain)),
-      "default selection should include Nexus"
-    );
+    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
+    assert!(resolved.tree_outputs.contains_key(&nexus(NwkStyle::Plain)));
     assert!(
       !resolved.tree_outputs.contains_key(&TreeWriteKind::GraphJson),
-      "GraphJson should not be in defaults"
+      "GraphJson is not a default output"
     );
     assert!(
       !resolved.tree_outputs.contains_key(&TreeWriteKind::Dot),
-      "Dot should not be in defaults"
+      "Dot is not a default output"
     );
   }
 
   #[test]
   fn test_resolve_output_all_with_selection_filter() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
-      output_selection: vec![OutputSelection::Nwk],
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
+    let resolved = args
+      .resolve(CommandKind::Ancestral, &[OutputSelection::Nwk], &[])
+      .unwrap();
 
     assert_eq!(resolved.tree_outputs.len(), 1);
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::nwk(NwkStyle::Plain)));
-  }
-
-  #[test]
-  fn test_resolve_per_file_override_wins() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let custom_path = dir.path().join("custom.nwk");
-    let graph = make_test_graph();
-    let args = OutputCoreArgs {
-      output_all: Some(dir.path().to_path_buf()),
-      output_tree_nwk: Some(custom_path.clone()),
-      ..Default::default()
-    };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
-
-    let nwk_path = &resolved.tree_outputs[&TreeWriteKind::nwk(NwkStyle::Plain)];
-    assert_eq!(nwk_path, &custom_path, "per-file override should take precedence");
-  }
-
-  #[test]
-  fn test_resolve_per_file_outside_selection_honored() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let nexus_path = dir.path().join("extra.nexus");
-    let graph = make_test_graph();
-    let args = OutputCoreArgs {
-      output_all: Some(dir.path().to_path_buf()),
-      output_selection: vec![OutputSelection::Nwk],
-      output_tree_nexus: Some(nexus_path.clone()),
-      ..Default::default()
-    };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
-
-    assert!(
-      resolved
-        .tree_outputs
-        .contains_key(&TreeWriteKind::nexus(NwkStyle::Plain)),
-      "explicit per-file nexus should be honored even outside selection"
-    );
-    assert_eq!(
-      &resolved.tree_outputs[&TreeWriteKind::nexus(NwkStyle::Plain)],
-      &nexus_path
-    );
+    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
   }
 
   #[test]
   fn test_resolve_per_file_only_no_output_all() {
-    let graph = make_test_graph();
     let args = OutputCoreArgs {
       output_tree_nwk: Some(PathBuf::from("/tmp/test.nwk")),
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
 
-    assert_eq!(resolved.tree_outputs.len(), 1);
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::nwk(NwkStyle::Plain)));
+    assert_eq!(
+      resolved.tree_outputs,
+      btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("/tmp/test.nwk") }
+    );
   }
 
   #[test]
   fn test_resolve_no_outputs_errors() {
-    let graph = make_test_graph();
     let args = OutputCoreArgs::default();
-    let result = args.resolve(CommandKind::Ancestral, &graph, &[], None);
+    let result = args.resolve(CommandKind::Ancestral, &[], &[]);
     assert_error!(
       result,
       "No output flags provided. At least one is required: --output-all or one of the --output-tree-* / --output-* flags"
@@ -151,9 +81,8 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_non_tree_outputs_gated() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+  fn test_resolve_non_tree_explicit_path() {
+    let dir = TempDir::new().unwrap();
     let gtr_path = dir.path().join("my.gtr.json");
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
@@ -162,177 +91,269 @@ mod tests {
     let resolved = args
       .resolve(
         CommandKind::Ancestral,
-        &graph,
+        &[],
         &[(OutputSelection::Gtr, Some(gtr_path.as_path()))],
-        None,
       )
       .unwrap();
 
-    assert_eq!(
-      &resolved.non_tree_outputs[&OutputSelection::Gtr],
-      &gtr_path,
-      "explicit non-tree path should appear in resolved outputs"
-    );
+    assert_eq!(&resolved.non_tree_outputs[&OutputSelection::Gtr], &gtr_path);
   }
 
   #[test]
-  fn test_resolve_non_tree_default_path_from_output_all() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+  fn test_resolve_non_tree_default_path_uses_command_stem() {
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, &graph, &[(OutputSelection::Gtr, None)], None)
+      .resolve(CommandKind::Ancestral, &[], &[(OutputSelection::Gtr, None)])
       .unwrap();
 
-    let expected = dir.path().join("annotated_tree.gtr.json");
     assert_eq!(
       &resolved.non_tree_outputs[&OutputSelection::Gtr],
-      &expected,
-      "non-tree default path should use stem + extension"
+      &dir.path().join("ancestral.gtr.json")
     );
   }
 
   #[test]
-  fn test_resolve_unavailable_non_tree_errors() {
-    let graph = make_test_graph();
-    let args = OutputCoreArgs {
-      output_tree_nwk: Some(PathBuf::from("/tmp/out.nwk")),
-      ..Default::default()
-    };
-    let result = args.resolve(
-      CommandKind::Clock,
-      &graph,
-      &[(
-        OutputSelection::AugurNodeData,
-        Some(std::path::Path::new("/tmp/node.json")),
-      )],
-      None,
-    );
-    assert_error!(
-      result,
-      "Output format '--output-augur-node-data' is not available for this command. Available non-tree outputs: --output-clock-model, --output-clock-csv"
-    );
-  }
-
-  #[test]
-  fn test_resolve_output_selection_all_expands_to_defaults() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+  fn test_resolve_tree_default_paths_use_command_stem() {
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
-      output_selection: vec![OutputSelection::All],
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Ancestral, &graph, &[], None).unwrap();
-
-    assert!(
-      resolved.tree_outputs.contains_key(&TreeWriteKind::nwk(NwkStyle::Plain)),
-      "All should expand to include Nwk"
-    );
-    assert!(
-      resolved
-        .tree_outputs
-        .contains_key(&TreeWriteKind::nexus(NwkStyle::Plain)),
-      "All should expand to include Nexus"
+    let resolved = args.resolve(CommandKind::Clock, &[OutputSelection::Nwk], &[]).unwrap();
+    assert_eq!(
+      &resolved.tree_outputs[&nwk(NwkStyle::Plain)],
+      &dir.path().join("clock.nwk")
     );
   }
 
   #[test]
   fn test_resolve_timetree_defaults_include_auspice() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Timetree, &graph, &[], None).unwrap();
+    let resolved = args.resolve(CommandKind::Timetree, &[], &[]).unwrap();
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
+  }
 
+  // --- All-selection expansion and producibility gating ---
+
+  #[test]
+  fn test_resolve_all_expands_to_producible_set() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      ..Default::default()
+    };
+    let resolved = args
+      .resolve(
+        CommandKind::Ancestral,
+        &[OutputSelection::All],
+        &[
+          (OutputSelection::Gtr, None),
+          (OutputSelection::ReconstructedAaFasta, None),
+        ],
+      )
+      .unwrap();
+
+    // Producible tree formats are included...
+    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
+    assert!(resolved.tree_outputs.contains_key(&nexus(NwkStyle::Plain)));
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::GraphJson));
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Dot));
+    // ...unimplemented and writer-less formats are skipped.
+    assert!(!resolved.tree_outputs.contains_key(&TreeWriteKind::Phyloxml));
+    assert!(!resolved.tree_outputs.contains_key(&TreeWriteKind::MatPb));
     assert!(
-      resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice),
-      "timetree defaults should include Auspice"
+      !resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice),
+      "ancestral has no auspice writer, so `all` skips it"
+    );
+    // The non-default AA FASTA is part of `all`.
+    assert!(
+      resolved
+        .non_tree_outputs
+        .contains_key(&OutputSelection::ReconstructedAaFasta)
     );
   }
 
   #[test]
-  fn test_resolve_default_paths_use_command_stem() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let graph = make_test_graph();
+  fn test_resolve_explicit_unimplemented_tree_errors() {
+    let args = OutputCoreArgs {
+      output_tree_phyloxml: Some(PathBuf::from("/tmp/out.phylo.xml")),
+      ..Default::default()
+    };
+    let result = args.resolve(CommandKind::Ancestral, &[], &[]);
+    assert_error!(
+      result,
+      "Output '--output-tree-phyloxml' is not yet implemented for the ancestral command"
+    );
+  }
+
+  #[test]
+  fn test_resolve_explicit_auspice_unavailable_on_clock_errors() {
+    let args = OutputCoreArgs {
+      output_tree_auspice: Some(PathBuf::from("/tmp/out.auspice.json")),
+      ..Default::default()
+    };
+    let result = args.resolve(CommandKind::Clock, &[], &[]);
+    assert_error!(
+      result,
+      "Output '--output-tree-auspice' is not available for the clock command"
+    );
+  }
+
+  // --- S2 interaction table (acceptance criteria) ---
+
+  #[test]
+  fn test_s2_row1_output_all_default_style() {
+    let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
-      output_selection: vec![OutputSelection::Nwk],
       ..Default::default()
     };
+    let resolved = args
+      .resolve(
+        CommandKind::Ancestral,
+        &[OutputSelection::Nwk, OutputSelection::Nexus],
+        &[],
+      )
+      .unwrap();
+    let expected = btreemap! {
+      nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
+      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
+  }
 
-    let resolved = args.resolve(CommandKind::Timetree, &graph, &[], None).unwrap();
-    let nwk_path = &resolved.tree_outputs[&TreeWriteKind::nwk(NwkStyle::Plain)];
-    assert_eq!(nwk_path, &dir.path().join("timetree.nwk"));
-
-    let args2 = OutputCoreArgs {
+  #[test]
+  fn test_s2_row2_output_all_two_styles() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
-      output_selection: vec![OutputSelection::Nwk],
+      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
       ..Default::default()
     };
-    let resolved2 = args2.resolve(CommandKind::Clock, &graph, &[], None).unwrap();
-    let nwk_path2 = &resolved2.tree_outputs[&TreeWriteKind::nwk(NwkStyle::Plain)];
-    assert_eq!(nwk_path2, &dir.path().join("rerooted.nwk"));
+    let resolved = args
+      .resolve(
+        CommandKind::Ancestral,
+        &[OutputSelection::Nwk, OutputSelection::Nexus],
+        &[],
+      )
+      .unwrap();
+    let expected = btreemap! {
+      nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
+      nwk(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nwk"),
+      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+      nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
   }
 
-  use treetime_graph::edge::{GraphEdge, HasBranchLength};
-  use treetime_graph::node::{GraphNode, Named};
-  use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk};
-
-  #[derive(Clone, Debug, Default, serde::Serialize)]
-  struct TestNode {
-    name: Option<String>,
+  #[test]
+  fn test_s2_row3_per_file_default_style() {
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      ..Default::default()
+    };
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
+    assert_eq!(
+      resolved.tree_outputs,
+      btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("my.nwk") }
+    );
   }
 
-  impl GraphNode for TestNode {}
-
-  impl Named for TestNode {
-    fn name(&self) -> Option<impl AsRef<str>> {
-      self.name.as_deref()
-    }
-
-    fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-      self.name = name.map(|n| n.as_ref().to_owned());
-    }
+  #[test]
+  fn test_s2_row4_per_file_single_non_plain_style_used_as_is() {
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      output_nwk_style: vec![NwkStyleArg::Beast],
+      ..Default::default()
+    };
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
+    assert_eq!(
+      resolved.tree_outputs,
+      btreemap! { nwk(NwkStyle::Beast) => PathBuf::from("my.nwk") }
+    );
   }
 
-  impl NodeFromNwk for TestNode {
-    fn from_nwk(
-      name: Option<impl AsRef<str>>,
-      _confidence: Option<f64>,
-      _: &std::collections::BTreeMap<String, String>,
-    ) -> Result<Self, eyre::Report> {
-      Ok(Self {
-        name: name.map(|n| n.as_ref().to_owned()),
-      })
-    }
+  #[test]
+  fn test_s2_row5_per_file_two_styles_insert_secondary() {
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
+      ..Default::default()
+    };
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
+    let expected = btreemap! {
+      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
+      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
   }
 
-  #[derive(Clone, Debug, Default, serde::Serialize)]
-  struct TestEdge {
-    branch_length: Option<f64>,
+  #[test]
+  fn test_s2_row6_per_file_overrides_output_all_nwk_only() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
+      ..Default::default()
+    };
+    let resolved = args
+      .resolve(
+        CommandKind::Ancestral,
+        &[OutputSelection::Nwk, OutputSelection::Nexus],
+        &[],
+      )
+      .unwrap();
+    let expected = btreemap! {
+      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
+      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
+      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+      nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
   }
 
-  impl GraphEdge for TestEdge {}
-
-  impl HasBranchLength for TestEdge {
-    fn branch_length(&self) -> Option<f64> {
-      self.branch_length
-    }
-
-    fn set_branch_length(&mut self, bl: Option<f64>) {
-      self.branch_length = bl;
-    }
+  #[test]
+  fn test_s2_row7_per_file_supplements_selection() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      ..Default::default()
+    };
+    let resolved = args
+      .resolve(CommandKind::Ancestral, &[OutputSelection::Nexus], &[])
+      .unwrap();
+    let expected = btreemap! {
+      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
+      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
   }
 
-  impl EdgeFromNwk for TestEdge {
-    fn from_nwk(weight: Option<f64>) -> Result<Self, eyre::Report> {
-      Ok(Self { branch_length: weight })
-    }
+  #[test]
+  fn test_s2_row8_two_per_file_two_non_plain_styles() {
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(PathBuf::from("my.nwk")),
+      output_tree_nexus: Some(PathBuf::from("my.nexus")),
+      output_nwk_style: vec![NwkStyleArg::Beast, NwkStyleArg::Nhx],
+      ..Default::default()
+    };
+    let resolved = args.resolve(CommandKind::Ancestral, &[], &[]).unwrap();
+    let expected: BTreeMap<TreeWriteKind, PathBuf> = btreemap! {
+      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
+      nwk(NwkStyle::Nhx) => PathBuf::from("my.nhx.nwk"),
+      nexus(NwkStyle::Beast) => PathBuf::from("my.annotated.nexus"),
+      nexus(NwkStyle::Nhx) => PathBuf::from("my.nhx.nexus"),
+    };
+    assert_eq!(resolved.tree_outputs, expected);
   }
 }

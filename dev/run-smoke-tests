@@ -120,7 +120,7 @@ MUGRATION_BATCH_RUNS = [
   # data subdirectory             # output subdirectory                # attribute   # additional args (appended to the batch args)
   ("zika/20",                     "zika/20/country",                  "country",    "--pc=1.0"),
   ("zika/20",                     "zika/20/country-weights",          "country",    "--pc=1.0 --weights={data_dir}/zika/country_weights.csv"),
-  ("zika/20",                     "zika/20/country-confidence",       "country",    "--pc=1.0 --output-confidence={outdir}/confidence.csv"),
+  ("zika/20",                     "zika/20/country-confidence",       "country",    "--pc=1.0 --output-confidence-csv={outdir}/confidence.csv"),
   ("dengue/20",                   "dengue/20/country",                "country",    "--name-column=genbank_accession --pc=1.0"),
   ("tb/20",                       "tb/20/cluster",                    "cluster",    "--name-column=strain --pc=1.0"),
   ("lassa/L/20",                  "lassa/L/20/country",               "country",    "--name-column=accession --pc=1.0"),
@@ -546,7 +546,7 @@ def run_timetree(name: str, out: str, extra_args: str):
   if "--branch-length-mode=input" not in extra_args:
     outputs.append("gtr")
   if "--time-marginal" in extra_args or "--confidence" in extra_args:
-    outputs.append("confidence")
+    outputs.append("confidence-tsv")
   selection = f"--output-selection={','.join(outputs)}"
 
   cmd = f"""
