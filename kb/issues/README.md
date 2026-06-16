@@ -125,7 +125,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                |
 | Negligible | Timetree     | [Stochastic polytomy resolution not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                   |
 | Negligible | Timetree     | [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md)                           |
-| Negligible | Timetree     | [Node data JSON omits input-tree branch confidence](N-timetree-node-data-confidence-not-emitted.md)                                                 |
 | Negligible | Timetree     | [Node data date string can differ by one day at year-fraction boundaries](N-timetree-node-data-date-string-fp-boundary.md)                          |
 | Negligible | Timetree     | [Root node omits placeholder branch-length fields in node data JSON](N-timetree-node-data-root-branch-fields-omitted.md)                            |
 | Negligible | Timetree     | [Rerooted root and polytomy-resolution nodes stay unnamed](N-timetree-unnamed-root-after-reroot.md)                                                 |

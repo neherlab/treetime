@@ -34,9 +34,8 @@ use util_augur_node_data_json::{
 ///   `branch_length` for cumulative divergence when `mutation_length` is absent.
 ///   The root has no incoming edge, so it carries `0.0` (the field is
 ///   non-optional; `export v2` sets the root divergence to 0 regardless).
-/// - `confidence` is omitted: v1's Newick reader does not parse input-tree branch
-///   support values (shared gap with `timetree`, tracked in
-///   `kb/issues/N-timetree-node-data-confidence-not-emitted.md`).
+/// - `confidence` = input-tree branch support (bootstrap/posterior) parsed from bare
+///   numeric labels on internal nodes via the Biopython heuristic.
 ///
 /// When `mutation_counts` is `Some`, `branch_length` is set to the per-edge
 /// mutation count instead of the ML branch length (subs/site).
