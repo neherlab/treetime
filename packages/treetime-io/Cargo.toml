@@ -39,6 +39,7 @@ traversal = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
+indoc = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }

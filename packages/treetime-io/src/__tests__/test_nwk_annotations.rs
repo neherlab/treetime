@@ -29,7 +29,11 @@ mod tests {
   }
 
   impl NodeFromNwk for AnnotNode {
-    fn from_nwk(name: Option<impl AsRef<str>>, comments: &BTreeMap<String, String>) -> Result<Self, Report> {
+    fn from_nwk(
+      name: Option<impl AsRef<str>>,
+      _confidence: Option<f64>,
+      comments: &BTreeMap<String, String>,
+    ) -> Result<Self, Report> {
       Ok(Self {
         name: name.map(|n| n.as_ref().to_owned()),
         comments: comments.clone(),

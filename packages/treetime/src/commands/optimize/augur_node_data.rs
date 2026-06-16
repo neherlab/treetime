@@ -72,12 +72,13 @@ pub fn build_augur_node_data_json(
       None => 0.0,
     };
 
+    let confidence = payload.confidence;
+
     nodes.insert(
       node_name,
       AugurNodeDataJsonRefineNode {
         branch_length,
-        // optimize emits no temporal or confidence fields.
-        confidence: None,
+        confidence,
         numdate: None,
         clock_length: None,
         mutation_length: None,

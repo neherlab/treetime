@@ -32,6 +32,7 @@ mod tests {
         (
           NewickNodeData {
             name,
+            confidence: None,
             node_attrs,
             raw_comments: Vec::new(),
             hybrid: None,

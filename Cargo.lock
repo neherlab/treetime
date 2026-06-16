@@ -4390,6 +4390,7 @@ dependencies = [
  "csv",
  "ctor 0.5.0",
  "eyre",
+ "indoc",
  "itertools 0.14.0",
  "log",
  "maplit",

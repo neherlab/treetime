@@ -4,6 +4,7 @@ mod tests {
   use crate::types::NewickValue;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   #[test]
   fn test_parse_single_leaf() {
@@ -459,6 +460,67 @@ mod tests {
       g.nodes[a_idx].node_attrs.get("note"),
       Some(&NewickValue::String("yes".to_owned()))
     );
+  }
+
+  // Confidence parsing: Biopython heuristic on internal node labels
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::float(        "(A:0.1,B:0.2)0.999:0.3;", (None,          Some(0.999)))]
+  #[case::integer(      "(A,B)100;",                (None,          Some(100.0)))]
+  #[case::zero(         "(A,B)0;",                  (None,          Some(0.0)  ))]
+  #[case::scientific(   "(A,B)1e-5;",               (None,          Some(1e-5) ))]
+  #[case::text_label(   "(A,B)root;",               (Some("root"),  None       ))]
+  #[case::no_label(     "(A,B);",                   (None,          None       ))]
+  #[trace]
+  fn test_parse_confidence_on_root(
+    #[case] nwk: &str,
+    #[case] (expected_name, expected_confidence): (Option<&str>, Option<f64>),
+  ) {
+    let g = newick_from_string(nwk).unwrap();
+    let root = &g.nodes[g.root];
+    assert_eq!(root.name.as_deref(), expected_name);
+    assert_eq!(root.confidence, expected_confidence);
+  }
+
+  #[test]
+  fn test_parse_confidence_not_applied_to_leaves() {
+    let g = newick_from_string("(0.999:0.1,B:0.2);").unwrap();
+    let leaf = g.nodes.iter().find(|n| n.name.as_deref() == Some("0.999")).unwrap();
+    assert_eq!(leaf.confidence, None);
+  }
+
+  #[test]
+  fn test_parse_confidence_nested_internals() {
+    let g = newick_from_string("((A,B)0.95:0.1,(C,D)0.80:0.2)0.50;").unwrap();
+    let internals: Vec<_> = g
+      .nodes
+      .iter()
+      .filter(|n| !n.children.is_empty() && n.confidence.is_some())
+      .collect();
+    assert_eq!(internals.len(), 3);
+    assert_eq!(g.nodes[g.root].confidence, Some(0.50));
+  }
+
+  #[test]
+  fn test_parse_confidence_mixed_named_and_float_internals() {
+    let g = newick_from_string("((A,B)clade1:0.1,(C,D)0.90:0.2)root;").unwrap();
+    let clade1 = g.nodes.iter().find(|n| n.name.as_deref() == Some("clade1")).unwrap();
+    assert_eq!(clade1.confidence, None);
+
+    let float_node = g.nodes.iter().find(|n| n.confidence == Some(0.90)).unwrap();
+    assert_eq!(float_node.name, None);
+
+    let root = &g.nodes[g.root];
+    assert_eq!(root.name.as_deref(), Some("root"));
+    assert_eq!(root.confidence, None);
+  }
+
+  #[test]
+  fn test_parse_confidence_roundtrip() {
+    let g = newick_from_string("(A:0.1,B:0.2)0.999;").unwrap();
+    let written = crate::write::newick_to_string(&g, &crate::types::NewickWriteOptions::default()).unwrap();
+    assert_eq!(written, "(A:0.1,B:0.2)0.999;");
   }
 
   #[test]

@@ -455,11 +455,11 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
 
     graph.add_edge(
@@ -991,19 +991,19 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
 
     // Root -> internal has branch length, internal -> A has None
@@ -1063,19 +1063,19 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
 
     // Root -> internal has None, internal -> A has Some
@@ -1134,19 +1134,19 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      desc: None,
+      ..NodeAncestral::default()
     });
 
     graph.add_edge(root, internal, EdgeAncestral { branch_length: None })?;

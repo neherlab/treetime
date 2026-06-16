@@ -13,12 +13,19 @@ pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
 pub struct NodeAncestral {
   pub name: Option<String>,
   pub desc: Option<String>,
+  /// Input-tree branch support / bootstrap / posterior probability.
+  pub confidence: Option<f64>,
 }
 
 impl NodeFromNwk for NodeAncestral {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(
+    name: Option<impl AsRef<str>>,
+    confidence: Option<f64>,
+    _: &BTreeMap<String, String>,
+  ) -> Result<Self, Report> {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
+      confidence,
       ..NodeAncestral::default()
     })
   }

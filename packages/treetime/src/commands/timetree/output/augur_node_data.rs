@@ -110,12 +110,13 @@ pub fn build_augur_node_data_json(
     let date = numdate.map(year_fraction_to_datestring);
     let num_date_confidence = ci_map.as_ref().and_then(|ci_map| ci_map.get(&node_key).copied());
 
+    let confidence = payload.base.confidence;
+
     nodes.insert(
       node_name,
       AugurNodeDataJsonRefineNode {
         branch_length,
-        // v1 does not parse input-tree branch support values, so confidence is omitted.
-        confidence: None,
+        confidence,
         numdate,
         clock_length,
         mutation_length,

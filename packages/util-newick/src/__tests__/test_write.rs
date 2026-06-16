@@ -44,6 +44,7 @@ mod tests {
     attrs.insert("prob".to_owned(), NewickValue::Number(0.95));
     let root = g.add_node(NewickNodeData {
       name: None,
+      confidence: None,
       node_attrs: BTreeMap::new(),
       raw_comments: Vec::new(),
       hybrid: None,
@@ -51,6 +52,7 @@ mod tests {
     });
     let a = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -96,6 +98,7 @@ mod tests {
     attrs.insert("fixed".to_owned(), NewickValue::Boolean(false));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -117,6 +120,7 @@ mod tests {
     );
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -135,6 +139,7 @@ mod tests {
     attrs.insert("label".to_owned(), NewickValue::String("hello, world".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -151,6 +156,7 @@ mod tests {
     let mut g = NewickGraph::new();
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: BTreeMap::new(),
       raw_comments: vec!["[some note]".to_owned()],
       hybrid: None,
@@ -171,6 +177,7 @@ mod tests {
     attrs.insert("T".to_owned(), NewickValue::String("9606".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -280,6 +287,7 @@ mod tests {
     attrs.insert("val".to_owned(), NewickValue::String("TRUE".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -300,6 +308,7 @@ mod tests {
     attrs.insert("id".to_owned(), NewickValue::String("123".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -321,6 +330,7 @@ mod tests {
     attrs.insert("note".to_owned(), NewickValue::String("say \"hello\"".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -345,6 +355,7 @@ mod tests {
     attrs.insert("key".to_owned(), NewickValue::String("a:b".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -383,6 +394,7 @@ mod tests {
     attrs.insert("posterior prob".to_owned(), NewickValue::Number(0.95));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -404,6 +416,7 @@ mod tests {
     attrs.insert("k".to_owned(), NewickValue::String("a:b".to_owned()));
     let node = g.add_node(NewickNodeData {
       name: Some("A".to_owned()),
+      confidence: None,
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,

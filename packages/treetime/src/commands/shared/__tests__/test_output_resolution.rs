@@ -304,6 +304,7 @@ mod tests {
   impl NodeFromNwk for TestNode {
     fn from_nwk(
       name: Option<impl AsRef<str>>,
+      _confidence: Option<f64>,
       _: &std::collections::BTreeMap<String, String>,
     ) -> Result<Self, eyre::Report> {
       Ok(Self {

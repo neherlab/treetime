@@ -76,7 +76,7 @@ where
       .iter()
       .map(|(k, v)| (k.clone(), v.to_string()))
       .collect();
-    let node = N::from_nwk(name, &comments)
+    let node = N::from_nwk(name, nwk_node.confidence, &comments)
       .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
     node_keys.push(graph.add_node(node));
   }
@@ -305,7 +305,11 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
 
 /// Defines how to construct node when reading from Newick and Nexus files
 pub trait NodeFromNwk: Sized {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report>;
+  fn from_nwk(
+    name: Option<impl AsRef<str>>,
+    confidence: Option<f64>,
+    comments: &BTreeMap<String, String>,
+  ) -> Result<Self, Report>;
 }
 
 /// Defines how to display node information when writing to Newick and Nexus files

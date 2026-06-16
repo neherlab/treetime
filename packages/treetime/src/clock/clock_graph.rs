@@ -24,7 +24,11 @@ pub struct NodeClock {
 impl GraphNode for NodeClock {}
 
 impl NodeFromNwk for NodeClock {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(
+    name: Option<impl AsRef<str>>,
+    _confidence: Option<f64>,
+    _: &BTreeMap<String, String>,
+  ) -> Result<Self, Report> {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
       ..NodeClock::default()

@@ -144,6 +144,7 @@ fn visit_leaf(
   let extraction = extract_hybrid(name);
   let node_data = NewickNodeData {
     name: extraction.clean_name,
+    confidence: None,
     node_attrs,
     raw_comments,
     hybrid: extraction.hybrid.clone(),
@@ -184,8 +185,17 @@ fn visit_internal(
   }
 
   let extraction = extract_hybrid(name);
+
+  // Biopython heuristic: bare numeric label on an internal node is branch support,
+  // not a taxon name. Try parse as float; on success, store as confidence and clear name.
+  let (final_name, confidence) = match extraction.clean_name {
+    Some(ref label) if label.parse::<f64>().is_ok() => (None, label.parse::<f64>().ok()),
+    other => (other, None),
+  };
+
   let node_data = NewickNodeData {
-    name: extraction.clean_name,
+    name: final_name,
+    confidence,
     node_attrs,
     raw_comments,
     hybrid: extraction.hybrid.clone(),

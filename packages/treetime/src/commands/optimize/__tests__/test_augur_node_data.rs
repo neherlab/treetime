@@ -72,6 +72,37 @@ mod tests {
     assert_eq!(original, roundtripped);
   }
 
+  // --- Confidence from input tree ---
+
+  #[test]
+  fn test_augur_node_data_optimize_confidence_from_float_label() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)0.999:0.003;");
+
+    assert_eq!(
+      data.nodes["NODE_0000000"].confidence,
+      Some(0.999),
+      "Internal node with float label should emit confidence"
+    );
+    assert!(
+      data.nodes["leaf_a"].confidence.is_none(),
+      "Leaf nodes should not have confidence from float labels"
+    );
+    assert!(
+      data.nodes["leaf_b"].confidence.is_none(),
+      "Leaf nodes should not have confidence from float labels"
+    );
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_no_confidence_for_text_label() {
+    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
+
+    assert!(
+      data.nodes["root"].confidence.is_none(),
+      "Text-labeled internal node should not have confidence"
+    );
+  }
+
   // --- Divergence units: mutations mode ---
 
   #[test]

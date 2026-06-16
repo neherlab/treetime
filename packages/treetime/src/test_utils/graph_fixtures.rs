@@ -21,7 +21,11 @@ impl Named for TestNode {
 }
 
 impl NodeFromNwk for TestNode {
-  fn from_nwk(name: Option<impl AsRef<str>>, _: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(
+    name: Option<impl AsRef<str>>,
+    _confidence: Option<f64>,
+    _: &BTreeMap<String, String>,
+  ) -> Result<Self, Report> {
     Ok(Self(name.map(|n| n.as_ref().to_owned())))
   }
 }

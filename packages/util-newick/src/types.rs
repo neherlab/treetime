@@ -27,6 +27,10 @@ pub struct NewickEdgeEntry {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickNodeData {
   pub name: Option<String>,
+  /// Branch support / bootstrap / posterior probability parsed from a bare numeric
+  /// label on an internal node (Biopython heuristic: try parse label as float,
+  /// on success use as confidence and clear name).
+  pub confidence: Option<f64>,
   /// Structured annotations from `[&...]` or `[&&NHX:...]` before `:`.
   pub node_attrs: BTreeMap<String, NewickValue>,
   /// Plain `[text]` comments without `&` prefix, preserved verbatim.
@@ -201,6 +205,7 @@ impl NewickNodeData {
   pub fn new() -> Self {
     Self {
       name: None,
+      confidence: None,
       node_attrs: BTreeMap::new(),
       raw_comments: Vec::new(),
       hybrid: None,
@@ -251,6 +256,7 @@ fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
   let mut hasher = DefaultHasher::new();
   let node = &graph.nodes[node_idx];
   node.name.hash(&mut hasher);
+  node.confidence.map(f64::to_bits).hash(&mut hasher);
   node.node_attrs.hash(&mut hasher);
   node.raw_comments.hash(&mut hasher);
   node.hybrid.hash(&mut hasher);
@@ -280,6 +286,7 @@ fn eq_subtree_unordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize
   let nd2 = &g2.nodes[n2];
 
   if nd1.name != nd2.name
+    || nd1.confidence.map(f64::to_bits) != nd2.confidence.map(f64::to_bits)
     || nd1.node_attrs != nd2.node_attrs
     || nd1.raw_comments != nd2.raw_comments
     || nd1.hybrid != nd2.hybrid
@@ -332,6 +339,7 @@ fn eq_subtree_ordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize) 
   let nd2 = &g2.nodes[n2];
 
   if nd1.name != nd2.name
+    || nd1.confidence.map(f64::to_bits) != nd2.confidence.map(f64::to_bits)
     || nd1.node_attrs != nd2.node_attrs
     || nd1.raw_comments != nd2.raw_comments
     || nd1.hybrid != nd2.hybrid

@@ -82,6 +82,10 @@ fn write_name(writer: &mut impl Write, node: &NewickNodeData, is_acceptor: bool)
     if let Some(name) = &node.name {
       return write_label(writer, name);
     }
+    if let Some(confidence) = node.confidence {
+      write!(writer, "{confidence}")?;
+      return Ok(());
+    }
     return Ok(());
   }
 

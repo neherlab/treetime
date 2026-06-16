@@ -114,9 +114,13 @@ impl TimeConstraint<Arc<Distribution>> for NodeTimetree {
 impl DateConstraintNode for NodeTimetree {}
 
 impl NodeFromNwk for NodeTimetree {
-  fn from_nwk(name: Option<impl AsRef<str>>, comments: &BTreeMap<String, String>) -> Result<Self, Report> {
+  fn from_nwk(
+    name: Option<impl AsRef<str>>,
+    confidence: Option<f64>,
+    comments: &BTreeMap<String, String>,
+  ) -> Result<Self, Report> {
     Ok(Self {
-      base: NodeAncestral::from_nwk(name, comments)?,
+      base: NodeAncestral::from_nwk(name, confidence, comments)?,
       ..NodeTimetree::default()
     })
   }
