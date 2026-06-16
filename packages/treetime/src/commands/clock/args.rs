@@ -4,7 +4,7 @@ use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, Gri
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputCoreArgs;
+use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
@@ -102,6 +102,20 @@ pub struct TreetimeClockArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_clock_csv: Option<PathBuf>,
+
+  /// Comma-separated list of outputs to produce with `--output-all`.
+  ///
+  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+  /// available for this command. Requires `--output-all`. Per-file flags are always honored
+  /// regardless of this selection.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
+  )]
+  pub output_selection: Vec<ClockOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub topology_order: TopologyOrderArgs,
 
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]

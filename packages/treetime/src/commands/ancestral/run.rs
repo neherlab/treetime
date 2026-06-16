@@ -11,14 +11,15 @@ use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with
 use crate::commands::ancestral::result::AncestralResult;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
+use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
-use crate::{make_error, make_report};
 use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;
+use treetime_graph::topology_order::TopologyOrderSpec;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
@@ -66,10 +67,17 @@ pub fn run_ancestral_reconstruction(
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
   let graph = nwk_read_file(&ancestral_args.tree)?;
+  let topology_order = ancestral_args.topology_order.resolve_topology_order(&graph, None)?;
 
+  let selection: Vec<OutputSelection> = ancestral_args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
   let resolved = ancestral_args.output.resolve(
     CommandKind::Ancestral,
-    &graph,
+    &selection,
     &[
       (
         OutputSelection::AugurNodeData,
@@ -88,7 +96,6 @@ pub fn run_ancestral_reconstruction(
           .map(std::path::Path::new),
       ),
     ],
-    None,
   )?;
 
   let mut output_fasta = if resolved
@@ -134,14 +141,28 @@ pub fn run_ancestral_reconstruction(
     progress,
   )?;
 
+  let aa_fasta_template: Option<String> = resolved
+    .non_tree_outputs
+    .get(&OutputSelection::ReconstructedAaFasta)
+    .map(|path| path.to_string_lossy().into_owned());
+
   let aa_node_data = if let Some(translations) = &ancestral_args.translations {
     Some(run_aa_reconstructions(
       ancestral_args,
       translations,
+      aa_fasta_template.as_deref(),
       &result.output.graph,
       progress,
     )?)
   } else {
+    // Prerequisite gating: reconstructed AA FASTA needs --translations. An explicit per-file flag
+    // is a hard error; the same output reached via selection or `--output-selection=all` is skipped.
+    if aa_fasta_template.is_some() {
+      if ancestral_args.output_reconstructed_aa_fasta.is_some() {
+        return make_error!("--output-reconstructed-aa-fasta requires --translations");
+      }
+      warn!("Skipping reconstructed amino-acid FASTA output: --translations not provided");
+    }
     None
   };
 
@@ -185,15 +206,20 @@ pub fn run_ancestral_reconstruction(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr = result.output.gtr.as_ref().ok_or_else(|| {
-      make_report!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.")
-    })?;
-    let gtr_output = GtrOutput::new(gtr, result.output.model_name);
-    write_gtr_json(&gtr_output, path)?;
+    match result.output.gtr.as_ref() {
+      Some(gtr) => {
+        let gtr_output = GtrOutput::new(gtr, result.output.model_name);
+        write_gtr_json(&gtr_output, path)?;
+      },
+      None if ancestral_args.output_gtr.is_some() => {
+        return make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.");
+      },
+      None => warn!("Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"),
+    }
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_for_partition(&result, &resolved)?;
+    write_tree_for_partition(&result, &resolved, &topology_order)?;
   }
 
   progress.report("Done", 1.0, "");
@@ -207,8 +233,9 @@ pub fn run_ancestral_reconstruction(
 fn write_tree_for_partition(
   result: &pipeline::AncestralOutputFull,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
+  topology_order: &TopologyOrderSpec,
 ) -> Result<(), Report> {
-  let plan = resolved.topology_order.plan(&result.output.graph)?;
+  let plan = topology_order.plan(&result.output.graph)?;
   let ordered = plan.ordered_graph(&result.output.graph)?;
 
   match &result.partition {
@@ -234,6 +261,7 @@ fn write_tree_for_partition(
 fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
   translations: &str,
+  aa_fasta_template: Option<&str>,
   graph: &GraphAncestral,
   progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
@@ -250,7 +278,7 @@ fn run_aa_reconstructions(
     ancestral_args.cdses.clone()
   };
 
-  if let Some(aa_seq_template) = &ancestral_args.output_reconstructed_aa_fasta {
+  if let Some(aa_seq_template) = aa_fasta_template {
     if cdses.len() > 1 && !template_has_cds_placeholder(aa_seq_template) {
       return make_error!(
         "--output-reconstructed-aa-fasta template needs a CDS placeholder when reconstructing multiple CDSes, \
@@ -329,7 +357,7 @@ fn run_aa_reconstructions(
     aa_node_data.add_cds(&partition.name, cds_data, partition.annotation.clone());
   }
 
-  if let Some(aa_seq_template) = &ancestral_args.output_reconstructed_aa_fasta {
+  if let Some(aa_seq_template) = aa_fasta_template {
     write_aa_sequences(graph, &reconstructed, aa_seq_template)?;
   }
 

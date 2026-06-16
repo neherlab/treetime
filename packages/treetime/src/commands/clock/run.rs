@@ -55,14 +55,19 @@ pub fn run_clock(
   )
   .wrap_err("When reading dates")?;
 
+  let selection: Vec<OutputSelection> = clock_args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
   let resolved = clock_args.output.resolve(
     CommandKind::Clock,
-    &graph,
+    &selection,
     &[
       (OutputSelection::ClockModel, clock_args.output_clock_model.as_deref()),
       (OutputSelection::ClockCsv, clock_args.output_clock_csv.as_deref()),
     ],
-    Some(input_order),
   )?;
 
   let clock_params = if clock_args.covariation {
@@ -97,7 +102,10 @@ pub fn run_clock(
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
-    let plan = resolved.topology_order.plan(&output.graph)?;
+    let topology_order = clock_args
+      .topology_order
+      .resolve_topology_order(&output.graph, Some(input_order))?;
+    let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
     write_tree_outputs(
       &ordered,

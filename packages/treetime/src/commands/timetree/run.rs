@@ -6,15 +6,15 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
+use crate::make_error;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::{NodeConfidenceInterval, write_confidence_intervals_file};
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
-use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
-use log::info;
+use log::{info, warn};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_graph::edge::GraphEdgeKey;
@@ -32,10 +32,30 @@ pub fn run_timetree_estimation(
   let input_data = load_input_data(args)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
 
-  let tracelog: Option<Box<dyn std::io::Write + Send>> = if let Some(path) = &args.tracelog {
-    Some(Box::new(create_file_or_stdout(path)?))
-  } else {
-    None
+  // Resolve outputs up front so the tracelog path (which the pipeline writes during the run) is
+  // known before the pipeline starts. Topology ordering is resolved separately, after the pipeline.
+  let selection: Vec<OutputSelection> = args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
+  let resolved = args.output.resolve(
+    CommandKind::Timetree,
+    &selection,
+    &[
+      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
+      (OutputSelection::Gtr, args.output_gtr.as_deref()),
+      (OutputSelection::ClockModel, args.output_clock_model.as_deref()),
+      (OutputSelection::ConfidenceTsv, args.output_confidence_tsv.as_deref()),
+      (OutputSelection::Tracelog, args.output_tracelog.as_deref()),
+    ],
+  )?;
+
+  let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
+  {
+    Some(path) => Some(Box::new(create_file_or_stdout(path)?)),
+    None => None,
   };
 
   let params = TimetreeParams {
@@ -82,27 +102,24 @@ pub fn run_timetree_estimation(
   progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
 
-  let resolved = args.output.resolve(
-    CommandKind::Timetree,
-    &output.graph,
-    &[
-      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
-      (OutputSelection::Gtr, args.output_gtr.as_deref()),
-      (OutputSelection::ClockModel, args.output_clock_model.as_deref()),
-      (OutputSelection::Confidence, args.output_confidence.as_deref()),
-    ],
-    Some(input_leaf_order),
-  )?;
+  let topology_order = args
+    .topology_order
+    .resolve_topology_order(&output.graph, Some(input_leaf_order))?;
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
-    let intervals = output.confidence_intervals.as_ref().ok_or_else(|| {
-      make_report!(
-        "Confidence output requested but no confidence intervals were computed. \
-         Use --time-marginal to enable confidence interval computation."
-      )
-    })?;
-    write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
-    info!("Wrote confidence intervals to {path}", path = path.display());
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
+    match output.confidence_intervals.as_ref() {
+      Some(intervals) => {
+        write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
+        info!("Wrote confidence intervals to {path}", path = path.display());
+      },
+      None if args.output_confidence_tsv.is_some() => {
+        return make_error!(
+          "Confidence output requested but no confidence intervals were computed. \
+           Use --time-marginal to enable confidence interval computation."
+        );
+      },
+      None => warn!("Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"),
+    }
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
@@ -110,14 +127,16 @@ pub fn run_timetree_estimation(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr = output.gtr.as_ref().ok_or_else(|| {
-      make_report!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.")
-    })?;
-    let model_name = output.model_name.ok_or_else(|| {
-      make_report!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.")
-    })?;
-    let gtr_output = GtrOutput::new(gtr, model_name);
-    write_gtr_json(&gtr_output, path)?;
+    match (output.gtr.as_ref(), output.model_name) {
+      (Some(gtr), Some(model_name)) => {
+        let gtr_output = GtrOutput::new(gtr, model_name);
+        write_gtr_json(&gtr_output, path)?;
+      },
+      _ if args.output_gtr.is_some() => {
+        return make_error!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.");
+      },
+      _ => warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"),
+    }
   }
 
   let mutation_counts = match args.divergence_units {
@@ -135,7 +154,7 @@ pub fn run_timetree_estimation(
   };
 
   if !resolved.tree_outputs.is_empty() {
-    let plan = resolved.topology_order.plan(&output.graph)?;
+    let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
     let auspice_ctx = TimetreeAuspiceCtx {
       confidence_intervals: output.confidence_intervals.as_deref(),

@@ -4,7 +4,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs};
+use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
@@ -274,19 +274,34 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_clock_model: Option<PathBuf>,
 
-  /// Path to output confidence intervals TSV.
+  /// Path to output date-confidence-interval TSV.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  pub output_confidence: Option<PathBuf>,
+  pub output_confidence_tsv: Option<PathBuf>,
+
+  /// Path to output iteration-statistics tracelog CSV (monitors convergence).
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, visible_alias = "tracelog", value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_tracelog: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputCoreArgs,
 
-  /// Write iteration statistics to tracelog CSV file for monitoring convergence
-  #[cfg_attr(feature = "clap", clap(long))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub tracelog: Option<PathBuf>,
+  /// Comma-separated list of outputs to produce with `--output-all`.
+  ///
+  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+  /// available for this command. Requires `--output-all`. Per-file flags are always honored
+  /// regardless of this selection.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
+  )]
+  pub output_selection: Vec<TimetreeOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub topology_order: TopologyOrderArgs,
 
   /// Random seed
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "rng-seed"))]

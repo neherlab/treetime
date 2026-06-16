@@ -29,19 +29,27 @@ pub fn run_mugration(
     .ok_or_else(|| make_report!("Tree file is required"))?;
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
 
+  let selection: Vec<OutputSelection> = mugration_args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
   let resolved = mugration_args.output.resolve(
     CommandKind::Mugration,
-    &graph,
+    &selection,
     &[
       (
         OutputSelection::AugurNodeData,
         mugration_args.output_augur_node_data.as_deref(),
       ),
       (OutputSelection::Gtr, mugration_args.output_gtr.as_deref()),
-      (OutputSelection::Confidence, mugration_args.output_confidence.as_deref()),
+      (
+        OutputSelection::ConfidenceCsv,
+        mugration_args.output_confidence_csv.as_deref(),
+      ),
       (OutputSelection::TraitsCsv, mugration_args.output_traits_csv.as_deref()),
     ],
-    None,
   )?;
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
@@ -87,7 +95,10 @@ pub fn run_mugration(
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
-    let plan = resolved.topology_order.plan(&result.graph)?;
+    let topology_order = mugration_args
+      .topology_order
+      .resolve_topology_order(&result.graph, None)?;
+    let plan = topology_order.plan(&result.graph)?;
     let ordered = plan.ordered_graph(&result.graph)?;
     write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
   }
@@ -103,7 +114,7 @@ pub fn run_mugration(
     std::io::Write::write_all(&mut f, result.traits.render_csv().as_bytes())?;
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Confidence) {
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
     let mut f = create_file_or_stdout(path)?;
     std::io::Write::write_all(&mut f, result.confidence.render_csv().as_bytes())?;
   }

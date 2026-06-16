@@ -32,14 +32,19 @@ pub fn run_optimize(
   }
   let graph = nwk_read_file(&args.tree)?;
 
+  let selection: Vec<OutputSelection> = args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
   let resolved = args.output.resolve(
     CommandKind::Optimize,
-    &graph,
+    &selection,
     &[
       (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
       (OutputSelection::Gtr, args.output_gtr.as_deref()),
     ],
-    None,
   )?;
 
   let params = OptimizeParams {
@@ -69,7 +74,8 @@ pub fn run_optimize(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    let plan = resolved.topology_order.plan(&output.graph)?;
+    let topology_order = args.topology_order.resolve_topology_order(&output.graph, None)?;
+    let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
 
     if !output.dense_partitions.is_empty() {

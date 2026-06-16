@@ -1,12 +1,15 @@
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::{Report, WrapErr};
+use log::warn;
 use maplit::btreeset;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsString;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
+use strum::IntoEnumIterator;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -16,27 +19,19 @@ use treetime_io::nwk::NwkStyle;
 use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_file};
 use treetime_utils::{make_error, make_report};
 
-/// Selectable output format for `--output-selection` and the resolution system.
+/// Internal resolution and lookup key for every selectable output.
 ///
-/// Tree formats are universal (available on all commands). Non-tree formats are
-/// per-command (see `CommandKind::available_outputs`).
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[derive(strum_macros::EnumIter)]
+/// This is the lingua franca of the output system: per-command CLI selection enums convert into
+/// it (`From<XxxOutputSelection>`), `resolve` maps it to concrete paths, and command code looks up
+/// produced files by it. NWK annotation style is orthogonal and lives on `--output-nwk-style`, so
+/// the tree variants here are style-agnostic (`Nwk`, `Nexus`), not per-style.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, strum_macros::EnumIter)]
 pub enum OutputSelection {
   All,
 
-  // Tree: Newick family
+  // Tree formats
   Nwk,
-  NwkAnnotated,
-  NwkNhx,
-
-  // Tree: Nexus family
   Nexus,
-  NexusAnnotated,
-  NexusNhx,
-
-  // Tree: other
   Auspice,
   Phyloxml,
   PhyloxmlJson,
@@ -45,15 +40,17 @@ pub enum OutputSelection {
   GraphJson,
   Dot,
 
-  // Non-tree
+  // Non-tree outputs
   AugurNodeData,
   Gtr,
   ClockModel,
-  Confidence,
+  ConfidenceTsv,
+  ConfidenceCsv,
   ReconstructedNucFasta,
   ReconstructedAaFasta,
   TraitsCsv,
   ClockCsv,
+  Tracelog,
 }
 
 impl OutputSelection {
@@ -61,11 +58,7 @@ impl OutputSelection {
     matches!(
       self,
       Self::Nwk
-        | Self::NwkAnnotated
-        | Self::NwkNhx
         | Self::Nexus
-        | Self::NexusAnnotated
-        | Self::NexusNhx
         | Self::Auspice
         | Self::Phyloxml
         | Self::PhyloxmlJson
@@ -76,19 +69,25 @@ impl OutputSelection {
     )
   }
 
+  /// Tree formats whose serialization is parameterized by NWK annotation style.
+  pub fn is_styled_tree(self) -> bool {
+    matches!(self, Self::Nwk | Self::Nexus)
+  }
+
   pub fn is_meta(self) -> bool {
     matches!(self, Self::All)
+  }
+
+  /// Tree formats whose writer is declared but not yet implemented for analysis commands.
+  pub fn is_unimplemented(self) -> bool {
+    matches!(self, Self::Phyloxml | Self::PhyloxmlJson | Self::MatPb | Self::MatJson)
   }
 
   pub fn extension(self) -> &'static str {
     match self {
       Self::All => "",
       Self::Nwk => ".nwk",
-      Self::NwkAnnotated => ".annotated.nwk",
-      Self::NwkNhx => ".nhx.nwk",
       Self::Nexus => ".nexus",
-      Self::NexusAnnotated => ".annotated.nexus",
-      Self::NexusNhx => ".nhx.nexus",
       Self::Auspice => ".auspice.json",
       Self::Phyloxml => ".phylo.xml",
       Self::PhyloxmlJson => ".phylo.json",
@@ -99,22 +98,20 @@ impl OutputSelection {
       Self::AugurNodeData => ".augur-node-data.json",
       Self::Gtr => ".gtr.json",
       Self::ClockModel => ".clock-model.json",
-      Self::Confidence => ".confidence.tsv",
+      Self::ConfidenceTsv => ".confidence.tsv",
+      Self::ConfidenceCsv => ".confidence.csv",
       Self::ReconstructedNucFasta => ".reconstructed-nuc.fasta",
       Self::ReconstructedAaFasta => ".reconstructed-aa.{cds}.fasta",
       Self::TraitsCsv => ".traits.csv",
       Self::ClockCsv => ".clock.csv",
+      Self::Tracelog => ".tracelog.csv",
     }
   }
 
+  /// Dispatch tag for the non-styled tree formats. Styled formats (`Nwk`, `Nexus`) carry a style
+  /// and are converted via `styled_tree_write_kind`, so they return `None` here.
   pub fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
     match self {
-      Self::Nwk => Some(TreeWriteKind::nwk(NwkStyle::Plain)),
-      Self::NwkAnnotated => Some(TreeWriteKind::nwk(NwkStyle::Beast)),
-      Self::NwkNhx => Some(TreeWriteKind::nwk(NwkStyle::Nhx)),
-      Self::Nexus => Some(TreeWriteKind::nexus(NwkStyle::Plain)),
-      Self::NexusAnnotated => Some(TreeWriteKind::nexus(NwkStyle::Beast)),
-      Self::NexusNhx => Some(TreeWriteKind::nexus(NwkStyle::Nhx)),
       Self::Auspice => Some(TreeWriteKind::Auspice),
       Self::Phyloxml => Some(TreeWriteKind::Phyloxml),
       Self::PhyloxmlJson => Some(TreeWriteKind::PhyloxmlJson),
@@ -130,11 +127,7 @@ impl OutputSelection {
     match self {
       Self::All => "--output-selection=all",
       Self::Nwk => "--output-tree-nwk",
-      Self::NwkAnnotated => "--output-tree-nwk-annotated",
-      Self::NwkNhx => "--output-tree-nwk-nhx",
       Self::Nexus => "--output-tree-nexus",
-      Self::NexusAnnotated => "--output-tree-nexus-annotated",
-      Self::NexusNhx => "--output-tree-nexus-nhx",
       Self::Auspice => "--output-tree-auspice",
       Self::Phyloxml => "--output-tree-phyloxml",
       Self::PhyloxmlJson => "--output-tree-phyloxml-json",
@@ -145,11 +138,13 @@ impl OutputSelection {
       Self::AugurNodeData => "--output-augur-node-data",
       Self::Gtr => "--output-gtr",
       Self::ClockModel => "--output-clock-model",
-      Self::Confidence => "--output-confidence",
+      Self::ConfidenceTsv => "--output-confidence-tsv",
+      Self::ConfidenceCsv => "--output-confidence-csv",
       Self::ReconstructedNucFasta => "--output-reconstructed-nuc-fasta",
       Self::ReconstructedAaFasta => "--output-reconstructed-aa-fasta",
       Self::TraitsCsv => "--output-traits-csv",
       Self::ClockCsv => "--output-clock-csv",
+      Self::Tracelog => "--output-tracelog",
     }
   }
 
@@ -157,11 +152,7 @@ impl OutputSelection {
   fn tree_field(self, args: &OutputCoreArgs) -> Option<Option<&Path>> {
     match self {
       Self::Nwk => Some(args.output_tree_nwk.as_deref()),
-      Self::NwkAnnotated => Some(args.output_tree_nwk_annotated.as_deref()),
-      Self::NwkNhx => Some(args.output_tree_nwk_nhx.as_deref()),
       Self::Nexus => Some(args.output_tree_nexus.as_deref()),
-      Self::NexusAnnotated => Some(args.output_tree_nexus_annotated.as_deref()),
-      Self::NexusNhx => Some(args.output_tree_nexus_nhx.as_deref()),
       Self::Auspice => Some(args.output_tree_auspice.as_deref()),
       Self::Phyloxml => Some(args.output_tree_phyloxml.as_deref()),
       Self::PhyloxmlJson => Some(args.output_tree_phyloxml_json.as_deref()),
@@ -180,6 +171,102 @@ impl std::fmt::Display for OutputSelection {
   }
 }
 
+/// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+pub enum NwkStyleArg {
+  Plain,
+  Beast,
+  Nhx,
+}
+
+impl From<NwkStyleArg> for NwkStyle {
+  fn from(value: NwkStyleArg) -> Self {
+    match value {
+      NwkStyleArg::Plain => Self::Plain,
+      NwkStyleArg::Beast => Self::Beast,
+      NwkStyleArg::Nhx => Self::Nhx,
+    }
+  }
+}
+
+/// Secondary filename extension that distinguishes style-specific tree files when more than one
+/// style is requested. Plain keeps the base name (no secondary extension).
+fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
+  match style {
+    NwkStyle::Plain => "",
+    NwkStyle::Beast => ".annotated",
+    NwkStyle::Nhx => ".nhx",
+  }
+}
+
+/// Generates a per-command CLI selection enum plus its conversion to the internal `OutputSelection`.
+///
+/// Every command exposes the full tree-format surface (`Nwk`..`Dot`) plus `All`; the per-command
+/// extras are the non-tree outputs that command supports. The CLI enum is the validation layer:
+/// clap rejects values outside the command's variant set.
+macro_rules! per_command_output_selection {
+  ($name:ident { $($extra:ident),* $(,)? }) => {
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+    #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+    pub enum $name {
+      All,
+      Nwk,
+      Nexus,
+      Auspice,
+      Phyloxml,
+      PhyloxmlJson,
+      MatPb,
+      MatJson,
+      GraphJson,
+      Dot,
+      $($extra),*
+    }
+
+    impl From<$name> for OutputSelection {
+      fn from(value: $name) -> Self {
+        match value {
+          $name::All => Self::All,
+          $name::Nwk => Self::Nwk,
+          $name::Nexus => Self::Nexus,
+          $name::Auspice => Self::Auspice,
+          $name::Phyloxml => Self::Phyloxml,
+          $name::PhyloxmlJson => Self::PhyloxmlJson,
+          $name::MatPb => Self::MatPb,
+          $name::MatJson => Self::MatJson,
+          $name::GraphJson => Self::GraphJson,
+          $name::Dot => Self::Dot,
+          $($name::$extra => Self::$extra),*
+        }
+      }
+    }
+  };
+}
+
+per_command_output_selection!(AncestralOutputSelection {
+  AugurNodeData,
+  Gtr,
+  ReconstructedNucFasta,
+  ReconstructedAaFasta,
+});
+per_command_output_selection!(TimetreeOutputSelection {
+  AugurNodeData,
+  Gtr,
+  ClockModel,
+  ConfidenceTsv,
+  Tracelog,
+});
+per_command_output_selection!(ClockOutputSelection { ClockModel, ClockCsv });
+per_command_output_selection!(MugrationOutputSelection {
+  AugurNodeData,
+  Gtr,
+  ConfidenceCsv,
+  TraitsCsv,
+});
+per_command_output_selection!(OptimizeOutputSelection { AugurNodeData, Gtr });
+per_command_output_selection!(PruneOutputSelection { Gtr });
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CommandKind {
   Ancestral,
@@ -191,13 +278,26 @@ pub enum CommandKind {
 }
 
 impl CommandKind {
+  /// Full set selectable on this command: every tree format plus the command's non-tree outputs.
+  /// This is what `--output-selection=all` expands to before per-output producibility filtering.
   #[allow(clippy::enum_glob_use)]
-  pub fn available_outputs(self) -> BTreeSet<OutputSelection> {
-    let tree_formats = self.available_tree_outputs();
-    let non_tree = self.non_tree_outputs();
-    &tree_formats | &non_tree
+  pub fn all_selectable(self) -> BTreeSet<OutputSelection> {
+    use OutputSelection::*;
+    let tree = btreeset![
+      Nwk,
+      Nexus,
+      Auspice,
+      Phyloxml,
+      PhyloxmlJson,
+      MatPb,
+      MatJson,
+      GraphJson,
+      Dot
+    ];
+    &tree | &self.non_tree_outputs()
   }
 
+  /// Outputs produced by `--output-all` without an explicit `--output-selection`.
   #[allow(clippy::enum_glob_use)]
   pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
@@ -207,28 +307,10 @@ impl CommandKind {
       btreeset![Nwk, Nexus]
     };
     let mut non_tree = self.non_tree_outputs();
-    non_tree.remove(&ReconstructedAaFasta);
-    non_tree.remove(&Confidence);
-    &tree_defaults | &non_tree
-  }
-
-  #[allow(clippy::enum_glob_use)]
-  fn available_tree_outputs(self) -> BTreeSet<OutputSelection> {
-    use OutputSelection::*;
-    let mut tree = btreeset![
-      Nwk,
-      NwkAnnotated,
-      NwkNhx,
-      Nexus,
-      NexusAnnotated,
-      NexusNhx,
-      GraphJson,
-      Dot
-    ];
-    if self == Self::Timetree {
-      tree.insert(Auspice);
+    for non_default in [ReconstructedAaFasta, ConfidenceTsv, ConfidenceCsv, Tracelog] {
+      non_tree.remove(&non_default);
     }
-    tree
+    &tree_defaults | &non_tree
   }
 
   #[allow(clippy::enum_glob_use)]
@@ -236,9 +318,9 @@ impl CommandKind {
     use OutputSelection::*;
     match self {
       Self::Ancestral => btreeset![AugurNodeData, Gtr, ReconstructedNucFasta, ReconstructedAaFasta],
-      Self::Timetree => btreeset![AugurNodeData, Gtr, ClockModel, Confidence],
+      Self::Timetree => btreeset![AugurNodeData, Gtr, ClockModel, ConfidenceTsv, Tracelog],
       Self::Optimize => btreeset![AugurNodeData, Gtr],
-      Self::Mugration => btreeset![AugurNodeData, Gtr, Confidence, TraitsCsv],
+      Self::Mugration => btreeset![AugurNodeData, Gtr, ConfidenceCsv, TraitsCsv],
       Self::Clock => btreeset![ClockModel, ClockCsv],
       Self::Prune => btreeset![Gtr],
     }
@@ -246,21 +328,139 @@ impl CommandKind {
 
   pub fn stem(self) -> &'static str {
     match self {
-      Self::Ancestral => "annotated_tree",
+      Self::Ancestral => "ancestral",
       Self::Timetree => "timetree",
-      Self::Optimize => "annotated_tree",
-      Self::Mugration => "annotated_tree",
-      Self::Clock => "rerooted",
-      Self::Prune => "pruned_tree",
+      Self::Optimize => "optimize",
+      Self::Mugration => "mugration",
+      Self::Clock => "clock",
+      Self::Prune => "prune",
     }
   }
+
+  /// Default NWK annotation styles when `--output-nwk-style` is not given. Plain for all commands;
+  /// this is the extension point for per-command style defaults.
+  pub fn default_nwk_styles(self) -> Vec<NwkStyle> {
+    vec![NwkStyle::Plain]
+  }
+
+  /// Whether this command can write Auspice JSON (requires command-specific annotation data).
+  fn has_auspice_writer(self) -> bool {
+    self == Self::Timetree
+  }
+}
+
+/// Whether an output has a working writer for this command, ignoring runtime data prerequisites
+/// (those are checked at write time by each command). Unimplemented tree writers and Auspice on
+/// commands without an Auspice writer are not producible.
+fn is_producible(command: CommandKind, sel: OutputSelection) -> bool {
+  if sel.is_unimplemented() {
+    return false;
+  }
+  if sel == OutputSelection::Auspice {
+    return command.has_auspice_writer();
+  }
+  true
+}
+
+fn unproducible_reason(command: CommandKind, sel: OutputSelection) -> String {
+  if sel.is_unimplemented() {
+    "not yet implemented".to_owned()
+  } else {
+    format!("not available for the {} command", command.stem())
+  }
+}
+
+/// Per-file flags are explicit requests: a non-producible target is an error at startup rather than
+/// a silent skip.
+fn ensure_producible_explicit(command: CommandKind, sel: OutputSelection) -> Result<(), Report> {
+  if is_producible(command, sel) {
+    return Ok(());
+  }
+  make_error!(
+    "Output '{}' is {} for the {} command",
+    sel.flag_name(),
+    if sel.is_unimplemented() {
+      "not yet implemented"
+    } else {
+      "not available"
+    },
+    command.stem()
+  )
+}
+
+/// Insert a secondary filename extension before the final extension of a path.
+/// `my.nwk` + `.annotated` -> `my.annotated.nwk`. Empty secondary leaves the path unchanged.
+fn insert_secondary_ext(path: &Path, secondary: &str) -> PathBuf {
+  if secondary.is_empty() {
+    return path.to_path_buf();
+  }
+  if let (Some(stem), Some(ext)) = (path.file_stem(), path.extension()) {
+    let mut name = OsString::from(stem);
+    name.push(secondary);
+    name.push(".");
+    name.push(ext);
+    path.with_file_name(name)
+  } else {
+    let mut name = OsString::from(path.as_os_str());
+    name.push(secondary);
+    PathBuf::from(name)
+  }
+}
+
+fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWriteKind {
+  match variant {
+    OutputSelection::Nwk => TreeWriteKind::nwk(style),
+    OutputSelection::Nexus => TreeWriteKind::nexus(style),
+    _ => unreachable!("styled_tree_write_kind called on non-styled variant"),
+  }
+}
+
+/// Expand a single per-file NWK/Nexus override path across the selected styles.
+///
+/// A single style uses the override path verbatim; multiple styles insert each style's secondary
+/// extension so the files do not collide.
+fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, PathBuf)> {
+  let multi = styles.len() > 1;
+  styles
+    .iter()
+    .map(|&style| {
+      let p = if multi {
+        insert_secondary_ext(path, nwk_style_secondary_ext(style))
+      } else {
+        path.to_path_buf()
+      };
+      (style, p)
+    })
+    .collect()
+}
+
+/// Expand an `--output-all` NWK/Nexus output across the selected styles, deriving `{stem}{sec}{ext}`.
+fn expand_outputall_styles(
+  dir: &Path,
+  stem: &str,
+  variant: OutputSelection,
+  styles: &[NwkStyle],
+) -> Vec<(NwkStyle, PathBuf)> {
+  let multi = styles.len() > 1;
+  let primary = variant.extension();
+  styles
+    .iter()
+    .map(|&style| {
+      let secondary = if multi { nwk_style_secondary_ext(style) } else { "" };
+      (style, dir.join(format!("{stem}{secondary}{primary}")))
+    })
+    .collect()
 }
 
 /// Three-tier output selection shared by every tree-writing command.
 ///
 /// Tier 1: `--output-all` bulk directory with default file names.
-/// Tier 2: `--output-selection` restricts which outputs tier 1 produces.
+/// Tier 2: `--output-selection` (a per-command field) restricts which outputs tier 1 produces.
 /// Tier 3: Per-file `--output-tree-*` flags override or supplement tiers 1-2.
+///
+/// NWK annotation style (`--output-nwk-style`) is orthogonal and expands every NWK/Nexus output
+/// across the selected styles. Topology ordering is a separate concern (`TopologyOrderArgs`) that
+/// each command flattens independently.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
@@ -268,92 +468,45 @@ pub struct OutputCoreArgs {
   /// Write all default output files into this directory.
   ///
   /// Produces the default set of tree and non-tree outputs for the command, using
-  /// `<dir>/<stem>.<ext>` paths. Combine with `--output-selection` to restrict which
+  /// `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
   /// outputs are written.
   ///
   /// Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
   /// supplement the files produced by `--output-all`.
-  #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath))]
+  #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   pub output_all: Option<PathBuf>,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
+  /// NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
   ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to the
-  /// full default set. Requires `--output-all`.
-  ///
-  /// Per-file flags are always honored regardless of this selection.
-  #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', requires = "output_all"))]
-  pub output_selection: Vec<OutputSelection>,
+  /// Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+  /// secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+  #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', help_heading = "Output"))]
+  pub output_nwk_style: Vec<NwkStyleArg>,
 
-  // -- Newick family (6 fields) --
-  /// Path to output Newick tree file (plain, no annotations).
+  /// Path to output Newick tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+  /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_nwk: Option<PathBuf>,
 
-  /// Path to output Newick tree file with BEAST-style annotations.
+  /// Path to output Nexus tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
-  pub output_tree_nwk_annotated: Option<PathBuf>,
-
-  /// Path to output Newick tree file with NHX annotations.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+  /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
-  pub output_tree_nwk_nhx: Option<PathBuf>,
-
-  // -- Nexus family (6 fields) --
-  /// Path to output Nexus tree file (plain embedded Newick).
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_nexus: Option<PathBuf>,
 
-  /// Path to output Nexus tree file with BEAST-style annotations.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
-  pub output_tree_nexus_annotated: Option<PathBuf>,
-
-  /// Path to output Nexus tree file with NHX annotations.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
-  pub output_tree_nexus_nhx: Option<PathBuf>,
-
-  // -- Other tree formats (7 fields) --
   /// Path to output Auspice v2 JSON tree file.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
@@ -362,7 +515,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_auspice: Option<PathBuf>,
 
   /// Path to output PhyloXML tree file.
@@ -373,7 +526,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_phyloxml: Option<PathBuf>,
 
   /// Path to output PhyloXML-JSON tree file.
@@ -384,7 +537,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_phyloxml_json: Option<PathBuf>,
 
   /// Path to output UShER MAT protobuf tree file.
@@ -395,7 +548,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_mat_pb: Option<PathBuf>,
 
   /// Path to output UShER MAT JSON tree file.
@@ -406,7 +559,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_mat_json: Option<PathBuf>,
 
   /// Path to output internal graph JSON tree file.
@@ -417,7 +570,7 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_graph_json: Option<PathBuf>,
 
   /// Path to output Graphviz DOT tree file.
@@ -428,138 +581,112 @@ pub struct OutputCoreArgs {
   /// Use `-` to write uncompressed to stdout.
   ///
   /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tree_dot: Option<PathBuf>,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  pub topology_order_args: TopologyOrderArgs,
 }
 
 pub struct ResolvedOutputs {
   pub tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
   pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
-  pub topology_order: TopologyOrderSpec,
 }
 
 impl OutputCoreArgs {
-  pub fn resolve<N, E, D>(
+  /// Resolve the three-tier output configuration into concrete file paths.
+  ///
+  /// `selection` is the command's `--output-selection` already converted to `OutputSelection`.
+  /// `non_tree_fields` carries the command's per-file non-tree flag values keyed by selection.
+  ///
+  /// Per-file flags are honored unconditionally and take precedence over `--output-all`; explicit
+  /// per-file flags targeting a non-producible output error early. Outputs requested via selection
+  /// (or `all`) that are not producible are warned and skipped. Runtime data prerequisites (e.g. a
+  /// fitted GTR model) are checked by each command at write time, not here.
+  pub fn resolve(
     &self,
     command: CommandKind,
-    graph: &Graph<N, E, D>,
+    selection: &[OutputSelection],
     non_tree_fields: &[(OutputSelection, Option<&Path>)],
-    input_order: Option<Vec<String>>,
-  ) -> Result<ResolvedOutputs, Report>
-  where
-    N: GraphNode + Named,
-    E: GraphEdge,
-    D: Sync + Send,
-  {
-    use strum::IntoEnumIterator;
-
+  ) -> Result<ResolvedOutputs, Report> {
     let stem = command.stem();
-    let available = command.available_outputs();
-
-    if !self.output_selection.is_empty() && self.output_all.is_none() {
-      return make_error!("--output-selection requires --output-all");
-    }
+    let styles = self.effective_nwk_styles(command);
 
     let mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf> = BTreeMap::new();
     let mut non_tree_outputs: BTreeMap<OutputSelection, PathBuf> = BTreeMap::new();
 
-    // Collect per-file overrides: tree fields from self, non-tree from the caller
-    let mut per_file_tree: BTreeMap<OutputSelection, PathBuf> = BTreeMap::new();
-    let mut per_file_non_tree: BTreeMap<OutputSelection, PathBuf> = BTreeMap::new();
-
+    // Tier 3a: per-file tree overrides, honored regardless of --output-all.
+    let mut overridden_tree: BTreeSet<OutputSelection> = BTreeSet::new();
     for variant in OutputSelection::iter() {
-      if variant.is_meta() {
+      if !variant.is_tree() {
         continue;
       }
-      if variant.is_tree() {
-        if let Some(Some(path)) = variant.tree_field(self) {
-          per_file_tree.insert(variant, path.to_path_buf());
+      let Some(Some(path)) = variant.tree_field(self) else {
+        continue;
+      };
+      ensure_producible_explicit(command, variant)?;
+      overridden_tree.insert(variant);
+      if variant.is_styled_tree() {
+        for (style, p) in expand_override_styles(path, &styles) {
+          tree_outputs.insert(styled_tree_write_kind(variant, style), p);
         }
+      } else {
+        let kind = variant.to_tree_write_kind().expect("non-styled tree variant");
+        tree_outputs.insert(kind, path.to_path_buf());
       }
     }
 
+    // Tier 3b: per-file non-tree overrides.
     for &(sel, ref_path) in non_tree_fields {
       if let Some(path) = ref_path {
-        per_file_non_tree.insert(sel, path.to_path_buf());
+        ensure_producible_explicit(command, sel)?;
+        non_tree_outputs.insert(sel, path.to_path_buf());
       }
     }
 
-    // Tier 1+2: if output_all is set, compute default paths for effective selection
+    // Tier 1+2: --output-all fills defaults or the explicit selection.
     if let Some(dir) = &self.output_all {
-      let effective_selection =
-        if self.output_selection.is_empty() || self.output_selection.contains(&OutputSelection::All) {
-          command.default_outputs()
-        } else {
-          self.output_selection.iter().copied().collect()
-        };
+      let effective: BTreeSet<OutputSelection> = if selection.is_empty() {
+        command.default_outputs()
+      } else if selection.contains(&OutputSelection::All) {
+        command.all_selectable()
+      } else {
+        selection.iter().copied().collect()
+      };
 
-      for variant in &effective_selection {
+      for &variant in &effective {
         if variant.is_meta() {
           continue;
         }
-
+        if !is_producible(command, variant) {
+          warn!(
+            "Skipping output '{}': {}",
+            variant.flag_name(),
+            unproducible_reason(command, variant)
+          );
+          continue;
+        }
         if variant.is_tree() {
-          if !per_file_tree.contains_key(variant) {
-            let path = dir.join(format!("{stem}{}", variant.extension()));
-            per_file_tree.insert(*variant, path);
+          if overridden_tree.contains(&variant) {
+            continue;
           }
-        } else if !per_file_non_tree.contains_key(variant) {
-          let path = dir.join(format!("{stem}{}", variant.extension()));
-          per_file_non_tree.insert(*variant, path);
+          if variant.is_styled_tree() {
+            for (style, p) in expand_outputall_styles(dir, stem, variant, &styles) {
+              tree_outputs.entry(styled_tree_write_kind(variant, style)).or_insert(p);
+            }
+          } else {
+            let kind = variant.to_tree_write_kind().expect("non-styled tree variant");
+            tree_outputs
+              .entry(kind)
+              .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
+          }
+        } else {
+          non_tree_outputs
+            .entry(variant)
+            .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
         }
       }
+    } else if !selection.is_empty() {
+      return make_error!("--output-selection requires --output-all");
     }
 
-    // Validate tree outputs against command availability
-    for sel in per_file_tree.keys() {
-      if !available.contains(sel) {
-        return make_error!(
-          "Output format '{}' is not available for this command. \
-           Available tree outputs: {}",
-          sel.flag_name(),
-          available
-            .iter()
-            .filter(|s| s.is_tree())
-            .map(|s| s.flag_name())
-            .collect::<Vec<_>>()
-            .join(", ")
-        );
-      }
-    }
-
-    // Validate non-tree outputs against command availability
-    for sel in per_file_non_tree.keys() {
-      if !available.contains(sel) {
-        return make_error!(
-          "Output format '{}' is not available for this command. \
-           Available non-tree outputs: {}",
-          sel.flag_name(),
-          available
-            .iter()
-            .filter(|s| !s.is_tree() && !s.is_meta())
-            .map(|s| s.flag_name())
-            .collect::<Vec<_>>()
-            .join(", ")
-        );
-      }
-    }
-
-    // Convert tree selections to TreeWriteKind
-    for (sel, path) in &per_file_tree {
-      if let Some(kind) = sel.to_tree_write_kind() {
-        tree_outputs.insert(kind, path.clone());
-      }
-    }
-
-    // Collect non-tree outputs
-    for (sel, path) in per_file_non_tree {
-      non_tree_outputs.insert(sel, path);
-    }
-
-    // Error if no outputs at all
     if tree_outputs.is_empty() && non_tree_outputs.is_empty() {
       return make_error!(
         "No output flags provided. At least one is required: \
@@ -567,7 +694,6 @@ impl OutputCoreArgs {
       );
     }
 
-    // Create directories
     if let Some(dir) = &self.output_all {
       std::fs::create_dir_all(dir)
         .wrap_err_with(|| format!("Failed to create output directory '{}'", dir.display()))?;
@@ -581,14 +707,26 @@ impl OutputCoreArgs {
       }
     }
 
-    // Resolve topology order
-    let topology_order = self.topology_order_args.resolve_topology_order(graph, input_order)?;
-
     Ok(ResolvedOutputs {
       tree_outputs,
       non_tree_outputs,
-      topology_order,
     })
+  }
+
+  /// Selected styles, de-duplicated and order-preserving, falling back to the command default.
+  fn effective_nwk_styles(&self, command: CommandKind) -> Vec<NwkStyle> {
+    if self.output_nwk_style.is_empty() {
+      return command.default_nwk_styles();
+    }
+    let mut seen: BTreeSet<NwkStyle> = BTreeSet::new();
+    let mut styles = Vec::new();
+    for &style in &self.output_nwk_style {
+      let style: NwkStyle = style.into();
+      if seen.insert(style) {
+        styles.push(style);
+      }
+    }
+    styles
   }
 }
 
@@ -597,7 +735,7 @@ impl OutputCoreArgs {
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
   /// Order tree topology before writing output files.
-  #[cfg_attr(feature = "clap", clap(long, value_enum))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order"))]
   #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order_target_source"))]
   #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order_target_file"))]
@@ -605,19 +743,19 @@ pub struct TopologyOrderArgs {
   pub ladderize: Option<LadderizeArg>,
 
   /// Canonical topology ordering preset.
-  #[cfg_attr(feature = "clap", clap(long, value_enum))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   pub topology_order: Option<TopologyOrderArg>,
 
   /// Source for target-order topology sorting.
-  #[cfg_attr(feature = "clap", clap(long, value_enum))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   pub topology_order_target_source: Option<TopologyOrderTargetSourceArg>,
 
   /// File used by list or reference-topology target-order sources.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Tree ordering"))]
   pub topology_order_target_file: Option<PathBuf>,
 
   /// Aggregate used to map a subtree to a target-order position.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TopologyOrderTargetAggregateArg::default()))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TopologyOrderTargetAggregateArg::default(), help_heading = "Tree ordering"))]
   #[default(TopologyOrderTargetAggregateArg::Mean)]
   pub topology_order_target_aggregate: TopologyOrderTargetAggregateArg,
 }

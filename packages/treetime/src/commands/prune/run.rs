@@ -7,6 +7,7 @@ use crate::make_error;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use eyre::Report;
 use itertools::Itertools;
+use log::warn;
 use maplit::btreeset;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -34,11 +35,16 @@ pub fn run_prune(
   let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
+  let selection: Vec<OutputSelection> = args
+    .output_selection
+    .iter()
+    .copied()
+    .map(OutputSelection::from)
+    .collect();
   let resolved = args.output.resolve(
     CommandKind::Prune,
-    &graph,
+    &selection,
     &[(OutputSelection::Gtr, args.output_gtr.as_deref())],
-    Some(input_order),
   )?;
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
@@ -75,17 +81,25 @@ pub fn run_prune(
   progress.report("Writing output", 0.8, "");
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr = output.gtr.as_ref().ok_or_else(|| {
-      crate::make_report!(
-        "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln."
-      )
-    })?;
-    let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
-    write_gtr_json(&gtr_output, path)?;
+    match output.gtr.as_ref() {
+      Some(gtr) => {
+        let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
+        write_gtr_json(&gtr_output, path)?;
+      },
+      None if args.output_gtr.is_some() => {
+        return make_error!(
+          "GTR output requested but no GTR model was fitted. Provide sequence alignment input with --aln."
+        );
+      },
+      None => warn!("Skipping GTR output: no GTR model was fitted (provide sequence alignment input with --aln)"),
+    }
   }
 
   if !resolved.tree_outputs.is_empty() {
-    let plan = resolved.topology_order.plan(&output.graph)?;
+    let topology_order = args
+      .topology_order
+      .resolve_topology_order(&output.graph, Some(input_order))?;
+    let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
     write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
   }

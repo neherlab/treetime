@@ -5,7 +5,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::OutputCoreArgs;
+use crate::commands::shared::output::{AncestralOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -140,6 +140,20 @@ pub struct TreetimeAncestralArgs {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputCoreArgs,
+
+  /// Comma-separated list of outputs to produce with `--output-all`.
+  ///
+  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+  /// available for this command. Requires `--output-all`. Per-file flags are always honored
+  /// regardless of this selection.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
+  )]
+  pub output_selection: Vec<AncestralOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub topology_order: TopologyOrderArgs,
 
   /// Number of outer GTR refinement iterations.
   ///

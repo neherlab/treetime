@@ -1,5 +1,5 @@
 use crate::commands::shared::metadata::MetadataIdArgs;
-use crate::commands::shared::output::OutputCoreArgs;
+use crate::commands::shared::output::{MugrationOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use serde::{Deserialize, Serialize};
@@ -35,11 +35,11 @@ pub struct TreetimeMugrationArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub metadata_id: MetadataIdArgs,
 
-  /// Path to output confidence profile CSV.
+  /// Path to output state-probability-profile CSV.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "confidence", value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  pub output_confidence: Option<PathBuf>,
+  pub output_confidence_csv: Option<PathBuf>,
 
   /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
   #[cfg_attr(feature = "clap", clap(long))]
@@ -111,4 +111,18 @@ pub struct TreetimeMugrationArgs {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputCoreArgs,
+
+  /// Comma-separated list of outputs to produce with `--output-all`.
+  ///
+  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+  /// available for this command. Requires `--output-all`. Per-file flags are always honored
+  /// regardless of this selection.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
+  )]
+  pub output_selection: Vec<MugrationOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub topology_order: TopologyOrderArgs,
 }

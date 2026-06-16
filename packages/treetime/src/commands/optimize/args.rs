@@ -2,7 +2,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output::{DivergenceUnits, OutputCoreArgs};
+use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -65,6 +65,20 @@ pub struct TreetimeOptimizeArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_gtr: Option<PathBuf>,
+
+  /// Comma-separated list of outputs to produce with `--output-all`.
+  ///
+  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+  /// available for this command. Requires `--output-all`. Per-file flags are always honored
+  /// regardless of this selection.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
+  )]
+  pub output_selection: Vec<OptimizeOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  pub topology_order: TopologyOrderArgs,
 
   /// Maximum number of iterations
   #[cfg_attr(feature = "clap", clap(long, default_value_t = 10))]

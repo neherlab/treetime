@@ -50,7 +50,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
     use treetime::commands::shared::alphabet::AlphabetArgs;
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::OutputCoreArgs;
+    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -85,6 +85,8 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
       gtr_iterations: s.gtr_iterations,
       site_specific_gtr: s.site_specific_gtr,
       seed: s.seed,
@@ -243,7 +245,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::metadata::DateColumnArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs};
+    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -312,12 +314,14 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       output_augur_node_data: None,
       output_gtr: None,
       output_clock_model: None,
-      output_confidence: None,
+      output_confidence_tsv: None,
+      output_tracelog: s.tracelog.map(PathBuf::from),
       output: OutputCoreArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
-      tracelog: s.tracelog.map(PathBuf::from),
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
       seed: s.seed,
       aa: s.aa,
       custom_gtr: None,
@@ -352,7 +356,7 @@ pub struct ServerMugrationArgs {
 
 impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
   fn from(s: ServerMugrationArgs) -> Self {
-    use treetime::commands::shared::output::OutputCoreArgs;
+    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       tree: s.tree.map(PathBuf::from),
       attribute: s.attribute,
@@ -365,7 +369,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
         }
         id
       },
-      output_confidence: s.confidence.map(PathBuf::from),
+      output_confidence_csv: s.confidence.map(PathBuf::from),
       pc: s.pc,
       missing_data: s.missing_data,
       missing_weights_threshold: s.missing_weights_threshold,
@@ -381,6 +385,8 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
     }
   }
 }
@@ -417,7 +423,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::alphabet::AlphabetArgs;
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs};
+    use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -433,6 +439,8 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
       max_iter: s.max_iter,
       dp: s.dp,
       damping: s.damping,
@@ -472,7 +480,7 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
   fn from(s: ServerPruneArgs) -> Self {
     use treetime::commands::shared::alignment::AlignmentArgs;
     use treetime::commands::shared::alphabet::AlphabetArgs;
-    use treetime::commands::shared::output::OutputCoreArgs;
+    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -483,6 +491,8 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
       output_gtr: None,
       prune_short: s.prune_short,
       prune_empty: s.prune_empty,
