@@ -4,7 +4,7 @@ use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::{Read, Write};
 use std::path::Path;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_utils::io::file::create_file_or_stdout;
@@ -19,7 +19,7 @@ pub use util_usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, UsherT
 pub fn usher_mat_pb_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -31,7 +31,7 @@ where
 pub fn usher_mat_pb_read_bytes<C, N, E, D>(buf: impl Buf) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -42,7 +42,7 @@ where
 pub fn usher_mat_pb_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -53,7 +53,7 @@ where
 pub fn usher_mat_json_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -66,7 +66,7 @@ where
 pub fn usher_mat_json_read_str<C, N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -77,7 +77,7 @@ where
 pub fn usher_mat_json_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -195,7 +195,7 @@ pub struct UsherTreeContext<'a> {
 pub trait UsherRead<N, E, D>: Sized
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
 {
   fn new(tree: &UsherTree) -> Result<Self, Report>;
@@ -209,7 +209,7 @@ where
 pub fn usher_to_graph<C, N, E, D>(tree: &UsherTree) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
-  E: GraphEdge + EdgeFromNwk,
+  E: GraphEdge + EdgeFromNwk + HasBranchLength,
   D: Sync + Send + Default,
   C: UsherRead<N, E, D>,
 {
@@ -231,19 +231,29 @@ where
 
   let mut i = 0;
   graph.iter_depth_first_preorder_forward(|mut node| {
+    // Branch lengths come from the embedded Newick parsed above; recover them so the
+    // converter can place them on the reconstructed edge alongside the mutations.
+    let branch_length = node
+      .parents
+      .first()
+      .and_then(|(_, edge)| edge.read_arc().branch_length())
+      .unwrap_or(0.0);
     let context = UsherTreeContext {
       node: UsherNodeImpl {
         index: i,
         name: node.payload.name().map(|name| name.as_ref().to_owned()),
-        branch_length: 0.0,
+        branch_length,
         clade_annotations: tree.metadata[i].clade_annotations.clone(),
         mutations: tree.node_mutations[i].mutation.clone(),
       },
       tree,
     };
 
-    let (graph_node, _) = converter.usher_node_to_graph_components(&context)?;
+    let (graph_node, graph_edge) = converter.usher_node_to_graph_components(&context)?;
     *node.payload = graph_node;
+    if let Some((_, edge)) = node.parents.first() {
+      *edge.write_arc() = graph_edge;
+    }
     i += 1;
     Ok(())
   })?;
