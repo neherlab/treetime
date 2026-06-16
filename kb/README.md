@@ -2,6 +2,10 @@
 
 Shared knowledge base (KB). AI agents and humans collaborate here: documenting progress, tracking issues, recording design decisions, and maintaining project knowledge.
 
+> 💡 ## LLM wiki pattern
+>
+> This knowledge base follows the [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern: raw source material is compiled by AI agents into structured, cross-linked knowledge articles. The organizing structure is human-defined. AI maintains content within that structure.
+
 ## Motivation
 
 - AI continuity. Sessions start with zero memory. KB persists decisions, defects, and findings so knowledge compounds instead of being rediscovered.
@@ -13,18 +17,18 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 ## Directories
 
-| Directory                  | Description                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------- |
-| [`_raw/`](_raw/)           | Human-produced source material (specifications, papers, notes). Read-only for AI.                 |
-| [`algo/`](algo/)           | Algorithm documentation: scientific background, implementation status, v0/v1 locations            |
-| [`decisions/`](decisions/) | Deliberate v1 design choices with rationale (one file per decision)                               |
-| [`features/`](features/)   | Feature parity checklist: `[x]` done, `[/]` partial, `[ ]` not done                               |
-| [`issues/`](issues/)       | Open work items by severity (H/M/N prefix): bugs, missing features, stubs, behavioral differences |
-| [`proposals/`](proposals/) | New features with motivation, impact, and validation plan (pre-implementation)                    |
-| [`reports/`](reports/)     | Research reports on algorithms, optimization methods, and implementation analysis                 |
-| [`tests/`](tests/)         | Test coverage documentation by domain                                                             |
-| [`tickets/`](tickets/)     | Actionable work items derived from issues, ready for execution                                    |
-| [`v0-errata/`](v0-errata/) | Defects in v0 that v1 correctly avoids (2+ evidence sources required)                             |
+| Directory                  | Description                                                                                                                                                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`_raw/`](_raw/)           | Human-produced source material (specifications, papers, notes). Read-only for AI.                                                                                                                                                               |
+| [`algo/`](algo/)           | Algorithm documentation: scientific background, implementation status, v0/v1 locations                                                                                                                                                          |
+| [`decisions/`](decisions/) | Deliberate v1 design choices with rationale (one file per decision)                                                                                                                                                                             |
+| [`features/`](features/)   | Feature parity checklist: `[x]` done, `[/]` partial, `[ ]` not done                                                                                                                                                                             |
+| [`issues/`](issues/)       | Concrete problems. Severity-prefixed (H/M/N). The working list agents consult before domain work. PREFER independent issues, but entangled problems may share a file when splitting would lose clarity                                          |
+| [`proposals/`](proposals/) | Design documents analyzing a problem space with options and tradeoffs. Source material for issues -- every actionable item in a proposal must be extracted into a separate issue so it is not lost when the proposal is no longer actively read |
+| [`reports/`](reports/)     | Research reports on algorithms, optimization methods, and implementation analysis                                                                                                                                                               |
+| [`tests/`](tests/)         | Test coverage documentation by domain                                                                                                                                                                                                           |
+| [`tickets/`](tickets/)     | Implementation instructions for a coding agent. One task per file, executable in one session without further research or decisions. Derived from issues only when the implementation path is fully decided                                      |
+| [`v0-errata/`](v0-errata/) | Defects in v0 that v1 correctly avoids (2+ evidence sources required)                                                                                                                                                                           |
 
 ## Structure
 
@@ -62,37 +66,16 @@ Every work item falls into exactly one category:
 | `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
 | `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic                   |
 
+### Proposal lifecycle
+
+- Proposal created during research session with ecosystem survey, design axes, options, tradeoffs
+- Every actionable item extracted into a separate issue in [`issues/`](issues/). Items left only in proposals are effectively invisible to agents
+- User decides per axis. Decided items become tickets (if immediately implementable) or stay as issues (if further research needed)
+- Implemented proposals move to [`decisions/`](decisions/)
+
 ### Ticket lifecycle
 
-- Issue exists in [`issues/`](issues/). Ticket created in [`tickets/`](tickets/) with `## Related issues` linking back.
-- Ticket executed. Both deleted if fully resolved.
-- Partial resolution: update both to reflect remaining work.
-
-## LLM wiki pattern
-
-This knowledge base follows the [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern: raw source material is compiled by AI agents into structured, cross-linked knowledge articles. The organizing structure is human-defined. AI maintains content within that structure.
-
-### How this KB maps to the canonical pattern
-
-- [`_raw/`](_raw/) = `raw/` in the canonical pattern. Human-curated source documents that AI reads but does not modify.
-- All other directories = compiled wiki. AI-maintained articles derived from raw material, code analysis, and ongoing development.
-- `README.md` per directory = index files. Provide navigation and summary without requiring full-text search.
-- Automated review and lint passes = health checks. Detect inconsistencies, stale content, and quality issues.
-- Ticket resolution cycle = filing outputs back. Findings from code work feed back as new issues, decisions, and proposals.
-
-### Differences from canonical
-
-What this KB adds:
-
-- Severity-tracked issues with H/M/N classification
-- Ticket dispatch layer separating problem acknowledgement from actionable work items
-- Cross-category taxonomy enforcing one category per item
-- Deterministic lint via specialized skills (not just LLM judgment)
-
-What the canonical pattern has that this KB lacks:
-
-- Systematic contradiction detection across the entire KB
-- Automated stale-claim propagation (when one article changes, dependent articles flagged)
-- Claim-level provenance notation (tracing specific claims to source lines)
-
-These are possible future improvements.
+- Issue exists in [`issues/`](issues/). Ticket created in [`tickets/`](tickets/) with `## Related issues` linking back
+- Ticket readiness: all design decisions made, implementation path clear, no open questions requiring user input. An issue with undecided design axes is not ready for a ticket
+- Ticket executed. Both deleted if fully resolved
+- Partial resolution: update both to reflect remaining work

@@ -57,6 +57,8 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 - [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md) - related input architecture gap
 - [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md) - related input limitation
 
-## Related proposals
+## Related
 
+- [N-io-name-reconciliation-duplicated.md](N-io-name-reconciliation-duplicated.md) - reconciliation logic duplicated across subsystems
+- Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) - ecosystem survey, four design axes, architecture analysis
 - [Configuration file format for multi-partition analysis](../proposals/config-file-multi-partition.md) - could include explicit name mappings

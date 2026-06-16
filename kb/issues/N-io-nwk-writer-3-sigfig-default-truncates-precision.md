@@ -12,7 +12,7 @@ float_to_digits(
 
 `0.123456` becomes `0.123`. This silently destroys precision on read-write-read cycles.
 
-Major parsers write higher precision by default: Biopython uses 5 decimal places (`%1.5f`), ETE uses 6 significant digits (`%g`), DendroPy uses 10 digits (`%.10e`), gotree writes full precision.
+Major parsers write higher precision by default: Biopython uses 5 decimal places (`%1.5f`), ETE uses 6 significant digits (`%g`), DendroPy defaults to full precision via Python's `str(float)`, gotree writes full precision. See [kb/proposals/newick-branch-length-precision.md](../proposals/newick-branch-length-precision.md) for a full 10-tool source-verified survey.
 
 ## Impact
 

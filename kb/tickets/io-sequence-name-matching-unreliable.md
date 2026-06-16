@@ -1,4 +1,15 @@
-# Sequence-to-node name matching is unreliable
+# Implement reliable name reconciliation for tree-data attachment
+
+## Pending decisions
+
+This ticket is blocked on design decisions in [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md):
+
+- Architecture: shared reconciliation function (Option B) vs per-site fix (Option A) vs trait-based (Option C)
+- Axis 1: where to build the index (parse time vs attachment boundary)
+- Axis 3: fuzzy suggestions (include or defer)
+- Axis 4a-4b: name normalization flags (include or defer)
+
+## Problem
 
 The current input model reads tree topology from Newick and sequences from FASTA as separate files, then reconciles them by matching sequence names to leaf node names. This name-based matching is inherently fragile.
 
@@ -101,11 +112,8 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 
 ## Related issues
 
-- Source: [M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md) -- delete after full resolution
-- [Column auto-detection gaps in CSV readers](../issues/M-dates-column-auto-detection-gaps.md) - similar name matching issues for metadata columns
-- [Multi-segment genome input not wired](../issues/N-io-multi-segment-genome-input.md) - related input architecture deficiency
-- [Optimize command accepts only a single alignment](../issues/N-optimize-multi-alignment-input.md) - related input limitation
-
-## Related proposals
-
-- [Configuration file format for multi-partition analysis](../proposals/config-file-multi-partition.md) - could include explicit name mappings
+- Source: [M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
+- Also resolves: [M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)
+- Also resolves: [N-io-name-reconciliation-duplicated.md](../issues/N-io-name-reconciliation-duplicated.md)
+- Related: [M-dates-column-auto-detection-gaps.md](../issues/M-dates-column-auto-detection-gaps.md)
+- Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md)

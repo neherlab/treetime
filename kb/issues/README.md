@@ -100,6 +100,9 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [Large datasets require all sequences in memory simultaneously](N-io-large-dataset-memory-constraint.md)                                            |
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Negligible | I/O          | [Newick writer defaults to 3 significant digits, truncating branch lengths](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)                |
+| Negligible | I/O          | [Graphviz DOT writer uses Newick precision defaults for edge labels](N-io-graphviz-dot-branch-length-precision.md)                                  |
+| Negligible | I/O          | [Name reconciliation logic duplicated across subsystems](N-io-name-reconciliation-duplicated.md)                                                    |
+| Negligible | I/O          | [AA reconstruction runs unconditionally regardless of output selection](N-io-aa-reconstruction-not-gated-on-output-selection.md)                    |
 | Negligible | I/O          | [Edge annotations from Newick not wired into EdgeFromNwk](N-io-edge-annotation-wiring-not-implemented.md)                                           |
 | Negligible | Optimize     | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |
 | Negligible | Optimize     | [initial_guess_mixed allocates Vec\<Sub\> per edge for count only](N-optimize-initial-guess-alloc.md)                                               |

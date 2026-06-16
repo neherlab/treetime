@@ -1,4 +1,10 @@
-# Sequence attachment has O(n squared) complexity
+# Fix O(n squared) sequence attachment complexity
+
+## Pending decisions
+
+This ticket is subsumed by [io-sequence-name-matching-unreliable.md](io-sequence-name-matching-unreliable.md) -- axis 1 of the name matching proposal resolves the quadratic scan as part of the index introduction. The architecture decision (where to build the index) blocks both tickets. See [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md).
+
+## Problem
 
 The sequence attachment loop performs a linear search through all sequences for each leaf node, resulting in O(n squared) complexity where n is the number of leaves/sequences.
 

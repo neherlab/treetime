@@ -59,7 +59,8 @@ for fasta in aln {
 }
 ```
 
-## Related issues
+## Related
 
-- [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md) - the matching itself has reliability issues beyond performance
-- [Dense optimize iteration is slow](N-optimize-dense-iteration-slow.md) - other performance concerns
+- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) - the matching itself has reliability issues beyond performance
+- [N-optimize-dense-iteration-slow.md](N-optimize-dense-iteration-slow.md) - other performance concerns
+- Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) - axis 1 (index lookup) resolves this issue
