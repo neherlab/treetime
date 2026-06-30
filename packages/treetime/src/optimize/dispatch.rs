@@ -10,7 +10,7 @@ use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{Edge, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
@@ -71,6 +71,26 @@ where
   }
 
   let one_mutation = 1.0 / total_length as f64;
+
+  // Before the optimization loop: if the root has exactly two children, capture the ratio of
+  // their branch lengths. Optimizing each edge independently can shift the root placement, so
+  // after the loop we redistribute the optimized total across both root edges in the same ratio.
+  let root_two_child_state: Option<(Arc<RwLock<Edge<E>>>, Arc<RwLock<Edge<E>>>, f64)> =
+    graph.get_exactly_one_root().ok().and_then(|root| {
+      let root_guard = root.read_arc();
+      let children = graph.children_of(&root_guard);
+      if children.len() == 2 {
+        let (_, edge0) = &children[0];
+        let (_, edge1) = &children[1];
+        let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        let total = bl0 + bl1;
+        let ratio = if total > 0.0 { bl0 / total } else { 0.5 };
+        Some((Arc::clone(edge0), Arc::clone(edge1), ratio))
+      } else {
+        None
+      }
+    });
 
   graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
     let edge_key = edge_ref.read_arc().key();
@@ -205,7 +225,19 @@ where
 
     edge.set_branch_length(Some(new_branch_length));
     Ok(())
-  })
+  })?;
+
+  // After the loop: if the root had exactly two children, redistribute the optimized total
+  // branch length across both root edges in the original ratio to preserve the root placement.
+  if let Some((edge0, edge1, ratio)) = root_two_child_state {
+    let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+    let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+    let total = bl0 + bl1;
+    edge0.write_arc().payload().write_arc().set_branch_length(Some(total * ratio));
+    edge1.write_arc().payload().write_arc().set_branch_length(Some(total * (1.0 - ratio)));
+  }
+
+  Ok(())
 }
 
 /// Initial estimation of branch lengths for mixed partitions.
