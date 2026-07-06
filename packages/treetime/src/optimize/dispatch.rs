@@ -72,172 +72,190 @@ where
 
   let one_mutation = 1.0 / total_length as f64;
 
-  // Before the optimization loop: if the root has exactly two children, capture the ratio of
-  // their branch lengths. Optimizing each edge independently can shift the root placement, so
-  // after the loop we redistribute the optimized total across both root edges in the same ratio.
-  let root_two_child_state: Option<(Arc<RwLock<Edge<E>>>, Arc<RwLock<Edge<E>>>, f64)> =
-    graph.get_exactly_one_root().ok().and_then(|root| {
-      let root_guard = root.read_arc();
-      let children = graph.children_of(&root_guard);
-      if children.len() == 2 {
-        let (_, edge0) = &children[0];
-        let (_, edge1) = &children[1];
-        let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-        let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-        let total = bl0 + bl1;
-        let ratio = if total > 0.0 { bl0 / total } else { 0.5 };
-        Some((Arc::clone(edge0), Arc::clone(edge1), ratio))
-      } else {
-        None
-      }
-    });
+  // For a bifurcating root under reversible models, only the sum of root-edge branch
+  // lengths is identifiable (Pulley Principle). Capture the pre-optimization ratio of the
+  // two root edges; after the per-edge loop, redistribute the optimized total in this ratio.
+  // See kb/issues/M-optimize-root-bifurcating-independent-vs-joint.md
+  let root_state = BifurcatingRootState::capture(graph)?;
 
-  graph.get_edges().iter().try_for_each(|edge_ref| -> Result<(), Report> {
-    let edge_key = edge_ref.read_arc().key();
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    let mut branch_length = edge.branch_length().unwrap_or(0.0);
+  graph
+    .get_edges()
+    .iter()
+    .try_for_each(|edge_ref| -> Result<(), Report> {
+      let edge_key = edge_ref.read_arc().key();
+      let mut edge = edge_ref.write_arc().payload().write_arc();
+      let mut branch_length = edge.branch_length().unwrap_or(0.0);
 
-    let contributions: Vec<OptimizationContribution> = partitions
-      .iter()
-      .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
-
-    let indel_count: usize = if no_indels {
-      0
-    } else {
-      partitions
+      let contributions: Vec<OptimizationContribution> = partitions
         .iter()
-        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-        .sum()
-    };
+        .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
+        .collect::<Result<_, _>>()?;
 
-    // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
-    // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
-    if branch_length == 0.0 && indel_count > 0 {
-      branch_length = if indel_rate > 0.0 {
-        (indel_count as f64 / indel_rate).max(one_mutation)
+      let indel_count: usize = if no_indels {
+        0
       } else {
-        one_mutation
+        partitions
+          .iter()
+          .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+          .sum()
       };
-    }
 
-    // When branch length is zero and any site has non-positive likelihood at t=0
-    // (mismatched certain states), evaluating ln(site_lh) or dividing by site_lh
-    // produces -inf/inf. Bump to a small positive value so the evaluator operates
-    // in the well-defined domain.
-    if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
-      branch_length = one_mutation;
-    }
-
-    // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
-    // so zero branch length is never optimal. Only check the substitution-based criterion
-    // when there are no indels.
-    if indel_count == 0 && is_zero_branch_optimal(&contributions) {
-      edge.set_branch_length(Some(0.0));
-      return Ok(());
-    }
-
-    // Lower bound for Newton/Brent steps on indel-bearing edges. The Poisson derivative
-    // diverges at t=0, so we must prevent the optimizer from landing exactly at zero.
-    let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
-
-    let new_branch_length = match method {
-      BranchOptMethod::Brent => brent_inner(
-        branch_length,
-        &contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      ),
-      BranchOptMethod::BrentSqrt => brent_sqrt_inner(
-        branch_length,
-        &contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      ),
-      BranchOptMethod::BrentLog => brent_log_inner(
-        branch_length,
-        &contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      ),
-      BranchOptMethod::Newton => {
-        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_inner(
-          branch_length,
-          &metrics,
-          &contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        )
-      },
-      BranchOptMethod::NewtonSqrt => {
-        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
-        newton_sqrt_inner(
-          branch_length,
-          &metrics,
-          &contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        )
-      },
-      BranchOptMethod::NewtonLog => {
-        // ln(t) requires t > 0; bump zero branch lengths to one_mutation
-        let bl = if branch_length == 0.0 {
-          one_mutation
+      // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
+      // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
+      if branch_length == 0.0 && indel_count > 0 {
+        branch_length = if indel_rate > 0.0 {
+          (indel_count as f64 / indel_rate).max(one_mutation)
         } else {
-          branch_length
+          one_mutation
         };
-        let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl);
-        newton_log_inner(
-          bl,
-          &metrics,
+      }
+
+      // When branch length is zero and any site has non-positive likelihood at t=0
+      // (mismatched certain states), evaluating ln(site_lh) or dividing by site_lh
+      // produces -inf/inf. Bump to a small positive value so the evaluator operates
+      // in the well-defined domain.
+      if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
+        branch_length = one_mutation;
+      }
+
+      // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
+      // so zero branch length is never optimal. Only check the substitution-based criterion
+      // when there are no indels.
+      if indel_count == 0 && is_zero_branch_optimal(&contributions) {
+        edge.set_branch_length(Some(0.0));
+        return Ok(());
+      }
+
+      // Lower bound for Newton/Brent steps on indel-bearing edges. The Poisson derivative
+      // diverges at t=0, so we must prevent the optimizer from landing exactly at zero.
+      let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
+
+      let new_branch_length = match method {
+        BranchOptMethod::Brent => brent_inner(
+          branch_length,
           &contributions,
           indel_count,
           indel_rate,
           min_branch_length,
           one_mutation,
-        )
-      },
-    }?;
+        ),
+        BranchOptMethod::BrentSqrt => brent_sqrt_inner(
+          branch_length,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        ),
+        BranchOptMethod::BrentLog => brent_log_inner(
+          branch_length,
+          &contributions,
+          indel_count,
+          indel_rate,
+          min_branch_length,
+          one_mutation,
+        ),
+        BranchOptMethod::Newton => {
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+          newton_inner(
+            branch_length,
+            &metrics,
+            &contributions,
+            indel_count,
+            indel_rate,
+            min_branch_length,
+            one_mutation,
+          )
+        },
+        BranchOptMethod::NewtonSqrt => {
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+          newton_sqrt_inner(
+            branch_length,
+            &metrics,
+            &contributions,
+            indel_count,
+            indel_rate,
+            min_branch_length,
+            one_mutation,
+          )
+        },
+        BranchOptMethod::NewtonLog => {
+          // ln(t) requires t > 0; bump zero branch lengths to one_mutation
+          let bl = if branch_length == 0.0 {
+            one_mutation
+          } else {
+            branch_length
+          };
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl);
+          newton_log_inner(
+            bl,
+            &metrics,
+            &contributions,
+            indel_count,
+            indel_rate,
+            min_branch_length,
+            one_mutation,
+          )
+        },
+      }?;
 
-    // Post-optimization boundary reconciliation. See `reconcile_zero_boundary`
-    // for the full rationale. The input `branch_length` is used to size the
-    // verification grid (the optimizer's output may be clamped to zero or to a
-    // tiny floor like $10^{-12}$ and is unsuitable as an extent).
-    let new_branch_length = reconcile_zero_boundary(
-      new_branch_length,
-      branch_length,
-      &contributions,
-      indel_count,
-      indel_rate,
-      one_mutation,
-    )?;
+      // Post-optimization boundary reconciliation. See `reconcile_zero_boundary`
+      // for the full rationale. The input `branch_length` is used to size the
+      // verification grid (the optimizer's output may be clamped to zero or to a
+      // tiny floor like $10^{-12}$ and is unsuitable as an extent).
+      let new_branch_length = reconcile_zero_boundary(
+        new_branch_length,
+        branch_length,
+        &contributions,
+        indel_count,
+        indel_rate,
+        one_mutation,
+      )?;
 
-    edge.set_branch_length(Some(new_branch_length));
-    Ok(())
-  })?;
+      edge.set_branch_length(Some(new_branch_length));
+      Ok(())
+    })?;
 
-  // After the loop: if the root had exactly two children, redistribute the optimized total
-  // branch length across both root edges in the original ratio to preserve the root placement.
-  if let Some((edge0, edge1, ratio)) = root_two_child_state {
-    let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-    let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-    let total = bl0 + bl1;
-    edge0.write_arc().payload().write_arc().set_branch_length(Some(total * ratio));
-    edge1.write_arc().payload().write_arc().set_branch_length(Some(total * (1.0 - ratio)));
+  if let Some(state) = root_state {
+    state.restore();
   }
 
   Ok(())
+}
+
+struct BifurcatingRootState<E: GraphEdge> {
+  edge0: Arc<RwLock<Edge<E>>>,
+  edge1: Arc<RwLock<Edge<E>>>,
+  ratio: f64,
+}
+
+impl<E: GraphEdge + HasBranchLength> BifurcatingRootState<E> {
+  fn capture<N: GraphNode>(graph: &Graph<N, E, ()>) -> Result<Option<Self>, Report> {
+    let root = graph.get_exactly_one_root()?;
+    let children = graph.children_of(&root.read_arc());
+    if children.len() == 2 {
+      let (_, edge0) = &children[0];
+      let (_, edge1) = &children[1];
+      let edge0 = Arc::clone(edge0);
+      let edge1 = Arc::clone(edge1);
+      let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let total = bl0 + bl1;
+      let ratio = if total > 0.0 { bl0 / total } else { 0.5 };
+      Ok(Some(Self { edge0, edge1, ratio }))
+    } else {
+      Ok(None)
+    }
+  }
+
+  fn restore(self) {
+    let Self { edge0, edge1, ratio } = self;
+    let mut e0 = edge0.write_arc().payload().write_arc();
+    let mut e1 = edge1.write_arc().payload().write_arc();
+    let total = e0.branch_length().unwrap_or(0.0) + e1.branch_length().unwrap_or(0.0);
+    e0.set_branch_length(Some(total * ratio));
+    e1.set_branch_length(Some(total * (1.0 - ratio)));
+  }
 }
 
 /// Initial estimation of branch lengths for mixed partitions.
