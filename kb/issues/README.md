@@ -73,6 +73,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](N-gtr-site-specific-e2e-inference-test.md)                                  |
 | Negligible | Partition    | [`infer_dense()` stub always returns false](N-representation-infer-dense-stub.md)                                                                   |
 | Negligible | Partition    | [Dense and sparse partition types have structural and naming asymmetries](N-representation-dense-sparse-partition-asymmetry.md)                     |
+| Medium     | Optimize     | [Bifurcating root optimization: independent per-edge vs joint arc optimization](M-optimize-root-bifurcating-independent-vs-joint.md)                |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
 | Medium     | Optimize     | [Sparse branch optimization reads stale Fitch-era states](M-optimize-sparse-stale-fitch-states.md)                                                  |
 | Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                            |
