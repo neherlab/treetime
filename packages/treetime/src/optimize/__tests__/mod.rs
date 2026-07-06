@@ -25,5 +25,6 @@ mod test_optimize_method;
 mod test_optimize_method_step_clamping;
 mod test_optimize_zero_sequence_length;
 mod test_pipeline_gtr_normalized;
+mod test_root_preservation;
 mod test_run_optimize_loop;
 mod test_topology_cleanup;
