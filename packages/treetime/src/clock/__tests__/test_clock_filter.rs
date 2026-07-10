@@ -7,8 +7,10 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_graph::node::{Named, Outlier};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   /// Build an 8-leaf balanced tree where 6 leaves follow a positive clock and 2 are extreme
   /// outliers (high divergence, mid-range dates). Outlier branches G=2.0 and H=3.0 produce
@@ -86,5 +88,55 @@ mod tests {
     assert_eq!(outliers, vec![o!("G"), o!("H")]);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_clock_filter_rejects_no_dated_leaves() -> Result<(), Report> {
+    let graph = helpers::setup_low_cardinality_graph(0)?;
+    let clock_model = ClockModel::for_testing(0.01, -20.0);
+
+    let result = clock_filter_inplace(&graph, &clock_model, 3.0);
+
+    assert_error!(result, "Clock filtering requires at least one dated leaf");
+    Ok(())
+  }
+
+  // The v0 NumPy oracle accepts non-empty residual arrays of every cardinality.
+  // packages/legacy/treetime/treetime/clock_filter_methods.py#L14
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_dated_leaf(  1)]
+  #[case::two_dated_leaves(2)]
+  #[case::three_dated_leaves(3)]
+  #[trace]
+  fn test_clock_filter_accepts_low_cardinality_input(#[case] dated_leaf_count: usize) -> Result<(), Report> {
+    let graph = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
+    let clock_model = ClockModel::for_testing(0.01, -20.0);
+
+    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
+
+    assert!(result.iqd.is_finite());
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::clock::clock_graph::GraphClock;
+    use eyre::Report;
+    use treetime_io::nwk::nwk_read_str;
+
+    pub fn setup_low_cardinality_graph(dated_leaf_count: usize) -> Result<GraphClock, Report> {
+      let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+
+      graph
+        .get_leaves()
+        .iter()
+        .take(dated_leaf_count)
+        .enumerate()
+        .for_each(|(index, leaf)| {
+          leaf.write_arc().payload().write_arc().time = Some(2000.0 + index as f64);
+        });
+
+      Ok(graph)
+    }
   }
 }

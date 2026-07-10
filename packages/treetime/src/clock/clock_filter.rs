@@ -1,4 +1,5 @@
 use crate::clock::clock_model::ClockLine;
+use crate::make_error;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use itertools::Itertools;
@@ -69,6 +70,9 @@ where
 
   // calculate the interquartile range by taking the difference between the 3/4 and 1/4 quantile
   let n = leaf_clock_deviations.len();
+  if n == 0 {
+    return make_error!("Clock filtering requires at least one dated leaf");
+  }
   let iq75 = (3 * n) / 4;
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
