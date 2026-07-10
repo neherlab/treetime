@@ -1,3 +1,4 @@
+use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::optimize::observer::OptimizationObserver;
@@ -11,7 +12,7 @@ use log::info;
 use ndarray::Array1;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFormula};
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -69,7 +70,7 @@ pub struct SkylineResult {
 pub fn optimize_skyline<N, E, D>(graph: &Graph<N, E, D>, params: &SkylineParams) -> Result<SkylineResult, Report>
 where
   N: GraphNode + TimetreeNode + Named,
-  E: GraphEdge,
+  E: GraphEdge + TimeLength,
   D: Sync + Send,
 {
   debug_assert!(
@@ -103,6 +104,7 @@ where
 
   // Create cost function
   let cost_fn = SkylineCostFunction {
+    edges: Arc::from(collect_coalescent_edges(graph, pre.present_time)?),
     lineage_counts: Arc::new(pre.lineage_counts),
     time_grid: time_grid.clone(),
     stiffness: params.stiffness,
@@ -132,33 +134,32 @@ where
     .ok_or_else(|| make_report!("Skyline optimization returned no result"))?;
   let opt_log_tc = Array1::from_vec(opt_log_tc);
 
-  // Compute final likelihood using clamped values (consistent with cost function)
-  let final_cost = result.state.best_cost;
   let opt_log_tc_clamped = Array1::from_iter(opt_log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
-  let smoothness_penalty: f64 = opt_log_tc_clamped
-    .windows(2)
-    .into_iter()
-    .map(|w| (w[1] - w[0]).powi(2))
-    .sum::<f64>()
-    * params.stiffness;
-  let boundary_penalty = compute_boundary_penalty(opt_log_tc.as_slice().unwrap(), params.regularization);
-  let log_likelihood = -(final_cost - smoothness_penalty - boundary_penalty);
+  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc_clamped);
+  let integral_merger_rate = compute_integral_merger_rate(&tc_distribution, &cost_fn.lineage_counts)?;
+  let log_likelihood = sum_coalescent_cost(
+    &cost_fn.edges,
+    &integral_merger_rate,
+    &cost_fn.lineage_counts,
+    &tc_distribution,
+  )?;
 
-  info!("Skyline optimization completed: final_cost={final_cost:.4}, log_likelihood={log_likelihood:.4}");
-
-  // Build piecewise constant Tc distribution
-  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc);
+  info!(
+    "Skyline optimization completed: final_cost={:.4}, log_likelihood={log_likelihood:.4}",
+    result.state.best_cost
+  );
 
   Ok(SkylineResult {
     tc_distribution,
     time_grid,
-    log_tc_values: opt_log_tc,
+    log_tc_values: opt_log_tc_clamped,
     log_likelihood,
   })
 }
 
 /// Cost function for skyline optimization.
 struct SkylineCostFunction {
+  edges: Arc<[CoalescentEdgeData]>,
   lineage_counts: Arc<PiecewiseConstantFn>,
   time_grid: Array1<f64>,
   stiffness: f64,
@@ -180,8 +181,8 @@ impl CostFunction for &SkylineCostFunction {
     let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)
       .map_err(|e| Error::msg(format!("Failed to compute integral merger rate: {e}")))?;
 
-    // Compute negative log-likelihood (sum over all breakpoints)
-    let neg_log_lh = compute_total_neg_log_lh(&integral_merger_rate, &self.lineage_counts, &tc_dist);
+    let neg_log_lh = -sum_coalescent_cost(&self.edges, &integral_merger_rate, &self.lineage_counts, &tc_dist)
+      .map_err(|e| Error::msg(format!("Failed to compute coalescent likelihood: {e}")))?;
 
     // Add smoothness penalty: stiffness * sum(diff(logTc)^2)
     // Use clamped values so optimizer gradients match the cost surface
@@ -224,45 +225,6 @@ pub(crate) fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64
   let pwl = PiecewiseLinearFn::new(time_grid.clone(), tc_values);
 
   Distribution::Formula(DistributionFormula::new(move |t| Ok(pwl.eval(t)), t_min, t_max))
-}
-
-/// Computes total negative log-likelihood from the coalescent model.
-///
-/// This sums contributions from all tree segments based on the integral merger rate.
-fn compute_total_neg_log_lh(
-  integral_merger_rate: &PiecewiseLinearFn,
-  lineage_counts: &PiecewiseConstantFn,
-  tc_dist: &Distribution,
-) -> f64 {
-  let breakpoints = lineage_counts.breakpoints();
-  let n = breakpoints.len();
-
-  // Sum contributions from each segment
-  let mut neg_log_lh = 0.0;
-
-  for i in 1..n {
-    let t0 = breakpoints[i - 1];
-    let t1 = breakpoints[i];
-
-    // Integral contribution: I(t1) - I(t0)
-    let i0 = integral_merger_rate.eval(t0);
-    let i1 = integral_merger_rate.eval(t1);
-    neg_log_lh += i1 - i0;
-
-    // Merger event contribution at t1 (if it's a merger, not a sample)
-    let k = lineage_counts.eval(t1);
-    if k < lineage_counts.eval(t0) {
-      // This is a merger event - compute total merger rate (Kingman coalescent)
-      // Rate proportional to k*(k-1)/2 pairs of lineages
-      if let Ok(tc) = tc_dist.eval(t1) {
-        let nlineages = f64::max(0.5, k - 1.0);
-        let lambda = 0.5 * nlineages * (nlineages + 1.0) / tc;
-        neg_log_lh -= lambda.ln();
-      }
-    }
-  }
-
-  neg_log_lh
 }
 
 /// Creates initial simplex for Nelder-Mead optimization.

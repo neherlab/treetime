@@ -2,7 +2,9 @@
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::skyline::{SkylineParams, build_tc_distribution, optimize_skyline};
+  use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::partition::timetree::GraphTimetree;
+  use crate::pretty_assert_ulps_eq;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -138,6 +140,33 @@ mod tests {
     assert_eq!(result.time_grid.len(), 10);
     assert!(result.log_likelihood.is_finite());
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_skyline_reported_likelihood_matches_per_edge_cost_for_polytomy() -> Result<(), Report> {
+    const TREE_NWK: &str = "(a:1,b:1,c:1,d:1)root:1;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "a".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "b".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "c".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "d".to_owned() => Some(DateConstraint::exact(2010.0)),
+    };
+    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+    let params = SkylineParams {
+      n_points: 2,
+      tolerance: 0.1,
+      max_iter: 100,
+      ..SkylineParams::default()
+    };
+
+    let result = optimize_skyline(&graph, &params)?;
+    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?;
+
+    // Oracle: the canonical per-edge Kingman cost assigns m - 1 merger-rate
+    // factors to an m-child polytomy (Kingman 1982, doi:10.1016/0304-4149(82)90011-4).
+    pretty_assert_ulps_eq!(expected, result.log_likelihood, max_ulps = 10);
     Ok(())
   }
 
