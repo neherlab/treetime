@@ -16,7 +16,7 @@ Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishand
 
 `packages/treetime/src/timetree/optimization/relaxed_clock.rs:70,91,106:`
 
-Three locations use `1e-10` as a denominator floor. No named constant. Related to the unit mismatch in `H-timetree-relaxed-clock-unit-mismatch.md`.
+Three locations use `1e-10` as a denominator floor. No named constant.
 
 ### Shared marginal forward pass MIN_POSITIVE clamp biases near-zero divisor
 

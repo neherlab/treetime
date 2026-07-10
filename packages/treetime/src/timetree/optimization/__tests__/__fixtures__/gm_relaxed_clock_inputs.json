@@ -1,0 +1,30 @@
+[
+  {
+    "name": "flu_rate_binary",
+    "newick": "(A:0.01,B:0.02)root:0.0;",
+    "clock_rate": 0.003,
+    "one_mutation": 0.001,
+    "slack": 1.0,
+    "coupling": 1.0,
+    "branches": {
+      "A": { "clock_length": 0.015 },
+      "B": { "clock_length": 0.006 }
+    }
+  },
+  {
+    "name": "flu_rate_deep",
+    "newick": "((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;",
+    "clock_rate": 0.003,
+    "one_mutation": 0.001,
+    "slack": 0.5,
+    "coupling": 2.0,
+    "branches": {
+      "A": { "clock_length": 0.012 },
+      "B": { "clock_length": 0.009 },
+      "AB": { "clock_length": 0.018 },
+      "C": { "clock_length": 0.003 },
+      "D": { "clock_length": 0.015 },
+      "CD": { "clock_length": 0.006 }
+    }
+  }
+]

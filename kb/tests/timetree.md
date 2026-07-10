@@ -14,7 +14,7 @@
 | [Output (confidence)](#output-tests)                       | Unit                 |
 | [Output (Auspice)](#auspice-output)                        | Unit + Integration   |
 | [Clock filter](#clock-filter)                              | Unit                 |
-| [Relaxed clock](#relaxed-clock)                            | Unit                 |
+| [Relaxed clock](#relaxed-clock)                            | Unit + Golden-master |
 | [Polytomy resolution](#polytomy-resolution)                | Unit                 |
 | [Rerooting](#rerooting)                                    | Integration          |
 
@@ -440,6 +440,7 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 | Test                                                         | Purpose                                     |
 | ------------------------------------------------------------ | ------------------------------------------- |
+| `test_gm_relaxed_clock_matches_v0`                            | Gamma parity with v0 at flu-scale clock rate |
 | `test_relaxed_clock_default_params_produce_reasonable_gamma` | Gamma in reasonable range                   |
 | `test_relaxed_clock_all_gamma_above_minimum`                 | Minimum bound (0.1) enforced                |
 | `test_relaxed_clock_uniform_branches_produce_similar_gamma`  | Uniform branches give similar gamma         |

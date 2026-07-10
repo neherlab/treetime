@@ -128,6 +128,8 @@ CLI: `--relax <SLACK> <COUPLING>` (defaults 1.0, 1.0).
 - Postorder pass (lines 36-81): computes quadratic penalty coefficients k1, k2 per node. The penalty function is `stiffness * (gamma * actual_len - optimal_len)^2 + slack * (gamma - 1)^2`, with a coupling term `coupling * (gamma - gamma_child)^2`.
 - Preorder pass (lines 86-114): computes optimal gamma per branch. Root: `gamma = max(0.1, -0.5 * k1 / k2)`. Non-root: `gamma = max(0.1, (coupling * parent_gamma - 0.5 * k1) / (coupling + k2))`.
 
+`actual_len` and `optimal_len` are both substitutions per site. v1 converts its year-valued edge `time_length` with `clock_rate` before evaluating the penalty, matching v0's branch-length-valued `clock_length`.
+
 The `one_mutation` parameter (sum of sequence lengths across all partitions) sets the scale for branch length penalties. Gamma values are clamped to a minimum of 0.1 to prevent degenerate solutions.
 
 ### Gamma consumption

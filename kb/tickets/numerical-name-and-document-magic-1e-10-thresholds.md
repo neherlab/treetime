@@ -14,7 +14,7 @@ Hardcoded `1e-10` threshold with no `n_points==1` or `mu<=0` validation. Mishand
 
 v1: [`packages/treetime/src/timetree/optimization/relaxed_clock.rs#L70`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L70), [`relaxed_clock.rs#L91`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L91), [`relaxed_clock.rs#L106`](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L106)
 
-Three locations use `1e-10` as a denominator floor. No named constant. Related to the unit mismatch in `H-timetree-relaxed-clock-unit-mismatch.md`.
+Three locations use `1e-10` as a denominator floor. No named constant.
 
 ## Impact
 

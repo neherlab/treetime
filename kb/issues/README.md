@@ -146,7 +146,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                              |
 | Negligible | Marginal     | [Marginal forward pass zero-divisor floor converts structural zeros](N-marginal-forward-zero-divisor-floor.md)                                      |
 | Negligible | Timetree     | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                           |
-| High       | Timetree     | [Relaxed clock unit mismatch](H-timetree-relaxed-clock-unit-mismatch.md)                                                                            |
 | Medium     | Ancestral    | [Sparse variant skips initialize_marginal before update_marginal](M-ancestral-sparse-missing-initialize-marginal.md)                                |
 | Medium     | Marginal     | [normalize_inplace NEG_INFINITY masks all contributions](M-marginal-normalize-neg-infinity-masks-total.md)                                          |
 | Medium     | Timetree     | [Polytomy resolution leaves stale fields after topology change](M-timetree-polytomy-stale-fields-after-topology-change.md)                          |

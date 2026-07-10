@@ -45,7 +45,7 @@ pub fn run_refinement_iteration(
         params.relax.first().copied().unwrap_or(1.0),
         params.relax.get(1).copied().unwrap_or(1.0)
       );
-      apply_relaxed_clock(graph, &params.relax, one_mutation)?;
+      apply_relaxed_clock(graph, &params.relax, one_mutation, clock_model.clock_rate())?;
     }
   }
 

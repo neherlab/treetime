@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Capture relaxed-clock rate multipliers from the bundled TreeTime v0."""
+
+import json
+import sys
+from dataclasses import dataclass, field
+from io import StringIO
+from pathlib import Path
+from types import SimpleNamespace
+
+from Bio import Phylo
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[6] / "legacy" / "treetime"))
+from treetime.treetime import TreeTime
+
+
+@dataclass
+class FakeNode:
+    name: str
+    clades: list["FakeNode"] = field(default_factory=list)
+    up: "FakeNode | None" = None
+    mutation_length: float = 0.0
+    clock_length: float = 0.0
+    gamma: float = 1.0
+    branch_length_interpolator: SimpleNamespace = field(default_factory=lambda: SimpleNamespace(gamma=1.0))
+
+
+@dataclass
+class FakeTree:
+    root: FakeNode
+
+    def find_clades(self, order: str = "preorder") -> list[FakeNode]:
+        def visit(node: FakeNode) -> list[FakeNode]:
+            descendants = [descendant for child in node.clades for descendant in visit(child)]
+            return [*descendants, node] if order == "postorder" else [node, *descendants]
+
+        return visit(self.root)
+
+
+def capture_case(case: dict) -> dict:
+    source_tree = Phylo.read(StringIO(case["newick"]), "newick")
+    by_name = {node.name: FakeNode(name=node.name) for node in source_tree.find_clades()}
+
+    for parent in source_tree.find_clades(order="preorder"):
+        for child in parent.clades:
+            branch = case["branches"][child.name]
+            fake_parent = by_name[parent.name]
+            fake_child = by_name[child.name]
+            fake_parent.clades.append(fake_child)
+            fake_child.up = fake_parent
+            fake_child.mutation_length = child.branch_length
+            fake_child.clock_length = branch["clock_length"]
+
+    tree = FakeTree(root=by_name[source_tree.root.name])
+    tree.root.mutation_length = case["one_mutation"]
+    tree.root.clock_length = case["one_mutation"]
+
+    treetime = object.__new__(TreeTime)
+    treetime._tree = tree
+    treetime.data = SimpleNamespace(full_length=1.0 / case["one_mutation"])
+    treetime.logger = lambda *_args, **_kwargs: None
+    TreeTime.relaxed_clock(treetime, slack=case["slack"], coupling=case["coupling"])
+
+    return {
+        "name": case["name"],
+        "gammas": {
+            name: by_name[name].branch_length_interpolator.gamma
+            for name in case["branches"]
+        },
+    }
+
+
+def main() -> None:
+    inputs_path = Path(sys.argv[1])
+    outputs_path = Path(sys.argv[2])
+    cases = json.loads(inputs_path.read_text())
+    outputs_path.write_text(json.dumps([capture_case(case) for case in cases], indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -20,10 +20,18 @@ struct RelaxedClockCoeffs {
 /// - `params[0]`: slack - penalty for deviation from mean rate (default 1.0)
 /// - `params[1]`: coupling - penalty for rate differences between parent and child (default 1.0)
 ///
+/// `clock_rate` converts edge time lengths into substitutions per site so that
+/// the actual and sequence-optimal branch lengths use the same units.
+///
 /// The algorithm:
 /// 1. Postorder pass: compute quadratic penalty coefficients (k1, k2) for each node
 /// 2. Preorder pass: compute optimal gamma (rate multiplier) for each branch
-pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: f64) -> Result<(), Report> {
+pub fn apply_relaxed_clock(
+  graph: &GraphTimetree,
+  params: &[f64],
+  one_mutation: f64,
+  clock_rate: f64,
+) -> Result<(), Report> {
   let slack = params.first().copied().unwrap_or(1.0);
   let coupling = params.get(1).copied().unwrap_or(1.0);
 
@@ -43,12 +51,10 @@ pub fn apply_relaxed_clock(graph: &GraphTimetree, params: &[f64], one_mutation: 
     let (opt_len, act_len) = if node.is_root {
       (one_mutation, one_mutation)
     } else if let Some(parent_edge) = node.parent_edges.first() {
-      // mutation_length (opt_len) = branch_length in substitutions per site
       let opt_len = parent_edge.branch_length().unwrap_or(0.0);
-      // clock_length (act_len) = time_length * clock_rate, but we use time_length directly
-      // In v0: act_len = clock_length if hasattr else branch_length
-      // Here we use time_length if available, else branch_length
-      let act_len = parent_edge.time_length().unwrap_or(opt_len);
+      let act_len = parent_edge
+        .time_length()
+        .map_or(opt_len, |time_length| time_length * clock_rate);
       (opt_len, act_len)
     } else {
       (one_mutation, one_mutation)
