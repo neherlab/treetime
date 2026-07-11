@@ -231,13 +231,13 @@ mod tests {
     let aln_clean = gap_free_alignment()?;
     let graph_clean: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_clean = setup_sparse(&graph_clean, &aln_clean)?;
-    initial_guess_mixed(&graph_clean, &partitions_clean, true)?;
+    initial_guess_mixed(&graph_clean, &partitions_clean, true, false)?;
     let bl_clean = get_branch_lengths(&graph_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
     let graph_gappy: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_gappy = setup_sparse(&graph_gappy, &aln_gappy)?;
-    initial_guess_mixed(&graph_gappy, &partitions_gappy, true)?;
+    initial_guess_mixed(&graph_gappy, &partitions_gappy, true, false)?;
     let bl_gappy = get_branch_lengths(&graph_gappy);
 
     // With 4 shared gap positions out of 16, the effective length is 12.

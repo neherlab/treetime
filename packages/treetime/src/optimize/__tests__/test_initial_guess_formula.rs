@@ -35,7 +35,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_sparse(&graph, &aln)?;
 
-    initial_guess_mixed(&graph, &partitions, true)?;
+    initial_guess_mixed(&graph, &partitions, true, false)?;
 
     let p = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {
@@ -63,7 +63,7 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense(&graph, &aln)?;
 
-    initial_guess_mixed(&graph, &partitions, true)?;
+    initial_guess_mixed(&graph, &partitions, true, false)?;
 
     let p = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {
@@ -93,8 +93,8 @@ mod tests {
     let partitions_dense = setup_dense(&graph_dense, &aln)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &aln)?;
 
-    initial_guess_mixed(&graph_dense, &partitions_dense, true)?;
-    initial_guess_mixed(&graph_sparse, &partitions_sparse, true)?;
+    initial_guess_mixed(&graph_dense, &partitions_dense, true, false)?;
+    initial_guess_mixed(&graph_sparse, &partitions_sparse, true, false)?;
 
     let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense)?;
     let sparse_branch_lengths = branch_lengths_by_child_name(&graph_sparse)?;

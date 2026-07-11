@@ -865,6 +865,7 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 | `test_optimize_indel_estimate_rate_with_indels`                       | estimate_indel_rate returns total_indels / total_branch_length                 |
 | `test_optimize_indel_initial_guess_nonzero_with_indels`               | initial_guess assigns positive BL when indels present on identical sequences   |
 | `test_optimize_indel_initial_guess_zero_bl_tree_with_indels`          | initial_guess bootstraps positive BL on zero-BL tree with indels               |
+| `test_no_indels_initial_guess_ignores_indel_counts` (2 modes)         | Auto and Always initialization ignore indel counts under `--no-indels`         |
 | `test_optimize_indel_run_optimize_nonzero_with_indels` (6 methods)    | run_optimize_mixed assigns positive BL with indels for each optimizer          |
 | `test_optimize_indel_run_optimize_rejects_negative_branch_length`     | Direct optimizer entry rejects negative BLs with and without indels            |
 | `test_optimize_indel_zero_bl_pipeline_escapes_zero` (6 methods)       | Full pipeline escapes zero BL with indels for each optimizer                   |

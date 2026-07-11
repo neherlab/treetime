@@ -39,6 +39,7 @@ where
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
+#[cfg(test)]
 pub fn run_optimize_mixed_with_indel_rate<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
@@ -287,10 +288,14 @@ impl<E: GraphEdge + HasBranchLength> BifurcatingRootState<E> {
 /// When `overwrite_valid` is false, edges that already have a finite branch
 /// length are skipped, preserving calibrated input values while filling in
 /// edges with missing (`None`) or invalid (`NaN`) branch lengths.
+///
+/// When `no_indels` is true, indel counts and rates do not affect either
+/// branch validity or the estimated branch length.
 pub fn initial_guess_mixed<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   overwrite_valid: bool,
+  no_indels: bool,
 ) -> Result<(), Report>
 where
   N: GraphNode,
@@ -307,16 +312,24 @@ where
   }
 
   let one_mutation = 1.0 / total_length as f64;
-  let indel_rate = estimate_indel_rate(graph, partitions);
+  let indel_rate = if no_indels {
+    0.0
+  } else {
+    estimate_indel_rate(graph, partitions)
+  };
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    let indel_count: usize = partitions
-      .iter()
-      .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-      .sum();
+    let indel_count: usize = if no_indels {
+      0
+    } else {
+      partitions
+        .iter()
+        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+        .sum()
+    };
 
     if !overwrite_valid {
       if let Some(bl) = edge.branch_length() {

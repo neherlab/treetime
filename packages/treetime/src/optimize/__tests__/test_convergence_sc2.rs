@@ -45,7 +45,7 @@ mod tests {
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let max_iter = 50;
     let result = run_optimize_loop(
@@ -94,7 +94,7 @@ mod tests {
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let result = run_optimize_loop(
       &mut graph,

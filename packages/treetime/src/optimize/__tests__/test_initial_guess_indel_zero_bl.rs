@@ -26,7 +26,7 @@ mod tests {
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, partitions) = setup_dense(TREE_ZERO_BL)?;
 
-    initial_guess_mixed(&graph, &partitions, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false)?;
 
     // All edges should remain zero: no indels, zero is valid
     for edge_ref in graph.get_edges() {
@@ -60,7 +60,7 @@ mod tests {
       });
     }
 
-    initial_guess_mixed(&graph, &partitions, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false)?;
 
     // The indel-bearing edge should now have a positive BL
     let bl = graph.get_edges()[0]

@@ -1,59 +1,28 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::ancestral::marginal::update_marginal;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
+  };
+  use crate::optimize::__tests__::test_initial_guess_mode::tests::TREE_ZERO_BL;
+  use crate::optimize::__tests__::test_initial_guess_mode::tests::helpers::{
+    get_branch_lengths, inject_indel_on_first_edge, setup_dense_with_marginal,
+  };
+  use crate::optimize::__tests__::test_optimize_indel::tests::{
+    inject_indels_on_first_edge, setup_identical_partitions,
   };
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
   use crate::optimize::run_loop::apply_initial_guess_mode;
   use crate::optimize::run_loop::run_optimize_loop;
-  use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-
-  use parking_lot::RwLock;
-  use std::sync::Arc;
+  use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-
-  const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
-
-  fn setup_dense_with_marginal(
-    newick: &str,
-  ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalDense>>>), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let graph: GraphAncestral = nwk_read_str(newick)?;
-    let aln = read_many_fasta_str(">A\nACGT\n>B\nACGT\n>C\nACGT\n", &alphabet)?;
-    let gtr = jc69(JC69Params::default())?;
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
-    let partitions = vec![Arc::new(RwLock::new(partition))];
-    initialize_marginal(&graph, &partitions, &aln)?;
-    update_marginal(&graph, &partitions)?;
-    Ok((graph, partitions))
-  }
-
-  fn inject_indel_on_first_edge(
-    graph: &GraphAncestral,
-    partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  ) -> Result<(), Report> {
-    let first_edge_key = graph.get_edges()[0].read_arc().key();
-    partitions[0]
-      .write_arc()
-      .data
-      .edges
-      .get_mut(&first_edge_key)
-      .unwrap()
-      .indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
-    Ok(())
-  }
 
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
@@ -220,6 +189,37 @@ mod tests {
       result.is_ok(),
       "no_indels=true should accept zero-BL indel edges in Never mode, got: {result:?}"
     );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::auto(  InitialGuessMode::Auto)]
+  #[case::always(InitialGuessMode::Always)]
+  #[trace]
+  fn test_no_indels_initial_guess_ignores_indel_counts(
+    #[case] mode: InitialGuessMode,
+  ) -> Result<(), Report> {
+    let graph_with_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_with_indel, sparse_with_indel, partitions_with_indel) =
+      setup_identical_partitions(&graph_with_indel)?;
+    let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
+    inject_indels_on_first_edge(
+      &graph_with_indel,
+      &dense_with_indel,
+      &sparse_with_indel,
+      &indels,
+    );
+
+    let graph_without_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel)?;
+
+    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true)?;
+    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true)?;
+
+    let expected = get_branch_lengths(&graph_without_indel);
+    let actual = get_branch_lengths(&graph_with_indel);
+    assert_eq!(expected, actual);
     Ok(())
   }
 }

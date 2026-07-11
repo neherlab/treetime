@@ -406,8 +406,8 @@ where
   }
 
   match mode {
-    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false),
-    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true),
+    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false, no_indels),
+    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true, no_indels),
     InitialGuessMode::Never => {
       if !invalid_branch_lengths.is_empty() {
         return make_error!(

@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
@@ -34,7 +34,7 @@ mod tests {
   use treetime_primitives::Seq;
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
-  fn inject_indels_on_first_edge(
+  pub fn inject_indels_on_first_edge(
     graph: &GraphAncestral,
     dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
     sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
@@ -62,7 +62,7 @@ mod tests {
   }
 
   /// Set up partitions with identical sequences (zero substitutions on every edge).
-  fn setup_identical_partitions(
+  pub fn setup_identical_partitions(
     graph: &GraphAncestral,
   ) -> Result<
     (
@@ -91,7 +91,7 @@ mod tests {
     update_marginal(graph, &sparse_partitions)?;
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(graph, &mixed_partitions, true)?;
+    initial_guess_mixed(graph, &mixed_partitions, true, false)?;
 
     Ok((dense_partitions, sparse_partitions, mixed_partitions))
   }
@@ -257,7 +257,7 @@ mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
-    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -290,7 +290,7 @@ mod tests {
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
-    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let bl = graph.get_edges()[0]
       .read_arc()
@@ -402,7 +402,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
 
-    initial_guess_mixed(&graph, &mixed_partitions, true)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     // After initial_guess, the indel-bearing edge should have positive BL (bootstrap)
     let bl_after_guess = graph.get_edges()[0]

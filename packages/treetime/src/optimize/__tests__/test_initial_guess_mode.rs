@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -28,9 +28,9 @@ mod tests {
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
 
-  const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
+  pub const TREE_WITHOUT_LENGTHS: &str = "((A,B)AB,C)root;";
 
-  const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
+  pub const TREE_ZERO_BL: &str = "((A:0.0,B:0.0)AB:0.0,C:0.0)root:0.0;";
 
   #[test]
   fn test_initial_guess_mode_default_is_auto() {
@@ -94,7 +94,7 @@ mod tests {
     let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph);
 
-    initial_guess_mixed(&graph, &partitions, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false)?;
 
     let after = get_branch_lengths(&graph);
     assert_eq!(
@@ -117,7 +117,7 @@ mod tests {
       );
     }
 
-    initial_guess_mixed(&graph, &partitions, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false)?;
 
     // After: all edges have finite non-negative values
     for edge_ref in graph.get_edges() {
@@ -142,7 +142,7 @@ mod tests {
       .write_arc()
       .set_branch_length(Some(f64::NAN));
 
-    initial_guess_mixed(&graph, &partitions, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false)?;
 
     let updated_lengths = get_branch_lengths(&graph);
 
@@ -202,7 +202,7 @@ mod tests {
     let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph);
 
-    initial_guess_mixed(&graph, &partitions, true)?;
+    initial_guess_mixed(&graph, &partitions, true, false)?;
 
     let after = get_branch_lengths(&graph);
     assert_ne!(before, after, "Always mode must overwrite existing branch lengths");
@@ -309,7 +309,7 @@ mod tests {
     Ok(())
   }
 
-  mod helpers {
+  pub mod helpers {
     use super::*;
 
     pub fn get_branch_lengths(graph: &GraphAncestral) -> Vec<f64> {

@@ -63,7 +63,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | I/O          | [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md)                                                            |
 | Medium     | I/O          | [Sequence-to-node name matching is unreliable](M-io-sequence-name-matching-unreliable.md)                                                           |
 | Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                              |
-| Medium     | Optimize     | [`--no-indels` flag does not gate `initial_guess_mixed()`](M-optimize-no-indels-initial-guess-not-gated.md)                                         |
 | Medium     | Optimize     | [Indel event count reduced after composition on merged edges](M-optimize-indel-event-count-after-composition.md)                                    |
 | Medium     | Optimize     | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
 | Negligible | GTR          | [Site-specific GTR not integrated into partition system](N-gtr-site-specific-partition-integration.md)                                              |

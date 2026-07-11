@@ -258,7 +258,7 @@ mod tests {
       update_marginal(&graph, &dense_partitions)?;
 
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-      initial_guess_mixed(&graph, &mixed_partitions, true)?;
+      initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
       let dp = 0.1;
       let result = run_optimize_loop(

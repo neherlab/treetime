@@ -40,7 +40,7 @@ mod tests {
   fn test_optimize_zero_sequence_length_initial_guess_error() {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
     let partitions = zero_length_partitions(&graph);
-    let result = initial_guess_mixed(&graph, &partitions, true);
+    let result = initial_guess_mixed(&graph, &partitions, true, false);
     assert_error!(
       result,
       "Total sequence length across all partitions is zero; cannot compute initial guess"
