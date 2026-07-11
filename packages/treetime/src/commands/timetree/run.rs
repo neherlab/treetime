@@ -6,14 +6,18 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::auspice::write_auspice_json;
 use crate::commands::timetree::result::TimetreeResult;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
+use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::MutationCommentProvider;
+use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::seq::div::compute_edge_mutation_counts;
-use crate::timetree::confidence::write_confidence_intervals_file;
+use crate::timetree::confidence::{NodeConfidenceInterval, write_confidence_intervals_file};
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
 use log::info;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_io::graph::{AuspiceWriter, write_tree_outputs};
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -134,7 +138,6 @@ pub fn run_timetree_estimation(
     let plan = resolved.topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
     let auspice_ctx = TimetreeAuspiceCtx {
-      graph: &output.graph,
       confidence_intervals: output.confidence_intervals.as_deref(),
       mutation_counts: mutation_counts.as_ref(),
     };
@@ -186,13 +189,12 @@ pub fn run_timetree_estimation(
 }
 
 struct TimetreeAuspiceCtx<'a> {
-  graph: &'a crate::partition::timetree::GraphTimetree,
-  confidence_intervals: Option<&'a [crate::timetree::confidence::NodeConfidenceInterval]>,
-  mutation_counts: Option<&'a std::collections::BTreeMap<treetime_graph::edge::GraphEdgeKey, usize>>,
+  confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
+  mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
 }
 
-impl AuspiceWriter for TimetreeAuspiceCtx<'_> {
-  fn write_auspice(&self, path: &Path) -> Result<(), Report> {
-    write_auspice_json(self.graph, self.confidence_intervals, self.mutation_counts, path)
+impl AuspiceWriter<NodeTimetree, EdgeTimetree, ()> for TimetreeAuspiceCtx<'_> {
+  fn write_auspice(&self, graph: &GraphTimetree, path: &Path) -> Result<(), Report> {
+    write_auspice_json(graph, self.confidence_intervals, self.mutation_counts, path)
   }
 }

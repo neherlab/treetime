@@ -45,7 +45,7 @@ pub fn write_tree_outputs<N, E, D>(
   graph: &Graph<N, E, D>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
-  auspice_writer: Option<&dyn AuspiceWriter>,
+  auspice_writer: Option<&dyn AuspiceWriter<N, E, D>>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + NodeToNwk + NodeToGraphviz + Serialize,
@@ -81,7 +81,7 @@ where
              Auspice JSON requires domain-specific data only available on certain commands."
           )
         })?;
-        writer.write_auspice(path)?;
+        writer.write_auspice(graph, path)?;
       },
       TreeWriteKind::Phyloxml | TreeWriteKind::PhyloxmlJson => {
         return make_error!("PhyloXML output is not yet implemented for analysis commands");
@@ -100,6 +100,11 @@ where
 /// (confidence intervals, mutation counts, etc). This trait abstracts
 /// the write operation so `write_tree_outputs` can dispatch without
 /// depending on command-specific types.
-pub trait AuspiceWriter {
-  fn write_auspice(&self, path: &Path) -> Result<(), Report>;
+pub trait AuspiceWriter<N, E, D>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  fn write_auspice(&self, graph: &Graph<N, E, D>, path: &Path) -> Result<(), Report>;
 }

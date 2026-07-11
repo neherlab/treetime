@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::output::OutputCoreArgs;
+  use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, OutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use std::fs::read_to_string;
   use std::path::PathBuf;
+  use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
+  use treetime_utils::io::json::json_read_file;
 
   #[test]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
@@ -79,11 +81,53 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
+    let root = project_root();
+    let output = tempfile::tempdir()?;
+    let args = TreetimeTimetreeArgs {
+      alignment: AlignmentArgs {
+        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
+      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      max_iter: 0,
+      output: OutputCoreArgs {
+        output_all: Some(output.path().to_path_buf()),
+        output_selection: vec![OutputSelection::Auspice],
+        topology_order_args: TopologyOrderArgs {
+          ladderize: Some(LadderizeArg::Descending),
+          ..TopologyOrderArgs::default()
+        },
+        ..OutputCoreArgs::default()
+      },
+      ..TreetimeTimetreeArgs::default()
+    };
+
+    run_timetree_estimation(&args, &NoopProgress)?;
+
+    let tree: AuspiceTree = json_read_file(output.path().join("timetree.auspice.json"))?;
+    let actual = tree.tree.children.iter().map(count_leaves).collect::<Vec<_>>();
+    let mut expected = actual.clone();
+    expected.sort_unstable_by(|left, right| right.cmp(left));
+    assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
   fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|p| p.parent())
       .map(PathBuf::from)
       .expect("project has workspace root")
+  }
+
+  fn count_leaves(node: &AuspiceTreeNode) -> usize {
+    if node.children.is_empty() {
+      1
+    } else {
+      node.children.iter().map(count_leaves).sum()
+    }
   }
 }
