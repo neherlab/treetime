@@ -1,5 +1,7 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::marginal_core::normalize_1d_inplace;
+use crate::partition::marginal_core::{
+  forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_1d_inplace,
+};
 use crate::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
 use crate::partition::sparse::{SparseNodePartition, SparseSeqDistribution, VarPos};
@@ -353,7 +355,7 @@ where
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: seq_info.seq.composition.clone(),
-      log_lh: seq_info.profile.log_lh - child_edge_data.msg_from_child.log_lh,
+      log_lh: forward_log_lh_remove_child(seq_info.profile.log_lh, child_edge_data.msg_from_child.log_lh),
     };
 
     let child_dis = child_edge_data.msg_from_child.clone();
@@ -399,7 +401,8 @@ where
       // Matches the stabilization pattern in discrete.rs:206.
       let safe_divisor = divisor.mapv(|v| v.max(f64::MIN_POSITIVE));
       let mut dis = numerator / &safe_divisor;
-      delta_ll += normalize_1d_inplace(&mut dis, 1.0);
+      let normalization = normalize_1d_inplace(&mut dis, 1.0);
+      delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
       seq_dis.variable.insert(pos, VarPos { dis, state: pstate });
       seq_dis.fixed_counts.adjust_count(pstate, -1);
     }
@@ -407,10 +410,11 @@ where
       let safe_fixed = child_dis.fixed[s].mapv(|v| v.max(f64::MIN_POSITIVE));
       let mut dis = p / &safe_fixed;
       let weight = seq_dis.fixed_counts.get(*s).unwrap() as f64;
-      delta_ll += normalize_1d_inplace(&mut dis, weight);
+      let normalization = normalize_1d_inplace(&mut dis, weight);
+      delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
       seq_dis.fixed.insert(*s, dis);
     }
-    seq_dis.log_lh += delta_ll;
+    seq_dis.log_lh = forward_log_lh_add_normalization(seq_dis.log_lh, delta_ll);
     let mut updated_edge_data = child_edge_data;
     updated_edge_data.msg_to_child = seq_dis;
     partition.edges.insert(*child_edge_key, updated_edge_data);
