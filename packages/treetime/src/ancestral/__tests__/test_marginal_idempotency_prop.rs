@@ -2,10 +2,14 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input_small;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::ancestral::sample::SampleMode;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::seq::composition::Composition;
   use proptest::prelude::*;
+  use rand::SeedableRng;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlphabetLike;
   use treetime_utils::prop_assert_abs_diff_eq;
 
   proptest! {
@@ -76,6 +80,35 @@ mod tests {
       let log_lh_second = update_marginal(&graph, &partitions).unwrap();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
+    }
+
+    /// MAP reconstruction keeps each sparse node's cached composition equal to its sequence.
+    #[test]
+    fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
+      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
+      let (_, partitions) = run_sparse_marginal(&input).unwrap();
+      let mut rng = rand::rngs::StdRng::seed_from_u64(0);
+
+      ancestral_reconstruction_marginal(
+        &graph,
+        true,
+        &partitions,
+        SampleMode::Argmax,
+        &mut rng,
+        |_, _| Ok(()),
+      )
+      .unwrap();
+
+      let partition = partitions[0].read_arc();
+      let compositions_match = partition.nodes.values().all(|node| {
+        let expected = Composition::with_seq(
+          &node.seq.sequence,
+          partition.alphabet.chars(),
+          partition.alphabet.gap(),
+        );
+        expected == node.seq.composition
+      });
+      prop_assert!(compositions_match);
     }
   }
 }

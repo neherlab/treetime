@@ -10,6 +10,7 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,
 };
+use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
@@ -21,7 +22,7 @@ use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
@@ -536,6 +537,7 @@ where
 
     let sample = sample_mode.samples_node(node.is_root);
     let seq = reconstruct_map_seq_sampled(base_seq, edge, &node_data, &self.alphabet, sample, rng);
+    node_data.seq.composition = Composition::with_seq(&seq, self.alphabet.chars(), self.alphabet.gap());
     node_data.seq.sequence = seq.clone();
     self.nodes.insert(node.key, node_data);
 

@@ -12,6 +12,7 @@ mod tests {
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
+  use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -25,7 +26,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::Seq;
+  use treetime_primitives::{AlphabetLike, Seq};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Lazily initialized default nucleotide alphabet (A, C, G, T with gap handling).
@@ -207,6 +208,14 @@ mod tests {
       json_write_str(&expected, JsonPretty(false))?,
       json_write_str(&actual, JsonPretty(false))?
     );
+
+    let partition = partitions_marginal_sparse[0].read_arc();
+    for (name, expected_seq) in &expected {
+      let node_key = find_node_key_by_name(&graph, name).expect("expected internal node must exist");
+      let expected_composition =
+        Composition::with_seq(expected_seq, partition.alphabet.chars(), partition.alphabet.gap());
+      assert_eq!(expected_composition, partition.nodes[&node_key].seq.composition);
+    }
 
     // test overall likelihood
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
