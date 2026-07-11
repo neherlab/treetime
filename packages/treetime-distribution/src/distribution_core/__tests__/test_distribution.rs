@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::Distribution;
-  use crate::policy::Plain;
+  use crate::policy::{NegLog, Plain};
+  use crate::{Distribution, DistributionFormula};
   use approx::assert_relative_eq;
-  use ndarray::array;
+  use ndarray::{Array1, array};
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_distribution_max_value() {
@@ -58,5 +59,52 @@ mod tests {
     let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![0.0, 0.0, 0.0]).unwrap();
     let normalized = func.normalize();
     assert!(matches!(normalized, Distribution::Empty));
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_empty() {
+    let actual = Distribution::<NegLog>::Empty.to_plain_normalized();
+    assert_eq!(Distribution::<Plain>::Empty, actual);
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_point() {
+    let actual = Distribution::<NegLog>::point(2.0, 1000.0).to_plain_normalized();
+    let expected = Distribution::<Plain>::point(2.0, 1.0);
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_range() {
+    let actual = Distribution::<NegLog>::range((1.0, 3.0), 1000.0).to_plain_normalized();
+    let expected = Distribution::<Plain>::range((1.0, 3.0), 1.0);
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_function_preserves_likelihood_ratios() {
+    let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
+    let actual = distribution.to_plain_normalized();
+    let expected = array![(-4.0_f64).exp(), 1.0, (-3.0_f64).exp()];
+    pretty_assert_ulps_eq!(expected, actual.y(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_formula_normalizes_constant() {
+    let formula = DistributionFormula::new(|_| Ok(1000.0), 0.0, 2.0);
+    let actual = Distribution::<NegLog>::Formula(formula).to_plain_normalized();
+    let expected = Array1::ones(200);
+    pretty_assert_ulps_eq!(expected, actual.y(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_distribution_to_plain_normalized_rejects_nonfinite_minimum() {
+    let distribution = Distribution::<NegLog>::function(
+      array![0.0, 1.0, 2.0],
+      array![f64::INFINITY, f64::INFINITY, f64::INFINITY],
+    )
+    .unwrap();
+    let actual = distribution.to_plain_normalized();
+    assert_eq!(Distribution::<Plain>::Empty, actual);
   }
 }

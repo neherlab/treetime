@@ -39,15 +39,12 @@ where
   E: TimetreeEdge,
   D: Send + Sync,
 {
-  // For internal node, initialize distribution with coalescent contribution.
-  // Skip leaves - their time_distribution represents date constraints that must not be modified.
-  let mut result: Option<Distribution> = if node.is_leaf {
+  let coalescent_contribution = if node.is_leaf {
     None
   } else {
-    coalescent_contribs
-      .and_then(|contributions| contributions.get(&node.key))
-      .map(|contrib| (**contrib).to_plain())
+    coalescent_contribs.and_then(|contributions| contributions.get(&node.key))
   };
+  let mut result: Option<Distribution> = None;
 
   for (child, edge) in &node.children {
     let child = child.read_arc();
@@ -74,10 +71,19 @@ where
       // consumers (likely_time, quantile, hpd_region) are scale-invariant.
       result = Some(if let Some(current) = result {
         distribution_multiplication(&current, &parent_message_arc)?.normalize()
+      } else if let Some(contribution) = coalescent_contribution {
+        let parent_message = parent_message_arc.to_neglog();
+        distribution_multiplication(contribution, &parent_message)?.to_plain_normalized()
       } else {
         (*parent_message_arc).clone()
       });
     }
+  }
+
+  if result.is_none()
+    && let Some(contribution) = coalescent_contribution
+  {
+    result = Some(contribution.to_plain_normalized());
   }
 
   // Store final distribution on node

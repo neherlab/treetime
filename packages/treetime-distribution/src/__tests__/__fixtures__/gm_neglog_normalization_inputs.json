@@ -1,0 +1,7 @@
+{
+  "coalescent_underflow": {
+    "time_points": [2010.0, 2011.0, 2012.0],
+    "child_neglog": [2.0, 0.0, 2.0],
+    "coalescent_neglog": [1002.0, 1000.0, 1001.0]
+  }
+}

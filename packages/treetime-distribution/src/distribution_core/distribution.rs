@@ -371,6 +371,34 @@ impl Distribution<Plain> {
 }
 
 impl Distribution<NegLog> {
+  /// Convert negative-log values to a normalized plain-probability shape.
+  ///
+  /// Subtracting the minimum negative-log value before exponentiation preserves
+  /// likelihood ratios while preventing every value from underflowing to zero.
+  pub fn to_plain_normalized(&self) -> Distribution<Plain> {
+    match self {
+      Self::Empty => Distribution::Empty,
+      Self::Point(point) => {
+        if point.amplitude().is_finite() {
+          Distribution::point(point.t(), 1.0)
+        } else {
+          Distribution::Empty
+        }
+      },
+      Self::Range(range) => {
+        if range.amplitude().is_finite() {
+          Distribution::range((range.start(), range.end()), 1.0)
+        } else {
+          Distribution::Empty
+        }
+      },
+      Self::Function(function) => neglog_function_to_plain_normalized(function),
+      Self::Formula(formula) => discretize_formula(formula).map_or(Distribution::Empty, |function| {
+        neglog_function_to_plain_normalized(&function)
+      }),
+    }
+  }
+
   pub fn to_plain(&self) -> Distribution<Plain> {
     match self {
       Self::Empty => Distribution::Empty,
@@ -397,13 +425,22 @@ impl Distribution<NegLog> {
   }
 }
 
-fn discretize_formula(f: &DistributionFormula<Plain>) -> Result<DistributionFunction<f64, Plain>, Report> {
+fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
   let n_points = FORMULA_GRID_SIZE;
   let t = Array1::from_shape_fn(n_points, |i| {
     f.t_min() + (f.t_max() - f.t_min()) * (i as f64 / (n_points - 1) as f64)
   });
   let values = f.eval_many(&t)?;
   DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)
+}
+
+fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegLog>) -> Distribution<Plain> {
+  let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
+    return Distribution::Empty;
+  };
+  let values = function.y().mapv(|value| (minimum - value).exp());
+  DistributionFunction::from_start_dx_values(function.x_min(), function.dx(), values)
+    .map_or(Distribution::Empty, Distribution::Function)
 }
 
 /// HPD region for a discretized distribution on a uniform grid.

@@ -5,8 +5,9 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use eyre::Report;
+  use indexmap::IndexMap;
   use std::sync::Arc;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{Distribution, DistributionFormula, DistributionNegLog};
   use treetime_graph::edge::BranchDistribution;
   use treetime_graph::node::{GraphNodeKey, TimeConstraint};
   use treetime_io::nwk::nwk_read_str;
@@ -121,9 +122,6 @@ mod tests {
   /// causing subsequent clock regression to fail with "No variation in sampling dates".
   #[test]
   fn test_backward_pass_preserves_leaf_time_distribution_with_coalescent() -> Result<(), Report> {
-    use indexmap::IndexMap;
-    use treetime_distribution::DistributionNegLog;
-
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
 
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
@@ -197,6 +195,37 @@ mod tests {
         .expect("leaf B time distribution should have likely_time");
       pretty_assert_ulps_eq!(likely_time, date_b, max_ulps = 4);
     }
+
+    Ok(())
+  }
+
+  /// v0 normalizes negative-log likelihoods relative to their peak before
+  /// exponentiation (`treetime/distribution.py:210-213`).
+  #[test]
+  fn test_backward_pass_preserves_internal_time_with_large_coalescent_cost() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+    let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
+
+    set_leaf_time(&graph, leaf_a_key, 2015.0);
+    set_leaf_time(&graph, leaf_b_key, 2014.0);
+    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+
+    let contribution = DistributionFormula::new(|time| Ok(1000.0 + (time - 2012.0).powi(2)), 1900.0, 2100.0);
+    let contributions = IndexMap::from([(internal_key, Arc::new(DistributionNegLog::Formula(contribution)))]);
+
+    propagate_distributions_backward(&graph, Some(&contributions))?;
+
+    let internal = graph.get_node(internal_key).expect("internal I exists");
+    let payload = internal.read_arc().payload().read_arc();
+    let actual = payload
+      .time_distribution()
+      .as_ref()
+      .and_then(|distribution| distribution.likely_time());
+    let expected = Some(2012.0);
+    assert_eq!(expected, actual);
 
     Ok(())
   }

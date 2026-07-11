@@ -1,0 +1,15 @@
+{
+  "coalescent_underflow": {
+    "time_points": [
+      2010.0,
+      2011.0,
+      2012.0
+    ],
+    "probabilities_relative": [
+      0.018315638888867444,
+      1.0,
+      0.04978706836813563
+    ],
+    "peak_position": 2011.0
+  }
+}
