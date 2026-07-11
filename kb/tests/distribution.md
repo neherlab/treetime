@@ -34,12 +34,18 @@
 
 **Impl:** [`packages/treetime-distribution/src/distribution_core/distribution.rs`](../../packages/treetime-distribution/src/distribution_core/distribution.rs)
 
-| Test                                        | Purpose                        |
-| ------------------------------------------- | ------------------------------ |
-| `test_distribution_max_value`               | Max value across variants      |
-| `test_distribution_scale_by`                | Scale amplitude by factor      |
-| `test_distribution_normalize`               | Normalize to max=1             |
-| `test_distribution_normalize_empty_on_zero` | Zero values normalize to Empty |
+| Test                                                                         | Purpose                                  |
+| ---------------------------------------------------------------------------- | ---------------------------------------- |
+| `test_distribution_max_value`                                                | Max value across variants                |
+| `test_distribution_scale_by`                                                 | Scale amplitude by factor                |
+| `test_distribution_normalize`                                                | Normalize to max=1                       |
+| `test_distribution_normalize_empty_on_zero`                                  | Zero values normalize to Empty           |
+| `test_distribution_to_plain_normalized_empty`                                | Empty neg-log conversion                 |
+| `test_distribution_to_plain_normalized_point`                                | Point conversion with max=1              |
+| `test_distribution_to_plain_normalized_range`                                | Range conversion with max=1              |
+| `test_distribution_to_plain_normalized_function_preserves_likelihood_ratios` | Function likelihood ratios               |
+| `test_distribution_to_plain_normalized_formula_normalizes_constant`          | Formula discretization and normalization |
+| `test_distribution_to_plain_normalized_rejects_nonfinite_minimum`            | Non-finite minimum returns Empty         |
 
 **Test:** [`packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs)
 
@@ -318,6 +324,14 @@
 ---
 
 ### Root-Level Tests
+
+**Test:** [`packages/treetime-distribution/src/__tests__/test_gm_neglog_normalization.rs`](../../packages/treetime-distribution/src/__tests__/test_gm_neglog_normalization.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_core/distribution.rs`](../../packages/treetime-distribution/src/distribution_core/distribution.rs)
+
+| Test                                                            | Purpose                                                        |
+| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| `test_gm_neglog_normalization_matches_v0_coalescent_underflow` | Stable relative likelihoods match v0 for large coalescent cost |
 
 **Test:** [`packages/treetime-distribution/src/__tests__/test_gaussian_product.rs`](../../packages/treetime-distribution/src/__tests__/test_gaussian_product.rs)
 

@@ -199,14 +199,15 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 **Impl:** [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs)
 
-| Test                                                                  | Purpose                                          |
-| --------------------------------------------------------------------- | ------------------------------------------------ |
-| `test_backward_pass_computes_internal_node_time`                      | Parent time = child time - branch length         |
-| `test_backward_pass_multiplies_child_messages`                        | Message multiplication (constraint intersection) |
-| `test_backward_pass_preserves_leaf_time_distribution_with_coalescent` | Coalescent does not overwrite leaf dates         |
-| `test_backward_pass_sets_edge_messages`                               | `msg_to_parent` storage                          |
-| `test_backward_pass_skips_bad_branch_children`                        | `bad_branch` flag handling                       |
-| `test_backward_pass_bad_branch_equivalent_to_removal`                 | `bad_branch` matches tree without that leaf      |
+| Test                                                                    | Purpose                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------------ |
+| `test_backward_pass_computes_internal_node_time`                        | Parent time = child time - branch length         |
+| `test_backward_pass_multiplies_child_messages`                          | Message multiplication (constraint intersection) |
+| `test_backward_pass_preserves_leaf_time_distribution_with_coalescent`   | Coalescent does not overwrite leaf dates         |
+| `test_backward_pass_preserves_internal_time_with_large_coalescent_cost` | Large coalescent costs do not underflow to Empty  |
+| `test_backward_pass_sets_edge_messages`                                 | `msg_to_parent` storage                           |
+| `test_backward_pass_skips_bad_branch_children`                          | `bad_branch` flag handling                       |
+| `test_backward_pass_bad_branch_equivalent_to_removal`                   | `bad_branch` matches tree without that leaf       |
 
 ---
 

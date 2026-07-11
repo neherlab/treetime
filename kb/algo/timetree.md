@@ -61,6 +61,8 @@ The coalescent contribution pipeline chains four steps:
 
 `compute_coalescent_contributions()` (`#compute_coalescent_contributions`) [packages/treetime/src/coalescent/coalescent.rs#L61-L79](../../packages/treetime/src/coalescent/coalescent.rs#L61-L79) orchestrates the full pipeline.
 
+The backward pass preserves the [coalescent-first multiplication order](../decisions/coalescent-multiplication-ordering.md): it multiplies each internal-node contribution by the first child message in neg-log space. `Distribution<NegLog>::to_plain_normalized()` then subtracts the minimum neg-log value before exponentiation, `p_rel(t) = exp(-(ell(t) - min ell))`, so the largest relative likelihood is 1 and all likelihood ratios are preserved. Remaining child messages are multiplied in plain space with normalization after each multiplication. This prevents large absolute coalescent costs from underflowing every grid value to zero while leaving the approved multiplication order unchanged.
+
 The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass.
 
 **v1 applies only internal node contributions.** Leaf contributions are computed but not consumed by the backward pass (`backward_pass.rs:45` returns `None` for leaves). The root correction is not computed. See [known issue](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md).
