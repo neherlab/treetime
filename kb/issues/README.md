@@ -161,7 +161,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Coalescent   | [Coalescent leaf survival formula sign convention requires investigation](M-coalescent-leaf-survival-sign-convention.md)                            |
 | Medium     | Coalescent   | [Coalescent subsystem time notation conflict](M-coalescent-time-notation-conflict.md)                                                               |
 | Medium     | Inference    | [Inference forward/backward pass asymmetries](M-inference-forward-backward-asymmetry.md)                                                            |
-| Medium     | Clock        | [Clock pre-filter ignores user-provided variance parameters](M-clock-prefilter-ignores-user-variance.md)                                            |
 | Medium     | CLI          | [CLI help text defects, inconsistencies, and UX violations](M-cli-help-text-defects.md)                                                             |
 | Medium     | Core         | [Remaining architectural debt after domain module extraction](M-core-remaining-architectural-debt-after-extraction.md)                              |
 | Negligible | Timetree     | [Timetree indel rate recomputed per refinement iteration](N-timetree-indel-rate-recomputed-per-iteration.md)                                        |

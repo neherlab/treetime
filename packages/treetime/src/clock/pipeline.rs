@@ -88,15 +88,8 @@ fn estimate_clock_model_with_prefilter(
         force_positive_rate: false,
         ..RerootParams::default()
       };
-      let result = estimate_clock_model_with_reroot_policy(
-        graph,
-        &ClockParams::default(),
-        None,
-        keep_root,
-        branch_params,
-        &reroot_params,
-        None,
-      )?;
+      let result =
+        estimate_clock_model_with_reroot_policy(graph, options, None, keep_root, branch_params, &reroot_params, None)?;
       let regression = result.regression();
       if regression.clock_rate() < 0.0 {
         // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value

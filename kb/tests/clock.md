@@ -140,9 +140,11 @@
 - [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)
 - [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)
 - [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)
+- [`packages/treetime/src/clock/pipeline.rs`](../../packages/treetime/src/clock/pipeline.rs)
 - [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)
 
-| Test                                                  | Purpose                                                                        |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `test_dengue100_clock_pipeline_structural_properties` | Assertion-based: rate positive, plausible range, outliers detected, v0 overlap |
-| `test_dengue100_clock_pipeline_golden_master`         | Pin v1 output: rate, intercept, R, chisq, outlier set                          |
+| Test                                                               | Purpose                                                                        |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `test_dengue100_clock_pipeline_structural_properties`              | Assertion-based: rate positive, plausible range, outliers detected, v0 overlap |
+| `test_dengue100_clock_pipeline_golden_master`                      | Pin v1 output: rate, intercept, R, chisq, outlier set                          |
+| `test_dengue100_clock_pipeline_prefilter_uses_supplied_clock_params` | Verify pre-filter and final regression use caller-supplied variance parameters |
