@@ -22,4 +22,4 @@ Replace the silent clamp with either:
 
 - Source: [M-timetree-coalescent-branch-length-clamp.md](../issues/M-timetree-coalescent-branch-length-clamp.md) -- delete after full resolution
 - [N-core-branch-length-clamping.md](../issues/N-core-branch-length-clamping.md) -- branch-length clamping hack in marginal passes (different code path, same pattern)
-- [M-optimize-negative-branch-length-validation.md](../issues/M-optimize-negative-branch-length-validation.md) -- missing negative branch-length validation in the optimizer
+- The optimize pipeline rejects negative branch lengths; this ticket covers the independent coalescent-cost clamp.

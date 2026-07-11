@@ -4,7 +4,7 @@ The branch-length optimizer and `update_marginal` disagree on the meaning of the
 
 ## Depends on
 
-This issue co-occurs with [M-optimize-negative-branch-length-validation.md](M-optimize-negative-branch-length-validation.md) when `treetime optimize` is run on a timetree. That issue concerns the crash triggered by negative timetree branch lengths; this issue concerns the wrong-results path that persists even when negative lengths are absent or have been replaced. Both are triggered by the same class of input (timetree-derived trees with year-scale branch lengths).
+The optimizer now rejects negative timetree branch lengths before likelihood evaluation. The coordinate mismatch remains for finite non-negative timetree-derived branch lengths because their units are still incompatible with the optimizer's substitution coordinate.
 
 ## Affected code locations
 

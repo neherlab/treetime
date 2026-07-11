@@ -65,7 +65,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                              |
 | Medium     | Optimize     | [`--no-indels` flag does not gate `initial_guess_mixed()`](M-optimize-no-indels-initial-guess-not-gated.md)                                         |
 | Medium     | Optimize     | [Indel event count reduced after composition on merged edges](M-optimize-indel-event-count-after-composition.md)                                    |
-| Medium     | Optimize     | [Negative branch lengths not validated or reported across optimizer modes](M-optimize-negative-branch-length-validation.md)                         |
 | Medium     | Optimize     | [Optimizer and marginal propagation use incompatible branch-length scales when GTR mu != 1](M-optimize-gtr-mu-coordinate-mismatch.md)               |
 | Negligible | GTR          | [Site-specific GTR not integrated into partition system](N-gtr-site-specific-partition-integration.md)                                              |
 | Negligible | GTR          | [Site-specific GTR inference lacks end-to-end test from real tree data](N-gtr-site-specific-e2e-inference-test.md)                                  |
@@ -145,7 +144,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Mugration    | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                                 |
 | Medium     | GTR          | [Dense GTR golden master bakes v1 root-state filtering into the v0 oracle](M-gtr-dense-root-filter-golden-master-self-validating.md)                |
 | Negligible | Mugration    | [Mugration count_transitions lacks direct unit test](N-mugration-count-transitions-untested.md)                                                     |
-| Medium     | Optimize     | [evaluate_site_contributions does not guard against negative branch lengths](M-optimize-negative-bl-in-evaluate.md)                                 |
 | Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                              |
 | Negligible | Marginal     | [Marginal forward pass zero-divisor floor converts structural zeros](N-marginal-forward-zero-divisor-floor.md)                                      |
 | Negligible | Timetree     | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                           |

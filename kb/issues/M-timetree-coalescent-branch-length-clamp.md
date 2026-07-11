@@ -21,4 +21,4 @@ Replace the silent clamp with either:
 ## Related
 
 - [N-core-branch-length-clamping.md](N-core-branch-length-clamping.md): branch-length clamping hack in marginal passes (different code path, same pattern)
-- [M-optimize-negative-branch-length-validation.md](M-optimize-negative-branch-length-validation.md): missing negative branch-length validation in the optimizer
+- The optimize pipeline rejects negative branch lengths; this issue covers the independent coalescent-cost clamp.

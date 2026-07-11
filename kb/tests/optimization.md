@@ -17,6 +17,7 @@
 | [Convergence on real datasets](#convergence-on-real-datasets)                           | Unit            |
 | [Optimization metrics](#optimization-metrics)                                           | Unit            |
 | [Zero branch optimal](#zero-branch-optimal)                                             | Unit            |
+| [Branch length validation](#branch-length-validation)                                   | Parameterized   |
 | [Initial guess mode](#initial-guess-mode)                                               | Unit            |
 | [Initial guess indel zero-BL](#initial-guess-indel-zero-bl)                             | Unit            |
 | [Initial guess GTR messages](#initial-guess-gtr-messages)                               | Unit            |
@@ -546,6 +547,7 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 | `test_optimize_indel_initial_guess_nonzero_with_indels`               | Indel-only signal produces positive initial branch length               |
 | `test_optimize_indel_initial_guess_zero_bl_tree_with_indels`          | Zero-BL trees bootstrap away from zero when indels are present          |
 | `test_optimize_indel_run_optimize_nonzero_with_indels`                | All 6 optimize methods produce positive finite BL on indel-bearing edge |
+| `test_optimize_indel_run_optimize_rejects_negative_branch_length`     | Direct optimizer entry rejects negative BLs with and without indels     |
 | `test_optimize_indel_zero_bl_pipeline_escapes_zero`                   | Initial guess plus optimize escapes zero in the sparse production path  |
 | `test_optimize_indel_grid_zero_comparison_rejects_zero_with_indels`   | Zero-boundary shortcut rejects zero when Poisson term is active         |
 | `test_optimize_indel_grid_zero_comparison_allows_zero_without_indels` | Zero-boundary shortcut preserves substitution-only behavior             |
@@ -650,6 +652,26 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 
 ---
 
+## Branch Length Validation
+
+**Test:** [`packages/treetime/src/optimize/__tests__/test_branch_length_validation.rs`](../../packages/treetime/src/optimize/__tests__/test_branch_length_validation.rs)
+
+**Impl:**
+
+- [`packages/treetime/src/optimize/branch_length.rs`](../../packages/treetime/src/optimize/branch_length.rs)
+- [`packages/treetime/src/optimize/eval.rs`](../../packages/treetime/src/optimize/eval.rs)
+- [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs)
+
+| Test                                                                        | Purpose                                                                        |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `test_branch_length_validation_scalar_domain`                               | Finite non-negative values are valid; negative and non-finite values fail      |
+| `test_branch_length_validation_missing_is_invalid`                          | Missing branch lengths fail canonical validation                               |
+| `test_branch_length_validation_substitution_evaluator_rejects_invalid`      | Substitution likelihood returns errors for invalid branch lengths              |
+| `test_branch_length_validation_poisson_evaluator_rejects_invalid`           | Poisson indel likelihood returns errors for invalid branch lengths             |
+| `test_branch_length_validation_poisson_zero_boundary_depends_on_indel_count` | Zero is accepted only when no observed indel requires positive branch exposure |
+
+---
+
 ## Initial Guess Mode
 
 **Test:** [`packages/treetime/src/optimize/__tests__/test_initial_guess_mode.rs`](../../packages/treetime/src/optimize/__tests__/test_initial_guess_mode.rs)
@@ -665,10 +687,13 @@ Focused regression coverage for the Poisson indel term, zero-branch-length boots
 | `test_initial_guess_mode_default_is_auto`                       | Default variant is Auto                                                 |
 | `test_initial_guess_mode_detects_nan_from_newick`               | Detects NaN branch lengths from bio crate newick parser                 |
 | `test_initial_guess_mode_detects_explicit_nan`                  | Detects explicit `Some(NaN)` as missing                                 |
+| `test_initial_guess_mode_detects_negative_branch_length`        | Detects negative branch lengths as invalid                              |
+| `test_initial_guess_mode_describes_all_invalid_edges_and_warning` | Warning text identifies every invalid edge and value                  |
 | `test_initial_guess_mode_no_missing_when_all_finite`            | Reports no missing when all edges have finite lengths                   |
 | `test_initial_guess_mode_auto_preserves_valid_lengths`          | Auto mode does not overwrite valid finite branch lengths                |
-| `test_initial_guess_mode_auto_fills_nan_from_newick`            | Auto mode fills NaN edges with finite non-negative values               |
+| `test_initial_guess_mode_auto_fills_none_from_newick`           | Auto mode fills missing edges with finite non-negative values           |
 | `test_initial_guess_mode_auto_fills_only_missing_edges`         | Auto mode fills one NaN edge, preserves all others exactly              |
+| `test_initial_guess_mode_negative_branch_length_matrix`         | Auto/Always replace and Never rejects negative lengths, with and without indels |
 | `test_initial_guess_mode_always_overwrites_all`                 | Always mode overwrites existing branch lengths                          |
 | `test_initial_guess_mode_never_accepts_complete_tree`           | Never mode accepts tree with all finite branch lengths                  |
 | `test_initial_guess_mode_never_rejects_nan_tree`                | Never mode detects NaN tree as having missing branch lengths            |
@@ -841,6 +866,7 @@ Direct coverage for `collapse_edge()` lives in [Representation Tests: Topology C
 | `test_optimize_indel_initial_guess_nonzero_with_indels`               | initial_guess assigns positive BL when indels present on identical sequences   |
 | `test_optimize_indel_initial_guess_zero_bl_tree_with_indels`          | initial_guess bootstraps positive BL on zero-BL tree with indels               |
 | `test_optimize_indel_run_optimize_nonzero_with_indels` (6 methods)    | run_optimize_mixed assigns positive BL with indels for each optimizer          |
+| `test_optimize_indel_run_optimize_rejects_negative_branch_length`     | Direct optimizer entry rejects negative BLs with and without indels            |
 | `test_optimize_indel_zero_bl_pipeline_escapes_zero` (6 methods)       | Full pipeline escapes zero BL with indels for each optimizer                   |
 | `test_optimize_indel_poisson_concavity` (5 cases)                     | Poisson second derivative negative for k>0                                     |
 | `test_optimize_indel_poisson_mle_derivative_zero` (5 cases)           | Poisson derivative zero at MLE t=k/mu                                          |
