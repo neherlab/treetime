@@ -1,4 +1,6 @@
+use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
+use eyre::Report;
 use itertools::izip;
 use ndarray::{Array1, ArrayView1};
 
@@ -34,7 +36,9 @@ pub fn evaluate_site_contributions<'a>(
   eigvals: &Array1<f64>,
   branch_length: f64,
   compute_derivatives: bool,
-) -> OptimizationMetrics {
+) -> Result<OptimizationMetrics, Report> {
+  validate_branch_length_value(branch_length)?;
+
   let mut log_lh = 0.0;
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
@@ -76,5 +80,5 @@ pub fn evaluate_site_contributions<'a>(
     }
   }
 
-  OptimizationMetrics::new(log_lh, derivative, second_derivative)
+  Ok(OptimizationMetrics::new(log_lh, derivative, second_derivative))
 }

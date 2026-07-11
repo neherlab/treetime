@@ -30,7 +30,7 @@ mod tests {
     };
 
     let branch_length = 0.1;
-    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
 
     // Compute expected log-LH as sum of individual site contributions
     let variable_contribution = PartitionContribution {
@@ -48,8 +48,9 @@ mod tests {
       gtr,
     };
 
-    let variable_metrics = evaluate_sparse_contribution(&variable_contribution, branch_length);
-    let fixed_metrics = evaluate_sparse_contribution(&fixed_contribution, branch_length);
+    let variable_metrics =
+      evaluate_sparse_contribution(&variable_contribution, branch_length).expect("valid branch length");
+    let fixed_metrics = evaluate_sparse_contribution(&fixed_contribution, branch_length).expect("valid branch length");
 
     // Total log-LH equals sum of individual contributions
     let expected_log_lh = variable_metrics.log_lh + fixed_metrics.log_lh;
@@ -81,7 +82,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0);
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
     // The fixed site contribution should dominate
     // variable: 1.0 * ln(0.4) ≈ -0.916

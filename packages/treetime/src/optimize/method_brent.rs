@@ -179,7 +179,8 @@ impl<F: Fn(f64) -> f64> CostFunction for &BranchLengthCostFn<'_, F> {
 
   fn cost(&self, p: &Self::Param) -> Result<Self::Output, Error> {
     let t = (self.to_t)(*p);
-    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t);
+    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t)
+      .map_err(|error| Error::msg(error.to_string()))?;
     Ok(-log_lh)
   }
 }

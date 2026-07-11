@@ -136,7 +136,7 @@ mod tests {
     let contributions = vec![contribution];
 
     let mut branch_length = 0.0;
-    let metrics = evaluate_mixed(&contributions, branch_length);
+    let metrics = evaluate_mixed(&contributions, branch_length).expect("valid branch length");
     let max_iter = 10;
     let mut n_iter = 0;
 
@@ -145,7 +145,7 @@ mod tests {
         (branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length)).max(0.0);
 
       while (new_branch_length - branch_length).abs() > newton_tolerance_t(branch_length) && n_iter < max_iter {
-        let new_metrics = evaluate_mixed(&contributions, new_branch_length);
+        let new_metrics = evaluate_mixed(&contributions, new_branch_length).expect("valid branch length");
         if new_metrics.second_derivative < 0.0 {
           branch_length = new_branch_length;
           new_branch_length = (branch_length

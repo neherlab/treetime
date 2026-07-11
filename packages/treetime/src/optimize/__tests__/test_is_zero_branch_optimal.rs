@@ -478,7 +478,7 @@ mod tests {
     // a local min near t=1, and a global max at equilibrium (t -> infinity).
     // This non-monotonic shape -- rise, dip, recovery -- is the hallmark of
     // multimodality that JC69/F81 cannot exhibit.
-    let lh = |t: f64| evaluate_mixed_log_lh_only(&contributions, t);
+    let lh = |t: f64| evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length");
 
     let log_lh_near_peak = lh(0.2);
     let log_lh_at_dip = lh(1.0);

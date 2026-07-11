@@ -73,7 +73,7 @@ pub(super) fn newton_inner(
       if (new_bl - bl).abs() <= newton_tolerance_t(bl) {
         break;
       }
-      let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, new_bl);
+      let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, new_bl)?;
       if new_metrics.second_derivative < 0.0 {
         bl = new_bl;
         new_bl = (bl - clamp(new_metrics.derivative / new_metrics.second_derivative, -1.0, bl)).max(min_branch_length);
@@ -129,7 +129,7 @@ pub(super) fn newton_sqrt_inner(
       break;
     }
     let t = new_s * new_s;
-    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t);
+    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t)?;
     let (ds_new, d2s_new) = chain_rule_sqrt(new_s, new_metrics.derivative, new_metrics.second_derivative);
     if d2s_new < 0.0 {
       s = new_s;
@@ -244,7 +244,7 @@ pub(super) fn newton_log_inner(
       break;
     }
     let t = new_u.exp();
-    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t);
+    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t)?;
     let (du_new, d2u_new) = chain_rule_log(t, new_metrics.derivative, new_metrics.second_derivative);
     if d2u_new < 0.0 {
       u = new_u;

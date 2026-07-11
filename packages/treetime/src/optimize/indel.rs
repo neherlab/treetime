@@ -1,11 +1,14 @@
+use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::traits::PartitionOptimizeOps;
+use eyre::Report;
 use parking_lot::RwLock;
 use statrs::function::factorial::ln_factorial;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_utils::{make_error, make_report};
 
 /// Poisson indel log-likelihood contribution for one edge.
 ///
@@ -18,21 +21,25 @@ use treetime_graph::node::GraphNode;
 ///
 /// When $k = 0$: $\ell(t) = -\mu t$, $d\ell/dt = -\mu$, $d^2\ell/dt^2 = 0$.
 /// When $k > 0$ and $t \to 0^+$: $d\ell/dt \to +\infty$, forcing the optimum away from zero.
-pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> OptimizationMetrics {
+pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
+  validate_branch_length_value(t)?;
+
   if mu == 0.0 {
-    return if k == 0 {
+    return Ok(if k == 0 {
       OptimizationMetrics::default()
     } else {
       OptimizationMetrics::new(f64::NEG_INFINITY, 0.0, 0.0)
-    };
+    });
   }
 
   if k == 0 {
     // Poisson(0 | mu*t) = exp(-mu*t)
-    return OptimizationMetrics::new(-mu * t, -mu, 0.0);
+    return Ok(OptimizationMetrics::new(-mu * t, -mu, 0.0));
   }
 
-  debug_assert!(t > 0.0, "poisson_indel_log_lh requires t > 0 when k > 0, got t={t}");
+  if t == 0.0 {
+    return make_error!("Poisson indel likelihood requires a positive branch length when k > 0, got t={t}");
+  }
 
   let k_f = k as f64;
   let lambda = mu * t;
@@ -40,7 +47,7 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> OptimizationMetrics {
   let derivative = k_f / t - mu;
   let second_derivative = -k_f / (t * t);
 
-  OptimizationMetrics::new(log_lh, derivative, second_derivative)
+  Ok(OptimizationMetrics::new(log_lh, derivative, second_derivative))
 }
 
 /// Estimate the global indel rate from the tree.
@@ -84,7 +91,11 @@ where
 /// evaluator as the per-edge branch-length optimizer, but evaluated at the
 /// tree's current branch lengths. For an indel-bearing edge at zero branch
 /// length, the Poisson log-likelihood is $-\infty$.
-pub fn total_indel_log_lh<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>], indel_rate: f64) -> f64
+pub fn total_indel_log_lh<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+  indel_rate: f64,
+) -> Result<f64, Report>
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
@@ -93,14 +104,21 @@ where
   graph
     .get_edges()
     .iter()
-    .map(|edge_ref| {
+    .map(|edge_ref| -> Result<f64, Report> {
       let edge_key = edge_ref.read_arc().key();
-      let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let edge = edge_ref.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length().ok_or_else(|| {
+        make_report!(
+          "Cannot evaluate indel likelihood for edge {} with a missing branch length",
+          edge.key()
+        )
+      })?;
+      validate_branch_length_value(branch_length)?;
       let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
       if indel_count > 0 && branch_length <= 0.0 {
-        f64::NEG_INFINITY
+        Ok(f64::NEG_INFINITY)
       } else {
-        poisson_indel_log_lh(indel_count, indel_rate, branch_length).log_lh
+        Ok(poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh)
       }
     })
     .sum()
@@ -114,7 +132,7 @@ mod tests {
 
   #[test]
   fn test_optimize_indel_poisson_zero_rate() {
-    let metrics = poisson_indel_log_lh(3, 0.0, 0.1);
+    let metrics = poisson_indel_log_lh(3, 0.0, 0.1).expect("valid Poisson parameters");
     pretty_assert_neg_inf!(metrics.log_lh);
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.second_derivative, 0.0, epsilon = 1e-15);
@@ -124,7 +142,7 @@ mod tests {
   fn test_optimize_indel_poisson_zero_indels() {
     let mu = 5.0;
     let t = 0.1;
-    let metrics = poisson_indel_log_lh(0, mu, t);
+    let metrics = poisson_indel_log_lh(0, mu, t).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics.log_lh, -mu * t, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.derivative, -mu, epsilon = 1e-15);
     assert_abs_diff_eq!(metrics.second_derivative, 0.0, epsilon = 1e-15);
@@ -134,7 +152,7 @@ mod tests {
   fn test_optimize_indel_poisson_log_lh_value() {
     // k=2, mu=10, t=0.1 => lambda=1.0
     // log P(2|1.0) = 2*ln(1) - 1 - ln(2!) = 0 - 1 - ln(2) = -1 - 0.6931...
-    let metrics = poisson_indel_log_lh(2, 10.0, 0.1);
+    let metrics = poisson_indel_log_lh(2, 10.0, 0.1).expect("valid Poisson parameters");
     let expected_log_lh = -1.0 - 2.0_f64.ln();
     assert_abs_diff_eq!(metrics.log_lh, expected_log_lh, epsilon = 1e-14);
   }
@@ -144,7 +162,7 @@ mod tests {
     let k = 3;
     let mu = 5.0;
     let t = 0.2;
-    let metrics = poisson_indel_log_lh(k, mu, t);
+    let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
     // d/dt = k/t - mu = 3/0.2 - 5 = 15 - 5 = 10
     assert_abs_diff_eq!(metrics.derivative, 10.0, epsilon = 1e-13);
     // d2/dt2 = -k/t^2 = -3/0.04 = -75
@@ -158,21 +176,21 @@ mod tests {
     let k = 5;
     let mu = 10.0;
     let t_mle = k as f64 / mu; // 0.5
-    let metrics = poisson_indel_log_lh(k, mu, t_mle);
+    let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-14);
   }
 
   #[test]
   fn test_optimize_indel_poisson_derivative_positive_near_zero() {
     // For k > 0, derivative should be large positive near t=0
-    let metrics = poisson_indel_log_lh(1, 5.0, 1e-6);
+    let metrics = poisson_indel_log_lh(1, 5.0, 1e-6).expect("valid Poisson parameters");
     assert!(metrics.derivative > 1e5);
   }
 
   #[test]
   fn test_optimize_indel_poisson_second_derivative_negative() {
     // Second derivative is always negative when k > 0 (log-concave)
-    let metrics = poisson_indel_log_lh(3, 5.0, 0.5);
+    let metrics = poisson_indel_log_lh(3, 5.0, 0.5).expect("valid Poisson parameters");
     assert!(metrics.second_derivative < 0.0);
   }
 

@@ -60,7 +60,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0);
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
     // Matching states at zero branch length should have high likelihood
     assert!(metrics.log_lh > -1.0, "log-LH should be high for matching states");
@@ -89,7 +89,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0);
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
     // Mismatched states at zero branch length should have very low likelihood
     assert!(

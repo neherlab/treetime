@@ -3,10 +3,11 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::optimize::branch_length::invalid_branch_length_descriptions;
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::InitialGuessMode;
   use crate::optimize::run_loop::{
-    any_edge_missing_branch_length, any_indel_edge_has_zero_branch_length, apply_initial_guess_mode,
+    any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
@@ -18,6 +19,7 @@ mod tests {
 
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -38,7 +40,7 @@ mod tests {
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
-    assert!(any_edge_missing_branch_length(&graph));
+    assert!(!invalid_branch_length_descriptions(&graph)?.is_empty());
     Ok(())
   }
 
@@ -50,14 +52,40 @@ mod tests {
       .payload()
       .write_arc()
       .set_branch_length(Some(f64::NAN));
-    assert!(any_edge_missing_branch_length(&graph));
+    assert!(!invalid_branch_length_descriptions(&graph)?.is_empty());
+    Ok(())
+  }
+
+  #[test]
+  fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    set_first_branch_length(&graph, -0.1);
+    assert!(!invalid_branch_length_descriptions(&graph)?.is_empty());
+    Ok(())
+  }
+
+  #[test]
+  fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    set_branch_length_by_target_name(&graph, "A", -0.1);
+    set_branch_length_by_target_name(&graph, "C", f64::INFINITY);
+
+    let descriptions = invalid_branch_length_descriptions(&graph)?;
+    let expected = vec!["AB -> A: -0.1", "root -> C: inf"];
+    assert_eq!(expected, descriptions);
+
+    let warning = invalid_branch_length_warning(&descriptions).expect("invalid edges produce a warning");
+    assert!(warning.contains("AB -> A: -0.1"));
+    assert!(warning.contains("root -> C: inf"));
+    assert!(warning.contains("--branch-length-initial-guess=always"));
+    assert_eq!(None, invalid_branch_length_warning(&[]));
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
-    assert!(!any_edge_missing_branch_length(&graph));
+    assert!(invalid_branch_length_descriptions(&graph)?.is_empty());
     Ok(())
   }
 
@@ -128,6 +156,44 @@ mod tests {
     for i in 1..original_lengths.len() {
       assert_abs_diff_eq!(original_lengths[i], updated_lengths[i], epsilon = 1e-15);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::auto_without_indels(  InitialGuessMode::Auto,   false, false)]
+  #[case::auto_with_indels(     InitialGuessMode::Auto,   true,  false)]
+  #[case::always_without_indels(InitialGuessMode::Always, false, false)]
+  #[case::always_with_indels(   InitialGuessMode::Always, true,  false)]
+  #[case::never_without_indels( InitialGuessMode::Never,  false, true)]
+  #[case::never_with_indels(    InitialGuessMode::Never,  true,  true)]
+  #[trace]
+  fn test_initial_guess_mode_negative_branch_length_matrix(
+    #[case] mode: InitialGuessMode,
+    #[case] has_indels: bool,
+    #[case] expects_error: bool,
+  ) -> Result<(), Report> {
+    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    set_first_branch_length(&graph, -0.1);
+    if has_indels {
+      inject_indel_on_first_edge(&graph, &partitions)?;
+    }
+
+    let result = apply_initial_guess_mode(&graph, &partitions, mode, false);
+
+    if expects_error {
+      let error = result.expect_err("Never mode must reject a negative branch length");
+      let message = format!("{error:?}");
+      assert!(message.contains("-0.1"), "Error must include the invalid value, got: {message}");
+      return Ok(());
+    }
+    result?;
+
+    let branch_length = get_branch_lengths(&graph)[0];
+    assert!(
+      branch_length.is_finite() && branch_length >= 0.0,
+      "Initial-guess mode must replace a negative branch length, got {branch_length}"
+    );
     Ok(())
   }
 
@@ -252,6 +318,32 @@ mod tests {
         .iter()
         .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(f64::NAN))
         .collect()
+    }
+
+    pub fn set_first_branch_length(graph: &GraphAncestral, branch_length: f64) {
+      graph.get_edges()[0]
+        .write_arc()
+        .payload()
+        .write_arc()
+        .set_branch_length(Some(branch_length));
+    }
+
+    pub fn set_branch_length_by_target_name(graph: &GraphAncestral, target_name: &str, branch_length: f64) {
+      let edge = graph
+        .get_edges()
+        .into_iter()
+        .find(|edge_ref| {
+          let target = edge_ref.read_arc().target();
+          graph
+            .get_node(target)
+            .is_some_and(|node| node.read_arc().payload().read_arc().name.as_deref() == Some(target_name))
+        })
+        .expect("target node must have an incoming edge");
+      edge
+        .write_arc()
+        .payload()
+        .write_arc()
+        .set_branch_length(Some(branch_length));
     }
 
     /// Attach a single 3-base deletion indel to the partition's entry for

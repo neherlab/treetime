@@ -31,11 +31,11 @@ mod tests {
     };
 
     let h = 1e-6;
-    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
 
     // Numerical first derivative: (f(t+h) - f(t-h)) / 2h
-    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length");
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h).expect("valid branch length");
     let numerical_d1 = (metrics_plus.log_lh - metrics_minus.log_lh) / (2.0 * h);
 
     assert_abs_diff_eq!(metrics.derivative, numerical_d1, epsilon = 1e-9);
@@ -64,9 +64,9 @@ mod tests {
     // Numerical second derivative via central difference of first derivative:
     // d2 ≈ (d1(t+h) - d1(t-h)) / 2h
     let h = 1e-5;
-    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length");
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h).expect("valid branch length");
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
     assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-9);
@@ -96,9 +96,9 @@ mod tests {
     };
 
     let h = 1e-5;
-    let metrics = evaluate_sparse_contribution(&contribution, branch_length);
-    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h);
-    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h);
+    let metrics = evaluate_sparse_contribution(&contribution, branch_length).expect("valid branch length");
+    let metrics_plus = evaluate_sparse_contribution(&contribution, branch_length + h).expect("valid branch length");
+    let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h).expect("valid branch length");
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
     assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-8);
@@ -128,8 +128,8 @@ mod tests {
       gtr,
     };
 
-    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1);
-    let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1);
+    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1).expect("valid branch length");
+    let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1).expect("valid branch length");
 
     // All three quantities scale linearly with multiplicity:
     // ℓ(t) = m * ln(L), ℓ'(t) = m * d1, ℓ''(t) = m * (d2 - d1^2)
@@ -182,8 +182,8 @@ mod tests {
 
     let dense_contribution = optimize_dense::PartitionContribution::new(coefficients_2d, gtr);
 
-    let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length);
-    let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length);
+    let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length).expect("valid branch length");
+    let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length).expect("valid branch length");
 
     pretty_assert_ulps_eq!(sparse_metrics.log_lh, dense_metrics.log_lh, max_ulps = 10);
     pretty_assert_ulps_eq!(sparse_metrics.derivative, dense_metrics.derivative, max_ulps = 10);

@@ -146,7 +146,7 @@ mod tests {
       .set_branch_length(Some(0.1));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
 
     let expected_total_lh: f64 = graph
       .get_edges()
@@ -155,7 +155,9 @@ mod tests {
         let edge_key = edge_ref.read_arc().key();
         let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
         let indel_count = if edge_key == first_edge_key { 2 } else { 0 };
-        poisson_indel_log_lh(indel_count, indel_rate, branch_length).log_lh
+        poisson_indel_log_lh(indel_count, indel_rate, branch_length)
+          .expect("valid Poisson parameters")
+          .log_lh
       })
       .sum();
 
@@ -178,7 +180,7 @@ mod tests {
       .set_branch_length(Some(0.0));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
 
     pretty_assert_neg_inf!(total_lh);
     Ok(())
@@ -197,7 +199,7 @@ mod tests {
       .set_branch_length(Some(0.0));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate);
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
 
     assert!(total_lh.is_finite(), "Expected finite total indel LH, got {total_lh}");
     Ok(())
@@ -343,6 +345,33 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_indels(false)]
+  #[case::with_indels(   true)]
+  #[trace]
+  fn test_optimize_indel_run_optimize_rejects_negative_branch_length(#[case] has_indels: bool) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let aln = simple_alignment()?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    graph.get_edges()[0]
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(-0.1));
+    if has_indels {
+      let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
+    }
+
+    let error = run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::BrentSqrt)
+      .expect_err("negative branch length must return an error");
+    let message = format!("{error:?}");
+    assert!(message.contains("finite and non-negative"), "Unexpected error: {message}");
+    Ok(())
+  }
+
   /// Full pipeline regression: zero all BLs, inject indels into sparse partition only
   /// (production path), run initial_guess + optimize, verify escape from zero.
   #[rustfmt::skip]
@@ -414,7 +443,7 @@ mod tests {
   #[case::large(   5.0 )]
   #[trace]
   fn test_optimize_indel_poisson_concavity(#[case] t: f64) {
-    let metrics = poisson_indel_log_lh(3, 5.0, t);
+    let metrics = poisson_indel_log_lh(3, 5.0, t).expect("valid Poisson parameters");
     assert!(metrics.second_derivative < 0.0, "Poisson log-likelihood should be concave for k>0");
   }
 
@@ -430,7 +459,7 @@ mod tests {
   fn test_optimize_indel_poisson_mle_derivative_zero(#[case] k: usize) {
     let mu = 3.0;
     let t_mle = k as f64 / mu;
-    let metrics = poisson_indel_log_lh(k, mu, t_mle);
+    let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
   }
 
@@ -450,8 +479,8 @@ mod tests {
     let t_mle = k as f64 / mu;
     let t = t_mle + delta;
     if t > 0.0 {
-      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).log_lh;
-      let lh = poisson_indel_log_lh(k, mu, t).log_lh;
+      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh;
+      let lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
       assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
     }
   }
@@ -463,20 +492,28 @@ mod tests {
     let mu = 5.0;
     let t = 0.3;
 
-    let metrics = poisson_indel_log_lh(k, mu, t);
+    let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
 
     // First derivative: central difference
     let h1 = 1e-7;
-    let lh_plus = poisson_indel_log_lh(k, mu, t + h1).log_lh;
-    let lh_minus = poisson_indel_log_lh(k, mu, t - h1).log_lh;
+    let lh_plus = poisson_indel_log_lh(k, mu, t + h1)
+      .expect("valid Poisson parameters")
+      .log_lh;
+    let lh_minus = poisson_indel_log_lh(k, mu, t - h1)
+      .expect("valid Poisson parameters")
+      .log_lh;
     let numerical_deriv = (lh_plus - lh_minus) / (2.0 * h1);
     assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
 
     // Second derivative: central difference with larger step to avoid cancellation
     let h2 = 1e-4;
-    let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2).log_lh;
-    let lh_center = poisson_indel_log_lh(k, mu, t).log_lh;
-    let lh_minus2 = poisson_indel_log_lh(k, mu, t - h2).log_lh;
+    let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2)
+      .expect("valid Poisson parameters")
+      .log_lh;
+    let lh_center = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
+    let lh_minus2 = poisson_indel_log_lh(k, mu, t - h2)
+      .expect("valid Poisson parameters")
+      .log_lh;
     let numerical_second = (lh_plus2 - 2.0 * lh_center + lh_minus2) / (h2 * h2);
     assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
   }
@@ -510,16 +547,20 @@ mod tests {
     let indel_rate = 5.0;
 
     // Bug precondition: substitution-only comparison prefers zero
-    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0);
-    let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive);
+    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).expect("valid branch length");
+    let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive).expect("valid branch length");
     assert!(
       sub_lh_zero > sub_lh_best,
       "Bug precondition: subs-only likelihood at zero ({sub_lh_zero}) should exceed positive ({sub_lh_best})"
     );
 
     // Indel-aware comparison: Poisson log-lh diverges to -infinity near t=0
-    let indel_lh_near_zero = poisson_indel_log_lh(indel_count, indel_rate, 1e-15).log_lh;
-    let indel_lh_at_best = poisson_indel_log_lh(indel_count, indel_rate, best_positive).log_lh;
+    let indel_lh_near_zero = poisson_indel_log_lh(indel_count, indel_rate, 1e-15)
+      .expect("valid Poisson parameters")
+      .log_lh;
+    let indel_lh_at_best = poisson_indel_log_lh(indel_count, indel_rate, best_positive)
+      .expect("valid Poisson parameters")
+      .log_lh;
 
     let combined_near_zero = sub_lh_zero + indel_lh_near_zero;
     let combined_at_best = sub_lh_best + indel_lh_at_best;
@@ -531,7 +572,8 @@ mod tests {
 
     // Production function: indel_count > 0 causes is_zero_better_than_grid_best to return false
     assert!(
-      !is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive),
+      !is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive)
+        .expect("valid branch length"),
       "Production helper must return false when indel_count > 0"
     );
   }
@@ -547,7 +589,7 @@ mod tests {
 
     // Production function: indel_count == 0 with pure-state coefficients selects zero
     assert!(
-      is_zero_better_than_grid_best(&contributions, 0, 0.0, 0.01),
+      is_zero_better_than_grid_best(&contributions, 0, 0.0, 0.01).expect("valid branch length"),
       "Production helper should return true when indel_count == 0 and zero is better for subs"
     );
   }
@@ -572,13 +614,13 @@ mod tests {
     let t_mle = k as f64 / mu;
 
     // Evaluate at the MLE: derivative should be zero
-    let metrics_at_mle = poisson_indel_log_lh(k, mu, t_mle);
+    let metrics_at_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics_at_mle.derivative, 0.0, epsilon = 1e-13);
     assert!(metrics_at_mle.second_derivative < 0.0, "Second derivative must be negative at MLE");
 
     // Manual Newton step from a nearby point should converge toward the MLE
     let t_start = t_mle * 1.5;
-    let metrics = poisson_indel_log_lh(k, mu, t_start);
+    let metrics = poisson_indel_log_lh(k, mu, t_start).expect("valid Poisson parameters");
     let newton_step = metrics.derivative / metrics.second_derivative;
     let t_next = t_start - newton_step;
 
@@ -649,8 +691,8 @@ mod tests {
     let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
-    let sub_only = evaluate_mixed_log_lh_only(&contributions, t);
-    let indel_lh = poisson_indel_log_lh(k, mu, t).log_lh;
+    let sub_only = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length");
+    let indel_lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
     let combined = sub_only + indel_lh;
 
     if k == 0 {
@@ -684,7 +726,7 @@ mod tests {
       /// For k > 0, the second derivative is always negative (log-concavity).
       #[test]
       fn test_prop_optimize_indel_concavity((k, mu, t) in generators::poisson_params()) {
-        let metrics = poisson_indel_log_lh(k, mu, t);
+        let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
         prop_assert!(
           metrics.second_derivative < 0.0,
           "Expected negative second derivative for k={k}, mu={mu}, t={t}, got {}",
@@ -696,7 +738,7 @@ mod tests {
       #[test]
       fn test_prop_optimize_indel_mle_derivative((k, mu, _t) in generators::poisson_params()) {
         let t_mle = k as f64 / mu;
-        let metrics = poisson_indel_log_lh(k, mu, t_mle);
+        let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
         prop_assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-10);
       }
 
@@ -705,7 +747,7 @@ mod tests {
       #[test]
       fn test_prop_optimize_indel_derivative_positive_near_zero((k, mu, _t) in generators::poisson_params()) {
         let near_zero = 1e-10;
-        let metrics = poisson_indel_log_lh(k, mu, near_zero);
+        let metrics = poisson_indel_log_lh(k, mu, near_zero).expect("valid Poisson parameters");
         prop_assert!(
           metrics.derivative > 0.0,
           "Poisson derivative near t=0 should be positive for k={k}, mu={mu}, got {}",
@@ -718,9 +760,9 @@ mod tests {
       fn test_prop_optimize_indel_numerical_derivative((k, mu, t) in generators::poisson_params()) {
         let h = t * 1e-6;
         prop_assert!(h > 0.0);
-        let metrics = poisson_indel_log_lh(k, mu, t);
-        let lh_plus = poisson_indel_log_lh(k, mu, t + h).log_lh;
-        let lh_minus = poisson_indel_log_lh(k, mu, t - h).log_lh;
+        let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
+        let lh_plus = poisson_indel_log_lh(k, mu, t + h).expect("valid Poisson parameters").log_lh;
+        let lh_minus = poisson_indel_log_lh(k, mu, t - h).expect("valid Poisson parameters").log_lh;
         let numerical = (lh_plus - lh_minus) / (2.0 * h);
         prop_assert_relative_eq!(metrics.derivative, numerical, max_relative = 1e-4);
       }

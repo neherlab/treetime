@@ -21,7 +21,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0);
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
     // At branch_length=0, exp(λt) = 1 for all eigenvalues
     // log-LH = ln(sum of coefficients) = ln(1.0) = 0.0
@@ -44,7 +44,7 @@ mod tests {
       gtr,
     };
 
-    let metrics = evaluate_sparse_contribution(&contribution, 0.0);
+    let metrics = evaluate_sparse_contribution(&contribution, 0.0).expect("valid branch length");
 
     // log-LH = multiplicity * ln(sum of coefficients) = 10 * ln(1.0) = 0.0
     let coeff_sum: f64 = 0.5 + 0.2 + 0.2 + 0.1;
@@ -78,8 +78,8 @@ mod tests {
       gtr,
     };
 
-    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1);
-    let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1);
+    let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1).expect("valid branch length");
+    let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1).expect("valid branch length");
 
     // log-LH should scale with multiplicity
     pretty_assert_ulps_eq!(metrics5.log_lh, 5.0 * metrics1.log_lh, max_ulps = 100);
@@ -108,8 +108,8 @@ mod tests {
       gtr: gtr.clone(),
     };
 
-    let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1);
-    let metrics_b = evaluate_sparse_contribution(&contribution_b, 0.1);
+    let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1).expect("valid branch length");
+    let metrics_b = evaluate_sparse_contribution(&contribution_b, 0.1).expect("valid branch length");
 
     // Evaluate together
     let contribution_both = PartitionContribution {
@@ -125,7 +125,7 @@ mod tests {
       ],
       gtr,
     };
-    let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1);
+    let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1).expect("valid branch length");
 
     // log-LH should be sum of individual contributions
     pretty_assert_ulps_eq!(metrics_both.log_lh, metrics_a.log_lh + metrics_b.log_lh, max_ulps = 100);

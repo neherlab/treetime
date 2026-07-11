@@ -87,14 +87,14 @@ mod tests {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, 1.0)],
       gtr: gtr.clone(),
     };
-    let single_metrics = evaluate_sparse_contribution(&single, branch_length);
+    let single_metrics = evaluate_sparse_contribution(&single, branch_length).expect("valid branch length");
 
     // Single site with multiplicity m
     let multi = optimize_sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, multiplicity)],
       gtr: gtr.clone(),
     };
-    let multi_metrics = evaluate_sparse_contribution(&multi, branch_length);
+    let multi_metrics = evaluate_sparse_contribution(&multi, branch_length).expect("valid branch length");
 
     assert_abs_diff_eq!(multi_metrics.log_lh, multiplicity * single_metrics.log_lh, epsilon = 1e-12);
     assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-12);
@@ -128,14 +128,14 @@ mod tests {
       &make_dense_seq_dis(children_stacked),
       &gtr,
     );
-    let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length);
+    let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length).expect("valid branch length");
 
     // Sparse: 1 site with multiplicity n_rows
     let sparse_contrib = optimize_sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, n_rows as f64)],
       gtr: gtr.clone(),
     };
-    let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length);
+    let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length).expect("valid branch length");
 
     assert_abs_diff_eq!(dense_metrics.log_lh, sparse_metrics.log_lh, epsilon = 1e-10);
     assert_abs_diff_eq!(dense_metrics.derivative, sparse_metrics.derivative, epsilon = 1e-10);
@@ -161,8 +161,8 @@ mod tests {
     // Individual sites
     let contrib_a = dense_contribution(parent_a.clone(), child_a.clone(), &gtr);
     let contrib_b = dense_contribution(parent_b.clone(), child_b.clone(), &gtr);
-    let metrics_a = evaluate_dense_contribution(&contrib_a, branch_length);
-    let metrics_b = evaluate_dense_contribution(&contrib_b, branch_length);
+    let metrics_a = evaluate_dense_contribution(&contrib_a, branch_length).expect("valid branch length");
+    let metrics_b = evaluate_dense_contribution(&contrib_b, branch_length).expect("valid branch length");
 
     // Combined: 2-row dense matrix
     let parents = concatenate(
@@ -179,7 +179,7 @@ mod tests {
     )
     .unwrap();
     let contrib_combined = get_coefficients(&make_dense_seq_dis(parents), &make_dense_seq_dis(children), &gtr);
-    let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length);
+    let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length).expect("valid branch length");
 
     assert_abs_diff_eq!(
       metrics_combined.log_lh,

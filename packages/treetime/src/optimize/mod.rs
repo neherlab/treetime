@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub(super) mod branch_length;
 pub(super) mod dense_eval;
 pub mod dispatch;
 pub(super) mod eval;

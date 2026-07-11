@@ -239,7 +239,8 @@ mod tests {
           .to_owned();
         let metrics = partition
           .create_edge_contribution(edge_ref.key())?
-          .evaluate(branch_length);
+          .evaluate(branch_length)
+          .expect("valid branch length");
         Ok((
           child_name,
           (metrics.log_lh, metrics.derivative, metrics.second_derivative),

@@ -64,15 +64,27 @@ pub(super) fn grid_search_inner(
   let best_positive = branch_lengths
     .iter()
     .copied()
-    .max_by_key(|&bl| {
-      let log_lh = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, bl);
-      OrderedFloat(log_lh)
-    })
+    .try_fold(
+      None,
+      |best, branch_length| -> Result<Option<(f64, OrderedFloat<f64>)>, Report> {
+        let log_lh = OrderedFloat(evaluate_with_indels_log_lh_only(
+          contributions,
+          indel_count,
+          indel_rate,
+          branch_length,
+        )?);
+        Ok(match best {
+          Some((_, best_log_lh)) if best_log_lh >= log_lh => best,
+          _ => Some((branch_length, log_lh)),
+        })
+      },
+    )?
+    .map(|(branch_length, _)| branch_length)
     .ok_or_else(|| {
       make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})")
     })?;
 
-  let zero_is_better = is_zero_better_than_grid_best(contributions, indel_count, indel_rate, best_positive);
+  let zero_is_better = is_zero_better_than_grid_best(contributions, indel_count, indel_rate, best_positive)?;
   Ok(if zero_is_better { 0.0 } else { best_positive })
 }
 
@@ -92,12 +104,13 @@ pub(super) fn is_zero_better_than_grid_best(
   indel_count: usize,
   indel_rate: f64,
   best_positive: f64,
-) -> bool {
-  indel_count == 0 && contributions.iter().all(|c| c.all_sites_valid_at_zero()) && {
-    let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, 0.0);
-    let log_lh_best = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, best_positive);
-    log_lh_zero > log_lh_best
+) -> Result<bool, Report> {
+  if indel_count > 0 || !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
+    return Ok(false);
   }
+  let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, 0.0)?;
+  let log_lh_best = evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, best_positive)?;
+  Ok(log_lh_zero > log_lh_best)
 }
 
 /// Check if zero branch length is optimal across all contributions.
@@ -247,7 +260,7 @@ pub(super) fn reconcile_zero_boundary(
   let all_valid_at_zero = contributions.iter().all(|c| c.all_sites_valid_at_zero());
 
   let positive_might_lose_to_zero =
-    candidate > 0.0 && is_zero_better_than_grid_best(contributions, indel_count, indel_rate, candidate);
+    candidate > 0.0 && is_zero_better_than_grid_best(contributions, indel_count, indel_rate, candidate)?;
 
   let zero_might_lose_to_positive = candidate == 0.0
     && indel_count == 0

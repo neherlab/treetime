@@ -22,10 +22,12 @@ mod tests {
 
     // Verify combined log-LH is maximized across the grid
     let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
-    let best_log_lh = evaluate_mixed(&contributions, best_bl).log_lh;
+    let best_log_lh = evaluate_mixed(&contributions, best_bl)
+      .expect("valid branch length")
+      .log_lh;
 
     for &bl in &branch_lengths {
-      let log_lh = evaluate_mixed(&contributions, bl).log_lh;
+      let log_lh = evaluate_mixed(&contributions, bl).expect("valid branch length").log_lh;
       assert!(log_lh <= best_log_lh + 1e-10);
     }
   }

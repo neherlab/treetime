@@ -1,4 +1,5 @@
 use crate::ancestral::marginal::update_marginal;
+use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
@@ -12,13 +13,11 @@ use crate::partition::traits::{HasGtr, PartitionOptimizeOps, PartitionOptimizeVe
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::{Itertools, chain};
-use log::debug;
+use log::{debug, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -231,7 +230,7 @@ fn compute_iteration_likelihood(
   let indel_lh = if no_indels {
     0.0
   } else {
-    total_indel_log_lh(graph, mixed_partitions, indel_rate)
+    total_indel_log_lh(graph, mixed_partitions, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -352,29 +351,6 @@ pub fn prune_and_merge_in_loop(
   Ok(true)
 }
 
-/// Whether a branch length is absent or NaN.
-///
-/// The bio crate newick parser returns `f32::NAN` for branches without
-/// a `:length` suffix. After cast to f64 and wrapping in `Some`, this
-/// appears as `Some(NaN)` rather than `None`. Both represent a missing
-/// branch length for optimization purposes.
-fn is_branch_length_missing(bl: Option<f64>) -> bool {
-  bl.is_none_or(|v| v.is_nan())
-}
-
-/// Whether any edge in the graph lacks a usable branch length.
-pub fn any_edge_missing_branch_length<N, E, D>(graph: &Graph<N, E, D>) -> bool
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  graph
-    .get_edges()
-    .iter()
-    .any(|edge_ref| is_branch_length_missing(edge_ref.read_arc().payload().read_arc().branch_length()))
-}
-
 /// Whether any edge that carries indels has a zero branch length.
 ///
 /// The Poisson indel log-likelihood $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$
@@ -424,15 +400,21 @@ pub fn apply_initial_guess_mode<P>(
 where
   P: PartitionOptimizeOps + ?Sized,
 {
+  let invalid_branch_lengths = invalid_branch_length_descriptions(graph)?;
+  if let Some(message) = invalid_branch_length_warning(&invalid_branch_lengths) {
+    warn!("{message}");
+  }
+
   match mode {
     InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false),
     InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true),
     InitialGuessMode::Never => {
-      if any_edge_missing_branch_length(graph) {
+      if !invalid_branch_lengths.is_empty() {
         return make_error!(
-          "--branch-length-initial-guess=never requires all edges to have finite branch lengths, \
-           but some edges have missing or NaN values. \
-           Use 'auto' to fill in missing values or 'always' to recompute all branch lengths"
+          "--branch-length-initial-guess=never requires every edge to have a finite, non-negative branch length. \
+           Invalid edges:\n  {}\n\
+           Use 'auto' to fill in missing values or 'always' to recompute all branch lengths",
+          invalid_branch_lengths.join("\n  ")
         );
       }
       if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions) {
@@ -446,6 +428,17 @@ where
       Ok(())
     },
   }
+}
+
+pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -> Option<String> {
+  (!invalid_branch_lengths.is_empty()).then(|| {
+    format!(
+      "Input tree contains invalid branch lengths (expected finite values >= 0):\n  {}\n\
+       Use --branch-length-initial-guess=auto to replace invalid values or \
+       --branch-length-initial-guess=always to recompute all branch lengths",
+      invalid_branch_lengths.join("\n  ")
+    )
+  })
 }
 
 /// Normalize substitution rates across partitions after GTR inference.

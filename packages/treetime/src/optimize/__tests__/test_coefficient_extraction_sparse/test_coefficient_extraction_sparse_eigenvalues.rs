@@ -20,8 +20,8 @@ mod tests {
     };
 
     // At different branch lengths, exp(λt) changes for non-zero eigenvalues
-    let metrics_short = evaluate_sparse_contribution(&contribution, 0.01);
-    let metrics_long = evaluate_sparse_contribution(&contribution, 1.0);
+    let metrics_short = evaluate_sparse_contribution(&contribution, 0.01).expect("valid branch length");
+    let metrics_long = evaluate_sparse_contribution(&contribution, 1.0).expect("valid branch length");
 
     // Log-LH should differ at different branch lengths
     assert!(

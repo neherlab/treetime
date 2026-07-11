@@ -23,7 +23,8 @@ mod tests {
     let min_bl = 1e-5;
     let initial_bl = 0.1;
     let mut branch_length = initial_bl;
-    let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+    let metrics =
+      evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length).expect("valid branch length");
     let max_iter = 10;
     let mut n_iter = 0;
 
@@ -41,7 +42,8 @@ mod tests {
       (branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length)).max(min_bl);
 
     while (new_branch_length - branch_length).abs() > newton_tolerance_t(branch_length) && n_iter < max_iter {
-      let new_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length);
+      let new_metrics =
+        evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length).expect("valid branch length");
       if new_metrics.second_derivative < 0.0 {
         branch_length = new_branch_length;
         new_branch_length = (branch_length
@@ -67,7 +69,8 @@ mod tests {
     assert!(branch_length >= 0.0);
     // Newton must improve (or not degrade) the log-likelihood from the
     // starting point. This is the actual contract being tested.
-    let final_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+    let final_metrics =
+      evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length).expect("valid branch length");
     assert!(
       final_metrics.log_lh >= initial_lh - 1e-10,
       "Newton degraded log_lh from {initial_lh} to {final}",
@@ -92,7 +95,8 @@ mod tests {
     let max_iter = 3;
     let mut n_iter = 0;
 
-    let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+    let metrics =
+      evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length).expect("valid branch length");
     // Precondition: Newton must enter the loop, otherwise the max_iter
     // budget is never tested.
     assert!(
@@ -107,7 +111,8 @@ mod tests {
     // Force the loop to run by using an impossibly tight per-step tolerance.
     let tight_tol = 1e-15;
     while (new_branch_length - branch_length).abs() > tight_tol && n_iter < max_iter {
-      let new_metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length);
+      let new_metrics =
+        evaluate_with_indels(&contributions, indel_count, indel_rate, new_branch_length).expect("valid branch length");
       if new_metrics.second_derivative < 0.0 {
         branch_length = new_branch_length;
         new_branch_length = (branch_length

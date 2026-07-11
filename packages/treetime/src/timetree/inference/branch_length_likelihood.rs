@@ -38,8 +38,11 @@ pub fn compute_branch_length_distribution(
   // `create_simple_grid` always returns strictly positive branch lengths
   // (`min_bl = one_mutation * 0.1 > 0`), satisfying the `t > 0` precondition
   // of `poisson_indel_log_lh` when `indel_count > 0`.
-  let log_lh =
-    grid.mapv(|branch_len| evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len));
+  let log_lh: Array1<f64> = grid
+    .iter()
+    .copied()
+    .map(|branch_len| evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len))
+    .collect::<Result<_, _>>()?;
   let max_log_lh = log_lh.max()?;
 
   let normalized_prob = (&log_lh - *max_log_lh).exp();

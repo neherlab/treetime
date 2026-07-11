@@ -1,12 +1,13 @@
 use crate::optimize::eval::evaluate_site_contributions;
 use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::optimize_sparse;
+use eyre::Report;
 
 /// Evaluate sparse contribution for a given branch length (with derivatives).
 pub fn evaluate_sparse_contribution(
   contribution: &optimize_sparse::PartitionContribution,
   branch_length: f64,
-) -> OptimizationMetrics {
+) -> Result<OptimizationMetrics, Report> {
   evaluate_sparse_contribution_impl(contribution, branch_length, true)
 }
 
@@ -15,7 +16,7 @@ pub fn evaluate_sparse_contribution_impl(
   contribution: &optimize_sparse::PartitionContribution,
   branch_length: f64,
   compute_derivatives: bool,
-) -> OptimizationMetrics {
+) -> Result<OptimizationMetrics, Report> {
   let sites = contribution
     .site_contributions
     .iter()

@@ -1,4 +1,4 @@
-use crate::make_error;
+use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
@@ -7,7 +7,8 @@ use crate::optimize::params::BranchOptMethod;
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::PartitionOptimizeOps;
-use eyre::Report;
+use crate::{make_error, make_internal_report, make_report};
+use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge, HasBranchLength};
@@ -76,6 +77,16 @@ where
   // lengths is identifiable (Pulley Principle). Capture the pre-optimization ratio of the
   // two root edges; after the per-edge loop, redistribute the optimized total in this ratio.
   // See kb/issues/M-optimize-root-bifurcating-independent-vs-joint.md
+  graph.get_edges().iter().try_for_each(|edge_ref| {
+    let edge = edge_ref.read_arc();
+    let branch_length = edge
+      .payload()
+      .read_arc()
+      .branch_length()
+      .ok_or_else(|| make_report!("Cannot optimize edge {} with a missing branch length", edge.key()))?;
+    validate_branch_length_value(branch_length).wrap_err_with(|| format!("Cannot optimize edge {}", edge.key()))
+  })?;
+
   let root_state = BifurcatingRootState::capture(graph)?;
 
   graph
@@ -84,7 +95,9 @@ where
     .try_for_each(|edge_ref| -> Result<(), Report> {
       let edge_key = edge_ref.read_arc().key();
       let mut edge = edge_ref.write_arc().payload().write_arc();
-      let mut branch_length = edge.branch_length().unwrap_or(0.0);
+      let mut branch_length = edge
+        .branch_length()
+        .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
 
       let contributions: Vec<OptimizationContribution> = partitions
         .iter()
@@ -156,7 +169,7 @@ where
           one_mutation,
         ),
         BranchOptMethod::Newton => {
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length)?;
           newton_inner(
             branch_length,
             &metrics,
@@ -168,7 +181,7 @@ where
           )
         },
         BranchOptMethod::NewtonSqrt => {
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length);
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length)?;
           newton_sqrt_inner(
             branch_length,
             &metrics,
@@ -186,7 +199,7 @@ where
           } else {
             branch_length
           };
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl);
+          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl)?;
           newton_log_inner(
             bl,
             &metrics,
@@ -311,7 +324,7 @@ where
         // if the edge has no indels: with indels present, the Poisson
         // derivative diverges at t=0 and estimate_indel_rate() needs
         // positive total BL to produce a nonzero rate.
-        if bl.is_finite() && (bl > 0.0 || indel_count == 0) {
+        if is_valid_branch_length_value(bl) && (bl > 0.0 || indel_count == 0) {
           continue;
         }
       }
