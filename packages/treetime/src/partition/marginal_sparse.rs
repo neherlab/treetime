@@ -18,7 +18,7 @@ use ndarray::{Array1, Array2};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_io::fasta::FastaRecord;
@@ -479,12 +479,12 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
-    marginal_passes::process_node_backward(self, node)
+  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
+    marginal_passes::process_backward_indexed(self, graph)
   }
 
-  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
-    marginal_passes::process_node_forward(self, graph, node)
+  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
+    marginal_passes::process_forward_indexed(self, graph)
   }
 
   fn get_sequence_length(&self) -> usize {

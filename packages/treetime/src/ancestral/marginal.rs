@@ -5,10 +5,8 @@ use eyre::Report;
 use log::trace;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{Seq, seq};
@@ -84,24 +82,9 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
-  graph.par_iter_breadth_first_backward(|node| {
-    run_marginal_backward(partitions, &node)?;
-    Ok(GraphTraversalContinuation::Continue)
-  })
-}
-
-fn run_marginal_backward<N, E, P>(
-  partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeBackward<N, E, ()>,
-) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
-{
   for partition in partitions {
     let mut partition = partition.write_arc();
-    partition.process_node_backward(node)?;
+    partition.process_backward_pass(graph)?;
   }
   Ok(())
 }
@@ -112,25 +95,9 @@ where
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
-  graph.par_iter_breadth_first_forward(|node| {
-    run_marginal_forward(graph, partitions, &node)?;
-    Ok(GraphTraversalContinuation::Continue)
-  })
-}
-
-fn run_marginal_forward<N, E, P>(
-  graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
-  node: &GraphNodeForward<N, E, ()>,
-) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
-{
   for partition in partitions {
     let mut partition = partition.write_arc();
-    partition.process_node_forward(graph, node)?;
+    partition.process_forward_pass(graph)?;
   }
   Ok(())
 }

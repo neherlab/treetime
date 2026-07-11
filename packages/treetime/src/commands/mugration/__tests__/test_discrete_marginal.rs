@@ -75,10 +75,7 @@ mod tests {
 
     partition.attach_traits(&graph, &traits)?;
 
-    graph.iter_breadth_first_backward(|node| {
-      partition.process_node_backward(&node)?;
-      Ok(())
-    })?;
+    partition.process_backward_pass(&graph)?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -89,10 +86,7 @@ mod tests {
     let leaf_to_inner_msg = helpers::get_edge_msg_from_child(&graph, &partition, "inner", "A");
     helpers::assert_profile_normalized(&leaf_to_inner_msg);
 
-    graph.iter_breadth_first_forward(|node| {
-      partition.process_node_forward(&graph, &node)?;
-      Ok(())
-    })?;
+    partition.process_forward_pass(&graph)?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);

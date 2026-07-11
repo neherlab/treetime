@@ -4,7 +4,8 @@ use crate::make_error;
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::discrete_states::DiscreteStates;
 use crate::partition::marginal_core::{
-  MarginalData, MarginalPartition, marginal_process_node_backward, marginal_process_node_forward,
+  IndexedMarginalPartition, MarginalData, MarginalPartition, marginal_process_backward_indexed,
+  marginal_process_forward_indexed,
 };
 use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
@@ -15,7 +16,6 @@ use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::nwk::NodeCommentProvider;
 use treetime_utils::array::ndarray::argmax_first;
@@ -151,9 +151,46 @@ where
     &mut self.data
   }
 
+  fn indexed_storage_mut(
+    &mut self,
+  ) -> (
+    &mut BTreeMap<GraphNodeKey, DenseNodePartition>,
+    &mut BTreeMap<treetime_graph::edge::GraphEdgeKey, DenseEdgePartition>,
+  ) {
+    (&mut self.data.nodes, &mut self.data.edges)
+  }
+
   fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report> {
     let node = &self.data.nodes[&node_key];
     Ok(node.profile.clone())
+  }
+}
+
+impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDiscrete
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
+    Ok(DenseNodePartition {
+      seq: DenseSeqInfo::default(),
+      profile: DenseSeqDistribution::default(),
+    })
+  }
+
+  fn indexed_leaf_profile(&self, node: &DenseNodePartition) -> Result<DenseSeqDistribution, Report> {
+    Ok(node.profile.clone())
+  }
+
+  fn indexed_forward_post(
+    &self,
+    _is_root: bool,
+    _is_leaf: bool,
+    _parent: Option<&DenseNodePartition>,
+    _node: &mut DenseNodePartition,
+    _parent_edge: Option<&mut DenseEdgePartition>,
+  ) -> Result<(), Report> {
+    Ok(())
   }
 }
 
@@ -162,12 +199,12 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report> {
-    marginal_process_node_backward(self, node)
+  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
+    marginal_process_backward_indexed(self, graph)
   }
 
-  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
-    marginal_process_node_forward(self, graph, node)
+  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
+    marginal_process_forward_indexed(self, graph)
   }
 
   fn get_sequence_length(&self) -> usize {

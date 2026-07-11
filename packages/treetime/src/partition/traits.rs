@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
@@ -157,9 +157,9 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_node_backward(&mut self, node: &GraphNodeBackward<N, E, ()>) -> Result<(), Report>;
+  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>;
 
-  fn process_node_forward(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>;
+  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>;
 
   fn get_sequence_length(&self) -> usize;
 }
@@ -196,6 +196,13 @@ pub trait PartitionCompressed: Sync + Send {
   fn nodes_mut(&mut self) -> &mut BTreeMap<GraphNodeKey, SparseNodePartition>;
 
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>;
+
+  fn storage_mut(
+    &mut self,
+  ) -> (
+    &mut BTreeMap<GraphNodeKey, SparseNodePartition>,
+    &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>,
+  );
 
   fn node(&self, key: &GraphNodeKey) -> &SparseNodePartition {
     self.nodes().get(key).expect("Node not found")

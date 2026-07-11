@@ -78,4 +78,13 @@ impl PartitionCompressed for PartitionFitch {
   fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
     &mut self.edges
   }
+
+  fn storage_mut(
+    &mut self,
+  ) -> (
+    &mut BTreeMap<GraphNodeKey, SparseNodePartition>,
+    &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>,
+  ) {
+    (&mut self.nodes, &mut self.edges)
+  }
 }
