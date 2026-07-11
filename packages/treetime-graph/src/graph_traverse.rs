@@ -222,6 +222,16 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
+  /// Return root-to-leaf frontiers whose nodes have only completed predecessors.
+  pub fn breadth_first_frontiers_forward(&self) -> Result<Vec<Vec<GraphNodeKey>>, Report> {
+    self.breadth_first_frontiers(self.roots.clone(), |node| node.outbound(), |node| node.inbound())
+  }
+
+  /// Return leaf-to-root frontiers whose nodes have only completed successors.
+  pub fn breadth_first_frontiers_backward(&self) -> Result<Vec<Vec<GraphNodeKey>>, Report> {
+    self.breadth_first_frontiers(self.leaves.clone(), |node| node.inbound(), |node| node.outbound())
+  }
+
   /// Parallel breadth-first forward traversal (roots to leaves, along edge directions).
   ///
   /// The callback returns `Result<GraphTraversalContinuation, Report>`:
@@ -361,5 +371,77 @@ where
         .as_ref()
         .and_then(|node| child_keys.contains(&node.read_arc().key()).then_some(node))
     })
+  }
+
+  fn breadth_first_frontiers(
+    &self,
+    mut frontier: Vec<GraphNodeKey>,
+    successors: impl Fn(&Node<N>) -> &[GraphEdgeKey],
+    predecessors: impl Fn(&Node<N>) -> &[GraphEdgeKey],
+  ) -> Result<Vec<Vec<GraphNodeKey>>, Report> {
+    let mut visited = BTreeSet::new();
+    let mut frontiers = Vec::new();
+
+    while !frontier.is_empty() {
+      frontier.sort();
+      frontier.dedup();
+      visited.extend(frontier.iter().copied());
+
+      let candidates = frontier
+        .iter()
+        .map(|key| {
+          let node = self.get_node(*key).ok_or_else(|| {
+            treetime_utils::make_internal_report!("Node {key} not found while constructing frontiers")
+          })?;
+          successors(&node.read_arc())
+            .iter()
+            .map(|edge_key| {
+              let edge = self.get_edge(*edge_key).ok_or_else(|| {
+                treetime_utils::make_internal_report!("Edge {edge_key} not found while constructing frontiers")
+              })?;
+              let edge = edge.read_arc();
+              Ok(if edge.source() == *key {
+                edge.target()
+              } else {
+                edge.source()
+              })
+            })
+            .collect::<Result<Vec<_>, Report>>()
+        })
+        .collect::<Result<Vec<_>, Report>>()?
+        .into_iter()
+        .flatten()
+        .collect::<BTreeSet<_>>();
+
+      frontiers.push(frontier);
+      frontier = candidates
+        .into_iter()
+        .filter(|key| {
+          self.get_node(*key).is_some_and(|node| {
+            predecessors(&node.read_arc()).iter().all(|edge_key| {
+              self.get_edge(*edge_key).is_some_and(|edge| {
+                let edge = edge.read_arc();
+                let predecessor = if edge.target() == *key {
+                  edge.source()
+                } else {
+                  edge.target()
+                };
+                visited.contains(&predecessor)
+              })
+            })
+          })
+        })
+        .collect();
+    }
+
+    if visited.len() != self.get_nodes().len() {
+      return treetime_utils::make_internal_error!(
+        "Cannot construct breadth-first frontiers: visited {} of {} nodes",
+        visited.len(),
+        self.get_nodes().len()
+      );
+    }
+
+    Ok(frontiers)
   }
 }

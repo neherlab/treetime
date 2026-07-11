@@ -8,6 +8,7 @@ pub mod dense;
 pub mod discrete_states;
 pub mod fitch;
 pub mod fitch_config;
+pub(crate) mod indexed_pass;
 pub mod likelihood;
 pub mod marginal_core;
 pub mod marginal_dense;

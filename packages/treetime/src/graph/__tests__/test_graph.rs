@@ -77,6 +77,56 @@ mod tests {
   }
 
   #[test]
+  fn test_graph_traversal_forward_frontiers_complete_predecessors() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("(((A:0.1)A1:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
+
+    let actual = graph
+      .breadth_first_frontiers_forward()?
+      .into_iter()
+      .map(|frontier| {
+        frontier
+          .into_iter()
+          .map(|key| {
+            let node = graph.get_node(key).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          })
+          .collect::<Vec<_>>()
+      })
+      .collect::<Vec<_>>();
+
+    // Root-to-leaf dynamic programming requires every parent in an earlier frontier.
+    let expected = vec![vec!["root"], vec!["AB", "C"], vec!["A1", "B"], vec!["A"]];
+    assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_graph_traversal_backward_frontiers_complete_successors() -> Result<(), Report> {
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>("(((A:0.1)A1:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
+
+    let actual = graph
+      .breadth_first_frontiers_backward()?
+      .into_iter()
+      .map(|frontier| {
+        frontier
+          .into_iter()
+          .map(|key| {
+            let node = graph.get_node(key).unwrap().read_arc();
+            node.payload().read_arc().name().unwrap().as_ref().to_owned()
+          })
+          .collect::<Vec<_>>()
+      })
+      .collect::<Vec<_>>();
+
+    // Leaf-to-root dynamic programming requires every child in an earlier frontier.
+    let expected = vec![vec!["A", "B", "C"], vec!["A1"], vec!["AB"], vec!["root"]];
+    assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
   fn test_graph_traversal_parallel_breadth_first_forward() -> Result<(), Report> {
     let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 

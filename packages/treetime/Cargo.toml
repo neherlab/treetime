@@ -43,6 +43,7 @@ parking_lot = { workspace = true }
 percent-encoding = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
+rayon = { workspace = true }
 regex = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
@@ -67,7 +68,6 @@ lazy_static = { workspace = true }
 petgraph = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
-rayon = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 

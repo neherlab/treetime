@@ -6,6 +6,7 @@ use crate::ancestral::fitch_sub::{
 };
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
+use crate::partition::indexed_pass::{IndexedPass, IndexedPassSlot};
 use crate::partition::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
@@ -13,16 +14,16 @@ use crate::partition::traits::PartitionCompressed;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
+use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
@@ -107,75 +108,106 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  graph.par_iter_breadth_first_backward(|node| {
-    run_fitch_backward(partitions, &node);
-    Ok(GraphTraversalContinuation::Continue)
-  })
+  for partition in partitions {
+    let mut partition = partition.write_arc();
+    let alphabet = partition.alphabet().clone();
+    let length = partition.length();
+    let mut pass = IndexedPass::new(
+      graph,
+      std::mem::take(partition.nodes_mut()),
+      std::mem::take(partition.edges_mut()),
+      |_| Ok(SparseNodePartition::empty(&alphabet)),
+    )?;
+    let result = pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
+      frontier
+        .par_iter_mut()
+        .try_for_each(|slot| run_fitch_backward_indexed(graph, &alphabet, length, node_indices, completed, slot))
+    });
+    let (nodes, edges) = pass.into_maps()?;
+    *partition.nodes_mut() = nodes;
+    *partition.edges_mut() = edges;
+    result?;
+  }
+  Ok(())
 }
 
-fn run_fitch_backward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeBackward<N, E, ()>)
+fn run_fitch_backward_indexed<N, E>(
+  graph: &Graph<N, E, ()>,
+  alphabet: &Alphabet,
+  length: usize,
+  node_indices: &[Option<usize>],
+  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
+) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
-  if node.is_leaf {
-    return;
+  let graph_node = graph.get_node(slot.key).expect("Indexed node must exist in graph");
+  let graph_node = graph_node.read_arc();
+  if graph_node.is_leaf() {
+    return Ok(());
+  }
+  let child_keys = graph.children_of(&graph_node);
+  let children = child_keys
+    .iter()
+    .map(|(child, edge)| {
+      let child_key = child.read_arc().key();
+      let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
+      let child = &completed[child_index].node.seq;
+      let edge_key = edge.read_arc().key();
+      let edge = completed[child_index]
+        .parent_edge
+        .as_ref()
+        .filter(|(key, _)| *key == edge_key)
+        .map(|(_, edge)| edge)
+        .expect("Indexed child must own its parent edge");
+      (child, edge)
+    })
+    .collect_vec();
+
+  let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
+  let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
+
+  let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
+  let non_char = ranges.non_char;
+  let unknown = ranges.unknown;
+
+  let mut sequence = seq![FILL_CHAR; length];
+  for r in &non_char {
+    sequence[r.0..r.1].fill(NON_CHAR);
   }
 
-  for partition in partitions {
-    let mut partition = partition.write_arc();
+  let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
+  resolve_fixed_positions_backward(&children, alphabet, &mut sequence, &mut variable);
 
-    let children = node
-      .child_keys
-      .iter()
-      .map(|(child, edge)| (&partition.node(child).seq, partition.edge(edge)))
-      .collect_vec();
+  let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
+  let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
 
-    let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
-    let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
+  let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, length);
 
-    let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
-    let non_char = ranges.non_char;
-    let unknown = ranges.unknown;
-
-    let mut sequence = seq![FILL_CHAR; partition.length()];
-    for r in &non_char {
-      sequence[r.0..r.1].fill(NON_CHAR);
-    }
-
-    let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
-    resolve_fixed_positions_backward(&children, partition.alphabet(), &mut sequence, &mut variable);
-
-    let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
-    let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
-
-    let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, partition.length());
-
-    let new_node_data = SparseNodePartition {
-      seq: SparseSeqInfo {
-        gaps: indels_bw.resolved_gaps,
-        unknown,
-        non_char,
-        fitch: FitchSeqDistribution {
-          variable,
-          variable_indel: indels_bw.variable_indel,
-          chosen_state: btreemap! {},
-        },
-        sequence,
-        composition: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
+  slot.node = SparseNodePartition {
+    seq: SparseSeqInfo {
+      gaps: indels_bw.resolved_gaps,
+      unknown,
+      non_char,
+      fitch: FitchSeqDistribution {
+        variable,
+        variable_indel: indels_bw.variable_indel,
+        chosen_state: btreemap! {},
       },
-      profile: SparseSeqDistribution {
-        variable: btreemap! {},
-        variable_indel: BTreeSet::new(),
-        fixed: btreemap! {},
-        fixed_counts: Composition::new(partition.alphabet().chars(), partition.alphabet().gap()),
-        log_lh: 0.0,
-      },
-    };
-
-    partition.nodes_mut().insert(node.key, new_node_data);
-  }
+      sequence,
+      composition: Composition::new(alphabet.chars(), alphabet.gap()),
+    },
+    profile: SparseSeqDistribution {
+      variable: btreemap! {},
+      variable_indel: BTreeSet::new(),
+      fixed: btreemap! {},
+      fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
+      log_lh: 0.0,
+    },
+  };
+  Ok(())
 }
 
 pub(crate) fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
@@ -184,90 +216,97 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  graph.par_iter_breadth_first_forward(|node| {
-    run_fitch_forward(partitions, &node)?;
-    Ok(GraphTraversalContinuation::Continue)
-  })
-}
-
-fn run_fitch_forward<N, E, P>(partitions: &[Arc<RwLock<P>>], node: &GraphNodeForward<N, E, ()>) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionCompressed,
-{
   for partition in partitions {
     let mut partition = partition.write_arc();
-    let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
+    let alphabet = partition.alphabet().clone();
+    let mut pass = IndexedPass::new(
+      graph,
+      std::mem::take(partition.nodes_mut()),
+      std::mem::take(partition.edges_mut()),
+      |key| {
+        Err(make_report!(
+          "Partition node {key} is missing before the Fitch forward pass"
+        ))
+      },
+    )?;
+    let result = pass.try_for_each_forward_frontier(|node_indices, _, completed_start, frontier, completed| {
+      frontier
+        .par_iter_mut()
+        .try_for_each(|slot| run_fitch_forward_indexed(&alphabet, node_indices, completed_start, completed, slot))
+    });
+    let (nodes, edges) = pass.into_maps()?;
+    *partition.nodes_mut() = nodes;
+    *partition.edges_mut() = edges;
+    result?;
+  }
+  Ok(())
+}
 
-    let mut node_data = partition.nodes_mut().remove(&node.key).unwrap();
+fn run_fitch_forward_indexed(
+  alphabet: &Alphabet,
+  node_indices: &[Option<usize>],
+  completed_start: usize,
+  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
+) -> Result<(), Report> {
+  let node_data = &mut slot.node;
+  if let (Some(parent_key), Some((_, edge))) = (slot.parent_key, &mut slot.parent_edge) {
+    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
+    let parent = &completed[parent_index - completed_start].node.seq;
+    let seq = &mut node_data.seq;
+    seq.composition = parent.composition.clone();
 
-    if node.is_root {
-      let seq = &mut node_data.seq;
-      resolve_root_forward(&mut seq.sequence, &seq.fitch.variable, &mut seq.fitch.chosen_state);
-    } else {
-      let (parent_key, edge_key) =
-        get_exactly_one(&node.parent_keys).wrap_err("Multiple parent nodes are not yet supported")?;
-
-      let parent = &partition.node(parent_key).seq;
-
-      let seq = &mut node_data.seq;
-      seq.composition = parent.composition.clone();
-
-      // fill in the indeterminate positions by copying the parent (new gaps in the node will be introduced later)
-      for r in &seq.non_char {
-        seq.sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
-      }
-
-      let subs = resolve_nonroot_substitutions_forward(
-        &mut seq.sequence,
-        &seq.gaps,
-        &mut seq.fitch.variable,
-        &mut seq.fitch.chosen_state,
-        &mut seq.composition,
-        parent,
-        alphabet,
-      )?;
-
-      let (indels, new_gaps) = resolve_indels_forward(
-        &seq.fitch.variable_indel,
-        &seq.gaps,
-        &seq.non_char,
-        &parent.gaps,
-        &parent.sequence,
-        &seq.sequence,
-      );
-      seq.gaps = new_gaps;
-      for indel in &indels {
-        seq.composition.add_indel(indel);
-      }
-      for r in &seq.unknown {
-        // this might result in compensating addition/deletions of Ns already present in the parent
-        for pos in r.0..r.1 {
-          seq.composition.adjust_count(seq.sequence[pos], -1);
-        }
-        seq
-          .composition
-          .adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
-      }
-
-      let edge = partition.edge_mut(edge_key);
-      edge.extend_fitch_subs(subs);
-      edge.indels.extend(indels);
+    for r in &seq.non_char {
+      seq.sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
     }
 
-    let seq = &mut node_data.seq;
-    finalize_sequence_forward(
+    let subs = resolve_nonroot_substitutions_forward(
       &mut seq.sequence,
       &seq.gaps,
-      &seq.unknown,
+      &mut seq.fitch.variable,
+      &mut seq.fitch.chosen_state,
       &mut seq.composition,
+      parent,
       alphabet,
-      node.is_root,
-    );
+    )?;
 
-    partition.nodes_mut().insert(node.key, node_data);
+    let (indels, new_gaps) = resolve_indels_forward(
+      &seq.fitch.variable_indel,
+      &seq.gaps,
+      &seq.non_char,
+      &parent.gaps,
+      &parent.sequence,
+      &seq.sequence,
+    );
+    seq.gaps = new_gaps;
+    for indel in &indels {
+      seq.composition.add_indel(indel);
+    }
+    for r in &seq.unknown {
+      for pos in r.0..r.1 {
+        seq.composition.adjust_count(seq.sequence[pos], -1);
+      }
+      seq
+        .composition
+        .adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+    }
+
+    edge.extend_fitch_subs(subs);
+    edge.indels.extend(indels);
+  } else {
+    let seq = &mut node_data.seq;
+    resolve_root_forward(&mut seq.sequence, &seq.fitch.variable, &mut seq.fitch.chosen_state);
   }
+
+  let seq = &mut node_data.seq;
+  finalize_sequence_forward(
+    &mut seq.sequence,
+    &seq.gaps,
+    &seq.unknown,
+    &mut seq.composition,
+    alphabet,
+    slot.parent_key.is_none(),
+  );
   Ok(())
 }
 
@@ -277,22 +316,15 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  graph.par_iter_breadth_first_forward(|node| {
-    for partition in partitions {
-      let mut partition = partition.write_arc();
-      let seq = &mut partition.node_mut(&node.key).seq;
-
-      // delete the variable position everywhere except of leaves
-      if !node.is_leaf {
-        seq.fitch.variable = btreemap! {};
+  for partition in partitions {
+    let mut partition = partition.write_arc();
+    for (key, node) in partition.nodes_mut() {
+      if !graph.is_leaf(*key) {
+        node.seq.fitch.variable = btreemap! {};
       }
-
-      // Keep the exact reconstructed sequence on every node. Sparse marginal
-      // passes need an authoritative reference state for fixed-site lookups at
-      // ambiguous-variable positions.
     }
-    Ok(GraphTraversalContinuation::Continue)
-  })
+  }
+  Ok(())
 }
 
 pub fn compress_sequences<N, E, P>(
