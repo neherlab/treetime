@@ -21,7 +21,7 @@ let ordered = plan.ordered_graph(&output.graph)?;
 write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&auspice_ctx))?;
 ```
 
-For Newick and Nexus output formats, [`write_tree_outputs`](../../packages/treetime-io/src/graph.rs) uses the `ordered` graph it receives. For `TreeWriteKind::Auspice` however, it ignores the `graph` argument entirely and delegates to the `AuspiceWriter` trait object:
+For Newick and Nexus output formats, [`write_tree_outputs`](../../packages/treetime-io/src/graph.rs) uses the `ordered` graph it receives. For `TreeWriteKind::Auspice`, it ignores the `graph` argument entirely and delegates to the `AuspiceWriter` trait object:
 
 ```rust
 TreeWriteKind::Auspice => {

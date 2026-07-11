@@ -8,11 +8,11 @@ This document describes the problems with the current implementation of coalesce
 
 ### One closure per node, all identical except for multiplicity
 
-`compute_node_contributions` allocates a `DistributionFormula` closure for every node in the tree. Each closure captures cloned `Arc` references to `integral_merger_rate`, `lineage_counts`, and `tc_dist` — the same three objects for every node. The only per-node variation is `multiplicity = n_children - 1`, a single scalar. This produces O(N) heap allocations and O(N) Arc reference counts for data that could be shared as a single struct.
+`compute_node_contributions` allocates a `DistributionFormula` closure for every node in the tree. Each closure captures cloned `Arc` references to `integral_merger_rate`, `lineage_counts`, and `tc_dist` -- the same three objects for every node. The only per-node variation is `multiplicity = n_children - 1`, a single scalar. This produces O(N) heap allocations and O(N) Arc reference counts for data that could be shared as a single struct.
 
 ### TBP coordinate conversion on every evaluation
 
-The underlying functions (`integral_merger_rate`, `lineage_counts`) are expressed in time-before-present (TBP) coordinates, but the backward pass operates in calendar time. Every closure evaluation performs a `CalendarTime → Tbp` conversion (`t_tbp = present_time - t_calendar`). This is a single subtraction that could be baked in once at construction time by re-expressing both piecewise functions in calendar time before storing them.
+The underlying functions (`integral_merger_rate`, `lineage_counts`) are expressed in time-before-present (TBP) coordinates, but the backward pass operates in calendar time. Every closure evaluation performs a `CalendarTime -> Tbp` conversion (`t_tbp = present_time - t_calendar`). This is a single subtraction that could be baked in once at construction time by re-expressing both piecewise functions in calendar time before storing them.
 
 ### Per-evaluation heap allocations in `compute_merger_rates`
 
@@ -31,10 +31,10 @@ The current backward pass seeds `result` with the coalescent contribution Formul
 ```
 result = Some(coalescent_formula)
 for child in children:
-    result = result * child_message      # Formula × Function on first child
+    result = result * child_message      # Formula * Function on first child
 ```
 
-`Formula × Function` must discretize the Formula onto a grid. At this point only one child's message is known; the grid chosen (`b.len()` points over the overlap) may not match what the fully-combined message will look like. The correct moment to apply the coalescent contribution is _after_ all child messages have been accumulated, when the result's grid is fully determined.
+`Formula * Function` must discretize the Formula onto a grid. At this point only one child's message is known; the grid chosen (`b.len()` points over the overlap) may not match what the fully combined message will look like. The correct moment to apply the coalescent contribution is _after_ all child messages have been accumulated, when the result's grid is fully determined.
 
 ### Leaf contributions are computed but never applied
 
@@ -56,7 +56,7 @@ struct CoalescentModel {
     integral_merger_rate: PiecewiseLinearFn,
     // k(t) re-expressed in calendar time
     lineage_counts: PiecewiseConstantFn,
-    // Tc(t) — constant or skyline, calendar time
+    // Tc(t) -- constant or skyline, calendar time
     tc: Distribution,
     // domain: [earliest_node_time, latest_node_time]
     t_min: f64,
@@ -89,7 +89,7 @@ Remove the coalescent contribution from the initial seed of `result` in the back
 result = None
 for child in children:
     parent_message = child_time_dist ⊛ (−branch_dist)
-    result = result * parent_message   // all Function × Function
+    result = result * parent_message   // all Function * Function
 
 // Apply coalescent contribution in-place on the result's grid
 if coalescent is Some and result is Some(Function):
@@ -98,13 +98,13 @@ if coalescent is Some and result is Some(Function):
     result = result.normalize()
 ```
 
-`eval_on_grid` evaluates `eval(t, multiplicity)` at each grid point, returning an array. The multiplication is pointwise on the existing array — no new grid construction, no overlap computation, no resampling, no `Formula` type involved at all.
+`eval_on_grid` evaluates `eval(t, multiplicity)` at each grid point, returning an array. The multiplication is pointwise on the existing array -- no new grid construction, no overlap computation, no resampling, no `Formula` type involved at all.
 
 This also removes the dependency on `multiply_formula_function` from the coalescent path entirely.
 
 ### Pass `CoalescentModel` directly into the backward pass
 
-The backward pass signature changes from:
+The signature changes from:
 
 ```
 propagate_distributions_backward(
@@ -135,9 +135,9 @@ neg_log = 0 * (i_t - ln(lambda_t)) = 0
 eval(t, 0) = exp(0) = 1
 ```
 
-This means the `λ(t)` term vanishes at leaves (as expected — leaves are not coalescent events), but the `exp(I(t))` survival term remains and is encoded in the `i_t` component. In the refactored architecture the leaf contribution is handled as follows:
+This means the `λ(t)` term vanishes at leaves (as expected -- leaves are not coalescent events), but the `exp(I(t))` survival term remains and is encoded in the `i_t` component. In the refactored architecture the leaf contribution is handled as follows:
 
-The backward pass for a leaf node produces `result = None` (leaf time distribution comes from the date constraint, not backward accumulation). However, the leaf's `exp(-I(t_leaf))` term still needs to flow up to the parent as a scalar weight. The cleanest approach is:
+The backward pass for a leaf node produces `result = None` (leaf time distribution comes from the date constraint, not backward accumulation). The leaf's `exp(-I(t_leaf))` term still needs to flow up to the parent as a scalar weight. The cleanest approach is:
 
 1. For each leaf, evaluate `coalescent.eval_leaf_scalar(t_leaf)` which returns `exp(-I(t_leaf))` (using `i_t` only, no lambda term).
 2. Accumulate these scalars into a running log-likelihood total rather than incorporating them into the distribution messages.
@@ -154,7 +154,7 @@ Either way: **do not compute a `DistributionFormula` for leaf nodes**. The contr
 | Current                                                  | Proposed                                                   |
 | -------------------------------------------------------- | ---------------------------------------------------------- |
 | N `DistributionFormula` closures, one per node           | One `CoalescentModel` struct                               |
-| TBP→calendar conversion on every eval call               | Calendar-time arrays built once at construction            |
+| TBP->calendar conversion on every eval call              | Calendar-time arrays built once at construction            |
 | `Array1::from_vec` allocations per scalar eval           | Scalar arithmetic only                                     |
 | Formula applied before child messages, grid guessed      | Applied after children, grid is known                      |
 | `multiply_formula_function` path (overlap + resample)    | Pointwise multiply on existing array                       |
