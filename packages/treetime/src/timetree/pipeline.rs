@@ -41,6 +41,7 @@ use treetime_io::fasta::FastaRecord;
 use treetime_utils::make_report;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
+const INITIAL_COALESCENT_TC: f64 = 0.001;
 
 pub struct TimetreeParams {
   pub model: GtrModelName,
@@ -226,29 +227,31 @@ pub fn run(
 
   run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
 
-  let mut coalescent_tc: Option<Distribution> = if params.coalescent_skyline {
-    let initial_tc = 1.0;
-    info!("### Optimizing constant coalescent Tc (pre-loop, skyline deferred)");
-    match optimize_tc(&input.graph, initial_tc) {
-      Ok(result) if result.success => {
-        info!(
-          "Pre-loop Tc = {:.6e} (likelihood = {:.4})",
-          result.tc, result.likelihood
-        );
-        Some(Distribution::constant(result.tc))
+  let mut coalescent_tc: Option<Distribution> =
+    match coalescent_initialization(params.coalescent, params.coalescent_opt, params.coalescent_skyline) {
+      CoalescentInitialization::Optimize(initial_tc) => {
+        info!("### Optimizing constant coalescent Tc before refinement");
+        match optimize_tc(&input.graph, initial_tc) {
+          Ok(result) if result.success => {
+            info!(
+              "Pre-loop Tc = {:.6e} (likelihood = {:.4})",
+              result.tc, result.likelihood
+            );
+            Some(Distribution::constant(result.tc))
+          },
+          Ok(_) => {
+            warn!("Pre-loop Tc optimization did not converge, using Tc = {initial_tc:.6e}");
+            Some(Distribution::constant(initial_tc))
+          },
+          Err(e) => {
+            warn!("Pre-loop Tc optimization failed: {e}, using Tc = {initial_tc:.6e}");
+            Some(Distribution::constant(initial_tc))
+          },
+        }
       },
-      Ok(_) => {
-        warn!("Pre-loop Tc optimization did not converge, using Tc = {initial_tc:.6e}");
-        Some(Distribution::constant(initial_tc))
-      },
-      Err(e) => {
-        warn!("Pre-loop Tc optimization failed: {e}, using Tc = {initial_tc:.6e}");
-        Some(Distribution::constant(initial_tc))
-      },
-    }
-  } else {
-    params.coalescent.map(Distribution::constant)
-  };
+      CoalescentInitialization::Fixed(tc) => Some(Distribution::constant(tc)),
+      CoalescentInitialization::None => None,
+    };
 
   if coalescent_tc.is_some() {
     run_timetree(
@@ -418,6 +421,27 @@ pub fn run(
   })
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum CoalescentInitialization {
+  Optimize(f64),
+  Fixed(f64),
+  None,
+}
+
+fn coalescent_initialization(
+  coalescent: Option<f64>,
+  coalescent_opt: bool,
+  coalescent_skyline: bool,
+) -> CoalescentInitialization {
+  if coalescent_opt || coalescent_skyline {
+    CoalescentInitialization::Optimize(coalescent.unwrap_or(INITIAL_COALESCENT_TC))
+  } else if let Some(tc) = coalescent {
+    CoalescentInitialization::Fixed(tc)
+  } else {
+    CoalescentInitialization::None
+  }
+}
+
 struct PartitionInitResult {
   partitions: PartitionTimetreeAllVec,
   gtr: GTR,
@@ -474,4 +498,32 @@ fn optimize_branch_lengths_pre_step(
   update_marginal(graph, partitions)?;
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{CoalescentInitialization, coalescent_initialization};
+  use rstest::rstest;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::disabled(       None,       false, false, CoalescentInitialization::None)]
+  #[case::fixed(          Some(0.25), false, false, CoalescentInitialization::Fixed(0.25))]
+  #[case::opt_default(    None,       true,  false, CoalescentInitialization::Optimize(0.001))]
+  #[case::opt_configured( Some(0.25), true,  false, CoalescentInitialization::Optimize(0.25))]
+  #[case::skyline_default(None,       false, true,  CoalescentInitialization::Optimize(0.001))]
+  #[trace]
+  fn test_pipeline_coalescent_initialization(
+    #[case] coalescent: Option<f64>,
+    #[case] coalescent_opt: bool,
+    #[case] coalescent_skyline: bool,
+    #[case] expected: CoalescentInitialization,
+  ) {
+    let actual = coalescent_initialization(coalescent, coalescent_opt, coalescent_skyline);
+
+    // v0 creates Coalescent with Tc=0.001 before optimizing it in the first iteration:
+    // packages/legacy/treetime/treetime/merger_models.py#L25
+    // packages/legacy/treetime/treetime/treetime.py#L307-L317
+    assert_eq!(expected, actual);
+  }
 }

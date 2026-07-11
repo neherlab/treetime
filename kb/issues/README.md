@@ -83,7 +83,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Distribution | [Distribution product grid resolution diverges from v0](M-distribution-product-grid-resolution-diverges-from-v0.md)                                |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                        |
 | Medium     | Timetree     | [Coalescent multiplication ordering diverges from v0 without empirical validation](M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md) |
-| Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                                          |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                        |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)                                  |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                                |

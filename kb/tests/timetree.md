@@ -120,6 +120,18 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 ---
 
+### Pipeline Coalescent Initialization
+
+**Test:** [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs) (inline `#[cfg(test)]`)
+
+**Impl:** [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs)
+
+| Test                                      | Purpose                                                                                 |
+| ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| `test_pipeline_coalescent_initialization` | Fixed, optimized, skyline, and disabled modes select the v0-compatible initial Tc state |
+
+---
+
 ### Skyline Optimization
 
 **Test:** [`packages/treetime/src/coalescent/__tests__/test_skyline.rs`](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs)
