@@ -12,7 +12,7 @@
 | [Belief propagation](#belief-propagation--inference-tests) | Unit + Golden-master |
 | [Convergence](#convergence-tests)                          | Unit + Integration   |
 | [Output (confidence)](#output-tests)                       | Unit                 |
-| [Output (Auspice)](#auspice-output)                        | Unit                 |
+| [Output (Auspice)](#auspice-output)                        | Unit + Integration   |
 | [Clock filter](#clock-filter)                              | Unit                 |
 | [Relaxed clock](#relaxed-clock)                            | Unit                 |
 | [Polytomy resolution](#polytomy-resolution)                | Unit                 |
@@ -308,7 +308,7 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 ## Convergence Tests
 
-**Test:** [`packages/treetime/src/timetree/convergence/__tests__/test_optimizer.rs`](../../packages/treetime/src/timetree/convergence/__tests__/test_optimizer.rs)
+**Test:** [`packages/treetime/src/commands/timetree/__tests__/test_pipeline.rs`](../../packages/treetime/src/commands/timetree/__tests__/test_pipeline.rs)
 
 **Impl:** [`packages/treetime/src/timetree/convergence/metrics.rs`](../../packages/treetime/src/timetree/convergence/metrics.rs)
 
@@ -323,9 +323,10 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 
 **Impl:** [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)
 
-| Test                                 | Purpose                                                                       | Type        |
-| ------------------------------------ | ----------------------------------------------------------------------------- | ----------- |
-| `test_pipeline_timetree_convergence` | Full pipeline on `flu/h3n2/20`: tracelog CSV, output files, likelihood values | Integration |
+| Test                                                   | Purpose                                                                       | Type        |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------- | ----------- |
+| `test_pipeline_timetree_convergence`                   | Full pipeline on `flu/h3n2/20`: tracelog CSV, output files, likelihood values | Integration |
+| `test_pipeline_timetree_ladderize_applies_to_auspice` | Descending ladderization controls Auspice child order                         | Integration |
 
 ---
 
