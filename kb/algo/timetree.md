@@ -159,7 +159,7 @@ This approach is deterministic and reproducible but biases toward caterpillar-li
 - `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
 - `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
 - `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs#L432-L454](../../packages/treetime/src/timetree/optimization/polytomy.rs#L432-L454): clears cached distributions on internal nodes; leaf date constraints and `bad_branch` flags are preserved.
+- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): clears cached internal-node distributions and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, leaf `bad_branch` flags, branch lengths, and time lengths are preserved.
 
 After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
 

@@ -1,6 +1,7 @@
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::GraphTimetree;
 use crate::partition::traits::PartitionTimetreeAll;
+use crate::payload::clock_set::ClockSet;
 use crate::payload::timetree::EdgeTimetree;
 use crate::payload::timetree::NodeTimetree;
 use argmin::core::{CostFunction, Executor};
@@ -543,7 +544,9 @@ fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report>
 /// Clears cached time distributions and bad_branch flags on internal nodes only.
 /// Leaf nodes retain their date constraints (`time_distribution` from `load_date_constraints()`)
 /// and exclusion flags (`bad_branch` from outlier detection or dateless leaves).
-/// Edge distributions and messages are cleared unconditionally.
+/// Edge distributions, messages, and topology-dependent rate state are reset
+/// unconditionally. Branch lengths and time lengths remain valid inputs for the
+/// next inference pass.
 pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
   // Clear cached time distributions and bad_branch flags on internal nodes only.
   // Leaf nodes must retain their date constraints and exclusion flags because
@@ -558,11 +561,16 @@ pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), R
     payload.bad_branch = false;
   }
 
-  // Clear cached branch length distributions
+  // Reset fields whose meaning depends on the previous edge topology. Keep the
+  // observed branch length and inferred time length: both seed the next pass.
   for edge in graph.get_edges() {
     let mut payload = edge.read_arc().payload().write_arc();
     payload.branch_length_distribution = None;
     payload.msg_to_parent = None;
+    payload.gamma = 1.0;
+    payload.clock_to_parent = ClockSet::default();
+    payload.clock_to_child = ClockSet::default();
+    payload.clock_from_child = ClockSet::default();
   }
 
   Ok(())

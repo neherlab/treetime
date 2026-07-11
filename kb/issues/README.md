@@ -148,7 +148,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                           |
 | Medium     | Ancestral    | [Sparse variant skips initialize_marginal before update_marginal](M-ancestral-sparse-missing-initialize-marginal.md)                                |
 | Medium     | Marginal     | [normalize_inplace NEG_INFINITY masks all contributions](M-marginal-normalize-neg-infinity-masks-total.md)                                          |
-| Medium     | Timetree     | [Polytomy resolution leaves stale fields after topology change](M-timetree-polytomy-stale-fields-after-topology-change.md)                          |
 | Medium     | Timetree     | [Timetree convergence metric deficiencies](M-timetree-convergence-metric-deficiencies.md)                                                           |
 | Medium     | Timetree     | [Timetree confidence interval computation deficiencies](M-timetree-confidence-interval-deficiencies.md)                                             |
 | Medium     | Coalescent   | [Coalescent leaf survival formula sign convention requires investigation](M-coalescent-leaf-survival-sign-convention.md)                            |

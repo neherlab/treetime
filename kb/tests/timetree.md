@@ -470,7 +470,7 @@ Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../pac
 | `test_resolve_polytomies_respects_threshold`                   | High threshold prevents merges        |
 | `test_resolve_polytomies_new_node_has_correct_time`            | New node time between parent/children |
 | `test_resolve_polytomies_large_polytomy`                       | 5-way polytomy requires 3 merges      |
-| `test_prepare_tree_after_topology_change_preserves_leaf_state` | Leaf constraints preserved            |
+| `test_prepare_tree_after_topology_change_resets_derived_state_preserves_inputs` | Leaf constraints and edge inputs preserved; topology-dependent edge state reset |
 
 ---
 

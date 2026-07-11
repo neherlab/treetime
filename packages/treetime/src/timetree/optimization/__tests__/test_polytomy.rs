@@ -2,6 +2,7 @@
 mod tests {
   use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
   use crate::partition::timetree::GraphTimetree;
+  use crate::payload::clock_set::ClockSet;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{
     DEFAULT_RESOLUTION_THRESHOLD, prepare_tree_after_topology_change, resolve_polytomies_with_options,
@@ -397,8 +398,19 @@ mod tests {
   }
 
   #[test]
-  fn test_prepare_tree_after_topology_change_preserves_leaf_state() -> Result<(), Report> {
+  fn test_prepare_tree_after_topology_change_resets_derived_state_preserves_inputs() -> Result<(), Report> {
     let graph = helpers::create_polytomy_tree()?;
+
+    for edge in graph.get_edges() {
+      let mut payload = edge.read_arc().payload().write_arc();
+      payload.msg_to_parent = Some(Arc::new(Distribution::point(1.0, 1.0)));
+      payload.gamma = 2.0;
+      payload.clock_to_parent = ClockSet::leaf_contribution(Some(2020.0));
+      payload.clock_to_child = ClockSet::leaf_contribution(Some(2021.0));
+      payload.clock_from_child = ClockSet::leaf_contribution(Some(2022.0));
+      payload.set_branch_length(Some(0.25));
+      payload.time_length = Some(3.0);
+    }
 
     // Set time_distribution on leaves (simulating load_date_constraints)
     let leaf_a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
@@ -463,6 +475,20 @@ mod tests {
         "Edge branch_length_distribution must be cleared"
       );
       assert!(payload.msg_to_parent.is_none(), "Edge msg_to_parent must be cleared");
+      pretty_assert_abs_diff_eq!(payload.gamma, 1.0, epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(payload.clock_to_parent.norm(), 0.0, epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(payload.clock_to_child.norm(), 0.0, epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(payload.clock_from_child.norm(), 0.0, epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(
+        payload.branch_length().expect("branch length must be preserved"),
+        0.25,
+        epsilon = 1e-10
+      );
+      pretty_assert_abs_diff_eq!(
+        payload.time_length.expect("time length must be preserved"),
+        3.0,
+        epsilon = 1e-10
+      );
     }
 
     Ok(())
