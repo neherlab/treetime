@@ -80,3 +80,7 @@ workspace = true
 [[bench]]
 name = "marginal_scaling"
 harness = false
+
+[[bench]]
+name = "fitch_scaling"
+harness = false
