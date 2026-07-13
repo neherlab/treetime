@@ -3,6 +3,7 @@ use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use statrs::function::factorial::ln_factorial;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
@@ -65,18 +66,21 @@ where
   E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
-  let mut total_indels: usize = 0;
-  let mut total_branch_length: f64 = 0.0;
-
-  for edge_ref in graph.get_edges() {
-    let edge_key = edge_ref.read_arc().key();
-    let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-
-    let edge_indels: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
-
-    total_indels += edge_indels;
-    total_branch_length += branch_length;
-  }
+  let per_edge = graph
+    .get_edges()
+    .par_iter()
+    .map(|edge_ref| {
+      let edge_key = edge_ref.read_arc().key();
+      let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let edge_indels = partitions
+        .iter()
+        .map(|p| p.read_arc().edge_indel_count(edge_key))
+        .sum::<usize>();
+      (edge_indels, branch_length)
+    })
+    .collect::<Vec<_>>();
+  let total_indels = per_edge.iter().map(|(indels, _)| indels).sum::<usize>();
+  let total_branch_length = per_edge.iter().map(|(_, branch_length)| branch_length).sum::<f64>();
 
   if total_branch_length > 0.0 && total_indels > 0 {
     total_indels as f64 / total_branch_length
@@ -103,7 +107,7 @@ where
 {
   graph
     .get_edges()
-    .iter()
+    .par_iter()
     .map(|edge_ref| -> Result<f64, Report> {
       let edge_key = edge_ref.read_arc().key();
       let edge = edge_ref.read_arc();
@@ -121,6 +125,8 @@ where
         Ok(poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh)
       }
     })
+    .collect::<Vec<_>>()
+    .into_iter()
     .sum()
 }
 

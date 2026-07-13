@@ -10,6 +10,7 @@ use crate::partition::traits::PartitionOptimizeOps;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
@@ -92,7 +93,7 @@ where
 
   graph
     .get_edges()
-    .iter()
+    .par_iter()
     .try_for_each(|edge_ref| -> Result<(), Report> {
       let edge_key = edge_ref.read_arc().key();
       let mut edge = edge_ref.write_arc().payload().write_arc();

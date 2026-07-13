@@ -12,6 +12,7 @@ use crate::timetree::utils::initialize_node_divergences;
 use eyre::Report;
 use log::{debug, info};
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
@@ -94,41 +95,45 @@ where
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
-  for edge_ref in graph.get_edges() {
-    let edge_key = edge_ref.read_arc().key();
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    let branch_length = edge.branch_length().unwrap_or(one_mutation);
-    let gamma = edge.gamma();
+  graph
+    .get_edges()
+    .par_iter()
+    .try_for_each(|edge_ref| -> Result<(), Report> {
+      let edge_key = edge_ref.read_arc().key();
+      let mut edge = edge_ref.write_arc().payload().write_arc();
+      let branch_length = edge.branch_length().unwrap_or(one_mutation);
+      let gamma = edge.gamma();
 
-    debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
+      debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-    let contributions = collect_contributions(partitions, edge_key)?;
-    let indel_count: usize = if no_indels {
-      0
-    } else {
-      partitions
-        .iter()
-        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-        .sum()
-    };
-    let distribution = compute_branch_length_distribution(
-      &contributions,
-      indel_count,
-      indel_rate,
-      branch_length,
-      one_mutation,
-      BRANCH_GRID_SIZE,
-      clock_rate,
-      gamma,
-    )?;
+      let contributions = collect_contributions(partitions, edge_key)?;
+      let indel_count: usize = if no_indels {
+        0
+      } else {
+        partitions
+          .iter()
+          .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+          .sum()
+      };
+      let distribution = compute_branch_length_distribution(
+        &contributions,
+        indel_count,
+        indel_rate,
+        branch_length,
+        one_mutation,
+        BRANCH_GRID_SIZE,
+        clock_rate,
+        gamma,
+      )?;
 
-    if let Some(likely_time) = distribution.likely_time() {
-      debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
-    }
+      if let Some(likely_time) = distribution.likely_time() {
+        debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
+      }
 
-    edge.set_time_length(distribution.likely_time());
-    edge.set_branch_length_distribution(Some(distribution));
-  }
+      edge.set_time_length(distribution.likely_time());
+      edge.set_branch_length_distribution(Some(distribution));
+      Ok(())
+    })?;
   Ok(())
 }
 
@@ -168,7 +173,7 @@ where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + HasBranchLength + TimetreeEdge,
 {
-  for edge_ref in graph.get_edges() {
+  graph.get_edges().par_iter().for_each(|edge_ref| {
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
     if let Some(branch_length) = edge.branch_length() {
@@ -180,7 +185,7 @@ where
       edge.set_time_length(Some(time_duration));
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }
-  }
+  });
 
   Ok(())
 }
