@@ -541,11 +541,11 @@ mod tests {
   }
 
   #[test]
-  fn test_marginal_sparse_parallel_frontiers_are_thread_count_deterministic() -> Result<(), Report> {
+  fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic() -> Result<(), Report> {
     let expected = helpers::run_thread_determinism_case(1)?;
     let actual = helpers::run_thread_determinism_case(4)?;
 
-    // Independent frontier scheduling must not affect sum-product messages or MAP state.
+    // Parallel sequence compression and frontier scheduling must not affect messages or MAP state.
     assert_eq!(expected, actual);
     Ok(())
   }

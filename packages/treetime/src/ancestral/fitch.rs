@@ -66,32 +66,37 @@ where
     records.entry(record.seq_name.as_str()).or_insert(record);
     records
   });
-  for leaf in graph.get_leaves() {
-    let leaf_key = leaf.read_arc().key();
-    let mut leaf = leaf.read_arc().payload().write_arc();
+  let leaf_records = graph
+    .get_leaves()
+    .into_par_iter()
+    .map(|leaf| -> Result<_, Report> {
+      let leaf = leaf.read_arc();
+      let leaf_key = leaf.key();
+      let mut leaf_payload = leaf.payload().write_arc();
+      let leaf_name = leaf_payload
+        .name()
+        .ok_or_else(|| {
+          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
+        })?
+        .as_ref()
+        .to_owned();
+      let leaf_fasta = aln_by_name
+        .get(leaf_name.as_str())
+        .copied()
+        // Every leaf has a sequence record after alignment completion.
+        .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
+      leaf_payload.set_desc(leaf_fasta.desc.clone());
+      Ok((leaf_key, leaf_fasta))
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
 
-    let leaf_name = leaf.name().ok_or_else(|| {
-      make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-    })?.as_ref().to_owned();
-
-    let leaf_fasta = aln_by_name
-      .get(leaf_name.as_str())
-      .copied()
-      // Every leaf has a sequence record after alignment completion.
-      .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
-
-    leaf.set_desc(leaf_fasta.desc.clone());
-
-    partitions.iter().try_for_each(|partition| -> Result<(), Report> {
-      let mut partition = partition.write_arc();
-      let alphabet = &partition.alphabet().clone(); // TODO: avoid clone
-
-      partition
-        .nodes_mut()
-        .insert(leaf_key, SparseNodePartition::new(&leaf_fasta.seq, alphabet)?);
-
-      Ok(())
-    })?;
+  for partition in partitions {
+    let alphabet = partition.read_arc().alphabet().clone();
+    let nodes = leaf_records
+      .par_iter()
+      .map(|(leaf_key, leaf_fasta)| SparseNodePartition::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
+      .collect::<Result<BTreeMap<_, _>, Report>>()?;
+    partition.write_arc().nodes_mut().extend(nodes);
   }
 
   for edge in graph.get_edges() {
