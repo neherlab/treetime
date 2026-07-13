@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 /// Most recent common ancestor of a set of nodes.
 ///
-/// Walks the root-to-node paths of every input node in parallel and returns the
+/// Walks the root-to-node path of every input node and returns the
 /// last node shared by all of them. With a single input the node itself is its
 /// own ancestor. Errors on an empty input set.
 pub fn common_ancestor<N, E, D>(graph: &Graph<N, E, D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>

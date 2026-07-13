@@ -24,7 +24,7 @@ The `norm` field is gated on `date.is_some()` (`clock_set.rs:26,49`). When no ti
 
 $$\chi^2 = \frac{1}{2n}\left(S_{dd}\,n - S_d^2 - \frac{(S_{dt}\,n - S_d\,S_t)^2}{\Delta}\right)$$
 
-where $n$ = `norm`, $\Delta$ = `determinant()` = $S_{tt}\,n - S_t^2$. Both $n$ and $\Delta$ are zero, producing $0/0$ = NaN.
+where $S_d$ = `d_sum`, $S_{dd}$ = `dsq_sum`, $S_{dt}$ = `dt_sum`, $S_t$ = `t_sum`, $S_{tt}$ = `tsq_sum`, $n$ = `norm`, $\Delta$ = `determinant()` = $S_{tt}\,n - S_t^2$. Both $n$ and $\Delta$ are zero, producing $0/0$ = NaN.
 
 This is not a fixable edge case. The formula regresses divergence against time. Without time data, the regression is undefined. A divergence-only objective requires a different formula over different sufficient statistics.
 
