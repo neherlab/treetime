@@ -6,6 +6,7 @@ use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::sample::SampleMode;
 use treetime::clock::find_best_root::params::RerootMethod;
 use treetime::commands::ancestral::aa_model::AaModelName;
+use treetime::commands::optimize::args::OptimizeRerootMethod;
 use treetime::commands::shared::reroot::RerootArgs;
 use treetime::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
@@ -412,6 +413,9 @@ pub struct ServerOptimizeArgs {
   #[default(BranchOptMethod::default())]
   pub opt_method: BranchOptMethod,
   pub no_indels: bool,
+  pub reroot: Option<OptimizeRerootMethod>,
+  pub reroot_tips: Vec<String>,
+  pub keep_root: bool,
   #[default(GapFill::default())]
   pub gap_fill: GapFill,
   pub keep_overhangs: bool,
@@ -424,7 +428,6 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
-    use treetime::commands::shared::reroot::RerootArgs;
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -448,8 +451,9 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       branch_length_initial_guess: s.branch_length_initial_guess,
       opt_method: s.opt_method,
       no_indels: s.no_indels,
-      reroot: RerootArgs::default(),
-      keep_root: false,
+      reroot: s.reroot,
+      reroot_tips: s.reroot_tips,
+      keep_root: s.keep_root,
       divergence_units: DivergenceUnits::default(),
       gap_fill_args: GapFillArgs {
         gap_fill: s.gap_fill,

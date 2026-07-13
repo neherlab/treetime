@@ -4,16 +4,33 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
-use crate::commands::shared::reroot::RerootArgs;
-use crate::make_error;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::PathBuf;
+
+/// Reroot methods available in the optimize command.
+///
+/// Only date-free methods are valid here because optimize has no sampling dates.
+/// Date-dependent methods (least-squares, oldest, clock-filter) are available
+/// in the timetree and clock commands.
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+pub enum OptimizeRerootMethod {
+  MinDev,
+}
+
+impl From<OptimizeRerootMethod> for RerootMethod {
+  fn from(m: OptimizeRerootMethod) -> Self {
+    match m {
+      OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
+    }
+  }
+}
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
@@ -141,8 +158,23 @@ pub struct TreetimeOptimizeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub no_indels: bool,
 
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  pub reroot: RerootArgs,
+  /// Reroot the tree by minimizing root-to-tip divergence variance.
+  ///
+  /// By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
+  /// to enable divergence-based rerooting. Date-dependent methods (least-squares,
+  /// oldest, clock-filter) are available in the timetree and clock commands.
+  #[cfg_attr(feature = "clap", clap(
+    long,
+    value_enum,
+    num_args = 0..=1,
+    default_missing_value = "min-dev",
+    conflicts_with = "reroot_tips",
+  ))]
+  pub reroot: Option<OptimizeRerootMethod>,
+
+  /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+  #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', conflicts_with = "reroot"))]
+  pub reroot_tips: Vec<String>,
 
   /// Keep the input tree root instead of rerooting.
   ///
@@ -159,28 +191,20 @@ impl TreetimeOptimizeArgs {
   /// Resolve the requested reroot policy.
   ///
   /// Returns `None` when the input root is kept (the default, or `--keep-root`).
-  /// Returns `Some(spec)` when `--reroot` or `--reroot-tips` is given. Errors on
-  /// date-dependent methods, which the optimize command cannot run because it has
-  /// no sampling dates.
-  pub fn reroot_spec(&self) -> Result<Option<RerootSpec>, Report> {
+  /// Returns `Some(spec)` when `--reroot` or `--reroot-tips` is given.
+  pub fn reroot_spec(&self) -> Option<RerootSpec> {
     if self.keep_root {
-      return Ok(None);
+      return None;
     }
 
-    let requested = self.reroot.reroot.is_some() || !self.reroot.reroot_tips.is_empty();
-    if !requested {
-      return Ok(None);
+    if let Some(method) = self.reroot {
+      return Some(RerootSpec::Method(RerootMethod::from(method)));
     }
 
-    let spec = self.reroot.spec();
-    if let RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::Oldest | RerootMethod::ClockFilter) = spec {
-      return make_error!(
-        "optimize supports only date-free rerooting: --reroot=min-dev or --reroot-tips. \
-         The least-squares, oldest, and clock-filter methods require sampling dates; \
-         use the timetree command for date-based rerooting."
-      );
+    if !self.reroot_tips.is_empty() {
+      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
     }
 
-    Ok(Some(spec))
+    None
   }
 }
