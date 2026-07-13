@@ -14,14 +14,10 @@ pub fn optimize_brent<S: RootStats>(
   cost_fn: &EdgeCostFn<S>,
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report> {
-  let solver = BrentOpt::new(0.0, 1.0);
+  let solver = BrentOpt::new(0.0, 1.0).set_tolerance(f64::EPSILON.sqrt(), params.brent_tolerance);
 
   let result = Executor::new(cost_fn, solver)
-    .configure(|cfg| {
-      cfg
-        .max_iters(params.brent_max_iters as u64)
-        .target_cost(params.brent_tolerance)
-    })
+    .configure(|cfg| cfg.max_iters(params.brent_max_iters as u64))
     .run()
     .map_err(|e| make_report!("Brent optimization failed: {e}"))?;
 

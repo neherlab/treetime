@@ -1,9 +1,7 @@
 use crate::make_report;
 use crate::reroot::cost_function::EdgeCostFn;
 use crate::reroot::method_brent::optimize_brent;
-use crate::reroot::method_golden_section::optimize_golden_section;
-use crate::reroot::method_grid_search::optimize_grid_search;
-use crate::reroot::params::BranchPointOptimizationParams;
+use crate::reroot::params::BrentParams;
 use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
@@ -30,13 +28,13 @@ pub struct FindRootResult<S> {
   pub score: f64,
 }
 
-/// Optimize the root position along a single edge using the configured 1D method.
+/// Optimize the root position along a single edge using Brent's method.
 pub fn find_best_split<N, E, D, S>(
   graph: &Graph<N, E, D>,
   edge: GraphEdgeKey,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   variance: &VarianceModel,
-  params: &BranchPointOptimizationParams,
+  params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
   N: GraphNode,
@@ -78,9 +76,5 @@ where
     variance_offset_leaf: variance.variance_offset_leaf,
   };
 
-  match params {
-    BranchPointOptimizationParams::Grid(p) => optimize_grid_search(edge, &cost_fn, p),
-    BranchPointOptimizationParams::Brent(p) => optimize_brent(edge, &cost_fn, p),
-    BranchPointOptimizationParams::GoldenSection(p) => optimize_golden_section(edge, &cost_fn, p),
-  }
+  optimize_brent(edge, &cost_fn, params)
 }

@@ -1,4 +1,4 @@
-use crate::reroot::params::BranchPointOptimizationParams;
+use crate::reroot::params::BrentParams;
 use crate::reroot::split::{FindRootResult, find_best_split};
 use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
@@ -20,7 +20,7 @@ pub fn find_best_root<N, E, D, S>(
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
-  params: &BranchPointOptimizationParams,
+  params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
   N: GraphNode,

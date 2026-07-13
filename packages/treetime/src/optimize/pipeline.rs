@@ -18,7 +18,7 @@ use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::div_stats_traversal::compute_div_stats;
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in_place};
-use crate::reroot::params::BranchPointOptimizationParams;
+use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use log::info;
@@ -205,7 +205,7 @@ fn reroot_optimize(
 ) -> Result<(), Report> {
   let variance = VarianceModel::default();
   let topo = RerootTopologyParams::default();
-  let opt_params = BranchPointOptimizationParams::default();
+  let opt_params = BrentParams::default();
 
   let reroot_result = match spec {
     RerootSpec::Method(RerootMethod::MinDev) => {

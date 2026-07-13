@@ -1,5 +1,5 @@
 use crate::make_report;
-use crate::reroot::params::BranchPointOptimizationParams;
+use crate::reroot::params::BrentParams;
 use crate::reroot::search::find_best_root;
 use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
@@ -37,7 +37,7 @@ pub fn reroot_in_place<N, E, D, S, F>(
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
-  opt_params: &BranchPointOptimizationParams,
+  opt_params: &BrentParams,
   topo: RerootTopologyParams,
   fixup: F,
 ) -> Result<RerootResult, Report>

@@ -3,7 +3,7 @@ mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::reroot::div_stats::DivStats;
   use crate::reroot::div_stats_traversal::compute_div_stats;
-  use crate::reroot::params::BranchPointOptimizationParams;
+  use crate::reroot::params::BrentParams;
   use crate::reroot::search::find_best_root;
   use crate::reroot::traits::RootStats;
   use crate::reroot::variance::VarianceModel;
@@ -35,7 +35,7 @@ mod tests {
       &field.edge_stats,
       &field.root_stats,
       &VarianceModel::default(),
-      &BranchPointOptimizationParams::brent(),
+      &BrentParams::default(),
     )?;
 
     assert!(best.edge.is_some(), "expected an improving reroot");
@@ -54,7 +54,7 @@ mod tests {
       &field.edge_stats,
       &field.root_stats,
       &VarianceModel::default(),
-      &BranchPointOptimizationParams::brent(),
+      &BrentParams::default(),
     )?;
 
     assert!(best.edge.is_none(), "balanced root should not be improved");
@@ -72,7 +72,7 @@ mod tests {
       &field.edge_stats,
       &field.root_stats,
       &VarianceModel::default(),
-      &BranchPointOptimizationParams::brent(),
+      &BrentParams::default(),
     )?;
 
     assert!(best.edge.is_none());
