@@ -125,6 +125,8 @@
 | ---------------------------------------------------------- | ---------------------------------------------------------------- |
 | `test_clock_filter_positive_rate_identifies_outliers`      | IQD filter identifies outliers with positive-rate model          |
 | `test_clock_filter_negative_rate_identifies_same_outliers` | Same outliers flagged with negative-rate model (sign-invariance) |
+| `test_clock_filter_rejects_no_dated_leaves`                | Empty residual samples return an actionable error                |
+| `test_clock_filter_accepts_low_cardinality_input`          | One through three dated leaves remain accepted                   |
 
 ---
 

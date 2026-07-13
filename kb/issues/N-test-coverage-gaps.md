@@ -26,7 +26,6 @@ Systematic test coverage gaps across major subsystems: timetree inference, clock
 
 - `fn run_clock()`: no end-to-end CLI test
 - `fn clock_regression_forward`: no direct unit test
-- `fn clock_filter_inplace()`: only tested with one idealized 8-leaf tree, no low-cardinality tests (0, 1, 2 dated leaves)
 - `fn load_date_constraints()`: validation failure paths untested
 - `fn write_clock_model()`, CSV writers, RTT chart writers: untested at serialized-output level
 

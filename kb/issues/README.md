@@ -41,7 +41,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Severity   | Scope        | Issue                                                                                                                                               |
 | ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | High       | Clock        | [ClockSet dateless-leaf contribution biases regression](H-clock-clockset-dateless-leaf-bias.md)                                                     |
-| High       | Clock        | [Clock filter panics on trees with fewer than four dated leaves](H-clock-filter-panic-small-trees.md)                                               |
 | High       | Core         | [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)                          |
 | High       | Core         | [Library crate is not consumable by non-CLI clients](H-core-multi-client-architecture-library-purity.md)                                            |
 | High       | Homoplasy    | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
