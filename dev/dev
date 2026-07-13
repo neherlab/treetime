@@ -58,7 +58,6 @@ _BUILD_RUSTFLAGS="-C linker-features=-lld ${RUSTFLAGS:-}"
 _TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
 _BUILD_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
 _TEST_ENV=(env "CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
-_BENCH_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 
 function is_known_command() {
   local token="${1:-}"
@@ -240,10 +239,10 @@ function run_one() {
     nicely cargo -q fmt --check "$@"
     ;;
   "bench-all")
-    nicely "${_BENCH_ENV[@]}" cargo -q bench --workspace --benches "${_CI_ARGS[@]}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q bench --workspace --benches "${_CI_ARGS[@]}" "$@"
     ;;
   "bench-debug")
-    nicely "${_BENCH_ENV[@]}" cargo -q bench --workspace --benches --profile=profiling "${_CI_ARGS[@]}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q bench --workspace --benches --profile=profiling "${_CI_ARGS[@]}" "$@"
     ;;
   "upgrade-deps")
     nicely cargo -q upgrade --pinned --incompatible --verbose --recursive "${_CI_ARGS[@]}" "$@"
