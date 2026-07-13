@@ -493,12 +493,12 @@ mod tests {
   #[test]
   fn test_parse_confidence_nested_internals() {
     let g = newick_from_string("((A,B)0.95:0.1,(C,D)0.80:0.2)0.50;").unwrap();
-    let internals: Vec<_> = g
+    let internal_count = g
       .nodes
       .iter()
       .filter(|n| !n.children.is_empty() && n.confidence.is_some())
-      .collect();
-    assert_eq!(internals.len(), 3);
+      .count();
+    assert_eq!(internal_count, 3);
     assert_eq!(g.nodes[g.root].confidence, Some(0.50));
   }
 

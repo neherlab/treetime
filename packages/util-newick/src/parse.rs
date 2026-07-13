@@ -189,7 +189,7 @@ fn visit_internal(
   // Biopython heuristic: bare numeric label on an internal node is branch support,
   // not a taxon name. Try parse as float; on success, store as confidence and clear name.
   let (final_name, confidence) = match extraction.clean_name {
-    Some(ref label) if label.parse::<f64>().is_ok() => (None, label.parse::<f64>().ok()),
+    Some(label) if label.parse::<f64>().is_ok() => (None, label.parse::<f64>().ok()),
     other => (other, None),
   };
 
