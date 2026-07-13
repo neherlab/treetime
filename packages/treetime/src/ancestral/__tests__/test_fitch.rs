@@ -2,7 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::{
-    ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
+    FitchSiteIndex, ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, create_fitch_partition,
+    fitch_backward, fitch_forward,
   };
   use crate::ancestral::marginal::update_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -20,6 +21,7 @@ mod tests {
   use maplit::btreemap;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
@@ -171,6 +173,60 @@ mod tests {
   }
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::invariant_canonical(">A\nACGT\n>B\nACGT\n",                         "ACGT", vec![])]
+  #[case::distinct_canonical( ">A\nACGT\n>B\nGCGT\n",                         "ACGT", vec![0])]
+  #[case::ambiguous_leaf(     ">A\nACGT\n>B\nRCGT\n",                         "ACGT", vec![0])]
+  #[case::non_character_only( ">A\nN-GT\n>B\n--GT\n",                         "  GT", vec![])]
+  #[case::extra_record_ignored(">A\nACGT\n>B\nACGT\n>extra\nGCGT\n",          "ACGT", vec![])]
+  #[trace]
+  fn test_fitch_site_index_classifies_leaf_columns(
+    #[case] fasta: &str,
+    #[case] expected_baseline: &str,
+    #[case] expected_positions: Vec<usize>,
+  ) -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root:0.0;")?;
+    let aln = read_many_fasta_str(fasta, &*NUC_ALPHABET)?;
+
+    let actual = FitchSiteIndex::new(&graph, &NUC_ALPHABET, &aln)?;
+
+    // Fitch 1971: a canonical state shared by every observed leaf is substitution-invariant.
+    assert_eq!(expected_baseline, actual.baseline().as_str());
+    assert_eq!(expected_positions, actual.informative_positions());
+    Ok(())
+  }
+
+  #[test]
+  fn test_fitch_invariant_columns_preserve_single_mutation() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        >B
+        AAAAAAAAAAAAAAACAAAAAAAAAAAAAAAA
+        >C
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        >D
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      "#},
+      &*NUC_ALPHABET,
+    )?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root:0.0;")?;
+
+    let partition = create_fitch_partition(&graph, 0, Alphabet::default(), &aln)?;
+    let actual_score: usize = partition.edges.values().map(|edge| edge.fitch_subs().len()).sum();
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+
+    // Fitch 1971: invariant columns contribute zero changes; only A16C is informative.
+    assert_eq!(1, actual_score);
+    assert_eq!(
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      partition.nodes[&root_key].seq.sequence.as_str()
+    );
+    Ok(())
+  }
 
   /// Fitch maximum parsimony reconstruction on a balanced 4-taxon binary tree (Fitch 1971).
   ///
@@ -513,10 +569,9 @@ mod tests {
   ///
   /// Tree: ((A,B)AB,(C,D,E)CDE)root - node CDE has 3 children instead of 2.
   ///
-  /// Fitch's algorithm generalizes from binary to n-ary nodes: the backward pass computes
-  /// the intersection of all n child state sets. If the intersection is empty, it takes
-  /// the union (implying at least one state change). The forward pass resolves ambiguities
-  /// using the parent state when it is present in the child's state set.
+  /// This fixture preserves TreeTime's existing all-child intersection/union recurrence.
+  /// For multifurcations that recurrence is deterministic and v0-compatible, although an
+  /// exact arbitrary-degree minimum-mutation assignment requires a finite-state cost pass.
   ///
   /// Uses the same alignment as `test_fitch_complex_gaps` but with a different tree topology
   /// (D and E are direct children of CDE rather than grouped under a DE intermediate node).
@@ -637,7 +692,7 @@ mod tests {
 
     // Run backward pass only
     attach_seqs_to_graph(&graph, &partitions, &aln)?;
-    fitch_backward(&graph, &partitions)?;
+    fitch_backward(&graph, &partitions, &aln)?;
 
     {
       let partition = partitions[0].read_arc();

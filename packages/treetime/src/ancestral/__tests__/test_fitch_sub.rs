@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+  use crate::alphabet::alphabet::{Alphabet, NON_CHAR, VARIABLE_CHAR};
   use crate::ancestral::fitch_sub::{
-    finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
-    resolve_root_forward, resolve_variable_positions_backward,
+    finalize_sequence_forward, resolve_informative_positions_backward, resolve_nonroot_substitutions_forward,
+    resolve_root_forward,
   };
   use crate::partition::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
   use crate::seq::composition::Composition;
@@ -36,39 +36,39 @@ mod tests {
     SparseEdgePartition::default()
   }
 
-  // --- resolve_variable_positions_backward ---
-
   #[test]
-  fn test_fitch_sub_variable_backward_children_agree() {
+  fn test_fitch_sub_informative_backward_fixed_children_agree() {
     let child0 = make_seq_info("ACGT");
     let child1 = make_seq_info("ACGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    assert!(variable.is_empty(), "No variable positions when children agree");
+    assert!(variable.is_empty());
+    assert_eq!(sequence.as_str(), "ACGT");
   }
 
   #[test]
-  fn test_fitch_sub_variable_backward_children_disagree() {
+  fn test_fitch_sub_informative_backward_fixed_children_disagree() {
     let child0 = make_seq_info("ACGT");
     let child1 = make_seq_info("GCGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    assert!(variable.is_empty(), "Fixed-position disagreement is not handled here");
-    assert_eq!(sequence[1], FILL_CHAR, "Position 1 unchanged by variable pass");
+    let expected = btreemap! { 0_usize => stateset! {b'A', b'G'} };
+    assert_eq!(expected, variable);
+    assert_eq!(sequence[0], VARIABLE_CHAR);
   }
 
   #[test]
-  fn test_fitch_sub_variable_backward_intersection_ambiguous() {
+  fn test_fitch_sub_informative_backward_singleton_intersection() {
     let mut child0 = make_seq_info("ACGT");
     child0.fitch.variable.insert(0, stateset! {b'A', b'G'});
     let mut child1 = make_seq_info("ACGT");
@@ -77,16 +77,15 @@ mod tests {
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    // intersection {A,G} ∩ {A,C} = {A} is a singleton: resolved immediately, not stored as variable
     assert!(variable.is_empty());
     assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
   }
 
   #[test]
-  fn test_fitch_sub_variable_backward_intersection_multi_element() {
+  fn test_fitch_sub_informative_backward_multistate_intersection() {
     let mut child0 = make_seq_info("ACGT");
     child0.fitch.variable.insert(0, stateset! {b'A', b'G', b'C'});
     let mut child1 = make_seq_info("ACGT");
@@ -95,19 +94,16 @@ mod tests {
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    // intersection {A,G,C} ∩ {A,C} = {A,C}: ambiguous, stored as variable
-    assert_eq!(variable.len(), 1);
-    assert!(variable[&0].contains(b'A'));
-    assert!(variable[&0].contains(b'C'));
-    assert!(!variable[&0].contains(b'G'));
+    let expected = btreemap! { 0_usize => stateset! {b'A', b'C'} };
+    assert_eq!(expected, variable);
     assert_eq!(sequence[0], VARIABLE_CHAR);
   }
 
   #[test]
-  fn test_fitch_sub_variable_backward_intersection_empty_takes_union() {
+  fn test_fitch_sub_informative_backward_empty_intersection_uses_union() {
     let mut child0 = make_seq_info("ACGT");
     child0.fitch.variable.insert(0, stateset! {b'A'});
     let mut child1 = make_seq_info("GCGT");
@@ -116,34 +112,16 @@ mod tests {
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    assert_eq!(variable.len(), 1);
-    assert!(variable[&0].contains(b'A'));
-    assert!(variable[&0].contains(b'G'));
+    let expected = btreemap! { 0_usize => stateset! {b'A', b'G'} };
+    assert_eq!(expected, variable);
     assert_eq!(sequence[0], VARIABLE_CHAR);
   }
 
   #[test]
-  fn test_fitch_sub_variable_backward_singleton_intersection_resolved() {
-    let mut child0 = make_seq_info("ACGT");
-    child0.fitch.variable.insert(0, stateset! {b'A', b'G'});
-    let mut child1 = make_seq_info("ACGT");
-    child1.fitch.variable.insert(0, stateset! {b'A'});
-    let edge0 = make_edge();
-    let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
-
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
-
-    assert!(variable.is_empty(), "Singleton intersection resolved immediately");
-    assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
-  }
-
-  #[test]
-  fn test_fitch_sub_variable_backward_skips_non_char_child() {
+  fn test_fitch_sub_informative_backward_ignores_non_char_child() {
     let mut child0 = make_seq_info("ACGT");
     child0.fitch.variable.insert(0, stateset! {b'A', b'G'});
     let mut child1 = make_seq_info("NCGT");
@@ -153,62 +131,47 @@ mod tests {
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    // child1 is in non_char at pos 0, so only child0's {A,G} contributes
-    assert_eq!(variable.len(), 1);
-    assert!(variable[&0].contains(b'A'));
-    assert!(variable[&0].contains(b'G'));
-  }
-
-  // --- resolve_fixed_positions_backward ---
-
-  #[test]
-  fn test_fitch_sub_fixed_backward_sets_fill_char() {
-    let child0 = make_seq_info("ACGT");
-    let edge0 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
-
-    let mut sequence = seq![FILL_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
-
-    assert_eq!(sequence.as_str(), "ACGT");
-    assert!(variable.is_empty());
+    let expected = btreemap! { 0_usize => stateset! {b'A', b'G'} };
+    assert_eq!(expected, variable);
   }
 
   #[test]
-  fn test_fitch_sub_fixed_backward_promotes_to_variable() {
+  fn test_fitch_sub_informative_backward_skips_local_non_char_position() {
     let child0 = make_seq_info("ACGT");
     let child1 = make_seq_info("GCGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![FILL_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
+    let mut sequence = seq![
+      NON_CHAR,
+      AsciiChar::from_byte_unchecked(b'C'),
+      AsciiChar::from_byte_unchecked(b'G'),
+      AsciiChar::from_byte_unchecked(b'T')
+    ];
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    assert_eq!(variable.len(), 1);
-    assert!(variable[&0].contains(b'A'));
-    assert!(variable[&0].contains(b'G'));
-    assert_eq!(sequence[0], VARIABLE_CHAR);
-    assert_eq!(sequence[1], AsciiChar::from_byte_unchecked(b'C'));
+    assert!(variable.is_empty());
+    assert_eq!(sequence[0], NON_CHAR);
   }
 
   #[test]
-  fn test_fitch_sub_fixed_backward_skips_non_char() {
+  fn test_fitch_sub_informative_backward_filters_transmission_child() {
     let child0 = make_seq_info("ACGT");
-    let edge0 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
+    let child1 = make_seq_info("GCGT");
+    let mut edge0 = make_edge();
+    edge0.transmission = Some(vec![(0, 1)]);
+    let edge1 = make_edge();
+    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
-    let mut sequence = seq![NON_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
+    let mut sequence = Seq::try_from_str("ACGT").unwrap();
+    let variable = resolve_informative_positions_backward(&children, &[0], &mut sequence);
 
-    assert_eq!(sequence[0], NON_CHAR, "NON_CHAR positions are skipped");
     assert!(variable.is_empty());
+    assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'G'));
   }
 
   // --- resolve_root_forward ---

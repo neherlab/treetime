@@ -1,45 +1,41 @@
-use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+use crate::alphabet::alphabet::{Alphabet, NON_CHAR, VARIABLE_CHAR};
 use crate::partition::sparse::{SparseEdgePartition, SparseSeqInfo};
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, StateSet, StateSetStatus, stateset};
+use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
-/// Backward pass: resolve variable positions using Fitch parsimony.
+/// Resolve substitution-informative positions during the Fitch backward pass.
 ///
-/// For each position that is variable in at least one child, collects the child
-/// state sets, computes the intersection (or union when the intersection is
-/// empty), and writes the result into `sequence` and the returned variable map.
-///
-/// Positions transmitted along an edge or in `non_char` ranges are skipped.
-pub fn resolve_variable_positions_backward(
+/// The candidate list is complete for substitutions because invariant canonical
+/// columns have one state across all leaves. At each candidate, intersect all
+/// informative child state sets; an empty intersection retains their union,
+/// preserving the existing unordered-character recurrence.
+pub fn resolve_informative_positions_backward(
   children: &[(&SparseSeqInfo, &SparseEdgePartition)],
-  non_char: &[(usize, usize)],
+  informative_positions: &[usize],
   sequence: &mut Seq,
 ) -> BTreeMap<usize, StateSet> {
-  let variable_positions = children
-    .iter()
-    .flat_map(|(c, _)| c.fitch.variable.keys().copied())
-    .unique()
-    .collect_vec();
-
   let mut variable = BTreeMap::new();
 
-  for pos in variable_positions {
-    // Collect child profiles (1D vectors)
+  for &pos in informative_positions {
+    if sequence[pos] == NON_CHAR {
+      continue;
+    }
+
     let child_profiles = children
       .iter()
       .filter_map(|(child, edge)| {
         if let Some(transmission) = &edge.transmission {
           if range_contains(transmission, pos) {
-            return None; // transmission field is not currently used
+            return None;
           }
         }
         if range_contains(&child.non_char, pos) {
-          return None; // this position does not have character state information
+          return None;
         }
         let state = match child.fitch.variable.get(&pos) {
           Some(var_pos) => *var_pos,
@@ -49,18 +45,13 @@ pub fn resolve_variable_positions_backward(
       })
       .collect_vec();
 
-    // Calculate Fitch parsimony.
-    // If we save the states of the children for each position that is variable in the node,
-    // then we would not need the full sequences in the forward pass.
     let intersection = StateSet::from_intersection(&child_profiles);
 
     match intersection.get() {
       StateSetStatus::Unambiguous(state) => {
-        // intersection has a single state, write it
         sequence[pos] = state;
       },
       StateSetStatus::Ambiguous(_) => {
-        // more than one possible states
         variable.insert(pos, intersection);
         sequence[pos] = VARIABLE_CHAR;
       },
@@ -73,37 +64,6 @@ pub fn resolve_variable_positions_backward(
   }
 
   variable
-}
-
-/// Backward pass: resolve fixed positions where children disagree with current parent state.
-///
-/// Scans each child's fixed sequence positions. When a child has a canonical state
-/// that differs from the current parent state, either sets the parent (if still
-/// FILL_CHAR) or promotes the position to variable.
-pub fn resolve_fixed_positions_backward(
-  children: &[(&SparseSeqInfo, &SparseEdgePartition)],
-  alphabet: &Alphabet,
-  sequence: &mut Seq,
-  variable: &mut BTreeMap<usize, StateSet>,
-) {
-  for &(child, _) in children {
-    for (pos, parent_state) in sequence.iter_mut().enumerate() {
-      let child_state = child.sequence[pos];
-      if *parent_state == child_state || *parent_state == NON_CHAR {
-        continue; // if parent is equal to child state or we know it's a non-char, skip
-      }
-      if alphabet.is_canonical(child_state) {
-        if *parent_state == FILL_CHAR {
-          // if child state is canonical and parent is still FILL_CHAR, set parent_state
-          *parent_state = child_state;
-        } else {
-          // otherwise set or update the variable state
-          *variable.entry(pos).or_insert_with(|| stateset! {*parent_state}) += child_state;
-          *parent_state = VARIABLE_CHAR;
-        }
-      }
-    }
-  }
 }
 
 /// Forward pass: resolve variable substitution states at the root.

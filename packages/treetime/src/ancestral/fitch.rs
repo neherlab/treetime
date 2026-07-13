@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
-  finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
-  resolve_root_forward, resolve_variable_positions_backward,
+  finalize_sequence_forward, resolve_informative_positions_backward, resolve_nonroot_substitutions_forward,
+  resolve_root_forward,
 };
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
@@ -24,11 +24,68 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, NodeAncestralOps};
+use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::sync::mutex::unwrap_arc_rwlock;
+
+#[derive(Clone, Debug)]
+pub(crate) struct FitchSiteIndex {
+  baseline: Seq,
+  informative_positions: Vec<usize>,
+}
+
+impl FitchSiteIndex {
+  /// Classify substitution-informative columns from the observed tree leaves.
+  ///
+  /// A column is informative when canonical leaf states disagree or any leaf
+  /// carries an ambiguity set. Gap and unknown states remain in the separate
+  /// non-character recurrence and therefore do not make a substitution candidate.
+  pub(crate) fn new<N, E>(graph: &Graph<N, E, ()>, alphabet: &Alphabet, aln: &[FastaRecord]) -> Result<Self, Report>
+  where
+    N: NodeAncestralOps,
+    E: GraphEdge,
+  {
+    let length = get_common_length(aln)?;
+    let leaf_records = leaf_records(graph, aln)?;
+    let mut baseline = seq![FILL_CHAR; length];
+    let mut informative = vec![false; length];
+
+    for (_, record) in leaf_records {
+      for (pos, &state) in record.seq.iter().enumerate() {
+        if alphabet.is_canonical(state) {
+          if baseline[pos] == FILL_CHAR {
+            baseline[pos] = state;
+          } else if baseline[pos] != state {
+            informative[pos] = true;
+          }
+        } else if alphabet.is_ambiguous(state) {
+          informative[pos] = true;
+        }
+      }
+    }
+
+    let informative_positions = informative
+      .into_iter()
+      .enumerate()
+      .filter_map(|(pos, is_informative)| is_informative.then_some(pos))
+      .collect();
+
+    Ok(Self {
+      baseline,
+      informative_positions,
+    })
+  }
+
+  pub(crate) fn baseline(&self) -> &Seq {
+    &self.baseline
+  }
+
+  pub(crate) fn informative_positions(&self) -> &[usize] {
+    &self.informative_positions
+  }
+}
 
 pub fn create_fitch_partition<N, E>(
   graph: &Graph<N, E, ()>,
@@ -62,33 +119,15 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
-  let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
-    records.entry(record.seq_name.as_str()).or_insert(record);
-    records
-  });
-  let leaf_records = graph
-    .get_leaves()
-    .into_par_iter()
-    .map(|leaf| -> Result<_, Report> {
-      let leaf = leaf.read_arc();
-      let leaf_key = leaf.key();
-      let mut leaf_payload = leaf.payload().write_arc();
-      let leaf_name = leaf_payload
-        .name()
-        .ok_or_else(|| {
-          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-        })?
-        .as_ref()
-        .to_owned();
-      let leaf_fasta = aln_by_name
-        .get(leaf_name.as_str())
-        .copied()
-        // Every leaf has a sequence record after alignment completion.
-        .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
-      leaf_payload.set_desc(leaf_fasta.desc.clone());
-      Ok((leaf_key, leaf_fasta))
-    })
-    .collect::<Result<Vec<_>, Report>>()?;
+  let leaf_records = leaf_records(graph, aln)?;
+
+  leaf_records.par_iter().try_for_each(|(leaf_key, leaf_fasta)| {
+    let leaf = graph
+      .get_node(*leaf_key)
+      .ok_or_else(|| make_report!("Leaf node {leaf_key} disappeared during sequence attachment"))?;
+    leaf.read_arc().payload().write_arc().set_desc(leaf_fasta.desc.clone());
+    Ok::<_, Report>(())
+  })?;
 
   for partition in partitions {
     let alphabet = partition.read_arc().alphabet().clone();
@@ -111,22 +150,60 @@ where
   Ok(())
 }
 
-pub(crate) fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+fn leaf_records<'a, N, E>(
+  graph: &Graph<N, E, ()>,
+  aln: &'a [FastaRecord],
+) -> Result<Vec<(GraphNodeKey, &'a FastaRecord)>, Report>
 where
-  N: GraphNode,
+  N: NodeAncestralOps,
   E: GraphEdge,
-  P: PartitionCompressed,
+{
+  let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
+    records.entry(record.seq_name.as_str()).or_insert(record);
+    records
+  });
+  graph
+    .get_leaves()
+    .into_par_iter()
+    .map(|leaf| -> Result<_, Report> {
+      let leaf = leaf.read_arc();
+      let leaf_key = leaf.key();
+      let leaf_payload = leaf.payload().read_arc();
+      let leaf_name = leaf_payload
+        .name()
+        .ok_or_else(|| {
+          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
+        })?;
+      let leaf_name = leaf_name.as_ref();
+      let leaf_fasta = aln_by_name
+        .get(leaf_name)
+        .copied()
+        .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
+      Ok((leaf_key, leaf_fasta))
+    })
+    .collect()
+}
+
+pub(crate) fn fitch_backward<N, E>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<PartitionFitch>>],
+  aln: &[FastaRecord],
+) -> Result<(), Report>
+where
+  N: NodeAncestralOps,
+  E: GraphEdge,
 {
   for partition in partitions {
     let mut partition = partition.write_arc();
     let alphabet = partition.alphabet().clone();
     let length = partition.length();
+    let site_index = FitchSiteIndex::new(graph, &alphabet, aln)?;
     let (nodes, edges) = partition.storage_mut();
     let mut pass = IndexedPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
     let result = pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
-      frontier
-        .par_iter_mut()
-        .try_for_each(|slot| run_fitch_backward_indexed(graph, &alphabet, length, node_indices, completed, slot))
+      frontier.par_iter_mut().try_for_each(|slot| {
+        run_fitch_backward_indexed(graph, &alphabet, length, &site_index, node_indices, completed, slot)
+      })
     });
     let (nodes, edges) = pass.into_maps()?;
     *partition.nodes_mut() = nodes;
@@ -140,6 +217,7 @@ fn run_fitch_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
   alphabet: &Alphabet,
   length: usize,
+  site_index: &FitchSiteIndex,
   node_indices: &[Option<usize>],
   completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
   slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
@@ -176,13 +254,12 @@ where
   let non_char = ranges.non_char;
   let unknown = ranges.unknown;
 
-  let mut sequence = seq![FILL_CHAR; length];
+  let mut sequence = site_index.baseline().clone();
   for r in &non_char {
     sequence[r.0..r.1].fill(NON_CHAR);
   }
 
-  let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
-  resolve_fixed_positions_backward(&children, alphabet, &mut sequence, &mut variable);
+  let variable = resolve_informative_positions_backward(&children, site_index.informative_positions(), &mut sequence);
 
   let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
   let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
@@ -330,18 +407,17 @@ where
   Ok(())
 }
 
-pub fn compress_sequences<N, E, P>(
+pub fn compress_sequences<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[Arc<RwLock<PartitionFitch>>],
   aln: &[FastaRecord],
 ) -> Result<(), Report>
 where
   N: NodeAncestralOps,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
   attach_seqs_to_graph(graph, partitions, aln)?;
-  fitch_backward(graph, partitions)?;
+  fitch_backward(graph, partitions, aln)?;
   fitch_forward(graph, partitions)?;
   fitch_cleanup(graph, partitions)
 }
