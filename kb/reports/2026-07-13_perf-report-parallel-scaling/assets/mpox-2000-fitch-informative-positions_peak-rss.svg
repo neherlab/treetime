@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400" font-family="system-ui,-apple-system,sans-serif">
+<rect width="700" height="400" fill="#fcfcfb"/>
+<text x="72" y="28" fill="#0b0b0b" font-size="15" font-weight="600">Peak Resident Memory vs Thread Count</text>
+<line x1="72" y1="348.0" x2="680" y2="348.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="352.0" fill="#898781" font-size="11" text-anchor="end">0</text>
+<line x1="72" y1="298.3" x2="680" y2="298.3" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="302.3" fill="#898781" font-size="11" text-anchor="end">500</text>
+<line x1="72" y1="248.7" x2="680" y2="248.7" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="252.7" fill="#898781" font-size="11" text-anchor="end">1000</text>
+<line x1="72" y1="199.0" x2="680" y2="199.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="203.0" fill="#898781" font-size="11" text-anchor="end">1500</text>
+<line x1="72" y1="149.3" x2="680" y2="149.3" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="153.3" fill="#898781" font-size="11" text-anchor="end">2000</text>
+<line x1="72" y1="99.7" x2="680" y2="99.7" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="103.7" fill="#898781" font-size="11" text-anchor="end">2500</text>
+<line x1="72" y1="50.0" x2="680" y2="50.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="54.0" fill="#898781" font-size="11" text-anchor="end">3000</text>
+<line x1="72" y1="348.0" x2="680" y2="348.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="14" y="199.0" fill="#52514e" font-size="12" text-anchor="middle" transform="rotate(-90,14,199.0)">Peak RSS (MB)</text>
+<rect x="78.8" y="132.9" width="20.0" height="215.1" rx="2" fill="#2a78d6"/>
+<rect x="100.8" y="223.6" width="20.0" height="124.4" rx="2" fill="#1baf7a"/>
+<rect x="122.8" y="186.8" width="20.0" height="161.2" rx="2" fill="#eda100"/>
+<rect x="144.8" y="344.5" width="20.0" height="3.5" rx="2" fill="#008300"/>
+<rect x="166.8" y="345.7" width="20.0" height="2.3" rx="2" fill="#4a3aa7"/>
+<text x="132.8" y="366.0" fill="#898781" font-size="11" text-anchor="middle">1</text>
+<rect x="200.4" y="134.0" width="20.0" height="214.0" rx="2" fill="#2a78d6"/>
+<rect x="222.4" y="223.1" width="20.0" height="124.9" rx="2" fill="#1baf7a"/>
+<rect x="244.4" y="160.1" width="20.0" height="187.9" rx="2" fill="#eda100"/>
+<rect x="266.4" y="344.4" width="20.0" height="3.6" rx="2" fill="#008300"/>
+<rect x="288.4" y="345.7" width="20.0" height="2.3" rx="2" fill="#4a3aa7"/>
+<text x="254.4" y="366.0" fill="#898781" font-size="11" text-anchor="middle">2</text>
+<rect x="322.0" y="133.2" width="20.0" height="214.8" rx="2" fill="#2a78d6"/>
+<rect x="344.0" y="222.4" width="20.0" height="125.6" rx="2" fill="#1baf7a"/>
+<rect x="366.0" y="164.0" width="20.0" height="184.0" rx="2" fill="#eda100"/>
+<rect x="388.0" y="344.4" width="20.0" height="3.6" rx="2" fill="#008300"/>
+<rect x="410.0" y="345.7" width="20.0" height="2.3" rx="2" fill="#4a3aa7"/>
+<text x="376.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">4</text>
+<rect x="443.6" y="130.9" width="20.0" height="217.1" rx="2" fill="#2a78d6"/>
+<rect x="465.6" y="220.6" width="20.0" height="127.4" rx="2" fill="#1baf7a"/>
+<rect x="487.6" y="165.3" width="20.0" height="182.7" rx="2" fill="#eda100"/>
+<rect x="509.6" y="344.4" width="20.0" height="3.6" rx="2" fill="#008300"/>
+<rect x="531.6" y="345.7" width="20.0" height="2.3" rx="2" fill="#4a3aa7"/>
+<text x="497.6" y="366.0" fill="#898781" font-size="11" text-anchor="middle">8</text>
+<rect x="565.2" y="124.2" width="20.0" height="223.8" rx="2" fill="#2a78d6"/>
+<rect x="587.2" y="217.4" width="20.0" height="130.6" rx="2" fill="#1baf7a"/>
+<rect x="609.2" y="152.9" width="20.0" height="195.1" rx="2" fill="#eda100"/>
+<rect x="631.2" y="344.2" width="20.0" height="3.8" rx="2" fill="#008300"/>
+<rect x="653.2" y="345.5" width="20.0" height="2.5" rx="2" fill="#4a3aa7"/>
+<text x="619.2" y="366.0" fill="#898781" font-size="11" text-anchor="middle">16</text>
+<text x="376.0" y="392.0" fill="#52514e" font-size="12" text-anchor="middle">Threads</text>
+<rect x="615" y="47" width="10" height="10" rx="2" fill="#4a3aa7"/>
+<text x="629" y="56" fill="#0b0b0b" font-size="10">Clock</text>
+<rect x="532" y="47" width="10" height="10" rx="2" fill="#008300"/>
+<text x="546" y="56" fill="#0b0b0b" font-size="10">Mugration</text>
+<rect x="449" y="47" width="10" height="10" rx="2" fill="#eda100"/>
+<text x="463" y="56" fill="#0b0b0b" font-size="10">Ancestral</text>
+<rect x="373" y="47" width="10" height="10" rx="2" fill="#1baf7a"/>
+<text x="387" y="56" fill="#0b0b0b" font-size="10">Optimize</text>
+<rect x="297" y="47" width="10" height="10" rx="2" fill="#2a78d6"/>
+<text x="311" y="56" fill="#0b0b0b" font-size="10">Timetree</text>
+</svg>
