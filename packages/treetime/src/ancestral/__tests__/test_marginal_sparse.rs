@@ -540,8 +540,49 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_marginal_sparse_parallel_frontiers_are_thread_count_deterministic() -> Result<(), Report> {
+    let expected = helpers::run_thread_determinism_case(1)?;
+    let actual = helpers::run_thread_determinism_case(4)?;
+
+    // Independent frontier scheduling must not affect sum-product messages or MAP state.
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
+    use rayon::ThreadPoolBuilder;
+
+    pub fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
+      let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
+      let alignment = read_many_fasta_str(
+        indoc! {r#"
+          >A
+          ACAACG
+          >B
+          ACGACG
+          >C
+          TCGTCG
+          >D
+          TCGTAG
+        "#},
+        &*NUC_ALPHABET,
+      )?;
+      ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
+        let graph = nwk_read_str(newick)?;
+        let (_, partitions) = run_sparse_marginal(&graph, &alignment, jc69(JC69Params::default())?)?;
+        let partition = partitions[0].read_arc();
+        Ok((
+          partition.nodes[&graph.get_exactly_one_root()?.read_arc().key()]
+            .profile
+            .log_lh
+            .to_bits(),
+          json_write_str(&partition.nodes, JsonPretty(false))?,
+          json_write_str(&partition.edges, JsonPretty(false))?,
+        ))
+      })
+    }
 
     /// Convert reconstructed parent and child sequences into canonical substitutions.
     ///
