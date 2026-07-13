@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, OutputSelection, TopologyOrderArgs};
+  use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
@@ -94,12 +94,12 @@ mod tests {
       max_iter: 0,
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
-        output_selection: vec![OutputSelection::Auspice],
-        topology_order_args: TopologyOrderArgs {
-          ladderize: Some(LadderizeArg::Descending),
-          ..TopologyOrderArgs::default()
-        },
         ..OutputCoreArgs::default()
+      },
+      output_selection: vec![TimetreeOutputSelection::Auspice],
+      topology_order: TopologyOrderArgs {
+        ladderize: Some(LadderizeArg::Descending),
+        ..TopologyOrderArgs::default()
       },
       ..TreetimeTimetreeArgs::default()
     };
