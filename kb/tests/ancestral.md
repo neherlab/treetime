@@ -20,6 +20,7 @@
 | [Stability](#stability-tests-edge-cases)                                  | Unit                                           |
 | [Analytical](#analytical-verification-tests)                              | Golden-master                                  |
 | [Softmax with log-norm](#softmax-with-log-norm-tests)                     | Unit                                           |
+| [Forward normalization scales](#forward-normalization-scale-tests)        | Unit + Property                                |
 | [Dense normalize-from-log](representation.md#normalize-from-log-dense-2d) | Unit (see [Representation](representation.md)) |
 | [Sparse composition](#substitution-composition-tests)                     | Unit                                           |
 | [Generator validation](#property-test-generator-validation)               | Property                                       |
@@ -401,6 +402,25 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 ## Dense Normalize-from-Log Tests
 
 Moved to [Representation Tests: Normalize from Log (Dense 2D)](representation.md#normalize-from-log-dense-2d) and [Normalize Inplace (Dense 2D)](representation.md#normalize-inplace-dense-2d).
+
+---
+
+## Forward Normalization Scale Tests
+
+**Test:** [`packages/treetime/src/partition/__tests__/test_marginal_core.rs`](../../packages/treetime/src/partition/__tests__/test_marginal_core.rs)
+
+**Impl:** [`packages/treetime/src/partition/marginal_core.rs`](../../packages/treetime/src/partition/marginal_core.rs)
+
+| Test                                                                                           | Purpose                                                        |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `test_marginal_core_forward_log_lh_remove_child_cancels_matching_neg_infinity`                 | Matching uniform-fallback sentinels cancel in cavity messages  |
+| `test_marginal_core_forward_log_lh_remove_child_preserves_unmatched_*`                         | Unmatched infinite scales remain observable                    |
+| `test_marginal_core_forward_log_lh_add_normalization_ignores_neg_infinity`                     | Uniform-fallback normalization is neutral in forward messages  |
+| `test_marginal_core_forward_log_lh_add_normalization_propagates_*`                             | NaN and positive infinity are not hidden                       |
+| `test_prop_marginal_core_forward_log_lh_matches_finite_arithmetic`                             | Finite scales retain ordinary subtraction and addition         |
+| `test_prop_marginal_core_forward_log_lh_neg_infinity_is_neutral`                               | Degenerate normalization sentinel is neutral over finite input |
+
+**Algorithm:** Shared dense, discrete, and sparse forward passes remove child normalization scales from cavity messages. The negative-infinity sentinel denotes a distribution already replaced by the uniform fallback; matching removal sentinels cancel, and subsequent fallback normalization contributes no finite scale.
 
 ---
 
