@@ -32,7 +32,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 
 ## Fitch Parsimony
 
-**Test:** [`packages/treetime/src/ancestral/__tests__/test_fitch.rs`](../../packages/treetime/src/ancestral/__tests__/test_fitch.rs)
+**Tests:** [`packages/treetime/src/ancestral/__tests__/test_fitch.rs`](../../packages/treetime/src/ancestral/__tests__/test_fitch.rs), [`packages/treetime/src/ancestral/__tests__/test_fitch_sub.rs`](../../packages/treetime/src/ancestral/__tests__/test_fitch_sub.rs), [`packages/treetime/src/ancestral/__tests__/test_prop_fitch_informative.rs`](../../packages/treetime/src/ancestral/__tests__/test_prop_fitch_informative.rs)
 
 **Impl:** [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)
 
@@ -48,6 +48,10 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 | `test_fitch_reroot_sparse_on_branch_ab_to_a`                 | Sparse partition consistency after reroot (no merge)         |
 | `test_fitch_reroot_sparse_with_trivial_root_removal`         | Reroot with edge merge: old root removed, edge composed      |
 | `test_fitch_reroot_sparse_forward_pass_nonzero_fixed_counts` | Marginal forward pass after reroot has non-zero multiplicity |
+| `test_fitch_site_index_classifies_leaf_columns`              | Baseline/candidate classification, including non-characters and extra records |
+| `test_fitch_invariant_columns_preserve_single_mutation`      | Invariant-dominated alignment preserves the sole substitution |
+
+Property coverage verifies the binary-tree score against exhaustive finite-state assignments, edge-reroot score invariance, column permutation, and insertion of invariant columns. The exact-score properties intentionally exclude multifurcations pending [kb/issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md](../issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md).
 
 **Algorithm:** Fitch maximum parsimony (backward pass, forward pass, gap tracking)
 

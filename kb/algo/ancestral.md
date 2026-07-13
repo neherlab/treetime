@@ -13,13 +13,13 @@ v0: [`packages/legacy/treetime/treetime/treeanc.py#L575-L686`](../../packages/le
 
 Two-pass dynamic programming on a rooted tree:
 
-**Backward pass** (postorder, leaves to root): For each internal node, compute the set of possible states S from its children's state sets. If the children's sets intersect, S = intersection (no change needed). If they do not, S = union (at least one change occurred on the branches leading to this node). Each union operation increments the parsimony score by one.
+**Backward pass** (postorder, leaves to root): For each internal node, compute the set of possible states S from its children's state sets. On a binary node, a non-empty intersection needs no change; an empty intersection uses the union and adds one change. v1 preserves v0's all-child intersection/union recurrence at multifurcations, which is deterministic but does not encode the exact number of changes for arbitrary node degree. See [kb/issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md](../issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md).
 
 **Forward pass** (preorder, root to leaves): Assign definite states top-down. At the root, pick one state from S_root. For each descendant, assign the parent's state if it appears in the child's state set; otherwise pick from the child's set.
 
 ### v1 extensions
 
-- Sparse representation: only variable positions (positions that differ from the reference) are stored and processed. Invariant positions carry no phylogenetic signal for parsimony and can be skipped.
+- Informative-position recurrence: the completed alignment is classified once into a full baseline sequence and sorted substitution-informative positions. Internal nodes clone the full baseline for reconstruction, while the child-state recurrence visits only columns with conflicting canonical leaf states or ambiguity. Gap and unknown ranges remain separate. Storage and baseline cloning therefore remain dense in alignment length.
 - Indel handling: insertions and deletions are tracked alongside substitutions, with majority rule for gap vs non-gap resolution at internal nodes.
 - `BitSet128` state sets: character state sets are represented as 128-bit bitmasks, enabling O(1) intersection and union via hardware AND/OR instructions.
 - Parallel BFS traversal: nodes at the same tree depth are processed in parallel using Rayon.
@@ -30,8 +30,9 @@ v1 uses deterministic `get_one()` (`#get_one`) for root state selection when the
 
 ### Key functions
 
-- `fitch_backward()` (`#fitch_backward`) and `run_fitch_backward()` (`#run_fitch_backward`): postorder pass computing state sets and parsimony score
-- `fitch_forward()` (`#fitch_forward`) and `run_fitch_forward()` (`#run_fitch_forward`): preorder pass resolving ambiguities
+- `FitchSiteIndex::new()` (`#new`): classifies graph-matched leaf columns into a baseline and informative positions
+- `fitch_backward()` (`#fitch_backward`) and `run_fitch_backward_indexed()` (`#run_fitch_backward_indexed`): postorder pass computing state sets
+- `fitch_forward()` (`#fitch_forward`) and `run_fitch_forward_indexed()` (`#run_fitch_forward_indexed`): preorder pass resolving ambiguities
 
 ### References
 

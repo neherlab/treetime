@@ -52,6 +52,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                  |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                          |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                    |
+| Medium     | Ancestral    | [Fitch polytomy recurrence does not minimize arbitrary-degree mutations](M-ancestral-fitch-polytomy-recurrence-not-minimum.md)                       |
 | Medium     | Ancestral    | [Marginal reconstruction uses plain probability space](M-ancestral-marginal-probability-space.md)                                                   |
 | Medium     | Ancestral    | [Sparse root invariance violation](M-ancestral-sparse-root-invariance.md)                                                                           |
 | Medium     | Ancestral    | [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md)                                                                   |
@@ -91,6 +92,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Marginal timetree node times can violate topology](M-timetree-marginal-node-times-can-violate-topology.md)                                         |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                   |
 | Negligible | Ancestral    | [Ancestral command does not produce auspice JSON](N-ancestral-auspice-json-not-produced.md)                                                         |
+| Negligible | Ancestral    | [Fitch transmission filtering can produce an empty state set](N-ancestral-fitch-empty-transmission-state-set.md)                                   |
 | Negligible | Ancestral    | [Parallel sparse leaf setup has no defined error atomicity contract](N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md)                |
 | Negligible | Ancestral    | [Parallel sparse leaf setup may regress single-thread ancestral runtime](N-ancestral-parallel-sparse-leaf-single-thread-regression.md)              |
 | Negligible | Ancestral    | [Parallel sparse leaf setup validation covers only a narrow success path](N-ancestral-parallel-sparse-leaf-validation-coverage.md)                  |

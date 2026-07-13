@@ -102,7 +102,3 @@ Systematic test coverage gaps across major subsystems: timetree inference, clock
 `packages/treetime/src/payload/clock_set.rs:53-172:`
 
 `+`, `-`, `+=`, `-=`, `fn propagate_averages` lack property test coverage for algebraic identities (associativity, commutativity, identity element).
-
-### No property tests for Fitch parsimony invariants
-
-Score invariant under rerooting, state-set subset relation between parent and child Fitch sets.
