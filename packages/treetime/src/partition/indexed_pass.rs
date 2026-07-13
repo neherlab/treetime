@@ -1,5 +1,4 @@
 use eyre::Report;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -7,17 +6,17 @@ use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::make_internal_report;
 
 pub struct IndexedPass<N, E> {
-  slots: Vec<IndexedPassSlot<N>>,
-  edges: Vec<RwLock<Option<(GraphEdgeKey, E)>>>,
+  slots: Vec<IndexedPassSlot<N, E>>,
   node_indices: Vec<Option<usize>>,
   edge_indices: Vec<Option<usize>>,
   frontiers: Vec<std::ops::Range<usize>>,
 }
 
-pub struct IndexedPassSlot<N> {
+pub struct IndexedPassSlot<N, E> {
   pub key: GraphNodeKey,
   pub node: N,
   pub parent_key: Option<GraphNodeKey>,
+  pub parent_edge: Option<(GraphEdgeKey, E)>,
 }
 
 impl<N, E> IndexedPass<N, E> {
@@ -80,7 +79,6 @@ impl<N, E> IndexedPass<N, E> {
       .map_or(0, |index| index + 1);
     let mut edge_indices = vec![None; edge_capacity];
     let mut slots = Vec::with_capacity(nodes.len());
-    let mut edge_slots = Vec::with_capacity(nodes.len());
     let mut ranges = Vec::with_capacity(frontiers.len());
 
     for frontier in frontiers {
@@ -99,8 +97,12 @@ impl<N, E> IndexedPass<N, E> {
         if let Some((edge_key, _)) = &parent_edge {
           edge_indices[edge_key.as_usize()] = Some(index);
         }
-        slots.push(IndexedPassSlot { key, node, parent_key });
-        edge_slots.push(RwLock::new(parent_edge));
+        slots.push(IndexedPassSlot {
+          key,
+          node,
+          parent_key,
+          parent_edge,
+        });
       }
       ranges.push(start..slots.len());
     }
@@ -109,7 +111,6 @@ impl<N, E> IndexedPass<N, E> {
 
     Ok(Self {
       slots,
-      edges: edge_slots,
       node_indices,
       edge_indices,
       frontiers: ranges,
@@ -121,23 +122,15 @@ impl<N, E> IndexedPass<N, E> {
     mut visit: impl FnMut(
       &[Option<usize>],
       &[Option<usize>],
-      &[RwLock<Option<(GraphEdgeKey, E)>>],
       usize,
-      &[IndexedPassSlot<N>],
-      &mut [IndexedPassSlot<N>],
+      &[IndexedPassSlot<N, E>],
+      &mut [IndexedPassSlot<N, E>],
     ) -> Result<(), Report>,
   ) -> Result<(), Report> {
     for range in self.frontiers.clone() {
       let (completed, remaining) = self.slots.split_at_mut(range.start);
       let (frontier, _) = remaining.split_at_mut(range.len());
-      visit(
-        &self.node_indices,
-        &self.edge_indices,
-        &self.edges,
-        0,
-        completed,
-        frontier,
-      )?;
+      visit(&self.node_indices, &self.edge_indices, 0, completed, frontier)?;
     }
     Ok(())
   }
@@ -147,11 +140,10 @@ impl<N, E> IndexedPass<N, E> {
     mut visit: impl FnMut(
       &[Option<usize>],
       &[Option<usize>],
-      &[RwLock<Option<(GraphEdgeKey, E)>>],
-      &[IndexedPassSlot<N>],
+      &[IndexedPassSlot<N, E>],
       usize,
-      &mut [IndexedPassSlot<N>],
-      &[IndexedPassSlot<N>],
+      &mut [IndexedPassSlot<N, E>],
+      &[IndexedPassSlot<N, E>],
     ) -> Result<(), Report>,
   ) -> Result<(), Report> {
     for range in self.frontiers.clone().into_iter().rev() {
@@ -160,7 +152,6 @@ impl<N, E> IndexedPass<N, E> {
       visit(
         &self.node_indices,
         &self.edge_indices,
-        &self.edges,
         future,
         range.end,
         frontier,
@@ -173,14 +164,14 @@ impl<N, E> IndexedPass<N, E> {
   pub fn into_maps(self) -> Result<(BTreeMap<GraphNodeKey, N>, BTreeMap<GraphEdgeKey, E>), Report> {
     let mut nodes = BTreeMap::new();
     let mut edges = BTreeMap::new();
-    for (slot, edge_slot) in self.slots.into_iter().zip(self.edges) {
+    for slot in self.slots {
       if nodes.insert(slot.key, slot.node).is_some() {
         return Err(make_internal_report!(
           "Duplicate partition node {} while restoring a pass",
           slot.key
         ));
       }
-      if let Some((edge_key, edge)) = edge_slot.into_inner()
+      if let Some((edge_key, edge)) = slot.parent_edge
         && edges.insert(edge_key, edge).is_some()
       {
         return Err(make_internal_report!(

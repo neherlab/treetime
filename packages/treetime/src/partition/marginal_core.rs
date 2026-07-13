@@ -8,7 +8,6 @@ use crate::partition::indexed_pass::{IndexedPass, IndexedPassSlot};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::prelude::*;
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
@@ -97,9 +96,9 @@ where
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let (nodes, edges) = partition.indexed_storage_mut();
   let mut pass = IndexedPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let result = pass.try_for_each_backward_frontier(|node_indices, edge_indices, edges, _, completed, frontier| {
+  let result = pass.try_for_each_backward_frontier(|node_indices, edge_indices, _, completed, frontier| {
     frontier.par_iter_mut().try_for_each(|slot| {
-      marginal_process_node_backward_indexed(partition, graph, node_indices, edge_indices, edges, completed, slot)
+      marginal_process_node_backward_indexed(partition, graph, node_indices, edge_indices, completed, slot)
     })
   });
   let (nodes, edges) = pass.into_maps()?;
@@ -113,9 +112,8 @@ fn marginal_process_node_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
   node_indices: &[Option<usize>],
   edge_indices: &[Option<usize>],
-  edges: &[RwLock<Option<(GraphEdgeKey, DenseEdgePartition)>>],
-  completed: &[IndexedPassSlot<DenseNodePartition>],
-  slot: &mut IndexedPassSlot<DenseNodePartition>,
+  completed: &[IndexedPassSlot<DenseNodePartition, DenseEdgePartition>],
+  slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -142,31 +140,20 @@ where
       .map(|(_, edge)| {
         let edge_key = edge.read_arc().key();
         let edge_index = edge_indices[edge_key.as_usize()].expect("Indexed child edge must have a slot");
-        edges[edge_index].read()
+        &completed[edge_index]
+          .parent_edge
+          .as_ref()
+          .expect("Non-root indexed node must own its parent edge")
+          .1
       })
       .collect_vec();
-    let (_, first_edge) = child_edges
-      .first()
-      .and_then(|edge| edge.as_ref())
-      .expect("Internal node must have children");
+    let first_edge = child_edges.first().expect("Internal node must have children");
     let mut log_dis = first_edge.msg_from_child.dis.mapv(f64::ln);
     for edge in child_edges.iter().skip(1) {
-      let (_, edge) = edge.as_ref().expect("Indexed edge slot must be populated");
       log_dis += &edge.msg_from_child.dis.mapv(f64::ln);
     }
     let (dis, delta_ll) = normalize_from_log(&log_dis);
-    let log_lh = child_edges
-      .iter()
-      .map(|edge| {
-        edge
-          .as_ref()
-          .expect("Indexed edge slot must be populated")
-          .1
-          .msg_from_child
-          .log_lh
-      })
-      .sum::<f64>()
-      + delta_ll;
+    let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<f64>() + delta_ll;
     slot.node.profile = DenseSeqDistribution {
       dis: dis.clone(),
       log_lh,
@@ -183,9 +170,10 @@ where
       log_lh: msg_to_parent.log_lh + delta_ll,
     };
   } else {
-    let slot_index = node_indices[slot.key.as_usize()].expect("Indexed node must have a slot");
-    let mut edge = edges[slot_index].write();
-    let (edge_key, edge) = edge.as_mut().expect("Non-root node must own its parent edge");
+    let (edge_key, edge) = slot
+      .parent_edge
+      .as_mut()
+      .expect("Non-root node must own its parent edge");
     let branch_length = graph
       .get_edge(*edge_key)
       .expect("Indexed edge must exist in graph")
@@ -219,22 +207,11 @@ where
   let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
   })?;
-  let result = pass.try_for_each_forward_frontier(
-    |node_indices, edge_indices, edges, _, completed_start, frontier, completed| {
-      frontier.par_iter_mut().try_for_each(|slot| {
-        marginal_process_node_forward_indexed(
-          partition,
-          graph,
-          node_indices,
-          edge_indices,
-          edges,
-          completed_start,
-          completed,
-          slot,
-        )
-      })
-    },
-  );
+  let result = pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
+    frontier.par_iter_mut().try_for_each(|slot| {
+      marginal_process_node_forward_indexed(partition, graph, node_indices, completed_start, completed, slot)
+    })
+  });
   let (nodes, edges) = pass.into_maps()?;
   partition.marginal_data_mut().nodes = nodes;
   partition.marginal_data_mut().edges = edges;
@@ -246,11 +223,9 @@ fn marginal_process_node_forward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
   node_indices: &[Option<usize>],
-  edge_indices: &[Option<usize>],
-  edges: &[RwLock<Option<(GraphEdgeKey, DenseEdgePartition)>>],
   completed_start: usize,
-  completed: &[IndexedPassSlot<DenseNodePartition>],
-  slot: &mut IndexedPassSlot<DenseNodePartition>,
+  completed: &[IndexedPassSlot<DenseNodePartition, DenseEdgePartition>],
+  slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -260,16 +235,22 @@ where
   let parent = if let Some(parent_key) = slot.parent_key {
     let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
     let parent = &completed[parent_index - completed_start].node;
-    let slot_index = node_indices[slot.key.as_usize()].expect("Indexed node must have a slot");
-    let edge = edges[slot_index].write();
-    parent_edge = Some(edge);
+    parent_edge = slot.parent_edge.as_mut();
     Some(parent)
   } else {
     None
   };
 
-  if let Some(edge) = parent_edge.as_mut() {
-    let (edge_key, edge) = edge.as_mut().expect("Non-root node must own its parent edge");
+  if let Some((edge_key, edge)) = parent_edge.as_mut() {
+    let safe_child = edge.msg_from_child.dis.mapv(|value| value.max(f64::MIN_POSITIVE));
+    let mut dis = &parent.expect("Non-root node must have a parent").profile.dis / &safe_child;
+    let delta_ll = normalize_inplace(&mut dis);
+    let log_lh = forward_log_lh_remove_child(
+      parent.expect("Non-root node must have a parent").profile.log_lh,
+      edge.msg_from_child.log_lh,
+    );
+    let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
+    edge.msg_to_child = DenseSeqDistribution { dis, log_lh };
     let branch_length = graph
       .get_edge(*edge_key)
       .expect("Indexed edge must exist in graph")
@@ -296,24 +277,8 @@ where
     graph.is_leaf(slot.key),
     parent,
     &mut slot.node,
-    parent_edge
-      .as_mut()
-      .and_then(|edge| edge.as_mut().map(|(_, edge)| edge)),
+    parent_edge.as_mut().map(|(_, edge)| edge),
   )?;
-
-  let graph_node = graph.get_node(slot.key).expect("Indexed node must exist in graph");
-  for (_, child_edge) in graph.children_of(&graph_node.read_arc()) {
-    let child_edge_key = child_edge.read_arc().key();
-    let child_edge_index = edge_indices[child_edge_key.as_usize()].expect("Indexed child edge must have a slot");
-    let mut child_edge = edges[child_edge_index].write();
-    let (_, child_edge) = child_edge.as_mut().expect("Indexed child edge slot must be populated");
-    let safe_child = child_edge.msg_from_child.dis.mapv(|value| value.max(f64::MIN_POSITIVE));
-    let mut dis = &slot.node.profile.dis / &safe_child;
-    let delta_ll = normalize_inplace(&mut dis);
-    let log_lh = forward_log_lh_remove_child(slot.node.profile.log_lh, child_edge.msg_from_child.log_lh);
-    let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
-    child_edge.msg_to_child = DenseSeqDistribution { dis, log_lh };
-  }
   Ok(())
 }
 
@@ -438,40 +403,13 @@ where
     let safe_child = child_edge_data.msg_from_child.dis.mapv(|v| v.max(f64::MIN_POSITIVE));
     let mut dis = &node_profile_dis / &safe_child;
     let delta_ll = normalize_inplace(&mut dis);
-    let log_lh = forward_log_lh_remove_child(node_profile_log_lh, child_edge_data.msg_from_child.log_lh);
-    let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
-    child_edge_data.msg_to_child = DenseSeqDistribution { dis, log_lh };
+    child_edge_data.msg_to_child = DenseSeqDistribution {
+      dis,
+      log_lh: node_profile_log_lh - child_edge_data.msg_from_child.log_lh + delta_ll,
+    };
   }
 
   Ok(())
-}
-
-/// Remove a child's normalization scale from a forward cavity message.
-///
-/// A degenerate profile is represented by a uniform fallback with a
-/// `f64::NEG_INFINITY` scale. Matching sentinels refer to the same removed
-/// factor, so they cancel instead of performing the undefined IEEE-754
-/// operation `-inf - (-inf)`.
-pub(crate) fn forward_log_lh_remove_child(node_log_lh: f64, child_log_lh: f64) -> f64 {
-  if node_log_lh == f64::NEG_INFINITY && child_log_lh == f64::NEG_INFINITY {
-    0.0
-  } else {
-    node_log_lh - child_log_lh
-  }
-}
-
-/// Add a normalization scale to a forward cavity message.
-///
-/// The `f64::NEG_INFINITY` value marks a distribution replaced by the uniform
-/// fallback. It has no finite scale to add to the conditional message. Other
-/// non-finite values still propagate so unexpected NaN and positive infinity
-/// remain observable.
-pub(crate) fn forward_log_lh_add_normalization(log_lh: f64, normalization: f64) -> f64 {
-  if normalization == f64::NEG_INFINITY {
-    log_lh
-  } else {
-    log_lh + normalization
-  }
 }
 
 /// 1D specialization of [`normalize_inplace`] for sparse marginal passes.

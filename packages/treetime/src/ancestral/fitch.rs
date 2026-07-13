@@ -19,7 +19,7 @@ use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
 use rayon::prelude::*;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -62,6 +62,10 @@ where
   E: GraphEdge,
   P: PartitionCompressed,
 {
+  let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
+    records.entry(record.seq_name.as_str()).or_insert(record);
+    records
+  });
   for leaf in graph.get_leaves() {
     let leaf_key = leaf.read_arc().key();
     let mut leaf = leaf.read_arc().payload().write_arc();
@@ -70,9 +74,9 @@ where
       make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
     })?.as_ref().to_owned();
 
-    let leaf_fasta = aln
-      .iter()
-      .find(|fasta| fasta.seq_name == leaf_name)
+    let leaf_fasta = aln_by_name
+      .get(leaf_name.as_str())
+      .copied()
       // Every leaf has a sequence record after alignment completion.
       .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
 
@@ -114,19 +118,10 @@ where
     let length = partition.length();
     let (nodes, edges) = partition.storage_mut();
     let mut pass = IndexedPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
-    let result = pass.try_for_each_backward_frontier(|node_indices, edge_indices, edges, _, completed, frontier| {
-      frontier.par_iter_mut().try_for_each(|slot| {
-        run_fitch_backward_indexed(
-          graph,
-          &alphabet,
-          length,
-          node_indices,
-          edge_indices,
-          edges,
-          completed,
-          slot,
-        )
-      })
+    let result = pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
+      frontier
+        .par_iter_mut()
+        .try_for_each(|slot| run_fitch_backward_indexed(graph, &alphabet, length, node_indices, completed, slot))
     });
     let (nodes, edges) = pass.into_maps()?;
     *partition.nodes_mut() = nodes;
@@ -141,10 +136,8 @@ fn run_fitch_backward_indexed<N, E>(
   alphabet: &Alphabet,
   length: usize,
   node_indices: &[Option<usize>],
-  edge_indices: &[Option<usize>],
-  edges: &[RwLock<Option<(treetime_graph::edge::GraphEdgeKey, SparseEdgePartition)>>],
-  completed: &[IndexedPassSlot<SparseNodePartition>],
-  slot: &mut IndexedPassSlot<SparseNodePartition>,
+  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
@@ -158,20 +151,17 @@ where
   let child_keys = graph.children_of(&graph_node);
   let children = child_keys
     .iter()
-    .map(|(child, edge)| {
+    .map(|(child, _)| {
       let child_key = child.read_arc().key();
       let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-      let child = &completed[child_index].node.seq;
-      let edge_key = edge.read_arc().key();
-      let edge_index = edge_indices[edge_key.as_usize()].expect("Indexed edge must have a slot");
-      let edge = edges[edge_index].read();
-      (child, edge)
+      let child = &completed[child_index];
+      let edge = &child
+        .parent_edge
+        .as_ref()
+        .expect("Non-root indexed node must own its parent edge")
+        .1;
+      (&child.node.seq, edge)
     })
-    .collect_vec();
-
-  let children = children
-    .iter()
-    .map(|(child, edge)| (*child, &edge.as_ref().expect("Indexed edge slot must be populated").1))
     .collect_vec();
 
   let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
@@ -233,12 +223,11 @@ where
         "Partition node {key} is missing before the Fitch forward pass"
       ))
     })?;
-    let result =
-      pass.try_for_each_forward_frontier(|node_indices, _, edges, _, completed_start, frontier, completed| {
-        frontier.par_iter_mut().try_for_each(|slot| {
-          run_fitch_forward_indexed(&alphabet, node_indices, edges, completed_start, completed, slot)
-        })
-      });
+    let result = pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
+      frontier
+        .par_iter_mut()
+        .try_for_each(|slot| run_fitch_forward_indexed(&alphabet, node_indices, completed_start, completed, slot))
+    });
     let (nodes, edges) = pass.into_maps()?;
     *partition.nodes_mut() = nodes;
     *partition.edges_mut() = edges;
@@ -250,16 +239,16 @@ where
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
   node_indices: &[Option<usize>],
-  edges: &[RwLock<Option<(treetime_graph::edge::GraphEdgeKey, SparseEdgePartition)>>],
   completed_start: usize,
-  completed: &[IndexedPassSlot<SparseNodePartition>],
-  slot: &mut IndexedPassSlot<SparseNodePartition>,
+  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report> {
   let node_data = &mut slot.node;
   if let Some(parent_key) = slot.parent_key {
-    let slot_index = node_indices[slot.key.as_usize()].expect("Indexed node must have a slot");
-    let mut edge = edges[slot_index].write();
-    let (_, edge) = edge.as_mut().expect("Non-root node must own its parent edge");
+    let (_, edge) = slot
+      .parent_edge
+      .as_mut()
+      .expect("Non-root node must own its parent edge");
     let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
     let parent = &completed[parent_index - completed_start].node.seq;
     let seq = &mut node_data.seq;

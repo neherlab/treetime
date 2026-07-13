@@ -1,7 +1,6 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_primitives::AsciiChar;
@@ -58,8 +57,13 @@ impl Composition {
   }
 
   pub fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
-    for (&c, n) in sequence.as_ref().iter().counts() {
-      *self.counts.entry(c).or_default() += n;
+    let mut additions = [0; 128];
+    for &c in sequence.as_ref() {
+      additions[usize::from(c)] += 1;
+    }
+    for (index, count) in additions.into_iter().enumerate().filter(|(_, count)| *count > 0) {
+      let c = AsciiChar::from_byte_unchecked(index as u8);
+      *self.counts.entry(c).or_default() += count;
     }
   }
 

@@ -19,7 +19,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use maplit::btreemap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
@@ -223,8 +223,8 @@ where
   fn indexed_storage_mut(
     &mut self,
   ) -> (
-    &mut std::collections::BTreeMap<GraphNodeKey, DenseNodePartition>,
-    &mut std::collections::BTreeMap<GraphEdgeKey, DenseEdgePartition>,
+    &mut BTreeMap<GraphNodeKey, DenseNodePartition>,
+    &mut BTreeMap<GraphEdgeKey, DenseEdgePartition>,
   ) {
     (&mut self.data.nodes, &mut self.data.edges)
   }
@@ -430,6 +430,10 @@ where
   E: EdgeOptimizeOps,
 {
   fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report> {
+    let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
+      records.entry(record.seq_name.as_str()).or_insert(record);
+      records
+    });
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
       let mut leaf = leaf.read_arc().payload().write_arc();
@@ -441,9 +445,9 @@ where
         name.as_ref().to_owned()
       };
 
-      let leaf_fasta = aln
-        .iter()
-        .find(|fasta| fasta.seq_name == leaf_name)
+      let leaf_fasta = aln_by_name
+        .get(leaf_name.as_str())
+        .copied()
         .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
 
       leaf.set_desc(leaf_fasta.desc.clone());
