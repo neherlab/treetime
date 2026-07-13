@@ -91,6 +91,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 | `test_marginal_sparse_log_lh_root_invariance_reversible_model` | Root invariance with non-uniform GTR              |
 | `test_marginal_sparse_posterior_values_python_parity`          | Specific posterior values match Python v0         |
 | `test_total_likelihood_marginal_sparse_all_triplets`           | Law of total probability for sparse (64 triplets) |
+| `test_marginal_sparse_parallel_frontiers_are_thread_count_deterministic` | Exact node, edge, and root-likelihood equality with one and four Rayon threads |
 
 **Algorithm:** Fitch compression + marginal ML on variable positions
 

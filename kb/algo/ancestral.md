@@ -55,6 +55,8 @@ where P(X->Y|t) = exp(Q*t) is the transition probability matrix from the GTR sub
 
 The backward pass (leaf-to-root) computes partial likelihoods. The forward pass (root-to-leaf) computes "outgroup messages" via cavity/division: each node receives the information from the rest of the tree excluding its own subtree, and combines it with the backward message to produce the marginal posterior.
 
+Both passes use [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs) to move partition maps into pass-scoped topology-indexed storage. Nodes in one breadth-first frontier occupy a disjoint mutable slice. Backward work reads only the completed descendant prefix; forward work reads only completed ancestor data. Parent-edge data has a stable slot for the duration of the pass. A frontier barrier completes all predecessor writes before the next frontier begins, preserving the sequential dependency order while allowing sibling nodes to run concurrently.
+
 ### v1 implementations
 
 **Dense** (all positions): [`packages/treetime/src/partition/marginal_dense.rs#L87-L281`](../../packages/treetime/src/partition/marginal_dense.rs#L87-L281). Stores full probability vectors at every alignment position. Used when the full profile is needed (e.g., GTR inference from data).
@@ -170,6 +172,7 @@ Both implementations produce the same mutation set for the same reconstruction. 
 | [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
 | [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
 | [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)   | Sparse message passing                                                           |
+| [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs)       | Topology-indexed frontier storage for Fitch and marginal passes                  |
 | [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
 | [`packages/treetime/src/payload/ancestral.rs`](../../packages/treetime/src/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
 | [`packages/treetime/src/partition/traits.rs`](../../packages/treetime/src/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |

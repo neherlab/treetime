@@ -4,9 +4,11 @@
 
 ## Parallel BFS
 
-Frontier-based parallel breadth-first traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]) using Rayon for work distribution across CPU cores. Each BFS level is processed in parallel, with synchronization between levels. Used for Fitch parsimony and marginal reconstruction where all nodes at the same depth can be processed independently.
+Frontier-based parallel breadth-first traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]) using Rayon for work distribution across CPU cores. Each BFS level is processed in parallel, with synchronization between levels. Deterministic forward and backward frontier builders also expose the level structure for algorithms whose mutable state is stored outside the graph.
 
-v1: [`packages/treetime-graph/src/breadth_first.rs#L139-L202`](../../packages/treetime-graph/src/breadth_first.rs#L139-L202).
+Fitch and marginal reconstruction first arrange partition data in topology order. A frontier then owns a disjoint mutable node slice, reads only predecessor slices completed at an earlier barrier, and updates stable per-edge slots. This makes parallel writes independent without a partition-wide lock.
+
+v1: [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs), [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs), [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs).
 
 ---
 
@@ -55,7 +57,7 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 | File                                                                                                   | Algorithms                             |
 | ------------------------------------------------------------------------------------------------------ | -------------------------------------- |
 | [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs)   | Parallel BFS                           |
-| [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs) | DFS preorder/postorder, sequential BFS |
+| [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs) | DFS preorder/postorder, sequential BFS, deterministic BFS frontiers |
 | [`packages/treetime-graph/src/find_paths.rs`](../../packages/treetime-graph/src/find_paths.rs)         | Path finding                           |
 | [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)           | Edge collapse                          |
 | [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) | Topology ordering                      |

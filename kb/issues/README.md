@@ -170,7 +170,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Core         | [EdgeToGraphviz trait has four identical implementations](N-core-edge-to-graphviz-identical-impls.md)                                               |
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
-| Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
 | Negligible | Reroot       | [No v0 golden master test for min-dev reroot](N-reroot-missing-v0-golden-master.md)                                                                 |
 | Negligible | Reroot       | [Tip-name resolution duplicated between optimize and clock reroot](N-reroot-duplicated-tip-name-resolution.md)                                      |
 | Negligible | Reroot       | [Leaf variance offset convention diverges from v0 on terminal edges](N-reroot-leaf-variance-offset-diverges-from-v0.md)                             |

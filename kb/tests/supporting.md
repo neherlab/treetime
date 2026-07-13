@@ -771,6 +771,8 @@ Unit and parameterized tests for all BitSet128 operations.
 | `test_graph_traversal_serial_breadth_first_reverse`         | BFS reverse visits deepest first       |
 | `test_graph_traversal_parallel_breadth_first_forward`       | Parallel BFS forward order             |
 | `test_graph_traversal_parallel_breadth_first_backward`      | Parallel BFS backward order            |
+| `test_graph_traversal_forward_frontiers_complete_predecessors` | Every parent precedes its child frontier |
+| `test_graph_traversal_backward_frontiers_complete_successors`  | Every child precedes its parent frontier |
 | `test_graph_collapse_edge_simple_chain`                     | Collapse single edge in chain          |
 | `test_graph_collapse_edge_binary_tree`                      | Collapse internal node in binary tree  |
 | `test_graph_collapse_edge_complex_tree`                     | Collapse promotes children to parent   |
