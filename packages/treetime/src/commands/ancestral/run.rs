@@ -9,6 +9,7 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::ancestral::result::AncestralResult;
+use crate::commands::shared::ir_projection::build_ir_with_mutations;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -24,6 +25,7 @@ use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta}
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
+use treetime_io::tree_ir::types::TreeIrData;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 pub fn run_ancestral_reconstruction(
@@ -243,13 +245,23 @@ fn write_tree_for_partition(
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+      let data = TreeIrData {
+        has_mutations: true,
+        ..TreeIrData::default()
+      };
+      let ir = build_ir_with_mutations(&result.output.graph, &*guard, data)?;
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
     },
     Some(AncestralPartition::Dense(partition)) => {
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+      let data = TreeIrData {
+        has_mutations: true,
+        ..TreeIrData::default()
+      };
+      let ir = build_ir_with_mutations(&result.output.graph, &*guard, data)?;
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
       write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;

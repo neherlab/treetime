@@ -14,7 +14,7 @@ mod tests {
   #[test]
   fn test_build_timetree_ir_div_from_node_value() -> Result<(), Report> {
     let graph = helpers::two_node_graph()?;
-    let ir = build_timetree_ir(&graph, None, None)?;
+    let ir = build_timetree_ir(&graph, None, None, None)?;
     let tree: AuspiceTree = serde_json::from_str(&auspice_write_str::<TreeIrAuspiceWriter, _, _, _>(&ir)?)?;
 
     assert_eq!(Some(0.0), tree.tree.node_attrs.div);
@@ -28,7 +28,7 @@ mod tests {
   fn test_build_timetree_ir_div_accumulates_mutation_counts() -> Result<(), Report> {
     let (graph, edge_key) = helpers::two_node_graph_with_edge_key()?;
     let counts = btreemap! { edge_key => 3_usize };
-    let ir = build_timetree_ir(&graph, None, Some(&counts))?;
+    let ir = build_timetree_ir(&graph, None, Some(&counts), None)?;
     let tree: AuspiceTree = serde_json::from_str(&auspice_write_str::<TreeIrAuspiceWriter, _, _, _>(&ir)?)?;
 
     assert_eq!(Some(0.0), tree.tree.node_attrs.div);
@@ -39,7 +39,7 @@ mod tests {
   #[test]
   fn test_build_timetree_ir_maps_date_and_bad_branch() -> Result<(), Report> {
     let graph = helpers::two_node_graph()?;
-    let ir = build_timetree_ir(&graph, None, None)?;
+    let ir = build_timetree_ir(&graph, None, None, None)?;
     let tree: AuspiceTree = serde_json::from_str(&auspice_write_str::<TreeIrAuspiceWriter, _, _, _>(&ir)?)?;
 
     assert_ulps_eq!(
@@ -58,7 +58,7 @@ mod tests {
   #[test]
   fn test_build_timetree_ir_emits_timetree_colorings() -> Result<(), Report> {
     let graph = helpers::two_node_graph()?;
-    let ir = build_timetree_ir(&graph, None, None)?;
+    let ir = build_timetree_ir(&graph, None, None, None)?;
     let tree: AuspiceTree = serde_json::from_str(&auspice_write_str::<TreeIrAuspiceWriter, _, _, _>(&ir)?)?;
 
     let keys: Vec<&str> = tree.data.meta.colorings.iter().map(|c| c.key.as_str()).collect();

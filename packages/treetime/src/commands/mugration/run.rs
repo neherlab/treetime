@@ -1,5 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
+use crate::commands::shared::ir_projection::build_ir_mugration;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
@@ -100,7 +101,8 @@ pub fn run_mugration(
       .resolve_topology_order(&result.graph, None)?;
     let plan = topology_order.plan(&result.graph)?;
     let ordered = plan.ordered_graph(&result.graph)?;
-    write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+    let ir = build_ir_mugration(&result.graph, &result.partition, &result.traits.attribute)?;
+    write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {

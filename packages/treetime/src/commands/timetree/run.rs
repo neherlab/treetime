@@ -155,18 +155,24 @@ pub fn run_timetree_estimation(
     // Build the IR from the ordered clone. The clone preserves original node and edge
     // keys, keeping confidence intervals and mutation counts aligned while applying
     // the same topology order to Auspice and the other TreeIR-backed formats.
-    let ir = build_timetree_ir(
-      &ordered,
-      output.confidence_intervals.as_deref(),
-      mutation_counts.as_ref(),
-    )?;
-
     if !output.partitions.is_empty() {
       let guard = output.partitions[0].read_arc();
+      let ir = build_timetree_ir(
+        &ordered,
+        output.confidence_intervals.as_deref(),
+        mutation_counts.as_ref(),
+        Some(&*guard),
+      )?;
       let provider = MutationCommentProvider::new(&*guard, &output.graph);
       let providers = CommentProviders::new().with(&provider);
       write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
     } else {
+      let ir = build_timetree_ir(
+        &ordered,
+        output.confidence_intervals.as_deref(),
+        mutation_counts.as_ref(),
+        None,
+      )?;
       write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), Some(&ir))?;
     }
   }

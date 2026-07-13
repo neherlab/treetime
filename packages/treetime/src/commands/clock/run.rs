@@ -6,6 +6,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Optimi
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::shared::ir_projection::build_ir_topology_only;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::make_error;
 use crate::make_report;
@@ -16,6 +17,7 @@ use treetime_graph::node::{GraphNode, Named};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::nwk_read_file;
+use treetime_io::tree_ir::types::{TreeIrData, TreeIrNode};
 
 #[derive(Debug, serde::Serialize)]
 pub struct ClockResult {
@@ -107,11 +109,23 @@ pub fn run_clock(
       .resolve_topology_order(&output.graph, Some(input_order))?;
     let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
+    let data = TreeIrData {
+      has_dates: true,
+      has_bad_branch: true,
+      ..TreeIrData::default()
+    };
+    let ir = build_ir_topology_only(&output.graph, data, |_key, node| TreeIrNode {
+      name: node.name.clone(),
+      div: Some(node.div),
+      date: node.time,
+      bad_branch: node.bad_branch || node.is_outlier,
+      ..TreeIrNode::default()
+    })?;
     write_tree_outputs(
       &ordered,
       &resolved.tree_outputs,
       &treetime_io::nwk::CommentProviders::new(),
-      None,
+      Some(&ir),
     )?;
   }
 

@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::OptimizeResult;
+use crate::commands::shared::ir_projection::build_ir_with_mutations;
 use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -16,6 +17,7 @@ use treetime_io::fasta::read_many_fasta;
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
+use treetime_io::tree_ir::types::TreeIrData;
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -82,12 +84,22 @@ pub fn run_optimize(
       let guard = output.dense_partitions[0].read_arc();
       let provider = MutationCommentProvider::new(&*guard, &output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+      let data = TreeIrData {
+        has_mutations: true,
+        ..TreeIrData::default()
+      };
+      let ir = build_ir_with_mutations(&output.graph, &*guard, data)?;
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
     } else if !output.sparse_partitions.is_empty() {
       let guard = output.sparse_partitions[0].read_arc();
       let provider = MutationCommentProvider::new(&*guard, &output.graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, None)?;
+      let data = TreeIrData {
+        has_mutations: true,
+        ..TreeIrData::default()
+      };
+      let ir = build_ir_with_mutations(&output.graph, &*guard, data)?;
+      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
     } else {
       write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
     }

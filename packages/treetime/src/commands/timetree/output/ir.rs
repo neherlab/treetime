@@ -1,16 +1,6 @@
-//! Projection of a timetree analysis result into the format-neutral TreeIR graph.
-//!
-//! TreeTime's timetree command writes Auspice v2 JSON through the shared TreeIR
-//! output path. This module mirrors the timetree domain graph into a TreeIR graph,
-//! carrying the node-level data Auspice represents: cumulative divergence, numeric
-//! date with confidence interval, and the bad-branch (temporal outlier) flag.
-//!
-//! Divergence accumulation follows augur's `node_div`: when per-edge mutation counts
-//! are supplied (divergence measured in mutations) the cumulative divergence is the
-//! running sum of those counts from the root; otherwise the node's stored cumulative
-//! substitutions-per-site value is used directly. The root has divergence zero.
-
+use crate::commands::shared::ir_projection::subs_to_ir;
 use crate::partition::timetree::GraphTimetree;
+use crate::partition::traits::PartitionBranchOps;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -19,11 +9,11 @@ use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::graph::TreeIrGraph;
 use treetime_io::tree_ir::types::{TreeIrData, TreeIrEdge, TreeIrNode};
 
-/// Build a TreeIR graph from a timetree result for Auspice v2 output.
 pub fn build_timetree_ir(
   graph: &GraphTimetree,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
+  partition: Option<&dyn PartitionBranchOps>,
 ) -> Result<TreeIrGraph, Report> {
   let ci_map: BTreeMap<GraphNodeKey, [f64; 2]> = confidence_intervals
     .map(|cis| cis.iter().map(|ci| (ci.key, [ci.lower, ci.upper])).collect())
@@ -33,6 +23,7 @@ pub fn build_timetree_ir(
     title: Some("TreeTime timetree analysis".to_owned()),
     has_dates: true,
     has_bad_branch: true,
+    has_mutations: partition.is_some(),
     ..TreeIrData::default()
   });
 
@@ -64,17 +55,22 @@ pub fn build_timetree_ir(
     let ir_key = ir.add_node(ir_node);
     key_map.insert(dkey, ir_key);
 
-    if let Some((pkey, _ekey)) = parent {
+    if let Some((pkey, ekey)) = parent {
       let ir_parent = key_map[&pkey];
       let branch_length = node
         .parents
         .first()
         .and_then(|(_, edge)| edge.read_arc().branch_length());
+      let mutations = match partition {
+        Some(p) => subs_to_ir(&p.edge_subs(graph, ekey)?),
+        None => vec![],
+      };
       ir.add_edge(
         ir_parent,
         ir_key,
         TreeIrEdge {
           branch_length,
+          mutations,
           ..TreeIrEdge::default()
         },
       )?;

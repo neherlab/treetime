@@ -78,11 +78,6 @@ impl OutputSelection {
     matches!(self, Self::All)
   }
 
-  /// Tree formats whose writer is declared but not yet implemented for analysis commands.
-  pub fn is_unimplemented(self) -> bool {
-    matches!(self, Self::Phyloxml | Self::PhyloxmlJson | Self::MatPb | Self::MatJson)
-  }
-
   pub fn extension(self) -> &'static str {
     match self {
       Self::All => "",
@@ -278,23 +273,9 @@ pub enum CommandKind {
 }
 
 impl CommandKind {
-  /// Full set selectable on this command: every tree format plus the command's non-tree outputs.
-  /// This is what `--output-selection=all` expands to before per-output producibility filtering.
-  #[allow(clippy::enum_glob_use)]
+  /// Full set selectable on this command.
   pub fn all_selectable(self) -> BTreeSet<OutputSelection> {
-    use OutputSelection::*;
-    let tree = btreeset![
-      Nwk,
-      Nexus,
-      Auspice,
-      Phyloxml,
-      PhyloxmlJson,
-      MatPb,
-      MatJson,
-      GraphJson,
-      Dot
-    ];
-    &tree | &self.non_tree_outputs()
+    &self.available_tree_outputs() | &self.non_tree_outputs()
   }
 
   /// Outputs produced by `--output-all` without an explicit `--output-selection`.
@@ -311,6 +292,40 @@ impl CommandKind {
       non_tree.remove(&non_default);
     }
     &tree_defaults | &non_tree
+  }
+
+  #[allow(clippy::enum_glob_use)]
+  fn available_tree_outputs(self) -> BTreeSet<OutputSelection> {
+    use OutputSelection::*;
+    let mut tree = btreeset![
+      Nwk,
+      Nexus,
+      Phyloxml,
+      PhyloxmlJson,
+      GraphJson,
+      Dot
+    ];
+    match self {
+      Self::Ancestral => {
+        tree.insert(Auspice);
+        tree.insert(MatPb);
+        tree.insert(MatJson);
+      },
+      Self::Optimize => {
+        tree.insert(MatPb);
+        tree.insert(MatJson);
+      },
+      Self::Timetree => {
+        tree.insert(Auspice);
+        tree.insert(MatPb);
+        tree.insert(MatJson);
+      },
+      Self::Mugration => {
+        tree.insert(Auspice);
+      },
+      Self::Clock | Self::Prune => {},
+    }
+    tree
   }
 
   #[allow(clippy::enum_glob_use)]
@@ -343,31 +358,18 @@ impl CommandKind {
     vec![NwkStyle::Plain]
   }
 
-  /// Whether this command can write Auspice JSON (requires command-specific annotation data).
-  fn has_auspice_writer(self) -> bool {
-    self == Self::Timetree
-  }
 }
 
-/// Whether an output has a working writer for this command, ignoring runtime data prerequisites
-/// (those are checked at write time by each command). Unimplemented tree writers and Auspice on
-/// commands without an Auspice writer are not producible.
+/// Whether an output has a working writer for this command, ignoring runtime data prerequisites.
 fn is_producible(command: CommandKind, sel: OutputSelection) -> bool {
-  if sel.is_unimplemented() {
-    return false;
-  }
-  if sel == OutputSelection::Auspice {
-    return command.has_auspice_writer();
+  if sel.is_tree() {
+    return command.available_tree_outputs().contains(&sel);
   }
   true
 }
 
-fn unproducible_reason(command: CommandKind, sel: OutputSelection) -> String {
-  if sel.is_unimplemented() {
-    "not yet implemented".to_owned()
-  } else {
-    format!("not available for the {} command", command.stem())
-  }
+fn unproducible_reason(command: CommandKind, _sel: OutputSelection) -> String {
+  format!("not available for the {} command", command.stem())
 }
 
 /// Per-file flags are explicit requests: a non-producible target is an error at startup rather than
@@ -377,13 +379,8 @@ fn ensure_producible_explicit(command: CommandKind, sel: OutputSelection) -> Res
     return Ok(());
   }
   make_error!(
-    "Output '{}' is {} for the {} command",
+    "Output '{}' is not available for the {} command",
     sel.flag_name(),
-    if sel.is_unimplemented() {
-      "not yet implemented"
-    } else {
-      "not available"
-    },
     command.stem()
   )
 }

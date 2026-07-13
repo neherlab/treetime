@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::PruneResult;
+use crate::commands::shared::ir_projection::build_ir_topology_only;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -19,6 +20,7 @@ use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
+use treetime_io::tree_ir::types::{TreeIrData, TreeIrNode};
 
 use crate::payload::ancestral::GraphAncestral;
 
@@ -101,7 +103,11 @@ pub fn run_prune(
       .resolve_topology_order(&output.graph, Some(input_order))?;
     let plan = topology_order.plan(&output.graph)?;
     let ordered = plan.ordered_graph(&output.graph)?;
-    write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
+    let ir = build_ir_topology_only(&output.graph, TreeIrData::default(), |_key, node| TreeIrNode {
+      name: node.name().map(|n| n.as_ref().to_owned()),
+      ..TreeIrNode::default()
+    })?;
+    write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), Some(&ir))?;
   }
 
   progress.report("Done", 1.0, "");
