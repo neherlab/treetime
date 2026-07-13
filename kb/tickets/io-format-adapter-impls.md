@@ -1,86 +1,44 @@
-# Implement format adapter traits on command payload types
+# Wire per-command TreeIR projections for PhyloXML, Auspice, and UShER MAT
 
-The format adapter traits (`PhyloxmlFromGraph`, `AuspiceWrite`, `UsherWrite`) are defined in treetime-io with zero implementations on analysis command payload types. Implement them so the output selection system (ticket #4) can dispatch to these formats.
+## Status
 
-## Scope
+The format-neutral TreeIR foundation is implemented and tested. Remaining work is the per-command projection of analysis results into the IR graph and enabling the formats in the availability matrix.
 
-- `PhyloxmlFromGraph` on `NodeAncestral`/`EdgeAncestral`, `NodeTimetree`/`EdgeTimetree`, `NodeClock`/`EdgeClock`
-- `AuspiceWrite` on `NodeAncestral`/`EdgeAncestral` (mutations), mugration payloads (discrete traits as colorings). `NodeTimetree` already has `TimetreeAuspiceWriter` at `timetree/output/auspice.rs`
-- `UsherWrite` on `NodeAncestral`/`EdgeAncestral` and `NodeTimetree`/`EdgeTimetree` (require per-branch mutation data). Not meaningful for clock, prune, mugration
+Done:
 
-## Per-command availability after implementation
+- `packages/treetime-io/src/tree_ir/`: `TreeIrNode`/`TreeIrEdge`/`TreeIrData`, mutation/indel model (`TreeIrSub`/`TreeIrIndel` over `AsciiChar`), and bidirectional PhyloXML, Auspice v2, and UShER MAT adapters, with round-trip and field-mapping tests.
+- `write_tree_outputs` takes an optional `TreeIrGraph`; PhyloXML/Auspice/MAT route through it, Newick/Nexus/Dot/graph-JSON stay on the domain graph. The old `AuspiceWriter` trait and stubs are removed.
+- Timetree writes Auspice through the IR (`commands/timetree/output/ir.rs`), replacing `build_timetree_auspice`/`TimetreeAuspiceWriter`. Verified by unit tests and an end-to-end smoke run.
 
-| Format          | ancestral | optimize | timetree | mugration | clock | prune |
-| --------------- | --------- | -------- | -------- | --------- | ----- | ----- |
-| auspice         | new       | no       | existing | new       | no    | no    |
-| phyloxml        | new       | new      | new      | new       | new   | new   |
-| mat-pb/mat-json | new       | new      | new      | no        | no    | no    |
+## Remaining task
 
-## Locations
+For ancestral, optimize, mugration, clock, and prune: build a `TreeIrGraph` from the command result + partition data at write time, pass it to `write_tree_outputs`, and enable the command's formats in `CommandKind::available_tree_outputs()` per the matrix below. Extend timetree's projection with per-branch mutations to enable its PhyloXML/MAT outputs.
 
-- PhyloXML traits: `packages/treetime-io/src/phyloxml.rs:195,257`
-- Auspice traits: `packages/treetime-io/src/auspice.rs`
-- UShER traits: `packages/treetime-io/src/usher_mat.rs`
-- Existing auspice impl: `packages/treetime/src/commands/timetree/output/auspice.rs:46`
+| format           | ancestral | optimize | timetree | mugration | clock | prune |
+| ---------------- | --------- | -------- | -------- | --------- | ----- | ----- |
+| phyloxml (+json) | yes       | yes      | yes      | yes       | yes   | yes   |
+| auspice          | yes       | no       | yes      | yes       | no    | no    |
+| mat-pb (+json)   | yes       | yes      | yes      | no        | no    | no    |
 
-## Tests
+Use `commands/timetree/output/ir.rs` as the projection pattern.
 
-### PhyloXML -- happy paths
+## Projection data sources
 
-- Write tree with names, branch lengths -> valid PhyloXML (parseable by quick-xml)
-- Leaf names map to `<name>` element in `<clade>`
-- Branch lengths map to `<branch_length>` element
-- Mutations map to `<property>` elements (ancestral, timetree, optimize)
-- Dates map to `<date>` element (timetree)
-- Discrete traits map to `<property>` elements (mugration)
-- Round-trip: write PhyloXML, read back via `phyloxml_to_graph`, compare topology and branch lengths
+- **ancestral** (`commands/ancestral/run.rs`): name, desc, confidence. Nucleotide mutations via `MutationCommentProvider` / `ml_subs()`/`fitch_subs()` (`partition/traits.rs`); amino-acid mutations via `AaNodeData` (`commands/ancestral/aa_node_data.rs`); indels via `SparseEdgePartition.indels`; root sequence from partition; divergence from `compute_edge_mutation_counts` (`seq/div.rs`).
+- **optimize** (`commands/optimize/run.rs`): name, branch lengths, mutations (same extraction as ancestral).
+- **mugration** (`commands/mugration/run.rs`): discrete trait values via `DiscreteCommentProvider` (`partition/marginal_discrete.rs`) -> `TreeIrTrait` (value, confidence map, entropy). No mutations.
+- **clock** (`commands/clock/run.rs`): name, `node.time`, `node.div`, bad-branch/outlier. PhyloXML only.
+- **prune** (`commands/prune/run.rs`): name, branch lengths. PhyloXML only.
 
-### PhyloXML -- edge cases
+When mapping mutations, convert `Sub` -> `TreeIrSub` (`AsciiChar`); `treetime-io` must not depend on `treetime`.
 
-- Names with XML-special chars (`<`, `>`, `&`, `"`, `'`) -> properly escaped
-- Unicode names (umlaut, CJK)
-- Empty tree (root only, no children)
-- Node with no name (unnamed internal)
-- Node with no branch length
+## Tests to add
 
-### Auspice (non-timetree) -- happy paths
-
-- Ancestral: mutations in `branch_attrs.mutations`, divergence in `node_attrs.div`
-- Mugration: trait values as `node_attrs.{attribute}` with `value` field, colorings populated in meta
-- Output validates against Auspice v2 JSON schema
-- Round-trip: write Auspice JSON, read back via `auspice_to_graph`, compare topology
-
-### Auspice (non-timetree) -- edge cases
-
-- Node with no mutations -> empty `branch_attrs.mutations`
-- Mugration with unknown/missing trait value (`?`) -> handled in node_attrs
-- Trait values with special JSON chars (quotes, backslashes) -> properly escaped
-- 100+ mutations per branch -> all serialized
-
-### UShER MAT -- happy paths
-
-- Ancestral: per-branch mutations encoded in protobuf `mut` messages
-- Mutation encoding: position, ref_nuc, par_nuc, mut_nuc (0=A, 1=C, 2=G, 3=T)
-- Condensed nodes: identical sequences grouped (if applicable)
-- Round-trip: write MAT protobuf, read back via `usher_to_graph`, compare mutations
-
-### UShER MAT -- edge cases
-
-- Branch with no mutations -> empty mutation list
-- Ambiguous nucleotides in mutations (N, deletion `-`) -> encoding documented
-- Indels -> not representable in MAT format, skipped or error? Document
-- Tree with 10K+ nodes -> serialization performance acceptable
-
-### Pathological (all formats)
-
-- Empty graph (no nodes) -> error or valid empty document? Document per format
-- Single-node graph (root only) -> valid minimal document
-- Graph with 100K+ nodes -> no OOM, reasonable time
-
-### Regression
-
-- Existing `TimetreeAuspiceWriter` output unchanged
-- Existing tests for timetree auspice JSON still pass
+- Round-trip and field-mapping per command (extend the `treetime-io` IR tests where format-level).
+- Snapshot tests: small fixed trees -> PhyloXML and Auspice golden strings.
+- Golden master: ancestral/mugration Auspice and MAT against augur/UShER where an oracle exists.
+- Edge cases: indels to UShER (warning + drop), 100+ mutations/branch, empty/single-node tree, no-name/no-branch-length nodes, large-tree smoke.
+- Smoke tests: ancestral/timetree with `--output-tree-phyloxml`, `--output-tree-auspice`, `--output-tree-mat-pb`.
 
 ## Related issues
 
