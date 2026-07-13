@@ -87,20 +87,16 @@ where
     (edge.read_arc().source(), edge.read_arc().target())
   };
 
-  // Determine where to place the new root based on the split position along the edge
-  // - split = 0.0 means root at target
-  // - split = 1.0 means root at source
-  // - 0.0 < split < 1.0 means somewhere in the middle - i.e. create a new node
+  // split = 0 roots at the source (parent), split = 1 at the target (child).
   let (new_root_key, edge_split) = if ulps_eq!(split, 0.0, max_ulps = 5) {
-    (target_key, None)
-  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     (source_key, None)
+  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+    (target_key, None)
   } else if reroot_params.split_edge {
     let split_info = create_new_root_node(graph, edge_key, split, clock_set)?;
     (split_info.new_node_key, Some(split_info))
   } else {
-    // Edge split disallowed: snap to nearest endpoint
-    (if split < 0.5 { target_key } else { source_key }, None)
+    (if split < 0.5 { source_key } else { target_key }, None)
   };
 
   let (inverted_edge_keys, edge_merge) = if new_root_key != old_root_key {

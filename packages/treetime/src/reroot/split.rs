@@ -19,8 +19,8 @@ pub struct FindRootResult<S> {
   /// Edge carrying the best root position, or `None` when the current root wins.
   pub edge: Option<GraphEdgeKey>,
 
-  /// Split fraction along the edge. `0` roots at the target node, `1` at the
-  /// source node, `0 < x < 1` inserts a new node at that point.
+  /// Split fraction along the edge. `0` roots at the source (parent) node, `1`
+  /// at the target (child) node, `0 < x < 1` inserts a new node at that point.
   pub split: f64,
 
   /// Combined statistics at the winning position.

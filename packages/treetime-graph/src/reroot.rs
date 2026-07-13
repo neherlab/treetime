@@ -15,7 +15,7 @@ pub struct EdgeSplitInfo {
   pub parent_side_edge_key: GraphEdgeKey,
   /// The edge from the new node to the original target.
   pub child_side_edge_key: GraphEdgeKey,
-  /// Position along the edge where the split occurred (0.0 = target, 1.0 = source).
+  /// Position along the edge where the split occurred (0.0 = source, 1.0 = target).
   pub split_position: f64,
 }
 

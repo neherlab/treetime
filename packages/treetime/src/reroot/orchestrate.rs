@@ -104,17 +104,16 @@ where
     (edge.source(), edge.target())
   };
 
-  // split = 0 roots at the target, split = 1 at the source, interior values
-  // insert a new node (or snap to the nearer endpoint when splitting is disabled).
+  // split = 0 roots at the source (parent), split = 1 at the target (child).
   let (new_root_key, edge_split) = if ulps_eq!(split, 0.0, max_ulps = 5) {
-    (target_key, None)
-  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     (source_key, None)
+  } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+    (target_key, None)
   } else if topo.split_edge {
     let info = split_edge(graph, edge_key, split)?;
     (info.new_node_key, Some(info))
   } else {
-    (if split < 0.5 { target_key } else { source_key }, None)
+    (if split < 0.5 { source_key } else { target_key }, None)
   };
 
   let (inverted_edge_keys, edge_merge) = if new_root_key != old_root_key {

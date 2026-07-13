@@ -7,7 +7,7 @@ use argmin::core::{CostFunction, Error};
 /// subtree as seen at the child node) and `to_child` (the rest of the tree as
 /// seen at the parent node) -- plus the branch geometry. Evaluating at split
 /// fraction `x` places the root at distance `x * branch_length` from the source
-/// (parent) end: `x = 0` roots at the target node, `x = 1` at the source node.
+/// (parent) end: `x = 0` roots at the source node, `x = 1` at the target node.
 ///
 /// The variance is split linearly across the branch (the full-branch variance
 /// scaled by the split fraction), matching the v0 branch-point objective. Leaf

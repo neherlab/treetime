@@ -13,7 +13,7 @@ Design rationale and the full derivation live in the proposals:
 
 The objective is abstracted by the `RootStats` trait: sufficient statistics that accumulate per-tip contributions up the tree (`leaf`), push across branches (`propagate`), combine across subtrees (`Add`), recover the complementary message at a node (`Sub`), and reduce to a scalar objective (`score`, minimized).
 
-`EdgeCostFn<S>` evaluates the combined statistics at a split fraction `x` along an edge (`x = 0` at the target, `x = 1` at the source), splitting the branch variance linearly. The discrete search optimizes the split on every edge and keeps the global minimum, using the current root's score as the baseline so an already-optimal tree is left unchanged. Optimizing each edge over `[0, 1]` covers rooting at any existing node as a split endpoint.
+`EdgeCostFn<S>` evaluates the combined statistics at a split fraction `x` along an edge (`x = 0` at the source/parent, `x = 1` at the target/child), splitting the branch variance linearly. The discrete search optimizes the split on every edge and keeps the global minimum, using the current root's score as the baseline so an already-optimal tree is left unchanged. Optimizing each edge over `[0, 1]` covers rooting at any existing node as a split endpoint.
 
 Type bounds shrink from the clock-specific `ClockNode`/`ClockEdge` to `GraphNode`/`GraphEdge`; statistics are passed in a `BTreeMap<GraphEdgeKey, (S, S)>` rather than read from node/edge payloads, so the search works on payloads (e.g. the optimize graph) that carry no message fields.
 
