@@ -403,13 +403,40 @@ where
     let safe_child = child_edge_data.msg_from_child.dis.mapv(|v| v.max(f64::MIN_POSITIVE));
     let mut dis = &node_profile_dis / &safe_child;
     let delta_ll = normalize_inplace(&mut dis);
-    child_edge_data.msg_to_child = DenseSeqDistribution {
-      dis,
-      log_lh: node_profile_log_lh - child_edge_data.msg_from_child.log_lh + delta_ll,
-    };
+    let log_lh = forward_log_lh_remove_child(node_profile_log_lh, child_edge_data.msg_from_child.log_lh);
+    let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
+    child_edge_data.msg_to_child = DenseSeqDistribution { dis, log_lh };
   }
 
   Ok(())
+}
+
+/// Remove a child's normalization scale from a forward cavity message.
+///
+/// A degenerate profile is represented by a uniform fallback with a
+/// `f64::NEG_INFINITY` scale. Matching sentinels refer to the same removed
+/// factor, so they cancel instead of performing the undefined IEEE-754
+/// operation `-inf - (-inf)`.
+pub(crate) fn forward_log_lh_remove_child(node_log_lh: f64, child_log_lh: f64) -> f64 {
+  if node_log_lh == f64::NEG_INFINITY && child_log_lh == f64::NEG_INFINITY {
+    0.0
+  } else {
+    node_log_lh - child_log_lh
+  }
+}
+
+/// Add a normalization scale to a forward cavity message.
+///
+/// The `f64::NEG_INFINITY` value marks a distribution replaced by the uniform
+/// fallback. It has no finite scale to add to the conditional message. Other
+/// non-finite values still propagate so unexpected NaN and positive infinity
+/// remain observable.
+pub(crate) fn forward_log_lh_add_normalization(log_lh: f64, normalization: f64) -> f64 {
+  if normalization == f64::NEG_INFINITY {
+    log_lh
+  } else {
+    log_lh + normalization
+  }
 }
 
 /// 1D specialization of [`normalize_inplace`] for sparse marginal passes.
