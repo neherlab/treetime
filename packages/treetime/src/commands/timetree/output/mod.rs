@@ -2,6 +2,6 @@
 mod __tests__;
 
 pub mod augur_node_data;
-pub mod auspice;
 pub mod dates;
+pub mod ir;
 pub mod plots;
