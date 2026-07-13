@@ -85,7 +85,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 
 | Test                                                           | Purpose                                           |
 | -------------------------------------------------------------- | ------------------------------------------------- |
-| `test_ancestral_reconstruction_marginal_sparse`                | MAP sequences using Fitch compression + marginal  |
+| `test_ancestral_reconstruction_marginal_sparse`                | v0-parity MAP sequences and matching compositions |
 | `test_marginal_sparse_probability_normalization`               | Variable and fixed distributions sum to 1.0       |
 | `test_marginal_sparse_update_is_idempotent`                    | Fixed-point test for sparse representation        |
 | `test_marginal_sparse_log_lh_root_invariance_reversible_model` | Root invariance with non-uniform GTR              |
@@ -131,6 +131,7 @@ Support files (helpers only, no tests): [`packages/treetime/src/ancestral/__test
 | `test_marginal_idempotency_example_sparse` | Same for sparse                                                   | Unit     |
 | `test_prop_marginal_idempotency_dense`     | Idempotency across 50 random inputs                               | Property |
 | `test_prop_marginal_idempotency_sparse`    | Idempotency for sparse across 50 random inputs                    | Property |
+| `test_prop_marginal_sparse_map_composition_matches_sequence` | MAP composition matches sequence across 50 random inputs | Property |
 
 **Invariant:** Sum-product on trees converges in one pass
 

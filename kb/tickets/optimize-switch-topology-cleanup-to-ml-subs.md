@@ -34,4 +34,3 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 - Source: [N-optimize-topology-cleanup-fitch-vs-ml-subs.md](../issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md) -- delete after full resolution
 - ~~Move merge_shared_mutation_branches to shared topology_cleanup module~~ (resolved: now in `packages/treetime/src/optimize/topology/`)
-- [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](../issues/M-gtr-sparse-composition-stale-after-marginal.md)

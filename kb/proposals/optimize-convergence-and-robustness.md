@@ -154,7 +154,6 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 - Implementation: add `--infer-gtr` flag, call `infer_gtr_sparse`/`infer_gtr_dense` + `update_marginal` per iteration
 - Pros: joint optimization of model parameters and branch lengths. Required for `--model infer` in the optimize command.
 - Cons: adds a third block to the ECM iteration. Preserves convergence guarantees (Meng and Rubin 1993) but may slow convergence rate.
-- Related: [M-gtr-sparse-composition-stale-after-marginal](../issues/M-gtr-sparse-composition-stale-after-marginal.md)
 
 ## Rejected approaches
 
@@ -209,7 +208,6 @@ The optimizer convergence work progressed through three phases:
 
 - M-optimize-sparse-em-2-cycle (resolved) -- the immediate bug fix
 - [M-optimize-gm-per-branch-divergence](../issues/M-optimize-gm-per-branch-divergence.md) -- per-branch v0 parity
-- [M-gtr-sparse-composition-stale-after-marginal](../issues/M-gtr-sparse-composition-stale-after-marginal.md) -- stale Fitch composition
 - [optimize-signed-convergence-check](../v0-errata/optimize-signed-convergence-check.md) -- v0 erratum: signed convergence check
 - [optimize-indel-model-alternatives](optimize-indel-model-alternatives.md) -- alternative indel models (orthogonal)
 - [optimize-indel-contribution-to-likelihood](../decisions/optimize-indel-contribution-to-likelihood.md) -- v1-only Poisson indel term

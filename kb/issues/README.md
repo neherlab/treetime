@@ -72,7 +72,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Optimize     | [Bifurcating root optimization: independent per-edge vs joint arc optimization](M-optimize-root-bifurcating-independent-vs-joint.md)                |
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                         |
 | Medium     | Optimize     | [Sparse branch optimization reads stale Fitch-era states](M-optimize-sparse-stale-fitch-states.md)                                                  |
-| Medium     | GTR          | [Sparse GTR inference mixes MAP mutations with Fitch-era compositions](M-gtr-sparse-composition-stale-after-marginal.md)                            |
 | Medium     | Sparse       | [Sparse marginal fixed_counts zero-multiplicity produces NaN](M-sparse-marginal-zero-multiplicity-nan.md)                                           |
 | Medium     | Sparse       | [Sparse marginal msg_to_child includes near-deterministic variable sites](M-sparse-marginal-quantitative-site-filtering.md)                         |
 | Medium     | Sparse       | [Sparse node_reference_state ignores non-char positions](M-sparse-node-reference-state-non-char-precedence.md)                                      |

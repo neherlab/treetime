@@ -23,7 +23,3 @@ The bias is proportional to the number of variable sites where the marginal MAP 
 ## Fix
 
 Read states from the current marginal profiles (argmax of the posterior) instead of the stored `.state` fields. Alternatively, update `.state` fields after each marginal pass.
-
-## Related
-
-- [M-gtr-sparse-composition-stale-after-marginal](M-gtr-sparse-composition-stale-after-marginal.md) - same root cause (Fitch-era data not refreshed after marginal inference), different consumer (GTR inference vs branch optimization)

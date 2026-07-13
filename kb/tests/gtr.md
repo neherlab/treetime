@@ -302,8 +302,8 @@ Validates that proptest generators produce valid outputs.
 
 | Test                              | Purpose                                      |
 | --------------------------------- | -------------------------------------------- |
-| `test_get_mutation_counts_sparse` | Integer mutation counts from Fitch parsimony |
-| `test_infer_gtr_sparse`           | GTR inference from sparse representation     |
+| `test_get_mutation_counts_fitch` | Integer mutation counts from Fitch parsimony |
+| `test_infer_gtr_fitch`           | GTR inference from sparse representation     |
 
 ---
 

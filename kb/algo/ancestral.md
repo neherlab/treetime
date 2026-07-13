@@ -67,7 +67,7 @@ v0: [`packages/legacy/treetime/treetime/treeanc.py#L762-L927`](../../packages/le
 
 Each sparse node carries `SparseSeqInfo` with two groups of fields:
 
-Sequence state: `composition` (character counts), `sequence` (resolved nucleotides), `gaps`/`unknown`/`non_char` (position ranges where the node has no informative data).
+Sequence state: `composition` (character counts), `sequence` (resolved nucleotides), `gaps`/`unknown`/`non_char` (position ranges where the node has no informative data). MAP reconstruction replaces `sequence` and recomputes `composition` atomically, so later sparse passes use counts from the current reconstruction rather than the earlier Fitch assignment.
 
 Fitch state: `fitch.variable` (ambiguous positions from parsimony), `fitch.chosen_state` (resolved state per variable position from Fitch forward pass).
 
