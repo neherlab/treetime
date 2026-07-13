@@ -87,7 +87,28 @@ impl HasLogLh for PartitionMarginalDense {
   }
 }
 
-impl PartitionRerootOps for PartitionMarginalDense {}
+impl PartitionRerootOps for PartitionMarginalDense {
+  fn apply_reroot(&mut self, changes: &treetime_graph::reroot::RerootChanges) -> Result<(), Report> {
+    if let Some(info) = &changes.edge_split {
+      self.data.edges.remove(&info.old_edge_key);
+      self.data.edges.entry(info.parent_side_edge_key).or_default();
+      self.data.edges.entry(info.child_side_edge_key).or_default();
+      self.data.nodes.entry(info.new_node_key).or_insert_with(|| DenseNodePartition {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::default(),
+      });
+    }
+
+    if let Some(info) = &changes.edge_merge {
+      self.data.edges.remove(&info.parent_edge_key);
+      self.data.edges.remove(&info.child_edge_key);
+      self.data.nodes.remove(&info.removed_node_key);
+      self.data.edges.entry(info.merged_edge_key).or_default();
+    }
+
+    Ok(())
+  }
+}
 
 impl<N, E> TransitionCounting<N, E> for PartitionMarginalDense
 where
