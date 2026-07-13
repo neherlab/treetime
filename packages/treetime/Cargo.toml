@@ -76,3 +76,7 @@ clap = ["dep:clap"]
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "marginal_scaling"
+harness = false
