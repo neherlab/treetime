@@ -91,6 +91,9 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Marginal timetree node times can violate topology](M-timetree-marginal-node-times-can-violate-topology.md)                                         |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                   |
 | Negligible | Ancestral    | [Ancestral command does not produce auspice JSON](N-ancestral-auspice-json-not-produced.md)                                                         |
+| Negligible | Ancestral    | [Parallel sparse leaf setup has no defined error atomicity contract](N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md)                |
+| Negligible | Ancestral    | [Parallel sparse leaf setup may regress single-thread ancestral runtime](N-ancestral-parallel-sparse-leaf-single-thread-regression.md)              |
+| Negligible | Ancestral    | [Parallel sparse leaf setup validation covers only a narrow success path](N-ancestral-parallel-sparse-leaf-validation-coverage.md)                  |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                               |
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                     |
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                     |
@@ -100,6 +103,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | I/O          | [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md)                                                                          |
 | Negligible | I/O          | [Newick writer defaults to 3 significant digits, truncating branch lengths](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)                |
 | Negligible | I/O          | [Graphviz DOT writer uses Newick precision defaults for edge labels](N-io-graphviz-dot-branch-length-precision.md)                                  |
+| Negligible | I/O          | [Auspice number formatting lacks an independent Augur golden master](N-io-auspice-number-formatting-missing-augur-golden-master.md)                 |
+| Negligible | I/O          | [Shared TreeIR architecture has not received an explicit design decision](N-io-tree-ir-architecture-unapproved.md)                                 |
 | Negligible | I/O          | [Name reconciliation logic duplicated across subsystems](N-io-name-reconciliation-duplicated.md)                                                    |
 | Negligible | I/O          | [Edge annotations from Newick not wired into EdgeFromNwk](N-io-edge-annotation-wiring-not-implemented.md)                                           |
 | Negligible | Optimize     | [update_marginal traverses graph twice for mixed partitions](N-optimize-double-graph-traversal-update-marginal.md)                                  |

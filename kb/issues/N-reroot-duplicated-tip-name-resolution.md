@@ -1,6 +1,9 @@
 # Tip-name resolution duplicated between optimize and clock reroot
 
-Two reroot call sites implement the same graph-node-by-name lookup independently. Optimize's `resolve_tip_keys` and clock's `find_node_key_by_name` both scan the graph for a node whose name matches a string, using the identical predicate.
+> [!IMPORTANT]
+> **Discussion required.** The shared lookup contract and duplicate-name semantics need agreement before the two implementations are consolidated.
+
+Two reroot call sites implement the same graph-node-by-name lookup independently. Optimize's `fn resolve_tip_keys()` [packages/treetime/src/optimize/pipeline.rs#L251](../../packages/treetime/src/optimize/pipeline.rs#L251) and clock's `fn find_node_key_by_name()` [packages/treetime/src/clock/reroot.rs#L270](../../packages/treetime/src/clock/reroot.rs#L270) both scan the graph for a node whose name matches a string, using the identical predicate.
 
 ## Duplication
 
@@ -36,5 +39,7 @@ Extract a single name-to-node-key lookup (generic over `GraphNode + Named`), pla
 
 ## Locations
 
-- `packages/treetime/src/optimize/pipeline.rs:251-260`
-- `packages/treetime/src/clock/reroot.rs:274-281`
+- `fn resolve_tip_keys()` [packages/treetime/src/optimize/pipeline.rs#L251](../../packages/treetime/src/optimize/pipeline.rs#L251)
+- `fn find_node_key_by_name()` [packages/treetime/src/clock/reroot.rs#L270](../../packages/treetime/src/clock/reroot.rs#L270)
+- [kb/proposals/reroot-generic-scoring-architecture.md](../proposals/reroot-generic-scoring-architecture.md)
+- [kb/issues/N-reroot-tip-resolution-untested-errors.md](N-reroot-tip-resolution-untested-errors.md)
