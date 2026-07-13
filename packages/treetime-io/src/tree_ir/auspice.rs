@@ -303,7 +303,10 @@ fn build_trait_attrs(traits: &BTreeMap<String, TreeIrTrait>) -> Value {
 fn group_mutations(subs: &[TreeIrSub]) -> BTreeMap<String, Vec<String>> {
   let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
   for sub in subs {
-    grouped.entry(sub.gene.clone()).or_default().push(sub.to_auspice_string());
+    grouped
+      .entry(sub.gene.clone())
+      .or_default()
+      .push(sub.to_auspice_string());
   }
   grouped
 }

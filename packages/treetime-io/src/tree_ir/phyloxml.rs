@@ -111,7 +111,12 @@ impl PhyloxmlFromGraph<TreeIrNode, TreeIrEdge, TreeIrData> for () {
         ));
       }
       for indel in &edge.indels {
-        property.push(make_property(REF_INDEL, DT_STRING, APPLIES_BRANCH, &encode_indel(indel)));
+        property.push(make_property(
+          REF_INDEL,
+          DT_STRING,
+          APPLIES_BRANCH,
+          &encode_indel(indel),
+        ));
       }
     }
 

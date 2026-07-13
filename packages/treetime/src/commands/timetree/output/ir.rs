@@ -45,9 +45,7 @@ pub fn build_timetree_ir(
 
     let div = match mutation_counts {
       Some(counts) => match parent {
-        Some((pkey, ekey)) => {
-          div_map.get(&pkey).copied().unwrap_or(0.0) + *counts.get(&ekey).unwrap_or(&0) as f64
-        },
+        Some((pkey, ekey)) => div_map.get(&pkey).copied().unwrap_or(0.0) + *counts.get(&ekey).unwrap_or(&0) as f64,
         None => 0.0,
       },
       None => node.payload.div,
@@ -68,11 +66,18 @@ pub fn build_timetree_ir(
 
     if let Some((pkey, _ekey)) = parent {
       let ir_parent = key_map[&pkey];
-      let branch_length = node.parents.first().and_then(|(_, edge)| edge.read_arc().branch_length());
-      ir.add_edge(ir_parent, ir_key, TreeIrEdge {
-        branch_length,
-        ..TreeIrEdge::default()
-      })?;
+      let branch_length = node
+        .parents
+        .first()
+        .and_then(|(_, edge)| edge.read_arc().branch_length());
+      ir.add_edge(
+        ir_parent,
+        ir_key,
+        TreeIrEdge {
+          branch_length,
+          ..TreeIrEdge::default()
+        },
+      )?;
     }
 
     Ok(())

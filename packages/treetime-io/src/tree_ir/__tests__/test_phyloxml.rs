@@ -35,7 +35,12 @@ mod tests {
     assert!(xml.contains("a&lt;b&amp;c"));
     let graph2: TreeIrGraph = phyloxml_read_str(&xml)?;
     let root = graph2.get_exactly_one_root()?;
-    let name = root.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned());
+    let name = root
+      .read_arc()
+      .payload()
+      .read_arc()
+      .name()
+      .map(|n| n.as_ref().to_owned());
     assert_eq!(Some("a<b&c\"d".to_owned()), name);
     Ok(())
   }
@@ -64,16 +69,20 @@ mod tests {
         date: Some(2020.5),
         ..TreeIrNode::default()
       });
-      graph.add_edge(root, a, TreeIrEdge {
-        branch_length: Some(0.5),
-        mutations: vec![TreeIrSub {
-          gene: NUC_GENE.to_owned(),
-          position: 7,
-          parent: nuc('A'),
-          child: nuc('G'),
-        }],
-        ..TreeIrEdge::default()
-      })?;
+      graph.add_edge(
+        root,
+        a,
+        TreeIrEdge {
+          branch_length: Some(0.5),
+          mutations: vec![TreeIrSub {
+            gene: NUC_GENE.to_owned(),
+            position: 7,
+            parent: nuc('A'),
+            child: nuc('G'),
+          }],
+          ..TreeIrEdge::default()
+        },
+      )?;
       graph.build()?;
       Ok(graph)
     }

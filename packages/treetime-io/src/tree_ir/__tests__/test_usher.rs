@@ -90,15 +90,23 @@ mod tests {
       let root = graph.add_node(named_node("root"));
       let a = graph.add_node(named_node("A"));
       let b = graph.add_node(named_node("B"));
-      graph.add_edge(root, a, TreeIrEdge {
-        branch_length: Some(0.5),
-        mutations: vec![sub],
-        ..TreeIrEdge::default()
-      })?;
-      graph.add_edge(root, b, TreeIrEdge {
-        branch_length: Some(1.0),
-        ..TreeIrEdge::default()
-      })?;
+      graph.add_edge(
+        root,
+        a,
+        TreeIrEdge {
+          branch_length: Some(0.5),
+          mutations: vec![sub],
+          ..TreeIrEdge::default()
+        },
+      )?;
+      graph.add_edge(
+        root,
+        b,
+        TreeIrEdge {
+          branch_length: Some(1.0),
+          ..TreeIrEdge::default()
+        },
+      )?;
       graph.build()?;
       Ok(graph)
     }
@@ -107,16 +115,20 @@ mod tests {
       let mut graph = TreeIrGraph::with_data(TreeIrData::default());
       let root = graph.add_node(named_node("root"));
       let a = graph.add_node(named_node("A"));
-      graph.add_edge(root, a, TreeIrEdge {
-        branch_length: Some(0.5),
-        indels: vec![TreeIrIndel {
-          gene: NUC_GENE.to_owned(),
-          kind: IndelKind::Deletion,
-          start: 10,
-          seq: vec![nuc('A'), nuc('C')],
-        }],
-        ..TreeIrEdge::default()
-      })?;
+      graph.add_edge(
+        root,
+        a,
+        TreeIrEdge {
+          branch_length: Some(0.5),
+          indels: vec![TreeIrIndel {
+            gene: NUC_GENE.to_owned(),
+            kind: IndelKind::Deletion,
+            start: 10,
+            seq: vec![nuc('A'), nuc('C')],
+          }],
+          ..TreeIrEdge::default()
+        },
+      )?;
       graph.build()?;
       Ok(graph)
     }

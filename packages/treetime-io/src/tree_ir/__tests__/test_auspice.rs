@@ -147,15 +147,23 @@ mod tests {
         bad_branch: true,
         ..TreeIrNode::default()
       });
-      graph.add_edge(root, a, TreeIrEdge {
-        branch_length: Some(0.5),
-        mutations: vec![sub(123, 'A', 'T')],
-        ..TreeIrEdge::default()
-      })?;
-      graph.add_edge(root, b, TreeIrEdge {
-        branch_length: Some(1.0),
-        ..TreeIrEdge::default()
-      })?;
+      graph.add_edge(
+        root,
+        a,
+        TreeIrEdge {
+          branch_length: Some(0.5),
+          mutations: vec![sub(123, 'A', 'T')],
+          ..TreeIrEdge::default()
+        },
+      )?;
+      graph.add_edge(
+        root,
+        b,
+        TreeIrEdge {
+          branch_length: Some(1.0),
+          ..TreeIrEdge::default()
+        },
+      )?;
       graph.build()?;
       Ok(graph)
     }
