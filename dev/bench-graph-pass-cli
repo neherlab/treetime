@@ -15,6 +15,7 @@
 #   --runs N               Hyperfine measured runs (default: 3)
 #   --warmup N             Hyperfine warmup runs (default: 1)
 #   --output PATH          Output below the project root (default: tmp/graph-pass-cli-benchmark)
+#   --host                 Run measurements on the host; builds remain containerized
 #   --skip-output-check    Skip output equivalence runs
 #   -h, --help             Show this help
 #
@@ -40,6 +41,7 @@ RUNS=3
 WARMUP=1
 OUTPUT_DIR="tmp/graph-pass-cli-benchmark"
 CHECK_OUTPUT=true
+RUN_ON_HOST=false
 
 main() {
   show_help() {
@@ -59,6 +61,7 @@ main() {
       --runs) RUNS="${2}"; shift 2 ;;
       --warmup) WARMUP="${2}"; shift 2 ;;
       --output) OUTPUT_DIR="${2}"; shift 2 ;;
+      --host) RUN_ON_HOST=true; shift ;;
       --skip-output-check) CHECK_OUTPUT=false; shift ;;
       --) shift; break ;;
       -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
@@ -241,7 +244,7 @@ run_benchmarks() {
       after_command="$(command_string "${WORKLOAD_ARGS[@]}")"
       hyperfine_json="${OUTPUT_DIR}/raw/${workload}-j${jobs}-hyperfine.json"
 
-      ./dev/docker/run hyperfine \
+      run_measured hyperfine \
         --warmup "${WARMUP}" \
         --runs "${RUNS}" \
         --prepare "rm -rf ${OUTPUT_DIR}/output/run-before ${OUTPUT_DIR}/output/run-after" \
@@ -260,7 +263,7 @@ run_benchmarks() {
         rss_json="${OUTPUT_DIR}/raw/${workload}-j${jobs}-${version}-rss.json"
         rm -rf -- "${OUTPUT_DIR}/output/rss-${version}"
         workload_args "${workload}" "${binary}" "${OUTPUT_DIR}/output/rss-${version}" "${jobs}"
-        ./dev/docker/run /usr/bin/time \
+        run_measured /usr/bin/time \
           -f '{"elapsed_seconds":%e,"peak_rss_kb":%M}' \
           -o "${rss_json}" \
           "${WORKLOAD_ARGS[@]}"
@@ -305,7 +308,7 @@ compare_outputs() {
         output="${OUTPUT_DIR}/output/check-${workload}-${version}-j${jobs}"
         rm -rf -- "${output}"
         workload_args "${workload}" "${binary}" "${output}" "${jobs}"
-        ./dev/docker/run "${WORKLOAD_ARGS[@]}"
+        run_measured "${WORKLOAD_ARGS[@]}"
       done
     done
 
@@ -352,6 +355,14 @@ compare_dirs() {
     >>"${OUTPUT_DIR}/comparisons.ndjson"
 }
 
+run_measured() {
+  if "${RUN_ON_HOST}"; then
+    "$@"
+  else
+    ./dev/docker/run "$@"
+  fi
+}
+
 write_summaries() {
   jq -s '.' "${OUTPUT_DIR}/results.ndjson" >"${OUTPUT_DIR}/results.json"
   jq -s '.' "${OUTPUT_DIR}/comparisons.ndjson" >"${OUTPUT_DIR}/comparisons.json"
@@ -376,6 +387,7 @@ write_summaries() {
     --arg after_sha256 "$(sha256sum "${AFTER_BIN}" | cut -d' ' -f1)" \
     --arg dataset "${DATA_DIR}" \
     --arg jobs "${JOBS_CSV}" \
+    --arg execution "$([[ "${RUN_ON_HOST}" == true ]] && printf 'host' || printf 'container')" \
     --argjson runs "${RUNS}" \
     --argjson warmup "${WARMUP}" \
     --slurpfile results "${OUTPUT_DIR}/results.json" \
@@ -389,6 +401,7 @@ write_summaries() {
         after_sha256: $after_sha256,
         dataset: $dataset,
         jobs: ($jobs | split(",") | map(tonumber)),
+        execution: $execution,
         runs: $runs,
         warmup: $warmup
       },
