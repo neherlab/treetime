@@ -44,7 +44,12 @@ where
 
   // Backward pass.
   for &node_key in &backward_order {
-    let NodeTopology { is_leaf, is_root, child_edges, parent_edge } = node_topology(graph, node_key)?;
+    let NodeTopology {
+      is_leaf,
+      is_root,
+      child_edges,
+      parent_edge,
+    } = node_topology(graph, node_key)?;
 
     if is_root {
       root_stats = sum_children(&from_child, &child_edges)?;
@@ -76,7 +81,12 @@ where
   let mut to_child: BTreeMap<GraphEdgeKey, DivStats> = BTreeMap::new();
 
   for &node_key in backward_order.iter().rev() {
-    let NodeTopology { is_root, child_edges, parent_edge, .. } = node_topology(graph, node_key)?;
+    let NodeTopology {
+      is_root,
+      child_edges,
+      parent_edge,
+      ..
+    } = node_topology(graph, node_key)?;
 
     // Full aggregate at this node: its own subtree plus the rest of the tree
     // propagated down the parent branch.

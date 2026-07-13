@@ -6,7 +6,6 @@ mod tests {
   use crate::reroot::orchestrate::{RerootTopologyParams, reroot_in_place};
   use crate::reroot::params::BrentParams;
   use crate::reroot::search::find_best_root;
-  use crate::reroot::traits::RootStats;
   use crate::reroot::variance::VarianceModel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;

@@ -93,10 +93,14 @@ impl PartitionRerootOps for PartitionMarginalDense {
       self.data.edges.remove(&info.old_edge_key);
       self.data.edges.entry(info.parent_side_edge_key).or_default();
       self.data.edges.entry(info.child_side_edge_key).or_default();
-      self.data.nodes.entry(info.new_node_key).or_insert_with(|| DenseNodePartition {
-        seq: DenseSeqInfo::default(),
-        profile: DenseSeqDistribution::default(),
-      });
+      self
+        .data
+        .nodes
+        .entry(info.new_node_key)
+        .or_insert_with(|| DenseNodePartition {
+          seq: DenseSeqInfo::default(),
+          profile: DenseSeqDistribution::default(),
+        });
     }
 
     if let Some(info) = &changes.edge_merge {

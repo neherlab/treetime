@@ -171,6 +171,13 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Validation   | [ValidationRunner print methods duplicated across three runner implementations](N-validation-runner-print-method-boilerplate.md)                    |
 | Negligible | Validation   | [TestCase trait field accessors duplicated across five test suites](N-validation-test-case-accessor-boilerplate.md)                                 |
 | Negligible | Graph        | [Parallel traversal partition write locks serialize the frontier](N-graph-parallel-traversal-partition-lock-contention.md)                          |
+| Negligible | Reroot       | [No v0 golden master test for min-dev reroot](N-reroot-missing-v0-golden-master.md)                                                                 |
+| Negligible | Reroot       | [Tip-name resolution duplicated between optimize and clock reroot](N-reroot-duplicated-tip-name-resolution.md)                                      |
+| Negligible | Reroot       | [Leaf variance offset convention diverges from v0 on terminal edges](N-reroot-leaf-variance-offset-diverges-from-v0.md)                             |
+| Negligible | Graph        | [common_ancestor missing direct tests](N-common-ancestor-missing-direct-tests.md)                                                                   |
+| Negligible | Reroot       | [Reroot edge-stats maps use BTreeMap where Vec indexing fits](N-reroot-btreemap-edge-stats-perf.md)                                                 |
+| Negligible | Graph        | [iter_children_arc scans full node list per visited node](N-graph-traverse-quadratic-iter-children-arc.md)                                          |
+| Negligible | Reroot       | [resolve_tip_keys error and ambiguity paths untested](N-reroot-tip-resolution-untested-errors.md)                                                   |
 
 ## Cross-references
 

@@ -74,5 +74,5 @@ When no reroot flags are given, steps 5-9 are skipped and behavior is identical 
 
 - [kb/proposals/reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md) -- prerequisite
 - [kb/proposals/optimize-pipeline-timetree-parity.md](optimize-pipeline-timetree-parity.md) -- parent proposal
-- [kb/tickets/optimize-wire-reroot-with-two-phase-bl-optimization.md](../tickets/optimize-wire-reroot-with-two-phase-bl-optimization.md) -- implementation ticket
+- Status: implemented in `packages/treetime/src/commands/optimize/` and `packages/treetime/src/optimize/pipeline.rs`
 - Sibling pattern: `commands/timetree/args.rs`, `commands/clock/args.rs` (both have `RerootArgs`)

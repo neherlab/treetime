@@ -326,7 +326,6 @@ The refactoring must not change results for existing clock and timetree commands
 
 - [kb/proposals/optimize-pipeline-timetree-parity.md](optimize-pipeline-timetree-parity.md) -- parent proposal
 - [kb/proposals/optimize-reroot-support.md](optimize-reroot-support.md) -- optimize-specific wiring using DivStats
-- [kb/tickets/reroot-create-module-with-root-stats-trait.md](../tickets/reroot-create-module-with-root-stats-trait.md) -- create generic module and trait
-- [kb/tickets/reroot-implement-div-stats-scoring.md](../tickets/reroot-implement-div-stats-scoring.md) -- DivStats implementation
+- `packages/treetime/src/reroot/` -- implemented generic module (`RootStats` trait, `EdgeCostFn<S>`, `DivStats` scoring)
 - [kb/tickets/reroot-migrate-clock-to-generic-search.md](../tickets/reroot-migrate-clock-to-generic-search.md) -- migrate clock callers, delete old module
 - [kb/features/optimize.md](../features/optimize.md) -- optimize feature inventory

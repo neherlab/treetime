@@ -24,9 +24,8 @@ Extract the root search algorithm from `clock/find_best_root/` into a new `reroo
 
 - Proposal: [reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md)
 - Issues: [kb/issues/M-clock-mindev-wrong-objective.md](../issues/M-clock-mindev-wrong-objective.md) (fix during clock migration)
-- Tickets:
-  - [reroot-create-module-with-root-stats-trait.md](../tickets/reroot-create-module-with-root-stats-trait.md) -- `RootStats` trait, `EdgeCostFn<S>`, generic search, move method files
-  - [reroot-implement-div-stats-scoring.md](../tickets/reroot-implement-div-stats-scoring.md) -- `DivStats` divergence-only scoring + traversal
+- Status: implemented. The generic `reroot/` module (`RootStats` trait, `EdgeCostFn<S>`, generic search) and `DivStats` scoring live in `packages/treetime/src/reroot/`.
+- Remaining ticket:
   - [reroot-migrate-clock-to-generic-search.md](../tickets/reroot-migrate-clock-to-generic-search.md) -- `ClockStats` wrapping `ClockSet`, update callers, fix MinDev objective, delete `clock/find_best_root/`
 
 ### 2. Optimize reroot support
@@ -34,8 +33,7 @@ Extract the root search algorithm from `clock/find_best_root/` into a new `reroo
 Wire `--reroot`, `--reroot-tips`, and `--keep-root` into optimize. Two-phase BL optimization pattern (optimize -> reroot -> re-optimize). MinDev and tip-based methods only (date-dependent methods rejected at CLI).
 
 - Proposal: [optimize-reroot-support.md](optimize-reroot-support.md)
-- Tickets:
-  - [optimize-wire-reroot-with-two-phase-bl-optimization.md](../tickets/optimize-wire-reroot-with-two-phase-bl-optimization.md) -- CLI args, pipeline, method validation
+- Status: implemented. `--reroot`, `--reroot-tips`, and `--keep-root` are wired into optimize with the two-phase branch-length optimization pattern.
 
 ### 3. Short branch pruning
 
