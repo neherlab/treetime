@@ -424,6 +424,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::gap_fill::GapFillArgs;
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
+    use treetime::commands::shared::reroot::RerootArgs;
     Self {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
@@ -447,6 +448,8 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       branch_length_initial_guess: s.branch_length_initial_guess,
       opt_method: s.opt_method,
       no_indels: s.no_indels,
+      reroot: RerootArgs::default(),
+      keep_root: false,
       divergence_units: DivergenceUnits::default(),
       gap_fill_args: GapFillArgs {
         gap_fill: s.gap_fill,

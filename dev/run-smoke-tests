@@ -145,6 +145,7 @@ OPTIMIZE_BATCH_RUNS = [
   ("flu/h3n2/20",                 "flu/h3n2/20/newton",       "--opt-method=newton"),
   ("flu/h3n2/20",                 "flu/h3n2/20/newton-sqrt",  "--opt-method=newton-sqrt"),
   ("flu/h3n2/20",                 "flu/h3n2/20/newton-log",   "--opt-method=newton-log"),
+  ("flu/h3n2/20",                 "flu/h3n2/20/reroot-min-dev", "--reroot=min-dev"),
   ("flu/h3n2/200",                "flu/h3n2/200",             ""),
   # ("flu/h3n2/500",                "flu/h3n2/500",             ""),
   ("lassa/L/20",                  "lassa/L/20",               ""),

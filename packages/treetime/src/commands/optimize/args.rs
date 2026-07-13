@@ -1,11 +1,15 @@
+use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::reroot::RerootArgs;
+use crate::make_error;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -138,5 +142,45 @@ pub struct TreetimeOptimizeArgs {
   pub no_indels: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  pub reroot: RerootArgs,
+
+  /// Keep the input tree root instead of rerooting.
+  ///
+  /// Optimize keeps the input root by default; this flag is the explicit form and
+  /// is mutually exclusive with the reroot options.
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
+  pub keep_root: bool,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
   pub gap_fill_args: GapFillArgs,
+}
+
+impl TreetimeOptimizeArgs {
+  /// Resolve the requested reroot policy.
+  ///
+  /// Returns `None` when the input root is kept (the default, or `--keep-root`).
+  /// Returns `Some(spec)` when `--reroot` or `--reroot-tips` is given. Errors on
+  /// date-dependent methods, which the optimize command cannot run because it has
+  /// no sampling dates.
+  pub fn reroot_spec(&self) -> Result<Option<RerootSpec>, Report> {
+    if self.keep_root {
+      return Ok(None);
+    }
+
+    let requested = self.reroot.reroot.is_some() || !self.reroot.reroot_tips.is_empty();
+    if !requested {
+      return Ok(None);
+    }
+
+    let spec = self.reroot.spec();
+    if let RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::Oldest | RerootMethod::ClockFilter) = spec {
+      return make_error!(
+        "optimize supports only date-free rerooting: --reroot=min-dev or --reroot-tips. \
+         The least-squares, oldest, and clock-filter methods require sampling dates; \
+         use the timetree command for date-based rerooting."
+      );
+    }
+
+    Ok(Some(spec))
+  }
 }

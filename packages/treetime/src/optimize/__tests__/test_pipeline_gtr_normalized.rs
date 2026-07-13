@@ -43,6 +43,7 @@ mod tests {
       opt_method: BranchOptMethod::default(),
       initial_guess: InitialGuessMode::default(),
       no_indels: false,
+      reroot_spec: None,
     };
 
     let input = OptimizeInput {
