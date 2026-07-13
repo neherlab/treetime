@@ -12,6 +12,16 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 - [x] GTR parameters written to JSON
 - [x] Augur-compatible node data JSON (`optimize.augur-node-data.json`, `--output-augur-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
 
+## Rerooting (v1-only, date-free)
+
+The optimize command has no sampling dates, so only date-free rooting policies are available. Rerooting is opt-in; the input root is kept by default.
+
+- [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances (`DivStats`). Equivalent to v0 `min_dev` rooting (least-squares regression with a fixed zero slope), implemented over a generic, date-free root search.
+- [x] `--reroot-tips=A,B,...`: root on the branch leading to the MRCA of the named tips (midpoint), no scoring.
+- [x] `--keep-root`: explicit form of the default (keep the input root); mutually exclusive with the reroot options.
+- [x] Date-dependent methods (`least-squares`, `oldest`, `clock-filter`) rejected at argument validation
+- [x] Two-phase pipeline: damped pre-reroot branch-length pass, reroot, partition reconciliation, then re-optimization in the main loop (mirrors the timetree pipeline)
+
 ## Per-Edge Likelihood (v0 parity via different method)
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers six methods via `--opt-method`: Newton and Brent in three parameterizations ($t$, $\sqrt{t}$, $\ln(t)$). Default is `brent-sqrt` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
