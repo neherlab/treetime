@@ -11,6 +11,7 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
@@ -277,36 +278,6 @@ where
   D: Send + Sync,
 {
   graph.find_node(|node| node.name().is_some_and(|node_name| node_name.as_ref() == name))
-}
-
-fn common_ancestor<N, E, D>(graph: &Graph<N, E, D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Send + Sync,
-{
-  let paths = node_keys
-    .iter()
-    .map(|key| {
-      graph
-        .path_from_root_to_node(*key)
-        .map(|path| path.into_iter().map(|node| node.read_arc().key()).collect_vec())
-    })
-    .try_collect::<_, Vec<_>, _>()?;
-
-  let first_path = paths
-    .first()
-    .ok_or_else(|| eyre::eyre!("Cannot find MRCA of an empty node set"))?;
-  let mut ancestor = first_path[0];
-  for (index, candidate) in first_path.iter().copied().enumerate() {
-    if paths.iter().all(|path| path.get(index).copied() == Some(candidate)) {
-      ancestor = candidate;
-    } else {
-      break;
-    }
-  }
-
-  Ok(ancestor)
 }
 
 /// Modify graph topology to make the newly identified root the actual root,
