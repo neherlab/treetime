@@ -1,0 +1,402 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options]
+#
+# Benchmark graph-pass CLI performance before and after a revision across
+# ancestral, mugration, clock, optimize, and timetree.
+#
+# Options:
+#   --before-ref REF       Baseline git revision (default: d5c89c78)
+#   --after-ref REF        Changed git revision (default: HEAD)
+#   --before-bin PATH      Reuse a baseline binary instead of building REF
+#   --after-bin PATH       Reuse a changed binary instead of building REF
+#   --data PATH            Dataset directory (default: data/mpox/clade-ii/2000)
+#   --jobs LIST            Comma-separated Rayon thread counts (default: 1,2,4,8)
+#   --runs N               Hyperfine measured runs (default: 3)
+#   --warmup N             Hyperfine warmup runs (default: 1)
+#   --output PATH          Output below the project root (default: tmp/graph-pass-cli-benchmark)
+#   --skip-output-check    Skip output equivalence runs
+#   -h, --help             Show this help
+#
+# Outputs:
+#   summary.json           Metadata, timing/RSS rows, and output comparisons
+#   summary.tsv            Flat timing and peak-RSS table
+#   output-comparison.tsv  Before/after and thread-count output comparison
+#   raw/                   Hyperfine and /usr/bin/time JSON
+#
+set -euo pipefail
+trap "exit" INT
+
+THIS_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+PROJECT_DIR="$(dirname "${THIS_DIR}")"
+
+BEFORE_REF="d5c89c78"
+AFTER_REF="HEAD"
+BEFORE_BIN=""
+AFTER_BIN=""
+DATA_DIR="data/mpox/clade-ii/2000"
+JOBS_CSV="1,2,4,8"
+RUNS=3
+WARMUP=1
+OUTPUT_DIR="tmp/graph-pass-cli-benchmark"
+CHECK_OUTPUT=true
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  # shfmt:off
+  while (( $# > 0 )); do
+    case "${1}" in
+      -h|--help) show_help; exit 0 ;;
+      --before-ref) BEFORE_REF="${2}"; shift 2 ;;
+      --after-ref) AFTER_REF="${2}"; shift 2 ;;
+      --before-bin) BEFORE_BIN="${2}"; shift 2 ;;
+      --after-bin) AFTER_BIN="${2}"; shift 2 ;;
+      --data) DATA_DIR="${2}"; shift 2 ;;
+      --jobs) JOBS_CSV="${2}"; shift 2 ;;
+      --runs) RUNS="${2}"; shift 2 ;;
+      --warmup) WARMUP="${2}"; shift 2 ;;
+      --output) OUTPUT_DIR="${2}"; shift 2 ;;
+      --skip-output-check) CHECK_OUTPUT=false; shift ;;
+      --) shift; break ;;
+      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
+      *) printf "Unexpected argument: %s\n" "${1}" >&2; exit 1 ;;
+    esac
+  done
+  # shfmt:on
+
+  validate_args
+  pushd "${PROJECT_DIR}" >/dev/null
+  prepare_dirs
+  prepare_metadata
+  BEFORE_BIN="$(prepare_binary "before" "${BEFORE_REF}" "${BEFORE_BIN}")"
+  AFTER_BIN="$(prepare_binary "after" "${AFTER_REF}" "${AFTER_BIN}")"
+  run_benchmarks
+  if "${CHECK_OUTPUT}"; then
+    compare_outputs
+  fi
+  write_summaries
+  popd >/dev/null
+
+  printf "Benchmark results: %s/%s\n" "${PROJECT_DIR}" "${OUTPUT_DIR}"
+}
+
+validate_args() {
+  if [[ "${OUTPUT_DIR}" == /* || "${OUTPUT_DIR}" == *".."* ]]; then
+    printf "--output must be a path below the project root: %s\n" "${OUTPUT_DIR}" >&2
+    exit 1
+  fi
+  if [[ "${DATA_DIR}" == /* || "${DATA_DIR}" == *".."* ]]; then
+    printf "--data must be a path below the project root: %s\n" "${DATA_DIR}" >&2
+    exit 1
+  fi
+  if ! [[ "${RUNS}" =~ ^[1-9][0-9]*$ && "${WARMUP}" =~ ^[0-9]+$ ]]; then
+    printf "--runs must be positive and --warmup non-negative\n" >&2
+    exit 1
+  fi
+
+  IFS=',' read -r -a JOBS <<<"${JOBS_CSV}"
+  if ((${#JOBS[@]} == 0)); then
+    printf "--jobs must contain at least one thread count\n" >&2
+    exit 1
+  fi
+  for jobs in "${JOBS[@]}"; do
+    if ! [[ "${jobs}" =~ ^[1-9][0-9]*$ ]]; then
+      printf "Invalid thread count in --jobs: %s\n" "${jobs}" >&2
+      exit 1
+    fi
+  done
+}
+
+prepare_dirs() {
+  rm -rf -- "${OUTPUT_DIR}"
+  mkdir -p \
+    "${OUTPUT_DIR}/bin" \
+    "${OUTPUT_DIR}/output" \
+    "${OUTPUT_DIR}/raw" \
+    "${OUTPUT_DIR}/sources"
+  : >"${OUTPUT_DIR}/results.ndjson"
+  : >"${OUTPUT_DIR}/comparisons.ndjson"
+}
+
+prepare_metadata() {
+  local metadata="${DATA_DIR}/metadata.tsv"
+  local tree="${DATA_DIR}/tree.nwk"
+  local filtered="${OUTPUT_DIR}/metadata-tree-tips.tsv"
+
+  ./dev/docker/python python - "${metadata}" "${tree}" "${filtered}" <<'PY'
+import csv
+import sys
+from pathlib import Path
+
+from Bio import Phylo
+
+source = Path(sys.argv[1])
+tree = Path(sys.argv[2])
+target = Path(sys.argv[3])
+tips = {tip.name for tip in Phylo.read(tree, "newick").get_terminals()}
+
+with source.open(newline="") as input_file, target.open("w", newline="") as output_file:
+    reader = csv.DictReader(input_file, delimiter="\t")
+    if reader.fieldnames is None or "accession" not in reader.fieldnames:
+        raise ValueError("metadata must contain an accession column")
+    writer = csv.DictWriter(output_file, fieldnames=reader.fieldnames, delimiter="\t")
+    writer.writeheader()
+    writer.writerows(row for row in reader if row["accession"] in tips)
+PY
+}
+
+prepare_binary() {
+  local label="${1}"
+  local ref="${2}"
+  local supplied="${3}"
+  local destination="${OUTPUT_DIR}/bin/treetime-${label}"
+
+  if [[ -n "${supplied}" ]]; then
+    cp -- "${supplied}" "${destination}"
+    printf "%s" "${destination}"
+    return
+  fi
+
+  local source_dir="${OUTPUT_DIR}/sources/${label}"
+  mkdir -p "${source_dir}"
+  git archive "${ref}" | tar -x -C "${source_dir}"
+  (
+    pushd "${source_dir}" >/dev/null
+    ./dev/docker/run ./dev/dev br treetime
+    popd >/dev/null
+  ) >&2
+  cp -- "${source_dir}/.out/treetime" "${destination}"
+  printf "%s" "${destination}"
+}
+
+workload_args() {
+  local workload="${1}"
+  local binary="${2}"
+  local output="${3}"
+  local jobs="${4}"
+  local metadata="${OUTPUT_DIR}/metadata-tree-tips.tsv"
+
+  case "${workload}" in
+  ancestral)
+    WORKLOAD_ARGS=(
+      "${binary}" ancestral --method-anc=marginal --dense=false
+      --tree="${DATA_DIR}/tree.nwk" --aln="${DATA_DIR}/aln.fasta.xz"
+      --output-all="${output}" -j "${jobs}" --silent
+    )
+    ;;
+  mugration)
+    WORKLOAD_ARGS=(
+      "${binary}" mugration --tree="${DATA_DIR}/tree.nwk" --states="${metadata}"
+      --attribute=country --name-column=accession --pc=1.0
+      --output-all="${output}" -j "${jobs}" --silent
+    )
+    ;;
+  clock)
+    WORKLOAD_ARGS=(
+      "${binary}" clock --tree="${DATA_DIR}/tree.nwk" --dates="${metadata}"
+      --name-column=accession --output-all="${output}" -j "${jobs}" --silent
+    )
+    ;;
+  optimize)
+    WORKLOAD_ARGS=(
+      "${binary}" optimize --dense=false --tree="${DATA_DIR}/tree.nwk"
+      --aln="${DATA_DIR}/aln.fasta.xz" --output-all="${output}"
+      -j "${jobs}" --silent
+    )
+    ;;
+  timetree)
+    WORKLOAD_ARGS=(
+      "${binary}" timetree --tree="${DATA_DIR}/tree.nwk" --dates="${metadata}"
+      --name-column=accession --aln="${DATA_DIR}/aln.fasta.xz"
+      --output-all="${output}"
+      --output-selection=nwk,nexus,auspice,augur-node-data,clock-model,gtr
+      -j "${jobs}" --silent
+    )
+    ;;
+  *)
+    printf "Unknown workload: %s\n" "${workload}" >&2
+    exit 1
+    ;;
+  esac
+}
+
+command_string() {
+  local command=""
+  printf -v command '%q ' "$@"
+  printf "%s" "${command}"
+}
+
+run_benchmarks() {
+  local workloads=(ancestral mugration clock optimize timetree)
+  local workload jobs before_command after_command hyperfine_json version binary rss_json result_index
+
+  for jobs in "${JOBS[@]}"; do
+    for workload in "${workloads[@]}"; do
+      workload_args "${workload}" "${BEFORE_BIN}" "${OUTPUT_DIR}/output/run-before" "${jobs}"
+      before_command="$(command_string "${WORKLOAD_ARGS[@]}")"
+      workload_args "${workload}" "${AFTER_BIN}" "${OUTPUT_DIR}/output/run-after" "${jobs}"
+      after_command="$(command_string "${WORKLOAD_ARGS[@]}")"
+      hyperfine_json="${OUTPUT_DIR}/raw/${workload}-j${jobs}-hyperfine.json"
+
+      ./dev/docker/run hyperfine \
+        --warmup "${WARMUP}" \
+        --runs "${RUNS}" \
+        --prepare "rm -rf ${OUTPUT_DIR}/output/run-before ${OUTPUT_DIR}/output/run-after" \
+        --export-json="${hyperfine_json}" \
+        "${before_command}" \
+        "${after_command}"
+
+      for version in before after; do
+        if [[ "${version}" == "before" ]]; then
+          binary="${BEFORE_BIN}"
+          result_index=0
+        else
+          binary="${AFTER_BIN}"
+          result_index=1
+        fi
+        rss_json="${OUTPUT_DIR}/raw/${workload}-j${jobs}-${version}-rss.json"
+        rm -rf -- "${OUTPUT_DIR}/output/rss-${version}"
+        workload_args "${workload}" "${binary}" "${OUTPUT_DIR}/output/rss-${version}" "${jobs}"
+        ./dev/docker/run /usr/bin/time \
+          -f '{"elapsed_seconds":%e,"peak_rss_kb":%M}' \
+          -o "${rss_json}" \
+          "${WORKLOAD_ARGS[@]}"
+
+        jq \
+          --arg workload "${workload}" \
+          --arg version "${version}" \
+          --argjson jobs "${jobs}" \
+          --argjson result_index "${result_index}" \
+          --slurpfile rss "${rss_json}" \
+          '.results[$result_index] as $timing | {
+            workload: $workload,
+            jobs: $jobs,
+            version: $version,
+            mean_seconds: $timing.mean,
+            stddev_seconds: $timing.stddev,
+            min_seconds: $timing.min,
+            max_seconds: $timing.max,
+            user_seconds: $timing.user,
+            system_seconds: $timing.system,
+            peak_rss_kb: $rss[0].peak_rss_kb
+          }' "${hyperfine_json}" >>"${OUTPUT_DIR}/results.ndjson"
+      done
+    done
+  done
+}
+
+compare_outputs() {
+  local workloads=(ancestral mugration clock optimize timetree)
+  local min_jobs="${JOBS[0]}"
+  local max_jobs="${JOBS[${#JOBS[@]} - 1]}"
+  local workload jobs version binary output
+
+  for workload in "${workloads[@]}"; do
+    for jobs in "${min_jobs}" "${max_jobs}"; do
+      for version in before after; do
+        if [[ "${version}" == "before" ]]; then
+          binary="${BEFORE_BIN}"
+        else
+          binary="${AFTER_BIN}"
+        fi
+        output="${OUTPUT_DIR}/output/check-${workload}-${version}-j${jobs}"
+        rm -rf -- "${output}"
+        workload_args "${workload}" "${binary}" "${output}" "${jobs}"
+        ./dev/docker/run "${WORKLOAD_ARGS[@]}"
+      done
+    done
+
+    compare_dirs "${workload}" "before-after-j${min_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-before-j${min_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-after-j${min_jobs}"
+    compare_dirs "${workload}" "before-after-j${max_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-before-j${max_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-after-j${max_jobs}"
+    compare_dirs "${workload}" "before-j${min_jobs}-j${max_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-before-j${min_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-before-j${max_jobs}"
+    compare_dirs "${workload}" "after-j${min_jobs}-j${max_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-after-j${min_jobs}" \
+      "${OUTPUT_DIR}/output/check-${workload}-after-j${max_jobs}"
+  done
+}
+
+compare_dirs() {
+  local workload="${1}"
+  local comparison="${2}"
+  local left="${3}"
+  local right="${4}"
+  local diff_file="${OUTPUT_DIR}/raw/${workload}-${comparison}.diff"
+  local status
+
+  if diff -qr -- "${left}" "${right}" >"${diff_file}"; then
+    status="identical"
+  else
+    local code=$?
+    if ((code != 1)); then
+      printf "Output comparison failed: %s\n" "${comparison}" >&2
+      exit "${code}"
+    fi
+    status="different"
+  fi
+
+  jq -n \
+    --arg workload "${workload}" \
+    --arg comparison "${comparison}" \
+    --arg status "${status}" \
+    --arg diff_file "${diff_file}" \
+    '{workload: $workload, comparison: $comparison, status: $status, diff_file: $diff_file}' \
+    >>"${OUTPUT_DIR}/comparisons.ndjson"
+}
+
+write_summaries() {
+  jq -s '.' "${OUTPUT_DIR}/results.ndjson" >"${OUTPUT_DIR}/results.json"
+  jq -s '.' "${OUTPUT_DIR}/comparisons.ndjson" >"${OUTPUT_DIR}/comparisons.json"
+
+  jq -r '
+    ["workload", "jobs", "version", "mean_seconds", "stddev_seconds", "min_seconds", "max_seconds", "user_seconds", "system_seconds", "peak_rss_kb"],
+    (.[] | [.workload, .jobs, .version, .mean_seconds, .stddev_seconds, .min_seconds, .max_seconds, .user_seconds, .system_seconds, .peak_rss_kb])
+    | @tsv
+  ' "${OUTPUT_DIR}/results.json" >"${OUTPUT_DIR}/summary.tsv"
+
+  jq -r '
+    ["workload", "comparison", "status", "diff_file"],
+    (.[] | [.workload, .comparison, .status, .diff_file])
+    | @tsv
+  ' "${OUTPUT_DIR}/comparisons.json" >"${OUTPUT_DIR}/output-comparison.tsv"
+
+  jq -n \
+    --arg generated_at "$(date --iso-8601=seconds)" \
+    --arg before_ref "$(git rev-parse "${BEFORE_REF}")" \
+    --arg after_ref "$(git rev-parse "${AFTER_REF}")" \
+    --arg before_sha256 "$(sha256sum "${BEFORE_BIN}" | cut -d' ' -f1)" \
+    --arg after_sha256 "$(sha256sum "${AFTER_BIN}" | cut -d' ' -f1)" \
+    --arg dataset "${DATA_DIR}" \
+    --arg jobs "${JOBS_CSV}" \
+    --argjson runs "${RUNS}" \
+    --argjson warmup "${WARMUP}" \
+    --slurpfile results "${OUTPUT_DIR}/results.json" \
+    --slurpfile comparisons "${OUTPUT_DIR}/comparisons.json" \
+    '{
+      metadata: {
+        generated_at: $generated_at,
+        before_ref: $before_ref,
+        after_ref: $after_ref,
+        before_sha256: $before_sha256,
+        after_sha256: $after_sha256,
+        dataset: $dataset,
+        jobs: ($jobs | split(",") | map(tonumber)),
+        runs: $runs,
+        warmup: $warmup
+      },
+      results: $results[0],
+      output_comparisons: $comparisons[0]
+    }' >"${OUTPUT_DIR}/summary.json"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
