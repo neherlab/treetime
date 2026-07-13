@@ -4,6 +4,7 @@ use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use rayon::prelude::*;
 use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -25,7 +26,7 @@ pub struct ClockFilterResult {
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace<N, E, D>(
   graph: &Graph<N, E, D>,
-  clock_line: &impl ClockLine,
+  clock_line: &(impl ClockLine + Sync),
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
@@ -54,7 +55,7 @@ where
   // collect clock_deviation of leaf nodes into a vector
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()
-    .iter()
+    .par_iter()
     .filter_map(|leaf| {
       let node = leaf.read_arc();
       let payload_arc = node.payload();
@@ -63,6 +64,8 @@ where
       let time = payload.likely_time();
       time.map(|time| clock_line.clock_deviation(time, div))
     })
+    .collect::<Vec<_>>()
+    .into_iter()
     .map(OrderedFloat)
     .sorted()
     .map(OrderedFloat::into_inner)
@@ -77,24 +80,27 @@ where
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
-  let mut new_outliers: i32 = 0;
   // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
-  graph.get_leaves().iter().for_each(|leaf| {
-    let node = leaf.read_arc();
-    let payload_arc = node.payload();
-    let (div, time, was_outlier) = {
-      let payload = payload_arc.read();
-      (payload.div(), payload.likely_time(), payload.is_outlier())
-    };
-    if let Some(time) = time {
-      let clock_deviation = clock_line.clock_deviation(time, div);
-      let is_outlier = clock_deviation.abs() > iqd * threshold;
-      if was_outlier != is_outlier {
-        new_outliers += 1;
+  let new_outliers = graph
+    .get_leaves()
+    .par_iter()
+    .map(|leaf| {
+      let node = leaf.read_arc();
+      let payload_arc = node.payload();
+      let (div, time, was_outlier) = {
+        let payload = payload_arc.read();
+        (payload.div(), payload.likely_time(), payload.is_outlier())
+      };
+      if let Some(time) = time {
+        let clock_deviation = clock_line.clock_deviation(time, div);
+        let is_outlier = clock_deviation.abs() > iqd * threshold;
+        payload_arc.write().set_is_outlier(is_outlier);
+        i32::from(was_outlier != is_outlier)
+      } else {
+        0
       }
-      payload_arc.write().set_is_outlier(is_outlier);
-    }
-  });
+    })
+    .sum();
 
   log::info!("Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}");
   log::debug!(

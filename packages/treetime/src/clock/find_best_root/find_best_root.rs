@@ -6,6 +6,7 @@ use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use log::{debug, info};
+use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -35,46 +36,51 @@ where
 
   // Initialize with the current root, only accepting it if it has a positive clock rate
   // (or if force_positive is false)
-  let root = root.read_arc().payload().read_arc();
-  let root_acceptable = !force_positive || has_positive_clock_rate(root.clock_set());
+  let root_clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+  let root_acceptable = !force_positive || has_positive_clock_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
-    objective.score(root.clock_set())
+    objective.score(&root_clock_set)
   } else {
     f64::INFINITY
   };
   debug!(
     "Initial root chi-squared: {:.6e} (acceptable: {root_acceptable})",
-    objective.score(root.clock_set())
+    objective.score(&root_clock_set)
   );
 
   let mut best_res = FindRootResult {
     edge: None,
     split: 0.0,
     chisq: best_chisq,
-    clock_set: root.clock_set().clone(),
+    clock_set: root_clock_set,
   };
 
   // Find best node (with positive clock rate when force_positive is true)
   let mut node_count = 0;
   let mut improvements = 0;
   let mut rejected_negative_rate = 0;
-  for n in graph.get_nodes() {
-    let node_guard = n.read_arc();
-    let payload_guard = node_guard.payload().read_arc();
-    let clock_set = payload_guard.clock_set();
-    if force_positive && !has_positive_clock_rate(clock_set) {
+  let candidates = graph
+    .get_nodes()
+    .par_iter()
+    .map(|node| {
+      let node_guard = node.read_arc();
+      let payload_guard = node_guard.payload().read_arc();
+      let clock_set = payload_guard.clock_set();
+      let acceptable = !force_positive || has_positive_clock_rate(clock_set);
+      (Arc::clone(node), acceptable.then(|| objective.score(clock_set)))
+    })
+    .collect::<Vec<_>>();
+  for (n, score) in candidates {
+    let Some(tmp_chisq) = score else {
       rejected_negative_rate += 1;
       node_count += 1;
       continue;
-    }
-    let tmp_chisq = objective.score(clock_set);
-    drop(payload_guard);
-    drop(node_guard);
+    };
     if tmp_chisq < best_chisq {
       improvements += 1;
       debug!("Found better node {improvements}: chi-squared improved from {best_chisq:.6e} to {tmp_chisq:.6e}");
       best_chisq = tmp_chisq;
-      best_root_node = Arc::clone(&n);
+      best_root_node = n;
     }
     node_count += 1;
   }

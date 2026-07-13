@@ -11,6 +11,7 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
@@ -310,7 +311,7 @@ where
 /// Calculate the total log likelihood of the graph given the partitions
 pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
 where
-  P: HasLogLh + ?Sized,
+  P: HasLogLh + Send + Sync + ?Sized,
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send + Default,
@@ -319,8 +320,10 @@ where
   let root_key = root.read_arc().key();
 
   let log_lh = partitions
-    .iter()
+    .par_iter()
     .map(|partition| partition.read_arc().get_log_lh(root_key))
+    .collect::<Vec<_>>()
+    .into_iter()
     .sum();
 
   Ok(log_lh)
