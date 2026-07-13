@@ -47,15 +47,18 @@ declare -A ALIASES=(
   ["ju"]="js-upgrade"
 )
 
-_CI_FLAG=""
+_CI_ARGS=()
 if [ "$("$(project_root)/dev/is-ci")" == "1" ]; then
-  _CI_FLAG="--locked"
+  _CI_ARGS+=("--locked")
 fi
 
 _BUILD_DIR="$(get_build_dir)"
 _TEST_DIR="$(get_test_dir)"
 _BUILD_RUSTFLAGS="-C linker-features=-lld ${RUSTFLAGS:-}"
 _TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+_BUILD_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
+_TEST_ENV=(env "CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
+_BENCH_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 
 function is_known_command() {
   local token="${1:-}"
@@ -121,14 +124,12 @@ function run_one() {
   # shfmt:off
   case "${cmd}" in
   "build")
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q build ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q build "${_CI_ARGS[@]}" "$@"
     ;;
   "build-release")
     local bin="${1:-}"
     shift || true
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q build --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" ${bin:+--bin="${bin}"} "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q build --release "${_CI_ARGS[@]}" ${bin:+--bin="${bin}"} "$@"
     if [ -n "${bin}" ]; then
       copy_bin_to_out "${bin}"
     fi
@@ -136,8 +137,7 @@ function run_one() {
   "build-profiling")
     local bin="${1:-}"
     shift || true
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q build --profile=profiling ${_CI_FLAG} --target-dir="${_BUILD_DIR}" ${bin:+--bin="${bin}"} "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q build --profile=profiling "${_CI_ARGS[@]}" ${bin:+--bin="${bin}"} "$@"
     ;;
   "run")
     local bin="${1:-}"
@@ -146,8 +146,7 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q run ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --bin "${bin}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q run "${_CI_ARGS[@]}" --bin "${bin}" "$@"
     ;;
   "run-release")
     local bin="${1:-}"
@@ -156,8 +155,7 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q run --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --bin "${bin}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q run --release "${_CI_ARGS[@]}" --bin "${bin}" "$@"
     ;;
   "example")
     local example="${1:-}"
@@ -166,8 +164,7 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q run ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --example "${example}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q run "${_CI_ARGS[@]}" --example "${example}" "$@"
     ;;
   "example-release")
     local example="${1:-}"
@@ -176,26 +173,21 @@ function run_one() {
       exit 1
     fi
     shift
-    declare -x RUSTFLAGS="${_BUILD_RUSTFLAGS}"
-    nicely cargo -q run --release ${_CI_FLAG} --target-dir="${_BUILD_DIR}" --example "${example}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q run --release "${_CI_ARGS[@]}" --example "${example}" "$@"
     ;;
   "test-all")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
-    nicely cargo -q nextest run ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
+    nicely "${_TEST_ENV[@]}" cargo -q nextest run "${_CI_ARGS[@]}" --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
   "test-unit")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
-    nicely cargo -q nextest run --lib ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
+    nicely "${_TEST_ENV[@]}" cargo -q nextest run --lib "${_CI_ARGS[@]}" --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
   "test-integration")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
-    nicely cargo -q nextest run --test='*' ${_CI_FLAG} --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always --target-dir="${_TEST_DIR}" "$@" 2>&1 |
+    nicely "${_TEST_ENV[@]}" cargo -q nextest run --test='*' "${_CI_ARGS[@]}" --success-output=immediate --workspace --cargo-quiet --no-fail-fast --hide-progress-bar --color=always "$@" 2>&1 |
       "$(project_root)/dev/prettytest"
     ;;
   "test-list")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
     local pretty_args=()
     local cargo_args=()
     while (( $# > 0 )); do
@@ -208,39 +200,35 @@ function run_one() {
       esac
     done
     cargo_args+=("$@")
-    cargo -q nextest list ${_CI_FLAG} --workspace --cargo-quiet --target-dir="${_TEST_DIR}" "${cargo_args[@]}" |
+    "${_TEST_ENV[@]}" cargo -q nextest list "${_CI_ARGS[@]}" --workspace --cargo-quiet "${cargo_args[@]}" |
       "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
     ;;
   "coverage")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
-    declare -x CARGO_TARGET_DIR="${_TEST_DIR}"
     local cov_dir
     cov_dir="$(project_root)/tmp/coverage"
     mkdir -p "${cov_dir}"
-    nicely cargo llvm-cov nextest --html --output-dir "${cov_dir}" --ignore-run-fail ${_CI_FLAG} --workspace --hide-progress-bar --color=always "$@"
+    nicely "${_TEST_ENV[@]}" cargo llvm-cov nextest --html --output-dir "${cov_dir}" --ignore-run-fail "${_CI_ARGS[@]}" --workspace --hide-progress-bar --color=always "$@"
     printf "Coverage report: %s/index.html\n" "${cov_dir}"
     ;;
   "coverage-lcov")
-    declare -x RUSTFLAGS="${_TEST_RUSTFLAGS}"
-    declare -x CARGO_TARGET_DIR="${_TEST_DIR}"
     local cov_dir
     cov_dir="$(project_root)/tmp/coverage"
     mkdir -p "${cov_dir}"
-    nicely cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail ${_CI_FLAG} --workspace --hide-progress-bar --color=always "$@"
+    nicely "${_TEST_ENV[@]}" cargo llvm-cov nextest --lcov --output-path "${cov_dir}/lcov.info" --ignore-run-fail "${_CI_ARGS[@]}" --workspace --hide-progress-bar --color=always "$@"
     printf "LCOV: %s/lcov.info\n" "${cov_dir}"
     ;;
   "lint")
-    nicely cargo -q clippy -q --all-targets --all ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q clippy -q --all-targets --all "${_CI_ARGS[@]}" "$@"
     ;;
   "lint-fix")
     local vcs_flag="--allow-staged"
     if [[ -f "$(project_root)/.git" ]]; then
       vcs_flag="--allow-no-vcs"
     fi
-    nicely cargo -q clippy -q --all-targets --all --fix ${vcs_flag} ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q clippy -q --all-targets --all --fix ${vcs_flag} "${_CI_ARGS[@]}" "$@"
     ;;
   "lint-ci")
-    nicely cargo -q clippy -q --all-targets --all ${_CI_FLAG} --target-dir="${_BUILD_DIR}" -- -Dwarnings "$@"
+    nicely "${_BUILD_ENV[@]}" cargo -q clippy -q --all-targets --all "${_CI_ARGS[@]}" -- -Dwarnings "$@"
     ;;
   "lint-deps")
     nicely cargo shear "$@"
@@ -252,19 +240,19 @@ function run_one() {
     nicely cargo -q fmt --check "$@"
     ;;
   "bench-all")
-    nicely cargo -q bench --workspace --benches ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
+    nicely "${_BENCH_ENV[@]}" cargo -q bench --workspace --benches "${_CI_ARGS[@]}" "$@"
     ;;
   "bench-debug")
-    nicely cargo -q bench --workspace --benches --profile=profiling ${_CI_FLAG} --target-dir="${_BUILD_DIR}" "$@"
+    nicely "${_BENCH_ENV[@]}" cargo -q bench --workspace --benches --profile=profiling "${_CI_ARGS[@]}" "$@"
     ;;
   "upgrade-deps")
-    nicely cargo -q upgrade --pinned --incompatible --verbose --recursive ${_CI_FLAG} "$@"
+    nicely cargo -q upgrade --pinned --incompatible --verbose --recursive "${_CI_ARGS[@]}" "$@"
     ;;
   "quality")
     run_one lint-fix "$@" && run_one format && run_one test-all "$@"
     ;;
   "why")
-    nicely cargo -q tree -i -p ${_CI_FLAG} "$@"
+    nicely cargo -q tree -i -p "${_CI_ARGS[@]}" "$@"
     ;;
   "list")
     local filter="${1:-bin,example,test,bench}"
