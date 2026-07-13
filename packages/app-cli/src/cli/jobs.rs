@@ -9,7 +9,14 @@ fn default_jobs() -> usize {
 #[derive(Args, Debug, Clone)]
 pub struct Jobs {
   /// Number of processing jobs. If not specified, all available CPU threads will be used.
-  #[clap(global = true, display_order = 90, long, short = 'j', default_value_t = default_jobs())]
+  #[clap(
+    global = true,
+    display_order = 90,
+    long,
+    short = 'j',
+    default_value_t = default_jobs(),
+    hide_default_value = true
+  )]
   pub jobs: usize,
 }
 

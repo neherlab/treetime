@@ -61,8 +61,6 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 ###### **Options:**
 
 * `-j`, `--jobs <JOBS>` — Number of processing jobs. If not specified, all available CPU threads will be used
-
-  Default value: `20`
 * `--verbosity <VERBOSITY>` — Set verbosity level of console output
 
   Default value: `warn`

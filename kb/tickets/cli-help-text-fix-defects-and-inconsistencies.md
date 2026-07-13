@@ -11,7 +11,6 @@ Fix incorrect, misleading, and inconsistent `--help` output across all commands 
 3. Add a doc comment to `--prune-short` in `clock/args.rs` explaining what it does, or remove it if it should not exist on `clock`
 4. Fix `--keep_root` underscore typo in `clock` command description to `--keep-root`
 5. Replace `treetime/nuc_models.py` and `treetime/aa_models.py` references in `--model-params` with v1 Rust paths or documentation links
-6. Fix `--jobs` default display: show `auto` instead of the build-time CPU count, or suppress the numeric default
 7. Update `ancestral` command description to not hardcode output filenames
 8. Mark `homoplasy` and `arg` commands as unimplemented in their help text (add `[not yet implemented]` to the description)
 

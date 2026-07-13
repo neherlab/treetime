@@ -40,14 +40,6 @@ Description: "See the exact definitions of the parameters in the GTR creation me
 
 Fix: reference the v1 Rust module paths or link to documentation.
 
-### D6: `--jobs` default is build-time environment-specific
-
-All commands.
-
-Displays `[default: 20]` which is `available_parallelism()` evaluated at Docker build time. Description says "all available CPU threads will be used" which contradicts the fixed numeric default. Users on 8-core machines see `20` and either trust a wrong default or are confused.
-
-Fix: display `[default: auto]` or suppress the numeric default.
-
 ### D7: `ancestral` command description hardcodes output filenames
 
 Description: "The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus'". Actual output is controlled by `--output-all` and per-file flags. These specific filenames are not guaranteed. (Partially fixed: old `annotated_tree.nexus` reference updated to `ancestral.nexus` to match S4 stem change.)
