@@ -1,62 +1,137 @@
 #!/usr/bin/env bash
+#
+# Usage: $0 [options] <program> [-- program-args...]
+#
+# Sampling profiler for the treetime binaries. Builds the "profiling" cargo
+# profile (release optimizations + debug symbols) inside the container, then
+# records a profile on the host, where kernel perf access lives.
+#
+# Two backends:
+#   samply (default)  Interactive Firefox Profiler UI. Best for exploration.
+#   perf              Textual hotspots to stdout. Best for scripted or
+#                     agent-driven analysis and for pasting into reports.
+#
+# Options:
+#   --perf             Use perf, print textual self-time + call-graph report
+#   --samply           Use samply, open Firefox Profiler UI (default)
+#   --rate N           Sampling frequency in Hz (default: 1234)
+#   --output PATH      Recording output path (default: tmp/profiling/<program>.<ext>)
+#   --no-build         Skip the container build step, reuse existing binary
+#   -h, --help         Show this help
+#
+# The program is an executable name without a path (e.g. treetime). Everything
+# after -- is passed to the program unchanged.
+#
+# Examples:
+#   $0 --perf treetime -- ancestral --dense=false --tree=data/mpox/clade-ii/2000/tree.nwk \
+#     --aln=data/mpox/clade-ii/2000/aln.fasta.xz --output-all=tmp/anc -j 1 --silent
+#   $0 treetime -- clock --tree=data/flu/h3n2/200/tree.nwk --dates=data/flu/h3n2/200/metadata.tsv
+#
+# Requirements (host):
+#   perf     linux-tools matching the running kernel
+#   samply   cargo install samply  (only for the default backend)
+#
+# Kernel perf access (until reboot):
+#   echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid >/dev/null
+#   echo  0 | sudo tee /proc/sys/kernel/kptr_restrict       >/dev/null
+#
 set -euo pipefail
 trap "exit" INT
 
-# Perform sampling performance profiling and display the results in a web UI.
-#
-# This will do the following:
-#  * build the project using special "profiling" cargo profile (see .cargo/config.toml). This profile configures cargo
-#  for optimized (release) build, but with debug symbols emitted and kept (not stripped).
-#  * run the given program under sampling profiler called samply (https://github.com/mstange/samply),
-#  * upon finishing the recording, samply will open Firefox Profiler (https://profiler.firefox.com) in default browser
-#  with the results. If not, navigate to url printed to the console, then click "Open the profile in the profiler UI".
-#
-# NOTE: Sampling is performed at frequency about 1000 times per second, so for meaningful results you probably want
-# to run your program with a workload which runs for at least a few seconds.
-#
-# NOTE: At first, you might want to run your program in single-threaded mode.
-#
-#
-# Usage:
-#
-#   ./dev/profile <program_name> [arguments]
-#
-# Note: <program> is executable name without path
-#
-#
-# Requirements:
-#  * perf (https://perf.wiki.kernel.org)
-#
-#    On Ubuntu:
-#
-#      /!\ WARNING: If linux-tools-<kernel-version-string> package is not already installed make sure that you are
-#      installing it specifically for your current version of kernel, and make sure to not install some broken kernel
-#      which bricks your system on next reboot!
-#
-#      sudo apt-get install linux-tools-common linux-tools-$(uname -r)
-#
-#  * samply (https://github.com/mstange/samply)
-#
-#      cargo install samply
-#
-#  * [optional] Access to performance events system for unprivileged users. The samply tool might work without these,
-#    but the results might be incomplete.
-#
-#      /!\ WARNING: Learn about security implications of these settings:
-#      https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html
-#
-#    until next reboot:
-#      echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid >/dev/null
-#      echo 0 | sudo tee /proc/sys/kernel/kptr_restrict >/dev/null
-#
-#    you can reset this back by rebooting, or with these commands:
-#
-#      echo 2 | sudo tee /proc/sys/kernel/perf_event_paranoid >/dev/null
-#      echo 1 | sudo tee /proc/sys/kernel/kptr_restrict >/dev/null
+THIS_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+PROJECT_DIR="$(dirname "${THIS_DIR}")"
 
-set -x
+BIN_DIR=".build/docker/profiling"
+SAMPLE_RATE=1234
 
-cargo -q build --profile=profiling --bin="$(basename "$1")"
+build_binary() {
+  local program="${1}"
+  "${THIS_DIR}/docker/run" "${THIS_DIR}/dev" bp "${program}" >&2
+}
 
-# shellcheck disable=SC2068
-samply record --rate=1234 -o tmp/samply.json -- ./target/profiling/"$(basename "$1")" ${@:2}
+profile_perf() {
+  local binary="${1}"
+  local output="${2}"
+  shift 2
+
+  perf record -F "${SAMPLE_RATE}" --call-graph dwarf -o "${output}" -- "${binary}" "$@"
+
+  printf "\n===== Self-time (top 30, userspace) =====\n"
+  perf report -i "${output}" --stdio --no-children -g none 2>/dev/null \
+    | grep -vE '^\s*#' | head -30
+
+  printf "\n===== Call graph (callers, >=1%%) =====\n"
+  perf report -i "${output}" --stdio -g graph,1,caller 2>/dev/null \
+    | grep -vE '^\s*#' | head -60
+
+  printf "\nRecording saved: %s\n" "${output}" >&2
+}
+
+profile_samply() {
+  local binary="${1}"
+  local output="${2}"
+  shift 2
+  samply record --rate="${SAMPLE_RATE}" -o "${output}" -- "${binary}" "$@"
+}
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  local backend="samply"
+  local do_build=true
+  local output=""
+
+  # shfmt:off
+  while (( $# > 0 )); do
+    case "${1}" in
+      -h|--help) show_help; exit 0 ;;
+      --perf) backend="perf"; shift ;;
+      --samply) backend="samply"; shift ;;
+      --rate) SAMPLE_RATE="${2}"; shift 2 ;;
+      --output) output="${2}"; shift 2 ;;
+      --no-build) do_build=false; shift ;;
+      --) shift; break ;;
+      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
+      *) break ;;
+    esac
+  done
+  # shfmt:on
+
+  local program="${1:-}"
+  if [[ -z "${program}" ]]; then
+    printf "Error: program name required\n" >&2
+    show_help
+    exit 1
+  fi
+  shift || true
+  [[ "${1:-}" == "--" ]] && shift
+
+  program="$(basename "${program}")"
+  local binary="${PROJECT_DIR}/${BIN_DIR}/${program}"
+
+  if "${do_build}"; then
+    build_binary "${program}"
+  fi
+  if [[ ! -x "${binary}" ]]; then
+    printf "Error: binary not found or not executable: %s\n" "${binary}" >&2
+    exit 1
+  fi
+
+  if [[ -z "${output}" ]]; then
+    local ext="json"
+    [[ "${backend}" == "perf" ]] && ext="data"
+    output="tmp/profiling/${program}.${ext}"
+  fi
+  mkdir -p "$(dirname "${output}")"
+
+  case "${backend}" in
+    perf) profile_perf "${binary}" "${output}" "$@" ;;
+    samply) profile_samply "${binary}" "${output}" "$@" ;;
+  esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

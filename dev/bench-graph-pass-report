@@ -1,0 +1,613 @@
+#!/usr/bin/env python3
+"""
+Usage: bench-graph-pass-report [options] <summary-json>
+
+Generate SVG charts and a markdown report from bench-graph-pass-cli output.
+
+Options:
+  --output DIR    Output directory for charts and report (default: alongside summary.json)
+  --dataset NAME  Dataset label for the report (default: derived from summary.json metadata)
+  -h, --help      Show this help
+
+Reads summary.json produced by bench-graph-pass-cli, generates:
+  assets/<dataset>_wall-time.svg
+  assets/<dataset>_speedup.svg
+  assets/<dataset>_efficiency.svg
+  assets/<dataset>_peak-rss.svg
+  <dataset>.md
+"""
+
+import argparse
+import json
+import math
+import sys
+import textwrap
+from pathlib import Path
+
+WORKLOAD_ORDER = ["timetree", "optimize", "ancestral", "mugration", "clock"]
+WORKLOAD_LABELS = {
+    "timetree": "Timetree",
+    "optimize": "Optimize",
+    "ancestral": "Ancestral",
+    "mugration": "Mugration",
+    "clock": "Clock",
+}
+
+# Dataviz palette: categorical slots 1-5
+COLORS = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7"]
+
+# Chart chrome (light mode)
+SURFACE = "#fcfcfb"
+INK = "#0b0b0b"
+SECONDARY = "#52514e"
+MUTED = "#898781"
+GRIDLINE = "#e1e0d9"
+BASELINE = "#c3c2b7"
+THRESHOLD = "#c3c2b7"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate benchmark report")
+    parser.add_argument("summary_json", type=Path)
+    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--dataset", type=str, default=None)
+    return parser.parse_args()
+
+
+def load_data(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def compute_metrics(data):
+    results = data["results"]
+    threads = sorted(set(r["jobs"] for r in results))
+    workloads = [w for w in WORKLOAD_ORDER if any(r["workload"] == w for r in results)]
+
+    averaged = {}
+    for r in results:
+        key = (r["workload"], r["jobs"])
+        if key not in averaged:
+            averaged[key] = {"wall": [], "rss": [], "user": [], "system": [], "min": [], "max": []}
+        averaged[key]["wall"].append(r["mean_seconds"])
+        averaged[key]["rss"].append(r["peak_rss_kb"])
+        averaged[key]["user"].append(r["user_seconds"])
+        averaged[key]["system"].append(r["system_seconds"])
+        averaged[key]["min"].append(r["min_seconds"])
+        averaged[key]["max"].append(r["max_seconds"])
+
+    metrics = {}
+    for (w, j), v in averaged.items():
+        wall = sum(v["wall"]) / len(v["wall"])
+        rss_mb = sum(v["rss"]) / len(v["rss"]) / 1024
+        user = sum(v["user"]) / len(v["user"])
+        system = sum(v["system"]) / len(v["system"])
+        run_min = min(v["min"])
+        run_max = max(v["max"])
+        metrics[(w, j)] = {
+            "wall": wall,
+            "rss_mb": rss_mb,
+            "user": user,
+            "system": system,
+            "min": run_min,
+            "max": run_max,
+        }
+
+    for w in workloads:
+        base = metrics[(w, threads[0])]["wall"]
+        for j in threads:
+            m = metrics[(w, j)]
+            m["speedup"] = base / m["wall"]
+            m["efficiency"] = (base / m["wall"]) / j * 100
+            m["cpu_util"] = (m["user"] + m["system"]) / m["wall"]
+
+    return workloads, threads, metrics
+
+
+def svg_line_chart(
+    title, ylabel, workloads, threads, value_fn, y_max, y_ticks,
+    y_format=lambda v: f"{v:.1f}", show_ideal=False, threshold=None,
+    threshold_label=None, show_whiskers=False, whisker_fn=None,
+):
+    W, H = 700, 400
+    ML, MR, MT, MB = 72, 168, 50, 52
+    pw = W - ML - MR
+    ph = H - MT - MB
+
+    log_positions = [math.log2(j) for j in threads]
+    log_min = log_positions[0]
+    log_max = log_positions[-1]
+    log_range = log_max - log_min if log_max > log_min else 1
+
+    def px(j):
+        return ML + (math.log2(j) - log_min) / log_range * pw
+
+    def py(v):
+        return MT + ph - (v / y_max) * ph
+
+    lines = []
+    lines.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}"'
+        f' font-family="system-ui,-apple-system,sans-serif">'
+    )
+    lines.append(f'<rect width="{W}" height="{H}" fill="{SURFACE}"/>')
+    lines.append(
+        f'<text x="{ML}" y="28" fill="{INK}" font-size="15" font-weight="600">{title}</text>'
+    )
+
+    for yt in y_ticks:
+        y = py(yt)
+        lines.append(
+            f'<line x1="{ML}" y1="{y:.1f}" x2="{ML + pw}" y2="{y:.1f}"'
+            f' stroke="{GRIDLINE}" stroke-width="1"/>'
+        )
+        lines.append(
+            f'<text x="{ML - 10}" y="{y + 4:.1f}" fill="{MUTED}" font-size="11"'
+            f' text-anchor="end">{y_format(yt)}</text>'
+        )
+
+    lines.append(
+        f'<line x1="{ML}" y1="{py(0):.1f}" x2="{ML + pw}" y2="{py(0):.1f}"'
+        f' stroke="{BASELINE}" stroke-width="1"/>'
+    )
+
+    for j in threads:
+        x = px(j)
+        lines.append(
+            f'<text x="{x:.1f}" y="{H - MB + 18:.1f}" fill="{MUTED}" font-size="11"'
+            f' text-anchor="middle">{j}</text>'
+        )
+
+    lines.append(
+        f'<text x="{ML + pw / 2:.1f}" y="{H - 8:.1f}" fill="{SECONDARY}" font-size="12"'
+        f' text-anchor="middle">Threads</text>'
+    )
+    lines.append(
+        f'<text x="14" y="{MT + ph / 2:.1f}" fill="{SECONDARY}" font-size="12"'
+        f' text-anchor="middle" transform="rotate(-90,14,{MT + ph / 2:.1f})">{ylabel}</text>'
+    )
+
+    if show_ideal:
+        ideal_pts = []
+        for j in threads:
+            v = min(j, y_max)
+            if v <= y_max:
+                ideal_pts.append(f"{px(j):.1f},{py(v):.1f}")
+        lines.append(
+            f'<polyline points="{" ".join(ideal_pts)}" fill="none" stroke="{GRIDLINE}"'
+            f' stroke-width="1.5" stroke-dasharray="6,4"/>'
+        )
+        last_j = threads[-1]
+        ideal_v = min(last_j, y_max)
+        lines.append(
+            f'<text x="{px(last_j) + 6:.1f}" y="{py(ideal_v) + 4:.1f}" fill="{MUTED}"'
+            f' font-size="10">ideal</text>'
+        )
+
+    if threshold is not None:
+        ty = py(threshold)
+        lines.append(
+            f'<line x1="{ML}" y1="{ty:.1f}" x2="{ML + pw}" y2="{ty:.1f}"'
+            f' stroke="{THRESHOLD}" stroke-width="1" stroke-dasharray="4,3"/>'
+        )
+        if threshold_label:
+            lines.append(
+                f'<text x="{ML + pw + 4:.1f}" y="{ty + 4:.1f}" fill="{MUTED}"'
+                f' font-size="9">{threshold_label}</text>'
+            )
+
+    all_labels = []
+
+    for i, w in enumerate(workloads):
+        c = COLORS[i]
+        pts = []
+        for j in threads:
+            v = value_fn(w, j)
+            pts.append((px(j), py(v), v, j))
+
+        polyline = " ".join(f"{x:.1f},{y:.1f}" for x, y, _, _ in pts)
+        lines.append(
+            f'<polyline points="{polyline}" fill="none" stroke="{c}" stroke-width="2"'
+            f' stroke-linejoin="round" stroke-linecap="round"/>'
+        )
+
+        if show_whiskers and whisker_fn:
+            for x, y, v, j in pts:
+                lo, hi = whisker_fn(w, j)
+                y_lo, y_hi = py(lo), py(hi)
+                lines.append(
+                    f'<line x1="{x:.1f}" y1="{y_lo:.1f}" x2="{x:.1f}" y2="{y_hi:.1f}"'
+                    f' stroke="{c}" stroke-width="1" opacity="0.4"/>'
+                )
+                lines.append(
+                    f'<line x1="{x - 3:.1f}" y1="{y_lo:.1f}" x2="{x + 3:.1f}" y2="{y_lo:.1f}"'
+                    f' stroke="{c}" stroke-width="1" opacity="0.4"/>'
+                )
+                lines.append(
+                    f'<line x1="{x - 3:.1f}" y1="{y_hi:.1f}" x2="{x + 3:.1f}" y2="{y_hi:.1f}"'
+                    f' stroke="{c}" stroke-width="1" opacity="0.4"/>'
+                )
+
+        for x, y, v, j in pts:
+            lines.append(
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{c}"'
+                f' stroke="{SURFACE}" stroke-width="2"/>'
+            )
+
+        for x, y, v, j in pts:
+            all_labels.append((x, y, v, j, i))
+
+    resolved = _resolve_label_collisions(all_labels)
+    for x, label_y, v, j, series_idx in resolved:
+        lines.append(
+            f'<text x="{x + 8:.1f}" y="{label_y + 3:.1f}" fill="{SECONDARY}"'
+            f' font-size="9">{y_format(v)}</text>'
+        )
+
+    lx = ML + pw + 30
+    ly_start = MT + 10
+    for i, w in enumerate(workloads):
+        y = ly_start + i * 22
+        lines.append(
+            f'<line x1="{lx}" y1="{y}" x2="{lx + 16}" y2="{y}" stroke="{COLORS[i]}"'
+            f' stroke-width="2" stroke-linecap="round"/>'
+        )
+        lines.append(
+            f'<circle cx="{lx + 8}" cy="{y}" r="3.5" fill="{COLORS[i]}"'
+            f' stroke="{SURFACE}" stroke-width="1.5"/>'
+        )
+        lines.append(
+            f'<text x="{lx + 22}" y="{y + 4}" fill="{INK}"'
+            f' font-size="12">{WORKLOAD_LABELS[w]}</text>'
+        )
+
+    lines.append("</svg>")
+    return "\n".join(lines)
+
+
+def _resolve_label_collisions(labels, min_spacing=11):
+    """Spread labels vertically so none overlap within the same x-column."""
+    if not labels:
+        return []
+
+    from collections import defaultdict
+    columns = defaultdict(list)
+    for x, y, v, j, series_idx in labels:
+        columns[x].append((y, v, j, series_idx))
+
+    result = []
+    for x, entries in columns.items():
+        entries.sort(key=lambda e: e[0])
+        ys = [e[0] for e in entries]
+        adjusted = _spread_ys(ys, min_spacing)
+        for (_, v, j, si), new_y in zip(entries, adjusted):
+            result.append((x, new_y, v, j, si))
+
+    return result
+
+
+def _spread_ys(ys, min_spacing):
+    """Push y-positions apart so adjacent labels have at least min_spacing pixels."""
+    if len(ys) <= 1:
+        return list(ys)
+    adjusted = list(ys)
+    for _ in range(10):
+        changed = False
+        for i in range(len(adjusted) - 1):
+            overlap = min_spacing - (adjusted[i + 1] - adjusted[i])
+            if overlap > 0:
+                adjusted[i] -= overlap / 2
+                adjusted[i + 1] += overlap / 2
+                changed = True
+        if not changed:
+            break
+    return adjusted
+
+
+def svg_bar_chart(title, ylabel, workloads, threads, value_fn, y_max, y_ticks, y_format=lambda v: f"{v:.0f}"):
+    W, H = 700, 400
+    ML, MR, MT, MB = 72, 20, 50, 52
+    pw = W - ML - MR
+    ph = H - MT - MB
+
+    n_groups = len(threads)
+    n_bars = len(workloads)
+    group_w = pw / n_groups
+    bar_w = min(20, (group_w - 16) / n_bars)
+    spacer = 2
+
+    def py(v):
+        return MT + ph - (v / y_max) * ph
+
+    lines = []
+    lines.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}"'
+        f' font-family="system-ui,-apple-system,sans-serif">'
+    )
+    lines.append(f'<rect width="{W}" height="{H}" fill="{SURFACE}"/>')
+    lines.append(
+        f'<text x="{ML}" y="28" fill="{INK}" font-size="15" font-weight="600">{title}</text>'
+    )
+
+    for yt in y_ticks:
+        y = py(yt)
+        lines.append(
+            f'<line x1="{ML}" y1="{y:.1f}" x2="{ML + pw}" y2="{y:.1f}"'
+            f' stroke="{GRIDLINE}" stroke-width="1"/>'
+        )
+        lines.append(
+            f'<text x="{ML - 10}" y="{y + 4:.1f}" fill="{MUTED}" font-size="11"'
+            f' text-anchor="end">{y_format(yt)}</text>'
+        )
+
+    lines.append(
+        f'<line x1="{ML}" y1="{py(0):.1f}" x2="{ML + pw}" y2="{py(0):.1f}"'
+        f' stroke="{BASELINE}" stroke-width="1"/>'
+    )
+    lines.append(
+        f'<text x="14" y="{MT + ph / 2:.1f}" fill="{SECONDARY}" font-size="12"'
+        f' text-anchor="middle" transform="rotate(-90,14,{MT + ph / 2:.1f})">{ylabel}</text>'
+    )
+
+    total_bars_w = n_bars * bar_w + (n_bars - 1) * spacer
+    for gi, j in enumerate(threads):
+        gx = ML + gi * group_w + group_w / 2 - total_bars_w / 2
+        for bi, w in enumerate(workloads):
+            v = value_fn(w, j)
+            bx = gx + bi * (bar_w + spacer)
+            by = py(v)
+            bh = py(0) - by
+            if bh > 0:
+                lines.append(
+                    f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}"'
+                    f' height="{bh:.1f}" rx="2" fill="{COLORS[bi]}"/>'
+                )
+
+        cx = ML + gi * group_w + group_w / 2
+        lines.append(
+            f'<text x="{cx:.1f}" y="{H - MB + 18:.1f}" fill="{MUTED}" font-size="11"'
+            f' text-anchor="middle">{j}</text>'
+        )
+
+    lines.append(
+        f'<text x="{ML + pw / 2:.1f}" y="{H - 8:.1f}" fill="{SECONDARY}" font-size="12"'
+        f' text-anchor="middle">Threads</text>'
+    )
+
+    lx_start = W - MR - 10
+    ly = MT + 2
+    for i in range(len(workloads) - 1, -1, -1):
+        w = workloads[i]
+        tw = len(WORKLOAD_LABELS[w]) * 7 + 20
+        lx_start -= tw
+        lines.append(
+            f'<rect x="{lx_start}" y="{ly - 5}" width="10" height="10" rx="2"'
+            f' fill="{COLORS[i]}"/>'
+        )
+        lines.append(
+            f'<text x="{lx_start + 14}" y="{ly + 4}" fill="{INK}"'
+            f' font-size="10">{WORKLOAD_LABELS[w]}</text>'
+        )
+
+    lines.append("</svg>")
+    return "\n".join(lines)
+
+
+def nice_y_max(values, headroom=1.15):
+    raw = max(values) * headroom
+    magnitude = 10 ** math.floor(math.log10(raw)) if raw > 0 else 1
+    return math.ceil(raw / magnitude) * magnitude
+
+
+def nice_ticks(y_max, target_count=6):
+    step = y_max / target_count
+    magnitude = 10 ** math.floor(math.log10(step)) if step > 0 else 1
+    nice_steps = [1, 2, 2.5, 5, 10]
+    for ns in nice_steps:
+        candidate = ns * magnitude
+        if y_max / candidate <= target_count + 1:
+            step = candidate
+            break
+    ticks = []
+    v = 0
+    while v <= y_max:
+        ticks.append(v)
+        v = round(v + step, 10)
+    return ticks
+
+
+def generate_charts(workloads, threads, metrics, output_dir, dataset_name):
+    assets_dir = output_dir / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    def get(w, j, field):
+        return metrics[(w, j)][field]
+
+    wall_values = [get(w, j, "wall") for w in workloads for j in threads]
+    wall_max = nice_y_max(wall_values)
+    wall_ticks = nice_ticks(wall_max)
+    wall_svg = svg_line_chart(
+        "Wall-Clock Time vs Thread Count", "Time (seconds)",
+        workloads, threads,
+        lambda w, j: get(w, j, "wall"),
+        wall_max, wall_ticks,
+        y_format=lambda v: f"{v:.1f}s" if v >= 0.1 else (f"{v * 1000:.0f}ms" if v > 0 else "0"),
+        show_whiskers=True,
+        whisker_fn=lambda w, j: (get(w, j, "min"), get(w, j, "max")),
+    )
+    (assets_dir / f"{dataset_name}_wall-time.svg").write_text(wall_svg)
+
+    speedup_values = [get(w, j, "speedup") for w in workloads for j in threads]
+    speedup_max = nice_y_max(speedup_values + [threads[-1]], headroom=1.1)
+    speedup_max = max(speedup_max, threads[-1])
+    speedup_ticks = nice_ticks(speedup_max)
+    speedup_svg = svg_line_chart(
+        "Parallel Speedup vs Thread Count", "Speedup (x)",
+        workloads, threads,
+        lambda w, j: get(w, j, "speedup"),
+        speedup_max, speedup_ticks,
+        y_format=lambda v: f"{v:.1f}x" if v != int(v) else f"{int(v)}x",
+        show_ideal=True,
+    )
+    (assets_dir / f"{dataset_name}_speedup.svg").write_text(speedup_svg)
+
+    eff_svg = svg_line_chart(
+        "Parallel Efficiency vs Thread Count", "Efficiency (%)",
+        workloads, threads,
+        lambda w, j: get(w, j, "efficiency"),
+        110, [0, 25, 50, 75, 100],
+        y_format=lambda v: f"{v:.0f}%",
+        threshold=75, threshold_label="75%",
+    )
+    (assets_dir / f"{dataset_name}_efficiency.svg").write_text(eff_svg)
+
+    rss_values = [get(w, j, "rss_mb") for w in workloads for j in threads]
+    rss_max = nice_y_max(rss_values)
+    rss_ticks = nice_ticks(rss_max)
+    rss_svg = svg_bar_chart(
+        "Peak Resident Memory vs Thread Count", "Peak RSS (MB)",
+        workloads, threads,
+        lambda w, j: get(w, j, "rss_mb"),
+        rss_max, rss_ticks,
+    )
+    (assets_dir / f"{dataset_name}_peak-rss.svg").write_text(rss_svg)
+
+    return [
+        f"{dataset_name}_wall-time.svg",
+        f"{dataset_name}_speedup.svg",
+        f"{dataset_name}_efficiency.svg",
+        f"{dataset_name}_peak-rss.svg",
+    ]
+
+
+def fmt_time(v):
+    if v >= 1:
+        return f"{v:.3f} s"
+    return f"{v * 1000:.1f} ms"
+
+
+def fmt_speedup(v):
+    return f"{v:.2f}x"
+
+
+def fmt_pct(v):
+    return f"{v:.0f}%"
+
+
+def fmt_mb(v):
+    return f"{v:.0f} MB"
+
+
+def fmt_cpu(v):
+    return f"{v:.2f}"
+
+
+def generate_report(data, workloads, threads, metrics, chart_files, dataset_name):
+    meta = data["metadata"]
+    dataset_path = meta["dataset"]
+
+    def get(w, j, field):
+        return metrics[(w, j)][field]
+
+    def table(header_fn, row_fn, fmt):
+        hdr = "| Workload |" + "|".join(f" {header_fn(j)} " for j in threads) + "|"
+        sep = "|---|" + "|".join("---:" for _ in threads) + "|"
+        rows = []
+        for w in workloads:
+            cols = "|".join(f" {fmt(row_fn(w, j))} " for j in threads)
+            rows.append(f"| **{WORKLOAD_LABELS[w]}** |{cols}|")
+        return "\n".join([hdr, sep] + rows)
+
+    thread_hdr = lambda j: f"{j} thread{'s' if j > 1 else ''}"
+
+    wall_table = table(thread_hdr, lambda w, j: get(w, j, "wall"), fmt_time)
+    speedup_table = table(thread_hdr, lambda w, j: get(w, j, "speedup"), fmt_speedup)
+    eff_table = table(thread_hdr, lambda w, j: get(w, j, "efficiency"), fmt_pct)
+    rss_table = table(thread_hdr, lambda w, j: get(w, j, "rss_mb"), fmt_mb)
+    cpu_table = table(thread_hdr, lambda w, j: get(w, j, "cpu_util"), fmt_cpu)
+
+    runs = meta.get("runs", "N/A")
+    warmup = meta.get("warmup", "N/A")
+    thread_csv = ", ".join(str(j) for j in threads)
+
+    report = f"""\
+# Parallel Scaling: {dataset_name}
+
+**Commit:** `{meta.get("after_ref", "N/A")}`
+**Dataset:** `{dataset_path}`
+**Threads:** {thread_csv}
+**Runs:** {runs} measured + {warmup} warmup per configuration
+
+## Methodology
+
+A single release binary was benchmarked across five CLI subcommands at thread counts {thread_csv} using [hyperfine](https://github.com/sharkdp/hyperfine) ({runs} measured runs, {warmup} warmup). Peak RSS was captured separately via `/usr/bin/time`. The benchmark harness (`dev/bench-graph-pass-cli`) ran each workload twice per configuration; results are the mean of both runs.
+
+### Workloads
+
+| Subcommand | Description | Key parameters |
+|---|---|---|
+| **ancestral** | Marginal ancestral sequence reconstruction | `--method-anc=marginal --dense=false` |
+| **mugration** | Discrete trait reconstruction (country) | `--attribute=country --pc=1.0` |
+| **clock** | Molecular clock inference | default |
+| **optimize** | Branch length optimization | `--dense=false` |
+| **timetree** | Full time-scaled phylogeny | all output formats |
+
+## Results
+
+### Wall-clock time
+
+![Wall-clock time](assets/{chart_files[0]})
+
+{wall_table}
+
+### Speedup
+
+![Speedup](assets/{chart_files[1]})
+
+{speedup_table}
+
+### Parallel efficiency
+
+![Efficiency](assets/{chart_files[2]})
+
+Efficiency = speedup / thread count.
+
+{eff_table}
+
+### Peak resident memory
+
+![Peak RSS](assets/{chart_files[3]})
+
+{rss_table}
+
+### CPU utilization
+
+User + system time / wall-clock time. Values above 1.0 indicate parallel CPU use.
+
+{cpu_table}
+"""
+    return report
+
+
+def main():
+    args = parse_args()
+    data = load_data(args.summary_json)
+    output_dir = args.output or args.summary_json.parent
+    dataset_label = args.dataset
+    if not dataset_label:
+        ds = data["metadata"].get("dataset", "unknown")
+        dataset_label = ds.replace("/", "-").replace("data-", "")
+
+    workloads, threads, metrics = compute_metrics(data)
+    chart_files = generate_charts(workloads, threads, metrics, output_dir, dataset_label)
+    report = generate_report(data, workloads, threads, metrics, chart_files, dataset_label)
+
+    report_path = output_dir / f"{dataset_label}.md"
+    report_path.write_text(report)
+    print(f"Report: {report_path}")
+    for cf in chart_files:
+        print(f"Chart:  {output_dir / 'assets' / cf}")
+
+
+if __name__ == "__main__":
+    main()

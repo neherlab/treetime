@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400" font-family="system-ui,-apple-system,sans-serif">
+<rect width="700" height="400" fill="#fcfcfb"/>
+<text x="72" y="28" fill="#0b0b0b" font-size="15" font-weight="600">Parallel Speedup vs Thread Count</text>
+<line x1="72" y1="348.0" x2="532" y2="348.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="352.0" fill="#898781" font-size="11" text-anchor="end">0x</text>
+<line x1="72" y1="273.5" x2="532" y2="273.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="277.5" fill="#898781" font-size="11" text-anchor="end">5x</text>
+<line x1="72" y1="199.0" x2="532" y2="199.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="203.0" fill="#898781" font-size="11" text-anchor="end">10x</text>
+<line x1="72" y1="124.5" x2="532" y2="124.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="128.5" fill="#898781" font-size="11" text-anchor="end">15x</text>
+<line x1="72" y1="50.0" x2="532" y2="50.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="54.0" fill="#898781" font-size="11" text-anchor="end">20x</text>
+<line x1="72" y1="348.0" x2="532" y2="348.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="72.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">1</text>
+<text x="187.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">2</text>
+<text x="302.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">4</text>
+<text x="417.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">8</text>
+<text x="532.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">16</text>
+<text x="302.0" y="392.0" fill="#52514e" font-size="12" text-anchor="middle">Threads</text>
+<text x="14" y="199.0" fill="#52514e" font-size="12" text-anchor="middle" transform="rotate(-90,14,199.0)">Speedup (x)</text>
+<polyline points="72.0,333.1 187.0,318.2 302.0,288.4 417.0,228.8 532.0,109.6" fill="none" stroke="#e1e0d9" stroke-width="1.5" stroke-dasharray="6,4"/>
+<text x="538.0" y="113.6" fill="#898781" font-size="10">ideal</text>
+<polyline points="72.0,333.1 187.0,322.8 302.0,309.1 417.0,305.5 532.0,310.6" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="333.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="322.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="309.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="305.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="310.6" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<polyline points="72.0,333.1 187.0,330.3 302.0,325.3 417.0,328.8 532.0,326.3" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="333.1" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="330.3" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="325.3" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="328.8" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="326.3" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<polyline points="72.0,333.1 187.0,330.9 302.0,329.5 417.0,329.9 532.0,330.4" fill="none" stroke="#eda100" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="333.1" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="330.9" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="329.5" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="329.9" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="330.4" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<polyline points="72.0,333.1 187.0,328.3 302.0,321.6 417.0,322.9 532.0,320.9" fill="none" stroke="#008300" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="333.1" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="328.3" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="321.6" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="322.9" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="320.9" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<polyline points="72.0,333.1 187.0,333.4 302.0,332.7 417.0,337.8 532.0,336.2" fill="none" stroke="#4a3aa7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="333.1" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="333.4" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="332.7" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="337.8" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="336.2" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<text x="80.0" y="314.6" fill="#52514e" font-size="9">1x</text>
+<text x="80.0" y="325.2" fill="#52514e" font-size="9">1x</text>
+<text x="80.0" y="336.0" fill="#52514e" font-size="9">1x</text>
+<text x="80.0" y="346.9" fill="#52514e" font-size="9">1x</text>
+<text x="80.0" y="357.9" fill="#52514e" font-size="9">1x</text>
+<text x="195.0" y="310.5" fill="#52514e" font-size="9">1.7x</text>
+<text x="195.0" y="321.3" fill="#52514e" font-size="9">1.3x</text>
+<text x="195.0" y="332.0" fill="#52514e" font-size="9">1.2x</text>
+<text x="195.0" y="342.9" fill="#52514e" font-size="9">1.1x</text>
+<text x="195.0" y="353.9" fill="#52514e" font-size="9">1.0x</text>
+<text x="310.0" y="304.9" fill="#52514e" font-size="9">2.6x</text>
+<text x="310.0" y="315.7" fill="#52514e" font-size="9">1.8x</text>
+<text x="310.0" y="326.6" fill="#52514e" font-size="9">1.5x</text>
+<text x="310.0" y="337.5" fill="#52514e" font-size="9">1.2x</text>
+<text x="310.0" y="348.5" fill="#52514e" font-size="9">1.0x</text>
+<text x="425.0" y="306.1" fill="#52514e" font-size="9">2.9x</text>
+<text x="425.0" y="317.0" fill="#52514e" font-size="9">1.7x</text>
+<text x="425.0" y="327.9" fill="#52514e" font-size="9">1.3x</text>
+<text x="425.0" y="338.9" fill="#52514e" font-size="9">1.2x</text>
+<text x="425.0" y="349.9" fill="#52514e" font-size="9">0.7x</text>
+<text x="540.0" y="306.1" fill="#52514e" font-size="9">2.5x</text>
+<text x="540.0" y="316.9" fill="#52514e" font-size="9">1.8x</text>
+<text x="540.0" y="327.8" fill="#52514e" font-size="9">1.5x</text>
+<text x="540.0" y="338.8" fill="#52514e" font-size="9">1.2x</text>
+<text x="540.0" y="349.8" fill="#52514e" font-size="9">0.8x</text>
+<line x1="562" y1="60" x2="578" y2="60" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="60" r="3.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="64" fill="#0b0b0b" font-size="12">Timetree</text>
+<line x1="562" y1="82" x2="578" y2="82" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="82" r="3.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="86" fill="#0b0b0b" font-size="12">Optimize</text>
+<line x1="562" y1="104" x2="578" y2="104" stroke="#eda100" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="104" r="3.5" fill="#eda100" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="108" fill="#0b0b0b" font-size="12">Ancestral</text>
+<line x1="562" y1="126" x2="578" y2="126" stroke="#008300" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="126" r="3.5" fill="#008300" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="130" fill="#0b0b0b" font-size="12">Mugration</text>
+<line x1="562" y1="148" x2="578" y2="148" stroke="#4a3aa7" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="148" r="3.5" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="152" fill="#0b0b0b" font-size="12">Clock</text>
+</svg>
