@@ -80,7 +80,11 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Sparse       | [Sparse marginal fixed_counts zero-multiplicity produces NaN](M-sparse-marginal-zero-multiplicity-nan.md)                                           |
 | Medium     | Sparse       | [Sparse marginal msg_to_child includes near-deterministic variable sites](M-sparse-marginal-quantitative-site-filtering.md)                         |
 | Medium     | Sparse       | [Sparse node_reference_state ignores non-char positions](M-sparse-node-reference-state-non-char-precedence.md)                                      |
+| Medium     | Distribution | [Distribution support-boundary semantics are unresolved](M-distribution-support-boundary-semantics-unresolved.md)                                  |
+| Medium     | Distribution | [Mixed-support distribution operations lose exact intersection boundaries](M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md) |
+| Medium     | Distribution | [Distribution product grid resolution diverges from v0](M-distribution-product-grid-resolution-diverges-from-v0.md)                                |
 | Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                        |
+| Medium     | Timetree     | [Coalescent multiplication ordering diverges from v0 without empirical validation](M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md) |
 | Medium     | Timetree     | [--coalescent-opt alone skips initial Tc pass](M-timetree-coalescent-opt-skips-initial.md)                                                          |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                        |
 | Medium     | Timetree     | [Internal node dates missing in nexus for input branch length mode](M-timetree-internal-dates-missing-input-bl.md)                                  |
@@ -90,6 +94,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Skyline coalescent timing may diverge from v0](M-timetree-skyline-timing-v0-divergence.md)                                                         |
 | Medium     | Timetree     | [Marginal dense golden master node key mismatch on ebola_20](M-timetree-dense-golden-master-node-mismatch.md)                                       |
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                                |
+| Medium     | Timetree     | [Marginal timetree node times can violate topology](M-timetree-marginal-node-times-can-violate-topology.md)                                         |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                   |
 | Negligible | Ancestral    | [Ancestral command does not produce auspice JSON](N-ancestral-auspice-json-not-produced.md)                                                         |
 | Negligible | Ancestral    | [Sparse marginal passes still use remove/insert pattern](N-ancestral-sparse-remove-insert-pattern.md)                                               |
@@ -163,6 +168,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [Timetree indel rate recomputed per refinement iteration](N-timetree-indel-rate-recomputed-per-iteration.md)                                        |
 | Negligible | Numerical    | [Numerical stability magic constants](N-numerical-stability-magic-constants.md)                                                                     |
 | Negligible | Coalescent   | [Coalescent skyline robustness deficiencies](N-coalescent-skyline-robustness.md)                                                                    |
+| Negligible | Coalescent   | [Coalescent contribution evaluation allocates for scalar merger rates](N-coalescent-contribution-evaluation-allocation-overhead.md)                 |
 | Negligible | Core         | [Error suppression via unwrap_or_default and silent fallbacks](N-error-suppression-unwrap-or-defaults.md)                                           |
 | Negligible | Alphabet     | [Alphabet serialization format design](N-alphabet-serialization-format-design.md)                                                                   |
 | Negligible | Core         | [Code quality and convention violations](N-code-quality-conventions.md)                                                                             |

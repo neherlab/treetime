@@ -18,7 +18,7 @@
 - [x] Bad branch exclusion (outliers, dateless leaves)
 - [x] Build branch distributions from partitions when present
 - [x] Build point branch distributions from input lengths when partitions absent
-- [x] Optional coalescent contribution calculation
+- [/] Optional coalescent contribution calculation ([kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md))
 
 ## Branch-Length Modes
 
@@ -51,8 +51,8 @@
   - [x] Warning fallback to Tc = 1.0 on failure or non-convergence
   - [x] Final skyline re-optimization after refinement loop
   - [x] Extra final timetree pass unless `--time-marginal=only-final`
-- [x] Coalescent contribution per node (survival + merger probability)
-- [x] Different multiplication ordering ([intentional change](../decisions/coalescent-multiplication-ordering.md))
+- [/] Coalescent contribution per node (leaf/root terms are incomplete - [kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md))
+- [/] Different multiplication ordering ([kb/decisions/coalescent-multiplication-ordering.md](../decisions/coalescent-multiplication-ordering.md), [kb/issues/M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md](../issues/M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md))
 - [x] Merger rate lambda(t) = k(k-1)/(2\*Tc)
 - [x] Branch counting k(t) from node times
 - [ ] `--n-branches-posterior` (parsed, returns explicit error - [known issue](../issues/N-timetree-n-branches-posterior-unimplemented.md))
@@ -123,7 +123,7 @@
 - [x] Confidence TSV
 - [ ] Node dates TSV (`write_node_dates()` is `todo!()` - [known issue](../issues/N-timetree-node-dates-output-unimplemented.md))
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
-- [/] Auspice JSON (v1 writes `auspice_tree.json` with `num_date`, `div`, `bad_branch`; missing: branch mutations, confidence, genome annotations - [known issue](../issues/N-timetree-auspice-json-incomplete.md))
+- [/] Auspice JSON (v1 writes `auspice_tree.json` with `num_date`, `div`, `bad_branch`; [kb/issues/N-timetree-auspice-json-incomplete.md](../issues/N-timetree-auspice-json-incomplete.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
 - [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [known issue](../issues/N-timetree-plot-unimplemented.md))
