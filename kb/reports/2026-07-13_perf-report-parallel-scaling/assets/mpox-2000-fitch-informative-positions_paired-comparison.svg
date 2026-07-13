@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400" font-family="system-ui,-apple-system,sans-serif">
+<rect width="700" height="400" fill="#fcfcfb"/>
+<text x="72" y="28" fill="#0b0b0b" font-size="15" font-weight="600">Paired Comparison vs Baseline</text>
+<text x="72" y="44" fill="#898781" font-size="11">Positive = regression, negative = improvement</text>
+<line x1="72" y1="348.0" x2="532" y2="348.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="352.0" fill="#898781" font-size="11" text-anchor="end">-10%</text>
+<line x1="72" y1="310.4" x2="532" y2="310.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="314.4" fill="#898781" font-size="11" text-anchor="end">-5%</text>
+<line x1="72" y1="272.8" x2="532" y2="272.8" stroke="#c3c2b7" stroke-width="1.5"/>
+<text x="62" y="276.8" fill="#52514e" font-size="11" text-anchor="end" font-weight="600">0%</text>
+<line x1="72" y1="235.2" x2="532" y2="235.2" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="239.2" fill="#898781" font-size="11" text-anchor="end">+5%</text>
+<line x1="72" y1="197.6" x2="532" y2="197.6" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="201.6" fill="#898781" font-size="11" text-anchor="end">+10%</text>
+<line x1="72" y1="160.0" x2="532" y2="160.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="164.0" fill="#898781" font-size="11" text-anchor="end">+15%</text>
+<line x1="72" y1="122.4" x2="532" y2="122.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="126.4" fill="#898781" font-size="11" text-anchor="end">+20%</text>
+<line x1="72" y1="84.8" x2="532" y2="84.8" stroke="#e1e0d9" stroke-width="1"/>
+<text x="62" y="88.8" fill="#898781" font-size="11" text-anchor="end">+25%</text>
+<text x="72.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">1</text>
+<text x="187.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">2</text>
+<text x="302.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">4</text>
+<text x="417.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">8</text>
+<text x="532.0" y="366.0" fill="#898781" font-size="11" text-anchor="middle">16</text>
+<text x="302.0" y="392.0" fill="#52514e" font-size="12" text-anchor="middle">Threads</text>
+<text x="14" y="216.0" fill="#52514e" font-size="12" text-anchor="middle" transform="rotate(-90,14,216.0)">Change from baseline (%)</text>
+<!-- Shaded regions -->
+<rect x="72" y="55" width="460" height="217.8" fill="#c0392b" opacity="0.04"/>
+<rect x="72" y="272.8" width="460" height="75.2" fill="#27ae60" opacity="0.04"/>
+<!-- Timetree: +0.3, +3.4, +7.0, +9.6, +13.7 -->
+<polyline points="72.0,270.5 187.0,247.3 302.0,220.3 417.0,200.8 532.0,170.0" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="270.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="247.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="220.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="200.8" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="170.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<!-- Optimize: -4.1, +12.4, +18.9, +19.8, +23.9 -->
+<polyline points="72.0,303.6 187.0,179.8 302.0,131.1 417.0,124.3 532.0,93.6" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="303.6" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="179.8" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="131.1" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="124.3" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="93.6" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<!-- Ancestral: -3.6, +3.8, +5.4, +17.0, +16.1 -->
+<polyline points="72.0,299.8 187.0,244.3 302.0,232.3 417.0,145.3 532.0,152.0" fill="none" stroke="#eda100" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="299.8" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="244.3" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="232.3" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="145.3" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="152.0" r="4" fill="#eda100" stroke="#fcfcfb" stroke-width="2"/>
+<!-- Mugration: +1.6, -0.9, +0.2, -4.9, -2.7 -->
+<polyline points="72.0,260.8 187.0,279.6 302.0,271.3 417.0,309.6 532.0,293.1" fill="none" stroke="#008300" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="260.8" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="279.6" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="271.3" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="309.6" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="293.1" r="4" fill="#008300" stroke="#fcfcfb" stroke-width="2"/>
+<!-- Clock: +0.0, +5.2, +0.0, -3.6, -3.7 -->
+<polyline points="72.0,272.8 187.0,233.8 302.0,272.8 417.0,299.8 532.0,300.6" fill="none" stroke="#4a3aa7" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72.0" cy="272.8" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="187.0" cy="233.8" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="302.0" cy="272.8" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="417.0" cy="299.8" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="532.0" cy="300.6" r="4" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="2"/>
+<!-- Legend -->
+<line x1="562" y1="60" x2="578" y2="60" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="60" r="3.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="64" fill="#0b0b0b" font-size="12">Timetree</text>
+<line x1="562" y1="82" x2="578" y2="82" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="82" r="3.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="86" fill="#0b0b0b" font-size="12">Optimize</text>
+<line x1="562" y1="104" x2="578" y2="104" stroke="#eda100" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="104" r="3.5" fill="#eda100" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="108" fill="#0b0b0b" font-size="12">Ancestral</text>
+<line x1="562" y1="126" x2="578" y2="126" stroke="#008300" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="126" r="3.5" fill="#008300" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="130" fill="#0b0b0b" font-size="12">Mugration</text>
+<line x1="562" y1="148" x2="578" y2="148" stroke="#4a3aa7" stroke-width="2" stroke-linecap="round"/>
+<circle cx="570" cy="148" r="3.5" fill="#4a3aa7" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="584" y="152" fill="#0b0b0b" font-size="12">Clock</text>
+</svg>
