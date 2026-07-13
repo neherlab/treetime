@@ -16,4 +16,3 @@ For datasets where the cost surface has multiple local optima, the two optimizer
 ## Related issues
 
 - Source: [M-timetree-skyline-nelder-mead-optimizer.md](../issues/M-timetree-skyline-nelder-mead-optimizer.md) -- delete after full resolution
-- [H-timetree-skyline-objective-mismatch.md](../issues/H-timetree-skyline-objective-mismatch.md): the skyline cost function itself diverges from the per-edge Kingman cost, independent of the optimizer choice

@@ -45,7 +45,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | High       | Core         | [Library crate is not consumable by non-CLI clients](H-core-multi-client-architecture-library-purity.md)                                            |
 | High       | Homoplasy    | [Homoplasy command is unimplemented](H-homoplasy-command-unimplemented.md)                                                                          |
 | High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                  |
-| High       | Timetree     | [Skyline optimizer uses a different objective than the reported coalescent cost](H-timetree-skyline-objective-mismatch.md)                          |
 | High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                      |
 | Medium     | Timetree     | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)                             |
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                              |

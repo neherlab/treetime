@@ -14,5 +14,3 @@ The skyline cost function is smooth (piecewise-linear lineage counts, quadratic 
 For datasets where the cost surface has multiple local optima, the two optimizers can converge to different solutions. For well-separated optima (typical of real phylogenetic datasets with clear population size changes), both should find the same global minimum.
 
 ## Related
-
-- [H-timetree-skyline-objective-mismatch.md](H-timetree-skyline-objective-mismatch.md): the skyline cost function itself diverges from the per-edge Kingman cost, independent of the optimizer choice

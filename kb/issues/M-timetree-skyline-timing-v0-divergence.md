@@ -14,5 +14,4 @@ Both approaches produce self-consistent results. The difference is whether the f
 
 ## Related
 
-- `kb/issues/H-timetree-skyline-objective-mismatch.md`
 - `kb/issues/N-coalescent-skyline-robustness.md`

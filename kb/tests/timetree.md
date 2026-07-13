@@ -132,6 +132,7 @@ Parameterized tests use `#[case]` expansions via rstest.
 | `test_optimize_skyline_tc_distribution_evaluates`  | Tc distribution evaluation           |
 | `test_optimize_skyline_log_tc_in_reasonable_range` | Regularization keeps log(Tc) bounded |
 | `test_optimize_skyline_larger_tree`                | 8-leaf tree with 10 grid points      |
+| `test_skyline_reported_likelihood_matches_per_edge_cost_for_polytomy` | Skyline objective and reported likelihood match the canonical per-edge cost for a four-child polytomy |
 
 ---
 
