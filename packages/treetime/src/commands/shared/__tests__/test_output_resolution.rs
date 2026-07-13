@@ -161,18 +161,14 @@ mod tests {
       )
       .unwrap();
 
-    // Producible tree formats are included...
+    // Every tree format available to ancestral is included.
     assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
     assert!(resolved.tree_outputs.contains_key(&nexus(NwkStyle::Plain)));
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Phyloxml));
     assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::GraphJson));
     assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Dot));
-    // ...unimplemented and writer-less formats are skipped.
-    assert!(!resolved.tree_outputs.contains_key(&TreeWriteKind::Phyloxml));
-    assert!(!resolved.tree_outputs.contains_key(&TreeWriteKind::MatPb));
-    assert!(
-      !resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice),
-      "ancestral has no auspice writer, so `all` skips it"
-    );
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::MatPb));
+    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
     // The non-default AA FASTA is part of `all`.
     assert!(
       resolved
@@ -182,15 +178,15 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_explicit_unimplemented_tree_errors() {
+  fn test_resolve_explicit_command_unavailable_errors() {
     let args = OutputCoreArgs {
-      output_tree_phyloxml: Some(PathBuf::from("/tmp/out.phylo.xml")),
+      output_tree_mat_pb: Some(PathBuf::from("/tmp/out.pb")),
       ..Default::default()
     };
-    let result = args.resolve(CommandKind::Ancestral, &[], &[]);
+    let result = args.resolve(CommandKind::Clock, &[], &[]);
     assert_error!(
       result,
-      "Output '--output-tree-phyloxml' is not yet implemented for the ancestral command"
+      "Output '--output-tree-mat-pb' is not available for the clock command"
     );
   }
 

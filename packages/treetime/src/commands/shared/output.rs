@@ -297,14 +297,7 @@ impl CommandKind {
   #[allow(clippy::enum_glob_use)]
   fn available_tree_outputs(self) -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
-    let mut tree = btreeset![
-      Nwk,
-      Nexus,
-      Phyloxml,
-      PhyloxmlJson,
-      GraphJson,
-      Dot
-    ];
+    let mut tree = btreeset![Nwk, Nexus, Phyloxml, PhyloxmlJson, GraphJson, Dot];
     match self {
       Self::Ancestral => {
         tree.insert(Auspice);
@@ -357,7 +350,6 @@ impl CommandKind {
   pub fn default_nwk_styles(self) -> Vec<NwkStyle> {
     vec![NwkStyle::Plain]
   }
-
 }
 
 /// Whether an output has a working writer for this command, ignoring runtime data prerequisites.
