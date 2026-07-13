@@ -1,6 +1,7 @@
 use crate::graphviz::{EdgeToGraphviz, NodeToGraphviz, graphviz_write_file};
 use crate::nex::{NexWriteOptions, nex_write_file_with};
 use crate::nwk::{CommentProviders, EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_file_with};
+use crate::tree_ir::types::{TreeIrData, TreeIrEdge, TreeIrNode};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -11,6 +12,9 @@ use treetime_graph::node::{GraphNode, Named};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::{make_error, make_report};
 use util_newick::NwkStyle;
+
+/// Format-neutral tree used by adapters whose schema cannot be derived from a domain graph alone.
+pub type TreeIrGraph = Graph<TreeIrNode, TreeIrEdge, TreeIrData>;
 
 /// Dispatch tag for tree output formats. Used as keys in the resolved output map.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
