@@ -50,7 +50,7 @@ Fix: display `[default: auto]` or suppress the numeric default.
 
 ### D7: `ancestral` command description hardcodes output filenames
 
-Description: "The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'annotated_tree.nexus'". Actual output is controlled by `--output-all` and per-file flags. These specific filenames are not guaranteed.
+Description: "The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus'". Actual output is controlled by `--output-all` and per-file flags. These specific filenames are not guaranteed. (Partially fixed: old `annotated_tree.nexus` reference updated to `ancestral.nexus` to match S4 stem change.)
 
 ### D8: `--n-iqd` in `timetree` is unused
 
@@ -86,17 +86,17 @@ Related: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemente
 
 `timetree`: default 2, "maximal number" (lowercase). `optimize`: default 10, "Maximum number" (capitalized). Different defaults are intentional but the descriptions diverge without reason.
 
-### I6: `--confidence` has incompatible semantics across commands
+### ~~I6: `--confidence` has incompatible semantics across commands~~ (resolved)
 
-`timetree`: boolean flag ("Add rate-uncertainty to confidence intervals"). `mugration`: output path alias for `--output-confidence`.
+Resolved by splitting into `--output-confidence-tsv` (timetree) and `--output-confidence-csv` (mugration, alias `--confidence`).
 
 ### I7: Capitalization inconsistent across all commands
 
 Some descriptions start lowercase ("don't reroot the tree", "ignore tips", "excess variance", "maximal number", "use an autocorrelated", "rescale branch lengths"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
 
-### I8: `--output-selection` shows full superset regardless of command
+### ~~I8: `--output-selection` shows full superset regardless of command~~ (resolved)
 
-Every command lists all possible values (`clock-csv`, `traits-csv`, `confidence`, `reconstructed-nuc-fasta`, etc.) even when the command cannot produce those outputs.
+Resolved by per-command selection enums (`AncestralOutputSelection`, `TimetreeOutputSelection`, etc.) that restrict `--output-selection` to only the outputs the command produces.
 
 ### I9: `--branch-length-mode` description differs subtly
 
@@ -168,9 +168,9 @@ No indication of expected range, units, or typical values.
 
 Usage lines show all output flags as optional (`[OPTIONS]`), but `output.rs:562` errors when no output destination is provided. Users following the usage pattern get a runtime error after input loading completes. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
 
-### W2: `--output-selection` accepts values that the command rejects at runtime
+### ~~W2: `--output-selection` accepts values that the command rejects at runtime~~ (resolved)
 
-Verified: `treetime prune --output-all=tmp --output-selection=auspice` parses successfully, then errors: "Output format '--output-tree-auspice' is not available for this command." The `possible values` list is the full superset, not the per-command subset.
+Resolved by per-command selection enums. Invalid values are now rejected at parse time, not runtime.
 
 ### W3: `--alignment` says "multiple FASTA files" but does not show repeat syntax
 
