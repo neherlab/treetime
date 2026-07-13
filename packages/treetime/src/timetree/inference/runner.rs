@@ -29,8 +29,8 @@ pub fn run_timetree<N, E, P>(
   no_indels: bool,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + TimetreeNode + ClockNode,
-  E: GraphEdge + HasBranchLength + TimetreeEdge,
+  N: GraphNode + Named + TimetreeNode + ClockNode + Default,
+  E: GraphEdge + HasBranchLength + TimetreeEdge + Default,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   info!("# Running timetree inference");

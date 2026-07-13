@@ -5,6 +5,61 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::make_internal_report;
 
+pub fn with_indexed_graph_payloads<N, E, D, R>(
+  graph: &Graph<N, E, D>,
+  visit: impl FnOnce(&mut IndexedPass<N, E>) -> Result<R, Report>,
+) -> Result<R, Report>
+where
+  N: GraphNode + Default,
+  E: GraphEdge + Default,
+  D: Send + Sync,
+{
+  let frontiers = graph.breadth_first_frontiers_backward()?;
+  for key in frontiers.iter().flatten() {
+    graph.parent_inbound_edge(*key)?;
+  }
+
+  let mut nodes = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let key = node.key();
+      let data = std::mem::take(&mut *node.payload().write_arc());
+      (key, data)
+    })
+    .collect::<BTreeMap<_, _>>();
+  let mut edges = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let key = edge.key();
+      let data = std::mem::take(&mut *edge.payload().write_arc());
+      (key, data)
+    })
+    .collect::<BTreeMap<_, _>>();
+
+  let mut pass = IndexedPass::new(graph, &mut nodes, &mut edges, |_| {
+    unreachable!("graph payload extraction includes every node")
+  })?;
+  let result = visit(&mut pass);
+  let (mut nodes, mut edges) = pass.into_maps()?;
+
+  for node in graph.get_nodes() {
+    let node = node.read_arc();
+    let key = node.key();
+    *node.payload().write_arc() = nodes.remove(&key).expect("Indexed pass must restore every graph node");
+  }
+  for edge in graph.get_edges() {
+    let edge = edge.read_arc();
+    let key = edge.key();
+    *edge.payload().write_arc() = edges.remove(&key).expect("Indexed pass must restore every graph edge");
+  }
+
+  result
+}
+
 pub struct IndexedPass<N, E> {
   slots: Vec<IndexedPassSlot<N, E>>,
   node_indices: Vec<Option<usize>>,
@@ -21,7 +76,7 @@ pub struct IndexedPassSlot<N, E> {
 
 impl<N, E> IndexedPass<N, E> {
   pub fn new<GN, GE>(
-    graph: &Graph<GN, GE, ()>,
+    graph: &Graph<GN, GE, impl Send + Sync>,
     nodes: &mut BTreeMap<GraphNodeKey, N>,
     edges: &mut BTreeMap<GraphEdgeKey, E>,
     mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,

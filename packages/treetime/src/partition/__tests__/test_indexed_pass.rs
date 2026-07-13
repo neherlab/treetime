@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::indexed_pass::IndexedPass;
+  use crate::partition::indexed_pass::{IndexedPass, with_indexed_graph_payloads};
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -68,6 +68,50 @@ mod tests {
     let result = pass.try_for_each_backward_frontier(|_, _, _, _, _| Err(make_report!("injected pass failure")));
     assert_error!(result, "injected pass failure");
     let (actual_nodes, actual_edges) = pass.into_maps()?;
+
+    assert_eq!(expected_nodes, actual_nodes);
+    assert_eq!(expected_edges, actual_edges);
+    Ok(())
+  }
+
+  #[test]
+  fn test_indexed_graph_payloads_error_restores_graph() -> Result<(), Report> {
+    let graph: GraphAncestral = nwk_read_str("((A:1,B:2)AB:3,C:4)root;")?;
+    let expected_nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        (node.key(), node.payload().read_arc().name.clone())
+      })
+      .collect::<BTreeMap<_, _>>();
+    let expected_edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().branch_length)
+      })
+      .collect::<BTreeMap<_, _>>();
+
+    let result = with_indexed_graph_payloads(&graph, |_| Err::<(), _>(make_report!("injected graph pass failure")));
+    assert_error!(result, "injected graph pass failure");
+    let actual_nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        (node.key(), node.payload().read_arc().name.clone())
+      })
+      .collect::<BTreeMap<_, _>>();
+    let actual_edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().branch_length)
+      })
+      .collect::<BTreeMap<_, _>>();
 
     assert_eq!(expected_nodes, actual_nodes);
     assert_eq!(expected_edges, actual_edges);

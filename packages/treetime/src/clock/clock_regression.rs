@@ -1,14 +1,15 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
+use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use log::{debug, info};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -79,50 +80,71 @@ pub fn clock_regression_backward<N, E, D>(
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
+  N: GraphNode + ClockNode + Default,
+  E: GraphEdge + ClockEdge + Default,
+  D: Send + Sync,
+{
+  with_indexed_graph_payloads(graph, |pass| {
+    pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
+      frontier.par_iter_mut().try_for_each(|slot| {
+        clock_regression_backward_slot(graph, options, prev_clock_rate, node_indices, completed, slot)
+      })
+    })
+  })
+}
+
+fn clock_regression_backward_slot<N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &ClockParams,
+  prev_clock_rate: Option<f64>,
+  node_indices: &[Option<usize>],
+  completed: &[IndexedPassSlot<N, E>],
+  slot: &mut IndexedPassSlot<N, E>,
+) -> Result<(), Report>
+where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  graph.par_iter_breadth_first_backward(|mut n| {
-    let date = n.payload.likely_time();
-    let q_to_parent = if n.is_leaf {
-      if n.payload.is_outlier() {
-        ClockSet::outlier_contribution()
-      } else {
-        ClockSet::leaf_contribution(date)
-      }
+  let is_leaf = graph.is_leaf(slot.key);
+  let date = slot.node.likely_time();
+  let q_to_parent = if is_leaf {
+    if slot.node.is_outlier() {
+      ClockSet::outlier_contribution()
     } else {
-      let mut q_dest = ClockSet::default();
-      for (_, e) in &n.children {
-        q_dest += e.read_arc().from_child();
-      }
-      q_dest
-    };
-
-    let is_leaf = n.is_leaf;
-    let is_root = n.is_root;
-
-    if is_root {
-      *n.payload.clock_set_mut() = q_to_parent;
-    } else {
-      let edge_to_parent = n.get_exactly_one_parent_edge()?;
-      *edge_to_parent.to_parent_mut() = q_to_parent;
-      let edge_len = edge_divergence(
-        edge_to_parent.branch_length(),
-        edge_to_parent.time_length(),
-        edge_to_parent.gamma(),
-        prev_clock_rate,
-      );
-      let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-      *edge_to_parent.from_child_mut() = if is_leaf {
-        branch_variance += options.variance_offset_leaf;
-        ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
-      } else {
-        edge_to_parent.to_parent().propagate_averages(edge_len, branch_variance)
-      };
+      ClockSet::leaf_contribution(date)
     }
-    Ok(GraphTraversalContinuation::Continue)
-  })
+  } else {
+    graph
+      .children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc())
+      .iter()
+      .fold(ClockSet::default(), |mut total, (child, _)| {
+        let child_key = child.read_arc().key();
+        let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
+        let edge = &completed[child_index]
+          .parent_edge
+          .as_ref()
+          .expect("Non-root indexed node must own its parent edge")
+          .1;
+        total += edge.from_child();
+        total
+      })
+  };
+
+  if let Some((_, edge)) = slot.parent_edge.as_mut() {
+    *edge.to_parent_mut() = q_to_parent;
+    let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
+    let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
+    *edge.from_child_mut() = if is_leaf {
+      branch_variance += options.variance_offset_leaf;
+      ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
+    } else {
+      edge.to_parent().propagate_averages(edge_len, branch_variance)
+    };
+  } else {
+    *slot.node.clock_set_mut() = q_to_parent;
+  }
+  Ok(())
 }
 
 /// Runs forward clock regression pass.
@@ -135,28 +157,33 @@ pub fn clock_regression_forward<N, E, D>(
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + ClockNode,
-  E: GraphEdge + ClockEdge,
+  N: GraphNode + ClockNode + Default,
+  E: GraphEdge + ClockEdge + Default,
   D: Sync + Send,
 {
-  graph.par_iter_breadth_first_forward(|mut n| {
-    if !n.is_root {
-      let (_, edge) = n.get_exactly_one_parent()?;
-      let edge = edge.read_arc();
-      let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
-      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+  with_indexed_graph_payloads(graph, |pass| {
+    pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
+      frontier.par_iter_mut().for_each(|slot| {
+        if let Some(parent_key) = slot.parent_key {
+          let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
+          let parent = &completed[parent_index - completed_start].node;
+          let (_, edge) = slot
+            .parent_edge
+            .as_mut()
+            .expect("Non-root indexed node must own its parent edge");
+          let mut q_to_child = parent.clock_set().clone();
+          q_to_child -= edge.from_child();
+          *edge.to_child_mut() = q_to_child;
 
-      let mut q_dest = edge.to_parent().clone();
-      q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
-      *n.payload.clock_set_mut() = q_dest;
-    }
-
-    for mut child_edge in n.child_edges {
-      let mut q = n.payload.clock_set().clone();
-      q -= child_edge.from_child();
-      *child_edge.to_child_mut() = q;
-    }
-    Ok(GraphTraversalContinuation::Continue)
+          let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
+          let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+          let mut q_dest = edge.to_parent().clone();
+          q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
+          *slot.node.clock_set_mut() = q_dest;
+        }
+      });
+      Ok(())
+    })
   })
 }
 

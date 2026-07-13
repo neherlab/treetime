@@ -1,76 +1,91 @@
+use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
+use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
+use treetime_graph::node::GraphNode;
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
-  N: TimetreeNode,
-  E: TimetreeEdge,
+  N: GraphNode + TimetreeNode + Default,
+  E: GraphEdge + TimetreeEdge + Default,
   D: Send + Sync,
 {
-  graph.par_iter_breadth_first_forward(|mut node| {
-    propagate_distributions_forward_single_node(&mut node)?;
-    Ok(GraphTraversalContinuation::Continue)
+  with_indexed_graph_payloads(graph, |pass| {
+    pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
+      frontier.par_iter_mut().try_for_each(|slot| {
+        propagate_distributions_forward_slot(graph, node_indices, completed_start, completed, slot)
+      })
+    })
   })
 }
 
-fn propagate_distributions_forward_single_node<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>
+fn propagate_distributions_forward_slot<N, E, D>(
+  graph: &Graph<N, E, D>,
+  node_indices: &[Option<usize>],
+  completed_start: usize,
+  completed: &[IndexedPassSlot<N, E>],
+  slot: &mut IndexedPassSlot<N, E>,
+) -> Result<(), Report>
 where
-  N: TimetreeNode,
-  E: TimetreeEdge,
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  refine_distribution_from_parent(node)?;
-  set_likely_time(node);
+  refine_distribution_from_parent(graph, node_indices, completed_start, completed, slot)?;
+  set_likely_time(&mut slot.node);
   Ok(())
 }
 
-fn set_likely_time<N, E, D>(node: &mut GraphNodeForward<N, E, D>)
-where
-  N: TimetreeNode,
-  E: TimetreeEdge,
-  D: Send + Sync,
-{
+fn set_likely_time(node: &mut impl TimetreeNode) {
   let time = node
-    .payload
     .time_distribution()
     .as_ref()
     .and_then(|time_dist| time_dist.likely_time());
 
   if let Some(time) = time {
-    node.payload.set_time(Some(time));
+    node.set_time(Some(time));
   }
 }
 
-fn refine_distribution_from_parent<N, E, D>(node: &mut GraphNodeForward<N, E, D>) -> Result<(), Report>
+fn refine_distribution_from_parent<N, E, D>(
+  graph: &Graph<N, E, D>,
+  node_indices: &[Option<usize>],
+  completed_start: usize,
+  completed: &[IndexedPassSlot<N, E>],
+  slot: &mut IndexedPassSlot<N, E>,
+) -> Result<(), Report>
 where
-  N: TimetreeNode,
-  E: TimetreeEdge,
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  if node.is_root {
+  if slot.parent_key.is_none() {
     return Ok(());
   }
 
   // Do not overwrite leaf time_distribution (date constraint)
-  if node.is_leaf {
+  if graph.is_leaf(slot.key) {
     return Ok(());
   }
 
-  if let Ok((parent, edge)) = node.get_exactly_one_parent() {
-    let parent = parent.read_arc();
-    let edge = edge.read_arc();
+  if let Some(parent_key) = slot.parent_key {
+    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
+    let parent = &completed[parent_index - completed_start].node;
+    let (_, edge) = slot
+      .parent_edge
+      .as_ref()
+      .expect("Non-root indexed node must own its parent edge");
 
     if let (Some(parent_time_dist), Some(branch_dist), Some(subtree_dist)) = (
       parent.time_distribution(),
       edge.branch_length_distribution(),
-      node.payload.time_distribution(),
+      slot.node.time_distribution(),
     ) {
       let parent_except_subtree = if let Some(msg_to_parent) = edge.msg_to_parent() {
         distribution_division(parent_time_dist, msg_to_parent)?
@@ -83,12 +98,12 @@ where
       // distributions (max=1.0), and the convolution/division can produce arbitrary scales.
       // Without normalization, values accumulate downward across tree depth.
       let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
-      node.payload.set_time_distribution(Some(Arc::new(combined)));
+      slot.node.set_time_distribution(Some(Arc::new(combined)));
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
       let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?.normalize();
-      node.payload.set_time_distribution(Some(Arc::new(dist_from_parent)));
+      slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
   }
 

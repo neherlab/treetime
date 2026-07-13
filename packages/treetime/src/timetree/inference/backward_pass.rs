@@ -1,14 +1,15 @@
+use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use indexmap::IndexMap;
+use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
 use treetime_distribution::{Distribution, DistributionNegLog};
-use treetime_graph::breadth_first::GraphTraversalContinuation;
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeBackward;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 
 /// Propagates time distributions backward from leaves to root.
 ///
@@ -19,63 +20,64 @@ pub fn propagate_distributions_backward<N, E, D>(
   coalescent_contributions: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
 ) -> Result<(), Report>
 where
-  N: TimetreeNode,
-  E: TimetreeEdge,
+  N: GraphNode + TimetreeNode + Default,
+  E: GraphEdge + TimetreeEdge + Default,
   D: Send + Sync,
 {
-  graph.par_iter_breadth_first_backward(|mut node| {
-    propagate_distributions_backward_single_node(&mut node, coalescent_contributions)?;
-    Ok(GraphTraversalContinuation::Continue)
+  with_indexed_graph_payloads(graph, |pass| {
+    pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
+      frontier.par_iter_mut().try_for_each(|slot| {
+        propagate_distributions_backward_slot(graph, coalescent_contributions, node_indices, completed, slot)
+      })
+    })
   })
 }
 
 /// Computes time distribution for a single internal node from its children.
-fn propagate_distributions_backward_single_node<N, E, D>(
-  node: &mut GraphNodeBackward<N, E, D>,
+fn propagate_distributions_backward_slot<N, E, D>(
+  graph: &Graph<N, E, D>,
   coalescent_contribs: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
+  node_indices: &[Option<usize>],
+  completed: &[IndexedPassSlot<N, E>],
+  slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
-  N: TimetreeNode,
-  E: TimetreeEdge,
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let coalescent_contribution = if node.is_leaf {
+  let coalescent_contribution = if graph.is_leaf(slot.key) {
     None
   } else {
-    coalescent_contribs.and_then(|contributions| contributions.get(&node.key))
+    coalescent_contribs.and_then(|contributions| contributions.get(&slot.key))
   };
   let mut result: Option<Distribution> = None;
 
-  for (child, edge) in &node.children {
-    let child = child.read_arc();
-    let mut edge = edge.write_arc();
-
-    // Skip bad branches: outlier leaves and dateless leaves should not constrain parent time
-    if child.bad_branch() {
+  for (child, _) in graph.children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc()) {
+    let child_key = child.read_arc().key();
+    let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
+    let child = &completed[child_index];
+    if child.node.bad_branch() {
       continue;
     }
-
-    if let (Some(branch_dist), Some(child_time_dist)) = (edge.branch_length_distribution(), child.time_distribution()) {
-      // Compute parent time distribution using regular convolution with negated branch: parent_time = child_time + (-branch_length)
-      let negated_branch_dist = branch_dist.negate()?;
-      let parent_message = distribution_convolution(child_time_dist.as_ref(), &negated_branch_dist)?;
-      let parent_message_arc = Arc::new(parent_message);
-
-      // Store message on edge
-      edge.set_msg_to_parent(Some(Arc::clone(&parent_message_arc)));
-
+    let edge = &child
+      .parent_edge
+      .as_ref()
+      .expect("Non-root indexed node must own its parent edge")
+      .1;
+    if let Some(parent_message) = edge.msg_to_parent() {
       // Combine messages from all children using multiplication (intersection of constraints).
       // Normalize after each step to prevent numerical underflow in plain probability space:
       // without normalization, the peak decays as ~(peak)^N across N children, underflowing
       // to zero for large trees. Normalization (max=1.0) is safe because all downstream
       // consumers (likely_time, quantile, hpd_region) are scale-invariant.
       result = Some(if let Some(current) = result {
-        distribution_multiplication(&current, &parent_message_arc)?.normalize()
+        distribution_multiplication(&current, parent_message)?.normalize()
       } else if let Some(contribution) = coalescent_contribution {
-        let parent_message = parent_message_arc.to_neglog();
+        let parent_message = parent_message.to_neglog();
         distribution_multiplication(contribution, &parent_message)?.to_plain_normalized()
       } else {
-        (*parent_message_arc).clone()
+        parent_message.as_ref().clone()
       });
     }
   }
@@ -88,7 +90,17 @@ where
 
   // Store final distribution on node
   if let Some(dist) = result {
-    node.payload.set_time_distribution(Some(Arc::new(dist)));
+    slot.node.set_time_distribution(Some(Arc::new(dist)));
+  }
+
+  if !slot.node.bad_branch()
+    && let Some((_, edge)) = slot.parent_edge.as_mut()
+    && let (Some(branch_dist), Some(node_time_dist)) =
+      (edge.branch_length_distribution(), slot.node.time_distribution())
+  {
+    let negated_branch_dist = branch_dist.negate()?;
+    let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;
+    edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
 
   Ok(())
