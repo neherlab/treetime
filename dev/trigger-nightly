@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options]
+#
+# Trigger a nightly build and release via GitHub Actions.
+#
+# Dispatches the default-branch scheduler, which builds rust and publishes
+# binaries in the source repository.
+#
+# Options:
+#   -h, --help    Show this help
+#
+# Environment:
+#   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
+#
+# Examples:
+#   $0
+#
+set -euo pipefail
+trap "exit" INT
+
+THIS_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  [[ "${1:-}" =~ ^(-h|--help)$ ]] && { show_help; exit 0; }
+
+  local source_repo
+  source_repo=$(git -C "${THIS_DIR}" remote get-url origin | sed 's|.*github\.com[:/]||; s|\.git$||')
+
+  command -v gh >/dev/null || { printf "Required command not found: gh\n" >&2; exit 1; }
+  command -v git >/dev/null || { printf "Required command not found: git\n" >&2; exit 1; }
+
+  printf "Triggering nightly workflow in %s\n" "${source_repo}"
+  gh workflow run schedule-nightly.yml --repo "${source_repo}"
+  printf "Workflow dispatched. Monitor at: https://github.com/%s/actions/workflows/schedule-nightly.yml\n" "${source_repo}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

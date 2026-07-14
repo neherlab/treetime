@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options]
+#
+# Upload CLI artifacts as a nightly pre-release in the source repository.
+# The release tag is read from the Linux binary so both versions are identical.
+#
+# Options:
+#   -h, --help                Show this help
+#   --artifacts_dir <dir>     Directory containing build artifacts
+#   --repo <owner/repo>       GitHub repository for the release
+#   --git_sha <sha>           Source commit SHA
+#
+# Environment:
+#   GITHUB_TOKEN    GitHub token with contents:write for the repository.
+#
+set -euo pipefail
+trap "exit" INT
+
+find_last_nightly_sha() {
+  local repo="${1}"
+  local last_tag
+  last_tag=$(gh release list --repo "${repo}" --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
+  [[ -n "${last_tag}" ]] || return
+
+  local abbreviated_sha="${last_tag##*+}"
+  [[ "${abbreviated_sha}" != "${last_tag}" ]] || return
+  if ! git rev-parse "${abbreviated_sha}^{commit}"; then
+    printf "Unable to resolve previous nightly source: %s\n" "${abbreviated_sha}" >&2
+    return 1
+  fi
+}
+
+generate_release_notes() {
+  local repo="${1}"
+  local git_sha="${2}"
+  local short_sha="${3}"
+  local last_sha="${4:-}"
+
+  cat <<EOF
+Nightly pre-release build of [treetime](https://github.com/${repo}).
+
+**Source**: [\`${short_sha}\`](https://github.com/${repo}/commit/${git_sha})
+
+> [!WARNING]
+> Automated nightly build for early testing. May contain bugs and breaking changes.
+EOF
+
+  [[ -n "${last_sha}" ]] || return
+
+  printf "\n**Compare**: [\`%s...%s\`](https://github.com/%s/compare/%s...%s)\n" \
+    "${last_sha:0:7}" "${short_sha}" "${repo}" "${last_sha}" "${git_sha}"
+
+  local last_commit_date
+  last_commit_date=$(git show -s --format='%aI' "${last_sha}")
+
+  local pr_json
+  pr_json=$(gh pr list --repo "${repo}" --state merged --base rust --limit 100 \
+    --json number,title,mergeCommit,mergedAt \
+    --jq "[.[] | select(.mergedAt > \"${last_commit_date}\")]")
+
+  if (( $(jq 'length' <<< "${pr_json}") > 0 )); then
+    printf "\n## Pull requests\n\n| PR | Title |\n|---|---|\n"
+    jq -r ".[] | \"| [#\\(.number)](https://github.com/${repo}/pull/\\(.number)) | \\(.title | gsub(\"[|]\"; \"\\\\|\")) |\"" <<< "${pr_json}"
+  fi
+
+  local pr_shas
+  pr_shas=$(jq -r '.[].mergeCommit.oid // empty' <<< "${pr_json}")
+  local all_commits
+  all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}")
+  local orphan_table=""
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    local commit_sha="${line%% *}"
+    local commit_msg="${line#* }"
+    if [[ -z "${pr_shas}" ]] || ! grep -qF "${commit_sha}" <<< "${pr_shas}"; then
+      orphan_table+="| [\`${commit_sha:0:7}\`](https://github.com/${repo}/commit/${commit_sha}) | ${commit_msg//|/\\|} |"$'\n'
+    fi
+  done <<< "${all_commits}"
+
+  if [[ -n "${orphan_table}" ]]; then
+    printf "\n## Commits not in any PR\n\n| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
+  fi
+}
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  local artifacts_dir=""
+  local repo=""
+  local git_sha=""
+
+  # shfmt:off
+  while (( $# > 0 )); do
+    case "${1}" in
+      -h|--help) show_help; exit 0 ;;
+      --artifacts_dir) artifacts_dir="${2}"; shift 2 ;;
+      --repo) repo="${2}"; shift 2 ;;
+      --git_sha) git_sha="${2}"; shift 2 ;;
+      --) shift; break ;;
+      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
+      *) break ;;
+    esac
+  done
+  # shfmt:on
+
+  local dependency
+  for dependency in gh git jq; do
+    command -v "${dependency}" >/dev/null || { printf "Required command not found: %s\n" "${dependency}" >&2; exit 1; }
+  done
+  : "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
+  [[ -d "${artifacts_dir}" ]] || { printf "Artifact directory does not exist: %s\n" "${artifacts_dir}" >&2; exit 1; }
+  [[ -n "${repo}" ]] || { printf "--repo is required\n" >&2; exit 1; }
+  [[ -n "${git_sha}" ]] || { printf "--git_sha is required\n" >&2; exit 1; }
+
+  local artifacts=()
+  local artifact
+  for artifact in "${artifacts_dir}"/*; do
+    [[ -f "${artifact}" ]] && artifacts+=("${artifact}")
+  done
+  (( ${#artifacts[@]} > 0 )) || { printf "No artifacts found in: %s\n" "${artifacts_dir}" >&2; exit 1; }
+
+  local binary="${artifacts_dir}/treetime-x86_64-unknown-linux-gnu"
+  [[ -x "${binary}" ]] || { printf "Runnable Linux artifact not found: %s\n" "${binary}" >&2; exit 1; }
+  local version_output
+  version_output=$("${binary}" --version)
+  local version="${version_output#treetime }"
+  [[ "${version}" != "${version_output}" ]] || { printf "Unexpected version output: %s\n" "${version_output}" >&2; exit 1; }
+
+  local short_sha="${git_sha:0:7}"
+  [[ "${version}" == *"+${short_sha}" ]] || { printf "Version does not identify source %s: %s\n" "${short_sha}" "${version}" >&2; exit 1; }
+
+  local last_sha
+  last_sha=$(find_last_nightly_sha "${repo}")
+  printf "Creating nightly release: %s\n" "${version}"
+  generate_release_notes "${repo}" "${git_sha}" "${short_sha}" "${last_sha}" |
+    gh release create "${version}" \
+      --repo "${repo}" \
+      --target "${git_sha}" \
+      --title "${version}" \
+      --prerelease \
+      --notes-file - \
+      "${artifacts[@]}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,82 @@
+on:
+  workflow_call:
+    inputs:
+      force:
+        description: "Build even when rust has not changed since the latest nightly"
+        required: false
+        type: boolean
+        default: false
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+jobs:
+  prepare:
+    name: "Resolve rust revision"
+    runs-on: ubuntu-24.04
+    outputs:
+      should_build: ${{ steps.prepare.outputs.should_build }}
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
+      version_suffix: ${{ steps.prepare.outputs.version_suffix }}
+    steps:
+      - name: "Resolve version"
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
+          short_sha="${source_sha:0:7}"
+          latest_tag=$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
+
+          should_build=true
+          if [[ "${{ inputs.force }}" != "true" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
+            should_build=false
+          fi
+
+          timestamp=$(date -u "+%Y%m%dT%H%M%SZ")
+          version_suffix="nightly.${timestamp}+${short_sha}"
+
+          printf "Source: %s\nVersion suffix: %s\nBuild: %s\n" "${source_sha}" "${version_suffix}" "${should_build}"
+          printf "should_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
+            "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
+
+  build-and-test:
+    name: "Build and test"
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    uses: neherlab/treetime/.github/workflows/cli.yml@rust
+    with:
+      source_ref: ${{ needs.prepare.outputs.source_sha }}
+      build_mode: nightly
+      version_suffix: ${{ needs.prepare.outputs.version_suffix }}
+    secrets: inherit
+
+  publish:
+    name: "Publish nightly release"
+    needs: [prepare, build-and-test]
+    if: needs.prepare.outputs.should_build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Checkout rust revision"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+          fetch-depth: 0
+
+      - name: "Download build artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "treetime-*"
+          merge-multiple: true
+          path: ".out"
+
+      - name: "Publish nightly release"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x ./.out/*
+          ./dev/publish-nightly \
+            --artifacts_dir ".out" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --git_sha "${{ needs.prepare.outputs.source_sha }}"
