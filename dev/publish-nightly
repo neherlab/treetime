@@ -2,7 +2,7 @@
 #
 # Usage: $0 [options]
 #
-# Upload CLI artifacts as a nightly prerelease in the release repository.
+# Upload CLI artifacts as a nightly release in the release repository.
 # The release tag combines the workspace version and supplied nightly suffix.
 #
 # Options:
@@ -25,7 +25,7 @@ generate_release_notes() {
   local short_sha="${3}"
 
   cat <<EOF
-Nightly pre-release build of [treetime](https://github.com/${repo}).
+Nightly build of [treetime](https://github.com/${repo}).
 
 **Source**: [\`${short_sha}\`](https://github.com/${repo}/commit/${git_sha})
 
@@ -92,7 +92,6 @@ main() {
     gh release create "${version}" \
       --repo "${release_repo}" \
       --title "${version}" \
-      --prerelease \
       --notes-file - \
       "${artifacts[@]}"
 }
