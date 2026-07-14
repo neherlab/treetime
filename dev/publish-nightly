@@ -2,17 +2,18 @@
 #
 # Usage: $0 [options]
 #
-# Upload CLI artifacts as a nightly pre-release in the source repository.
+# Upload CLI artifacts as a nightly prerelease in the release repository.
 # The release tag is read from the Linux binary so both versions are identical.
 #
 # Options:
-#   -h, --help                Show this help
-#   --artifacts_dir <dir>     Directory containing build artifacts
-#   --repo <owner/repo>       GitHub repository for the release
-#   --git_sha <sha>           Source commit SHA
+#   -h, --help                     Show this help
+#   --artifacts_dir <dir>          Directory containing build artifacts
+#   --source_repo <owner/repo>     GitHub repository containing the source
+#   --release_repo <owner/repo>    GitHub repository receiving the release
+#   --git_sha <sha>                Source commit SHA
 #
 # Environment:
-#   GITHUB_TOKEN    GitHub token with contents:write for the repository.
+#   GITHUB_TOKEN    GitHub token with contents:write for the release repository.
 #
 set -euo pipefail
 trap "exit" INT
@@ -89,7 +90,8 @@ main() {
   }
 
   local artifacts_dir=""
-  local repo=""
+  local source_repo=""
+  local release_repo=""
   local git_sha=""
 
   # shfmt:off
@@ -97,7 +99,8 @@ main() {
     case "${1}" in
       -h|--help) show_help; exit 0 ;;
       --artifacts_dir) artifacts_dir="${2}"; shift 2 ;;
-      --repo) repo="${2}"; shift 2 ;;
+      --source_repo) source_repo="${2}"; shift 2 ;;
+      --release_repo) release_repo="${2}"; shift 2 ;;
       --git_sha) git_sha="${2}"; shift 2 ;;
       --) shift; break ;;
       -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
@@ -112,7 +115,8 @@ main() {
   done
   : "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
   [[ -d "${artifacts_dir}" ]] || { printf "Artifact directory does not exist: %s\n" "${artifacts_dir}" >&2; exit 1; }
-  [[ -n "${repo}" ]] || { printf "--repo is required\n" >&2; exit 1; }
+  [[ -n "${source_repo}" ]] || { printf "--source_repo is required\n" >&2; exit 1; }
+  [[ -n "${release_repo}" ]] || { printf "--release_repo is required\n" >&2; exit 1; }
   [[ -n "${git_sha}" ]] || { printf "--git_sha is required\n" >&2; exit 1; }
 
   local artifacts=()
@@ -133,12 +137,11 @@ main() {
   [[ "${version}" == *"+${short_sha}" ]] || { printf "Version does not identify source %s: %s\n" "${short_sha}" "${version}" >&2; exit 1; }
 
   local last_sha
-  last_sha=$(find_last_nightly_sha "${repo}")
+  last_sha=$(find_last_nightly_sha "${release_repo}")
   printf "Creating nightly release: %s\n" "${version}"
-  generate_release_notes "${repo}" "${git_sha}" "${short_sha}" "${last_sha}" |
+  generate_release_notes "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}" |
     gh release create "${version}" \
-      --repo "${repo}" \
-      --target "${git_sha}" \
+      --repo "${release_repo}" \
       --title "${version}" \
       --prerelease \
       --notes-file - \

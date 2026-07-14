@@ -11,6 +11,9 @@ defaults:
   run:
     shell: bash -euo pipefail {0}
 
+env:
+  RELEASE_REPOSITORY: neherlab/treetime-nightly
+
 jobs:
   prepare:
     name: "Resolve rust revision"
@@ -23,11 +26,11 @@ jobs:
       - name: "Resolve version"
         id: prepare
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
         run: |
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
-          latest_tag=$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
+          latest_tag=$(gh release list --repo "${RELEASE_REPOSITORY}" --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
 
           should_build=true
           if [[ "${{ inputs.force }}" != "true" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
@@ -73,10 +76,11 @@ jobs:
 
       - name: "Publish nightly release"
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
         run: |
           chmod +x ./.out/*
           ./dev/publish-nightly \
             --artifacts_dir ".out" \
-            --repo "${GITHUB_REPOSITORY}" \
+            --source_repo "${GITHUB_REPOSITORY}" \
+            --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}"

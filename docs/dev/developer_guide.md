@@ -293,7 +293,7 @@ Not yet configured. The `dev/publish-github` script and the commented-out `publi
 
 #### Nightly releases
 
-Automated pre-release builds are published in [neherlab/treetime](https://github.com/neherlab/treetime/releases) for early testing. Binaries for all 7 cross-compilation targets are attached to each release.
+Automated prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases) for early testing. Binaries for all 7 cross-compilation targets are attached to each release.
 
 **Schedule**: daily at 04:00 UTC via `.github/workflows/schedule-nightly.yml` on the default branch. The dispatcher calls `.github/workflows/nightly.yml` on `rust` and skips if no new Rust commits exist since the last nightly.
 
@@ -311,9 +311,9 @@ This dispatches `schedule-nightly.yml` via `gh workflow run`. Requires `GH_TOKEN
 
 1. `schedule-nightly.yml` on `master` calls `nightly.yml` on `rust`
 2. `nightly.yml` resolves the current `rust` commit and calls `cli.yml` for the full build and validation matrix
-3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime` with all binaries attached
+3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime-nightly` with all binaries attached and links it to the source commit in `neherlab/treetime`
 
-**Authentication**: the dispatcher grants `contents: write` to the repository's standard `GITHUB_TOKEN`. Nightly builds do not publish TreeTime Docker images; the reused CLI workflow retains its existing Docker builder-image cache.
+**Authentication**: `NEHERLAB_BOT_GITHUB_TOKEN` publishes releases in `neherlab/treetime-nightly`; the standard `GITHUB_TOKEN` only needs read access to `neherlab/treetime`. Nightly builds do not publish TreeTime Docker images; the reused CLI workflow retains its existing Docker builder-image cache.
 
 ### Continuous Integration (CI), Packaging, and Distribution
 
