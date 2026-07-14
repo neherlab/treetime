@@ -11,6 +11,10 @@ defaults:
   run:
     shell: bash -euo pipefail {0}
 
+concurrency:
+  group: nightly-cli-release
+  cancel-in-progress: false
+
 env:
   RELEASE_REPOSITORY: neherlab/treetime-nightly
 
@@ -30,7 +34,7 @@ jobs:
         run: |
           source_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/rust" --jq '.sha')
           short_sha="${source_sha:0:7}"
-          latest_tag=$(gh release list --repo "${RELEASE_REPOSITORY}" --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
+          latest_tag=$(gh release list --repo "${RELEASE_REPOSITORY}" --exclude-drafts --limit 100 --json tagName --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""')
 
           should_build=true
           if [[ "${{ inputs.force }}" != "true" && -n "${latest_tag}" && "${latest_tag}" == *"+${short_sha}" ]]; then
@@ -62,13 +66,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.source_sha }}
-          fetch-depth: 0
 
       - name: "Download build artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: "treetime-*"
           merge-multiple: true
@@ -78,9 +81,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
         run: |
-          chmod +x ./.out/*
           ./dev/publish-nightly \
             --artifacts_dir ".out" \
             --source_repo "${GITHUB_REPOSITORY}" \
             --release_repo "${RELEASE_REPOSITORY}" \
-            --git_sha "${{ needs.prepare.outputs.source_sha }}"
+            --git_sha "${{ needs.prepare.outputs.source_sha }}" \
+            --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
