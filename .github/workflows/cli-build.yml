@@ -1,0 +1,95 @@
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: "Immutable source commit to build"
+        required: true
+        type: string
+      build_mode:
+        description: "CLI build version mode: dev, nightly, or release"
+        required: true
+        type: string
+      version_suffix:
+        description: "Version suffix for TREETIME_VERSION_SUFFIX"
+        required: false
+        type: string
+        default: ""
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  TREETIME_BUILD_MODE: ${{ inputs.build_mode }}
+  TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
+  VERBOSE: 1
+
+jobs:
+  build-cli:
+    name: "build-cli (${{ matrix.arch }})"
+    runs-on: ubuntu-24.04
+    continue-on-error: ${{ inputs.build_mode == 'nightly' && matrix.arch != 'x86_64-unknown-linux-gnu' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+          submodules: true
+          lfs: true
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Setup cache for Rust and Cargo"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-${{ matrix.arch }}/cargo/registry/index/
+            .cache/docker-${{ matrix.arch }}/cargo/registry/cache/
+            .cache/docker-${{ matrix.arch }}/cargo/git/db/
+            .cache/docker-${{ matrix.arch }}/sccache/
+          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-
+            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
+
+      - name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
+
+      - name: "Prepare .env file"
+        run: |
+          cp .env.example .env
+
+      - name: "Build docker image (${{ matrix.arch }})"
+        run: |
+          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run echo "Success"
+
+      - name: "Build CLI (${{ matrix.arch }})"
+        run: |
+          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run ./dev/cross/build treetime
+
+      - name: "Upload CLI"
+        uses: actions/upload-artifact@v4
+        with:
+          name: treetime-${{ matrix.arch }}
+          path: ./.out/*
+          include-hidden-files: true

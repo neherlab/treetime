@@ -44,11 +44,11 @@ jobs:
           printf "should_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
             "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
 
-  build-and-test:
-    name: "Build and test"
+  build:
+    name: "Build"
     needs: prepare
     if: needs.prepare.outputs.should_build == 'true'
-    uses: neherlab/treetime/.github/workflows/cli.yml@rust
+    uses: neherlab/treetime/.github/workflows/cli-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
       build_mode: nightly
@@ -57,7 +57,7 @@ jobs:
 
   publish:
     name: "Publish nightly release"
-    needs: [prepare, build-and-test]
+    needs: [prepare, build]
     if: needs.prepare.outputs.should_build == 'true'
     runs-on: ubuntu-24.04
     steps:

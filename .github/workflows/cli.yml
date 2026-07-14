@@ -10,24 +10,6 @@ on:
 
   workflow_dispatch:
 
-  workflow_call:
-    inputs:
-      source_ref:
-        description: "Immutable source commit to build"
-        required: false
-        type: string
-        default: ""
-      build_mode:
-        description: "CLI build version mode: dev, nightly, or release"
-        required: false
-        type: string
-        default: "dev"
-      version_suffix:
-        description: "Version suffix for TREETIME_VERSION_SUFFIX (e.g. nightly.20260714T043012Z+a1b2c3d)"
-        required: false
-        type: string
-        default: ""
-
 concurrency:
   group: cli-${{ github.workflow }}-${{ github.ref_type }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
   cancel-in-progress: true
@@ -37,8 +19,8 @@ defaults:
     shell: bash -euo pipefail {0}
 
 env:
-  TREETIME_BUILD_MODE: ${{ inputs.build_mode || 'dev' }}
-  TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
+  TREETIME_BUILD_MODE: dev
+  TREETIME_VERSION_SUFFIX: ""
   VERBOSE: 1
 
 
@@ -46,74 +28,12 @@ env:
 jobs:
 
   build-cli:
-    name: "build-cli (${{ matrix.arch }})"
-    runs-on: ubuntu-24.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - aarch64-apple-darwin
-          - aarch64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - x86_64-apple-darwin
-          - x86_64-pc-windows-gnu
-          - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
-
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.source_ref || github.sha }}
-          fetch-depth: 1
-          submodules: true
-          lfs: true
-
-      # - name: "Free disk space"
-      #   uses: ./.github/actions/free-disk-space
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Setup cache for Rust and Cargo"
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/docker-${{ matrix.arch }}/cargo/registry/index/
-            .cache/docker-${{ matrix.arch }}/cargo/registry/cache/
-            .cache/docker-${{ matrix.arch }}/cargo/git/db/
-            .cache/docker-${{ matrix.arch }}/sccache/
-          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-${{ matrix.arch }}-
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
-
-      - name: "Login to Docker Hub"
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-
-      - name: "Prepare .env file"
-        run: |
-          cp .env.example .env
-
-      - name: "Build docker image (${{ matrix.arch }})"
-        run: |
-          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run echo "Success"
-
-      - name: "Build CLI (${{ matrix.arch }})"
-        run: |
-          CROSS_COMPILE="${{ matrix.arch }}" ./dev/docker/run ./dev/cross/build treetime
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: treetime-${{ matrix.arch }}
-          path: ./.out/*
-          include-hidden-files: true
+    name: "Build CLI"
+    uses: ./.github/workflows/cli-build.yml
+    with:
+      source_ref: ${{ github.sha }}
+      build_mode: dev
+    secrets: inherit
 
 
 
@@ -125,13 +45,10 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
-
-      # - name: "Free disk space"
-      #   uses: ./.github/actions/free-disk-space
 
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
@@ -179,13 +96,10 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
-
-      # - name: "Free disk space"
-      #   uses: ./.github/actions/free-disk-space
 
       - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
@@ -223,32 +137,6 @@ jobs:
         run: |
           ./dev/docker/run ./dev/dev lint-ci
 
-#  run-smoke-tests:
-#    name: "Smoke tests"
-#    needs: [ build-cli ]
-#    runs-on: ubuntu-24.04
-#
-#    steps:
-#      - name: "Checkout code"
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 1
-#          submodules: true
-#          lfs: true
-#
-#      - name: "Download build artifacts"
-#        uses: actions/download-artifact@v4
-#        with:
-#          pattern: treetime-*
-#          merge-multiple: true
-#          path: ".out"
-#
-#      - name: "Run smoke tests"
-#        run: |
-#          chmod +x ./.out/treetime-x86_64-unknown-linux-gnu
-#          ./dev/run-smoke-tests ./.out/treetime-x86_64-unknown-linux-gnu --fast
-
-
   run-compat-tests-x86_64-unknown-linux-gnu:
     name: "Compat test (x86_64-unknown-linux-gnu)"
     needs: [ build-cli ]
@@ -258,7 +146,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -284,7 +172,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -393,7 +281,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -413,82 +301,3 @@ jobs:
       - name: "Check that the git diff is clean"
         run: |
           git -c color.ui=always diff --exit-code "docs/docs/reference.md" || (printf "CLI reference documentation is not up-to-date. Run './dev/docker/run ./dev/dev D', then verify and commit docs/docs/reference.md.\n" >&2; exit 1)
-
-
-#  publish-to-github-releases:
-#    name: "Publish to GitHub Releases"
-#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-compat-tests-x86_64-unknown-linux-gnu, run-compat-tests-x86_64-unknown-linux-musl, run-compat-tests-x86_64-apple-darwin, run-compat-tests-aarch64-apple-darwin, run-compat-tests-x86_64-pc-windows-gnu, check-cli-docs ]
-#    if: github.ref == 'refs/heads/release-cli'
-#    runs-on: ubuntu-24.04
-#
-#    steps:
-#      - name: "Checkout code"
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 1
-#          submodules: true
-#          lfs: true
-#
-#      - name: "Download build artifacts"
-#        uses: actions/download-artifact@v4
-#        with:
-#          pattern: treetime-*
-#          merge-multiple: true
-#          path: ".out"
-#
-#      - name: "Install deploy dependencies"
-#        run: |
-#          mkdir -p "${HOME}/bin"
-#          curl -fsSL "https://github.com/cli/cli/releases/download/v2.10.1/gh_2.10.1_linux_amd64.tar.gz" | tar xz -C "${HOME}/bin" --strip-components=2 gh_2.10.1_linux_amd64/bin/gh
-#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
-#          curl -fsSL "https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64" -o ${HOME}/bin/jq && chmod +x ${HOME}/bin/jq
-#
-#      - name: "Publish build artifacts to GitHub releases"
-#        run: |
-#          set -euxo pipefail
-#          export PATH="${PATH}:${HOME}/bin"
-#          export GITHUB_TOKEN="${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}"
-#          ./dev/publish-github \
-#            --artifacts_dir ".out" \
-#            --repo "${{ github.repository }}" \
-#            --git_sha "${{ github.sha }}"
-
-
-#  publish-to-docker-hub:
-#    name: "Publish to Docker Hub"
-#    needs: [ build-cli, run-unit-tests, run-lints, run-smoke-tests, run-compat-tests-x86_64-unknown-linux-gnu, run-compat-tests-x86_64-unknown-linux-musl, run-compat-tests-x86_64-apple-darwin, run-compat-tests-aarch64-apple-darwin, run-compat-tests-x86_64-pc-windows-gnu, check-cli-docs ]
-#    if: github.ref == 'refs/heads/release-cli'
-#    runs-on: ubuntu-24.04
-#
-#    steps:
-#      - name: "Checkout code"
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 1
-#          submodules: true
-#          lfs: true
-#
-#      - name: "Download build artifacts"
-#        uses: actions/download-artifact@v4
-#        with:
-#          pattern: treetime-*
-#          merge-multiple: true
-#          path: ".out"
-#
-#      - name: "Install deploy dependencies"
-#        run: |
-#          mkdir -p "${HOME}/bin"
-#          curl -fsSL "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_amd64" -o "${HOME}/bin/dasel" && chmod +x "${HOME}/bin/dasel"
-#
-#      - name: "Login to Docker Hub"
-#        uses: docker/login-action@v3
-#        with:
-#          registry: docker.io
-#          username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN }}
-#
-#      - name: "Build and publish Docker container images to Docker Hub"
-#        run: |
-#          export PATH="${PATH}:${HOME}/bin"
-#          chmod +x ./.out/*
-#          ./dev/publish-docker --push

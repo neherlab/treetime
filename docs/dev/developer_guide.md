@@ -289,11 +289,11 @@ The workspace version in `Cargo.toml` tracks the base release version (e.g. `1.0
 
 #### Stable releases
 
-Not yet configured. The `dev/publish-github` script and the commented-out `publish-to-github-releases` job in `.github/workflows/cli.yml` are prepared for this.
+Not yet configured. The `dev/publish-github` script is prepared for this.
 
 #### Nightly releases
 
-Automated prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases) for early testing. Binaries for all 7 cross-compilation targets are attached to each release.
+Automated prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases) for early testing. Every successfully built binary is attached; `x86_64-unknown-linux-gnu` is required for publication.
 
 **Schedule**: daily at 04:00 UTC via `.github/workflows/schedule-nightly.yml` on the default branch. The dispatcher calls `.github/workflows/nightly.yml` on `rust` and skips if no new Rust commits exist since the last nightly.
 
@@ -310,8 +310,8 @@ This dispatches `schedule-nightly.yml` via `gh workflow run`. Requires `GH_TOKEN
 **How it works**:
 
 1. `schedule-nightly.yml` on `master` calls `nightly.yml` on `rust`
-2. `nightly.yml` resolves the current `rust` commit and calls `cli.yml` for the full build and validation matrix
-3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime-nightly` with all binaries attached and links it to the source commit in `neherlab/treetime`
+2. `nightly.yml` resolves the current `rust` commit and calls `cli-build.yml` for the cross-compilation matrix; `x86_64-unknown-linux-gnu` is required while other targets may fail
+3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime-nightly` with every successfully built binary attached and links it to the source commit in `neherlab/treetime`
 
 **Authentication**: `NEHERLAB_BOT_GITHUB_TOKEN` publishes releases in `neherlab/treetime-nightly`; the standard `GITHUB_TOKEN` only needs read access to `neherlab/treetime`. Nightly builds do not publish TreeTime Docker images; the reused CLI workflow retains its existing Docker builder-image cache.
 
@@ -325,4 +325,4 @@ CI runs on every push to `rust` and on pull requests via `.github/workflows/cli.
 - Compatibility tests on native macOS, Windows, and Linux runners
 - CLI documentation freshness check
 
-The Rust nightly workflow (`.github/workflows/nightly.yml`) reuses `cli.yml` via `workflow_call` and adds a publish step.
+Both CI and the nightly workflow reuse `.github/workflows/cli-build.yml`. CI requires every target and runs validation; nightly requires `x86_64-unknown-linux-gnu` and publishes whichever other targets build successfully.
