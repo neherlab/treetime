@@ -1,0 +1,17 @@
+name: "Nightly CLI"
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    uses: neherlab/treetime/.github/workflows/nightly.yml@rust
+    with:
+      force: ${{ github.event_name == 'workflow_dispatch' }}
+    secrets: inherit
