@@ -24,9 +24,9 @@
 - [x] CSV (clock regression, confidence intervals)
 - [x] SVG/PNG charts (clock regression)
 - [x] Graphviz DOT
-- [x] Output topology ordering (default ladderization, input order preservation, target leaf order)
+- [/] Output topology ordering (direct formats honor the plan; TreeIR-backed formats can project the unordered graph: [kb/issues/M-io-tree-backed-output-order-inconsistent.md](../issues/M-io-tree-backed-output-order-inconsistent.md))
 - [ ] VCF output (v0 writes .vcf for VCF inputs)
-- [/] Auspice JSON (partial - [kb/issues/N-timetree-auspice-json-incomplete.md](../issues/N-timetree-auspice-json-incomplete.md))
+- [/] Auspice JSON (substitutions implemented; required `meta.updated` is absent and inference metadata remains incomplete: [kb/issues/H-io-auspice-v2-required-updated-missing.md](../issues/H-io-auspice-v2-required-updated-missing.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
 - [ ] Skyline TSV/plot
 - [ ] Substitution rates TSV
 - [ ] Outliers TSV

@@ -9,5 +9,5 @@ Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but return an err
 ## Related issues
 
 - Source: [N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md) -- delete after full resolution
-- [Missing output files compared to v0](timetree-output-add-v0-parity-files.md)
+- [kb/issues/N-timetree-missing-output-files.md](../issues/N-timetree-missing-output-files.md)
   `root_to_tip_regression.pdf` and `timetree.pdf` listed as missing outputs

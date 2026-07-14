@@ -6,4 +6,4 @@ The discrepancy is at most one day. `augur export v2` reads `numdate` for the ti
 
 ## Related issues
 
-- [Auspice JSON output missing mutations, branch confidence, and genome annotations](N-timetree-auspice-json-incomplete.md)
+- [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md)

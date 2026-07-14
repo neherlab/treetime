@@ -2,7 +2,7 @@
 
 ## Motivation
 
-Analysis commands (`ancestral`, `timetree`, `optimize`, `clock`, `mugration`) currently accept only Newick trees and FASTA alignments as separate files. This two-file model requires name-based matching to reconcile sequences with tree nodes, which is unreliable and inefficient (see [M-io-sequence-name-matching-unreliable](../issues/M-io-sequence-name-matching-unreliable.md) and [M-io-sequence-attachment-quadratic](../issues/M-io-sequence-attachment-quadratic.md)).
+Analysis commands (`ancestral`, `timetree`, `optimize`, `clock`, `mugration`) currently accept only Newick trees and FASTA alignments as separate files. This two-file model requires name-based matching to reconcile sequences with tree nodes, which is unreliable and inefficient (see [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md) and [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)).
 
 The codebase already includes format adapters for unified formats where sequence data is bound to tree structure:
 
@@ -10,7 +10,7 @@ The codebase already includes format adapters for unified formats where sequence
 - UShER MAT (protobuf): edge mutations in preorder traversal
 - PhyloXML: per-clade sequence elements
 
-These adapters are implemented in `treetime-io` and used by the `convert` command, but not integrated into analysis commands.
+Schema adapters exist in `treetime-io` and are used by the `convert` command. They do not yet define a lossless shared mutation vocabulary: UShER MAT preservation policy, PhyloXML mutation properties, and shared substitution/insertion/deletion projection remain unresolved in [kb/issues/M-io-usher-mat-mutation-loss-is-implicit.md](../issues/M-io-usher-mat-mutation-loss-is-implicit.md), [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md), and [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md). Integrating a reader therefore requires an explicit preservation contract in addition to schema parsing.
 
 ## Proposal
 
@@ -30,19 +30,19 @@ The unified path eliminates the name-matching phase entirely.
 | Format         | Tree | Branch lengths | Mutations | Full sequences | Root sequence |
 | -------------- | ---- | -------------- | --------- | -------------- | ------------- |
 | Newick + FASTA | yes  | yes            | no        | yes (separate) | no            |
-| Auspice JSON   | yes  | via div        | yes       | no             | yes           |
-| UShER MAT      | yes  | no             | yes       | no             | implicit      |
-| PhyloXML       | yes  | yes            | no        | yes (embedded) | no            |
+| Auspice JSON   | yes  | via div        | partial   | no             | yes           |
+| UShER MAT      | yes  | no             | partial   | no             | implicit      |
+| PhyloXML       | yes  | yes            | unresolved | yes (embedded) | no            |
 
 For mutation-based formats (Auspice, MAT), full sequences are derived from root sequence plus accumulated mutations along the path from root to each node.
 
 ## Implementation approach
 
-### Phase 1: Input format detection
+### Input format detection
 
-Add `--input-format` flag to analysis commands, mirroring the `convert` command at [packages/treetime-cli/src/convert/args.rs#L7-L18](../../packages/treetime-cli/src/convert/args.rs#L7-L18). Auto-detect from file extension when not specified.
+Add a shared `--input-format` flag to analysis commands. Auto-detect from file extension when not specified.
 
-### Phase 2: Unified format readers
+### Unified format readers
 
 Create adapter functions that read unified formats and return populated partition structures:
 
@@ -56,7 +56,7 @@ fn partitions_from_usher_mat(path: &Path, alphabet: &Alphabet)
 
 These reuse existing format reading logic from `treetime-io` but produce partition structures instead of `ConverterGraph`.
 
-### Phase 3: Sequence derivation for mutation-based formats
+### Sequence derivation for mutation-based formats
 
 For Auspice and MAT inputs, derive full sequences by traversing from root:
 
@@ -66,14 +66,14 @@ For Auspice and MAT inputs, derive full sequences by traversing from root:
 
 This allows marginal reconstruction algorithms to operate on the derived sequences.
 
-### Phase 4: Sparse-native mode
+### Sparse-native mode
 
 For workflows that only need mutations (not full probability distributions), operate directly on the mutation representation without deriving full sequences. This matches how UShER processes pandemic-scale datasets.
 
 ## Interaction with existing proposals
 
-- [Configuration file format for multi-partition analysis](config-file-multi-partition.md): the config file could specify input format per partition, mixing Newick+FASTA with unified formats
-- [Multi-format tree I/O](../decisions/multi-format-tree-io.md): documents the existing format adapters that this proposal would integrate
+- [config-file-multi-partition.md](config-file-multi-partition.md): the config file could specify input format per partition, mixing Newick+FASTA with unified formats
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md): documents the existing format adapters that this proposal would integrate
 
 ## Open questions
 
@@ -85,17 +85,16 @@ For workflows that only need mutations (not full probability distributions), ope
 
 4. How to handle format-specific metadata (Auspice colorings, MAT clade annotations) through the analysis pipeline?
 
-## Implementation priority
+## Recommended complete design
 
-Recommended order for addressing input architecture:
+The production design should combine all of the following:
 
-1. Immediate: Improve Newick+FASTA attachment (A0 in design). Build name index, detect duplicates, clear errors. This is the primary input path.
+- Index Newick-plus-FASTA input by validated unique names and report duplicate or missing mappings precisely.
+- Parse each unified format into a typed representation whose preservation and unsupported-state contracts are explicit before constructing partitions.
+- Configure input format per partition through [config-file-multi-partition.md](config-file-multi-partition.md), including multi-segment datasets and explicit name mappings.
+- Support indexed or memory-mapped sequence access so the same input contract remains usable for datasets that do not fit in memory.
 
-2. Short-term: Prototype Auspice JSON input for one analysis command. Validates the unified-format approach with minimal risk.
-
-3. Medium-term: Config file format per [config-file-multi-partition](config-file-multi-partition.md). Enables multi-segment and explicit name mappings.
-
-4. Long-term: Out-of-core processing for large datasets (indexed FASTA, memory-mapped access). Requires architectural changes.
+These capabilities share the same typed partition-construction boundary. None substitutes for the others.
 
 ## Orthogonal concerns
 
@@ -109,13 +108,14 @@ The graph payload question affects internal organization. This proposal affects 
 
 ## Related issues
 
-- [Sequence-to-node name matching is unreliable](../issues/M-io-sequence-name-matching-unreliable.md)
-- [Sequence attachment has O(n squared) complexity](../issues/M-io-sequence-attachment-quadratic.md)
-- [Large datasets require all sequences in memory](../issues/N-io-large-dataset-memory-constraint.md)
-- [Auspice JSON output incomplete](../issues/N-timetree-auspice-json-incomplete.md)
-- [Multi-segment genome input not wired](../issues/N-io-multi-segment-genome-input.md)
+- [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
+- [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)
+- [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md)
+- [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md)
+- [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md)
+- [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
 
 ## Related documentation
 
-- [Multi-format tree I/O](../decisions/multi-format-tree-io.md) - existing format adapter implementations
-- [Partition system architecture](../decisions/partition-system-architecture.md) - target internal representation
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) - existing format adapter implementations
+- [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md) - target internal representation

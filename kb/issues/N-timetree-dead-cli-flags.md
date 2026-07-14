@@ -1,6 +1,6 @@
 # Dead CLI flags in timetree
 
-10 flags are parsed by clap but never read in the timetree pipeline:
+Nine flags are parsed by clap but never read in the timetree pipeline:
 
 | Flag                       | Notes                                    |
 | -------------------------- | ---------------------------------------- |
@@ -9,7 +9,6 @@
 | `--no-tip-labels`          | Never read                               |
 | `--n-iqd`                  | Never read                               |
 | `--vcf-reference`          | Never read                               |
-| `--zero-based`             | Never read                               |
 | `--reconstruct-tip-states` | Never read                               |
 | `--report-ambiguous`       | Never read                               |
 | `--seed`                   | Never read                               |
@@ -25,6 +24,20 @@ Flags that are already wired and not part of this issue:
 - `--tip-slack` used in covariation variance computation
 - `--time-marginal=always` already triggers confidence-interval extraction, so it is intentionally excluded from the dead-flag list
 
+## Potential solutions
+
+- O1. Implement the documented behavior of a flag and add an end-to-end parse/use test.
+- O2. Remove a flag and every generated-help/reference mention when no supported behavior exists.
+
+## Recommendation
+
+Trace each flag independently against v0 behavior and its owning feature issue, then select O1 or O2 per flag. Do not bundle all nine flags into one implementation ticket: their scientific meaning, input requirements, and parity constraints are independent.
+
+## Ticket readiness
+
+No aggregate ticket is ready. Create one focused ticket only after the disposition of its individual flag is determined.
+
 ## Related issues
 
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
+- [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md) tracks the shared mutation-string API and the `--zero-based` output contract

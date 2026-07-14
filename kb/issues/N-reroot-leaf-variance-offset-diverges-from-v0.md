@@ -19,12 +19,16 @@ v0's `def TreeRegression._optimal_root_along_branch()` [packages/legacy/treetime
 
 Affects root positions on **terminal edges only** (2-tip trees, or optima near tips). For interior optima on larger trees -- the normal min-dev case -- both sides have equal unit weights and the objectives coincide.
 
-v1's treatment (fixed tip measurement noise, not split-proportional) is more principled: tip noise represents sequencing error, which does not depend on where on the branch the root sits. v0's treatment (scale everything including the terminal constant by the split fraction) is simpler but conflates branch-length-proportional variance with the constant tip offset.
+V1's fixed tip-noise interpretation is scientifically plausible, but it is not approved. Exact v0 parity remains the required default.
 
 ## Decision needed
 
 - **Match v0**: scale `variance_offset_leaf` by `(1-x)` on the child side and by `x` on the parent side. Simplest parity path.
 - **Keep v1**: document as an intentional change in `kb/decisions/`. Scientifically defensible (tip noise is measurement error, not evolutionary distance).
+
+## Recommendation
+
+Match v0 by splitting the complete terminal variance between both sides. Retaining v1 requires explicit consent and a decision entry; the issue itself does not grant that consent.
 
 ## Code references
 

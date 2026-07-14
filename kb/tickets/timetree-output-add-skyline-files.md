@@ -15,7 +15,7 @@ v0 `--coalescent=skyline` produces `skyline.tsv` (effective population size over
 ## Related issues
 
 - Source: [N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md) -- delete after full resolution
-- [Missing output files compared to v0](timetree-output-add-v0-parity-files.md)
+- [kb/issues/N-timetree-missing-output-files.md](../issues/N-timetree-missing-output-files.md)
   umbrella issue for all missing outputs
 - [timetree.json missing coalescent parameters](timetree-output-json-missing-coalescent-parameters.md)
   skyline results also not serialized to JSON

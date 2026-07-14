@@ -6,7 +6,7 @@ All tree-writing commands (ancestral, clock, timetree, optimize, prune, mugratio
 
 Three independent problems converge:
 
-1. The shared graph writer hardcodes four formats. Format adapter traits for PhyloXML, Auspice JSON, and UShER MAT are defined in treetime-io but have no implementations on analysis command payload types ([kb/issues/N-io-write-graph-files-missing-formats.md](../issues/N-io-write-graph-files-missing-formats.md)).
+1. The shared graph writer needs one format-neutral projection with explicit preservation and loss contracts. Current gaps include [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md), [kb/issues/M-io-usher-mat-mutation-loss-is-implicit.md](../issues/M-io-usher-mat-mutation-loss-is-implicit.md), and [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md).
 2. Newick annotation styles (plain, BEAST `[&...]`, NHX `[&&NHX:...]`) are a serialization choice that the user cannot control. Plain Newick and annotated Newick are both valid outputs users may need simultaneously.
 3. Some commands should produce multiple tree files with different semantics -- timetree should output both time-branch-length and divergence-branch-length trees ([kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md)), and v0 does this.
 
@@ -139,24 +139,19 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 
 ## Impact
 
-- Resolves [kb/issues/N-io-write-graph-files-missing-formats.md](../issues/N-io-write-graph-files-missing-formats.md) -- format adapters wired to analysis commands
-- Resolves [kb/issues/N-io-nexus-writer-no-annotation-advantage.md](../issues/N-io-nexus-writer-no-annotation-advantage.md) -- Nexus annotation variants explicitly selectable
 - Resolves [kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md) -- timetree outputs both tree identities
 - Intentional default change: `graph-json` and `dot` no longer produced by default (currently produced unconditionally by `write_graph_files_with_options`)
 
 ## Validation
 
-- Each `TreeOutputFormat` variant round-trips through the convert command
+- Each `TreeOutputFormat` variant round-trips every value in its declared vocabulary. Mutation round trips remain conditional on resolving the shared mutation vocabulary and each writer's explicit unsupported-state policy; schema-level serialization alone does not establish semantic round-trip correctness.
 - Tier 1/2/3 resolution logic: unit tests for flag precedence, format selection filtering, default path generation
 - Per-command: verify available format set matches command's adapter traits
 - v0 parity: timetree produces both `timetree.nwk` and `divergence_tree.nwk` (matching v0's `export_sequences_and_tree`)
 
 ## Related
 
-- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- format adapter architecture (8 formats, convert command)
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- format adapter architecture
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md) -- NWK dialect grammars and tool interop
 - [kb/proposals/unified-input-format-support.md](unified-input-format-support.md) -- input-side counterpart (analysis commands accept any format)
-- [kb/tickets/io-nwk-writer-style-dispatch.md](../tickets/io-nwk-writer-style-dispatch.md) -- writer annotation style dispatch
-- three-tier output selection infrastructure -- implemented on `feat/cli-output-args`
 - [kb/tickets/io-timetree-divergence-tree-output.md](../tickets/io-timetree-divergence-tree-output.md) -- timetree divergence-tree output
-- [kb/tickets/io-format-adapter-impls.md](../tickets/io-format-adapter-impls.md) -- format adapter trait implementations

@@ -6,7 +6,7 @@ This is a structural blocker for multi-client architecture: `treetime-python` (P
 
 ## Evidence
 
-An AI refactoring agent moved the entire timetree implementation from the library into the CLI crate, treating `treetime-cli` as the owner of domain logic. This reflects the current blurred boundary: `commands/` in the library crate contains ~15k lines mixing domain algorithms with CLI orchestration, and domain types derive `clap::Args` / `clap::ValueEnum`.
+`commands/` in the library crate contains approximately 15,000 lines that mix domain algorithms with CLI orchestration, and domain types derive `clap::Args` or `clap::ValueEnum`. The boundary therefore makes CLI-layer types and dependencies prerequisites for non-CLI consumers.
 
 ## Scope
 
@@ -28,7 +28,7 @@ Decision: keep `clap` as a direct dependency of the `treetime` library crate. Do
 
 ## Impact
 
-- Encourages AI agents and contributors to treat `treetime-cli` as the primary crate, moving domain logic out of the library
+- Encourages contributors and automation clients to treat `treetime-cli` as the primary crate, moving domain logic out of the library
 
 ## Related issues
 

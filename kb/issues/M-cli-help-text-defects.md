@@ -1,6 +1,6 @@
 # CLI help text defects, inconsistencies, and UX violations
 
-Systematic audit of `--help` output across all commands reveals defects affecting three audiences: human scientists, AI agents, and workflow engines (Snakemake, Nextflow).
+Systematic audit of `--help` output across all commands reveals defects affecting human scientists, automation clients, and workflow engines such as Snakemake and Nextflow.
 
 ## Defects
 
@@ -104,10 +104,6 @@ Commands: `timetree`, `optimize`, `ancestral`, `homoplasy`. `[possible values: t
 
 Command: `optimize`. Possible value descriptions contain `$t$`, `$\sqrt{t}$`, `$\ln(t)$` which display as raw LaTeX in terminal output. Should be `t`, `sqrt(t)`, `ln(t)`.
 
-### U3: No `--outdir` alias for v0 migration
-
-v0 uses `--outdir`; v1 uses `-O`/`--output-all`. Users migrating from v0 get parse errors. An `--outdir` visible alias would ease migration.
-
 ### U4: `--relax` uses unusual multi-value syntax
 
 Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most CLIs use separate flags or comma-separated values.
@@ -160,9 +156,11 @@ No indication of expected range, units, or typical values.
 
 Usage lines show all output flags as optional (`[OPTIONS]`), but `output.rs:562` errors when no output destination is provided. Users following the usage pattern get a runtime error after input loading completes. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
 
-### ~~W2: `--output-selection` accepts values that the command rejects at runtime~~ (resolved)
+### W2: `--output-selection` accepts values that the command rejects at runtime
 
-Resolved by per-command selection enums. Invalid values are now rejected at parse time, not runtime.
+The macro still adds the full tree-format superset to every command, while a separate availability matrix rejects unsupported values later. For example, `prune --help` advertises Auspice and MAT selections that prune cannot produce. Per-file flags have the same drift when their writer is absent from the command matrix.
+
+Generate each command’s parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
 
 ### W3: `--alignment` says "multiple FASTA files" but does not show repeat syntax
 
@@ -174,7 +172,7 @@ Shared alignment help says "If no input files provided, the plain fasta input is
 
 ### W5: Root help links to Python v0 documentation
 
-Root `--help` links to `https://treetime.readthedocs.io/en/stable/` and the Python TreeTime publication. Users and agents will look up v0 behavior for a v1 binary.
+Root `--help` links to `https://treetime.readthedocs.io/en/stable/` and the Python TreeTime publication. Readers can incorrectly infer v1 behavior from documentation for the v0 binary.
 
 ### W6: No usage examples in any scientific command
 
@@ -212,6 +210,19 @@ Root help lists tooling commands at the same level as analysis commands with no 
 - Shared arg structs: `packages/treetime/src/commands/shared/*.rs`
 - Top-level command descriptions: `packages/app-cli/src/cli/treetime_cli.rs`
 - Method enum: `packages/treetime/src/ancestral/params.rs`
+
+## Potential solutions
+
+- O1. Extract one issue per independent parser or behavior contract, then group only purely textual corrections that share the same help generator and validation snapshot.
+- O2. Keep one repository-wide CLI cleanup. This couples parser behavior, dormant feature decisions, generated reference output, and prose edits into an implementation that cannot be validated as one contract.
+
+## Recommendation
+
+Use O1. Parser behavior such as `joint`, dense/sparse mode, required outputs, and per-command format availability needs focused issues and tickets. Pure spelling, capitalization, grammar, and layout corrections may share one documentation ticket after behavior-dependent items are removed. This inventory has no executable omnibus ticket.
+
+## Ticket readiness
+
+No aggregate ticket is ready. Each behavioral item must first select its parse/runtime contract, and already-owned dead or unimplemented flags remain with their domain issues.
 
 ## Related issues
 

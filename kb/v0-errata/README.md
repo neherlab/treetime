@@ -26,3 +26,4 @@ Evidence standard (at least two):
 | Confidence | [date_uncertainty_due_to_rate default interval typo](confidence-interval-default-typo.md)     | Dead code path (callers pass explicit args)                | Correct   |
 | Coalescent | [total_LH uses fixed multiplicity=2 for all edges](coalescent-total-lh-fixed-multiplicity.md) | Tc optimization wrong for polytomies                       | Correct   |
 | Optimize   | [optimize_tree_marginal uses signed convergence check](optimize-signed-convergence-check.md)  | Conflates convergence with failure (dead path in practice) | Improved  |
+| I/O        | [Auspice nucleotide annotation uses an invalid strand value](auspice-nucleotide-strand-invalid.md) | Auspice JSON fails strict Augur schema validation        | Pending   |

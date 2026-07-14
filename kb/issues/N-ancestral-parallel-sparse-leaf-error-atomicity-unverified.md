@@ -5,24 +5,43 @@
 
 ## Problem
 
-`pub(crate) fn attach_seqs_to_graph()` [packages/treetime/src/ancestral/fitch.rs#L55](../../packages/treetime/src/ancestral/fitch.rs#L55) mutates leaf descriptions while resolving alignment records in parallel. If another leaf has no name or matching record, the function returns an error after an execution-dependent subset of descriptions may already have changed.
+`pub(crate) fn attach_seqs_to_graph()` mutates each leaf description inside a fallible parallel iterator before collecting the complete result. If another leaf has no name or matching alignment record, descriptions written by successful workers remain observable even though the function returns an error.
 
-Partition construction collects a complete node map before extending each partition, which prevents partial insertion within one partition. Multiple partitions are still processed sequentially, so an error in a later partition can leave earlier partitions populated. The pre-parallel implementation also mutated state incrementally, but the parallel schedule changes which leaf-description mutations can precede an error.
+Sequence conversion is staged into a complete node map before one partition is extended, so a conversion error cannot partially populate that partition. Partitions are processed sequentially, however: conversion failure in a later partition leaves earlier partitions populated. Edge payloads are inserted only after every partition's nodes succeed.
 
-Callers currently discard setup state when construction fails, which may make transactional rollback unnecessary. That ownership assumption is not stated or tested.
+The function borrows the graph and partitions rather than consuming a disposable builder, so callers can retain the mutated values after failure. No API contract or test establishes that callers always discard them.
 
-## Research required
+## Decision axes
 
-- Trace every caller to establish whether a failed graph or partition set can remain observable.
-- Exercise missing-name, missing-record, invalid-sequence, and multi-partition failures under multiple thread counts.
-- Decide whether setup must be transactional, must leave a documented partial state, or may rely on callers discarding the state.
+### A1. Atomicity scope
+
+- O1. Make the complete call transactional across leaf descriptions, every partition's nodes, and edge payloads. Any error leaves all inputs unchanged.
+- O2. Guarantee atomicity per partition while documenting that earlier partitions and leaf descriptions may be committed. This exposes call-order-dependent state and requires every caller to reason about partial initialization.
+- O3. Move setup behind a consuming builder whose error path cannot return the graph or partitions. Partial internal mutation becomes unobservable, but this changes the construction boundary and still requires proof that no shared handles escape.
+
+**Recommendation:** O1. Stage validated leaf metadata and every partition's node and edge maps without mutating shared state, then commit all staged values after all fallible work succeeds.
+
+### A2. Parallel failure behavior
+
+- O1. Preserve parallel validation and construction, collect results in deterministic graph and partition order, and perform one serial commit.
+- O2. Validate serially before parallel construction. This avoids concurrent side effects but duplicates traversal and does not by itself make multi-partition commit atomic.
+
+**Recommendation:** O1. Parallel workers should produce owned staged values only; shared-state mutation belongs in the infallible commit step.
 
 ## Locations
 
-- `pub(crate) fn attach_seqs_to_graph()` [packages/treetime/src/ancestral/fitch.rs#L55](../../packages/treetime/src/ancestral/fitch.rs#L55)
+- `pub(crate) fn attach_seqs_to_graph()` mutates descriptions during collection [packages/treetime/src/ancestral/fitch.rs#L55-L91](../../packages/treetime/src/ancestral/fitch.rs#L55-L91)
+- Partition node and edge commits [packages/treetime/src/ancestral/fitch.rs#L93-L109](../../packages/treetime/src/ancestral/fitch.rs#L93-L109)
 - Sparse marginal tests [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs)
+
+## Validation
+
+- Inject missing-name, missing-record, and invalid-sequence failures at each leaf position under one and multiple worker threads.
+- Use at least two partitions and force the second partition to fail conversion; compare the complete graph and every partition with their pre-call values.
+- Verify successful setup produces identical deterministic state across worker counts.
 
 ## Related issues
 
 - [N-ancestral-parallel-sparse-leaf-validation-coverage.md](N-ancestral-parallel-sparse-leaf-validation-coverage.md)
 - [N-ancestral-parallel-sparse-leaf-single-thread-regression.md](N-ancestral-parallel-sparse-leaf-single-thread-regression.md)
+- [M-inference-fallible-parallel-passes-partially-commit.md](M-inference-fallible-parallel-passes-partially-commit.md)

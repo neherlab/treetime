@@ -31,11 +31,16 @@ The core lookup is identical; the optimize version adds multi-tip mapping and a 
 
 ## Impact
 
-Negligible. Two call sites, stable behavior. The duplication is a maintenance hazard: a future change to name-matching semantics (case handling, whitespace, disambiguation of duplicate names) must be applied in both places.
+Both implementations return the first matching storage slot. Duplicate tip names therefore select an arbitrary node while reporting success, and graph construction or topology changes can alter the selected node.
 
-## Fix
+## Potential solutions
 
-Extract a single name-to-node-key lookup (generic over `GraphNode + Named`), place it where both reroot paths can share it (the graph crate or a shared reroot helper), and have `resolve_tip_keys` build on it. The migration of clock rerooting onto the generic reroot module (`kb/tickets/reroot-migrate-clock-to-generic-search.md`) is a natural point to consolidate.
+- O1. Build one shared name index mapping each name to every matching key and reject ambiguity.
+- O2. Require callers to provide stable node keys rather than names. This is precise for library callers but does not solve CLI name input.
+
+## Recommendation
+
+Extract one shared ambiguity-detecting name index and use it from CLI resolution in both reroot paths. The migration of clock rerooting onto the generic reroot module is the natural consolidation point.
 
 ## Locations
 

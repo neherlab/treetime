@@ -2,14 +2,14 @@
 
 ## Summary
 
-Systematic test coverage gaps across major subsystems: timetree inference, clock command, coalescent, ancestral, optimize, mugration, prune, representation, GTR, and foundation modules. Four golden-master tests are gated with `#[ignore]`.
+Systematic test coverage gaps span timetree inference, clock, coalescent, ancestral reconstruction, optimize, mugration, prune, representation, GTR, and foundation modules. Relevant golden-master, analytical, and property tests remain gated with `#[ignore]`.
 
 ## Ignored golden-master tests
 
-- `timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs:40:` `#[ignore = "golden master datasets not yet passing"]`
-- `timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs:37:` `#[ignore = "golden master datasets not yet passing"]`
-- `ancestral/__tests__/test_marginal_dense_sparse_prop.rs:75:` `#[ignore]` with `max_relative=1e-5`. Related: `M-ancestral-dense-sparse-divergence.md`
-- `optimize/__tests__/test_gm_optimize.rs:70:` `#[ignore]`. Related: `M-optimize-gm-per-branch-divergence.md`
+- Marginal dense golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40): `#[ignore = "golden master datasets not yet passing"]`
+- Coalescent runner golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37): `#[ignore = "golden master datasets not yet passing"]`
+- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L75](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L75): `#[ignore]` with `max_relative=1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
+- Optimize golden master [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70): `#[ignore]`. Related: [M-optimize-gm-per-branch-divergence.md](M-optimize-gm-per-branch-divergence.md)
 
 ## Zero-test production functions
 
@@ -95,14 +95,40 @@ Systematic test coverage gaps across major subsystems: timetree inference, clock
 - `trait BranchTopology` blanket impl: untested
 - `fn propagate_raw`: not directly tested
 
+## Cross-cutting scientific coverage gaps
+
+- Scientific oracle and property tests remain ignored across distribution, rerooting, coalescent, and inference paths.
+- TreeIR semantic output tests cover `timetree` more thoroughly than ancestral, clock, mugration, optimize, and prune.
+- Parallel coverage concentrates on one sparse success case and does not establish error atomicity for marginal, optimize, or timetree passes.
+- Skyline tests recompute the reported formula instead of invoking the optimizer objective.
+- Coalescent initialization tests establish enum selection without checking topology-change sequencing or event completeness.
+- Sentinel arithmetic is tested as isolated helpers without a multiple-impossible-factor cavity case.
+- Fitch properties cover gap-free sequence reversal but not arbitrary column permutations, ambiguity, or exhaustive multifurcation scores.
+- Benchmark/report tooling lacks an automated fixture for revision dimensions and requested worker counts.
+
+Production defects remain in their domain issues; this issue owns the cross-cutting test matrix and re-enabling valid ignored tests.
+
 ## Missing property tests
 
 ### No property tests for ClockSet algebraic identities
 
-`packages/treetime/src/payload/clock_set.rs:53-172:`
+`struct ClockSet` algebra and propagation [packages/treetime/src/payload/clock_set.rs#L53-L172](../../packages/treetime/src/payload/clock_set.rs#L53-L172)
 
 `+`, `-`, `+=`, `-=`, `fn propagate_averages` lack property test coverage for algebraic identities (associativity, commutativity, identity element).
 
 ### No property tests for Fitch parsimony invariants
 
 Score invariant under rerooting, state-set subset relation between parent and child Fitch sets.
+
+## Potential solutions
+
+- O1. Create focused test tickets at each production ownership boundary after the corresponding behavior and oracle are defined.
+- O2. Use one coverage ticket spanning every listed function and ignored suite. This obscures distinct oracles and makes blocked production defects appear test-ready.
+
+## Recommendation
+
+Use O1. Keep this file as the coverage inventory, link each focused ticket back here, and enable an ignored test only after its production or parity blocker is resolved. Do not create a repository-wide coverage ticket.
+
+## Ticket readiness
+
+The inventory itself is not ticket-ready. Existing focused property and domain tickets remain executable; ignored golden masters and unrelated zero-test functions require separate source issues or resolved blockers.

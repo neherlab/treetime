@@ -1,4 +1,4 @@
-# A dedicated PhyloXML property namespace for TreeTime data
+# A dedicated PhyloXML property vocabulary for TreeTime data
 
 ## Motivation
 
@@ -18,14 +18,18 @@ The adapter (`packages/treetime-io/src/tree_ir/phyloxml.rs`) uses ad-hoc `ref` k
 - `treetime:indel` (xsd:string, parent_branch), value `gene:ins|del:start:SEQ`
 - `treetime:trait:<attr>` (xsd:string, node)
 
-These keys round-trip within TreeTime but are not a registered or documented namespace, so other PhyloXML consumers cannot interpret them, and the encoding of compound values (mutation strings, indel tuples) is bespoke.
+Scalar keys have reader and writer paths within TreeTime, but the mutation and indel vocabulary, event grouping, and round-trip ownership contract remain undecided. The keys are not a registered or documented reference vocabulary, so other PhyloXML consumers cannot interpret them, and the encoding of compound values is bespoke. `Property.ref` is a constrained attribute value rather than an XML QName, so declaring `xmlns:treetime` would not define its semantics [packages/util-phyloxml/schemas/phyloxml.xsd#L385-L408](../../packages/util-phyloxml/schemas/phyloxml.xsd#L385-L408).
 
 ## Open questions
 
-- **Namespace registration**: PhyloXML `<property>` `ref` values are conventionally namespaced as `NS:key` where `NS` is declared in the document. Should TreeTime declare an `xmlns:treetime` namespace URI and register the property set, so the document is self-describing?
-- **Compound value encoding**: mutations and indels are currently packed into delimited strings. PhyloXML has no list type, but a structured alternative (one property per field with shared `id_ref`, or repurposing `<sequence>`/`<binary_characters>`) could be more interoperable.
+- **Reference vocabulary**: PhyloXML `<property>` `ref` values use `prefix:value` syntax. What durable documentation URI and versioning contract should define the `treetime:*` vocabulary?
+- **Compound value encoding**: mutations and indels are currently packed into delimited strings. PhyloXML has no list type. Canonical atomic values, one self-contained structured value per event, or a schema extension could be more interoperable. `id_ref` targets an XML element and cannot group sibling properties into an event.
 - **Alignment with augur/auspice**: auspice represents mutations as `gene -> [A123T, ...]`. Should the PhyloXML encoding mirror that grouping to ease cross-format conversion?
 
 ## Non-goals
 
-This proposal does not change the round-trip behavior within TreeTime, which is already correct. It concerns interoperability and self-description for external PhyloXML consumers.
+This proposal does not change native PhyloXML elements or scalar TreeTime properties. It defines the unresolved interoperability, self-description, and round-trip contract for typed mutations and indels.
+
+## Related issues
+
+- [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md)

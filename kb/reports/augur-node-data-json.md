@@ -626,7 +626,6 @@ No partition access is needed: every per-node field comes from `NodeTimetree`/`E
 
 Residual parity gaps to track, not to bury under a completion claim:
 
-- `confidence`: v1's Newick reader does not parse input-tree branch support values, so the field is always omitted (tracked: [../issues/N-timetree-node-data-confidence-not-emitted.md](../issues/N-timetree-node-data-confidence-not-emitted.md)). Matches augur only when the input tree carries no support.
 - `num_date_confidence`: the field mapping is correct (90% region), but v1's CI composition may differ numerically from augur's marginal HPD (tracked: [../issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)).
 - `date`: `year_fraction_to_datestring` can differ from augur's `datestring_from_numeric` by up to one day at floating-point day boundaries (augur adds a `1e-10` nudge before flooring days). The field is excluded by `export v2` and never reaches auspice, so the difference is immaterial downstream.
 - `--divergence-units=mutations` (integer-count mode) is not implemented in v1; the default `mutations-per-site` mode is what the writer targets.
@@ -654,15 +653,11 @@ Residual parity gaps to track, not to bury under a completion claim:
 - `json_write_file()` / `JsonPretty` (`packages/treetime-utils/src/io/json.rs`)
 - `AuspiceGenomeAnnotations` and related types (`packages/treetime-io/src/auspice_types.rs`)
 
-## Open work items
+## Implementation status
 
 ### Date metadata preservation
 
-`read_date()` in `packages/treetime-io/src/dates_csv.rs` discards the original date string and collapses distinct input types into `DateOrRange`. Node data JSON requires `raw_date` (original string), `date` (resolved `"YYYY-MM-DD"`), and `date_inferred` (exact vs ambiguous).
-
-Design: replace `DateOrRange` with `DateConstraint` carrying a `DateValue` enum (`Exact(DateExact)`, `Uncertain(DateRange)`, `Range(DateRange)`) and the raw input string. `date_inferred` derives from the variant. `date` derives from `year_fraction_to_date()` + formatting.
-
-Tracked: [../issues/M-dates-raw-string-not-preserved.md](../issues/M-dates-raw-string-not-preserved.md), [../tickets/dates-preserve-raw-string-and-input-type.md](../tickets/dates-preserve-raw-string-and-input-type.md).
+Implemented. `DateConstraint` preserves the raw input alongside typed exact, uncertain, or ranged values [packages/treetime-io/src/dates_csv.rs#L38-L71](../../packages/treetime-io/src/dates_csv.rs#L38-L71). Node data derives `raw_date`, the resolved `"YYYY-MM-DD"` date, and `date_inferred` from that representation.
 
 ### Root profile sampling
 
@@ -672,9 +667,7 @@ Decision: [../decisions/ancestral-sample-mode-default-argmax.md](../decisions/an
 
 ### Mask computation
 
-`create_mask()` identifies positions where all tips are ambiguous. Needed for two reasons: (1) mutation filtering - `collect_mutations()` skips mutations at masked positions to avoid reporting spurious inferred bases where no tip provides signal, (2) output field - `"mask"` string in ancestral node data JSON for VCF reconstruction.
-
-Tracked: [../tickets/ancestral-implement-mask-computation.md](../tickets/ancestral-implement-mask-computation.md).
+Implemented. `create_mask()` identifies positions where all tips are ambiguous, allowing mutation filtering and the ancestral node-data `"mask"` field [packages/treetime/src/ancestral/mask.rs#L4-L36](../../packages/treetime/src/ancestral/mask.rs#L4-L36).
 
 ### AA reconstruction
 
