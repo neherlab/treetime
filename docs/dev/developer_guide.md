@@ -283,12 +283,46 @@ Note that dependency upgrades can cause breakage. The upgraded dependencies need
 
 ### Versioning
 
-TODO
+The workspace version in `Cargo.toml` tracks the base release version (e.g. `1.0.0`). Nightly builds append a prerelease suffix: `1.0.0-nightly.20260714T043012Z+a1b2c3d`.
 
 ### Releases
 
-TODO
+#### Stable releases
+
+Not yet configured. The `dev/publish-github` script and the commented-out `publish-to-github-releases` job in `.github/workflows/cli.yml` are prepared for this.
+
+#### Nightly releases
+
+Automated pre-release builds are published in [neherlab/treetime](https://github.com/neherlab/treetime/releases) for early testing. Binaries for all 7 cross-compilation targets are attached to each release.
+
+**Schedule**: daily at 04:00 UTC via `.github/workflows/schedule-nightly.yml` on the default branch. The dispatcher calls `.github/workflows/nightly.yml` on `rust` and skips if no new Rust commits exist since the last nightly.
+
+**Manual trigger**:
+
+```bash
+./dev/trigger-nightly
+```
+
+This dispatches `schedule-nightly.yml` via `gh workflow run`. Requires `GH_TOKEN` or `gh auth login`.
+
+**Version format**: `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>` (e.g. `1.0.0-nightly.20260714T043012Z+a1b2c3d`). Always marked as prerelease.
+
+**How it works**:
+
+1. `schedule-nightly.yml` on `master` calls `nightly.yml` on `rust`
+2. `nightly.yml` resolves the current `rust` commit and calls `cli.yml` for the full build and validation matrix
+3. `dev/publish-nightly` creates a prerelease in `neherlab/treetime` with all binaries attached
+
+**Authentication**: the dispatcher grants `contents: write` to the repository's standard `GITHUB_TOKEN`. Nightly builds do not publish TreeTime Docker images; the reused CLI workflow retains its existing Docker builder-image cache.
 
 ### Continuous Integration (CI), Packaging, and Distribution
 
-TODO
+CI runs on every push to `rust` and on pull requests via `.github/workflows/cli.yml`:
+
+- Cross-compilation for 7 targets (Linux gnu/musl, macOS, Windows)
+- Unit tests
+- Clippy lints
+- Compatibility tests on native macOS, Windows, and Linux runners
+- CLI documentation freshness check
+
+The Rust nightly workflow (`.github/workflows/nightly.yml`) reuses `cli.yml` via `workflow_call` and adds a publish step.
