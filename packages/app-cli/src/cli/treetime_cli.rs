@@ -26,7 +26,7 @@ pub static SHELLS: LazyLock<Vec<&'static str>> =
 
 #[derive(Parser, Debug, Serialize)]
 #[clap(name = "treetime")]
-#[clap(author, version)]
+#[clap(author, version = env!("TREETIME_LONG_VERSION"))]
 #[clap(verbatim_doc_comment)]
 #[clap(styles = styles())]
 /// Maximum-likelihood phylodynamic inference
