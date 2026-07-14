@@ -9,7 +9,6 @@ load_env "$(project_root)/.env.example"
 
 CROSS_COMPILE="${CROSS_COMPILE:-"native"}"
 PROJECT_DOCKER_REPO="${PROJECT_DOCKER_BUILDER_REPO:?}"
-
 USER="user"
 GROUP="user"
 
@@ -177,6 +176,11 @@ declare -A volumes=(
   ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
 )
 
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+if [[ "${git_common_dir}" != "$(pwd)/.git" ]]; then
+  volumes["${git_common_dir}"]="${git_common_dir}"
+fi
+
 declare -A sccache_env=()
 if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
   sccache_env=(
@@ -199,6 +203,14 @@ if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
 fi
 
 mkdir -p "${!volumes[@]}"
+
+version_flags=()
+if [[ -n "${TREETIME_BUILD_MODE+x}" ]]; then
+  version_flags+=(--env="TREETIME_BUILD_MODE=${TREETIME_BUILD_MODE}")
+fi
+if [[ -n "${TREETIME_VERSION_SUFFIX+x}" ]]; then
+  version_flags+=(--env="TREETIME_VERSION_SUFFIX=${TREETIME_VERSION_SUFFIX}")
+fi
 
 x11_flags=()
 if [[ -n "${DISPLAY:-}" ]]; then
@@ -233,6 +245,7 @@ docker run --rm -i $(tty -s && echo "-t") \
   --env="TURBO_TELEMETRY_DISABLED=1" \
   --env="electron_config_cache=/workdir/.cache/electron" \
   $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
+  "${version_flags[@]}" \
   "${x11_flags[@]}" \
   --ulimit="core=0" \
   "${PROJECT_DOCKER_REPO}:${docker_image_tag}" \

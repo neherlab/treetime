@@ -11,6 +11,22 @@ on:
   workflow_dispatch:
 
   workflow_call:
+    inputs:
+      source_ref:
+        description: "Immutable source commit to build"
+        required: false
+        type: string
+        default: ""
+      build_mode:
+        description: "CLI build version mode: dev, nightly, or release"
+        required: false
+        type: string
+        default: "dev"
+      version_suffix:
+        description: "Version suffix for TREETIME_VERSION_SUFFIX (e.g. nightly.20260714T043012Z+a1b2c3d)"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: cli-${{ github.workflow }}-${{ github.ref_type }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
@@ -21,7 +37,8 @@ defaults:
     shell: bash -euo pipefail {0}
 
 env:
-  GITHUB_REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+  TREETIME_BUILD_MODE: ${{ inputs.build_mode || 'dev' }}
+  TREETIME_VERSION_SUFFIX: ${{ inputs.version_suffix }}
   VERBOSE: 1
 
 
@@ -48,6 +65,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -107,6 +125,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -160,6 +179,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -238,6 +258,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -263,6 +284,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
@@ -371,6 +393,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_ref || github.sha }}
           fetch-depth: 1
           submodules: true
           lfs: true
